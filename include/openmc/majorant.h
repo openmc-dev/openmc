@@ -64,36 +64,6 @@ protected:
   //!   in-place.
   void post_process_grid(int particle_type, Nuclide::EnergyGrid& grid) const;
 
-  //! Helper function to perform linear interpolation.
-  //!
-  //! \param[in] x_0 The first x coordinate.
-  //! \param[in] x_1 The second x coordinate.
-  //! \param[in] y_0 The y coordinate associated with x_0.
-  //! \param[in] y_1 The y coordinate associated with x_1.
-  //! \param[in] x The point between x_0 and x_1 to find a y value at.
-  //! \return The linear interpolant of the given points.
-  inline double interpolate_lin_1D(
-    double x_0, double x_1, double y_0, double y_1, double x) const
-  {
-    const double f = (x - x_0) / (x_1 - x_0);
-    return (1.0 - f) * y_0 + f * y_1;
-  }
-
-  //! Helper function to perform log interpolation.
-  //!
-  //! \param[in] x_0 The first x coordinate.
-  //! \param[in] x_1 The second x coordinate.
-  //! \param[in] y_0 The y coordinate associated with x_0.
-  //! \param[in] y_1 The y coordinate associated with x_1.
-  //! \param[in] x The point between x_0 and x_1 to find a y value at.
-  //! \return The log interpolant of the given points.
-  inline double interpolate_log_1D(
-    double x_0, double x_1, double y_0, double y_1, double x) const
-  {
-    const double f = std::log(x / x_0) / std::log(x_1 / x_0);
-    return std::exp((1.0 - f) * std::log(y_0) + f * std::log(y_1));
-  }
-
   //----------------------------------------------------------------------------
   // Protected data members
 

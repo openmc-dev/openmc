@@ -3,6 +3,7 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/geometry.h"
+#include "openmc/interpolate.h"
 #include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
@@ -164,7 +165,7 @@ NeutronMajorant::NeutronMajorant(int i_universe) : Majorant(i_universe) {}
 double NeutronMajorant::calculate_neutron_xs(double energy) const
 {
   const int i_grid = get_i_grid(energy, grid_);
-  return interpolate_lin_1D(grid_.energy[i_grid], grid_.energy[i_grid + 1],
+  return interpolate_lin_lin(grid_.energy[i_grid], grid_.energy[i_grid + 1],
     xs_[i_grid], xs_[i_grid + 1], energy);
 }
 
@@ -297,7 +298,7 @@ double NeutronMajorant::calculate_max_smooth_xs(
     const auto& nuc_grid = nuc.grid_[i_temp];
     int i_grid = get_i_grid(energy, nuc_grid);
     auto total = nuc.xs_[i_temp].slice(openmc::tensor::all, 0);
-    double xs = interpolate_lin_1D(nuc_grid.energy[i_grid],
+    double xs = interpolate_lin_lin(nuc_grid.energy[i_grid],
       nuc_grid.energy[i_grid + 1], total[i_grid], total[i_grid + 1], energy);
     max_smooth_tot_xs = std::max(max_smooth_tot_xs, xs);
   }
@@ -350,10 +351,10 @@ double NeutronMajorant::calculate_max_urr_xs(
     // Interpolate the bounding energy points.
     double interp_urr_xs = 0.0;
     if (urr.interp_ == Interpolation::lin_lin) {
-      interp_urr_xs = interpolate_lin_1D(urr.energy_[i_energy],
+      interp_urr_xs = interpolate_lin_lin(urr.energy_[i_energy],
         urr.energy_[i_energy + 1], max_urr_xs_E0, max_urr_xs_E1, energy);
     } else if (urr.interp_ == Interpolation::log_log) {
-      interp_urr_xs = interpolate_log_1D(urr.energy_[i_energy],
+      interp_urr_xs = interpolate_log_log(urr.energy_[i_energy],
         urr.energy_[i_energy + 1], max_urr_xs_E0, max_urr_xs_E1, energy);
     }
 
@@ -405,9 +406,9 @@ double NeutronMajorant::calculate_max_sab_tot_xs(
           energy, &T0_elastic, &T0_inelastic);
         thermal.data_[i_sab_temp + 1].calculate_xs(
           energy, &T1_elastic, &T1_inelastic);
-        thermal_elastic = interpolate_lin_1D(tkTs[i_sab_temp],
+        thermal_elastic = interpolate_lin_lin(tkTs[i_sab_temp],
           tkTs[i_sab_temp + 1], T0_elastic, T1_elastic, nuc_kT);
-        thermal_inelastic = interpolate_lin_1D(tkTs[i_sab_temp],
+        thermal_inelastic = interpolate_lin_lin(tkTs[i_sab_temp],
           tkTs[i_sab_temp + 1], T0_inelastic, T1_inelastic, nuc_kT);
       }
     } else {
@@ -422,10 +423,10 @@ double NeutronMajorant::calculate_max_sab_tot_xs(
     const auto& free_tot = nuc.xs_[i_nuc_temp].slice(openmc::tensor::all, 0);
     const auto& free_ela = nuc.reactions_[0]->xs_[i_nuc_temp].value;
     double tot_xs =
-      interpolate_lin_1D(nuc_grid.energy[i_grid], nuc_grid.energy[i_grid + 1],
+      interpolate_lin_lin(nuc_grid.energy[i_grid], nuc_grid.energy[i_grid + 1],
         free_tot[i_grid], free_tot[i_grid + 1], energy);
     double ela_xs =
-      interpolate_lin_1D(nuc_grid.energy[i_grid], nuc_grid.energy[i_grid + 1],
+      interpolate_lin_lin(nuc_grid.energy[i_grid], nuc_grid.energy[i_grid + 1],
         free_ela[i_grid], free_ela[i_grid + 1], energy);
 
     double thermal_xs = sab_frac * (thermal_elastic + thermal_inelastic);

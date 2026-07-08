@@ -162,7 +162,8 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-py${{ matrix.python-version }}-mpi-${{ matrix.mpi }}-${{ hashFiles(format('{0}/tools/ci/requirements*.txt', github.workspace)) }}-${{ hashFiles(format('{0}/tools/ci/mpi-deps.txt', github.workspace)) }}
+          key: pip-${{ runner.os }}-py${{ matrix.python-version }}-mpi-${{ matrix.mpi }}-${{ hashFiles(format('tools/ci/requirements-mpi-{0}.txt', matrix.mpi)) }}-${{ hashFiles('tools/ci/mpi-deps.txt') }}
+
 
       - name: Restore NJOY2016
         uses: actions/cache@v6

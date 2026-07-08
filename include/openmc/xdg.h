@@ -42,6 +42,8 @@ public:
   //! \return True if the bin index is in [0, n_bins())
   bool bin_is_valid(int bin) const { return bin >= 0 && bin < n_bins(); }
 
+  std::string get_mesh_type() const override { return mesh_type; }
+
   //! Convert a mesh bin index to an XDG MeshID
   //!
   //! \param[in] bin Bin index to convert

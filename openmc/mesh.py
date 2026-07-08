@@ -307,6 +307,8 @@ class MeshBase(IDManagerMixin, ABC):
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'unstructured':
             return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
+        elif mesh_type == 'xdg':
+            return openmc.XDGMesh.from_hdf5(group, mesh_id, mesh_name)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
@@ -2859,7 +2861,7 @@ class UnstructuredMesh(MeshBase):
 
     @library.setter
     def library(self, lib: str):
-        cv.check_value('Unstructured mesh library', lib, ('xdg','moab', 'libmesh'))
+        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
         self._library = lib
 
     @property
@@ -3292,6 +3294,13 @@ class UnstructuredMesh(MeshBase):
             name=name,
             options=options,
         )
+
+        cls._read_hdf5_mesh_data(group, mesh)
+
+        return mesh
+
+    @staticmethod
+    def _read_hdf5_mesh_data(group: h5py.Group, mesh: MeshBase):
         mesh._has_statepoint_data = True
         vol_data = group["volumes"][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -3305,8 +3314,6 @@ class UnstructuredMesh(MeshBase):
 
         if "length_multiplier" in group:
             mesh.length_multiplier = group["length_multiplier"][()]
-
-        return mesh
 
     def to_xml_element(self):
         """Return XML representation of the mesh

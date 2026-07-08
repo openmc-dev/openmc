@@ -43,7 +43,7 @@ class XDGMeshTallyTest(PyAPITestHarness):
         with openmc.StatePoint(self._sp_name) as sp:
             xdg_mesh = None
             for mesh in sp.meshes.values():
-                if isinstance(mesh, openmc.UnstructuredMesh) and mesh.library == "xdg":
+                if isinstance(mesh, XDGMesh):
                     xdg_mesh = mesh
                     break
 

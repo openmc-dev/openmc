@@ -76,7 +76,9 @@ tracking.
 Surface tracking is quite efficient when used in problems with short mean free
 paths relative to the size of individual regions in the problem geometry.
 Surface tracking also admits the use of the track length estimator (discussed
-in the :ref:`methods_tallies` section). In problems with long mean free paths relative to the size of geometry regions, surface tracking will require a large number of surface distance calculations per collision. The cost of finding the
+in the :ref:`methods_tallies` section). In problems with long mean free paths
+relative to the size of geometry regions, surface tracking will require a large
+number of surface distance calculations per collision. The cost of finding the
 nearest surface is also non-trivial for problems that contain many geometric
 regions at the same cell level (e.g. TRISO-fueled fission reactors).
 
@@ -91,37 +93,40 @@ the development of alternative approaches which do not require distance
 to surface checks. Delta tracking (also known by Woodcock tracking,
 delta scattering, and null scattering) is one approach to
 avoid surface geometry queries [Woodcock]_. In delta tracking, the domain is
-homogenized by adding a fictitious delta scattering cross sections
-:math:`\Sigma_{\delta}(\mathbf{r}, E)` to the medium. The sum of the delta
-scattering cross section and the total cross section is known as the majorant
-cross section (:math:`\Sigma_{maj}(E)`)
+homogenized to a majorant cross section (:math:`\Sigma_{maj}(E)`) which is
+computed as the maximum total cross section over the entire problem
 
 .. math::
     :label: majorant-xs-1
 
-    \Sigma_{maj}(E) = \Sigma_{t}(\mathbf{r}, E) + \Sigma_{\delta}(\mathbf{r},
-    E),
-
-which is computed as the maximum macroscopic total cross section over the
-spatial domain
-
-.. math::
-    :label: majorant-xs-2
-
     \Sigma_{maj}(E) = \max_{\mathbf{r}}\left(\Sigma_{t}(\mathbf{r}, E)\right).
 
-The delta tracking procedure computes the distance to the next collision
-with the majorant cross section instead of the total cross section
+Particles move through this homogenized problem by sampling a distance to the
+next collision with the majorant cross section instead of the total cross section
 
 .. math::
     :label: sample-distance-maj
 
     \ell = -\frac{\ln \xi}{\Sigma_{maj}(E)}.
 
-This is followed by a rejection sampling test to determine if a real
-collision or a delta scattering collision occured at this delta collision
-point. A random number :math:`\xi` on the interval :math:`[0,1)` is drawn and
-used to check
+To recover the spatial heterogeneity present in the original simulation, the
+delta tracking method formally defines the majorant cross section to be the
+sum of the total cross section and a spatially-varying fictitious delta
+scattering cross sections :math:`\Sigma_{\delta}(\mathbf{r}, E)`
+
+.. math::
+    :label: majorant-xs-2
+
+    \Sigma_{maj}(E) = \Sigma_{t}(\mathbf{r}, E) + \Sigma_{\delta}(\mathbf{r},
+    E).
+
+At the collision point computed from :eq:`sample-distance-maj` one of
+two reactions could occur. The first is a real collision, which is processed
+as usual. The second is known as a delta scatter event (also referred to
+as a virtual or null collision), which is the reaction type associated with
+:math:`\Sigma_{\delta}(\mathbf{r}, E)`. A rejection sampling test is used to
+determine which collision type occurs; a random number :math:`\xi` on the
+interval :math:`[0,1)` is drawn and used to check
 
 .. math::
     :label: delta-real-collision
@@ -129,26 +134,28 @@ used to check
     \xi < \frac{\Sigma_t (\mathbf{r}, E)}{\Sigma_{maj} (E)}.
 
 If the condition above is true, the collision is accepted as real. If the condition
-is false, a delta scatter event (also referred to as a virtual collision)  has occurred and the particle continues along
+is false, a delta scatter event has occurred and the particle continues along
 its trajectory with the same energy and direction. Boundary conditions
 are applied by testing the distance to the nearest external boundary and
 comparing this to the distance sampled with Equation :eq:`sample-distance-maj`.
 If the distance to the nearest boundary is less than the sampled distance to
 the next collision, the particle crosses the external boundary.
 
-Delta tracking is advantageous compared to surface tracking as it allows
-for continuously-varying material properties due to the use of pointwise
-cross section samples in Equation :eq:`delta-real-collision`. Delta tracking
-often performs better than surface tracking in problems where the particle
-mean free path is larger than the distance between surfaces. Problems
-containing small regions with large total cross sections (such as burnable
-absorbers) will have majorant cross sections several orders of magnitude
-larger than the total cross section over the majority of the domain
-[Leppänen]_. This decreases the number of accepted collisions, and therefore
-the effectiveness of delta tracking. Material discontinuities are not
+Delta tracking is advantageous as it only requires point location checks to
+determine the total cross section at each collision point to test
+:eq:`delta-real-collision`. This allows for the use of continuously-varying
+material properties and avoids computationally expensive distance-to-nearest-surface
+calculations. Problems which contain small regions with large total
+cross sections (such as burnable absorbers) will have majorant cross sections
+several orders of magnitude larger than the total cross section over the majority
+of the domain [Leppänen]_. This decreases the number of real collisions, and
+therefore the effectiveness of delta tracking. Material discontinuities are not
 considered in delta tracking, which prohibits the use of track length
-estimators and forces the use of the higher-variance collision estimator
-(discussed in detail in the :ref:`methods_tallies` section).
+estimators for quantities restricted to material/geometric subdomains (such as
+reaction rates) and forces the use of the higher-variance collision
+estimator (discussed in detail in the :ref:`methods_tallies` section). When compared
+with surface tracking, delta tracking often performs better in problems where
+the particle mean free path is larger than the distance between surfaces.
 
 ----------------------------------------------------
 :math:`(n,\gamma)` and Other Disappearance Reactions

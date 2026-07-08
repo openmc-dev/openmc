@@ -76,9 +76,7 @@ tracking.
 Surface tracking is quite efficient when used in problems with short mean free
 paths relative to the size of individual regions in the problem geometry.
 Surface tracking also admits the use of the track length estimator (discussed
-in the :ref:`methods_tallies` section). In problems with many geometric regions
-across particle flights, surface tracking will require a large number of surface
-distance calculations and collision distance samples. The cost of finding the
+in the :ref:`methods_tallies` section). In problems with long mean free paths relative to the size of geometry regions, surface tracking will require a large number of surface distance calculations per collision. The cost of finding the
 nearest surface is also non-trivial for problems that contain many geometric
 regions at the same cell level (e.g. TRISO-fueled fission reactors).
 
@@ -130,8 +128,8 @@ used to check
 
     \xi < \frac{\Sigma_t (\mathbf{r}, E)}{\Sigma_{maj} (E)}.
 
-If the condition is true, the collision is accepted as real. If the condition
-is false, a delta scatter event has occured and the particle continues along
+If the condition above is true, the collision is accepted as real. If the condition
+is false, a delta scatter event (also referred to as a virtual collision)  has occurred and the particle continues along
 its trajectory with the same energy and direction. Boundary conditions
 are applied by testing the distance to the nearest external boundary and
 comparing this to the distance sampled with Equation :eq:`sample-distance-maj`.

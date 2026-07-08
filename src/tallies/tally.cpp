@@ -350,7 +350,7 @@ Tally::Tally(pugi::xml_node node)
     this->init_triggers(node);
   }
 
-  // If we're running with delta tracking, the estimator must be set to
+  // If we're running with delta tracking, the default estimator must be set to
   // collision or analog.
   if (settings::delta_tracking && estimator_ == TallyEstimator::TRACKLENGTH) {
     estimator_ = TallyEstimator::COLLISION;

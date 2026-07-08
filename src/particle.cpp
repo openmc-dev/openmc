@@ -936,7 +936,7 @@ void Particle::update_majorant()
 
 bool Particle::kill_invalid_maj()
 {
-  if (alive() && (macro_xs().total / majorant() > 1.0)) {
+  if (alive() && (macro_xs().total > majorant())) {
     mark_as_lost(
       fmt::format("Ratio of the total cross section ({}) to the majorant "
                   "cross section ({}) for particle {} ({}) with energy {} is "

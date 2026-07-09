@@ -55,12 +55,13 @@ def test_overlaps_enabled(overlap_model):
     # Run a single slice with overlap detection enabled and check all
     # expected properties in one pass.
     geom_data = run_slice()
-    overlap_info, n = openmc.lib.slice_data_overlap_info()
-    mat_ids = geom_data[:, :, 2]
+    overlap_info = openmc.lib.slice_data_overlap_info()
+    n = overlap_info.shape[0]
+    cell_ids = geom_data[:, :, 0]
 
-    # mat_ids should contain values more negative than _OVERLAP; RasterData
+    # cell_ids should contain values more negative than _OVERLAP; RasterData
     # encodes each unique overlap as OVERLAP - overlap_idx - 1 into slot 2.
-    assert np.any(mat_ids < _OVERLAP)
+    assert np.any(cell_ids < _OVERLAP)
 
     # overlap_keys should have 2 entries for the two distinct overlapping
     # cylinder pairs in this model.
@@ -68,9 +69,9 @@ def test_overlaps_enabled(overlap_model):
 
     # Each entry is a (universe_id, cell1_id, cell2_id) triple; verify values.
     for i in range(n):
-        universe_id = int(overlap_info[i * 3])
-        cell1_id = int(overlap_info[i * 3 + 1])
-        cell2_id = int(overlap_info[i * 3 + 2])
+        universe_id = int(overlap_info[i, 0])
+        cell1_id = int(overlap_info[i, 1])
+        cell2_id = int(overlap_info[i, 2])
         assert universe_id == 1
         assert cell1_id in {1, 2, 3}
         assert cell2_id in {1, 2, 3}
@@ -81,7 +82,8 @@ def test_overlaps_disabled(overlap_model):
     # With show_overlaps=False, set_overlap is never called and overlap_keys
     # is never written to, so the image and map should both be clean.
     geom_data = run_slice(show_overlaps=False)
-    _, n = openmc.lib.slice_data_overlap_info()
+    overlap_info = openmc.lib.slice_data_overlap_info()
+    n = overlap_info.shape[0]
 
     assert not np.any(geom_data[:, :, 2] < _OVERLAP)
     assert n == 0

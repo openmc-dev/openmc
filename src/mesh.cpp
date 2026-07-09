@@ -947,14 +947,19 @@ std::string UnstructuredMesh::bin_label(int bin) const
 
 void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
 {
+  write_message(2, "line 1");
   write_dataset(mesh_group, "filename", filename_);
+  write_message(2, "line 2");
   write_dataset(mesh_group, "library", this->library());
+  write_message(2, "line 3");  
   if (!options_.empty()) {
     write_attribute(mesh_group, "options", options_);
   }
-
+  write_message(2, "line 4");
+  
   if (length_multiplier_ > 0.0)
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
+  write_message(2, "line 5");    
 
   // write vertex coordinates
   tensor::Tensor<double> vertices(
@@ -964,6 +969,8 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
     vertices.slice(i) = {v.x, v.y, v.z};
   }
   write_dataset(mesh_group, "vertices", vertices);
+  
+  write_message(2, "line 6");  
 
   int num_elem_skipped = 0;
 
@@ -995,6 +1002,8 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
     }
   }
 
+  write_message(2, "line 7");
+
   // warn users that some elements were skipped
   if (num_elem_skipped > 0) {
     warning(fmt::format("The connectivity of {} elements "
@@ -1003,9 +1012,17 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
       num_elem_skipped, this->id_));
   }
 
+  write_message(2, "line 8");
+
   write_dataset(mesh_group, "volumes", volumes);
+  
+  write_message(2, "line 9");  
   write_dataset(mesh_group, "connectivity", connectivity);
+  
+  write_message(2, "line 10");  
   write_dataset(mesh_group, "element_types", elem_types);
+  
+  write_message(2, "line 11");  
 }
 
 void UnstructuredMesh::set_length_multiplier(double length_multiplier)

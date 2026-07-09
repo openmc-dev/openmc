@@ -26,50 +26,32 @@
     <cell id="12" name="azimuthal_cell_5" fill="1" region="11 -12" universe="2"/>
     <cell id="13" name="azimuthal_cell_6" fill="1" region="12 -13" universe="2"/>
     <cell id="14" name="azimuthal_cell_7" fill="1" region="13 -6" universe="2"/>
-    <cell id="18" name="moderator infinite" material="2" universe="8"/>
-    <cell id="19" name="moderator infinite 2" material="2" universe="9"/>
-    <cell id="20" fill="10" universe="12"/>
-    <cell id="21" fill="11" universe="13"/>
-    <cell id="22" name="assembly" fill="14" region="18 -19 20 -21" universe="15"/>
-    <lattice id="10">
+    <cell id="15" name="moderator infinite" material="2" universe="3"/>
+    <cell id="16" fill="4" universe="5"/>
+    <cell id="17" name="assembly" fill="6" region="14 -15 16 -17" universe="7"/>
+    <lattice id="4">
       <pitch>0.126 0.126</pitch>
       <dimension>10 10</dimension>
       <lower_left>-0.63 -0.63</lower_left>
       <universes>
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 </universes>
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 </universes>
     </lattice>
-    <lattice id="11">
-      <pitch>0.126 0.126</pitch>
-      <dimension>10 10</dimension>
-      <lower_left>-0.63 -0.63</lower_left>
-      <universes>
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 8 
-8 8 8 8 8 8 8 8 8 9 </universes>
-    </lattice>
-    <lattice id="14">
+    <lattice id="6">
       <pitch>1.26 1.26</pitch>
       <dimension>2 2</dimension>
       <lower_left>-1.26 -1.26</lower_left>
       <universes>
-2 12 
-12 13 </universes>
+2 2 
+2 5 </universes>
     </lattice>
     <surface id="1" name="Fuel OR" type="z-cylinder" coeffs="0.0 0.0 0.54"/>
     <surface id="2" name="inner ring a" type="z-cylinder" coeffs="0.0 0.0 0.33"/>
@@ -84,32 +66,20 @@
     <surface id="11" type="plane" coeffs="0.7071067811865475 -0.7071067811865477 0 0"/>
     <surface id="12" type="plane" coeffs="1.0 -1.8369701987210297e-16 0 0"/>
     <surface id="13" type="plane" coeffs="0.7071067811865477 0.7071067811865474 0 0"/>
-    <surface id="18" name="minimum x" type="x-plane" boundary="reflective" coeffs="-1.26"/>
-    <surface id="19" name="maximum x" type="x-plane" boundary="reflective" coeffs="1.26"/>
-    <surface id="20" name="minimum y" type="y-plane" boundary="reflective" coeffs="-1.26"/>
-    <surface id="21" name="maximum y" type="y-plane" boundary="reflective" coeffs="1.26"/>
+    <surface id="14" name="minimum x" type="x-plane" boundary="reflective" coeffs="-1.26"/>
+    <surface id="15" name="maximum x" type="x-plane" boundary="reflective" coeffs="1.26"/>
+    <surface id="16" name="minimum y" type="y-plane" boundary="reflective" coeffs="-1.26"/>
+    <surface id="17" name="maximum y" type="y-plane" boundary="reflective" coeffs="1.26"/>
   </geometry>
   <settings>
-    <run_mode>fixed source</run_mode>
-    <particles>30</particles>
-    <batches>125</batches>
-    <inactive>100</inactive>
-    <source type="independent" strength="1.0" particle="neutron">
-      <space type="box">
-        <parameters>1.134 -1.26 -1.0 1.26 -1.134 1.0</parameters>
-      </space>
-      <energy type="discrete">
-        <parameters>2e-05 0.0735 20.0 200.0 2000.0 750000.0 2000000.0 0.14285714285714285 0.14285714285714285 0.14285714285714285 0.14285714285714285 0.14285714285714285 0.14285714285714285 0.14285714285714285</parameters>
-      </energy>
-      <constraints>
-        <domain_type>universe</domain_type>
-        <domain_ids>9</domain_ids>
-      </constraints>
-    </source>
+    <run_mode>eigenvalue</run_mode>
+    <particles>25</particles>
+    <batches>40</batches>
+    <inactive>20</inactive>
     <energy_mode>multi-group</energy_mode>
     <random_ray>
-      <distance_active>40.0</distance_active>
-      <distance_inactive>40.0</distance_inactive>
+      <distance_active>100.0</distance_active>
+      <distance_inactive>20.0</distance_inactive>
       <ray_source>
         <source type="independent" strength="1.0" particle="neutron">
           <space type="box">
@@ -117,10 +87,19 @@
           </space>
         </source>
       </ray_source>
-      <volume_normalized_flux_tallies>false</volume_normalized_flux_tallies>
-      <source_shape>linear_xy</source_shape>
-      <volume_estimator>hybrid</volume_estimator>
+      <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
+      <source_region_meshes>
+        <mesh id="2">
+          <domain id="7" type="universe"/>
+        </mesh>
+      </source_region_meshes>
+      <volume_estimator>adaptive</volume_estimator>
     </random_ray>
+    <mesh id="2">
+      <dimension>40 40</dimension>
+      <lower_left>-1.26 -1.26</lower_left>
+      <upper_right>1.26 1.26</upper_right>
+    </mesh>
   </settings>
   <tallies>
     <mesh id="1">

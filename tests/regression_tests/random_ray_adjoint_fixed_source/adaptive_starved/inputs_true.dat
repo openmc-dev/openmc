@@ -16,8 +16,8 @@
     </material>
   </materials>
   <geometry>
-    <cell id="1" name="infinite source region" material="void" universe="1"/>
-    <cell id="2" name="infinite void region" material="void" universe="2"/>
+    <cell id="1" name="infinite source region" material="1" universe="1"/>
+    <cell id="2" name="infinite void region" material="2" universe="2"/>
     <cell id="3" name="infinite absorber region" material="3" universe="3"/>
     <cell id="4" fill="4" universe="5"/>
     <cell id="5" name="full domain" fill="5" region="1 -2 3 -4 5 -6" universe="6"/>
@@ -191,7 +191,7 @@
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>90</particles>
+    <particles>10</particles>
     <batches>40</batches>
     <inactive>20</inactive>
     <source type="independent" strength="3.14" particle="neutron">
@@ -215,32 +215,32 @@
         </source>
       </ray_source>
       <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
-      <source_shape>flat</source_shape>
-      <volume_estimator>hybrid</volume_estimator>
+      <adjoint>true</adjoint>
+      <volume_estimator>adaptive</volume_estimator>
     </random_ray>
   </settings>
   <tallies>
-    <filter id="6" type="cell">
+    <filter id="3" type="material">
       <bins>1</bins>
     </filter>
-    <filter id="5" type="cell">
+    <filter id="2" type="material">
       <bins>2</bins>
     </filter>
-    <filter id="4" type="cell">
+    <filter id="1" type="material">
       <bins>3</bins>
     </filter>
-    <tally id="6" name="Source Tally">
-      <filters>6</filters>
+    <tally id="3" name="Source Tally">
+      <filters>3</filters>
       <scores>flux</scores>
       <estimator>tracklength</estimator>
     </tally>
-    <tally id="5" name="Void Tally">
-      <filters>5</filters>
+    <tally id="2" name="Void Tally">
+      <filters>2</filters>
       <scores>flux</scores>
       <estimator>tracklength</estimator>
     </tally>
-    <tally id="4" name="Absorber Tally">
-      <filters>4</filters>
+    <tally id="1" name="Absorber Tally">
+      <filters>1</filters>
       <scores>flux</scores>
       <estimator>tracklength</estimator>
     </tally>

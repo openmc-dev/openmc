@@ -1,6 +1,8 @@
 import os
 
+import openmc
 from openmc.examples import pwr_pin_cell
+from openmc.utility_funcs import change_directory
 from openmc import RegularMesh
 
 from tests.testing_harness import TolerantPyAPITestHarness
@@ -14,7 +16,7 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
             os.remove(f)
 
 
-def test_random_ray_diagonal_stabilization():
+def _build_model():
     # Start with a normal continuous energy model
     model = pwr_pin_cell()
 
@@ -57,5 +59,24 @@ def test_random_ray_diagonal_stabilization():
     model.settings.inactive = 15
     model.settings.batches = 20
 
+    return model
+
+
+def test_random_ray_diagonal_stabilization():
+    model = _build_model()
+    model.settings.random_ray['volume_estimator'] = 'hybrid'
     harness = MGXSTestHarness('statepoint.20.h5', model)
     harness.main()
+
+
+def test_random_ray_diagonal_stabilization_adaptive():
+    # The transport-corrected (P0) library's negative within-group scattering
+    # drives some reduced sources negative, which the adaptive estimator must
+    # handle through its negative-source (strong) treatment and its
+    # end-of-inactive demotion; this case pins that interplay.
+    with change_directory('adaptive'):
+        openmc.reset_auto_ids()
+        model = _build_model()
+        model.settings.random_ray['volume_estimator'] = 'adaptive'
+        harness = MGXSTestHarness('statepoint.20.h5', model)
+        harness.main()

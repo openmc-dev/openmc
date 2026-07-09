@@ -903,8 +903,8 @@ class LegacySlicePlot:
     h_res = 3
     v_res = 3
     level = -1
-
-
+    
+    
 def test_id_map(lib_init):
     expected_ids = np.array([[(3, 0, 3), (2, 0, 2), (3, 0, 3)],
                              [(2, 0, 2), (1, 0, 1), (2, 0, 2)],
@@ -924,6 +924,16 @@ def test_property_map(lib_init):
     with pytest.warns(FutureWarning, match="deprecated"):
         properties = openmc.lib.property_map(LegacySlicePlot())
     assert np.allclose(expected_properties, properties, atol=1e-04)
+
+
+def test_slice_data(lib_init):
+    expected_properties = np.array(
+        [[(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)],
+         [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
+         [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
+    origin = (0.0, 0.0, 0.0)
+    _, properties = openmc.lib.slice_data(origin, width=(1.26, 1.26), basis='xy', pixels=(3,3), include_properties=True)         
+    assert np.allclose(expected_properties, properties, atol=1e-04)    
 
 
 def test_solid_raytrace_plot(lib_init, pincell_model):

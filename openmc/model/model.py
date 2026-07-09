@@ -1871,6 +1871,7 @@ class Model:
     def _auto_generate_mgxs_lib(
         model: openmc.model.Model,
         groups: openmc.mgxs.EnergyGroups,
+        nparticles: int | None,
         correction: str | None,
         directory: PathLike,
     ) -> openmc.mgxs.Library:
@@ -1882,8 +1883,9 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        nparticles : int or None
+            Number of particles to simulate per batch when generating MGXS, or
+            None to auto-tune the count via a cross-section convergence trigger.
         mgxs_path : str
             Filename for the MGXS HDF5 file.
         correction : str
@@ -1932,6 +1934,35 @@ class Model:
 
         # Check the library - if no errors are raised, then the library is satisfactory.
         mgxs_lib.check_library_for_openmc_mgxs()
+
+        # Determine particle count / convergence behaviour. When nparticles is
+        # None the generation run is auto-tuned: rather than a fixed (guessed)
+        # particle count, a relative-error trigger is attached to every
+        # cross-section tally so the continuous-energy run extends batches until
+        # the group constants are statistically converged (capped internally).
+        # This keeps nparticles off the user knob list while avoiding both
+        # under-resolved and needlessly over-resolved libraries.
+        if nparticles is None:
+            # Internal auto-tune defaults (not user-facing arguments):
+            seed_particles = 2000     # particles per batch to start from
+            target_rel_err = 1.0e-2   # converge cross-section tallies to 1%
+            max_batches = 1000        # safety cap on the batch count
+            model.settings.particles = seed_particles
+            # ignore_zeros so structurally-empty bins (e.g. nu-fission in
+            # non-fissile materials or unpopulated fast groups) neither trip the
+            # trigger prematurely nor stall convergence. The trigger is applied
+            # (via Library.tally_trigger, before build_library) to the flux and
+            # reaction-rate tallies that form each group constant, so converging
+            # both converges the cross section.
+            mgxs_lib.tally_trigger = openmc.Trigger(
+                'rel_err', target_rel_err, ignore_zeros=True)
+            model.settings.trigger_active = True
+            # settings.batches is the minimum batch count; bound the upper end
+            # so a poorly-converging material cannot run unbounded.
+            model.settings.trigger_max_batches = max(
+                max_batches, model.settings.batches)
+        else:
+            model.settings.particles = nparticles
 
         # Construct all tallies needed for the multi-group cross section library
         mgxs_lib.build_library()
@@ -2037,7 +2068,7 @@ class Model:
     def _isothermal_infinite_media_mgxs(
         material: openmc.Material,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        nparticles: int | None,
         correction: str | None,
         directory: PathLike,
         source: openmc.IndependentSource,
@@ -2053,8 +2084,9 @@ class Model:
             The material to generate MGXS for
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        nparticles : int or None
+            Number of particles to simulate per batch when generating MGXS, or
+            None to auto-tune the count via a cross-section convergence trigger.
         correction : str
             Transport correction to apply to the MGXS. Options are None and
             "P0".
@@ -2084,7 +2116,6 @@ class Model:
 
         # Settings
         model.settings.batches = 100
-        model.settings.particles = nparticles
 
         model.settings.source = source
 
@@ -2104,7 +2135,7 @@ class Model:
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
+                model, groups, nparticles, correction, directory)
 
         if temperature is not None:
             return mgxs_lib.get_xsdata(domain=material, xsdata_name=name,
@@ -2115,7 +2146,7 @@ class Model:
     def _generate_infinite_medium_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        nparticles: int | None,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
@@ -2150,8 +2181,9 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        nparticles : int or None
+            Number of particles to simulate per batch when generating MGXS, or
+            None to auto-tune the count via a cross-section convergence trigger.
         mgxs_path : str
             Filename for the MGXS HDF5 file.
         correction : str
@@ -2314,7 +2346,7 @@ class Model:
     def _isothermal_stochastic_slab_mgxs(
         stoch_geom: openmc.Geometry,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        nparticles: int | None,
         correction: str | None,
         directory: PathLike,
         source: openmc.IndependentSource,
@@ -2331,8 +2363,9 @@ class Model:
             The stochastic slab geometry.
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        nparticles : int or None
+            Number of particles to simulate per batch when generating MGXS, or
+            None to auto-tune the count via a cross-section convergence trigger.
         correction : str
             Transport correction to apply to the MGXS. Options are None and
             "P0".
@@ -2364,7 +2397,6 @@ class Model:
         # Settings
         model.settings.batches = 200
         model.settings.inactive = 100
-        model.settings.particles = nparticles
         model.settings.output = {'summary': True, 'tallies': False}
         model.settings.temperature = temperature_settings
 
@@ -2378,7 +2410,7 @@ class Model:
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
+                model, groups, nparticles, correction, directory)
 
         # Fetch all of the isothermal results.
         if temperature is not None:
@@ -2396,7 +2428,7 @@ class Model:
     def _generate_stochastic_slab_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        nparticles: int | None,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
@@ -2420,8 +2452,9 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        nparticles : int or None
+            Number of particles to simulate per batch when generating MGXS, or
+            None to auto-tune the count via a cross-section convergence trigger.
         mgxs_path : str
             Filename for the MGXS HDF5 file.
         correction : str
@@ -2521,7 +2554,7 @@ class Model:
     def _isothermal_materialwise_mgxs(
         input_model: openmc.Model,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        nparticles: int | None,
         correction: str | None,
         directory: PathLike,
         temperature_settings: dict,
@@ -2541,8 +2574,9 @@ class Model:
             The model to use when computing material-wise MGXS.
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        nparticles : int or None
+            Number of particles to simulate per batch when generating MGXS, or
+            None to auto-tune the count via a cross-section convergence trigger.
         correction : str
             Transport correction to apply to the MGXS. Options are None and
             "P0".
@@ -2572,13 +2606,12 @@ class Model:
         # Settings
         model.settings.batches = 200
         model.settings.inactive = 100
-        model.settings.particles = nparticles
         model.settings.output = {'summary': True, 'tallies': False}
         model.settings.temperature = temperature_settings
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
+                model, groups, nparticles, correction, directory)
 
         # Fetch all of the isothermal results.
         if temperature is not None:
@@ -2596,7 +2629,7 @@ class Model:
     def _generate_material_wise_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        nparticles: int | None,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
@@ -2617,8 +2650,9 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        nparticles : int or None
+            Number of particles to simulate per batch when generating MGXS, or
+            None to auto-tune the count via a cross-section convergence trigger.
         mgxs_path : PathLike
             Filename for the MGXS HDF5 file.
         correction : str
@@ -2688,7 +2722,7 @@ class Model:
         self,
         method: str = "material_wise",
         groups: str | Sequence[float] | openmc.mgxs.EnergyGroups = "CASMO-2",
-        nparticles: int = 2000,
+        nparticles: int | None = None,
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
@@ -2712,8 +2746,13 @@ class Model:
             (e.g., ``"CASMO-2"``), or a sequence of floats specifying energy
             bin boundaries in eV (e.g., ``[0.0, 1e6]`` for a single group).
             Defaults to ``"CASMO-2"``.
-        nparticles : int, optional
-            Number of particles to simulate per batch when generating MGXS.
+        nparticles : int or None, optional
+            Number of particles to simulate per batch when generating MGXS. By
+            default (``None``) the generation run is auto-tuned: a relative-error
+            trigger is attached to the cross-section tallies so the simulation
+            runs until the group constants are statistically converged, rather
+            than for a fixed (guessed) number of particles. Pass an integer to
+            instead run a fixed number of particles per batch.
         overwrite_mgxs_library : bool, optional
             Whether to overwrite an existing MGXS library file.
         mgxs_path : str, optional

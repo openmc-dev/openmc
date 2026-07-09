@@ -673,6 +673,12 @@ def test_model_plot_invalid_inputs():
         model.plot(plane_tolerance=0.0)
     with pytest.raises(TypeError):
         model.plot(plane_tolerance='1')
+    with pytest.raises(ValueError):
+        model.plot(pixels=-1)
+    with pytest.raises(ValueError):
+        model.plot(pixels=(0, 100))
+    with pytest.raises(ValueError):
+        model.plot(pixels=(100,))
 
 
 def test_model_id_map_initialization(run_in_tmpdir):

@@ -558,9 +558,16 @@ fluxes.
 Whereas the hybrid estimator guards only regions with explicit external
 sources, the adaptive estimator also catches the optically thin regions of
 fixed source problems where the simulation averaged and hybrid estimators can
-otherwise develop persistent negative fluxes. It is the default estimator in
-OpenMC, and is particularly beneficial for fixed source and shielding problems
-that exhibit such instability.
+otherwise develop persistent negative fluxes. When a linear source shape is in
+use, demoted regions additionally revert to a flat source representation
+(their source gradients are zeroed), extending the flat-source treatment
+already applied to hit-starved regions: in a strong-source region the gradient
+terms attenuate segments against the local rather than the flat source,
+re-injecting per-iteration noise at the scale of the reduced source that the
+volume choice cannot cancel, while in a converged-negative region the fitted
+gradients carry no meaningful shape information. The adaptive estimator is the
+default in OpenMC, and is particularly beneficial for fixed source and
+shielding problems that exhibit such instability.
 
 A table that summarizes the pros and cons, as well as recommendations for
 different use cases, is given in the :ref:`volume

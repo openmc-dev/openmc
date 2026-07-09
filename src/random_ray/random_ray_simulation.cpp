@@ -634,13 +634,14 @@ void RandomRaySimulation::print_results_random_ray(
         domain_->n_final_demoted_, domain_->n_final_demoted_ * inv);
       fmt::print("   Hit-Starved (Small)             = {} SRs ({:.4f}%)\n",
         domain_->n_final_small_, domain_->n_final_small_ * inv);
-      // For linear-source runs, the strong-source regions additionally have
-      // their source gradients zeroed, reverting them to a flat source. This is
-      // the same set as "Strong Source" above (both apply the kappa test to the
-      // same data), reported here as the linear -> flat fallback frequency.
+      // For linear-source runs, the strong-source and converged-negative
+      // regions additionally have their source gradients zeroed, reverting
+      // them to a flat source; this is the same data the volume switch uses,
+      // reported here as the linear -> flat fallback frequency.
       if (RandomRay::source_shape_ != RandomRaySourceShape::FLAT) {
-        fmt::print("   Strong Source -> Flat (linear)  = {} SRs ({:.4f}%)\n",
-          domain_->n_final_strong_, domain_->n_final_strong_ * inv);
+        int64_t n_flat = domain_->n_final_strong_ + domain_->n_final_demoted_;
+        fmt::print("   Demoted -> Flat (linear)        = {} SRs ({:.4f}%)\n",
+          n_flat, n_flat * inv);
       }
     }
 

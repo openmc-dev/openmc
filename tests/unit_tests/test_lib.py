@@ -903,8 +903,8 @@ class LegacySlicePlot:
     h_res = 3
     v_res = 3
     level = -1
-    
-    
+
+
 def test_id_map(lib_init):
     expected_ids = np.array([[(3, 0, 3), (2, 0, 2), (3, 0, 3)],
                              [(2, 0, 2), (1, 0, 1), (2, 0, 2)],

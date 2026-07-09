@@ -65,6 +65,16 @@ constexpr int MAX_SAMPLE {100000};
 // source region in the random ray solver
 constexpr double MIN_HITS_PER_BATCH {1.5};
 
+// Strong-source ratio threshold for the adaptive volume estimator. A source
+// region is treated as having a "strong" inhomogeneous source -- and is given
+// the naive volume and previous-flux miss treatment -- in any group where the
+// reduced source q/Sigma_t exceeds this multiple of the region's scalar flux,
+// indicating a source sustained by an external or in-scatter contribution
+// rather than by the local flux. The value sits well inside the range over
+// which benign problems remain untriggered while pathological cells are still
+// caught.
+constexpr double ADAPTIVE_VOLUME_KAPPA {4.0};
+
 // The minimum flux value to be considered non-zero when computing adjoint
 // sources. Positive values below this cutoff will be treated as zero, so as to
 // prevent extremely large adjoint source terms from being generated.
@@ -365,7 +375,12 @@ enum class RunMode {
 
 enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
-enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
+enum class RandomRayVolumeEstimator {
+  NAIVE,
+  SIMULATION_AVERAGED,
+  HYBRID,
+  ADAPTIVE
+};
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
 enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };

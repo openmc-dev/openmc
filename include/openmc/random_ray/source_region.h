@@ -149,6 +149,7 @@ public:
   int* temperature_idx_;
   double* density_mult_;
   int* is_small_;
+  int* n_negative_fluxes_;
   int* n_hits_;
   int* birthday_;
   OpenMPMutex* lock_;
@@ -205,6 +206,8 @@ public:
 
   int& is_small() { return *is_small_; }
   const int is_small() const { return *is_small_; }
+  int& n_negative_fluxes() { return *n_negative_fluxes_; }
+  const int n_negative_fluxes() const { return *n_negative_fluxes_; }
 
   int& n_hits() { return *n_hits_; }
   const int n_hits() const { return *n_hits_; }
@@ -337,8 +340,13 @@ public:
   double volume_naive_ {0.0}; //!< Volume as integrated from this iteration only
   int position_recorded_ {0}; //!< Has the position been recorded yet?
   int external_source_present_ {
-    0};               //!< Is an external source present in this region?
-  int is_small_ {0};  //!< Is it "small", receiving < 1.5 hits per iteration?
+    0};              //!< Is an external source present in this region?
+  int is_small_ {0}; //!< Is it "small", receiving < 1.5 hits per iteration?
+  int n_negative_fluxes_ {
+    0}; //!< One-shot demotion flag (adaptive estimator only): set to 1 at the
+        //!< end of the inactive phase when this region's accumulated flux was
+        //!< negative, demoting it to the naive volume estimator for the active
+        //!< phase.
   int n_hits_ {0};    //!< Number of total hits (ray crossings)
                       // Mesh that subdivides this source region
   int mesh_ {C_NONE}; //!< Index in openmc::model::meshes array that subdivides
@@ -413,6 +421,11 @@ public:
 
   int& is_small(int64_t sr) { return is_small_[sr]; }
   const int is_small(int64_t sr) const { return is_small_[sr]; }
+  int& n_negative_fluxes(int64_t sr) { return n_negative_fluxes_[sr]; }
+  const int n_negative_fluxes(int64_t sr) const
+  {
+    return n_negative_fluxes_[sr];
+  }
 
   int& n_hits(int64_t sr) { return n_hits_[sr]; }
   const int n_hits(int64_t sr) const { return n_hits_[sr]; }
@@ -645,6 +658,7 @@ private:
   vector<int> temperature_idx_;
   vector<double> density_mult_;
   vector<int> is_small_;
+  vector<int> n_negative_fluxes_;
   vector<int> n_hits_;
   vector<int> mesh_;
   vector<int64_t> parent_sr_;

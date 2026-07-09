@@ -28,7 +28,7 @@ namespace openmc {
 
 // Static Variable Declarations
 RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
-  RandomRayVolumeEstimator::HYBRID};
+  RandomRayVolumeEstimator::ADAPTIVE};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 bool FlatSourceDomain::adjoint_requested_ {false};
 RandomRaySolve FlatSourceDomain::solve_ {RandomRaySolve::FORWARD};
@@ -100,6 +100,56 @@ void FlatSourceDomain::accumulate_iteration_flux()
   for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.scalar_flux_final(se) +=
       source_regions_.scalar_flux_new(se);
+  }
+}
+
+// Demotion step for the adaptive volume estimator (no-op for the
+// others). Rather than reacting to per-iteration negatives, this estimator
+// runs the unmodified simulation-averaged update throughout the inactive phase
+// and decides demotion once, from the actual sign of each region's converged
+// estimate. During the inactive phase the (un-rescued) flux is accumulated;
+// on the final inactive batch, any region whose accumulated flux is negative
+// in any group is demoted to the naive (iteration) volume estimator for the
+// active phase -- a positively weighted estimator that cannot go negative with
+// a non-negative source -- while every other region keeps the unbiased
+// simulation-averaged estimator. Because the decision is made on the
+// accumulated mean rather than on individual fluctuations, the lower tail of
+// the noise distribution is not clipped, so regions that are merely noisy (and
+// average non-negative) are left unbiased. The demotion is recorded in
+// n_negative_fluxes (>= 1 == demoted), consumed by the volume switch and miss
+// treatment in add_source_to_scalar_flux.
+void FlatSourceDomain::inactive_demotion_step()
+{
+  if (volume_estimator_ != RandomRayVolumeEstimator::ADAPTIVE)
+    return;
+  if (simulation::current_batch > settings::n_inactive)
+    return;
+
+    // scalar_flux_final is untouched until active accumulation begins, so it
+    // serves as the temporary inactive accumulator.
+#pragma omp parallel for
+  for (int64_t se = 0; se < n_source_elements(); se++) {
+    source_regions_.scalar_flux_final(se) +=
+      source_regions_.scalar_flux_new(se);
+  }
+
+  // On the last inactive batch, settle the demotion decision and clear the
+  // accumulator so the active phase tallies start from zero.
+  if (simulation::current_batch == settings::n_inactive) {
+#pragma omp parallel for
+    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+      bool negative = false;
+      for (int g = 0; g < negroups_; g++) {
+        if (source_regions_.scalar_flux_final(sr, g) < 0.0) {
+          negative = true;
+          break;
+        }
+      }
+      source_regions_.n_negative_fluxes(sr) = negative ? 1 : 0;
+      for (int g = 0; g < negroups_; g++) {
+        source_regions_.scalar_flux_final(sr, g) = 0.0;
+      }
+    }
   }
 }
 
@@ -226,14 +276,38 @@ void FlatSourceDomain::set_flux_to_source(int64_t sr, int g)
   source_regions_.scalar_flux_new(sr, g) = source_regions_.source(sr, g);
 }
 
+bool FlatSourceDomain::region_has_strong_source(
+  const float* reduced_source, const double* flux_old) const
+{
+  for (int g = 0; g < negroups_; g++) {
+    double src = reduced_source[g];
+    if (src < 0.0 || src > ADAPTIVE_VOLUME_KAPPA * std::max(flux_old[g], 0.0)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Combine transport flux contributions and flat source contributions from the
 // previous iteration to generate this iteration's estimate of scalar flux.
 int64_t FlatSourceDomain::add_source_to_scalar_flux()
 {
   int64_t n_hits = 0;
   double inverse_batch = 1.0 / simulation::current_batch;
+  int64_t n_naive = 0;
+  int64_t n_strong = 0;
+  int64_t n_demoted = 0;
+  int64_t n_small = 0;
+  bool final_iteration = (simulation::current_batch == settings::n_batches);
+  // The adaptive estimator uses the proactive strong-source (kappa) test, the
+  // demote-to-naive volume switch, and the previous-flux miss treatment, with
+  // demotion decided once at the end of the inactive phase (recorded as a 0/1
+  // flag in n_negative_fluxes by inactive_demotion_step).
+  const bool is_adaptive =
+    volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE;
 
-#pragma omp parallel for reduction(+ : n_hits)
+#pragma omp parallel for reduction(                                           \
+  + : n_hits, n_naive, n_strong, n_demoted, n_small)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
     double volume_simulation_avg = source_regions_.volume(sr);
@@ -252,50 +326,114 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       source_regions_.is_small(sr) = 0;
     }
 
-    // The volume treatment depends on the volume estimator type
-    // and whether or not an external source is present in the cell.
-    double volume;
+    // Determine if the source region has a "strong" inhomogeneous source,
+    // defined as any group whose reduced source greatly exceeds the previous
+    // iteration's scalar flux. In that condition the cell sits far below its
+    // own infinite-medium flux (q/Sigma_t), which arises when an optically
+    // thin cell holds a source that does not derive from its own local flux
+    // (an external source, or in-scatter from other groups). The
+    // flux update in such cells is a near-cancellation of the transport term
+    // against q/Sigma_t, which is only exact when the volumes used by the two
+    // terms are consistent -- so these cells require the naive (iteration)
+    // volume estimator and the previous-flux miss treatment to avoid error
+    // terms proportional to (q/Sigma_t) * (1 - V_iteration/V_average) that
+    // can greatly exceed the physical flux.
+    //
+    // A reduced source that is itself negative is also treated as strong. This
+    // arises under transport-corrected (e.g. TCP0) cross sections, whose
+    // within-group scattering term can be negative, driving q/Sigma_t below
+    // zero even for a non-negative flux; it can also arise transiently from a
+    // negative previous-iteration flux, which the estimator permits by design
+    // (there is no per-iteration positivity rescue). The diagonal (Gunow)
+    // stabilization keeps the TCP0 iteration convergent but acts on the flux,
+    // not on the source sign, so such regions still need the consistent
+    // (naive) volume and previous-flux miss treatment to keep a negative
+    // source from depositing negative flux through the miss path. In a normal
+    // slowing-down spectrum the positive in-scatter from faster groups
+    // dominates the negative within-group term, so in practice this condition
+    // rarely fires.
+    //
+    // Only the adaptive estimator consults the strong-source flag, so the
+    // other estimators skip the test (and its end-of-run report) entirely.
+    // Void (and effectively-void, sub-MINIMUM_MACRO_XS) regions are also
+    // excluded: they carry no q/Sigma_t term -- their flux is the streaming
+    // tally plus a bounded external contribution -- so the near-cancellation
+    // the test guards against cannot occur, and demoting them to the naive
+    // volume would only add ratio bias. This matches the linear domain, which
+    // already gates its strong-source gradient fallback on MATERIAL_VOID.
+    bool strong_source =
+      is_adaptive && source_regions_.material(sr) != MATERIAL_VOID &&
+      region_has_strong_source(&source_regions_.source(sr, 0),
+        &source_regions_.scalar_flux_old(sr, 0));
+    // Per-region demotion reasons. The hit-starved (small) and strong-source
+    // flags are re-evaluated every iteration; converged_neg is the one-shot
+    // flag set at the end of the inactive phase by inactive_demotion_step. The
+    // external-source flag drives only the hybrid policy (and the default miss
+    // treatment); the adaptive estimator catches a low-cross-section external
+    // region through the kappa strong-source test instead, since its external
+    // term is folded into q/Sigma_t. All are g-independent.
+    bool external = source_regions_.external_source_present(sr);
+    bool small = source_regions_.is_small(sr);
+    bool converged_neg = source_regions_.n_negative_fluxes(sr) > 0;
+
+    // Every estimator reduces to two g-independent per-region decisions:
+    //   1. which volume to use on a hit -- the simulation-averaged volume,
+    //      unless the region is demoted to the naive (iteration) volume; and
+    //   2. what to substitute on a miss -- the reduced source by default, or
+    //      the previous iterate.
+    // The previous-flux miss treatment is needed wherever assigning the bare
+    // reduced source q/Sigma_t to a missed region would bias it: a low-cross-
+    // section region would otherwise deposit its full infinite-medium flux
+    // every time it is missed. Hybrid keys this on the external-source flag;
+    // the adaptive estimator instead extends the previous-flux treatment to
+    // every region it demotes, which (through the kappa test) already covers
+    // any region whose q/Sigma_t greatly exceeds its flux -- external or not.
+    // Both decisions are made once here so the per-group loop stays estimator-
+    // agnostic.
+    bool use_naive_volume = false;
+    bool use_old_flux_on_miss = external;
     switch (volume_estimator_) {
     case RandomRayVolumeEstimator::NAIVE:
-      volume = volume_iteration;
+      use_naive_volume = true;
       break;
     case RandomRayVolumeEstimator::SIMULATION_AVERAGED:
-      volume = volume_simulation_avg;
       break;
     case RandomRayVolumeEstimator::HYBRID:
-      if (source_regions_.external_source_present(sr) ||
-          source_regions_.is_small(sr)) {
-        volume = volume_iteration;
-      } else {
-        volume = volume_simulation_avg;
-      }
+      use_naive_volume = external || small;
+      break;
+    case RandomRayVolumeEstimator::ADAPTIVE:
+      use_naive_volume = small || strong_source || converged_neg;
+      use_old_flux_on_miss = use_naive_volume;
       break;
     default:
       fatal_error("Invalid volume estimator type");
     }
+    double volume = use_naive_volume ? volume_iteration : volume_simulation_avg;
+
+    // On the final iteration, classify the demoted (naive-volume) regions by
+    // cause -- mutually exclusive, in priority order, so the causes sum to the
+    // total -- for the end-of-simulation report.
+    if (final_iteration && is_adaptive && use_naive_volume) {
+      n_naive++;
+      if (strong_source) {
+        n_strong++;
+      } else if (converged_neg) {
+        n_demoted++;
+      } else if (small) {
+        n_small++;
+      }
+    }
 
     for (int g = 0; g < negroups_; g++) {
-      // There are three scenarios we need to consider:
       if (volume_iteration > 0.0) {
-        // 1. If the FSR was hit this iteration, then the new flux is equal to
-        // the flat source from the previous iteration plus the contributions
-        // from rays passing through the source region (computed during the
-        // transport sweep)
+        // Hit this iteration: the flat source from the previous iteration plus
+        // this iteration's transport contribution, normalized by the chosen
+        // volume.
         set_flux_to_flux_plus_source(sr, volume, g);
       } else if (volume_simulation_avg > 0.0) {
-        // 2. If the FSR was not hit this iteration, but has been hit some
-        // previous iteration, then we need to make a choice about what
-        // to do. Naively we will usually want to set the flux to be equal
-        // to the reduced source. However, in fixed source problems where
-        // there is a strong external source present in the cell, and where
-        // the cell has a very low cross section, this approximation will
-        // cause a huge upward bias in the flux estimate of the cell (in these
-        // conditions, the flux estimate can be orders of magnitude too large).
-        // Thus, to avoid this bias, if any external source is present
-        // in the cell we will use the previous iteration's flux estimate. This
-        // injects a small degree of correlation into the simulation, but this
-        // is going to be trivial when the miss rate is a few percent or less.
-        if (source_regions_.external_source_present(sr)) {
+        // Missed this iteration but hit previously: substitute per the miss
+        // policy decided above (the previous iterate, or the reduced source).
+        if (use_old_flux_on_miss) {
           set_flux_to_old_flux(sr, g);
         } else {
           set_flux_to_source(sr, g);
@@ -309,6 +447,17 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
                     "the source region mesh.");
       }
     }
+  }
+
+  // Store the final-iteration treatment snapshot for reporting (adaptive only;
+  // the other estimators do not produce a by-cause naive-treatment breakdown)
+  if (final_iteration &&
+      volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE) {
+    n_final_naive_ = n_naive;
+    n_final_strong_ = n_strong;
+    n_final_demoted_ = n_demoted;
+    n_final_small_ = n_small;
+    final_stats_valid_ = true;
   }
 
   // Return the number of source regions that were hit this iteration
@@ -1391,7 +1540,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
         source_regions_.external_source_present(sr) = 0;
       }
     } // End loop over source regions
-  } // End local FW-CADIS logic
+  }   // End local FW-CADIS logic
 }
 
 void FlatSourceDomain::set_local_adjoint_sources()

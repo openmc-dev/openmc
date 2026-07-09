@@ -287,7 +287,7 @@ void validate_random_ray_inputs()
 
 void openmc_finalize_random_ray()
 {
-  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
+  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::ADAPTIVE;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   FlatSourceDomain::adjoint_requested_ = false;
   FlatSourceDomain::solve_ = RandomRaySolve::FORWARD;
@@ -346,7 +346,21 @@ void RandomRaySimulation::prepare_fw_fixed_sources_adjoint()
   // Prepare adjoint fixed sources using forward flux
   domain_->source_regions_.adjoint_reset();
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    // Consumes the accumulated forward flux (and zeroes it as it goes), so
+    // the adjoint solve starts from a clean accumulator.
     domain_->set_fw_adjoint_sources();
+  } else {
+    // In eigenvalue mode there are no fixed adjoint sources to derive from
+    // the forward flux, but the accumulated forward flux must still be
+    // cleared so that the adjoint solve starts from a clean accumulator --
+    // otherwise the adaptive estimator's inactive-demotion decision (which
+    // accumulates into the same array during the adjoint inactive batches)
+    // would be swamped by the forward solve's strictly positive sums, and
+    // any consumer of the final flux would mix forward and adjoint modes.
+#pragma omp parallel for
+    for (int64_t se = 0; se < domain_->n_source_elements(); se++) {
+      domain_->source_regions_.scalar_flux_final(se) = 0.0;
+    }
   }
 }
 
@@ -466,6 +480,11 @@ void RandomRaySimulation::simulate()
         // tallies
         domain_->random_ray_tally();
       }
+
+      // For the adaptive estimator, accumulate the inactive-phase flux and, on
+      // the final inactive batch, settle which regions are demoted to the naive
+      // volume estimator (no-op for the other estimators).
+      domain_->inactive_demotion_step();
 
       // Set phi_old = phi_new
       domain_->flux_swap();
@@ -597,10 +616,33 @@ void RandomRaySimulation::print_results_random_ray(
     case RandomRayVolumeEstimator::HYBRID:
       estimator = "Hybrid";
       break;
+    case RandomRayVolumeEstimator::ADAPTIVE:
+      estimator = "Adaptive";
+      break;
     default:
       fatal_error("Invalid volume estimator type");
     }
     fmt::print(" Volume Estimator Type             = {}\n", estimator);
+    if (domain_->final_stats_valid_) {
+      double inv = 100.0 / domain_->n_source_regions();
+      fmt::print(" Naive Volume Treatment (final iteration, by cause):\n");
+      fmt::print("   Total                           = {} SRs ({:.4f}%)\n",
+        domain_->n_final_naive_, domain_->n_final_naive_ * inv);
+      fmt::print("   Strong Source                   = {} SRs ({:.4f}%)\n",
+        domain_->n_final_strong_, domain_->n_final_strong_ * inv);
+      fmt::print("   Converged Negative (demoted)    = {} SRs ({:.4f}%)\n",
+        domain_->n_final_demoted_, domain_->n_final_demoted_ * inv);
+      fmt::print("   Hit-Starved (Small)             = {} SRs ({:.4f}%)\n",
+        domain_->n_final_small_, domain_->n_final_small_ * inv);
+      // For linear-source runs, the strong-source regions additionally have
+      // their source gradients zeroed, reverting them to a flat source. This is
+      // the same set as "Strong Source" above (both apply the kappa test to the
+      // same data), reported here as the linear -> flat fallback frequency.
+      if (RandomRay::source_shape_ != RandomRaySourceShape::FLAT) {
+        fmt::print("   Strong Source -> Flat (linear)  = {} SRs ({:.4f}%)\n",
+          domain_->n_final_strong_, domain_->n_final_strong_ * inv);
+      }
+    }
 
     std::string adjoint_true =
       (FlatSourceDomain::solve_ == RandomRaySolve::ADJOINT) ? "ON" : "OFF";

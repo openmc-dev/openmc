@@ -39,6 +39,7 @@ public:
   void reset_tally_volumes();
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
+  void inactive_demotion_step();
   void output_to_vtk() const;
   void convert_external_sources(bool use_adjoint_sources);
   void count_external_source_regions();
@@ -102,6 +103,15 @@ public:
 
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
                                           // non-zero external source terms
+
+  // Final-iteration snapshot of the naive volume treatment, classified by
+  // cause with mutually exclusive attribution (the cause lines sum to the
+  // total), for end-of-simulation reporting
+  int64_t n_final_naive_ {0};
+  int64_t n_final_strong_ {0};
+  int64_t n_final_demoted_ {0};
+  int64_t n_final_small_ {0};
+  bool final_stats_valid_ {false};
 
   // 1D array representing source region starting offset for each OpenMC Cell
   // in model::cells
@@ -170,6 +180,15 @@ protected:
   virtual void set_flux_to_flux_plus_source(int64_t sr, double volume, int g);
   void set_flux_to_source(int64_t sr, int g);
   virtual void set_flux_to_old_flux(int64_t sr, int g);
+
+  //! Adaptive-estimator "strong source" test: true if, in any group, the
+  //! region's reduced source q/Sigma_t is negative or exceeds
+  //! ADAPTIVE_VOLUME_KAPPA times the (non-negative) previous-iteration scalar
+  //! flux. Shared by the flat volume switch (add_source_to_scalar_flux) and the
+  //! linear gradient fallback (update_single_neutron_source); the region's
+  //! per-group reduced-source and previous-flux arrays are passed directly.
+  bool region_has_strong_source(
+    const float* reduced_source, const double* flux_old) const;
 
   //----------------------------------------------------------------------------
   // Private data members

@@ -300,6 +300,9 @@ void get_run_parameters(pugi::xml_node node_base)
         FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::NAIVE;
       } else if (temp_str == "hybrid") {
         FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
+      } else if (temp_str == "adaptive") {
+        FlatSourceDomain::volume_estimator_ =
+          RandomRayVolumeEstimator::ADAPTIVE;
       } else {
         fatal_error("Unrecognized volume estimator: " + temp_str);
       }

@@ -111,6 +111,23 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       srh.source(g) += srh.external_source(g);
     }
   }
+
+  // Under the adaptive volume estimator, regions receiving the protected
+  // (naive volume) treatment for a strong inhomogeneous source also fall back
+  // to a flat source representation. In such regions the reduced source greatly
+  // exceeds the scalar flux, so the flat-source cancellation must be exact; the
+  // gradient terms attenuate segments against the local rather than the flat
+  // source, introducing per-iteration noise at the gradient scale that the
+  // volume choice cannot cancel. Zeroing the gradients there extends the
+  // existing flat-source fallback already applied to hit-starved (small)
+  // regions.
+  if (volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE &&
+      material != MATERIAL_VOID &&
+      region_has_strong_source(&srh.source(0), &srh.scalar_flux_old(0))) {
+    for (int g = 0; g < negroups_; g++) {
+      srh.source_gradients(g) = {0.0, 0.0, 0.0};
+    }
+  }
 }
 
 void LinearSourceDomain::normalize_scalar_flux_and_volumes(

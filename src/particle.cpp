@@ -338,13 +338,14 @@ void Particle::event_cross_surface()
       boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
 
+    int i_lattice = coord(boundary().coord_level() - 1).lattice();
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
 
     // Score cell to cell partial currents
     if (!model::active_surface_tallies.empty()) {
-      auto& lat {*model::lattices[lowest_coord().lattice()]};
+      auto& lat {*model::lattices[i_lattice]};
       bool is_valid;
       Direction normal =
         lat.get_normal(boundary().lattice_translation(), is_valid);

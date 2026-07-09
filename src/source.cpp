@@ -523,9 +523,16 @@ void FileSource::load_sites_from_file(const std::string& path)
     file_close(file_id);
   }
 
-  // Make sure particles in source file have valid types
+  // Make sure particles in source file have valid types. If any particle is a
+  // photon, electron, or positron, enable photon transport so that the
+  // appropriate cross sections are loaded.
   for (const auto& site : this->sites_) {
     validate_particle_type(site.particle, "FileSource");
+    if (site.particle == ParticleType::photon() ||
+        site.particle == ParticleType::electron() ||
+        site.particle == ParticleType::positron()) {
+      settings::photon_transport = true;
+    }
   }
 }
 

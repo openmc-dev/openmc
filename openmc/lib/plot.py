@@ -87,7 +87,7 @@ _dll.openmc_slice_data.errcheck = _error_handler
 
 
 def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
-                pixels=None, show_overlaps=False, level=-1, filter=None,
+                pixels=None, show_overlaps=False, level=None, filter=None,
                 include_properties=True):
     """Generate a 2D raster of geometry and property data for plotting.
 
@@ -111,7 +111,7 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
     show_overlaps : bool, optional
         Whether to detect overlapping cells
     level : int, optional
-        Universe level (-1 for deepest)
+        Universe level (None for deepest)
     filter : openmc.lib.Filter, optional
         Filter for bin index lookup
     include_properties : bool, optional
@@ -127,6 +127,12 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
         Array of shape (v_res, h_res, 2) with float64 dtype containing
         [temperature, density], or None if include_properties=False
     """
+    # Set deepest level as default
+    if level is None:
+        level = -1
+    if not isinstance(level, int):
+        raise TypeError("level must be an integer.")
+
     if pixels is None:
         raise ValueError("pixels must be specified.")
     if len(pixels) != 2:

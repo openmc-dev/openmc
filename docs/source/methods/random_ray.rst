@@ -511,18 +511,56 @@ when using the naive estimator, though at the cost of a notable increase in
 variance. Empirical testing reveals that on most eigenvalue problems, the
 simulation averaged estimator does win out overall in numerical performance, as
 a much coarser quadrature can be used resulting in faster runtimes overall.
-Thus, OpenMC uses the simulation averaged estimator as default in its random ray
-mode for eigenvalue solves.
+Thus, the simulation averaged estimator is generally preferred over the naive
+estimator for eigenvalue solves.
 
 OpenMC also features a "hybrid" volume estimator that uses the naive estimator
 for all regions containing an external (fixed) source term. For all other
 source regions, the "simulation averaged" estimator is used. This typically achieves
 a best of both worlds result, with the benefits of the low bias simulation averaged
 estimator in most regions, while preventing instability and/or large biases in regions
-with external source terms via use of the naive estimator. In general, it is
-recommended to use the "hybrid" estimator, which is the default method used
-in OpenMC. If instability is encountered despite high ray densities, then
+with external source terms via use of the naive estimator. The "hybrid"
+estimator was previously the default in OpenMC; it has been superseded by the
+"adaptive" estimator (described below), which generalizes it and is now the
+default. If instability is encountered despite high ray densities, then
 the naive estimator may be preferable.
+
+OpenMC also features an "adaptive" volume estimator that generalizes the
+hybrid estimator. Rather than selecting the estimator from the presence of an
+external source alone, it uses the simulation averaged estimator by default and
+falls back to the naive estimator (and the previous-iteration miss treatment)
+on a per-region basis wherever the simulation averaged estimator is prone to
+instability. The fallback is triggered by any of the following: a reduced
+source that greatly exceeds the region's scalar flux (a source sustained by an
+external or in-scatter contribution rather than by the local flux), a reduced
+source that is itself negative (which can occur under transport-corrected cross
+sections, whose negative within-group scattering term can drive the reduced
+source below zero even for a non-negative flux), a hit-starved region, and a
+region whose flux converges to a negative value.
+
+The first three conditions are evaluated each iteration from already-resident
+data. The negative-flux condition is instead decided once, at the transition
+from the inactive to the active batches: the unmodified simulation averaged
+estimator is run throughout the inactive phase while each region's flux is
+accumulated, and any region whose accumulated (and therefore noise-averaged)
+flux is negative is demoted to the naive estimator for all of the active
+batches. Deferring the decision to the sign of the converged estimate -- rather
+than reacting to individual per-iteration negatives -- avoids the upward bias
+that repairing or demoting on isolated fluctuations would introduce by clipping
+only the lower tail of the estimator's noise distribution; regions that are
+merely noisy but average non-negative retain the unbiased simulation averaged
+estimator. The trade-off is that non-negative fluxes are no longer strictly
+enforced in every active iteration, so a small number of near-zero regions may
+register slightly negative in the active tally; in variance reduction workflows
+these are discarded by the weight-window generator, which ignores non-positive
+fluxes.
+
+Whereas the hybrid estimator guards only regions with explicit external
+sources, the adaptive estimator also catches the optically thin regions of
+fixed source problems where the simulation averaged and hybrid estimators can
+otherwise develop persistent negative fluxes. It is the default estimator in
+OpenMC, and is particularly beneficial for fixed source and shielding problems
+that exhibit such instability.
 
 A table that summarizes the pros and cons, as well as recommendations for
 different use cases, is given in the :ref:`volume

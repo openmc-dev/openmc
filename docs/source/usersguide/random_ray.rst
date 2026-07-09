@@ -1049,7 +1049,7 @@ following methods are currently available in OpenMC:
          unstable
      - * Biased estimator
        * Requires more rays or longer active ray length to mitigate bias
-   * - ``hybrid`` (default)
+   * - ``hybrid``
      - Applies the naive estimator to all cells that contain an external (fixed)
        source contribution. Applies the simulation averaged estimator to all
        other cells.
@@ -1058,6 +1058,32 @@ following methods are currently available in OpenMC:
        * Stability of the naive estimator in cells with fixed sources
      - * Can lead to slightly negative fluxes in cells where the simulation
          averaged estimator is used
+   * - ``adaptive`` (default)
+     - Generalizes the hybrid estimator. Uses the simulation averaged estimator
+       by default, but falls back to the naive estimator (and the
+       previous-iteration miss treatment) wherever it is needed for stability:
+       cells whose reduced source greatly exceeds their flux (a strong external
+       or in-scatter source), cells whose reduced source is itself negative
+       (possible under transport-corrected cross sections), hit-starved cells,
+       and cells whose accumulated flux is negative at the end of the inactive
+       phase. This last demotion is a one-shot decision: the unmodified
+       simulation averaged estimator runs throughout the inactive phase, and any
+       cell whose converged (accumulated) flux is negative -- genuinely
+       negative rather than merely noisy -- is demoted to the naive estimator
+       for all of the active batches. The decision is made automatically from
+       each cell's behavior during the run, with no per-iteration rescue or
+       positivity floor.
+     - * Retains the low bias of the simulation averaged estimator wherever it
+         is well behaved
+       * Eliminates the negative-flux instabilities that the simulation averaged
+         and hybrid estimators can exhibit in optically thin, in-scatter-fed
+         fixed source problems
+       * No parameters to tune
+     - * Does not strictly guarantee non-negative active-phase fluxes: a few
+         near-zero cells can still fluctuate slightly negative by statistical
+         chance (these are discarded downstream by the weight-window
+         generator, which ignores non-positive fluxes)
+       * Requires inactive batches in order to make the demotion decision
 
 These estimators can be selected by setting the ``volume_estimator`` field in the
 :attr:`openmc.Settings.random_ray` dictionary. For example, to use the naive
@@ -1066,6 +1092,24 @@ estimator, the following code would be used:
 ::
 
     settings.random_ray['volume_estimator'] = 'naive'
+
+The ``adaptive`` estimator is the default, as it gives reliable behavior out of
+the box across problem types. It is especially valuable for fixed source and
+shielding problems, where the ``hybrid`` and ``simulation_averaged`` estimators
+can otherwise produce negative fluxes or numerical instability. This commonly occurs in optically thin,
+scattering- or streaming-dominated regions (for example, the air- or
+void-filled regions of a shielding model), where a small number of cells can
+develop persistent negative fluxes that degrade tally results and, in
+variance reduction workflows, the quality of generated weight windows. The
+adaptive estimator detects and stabilizes those cells automatically while
+leaving the rest of the problem on the low-bias simulation averaged estimator.
+Because the negative-flux demotion is decided once, from each cell's accumulated
+(converged) flux at the end of the inactive phase rather than from individual
+per-iteration negatives, it avoids the small upward bias that per-iteration
+demotion can introduce in cells that are noisy but not genuinely negative. The
+trade-off is that it does not strictly guarantee non-negative fluxes in every
+active-phase cell; the rare near-zero cells that fluctuate negative are filtered
+out by the weight-window generator, which discards non-positive fluxes.
 
 -----------------
 Adjoint Flux Mode

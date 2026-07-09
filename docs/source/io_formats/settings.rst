@@ -626,7 +626,8 @@ found in the :ref:`random ray user guide <random_ray>`.
 
   :volume_estimator:
     Specifies choice of volume estimator for the random ray solver. Options
-    are 'naive', 'simulation_averaged', or 'hybrid'. The default is 'hybrid'.
+    are 'naive', 'simulation_averaged', 'hybrid', or 'adaptive'. The default is
+    'adaptive'.
 
     *Default*: None
 

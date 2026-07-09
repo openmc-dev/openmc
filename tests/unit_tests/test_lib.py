@@ -932,8 +932,14 @@ def test_slice_data(lib_init):
          [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
          [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
     origin = (0.0, 0.0, 0.0)
-    _, properties = openmc.lib.slice_data(origin, width=(1.26, 1.26), basis='xy', pixels=(3,3), include_properties=True)         
-    assert np.allclose(expected_properties, properties, atol=1e-04)    
+    _, properties = openmc.lib.slice_data(
+        origin,
+        width=(1.26, 1.26),
+        basis='xy',
+        pixels=(3, 3),
+        include_properties=True
+    )
+    assert np.allclose(expected_properties, properties, atol=1e-04)
 
 
 def test_solid_raytrace_plot(lib_init, pincell_model):

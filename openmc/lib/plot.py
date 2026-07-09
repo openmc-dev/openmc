@@ -111,7 +111,7 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
     show_overlaps : bool, optional
         Whether to detect overlapping cells
     level : int, optional
-        Universe level (-1 for deepest)
+        Universe level (None for deepest)
     filter : openmc.lib.Filter, optional
         Filter for bin index lookup
     include_properties : bool, optional
@@ -129,7 +129,7 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
     """
     # Set deepest level as default
     if level is None:
-        level = -1 
+        level = -1
     if not isinstance(level, int):
         raise TypeError("level must be an integer.")
 

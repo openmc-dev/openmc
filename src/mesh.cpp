@@ -2882,10 +2882,8 @@ extern "C" int openmc_unstructured_mesh_export_hdf5(
   if (!mpi::master)
     return 0;
 
-  if (H5Iis_valid(mesh_group) <= 0)
-    fatal_error("Not a valid group");
   if (H5Iget_type(mesh_group) != H5I_GROUP)
-    fatal_error("Not a valid group");
+    fatal_error(fmt::format("Not a valid group {} {}", mesh_group, static_cast<int>(H5Iget_type(mesh_group))));
 
   if (int err = check_mesh_type<UnstructuredMesh>(index))
     return err;

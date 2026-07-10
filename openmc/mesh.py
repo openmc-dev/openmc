@@ -3380,7 +3380,12 @@ class UnstructuredMesh(MeshBase):
         )
         model.settings.weight_window_generators = [wwg] 
         with openmc.lib.TemporarySession(model):
-            openmc.lib.export_unstructured_mesh(self, mesh_group)
+            with h5py.File.in_memory() as f:
+                g = f.create_group('group')
+                openmc.lib.export_unstructured_mesh(self, g)
+                f.flush()
+                for key in g.keys():
+                    g.copy(key, mesh_group)
         return mesh_group
 
     def to_xml_element(self):

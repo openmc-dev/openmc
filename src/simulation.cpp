@@ -886,11 +886,14 @@ void transport_history_based_single_particle(Particle& p)
 
 void transport_history_based()
 {
-#pragma omp parallel for schedule(runtime)
-  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+#pragma omp parallel
+  {
     Particle p;
-    initialize_particle_track(p, i_work, false);
-    transport_history_based_single_particle(p);
+#pragma omp for schedule(runtime)
+    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+      initialize_particle_track(p, i_work, false);
+      transport_history_based_single_particle(p);
+    }
   }
 }
 
@@ -923,15 +926,16 @@ void transport_history_based_shared_secondary()
 #pragma omp parallel
   {
     vector<SourceSite> thread_bank;
+    Particle p;
 
 #pragma omp for schedule(runtime)
     for (int64_t i = 1; i <= simulation::work_per_rank; i++) {
-      Particle p;
       initialize_particle_track(p, i, false);
       transport_history_based_single_particle(p);
       for (auto& site : p.local_secondary_bank()) {
         thread_bank.push_back(site);
       }
+      p.local_secondary_bank().clear();
     }
 
     // Drain thread-local bank into the shared secondary bank (once per thread)
@@ -988,11 +992,11 @@ void transport_history_based_shared_secondary()
 #pragma omp parallel
     {
       vector<SourceSite> thread_bank;
+      Particle p;
 
 #pragma omp for schedule(runtime)
       for (int64_t i = 1; i <= simulation::shared_secondary_bank_read.size();
            i++) {
-        Particle p;
         initialize_particle_track(p, i, true);
         SourceSite& site = simulation::shared_secondary_bank_read[i - 1];
         p.event_revive_from_secondary(site);
@@ -1000,6 +1004,7 @@ void transport_history_based_shared_secondary()
         for (auto& secondary_site : p.local_secondary_bank()) {
           thread_bank.push_back(secondary_site);
         }
+        p.local_secondary_bank().clear();
       }
 
       // Drain thread-local bank into the shared secondary bank (once per

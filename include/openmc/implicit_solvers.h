@@ -20,7 +20,7 @@ namespace openmc {
 
 class ImplicitSolver {
 public:
-  ImplicitSolver(double atol = 1e-8, double ftol = 1e-7, int max_iter = 1000000)
+  ImplicitSolver(double atol = 1e-9, double ftol = 1e-9, int max_iter = 1000000)
     : atol_(atol), ftol_(ftol), max_iter_(max_iter)
   {}
   virtual ~ImplicitSolver() = default;

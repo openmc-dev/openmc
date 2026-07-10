@@ -454,9 +454,9 @@ be set through :attr:`openmc.Settings.implicit`.
     rounding can place the particle within the tolerance band of the surface,
     causing OpenMC's ``sense()`` function to invoke the surface normal for a
     tiebreak - which may fail for functions with restricted gradient domains.
-    The default of ``1e-7`` cm is sufficient for all tested geometries::
+    The default of ``1e-6`` cm is sufficient for all tested geometries::
 
-        settings.implicit = {'margin': 1e-7}
+        settings.implicit = {'margin': 1e-6}
 
     Increasing ``margin`` slightly can resolve rare geometry errors where a
     particle appears to bounce back across a surface it just crossed.
@@ -468,7 +468,7 @@ All parameters can be combined in a single assignment::
         'atol':    1e-9,
         'ftol':    1e-9,
         'maxiter': 1000000,
-        'margin':  1e-7,
+        'margin':  1e-6,
     }
 
 Boundary Conditions

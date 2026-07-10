@@ -168,3 +168,23 @@ def test_decay_photon_energy():
     src = openmc.data.decay_photon_energy('Xe135')
     assert isinstance(src, openmc.stats.Tabular)
     assert src.integral() == pytest.approx(2.076506258964966e-05)
+
+
+def test_decay_particle_energy():
+    # If chain file is not set, we should get a data error
+    if 'chain_file' in openmc.config:
+        del openmc.config['chain_file']
+    with pytest.raises(DataError):
+        openmc.data.decay_particle_energy('Fe55', 'electron')
+
+    # Set chain file to Ni chain and check electron/positron sources
+    with openmc.config.patch('chain_file', Path(__file__).parents[1] / "chain_ni.xml"):
+        src = openmc.data.decay_particle_energy('Fe55', 'electron')
+        assert isinstance(src, openmc.stats.Discrete)
+        assert src.integral() == pytest.approx(4.225437849490689e-08)
+        assert 6377.571 in src.x
+
+        src = openmc.data.decay_particle_energy('Fe55', 'positron')
+        assert isinstance(src, openmc.stats.Discrete)
+        assert src.integral() == pytest.approx(8.004558990612365e-09)
+        assert 231210.0 in src.x

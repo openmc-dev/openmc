@@ -39,9 +39,13 @@ Generally, it involves the following steps:
    with the timestep index returns a :class:`~openmc.deplete.StepResult` object,
    which itself has a :meth:`~openmc.deplete.StepResult.get_material` method
    returning an activated material.
-4. The :meth:`openmc.Material.get_decay_photon_energy` method is used to obtain
-   the energy spectrum of the decay photon source. The integral of the spectrum
-   also indicates the intensity of the source in units of [Bq].
+4. The :meth:`openmc.Material.get_decay_particle_energy` method can be used to
+   obtain the energy spectrum of decay particles from the activated material.
+   For R2S, the photon spectrum is needed and can be obtained either with
+   :meth:`openmc.Material.get_decay_particle_energy` using
+   ``particle='photon'`` or with the wrapper
+   :meth:`openmc.Material.get_decay_photon_energy`. The integral of the
+   spectrum indicates the intensity of the source in units of [Bq].
 5. A new photon source is defined using one of OpenMC's source classes with the
    energy distribution set equal to the object returned by the
    :meth:`openmc.Material.get_decay_photon_energy` method. The source is then
@@ -76,9 +80,10 @@ Altogether, the workflow looks as follows::
     model.settings.source = photon_source
     model.run()
 
-Note that by default, the :meth:`~openmc.Material.get_decay_photon_energy`
-method will eliminate spectral lines with very low intensity, but this behavior
-can be configured with the ``clip_tolerance`` argument.
+Note that :meth:`~openmc.Material.get_decay_particle_energy` and
+:meth:`~openmc.Material.get_decay_photon_energy` will, by default, eliminate
+spectral lines with very low intensity, but this behavior can be configured
+with the ``clip_tolerance`` argument.
 
 Cell-based R2S
 --------------
@@ -255,4 +260,3 @@ relevant tallies. This can be done with the aid of the
 
     # Apply time correction factors
     tally = d1s.apply_time_correction(dose_tally, factors, time_index)
-

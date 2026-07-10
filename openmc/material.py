@@ -334,20 +334,23 @@ class Material(IDManagerMixin):
             "version.", FutureWarning)
         return self.get_decay_photon_energy(0.0)
 
-    def get_decay_photon_energy(
+    def get_decay_particle_energy(
         self,
+        particle: str = 'photon',
         clip_tolerance: float = 1e-6,
         units: str = 'Bq',
         volume: float | None = None,
         exclude_nuclides: list[str] | None = None,
         include_nuclides: list[str] | None = None
     ) -> Univariate | None:
-        r"""Return energy distribution of decay photons from unstable nuclides.
-
-        .. versionadded:: 0.14.0
+        r"""Return energy distribution of decay particles from unstable nuclides.
 
         Parameters
         ----------
+        particle : string
+            Particle type to return the energy distribution for. Supported
+            values are ``'photon'``, ``'electron'``, ``'positron'``,
+            ``'alpha'``, ``'neutron'``, ``'proton'``, and ``'fragment'``.
         clip_tolerance : float
             Maximum fraction of :math:`\sum_i x_i p_i` for discrete distributions
             that will be discarded.
@@ -357,19 +360,21 @@ class Material(IDManagerMixin):
             Volume of the material. If not passed, defaults to using the
             :attr:`Material.volume` attribute.
         exclude_nuclides : list of str, optional
-            Nuclides to exclude from the photon source calculation.
+            Nuclides to exclude from the particle source calculation.
         include_nuclides : list of str, optional
-            Nuclides to include in the photon source calculation. If specified,
+            Nuclides to include in the particle source calculation. If specified,
             only these nuclides are used.
 
         Returns
         -------
         Univariate or None
-            Decay photon energy distribution. The integral of this distribution is
-            the total intensity of the photon source in the requested units.
+            Decay particle energy distribution. The integral of this distribution is
+            the total intensity of the particle source in the requested units.
 
         """
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3'})
+        cv.check_type('particle', particle, str)
+        cv.check_value('particle', particle, {'alpha', 'fragment', 'neutron','photon', 'electron', 'positron','proton'})
 
         if exclude_nuclides is not None and include_nuclides is not None:
             raise ValueError("Cannot specify both exclude_nuclides and include_nuclides")
@@ -395,12 +400,12 @@ class Material(IDManagerMixin):
             if include_nuclides is not None and nuc not in include_nuclides:
                 continue
 
-            source_per_atom = openmc.data.decay_photon_energy(nuc)
+            source_per_atom = openmc.data.decay_particle_energy(nuc,particle)
             if source_per_atom is not None and atoms_per_bcm > 0.0:
                 dists.append(source_per_atom)
                 probs.append(1e24 * atoms_per_bcm * multiplier)
 
-        # If no photon sources, exit early
+        # If no particle sources, exit early
         if not dists:
             return None
 
@@ -415,6 +420,53 @@ class Material(IDManagerMixin):
             combined = combined.distribution[0]
 
         return combined
+
+    def get_decay_photon_energy(
+        self,
+        clip_tolerance: float = 1e-6,
+        units: str = 'Bq',
+        volume: float | None = None,
+        exclude_nuclides: list[str] | None = None,
+        include_nuclides: list[str] | None = None
+    ) -> Univariate | None:
+        r"""Return energy distribution of decay photons from unstable nuclides.
+
+        This is a backward-compatible convenience wrapper around
+        :meth:`Material.get_decay_particle_energy` with
+        ``particle='photon'``.
+
+        Parameters
+        ----------
+        clip_tolerance : float
+            Maximum fraction of :math:`\sum_i x_i p_i` for discrete distributions
+            that will be discarded.
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3'}
+            Specifies the units on the integral of the distribution.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+        exclude_nuclides : list of str, optional
+            Nuclides to exclude from the photon source calculation.
+        include_nuclides : list of str, optional
+            Nuclides to include in the photon source calculation. If specified,
+            only these nuclides are used.
+
+        Returns
+        -------
+        Univariate or None
+            Decay photon energy distribution. The integral of this distribution is
+            the total intensity of the photon source in the requested units.
+
+        """
+
+        return self.get_decay_particle_energy(
+            particle='photon',
+            clip_tolerance=clip_tolerance,
+            units=units,
+            volume=volume,
+            exclude_nuclides=exclude_nuclides,
+            include_nuclides=include_nuclides,
+        )
 
     def get_photon_contact_dose_rate(
         self,
@@ -542,7 +594,7 @@ class Material(IDManagerMixin):
                           * sv_per_psv * 1e24)
 
         for nuc, nuc_atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            photon_source_per_atom = openmc.data.decay_photon_energy(nuc)
+            photon_source_per_atom = openmc.data.decay_particle_energy(nuc,'photon')
 
             # nuclides with no contribution
             if photon_source_per_atom is None or nuc_atoms_per_bcm <= 0.0:

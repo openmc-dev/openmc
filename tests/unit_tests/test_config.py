@@ -99,6 +99,6 @@ def test_config_chain_side_effect(tmp_path):
     """Test that modifying chain_file clears decay data caches."""
     chain_file = tmp_path / "chain.xml"; chain_file.touch()
     decay._DECAY_ENERGY['U235'] = (1.0, 2.0)
-    decay._DECAY_PHOTON_ENERGY['PU239'] = {}
+    decay._DECAY_PARTICLE_ENERGY['PU239','photon'] = {}
     openmc.config['chain_file'] = chain_file
-    assert not decay._DECAY_ENERGY and not decay._DECAY_PHOTON_ENERGY
+    assert not decay._DECAY_ENERGY and not decay._DECAY_PARTICLE_ENERGY

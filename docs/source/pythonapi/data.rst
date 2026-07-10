@@ -64,6 +64,7 @@ Core Functions
     combine_distributions
     decay_constant
     decay_energy
+    decay_particle_energy
     decay_photon_energy
     dose_coefficients
     gnds_name

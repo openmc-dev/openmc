@@ -60,8 +60,8 @@ attributes:
 ``<source>`` Element
 --------------------
 
-The ``<source>`` element represents photon and electron sources associated with
-the decay of a nuclide and contains information to construct an
+The ``<source>`` element represents decay particle sources associated with the
+decay of a nuclide and contains information to construct an
 :class:`openmc.stats.Univariate` object that represents this emission as an
 energy distribution. This element has the following attributes:
 
@@ -69,7 +69,8 @@ energy distribution. This element has the following attributes:
     The type of :class:`openmc.stats.Univariate` source term.
 
   :particle:
-    The type of particle emitted, e.g., 'photon' or 'electron'
+    The type of particle emitted, e.g., ``photon``, ``electron``,
+    ``positron``, ``alpha``, ``neutron``, ``proton``, or ``fragment``
 
   :parameters:
     The parameters of the source term, e.g., for a

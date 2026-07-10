@@ -113,6 +113,13 @@ public:
   int64_t n_final_small_ {0};
   bool final_stats_valid_ {false};
 
+  // One-shot demotion decisions made at the inactive->active transition,
+  // reported separately from the final-iteration snapshot above (whose
+  // priority attribution would otherwise hide transition demotions behind
+  // the per-iteration strong-source cause)
+  int64_t n_transition_sign_ {0};  // accumulated inactive flux negative
+  int64_t n_transition_latch_ {0}; // strong accumulated feed (kappa latch)
+
   // 1D array representing source region starting offset for each OpenMC Cell
   // in model::cells
   vector<int64_t> source_region_offsets_;

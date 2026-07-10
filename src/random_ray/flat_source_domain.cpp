@@ -106,18 +106,35 @@ void FlatSourceDomain::accumulate_iteration_flux()
 // Demotion step for the adaptive volume estimator (no-op for the
 // others). Rather than reacting to per-iteration negatives, this estimator
 // runs the unmodified simulation-averaged update throughout the inactive phase
-// and decides demotion once, from the actual sign of each region's converged
-// estimate. During the inactive phase the flux is accumulated as computed;
-// on the final inactive batch, any region whose accumulated flux is negative
-// in any group is demoted to the naive (iteration) volume estimator for the
-// active phase -- a positively weighted estimator that cannot go negative with
-// a non-negative source -- while every other region keeps the unbiased
-// simulation-averaged estimator. Because the decision is made on the
-// accumulated mean rather than on individual fluctuations, the lower tail of
-// the noise distribution is not clipped, so regions that are merely noisy (and
-// average non-negative) are left unbiased. The demotion is recorded in
-// converged_negative (>= 1 == demoted), consumed by the volume switch and miss
-// treatment in add_source_to_scalar_flux.
+// and makes two one-shot demotion decisions at the inactive->active
+// transition, each from the accumulated (converged) inactive flux:
+//
+//  1. Converged-negative (sign): any region whose accumulated flux is
+//     negative in any group is demoted to the naive (iteration) volume
+//     estimator for the active phase -- a positively weighted estimator that
+//     cannot go negative with a non-negative source. Because the decision is
+//     made on the accumulated mean rather than on individual fluctuations,
+//     the lower tail of the noise distribution is not clipped, so regions
+//     that are merely noisy (and average non-negative) are left unbiased.
+//
+//  2. Strong-feed latch: any region whose flux-independent feed (cross-group
+//     in-scatter, fission, and external source), evaluated from the same
+//     accumulated flux, exceeds ADAPTIVE_VOLUME_KAPPA times its own
+//     accumulated flux in any group is likewise demoted for the active
+//     phase. This is the same physical condition the per-iteration
+//     strong-source test targets, decided from converged data: the
+//     per-iteration test, evaluated on noisy iterates, cannot fire in the
+//     joint excursion where a bad iteration drags a region's source and flux
+//     negative together, so a strong region would otherwise ride such
+//     excursions on unprotected simulation-averaged updates and can
+//     accumulate a negative window average. The latch removes the whole
+//     strong-feed class ahead of time. A region with no cross-group or
+//     external feed can never latch, so sign-locked (e.g. one-group) noise
+//     cannot cause demotion through this path.
+//
+// The decisions are recorded in converged_negative (1 = sign, 2 = latch;
+// > 0 == demoted), consumed by the volume switch and miss treatment in
+// add_source_to_scalar_flux and by the linear-source gradient fallback.
 void FlatSourceDomain::inactive_demotion_step()
 {
   if (volume_estimator_ != RandomRayVolumeEstimator::ADAPTIVE)
@@ -145,11 +162,76 @@ void FlatSourceDomain::inactive_demotion_step()
           break;
         }
       }
-      source_regions_.converged_negative(sr) = negative ? 1 : 0;
+      // One-shot strong-feed latch, decided here at the moment of maximum
+      // information from the same inactive-accumulated flux: a region whose
+      // flux-independent feed (cross-group in-scatter, fission, and external
+      // source) exceeds kappa times its own accumulated flux in any group is
+      // demoted for the entire active phase. This covers the joint excursion
+      // (per-iteration source and flux dragged negative together) that the
+      // per-iteration strong-source test cannot fire on, with a label that
+      // active-phase noise can never flip. A region with no cross-group or
+      // external feed can never latch, so sign-locked (one-group) noise
+      // cannot cause demotion through this path.
+      bool latched = false;
+      int material = source_regions_.material(sr);
+      if (!negative && material != MATERIAL_VOID) {
+        int temp = source_regions_.temperature_idx(sr);
+        const int material_offset =
+          (material * ntemperature_ + temp) * negroups_;
+        const int scatter_offset =
+          (material * ntemperature_ + temp) * negroups_ * negroups_;
+        double inverse_k_eff = 1.0 / k_eff_;
+        for (int g = 0; g < negroups_ && !latched; g++) {
+          double feed = 0.0;
+          double chi = chi_[material_offset + g];
+          for (int gp = 0; gp < negroups_; gp++) {
+            double phi =
+              std::max(source_regions_.scalar_flux_final(sr, gp), 0.0);
+            if (gp != g) {
+              feed += sigma_s_[scatter_offset + g * negroups_ + gp] * phi;
+            }
+            if (settings::create_fission_neutrons) {
+              feed +=
+                chi * nu_sigma_f_[material_offset + gp] * phi * inverse_k_eff;
+            }
+          }
+          double sigma_t = sigma_t_[material_offset + g];
+          double q_indep = feed / sigma_t;
+          // The external source arrays are only allocated in fixed source
+          // mode, so the external term must not be read in an eigenvalue
+          // solve (where no external sources exist).
+          if (settings::run_mode == RunMode::FIXED_SOURCE) {
+            q_indep +=
+              settings::n_inactive * source_regions_.external_source(sr, g);
+          }
+          if (q_indep >
+              ADAPTIVE_VOLUME_KAPPA *
+                std::max(source_regions_.scalar_flux_final(sr, g), 0.0)) {
+            latched = true;
+          }
+        }
+      }
+      source_regions_.converged_negative(sr) = negative ? 1 : (latched ? 2 : 0);
       for (int g = 0; g < negroups_; g++) {
         source_regions_.scalar_flux_final(sr, g) = 0.0;
       }
     }
+    // Record the transition decisions for the end-of-run report (the
+    // final-iteration by-cause snapshot cannot show them: its priority
+    // attribution files most transition-demoted regions under the
+    // per-iteration strong-source cause).
+    int64_t n_sign = 0;
+    int64_t n_latch = 0;
+#pragma omp parallel for reduction(+ : n_sign, n_latch)
+    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+      if (source_regions_.converged_negative(sr) == 1) {
+        n_sign++;
+      } else if (source_regions_.converged_negative(sr) == 2) {
+        n_latch++;
+      }
+    }
+    n_transition_sign_ = n_sign;
+    n_transition_latch_ = n_latch;
   }
 }
 

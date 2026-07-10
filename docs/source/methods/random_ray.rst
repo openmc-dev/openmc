@@ -533,25 +533,44 @@ source that greatly exceeds the region's scalar flux (a source sustained by an
 external or in-scatter contribution rather than by the local flux), a reduced
 source that is itself negative (which can occur under transport-corrected cross
 sections, whose negative within-group scattering term can drive the reduced
-source below zero even for a non-negative flux), a hit-starved region, and a
-region whose flux converges to a negative value.
+source below zero even for a non-negative flux), a hit-starved region, a
+region whose flux converges to a negative value, and a region whose converged
+flux-independent source ("feed") is strong relative to its own converged flux.
 
 The first three conditions are evaluated each iteration from already-resident
-data. The negative-flux condition is instead decided once, at the transition
-from the inactive to the active batches: the unmodified simulation averaged
-estimator is run throughout the inactive phase while each region's flux is
-accumulated, and any region whose accumulated (and therefore noise-averaged)
-flux is negative is demoted to the naive estimator for all of the active
-batches. Deferring the decision to the sign of the converged estimate -- rather
-than reacting to individual per-iteration negatives -- avoids the upward bias
-that repairing or demoting on isolated fluctuations would introduce by clipping
-only the lower tail of the estimator's noise distribution; regions that are
-merely noisy but average non-negative retain the unbiased simulation averaged
-estimator. The trade-off is that non-negative fluxes are not strictly
-enforced in every active iteration, so a small number of near-zero regions may
-register slightly negative in the active tally; in variance reduction workflows
-these are discarded by the weight-window generator, which ignores non-positive
-fluxes.
+data. The last two are instead decided once, at the transition from the
+inactive to the active batches: the unmodified simulation averaged estimator
+is run throughout the inactive phase while each region's flux is accumulated,
+and at the transition a region is demoted to the naive estimator for all of
+the active batches if its accumulated (and therefore noise-averaged) flux is
+negative in any group, or if its flux-independent feed -- the part of its
+source arising from cross-group in-scatter, fission, and any external source,
+evaluated from the same accumulated flux -- exceeds the strong-source
+threshold times its own accumulated flux in any group. Deferring these
+decisions to the converged estimate -- rather than reacting to individual
+per-iteration values -- avoids the upward bias that repairing or demoting on
+isolated fluctuations would introduce by clipping only the lower tail of the
+estimator's noise distribution; regions that are merely noisy but average
+non-negative (and are not strongly fed) retain the unbiased simulation
+averaged estimator.
+
+The feed-based latch exists because the per-iteration strong-source test,
+evaluated on noisy single-iteration values, has exactly one blind state: an
+unlucky iteration can drag a strongly fed region's source and flux negative
+together, and in that state neither the ratio condition nor the
+negative-source condition can fire. Such a region would ride out the
+excursion on unprotected simulation averaged updates, and -- because for
+these regions the per-iteration noise scale is set by the reduced source
+rather than by the flux -- the average over a whole phase of active batches
+can land slightly negative. The latch identifies the entire strongly fed
+class once, from converged data that individual fluctuations cannot flip, and
+removes it from the simulation averaged estimator before active tallies
+begin. A region with no cross-group or external feed can never latch, so the
+estimator choice never reacts to noise whose sign is locked to the region's
+own flux (as in one-group media, where the source is proportional to the
+local flux). Non-negativity is still not strictly enforced on individual
+active iterations; in variance reduction workflows any residual non-positive
+tally values are discarded by the weight-window generator.
 
 Whereas the hybrid estimator guards only regions with explicit external
 sources, the adaptive estimator also catches the optically thin regions of
@@ -559,11 +578,12 @@ fixed source problems where the simulation averaged and hybrid estimators can
 otherwise develop persistent negative fluxes. When a linear source shape is in
 use, demoted regions additionally revert to a flat source representation
 (their source gradients are zeroed), extending the flat-source treatment
-already applied to hit-starved regions: in a strong-source region the gradient
-terms attenuate segments against the local rather than the flat source,
-re-injecting per-iteration noise at the scale of the reduced source that the
-volume choice cannot cancel, while in a converged-negative region the fitted
-gradients carry no meaningful shape information. The adaptive estimator is the
+already applied to hit-starved regions: in a strong-source or latched region
+the gradient terms attenuate segments against the local rather than the flat
+source, re-injecting per-iteration noise at the scale of the reduced source
+that the volume choice cannot cancel, while in a converged-negative region
+the fitted gradients carry no meaningful shape information. The adaptive
+estimator is the
 default in OpenMC, and is particularly beneficial for fixed source and
 shielding problems that exhibit such instability.
 

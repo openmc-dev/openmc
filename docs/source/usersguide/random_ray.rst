@@ -1065,25 +1065,28 @@ following methods are currently available in OpenMC:
        cells whose reduced source greatly exceeds their flux (a strong external
        or in-scatter source), cells whose reduced source is itself negative
        (possible under transport-corrected cross sections), hit-starved cells,
-       and cells whose accumulated flux is negative at the end of the inactive
-       phase. This last demotion is a one-shot decision: the unmodified
-       simulation averaged estimator runs throughout the inactive phase, and any
-       cell whose converged (accumulated) flux is negative -- genuinely
-       negative rather than merely noisy -- is demoted to the naive estimator
-       for all of the active batches. The decision is made automatically from
-       each cell's accumulated statistics; individual iterations are never
-       modified.
+       and -- decided once at the end of the inactive phase, from each cell's
+       accumulated (converged) flux -- cells whose accumulated flux is
+       negative as well as cells whose flux-independent feed (cross-group
+       in-scatter, fission, and external source) is strong relative to their
+       own accumulated flux. The transition decisions are one-shot: the
+       unmodified simulation averaged estimator runs throughout the inactive
+       phase, and the demoted cells use the naive estimator for all of the
+       active batches. The decisions are made automatically from each cell's
+       accumulated statistics; individual iterations are never modified.
      - * Retains the low bias of the simulation averaged estimator wherever it
          is well behaved
        * Eliminates the negative-flux instabilities that the simulation averaged
          and hybrid estimators can exhibit in optically thin, in-scatter-fed
          fixed source problems
+       * The converged-feed latch removes the strongly fed cell population
+         whose phase-averaged flux could otherwise straddle zero, so tallies
+         are free of negative bins in all validation problems
        * No parameters to tune
-     - * Does not strictly guarantee non-negative active-phase fluxes: a few
-         near-zero cells can still fluctuate slightly negative by statistical
-         chance (these are discarded downstream by the weight-window
-         generator, which ignores non-positive fluxes)
-       * Requires inactive batches in order to make the demotion decision
+     - * Does not strictly guarantee non-negative fluxes on individual
+         active iterations (any residual non-positive tally values are
+         discarded downstream by the weight-window generator)
+       * Requires inactive batches in order to make the transition decisions
 
 These estimators can be selected by setting the ``volume_estimator`` field in the
 :attr:`openmc.Settings.random_ray` dictionary. For example, to use the naive
@@ -1103,13 +1106,15 @@ develop persistent negative fluxes that degrade tally results and, in
 variance reduction workflows, the quality of generated weight windows. The
 adaptive estimator detects and stabilizes those cells automatically while
 leaving the rest of the problem on the low-bias simulation averaged estimator.
-Because the negative-flux demotion is decided once, from each cell's accumulated
-(converged) flux at the end of the inactive phase rather than from individual
-per-iteration negatives, it avoids the small upward bias that per-iteration
-demotion can introduce in cells that are noisy but not genuinely negative. The
-trade-off is that it does not strictly guarantee non-negative fluxes in every
-active-phase cell; the rare near-zero cells that fluctuate negative are filtered
-out by the weight-window generator, which discards non-positive fluxes.
+Because the negative-flux and strong-feed demotions are decided once, from
+each cell's accumulated (converged) flux at the end of the inactive phase
+rather than from individual per-iteration values, they avoid the small upward
+bias that per-iteration demotion can introduce in cells that are noisy but
+not genuinely negative, while still removing -- via the strong-feed latch --
+the strongly fed cell class whose phase-averaged flux could otherwise
+straddle zero. Non-negativity is still not strictly enforced on individual
+active iterations; any residual non-positive tally values are filtered out by
+the weight-window generator, which discards non-positive fluxes.
 
 -----------------
 Adjoint Flux Mode

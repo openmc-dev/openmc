@@ -643,6 +643,11 @@ void RandomRaySimulation::print_results_random_ray(
         fmt::print("   Demoted -> Flat (linear)        = {} SRs ({:.4f}%)\n",
           n_flat, n_flat * inv);
       }
+      fmt::print(" Transition Demotions (decided at end of inactive):\n");
+      fmt::print("   Converged Negative (sign)       = {} SRs ({:.4f}%)\n",
+        domain_->n_transition_sign_, domain_->n_transition_sign_ * inv);
+      fmt::print("   Strong-Feed Latch               = {} SRs ({:.4f}%)\n",
+        domain_->n_transition_latch_, domain_->n_transition_latch_ * inv);
     }
 
     std::string adjoint_true =

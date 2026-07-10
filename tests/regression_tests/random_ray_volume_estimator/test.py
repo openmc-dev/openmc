@@ -16,6 +16,13 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
             os.remove(f)
 
 
+# A deliberately ray-starved configuration (~20% source region miss rate):
+# the volume estimators only differ meaningfully when regions are missed or
+# sparsely hit, so a starved run exercises every estimator code path -- the
+# per-estimator volume choices, the miss treatments, and for the adaptive
+# estimator the strong-source (kappa) demotion, the hit-starved demotion,
+# the end-of-inactive converged-negative demotion, and the previous-flux
+# miss treatment all fire at this density.
 @pytest.mark.parametrize("estimator", ["hybrid",
                                        "simulation_averaged",
                                        "naive",
@@ -26,22 +33,6 @@ def test_random_ray_volume_estimator(estimator):
         openmc.reset_auto_ids()
         model = random_ray_three_region_cube()
         model.settings.random_ray['volume_estimator'] = estimator
-
-        harness = MGXSTestHarness('statepoint.10.h5', model)
-        harness.main()
-
-
-def test_random_ray_volume_estimator_starved():
-    # Deliberately ray-starved adaptive configuration (~20% miss rate): unlike
-    # the nominal cases above, this exercises every adaptive mechanism at once
-    # -- the strong-source (kappa) demotion, the hit-starved demotion, the
-    # end-of-inactive converged-negative demotion, and the previous-flux miss
-    # treatment -- so changes to any of those code paths show up in its
-    # reference results.
-    with change_directory('adaptive_starved'):
-        openmc.reset_auto_ids()
-        model = random_ray_three_region_cube()
-        model.settings.random_ray['volume_estimator'] = 'adaptive'
         model.settings.particles = 10
         model.settings.inactive = 20
         model.settings.batches = 40

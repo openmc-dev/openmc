@@ -18,6 +18,10 @@ make install
 cd ..
 python -m pip install .[test]
 ```
+## Local Notes:
+- TPMS: max event particles, to be checked
+- TPMS: Particle could not be located after crossing a boundary of lattice
+- SolidRayTracing, aliasing effect, to be checked
 
 # OpenMC Monte Carlo Particle Transport Code
 

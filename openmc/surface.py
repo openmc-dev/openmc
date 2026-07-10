@@ -2681,7 +2681,11 @@ class ImplicitSurface(Surface):
 
     def evaluate(self, point):
         Rmat = self.get_rotation_matrix()
-        newpoint = Rmat @ np.array([point[0] - self.x0, point[1] - self.y0, point[2] - self.z0])
+        point = np.asarray(point)                                          # handles tuple or array
+        translated = np.array([point[0] - self.x0,
+                                point[1] - self.y0,
+                                point[2] - self.z0])                      # (3, ...) for any batch shape
+        newpoint = np.einsum('ij,j...->i...', Rmat, translated)           # rotate, preserving batch dims
         return self.function.evaluate(newpoint) - self.isovalue
 
     def translate(self, vector, inplace=False):

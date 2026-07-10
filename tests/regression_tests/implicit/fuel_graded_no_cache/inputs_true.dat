@@ -3,8 +3,7 @@
   <materials>
     <material id="1" depletable="true">
       <density value="16.0" units="g/cm3"/>
-      <nuclide name="U235" ao="5.0"/>
-      <nuclide name="U238" ao="95.0"/>
+      <nuclide name="U235" ao="1.0"/>
     </material>
   </materials>
   <geometry>
@@ -21,29 +20,53 @@
         <add>
           <add>
             <cos>
-              <div>
+              <mul>
                 <scale value="6.283185307179586">
                   <x/>
                 </scale>
-                <constant value="4.0"/>
-              </div>
+                <div>
+                  <add>
+                    <pow value="2">
+                      <z/>
+                    </pow>
+                    <constant value="8.0"/>
+                  </add>
+                  <constant value="64.0"/>
+                </div>
+              </mul>
             </cos>
             <cos>
-              <div>
+              <mul>
                 <scale value="6.283185307179586">
                   <y/>
                 </scale>
-                <constant value="4.0"/>
-              </div>
+                <div>
+                  <add>
+                    <pow value="2">
+                      <z/>
+                    </pow>
+                    <constant value="8.0"/>
+                  </add>
+                  <constant value="64.0"/>
+                </div>
+              </mul>
             </cos>
           </add>
           <cos>
-            <div>
+            <mul>
               <scale value="6.283185307179586">
                 <z/>
               </scale>
-              <constant value="4.0"/>
-            </div>
+              <div>
+                <add>
+                  <pow value="2">
+                    <z/>
+                  </pow>
+                  <constant value="8.0"/>
+                </add>
+                <constant value="64.0"/>
+              </div>
+            </mul>
           </cos>
         </add>
       </function>

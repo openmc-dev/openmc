@@ -3,7 +3,7 @@ import pytest
 import numpy as np
  
 from openmc.surface import ImplicitSurface
-from openmc.implicit import X, Y, Z, Cos, Sqrt
+from openmc.implicit import X, Y, Z, Cos, Sqrt, Cached
 from tests.testing_harness import PyAPITestHarness
  
  
@@ -15,20 +15,21 @@ def implicit_sphere_model():
     material.set_density('g/cm3', 16.0)
  
     # Box
-    x0 = openmc.XPlane(-1., boundary_type="reflective")
-    x1 = openmc.XPlane(+1., boundary_type="reflective")
-    y0 = openmc.YPlane(-1., boundary_type="reflective")
-    y1 = openmc.YPlane(+1., boundary_type="reflective")
-    z0 = openmc.ZPlane(-1., boundary_type="reflective")
-    z1 = openmc.ZPlane(+1., boundary_type="reflective")
+    x0 = openmc.XPlane(-16., boundary_type="vacuum")
+    x1 = openmc.XPlane(+16., boundary_type="vacuum")
+    y0 = openmc.YPlane(-16., boundary_type="vacuum")
+    y1 = openmc.YPlane(+16., boundary_type="vacuum")
+    z0 = openmc.ZPlane(-16., boundary_type="vacuum")
+    z1 = openmc.ZPlane(+16., boundary_type="vacuum")
     box = +x0 & -x1 & +y0 & -y1 & +z0 & -z1
     # Squircle
-    x = X() * Sqrt(1 - Y()**2/2 - Z()**2/2 + Y()**2*Z()**2/3)
-    y = Y() * Sqrt(1 - X()**2/2 - Z()**2/2 + X()**2*Z()**2/3)
-    z = Z() * Sqrt(1 - X()**2/2 - Y()**2/2 + X()**2*Y()**2/3)
-    L = 0.5
-    xp, yp, zp = 2*np.pi*x/L, 2*np.pi*y/L, 2*np.pi*z/L
-    func = Cos(xp) + Cos(yp) + Cos(zp)
+    L = 8.0
+    scale = 0.5/L
+    xp, yp, zp = Cached(scale * X()),  Cached(scale * Y()),  Cached(scale * Z())
+    x = 2 * np.pi * xp * Sqrt(1 - 0.5 * yp**2 - 0.5 * zp**2 + yp**2*zp**2/3)
+    y = 2 * np.pi * yp * Sqrt(1 - 0.5 * xp**2 - 0.5 * zp**2 + xp**2*zp**2/3)
+    z = 2 * np.pi * zp * Sqrt(1 - 0.5 * xp**2 - 0.5 * yp**2 + xp**2*yp**2/3)
+    func = Cos(x) + Cos(y) + Cos(z)
     impl = ImplicitSurface(function=func)
     sphere = openmc.Sphere(r=2*L)
 

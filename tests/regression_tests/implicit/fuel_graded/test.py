@@ -15,15 +15,15 @@ def implicit_sphere_model():
     material.set_density('g/cm3', 16.0)
  
     # Box
-    x0 = openmc.XPlane(-10., boundary_type="vacuum")
-    x1 = openmc.XPlane(+10., boundary_type="vacuum")
-    y0 = openmc.YPlane(-10., boundary_type="vacuum")
-    y1 = openmc.YPlane(+10., boundary_type="vacuum")
-    z0 = openmc.ZPlane(-10., boundary_type="vacuum")
-    z1 = openmc.ZPlane(+10., boundary_type="vacuum")
+    x0 = openmc.XPlane(-16., boundary_type="vacuum")
+    x1 = openmc.XPlane(+16., boundary_type="vacuum")
+    y0 = openmc.YPlane(-16., boundary_type="vacuum")
+    y1 = openmc.YPlane(+16., boundary_type="vacuum")
+    z0 = openmc.ZPlane(-16., boundary_type="vacuum")
+    z1 = openmc.ZPlane(+16., boundary_type="vacuum")
     box = +x0 & -x1 & +y0 & -y1 & +z0 & -z1
     # Fuel grading
-    invPitch = Cached((Z() ** 2 + 2.5) / 5.)
+    invPitch = Cached((Z() ** 2 + 8.) / 64.)
     x = 2 * np.pi * X() * invPitch
     y = 2 * np.pi * Y() * invPitch
     z = 2 * np.pi * Z() * invPitch

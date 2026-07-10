@@ -9,12 +9,12 @@
   <geometry>
     <cell id="1" material="1" region="-7 1 -2 3 -4 5 -6" universe="1"/>
     <cell id="2" material="void" region="7 1 -2 3 -4 5 -6" universe="1"/>
-    <surface id="1" type="x-plane" boundary="vacuum" coeffs="-10.0"/>
-    <surface id="2" type="x-plane" boundary="vacuum" coeffs="10.0"/>
-    <surface id="3" type="y-plane" boundary="vacuum" coeffs="-10.0"/>
-    <surface id="4" type="y-plane" boundary="vacuum" coeffs="10.0"/>
-    <surface id="5" type="z-plane" boundary="vacuum" coeffs="-10.0"/>
-    <surface id="6" type="z-plane" boundary="vacuum" coeffs="10.0"/>
+    <surface id="1" type="x-plane" boundary="vacuum" coeffs="-16.0"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="16.0"/>
+    <surface id="3" type="y-plane" boundary="vacuum" coeffs="-16.0"/>
+    <surface id="4" type="y-plane" boundary="vacuum" coeffs="16.0"/>
+    <surface id="5" type="z-plane" boundary="vacuum" coeffs="-16.0"/>
+    <surface id="6" type="z-plane" boundary="vacuum" coeffs="16.0"/>
     <surface id="7" type="implicit" coeffs="0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" isovalue="0.0">
       <function>
         <add>
@@ -30,9 +30,9 @@
                       <pow value="2">
                         <z/>
                       </pow>
-                      <constant value="2.5"/>
+                      <constant value="8.0"/>
                     </add>
-                    <constant value="5.0"/>
+                    <constant value="64.0"/>
                   </div>
                 </to_cache>
               </mul>

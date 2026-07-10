@@ -262,15 +262,6 @@ def add_plot_params(func):
     return func
 
 
-def _check_pixels(pixels: int | Sequence[int]) -> None:
-    if isinstance(pixels, Integral):
-        cv.check_greater_than('pixels', pixels, 0)
-    else:
-        cv.check_length('pixels', pixels, 2)
-        for p in pixels:
-            cv.check_greater_than('pixels', p, 0)
-
-
 def _get_plot_image(plot, cwd):
     from IPython.display import Image
 
@@ -392,7 +383,7 @@ def id_map_to_rgb(
     """
     # Initialize RGB array with white background (values between 0 and 1 for matplotlib)
     img = np.ones(id_map.shape, dtype=float)
-    
+
     # Get the appropriate index based on color_by
     if color_by == 'cell':
         id_index = 0  # Cell IDs are in the first channel
@@ -400,14 +391,14 @@ def id_map_to_rgb(
         id_index = 2  # Material IDs are in the third channel
     else:
         raise ValueError("color_by must be either 'cell' or 'material'")
-    
+
     # Get all unique IDs in the plot
     unique_ids = np.unique(id_map[:, :, id_index])
-    
+
     # Generate default colors if not provided
     if colors is None:
         colors = {}
-    
+
     # Convert colors dict to use IDs as keys
     color_map = {}
     for key, color in colors.items():
@@ -415,13 +406,13 @@ def id_map_to_rgb(
             color_map[key.id] = color
         else:
             color_map[key] = color
-    
+
     # Generate random colors for IDs not in color_map
     rng = np.random.RandomState(1)
     for uid in unique_ids:
         if uid > 0 and uid not in color_map:
             color_map[uid] = rng.randint(0, 256, (3,))
-    
+
     # Apply colors to each pixel
     for uid in unique_ids:
         if uid == -1:  # Background/void
@@ -441,7 +432,7 @@ def id_map_to_rgb(
                 rgb = color
             mask = id_map[:, :, id_index] == uid
             img[mask] = np.array(rgb) / 255.0
-    
+
     return img
 
 class PlotBase(IDManagerMixin):

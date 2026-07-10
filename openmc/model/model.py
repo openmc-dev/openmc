@@ -22,9 +22,9 @@ import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import (check_type, check_value, check_greater_than,
-                               PathLike)
+                               check_length, PathLike)
 from openmc.exceptions import InvalidIDError
-from openmc.plots import add_plot_params, _check_pixels, _BASIS_INDICES, id_map_to_rgb
+from openmc.plots import add_plot_params, _BASIS_INDICES, id_map_to_rgb
 from openmc.utility_funcs import change_directory
 
 
@@ -32,6 +32,15 @@ from openmc.utility_funcs import change_directory
 class ModelModifier(Protocol):
     def __call__(self, val: float, **kwargs: Any) -> None:
         ...
+
+
+def _check_pixels(pixels: int | Sequence[int]) -> None:
+    if isinstance(pixels, Integral):
+        check_greater_than('pixels', pixels, 0)
+    else:
+        check_length('pixels', pixels, 2)
+        for p in pixels:
+            check_greater_than('pixels', p, 0)
 
 
 class Model:
@@ -1213,9 +1222,9 @@ class Model:
             Shape (v_res, h_res, 2) float64 array with [temperature, density],
             or None if include_properties=False.
         """
-        _check_pixels(pixels)
-
         import openmc.lib
+
+        _check_pixels(pixels)
 
         if width is not None and (u_span is not None or v_span is not None):
             raise ValueError("width is mutually exclusive with u_span/v_span.")

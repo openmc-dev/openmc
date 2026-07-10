@@ -679,6 +679,8 @@ def test_model_plot_invalid_inputs():
         model.plot(pixels=(0, 100))
     with pytest.raises(ValueError):
         model.plot(pixels=(100,))
+    with pytest.raises(ValueError):
+        model.slice_data(u_span=(2, 0, 0), v_span=(0, 2, 0), pixels=-1)
 
 
 def test_model_id_map_initialization(run_in_tmpdir):

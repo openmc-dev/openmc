@@ -959,4 +959,12 @@ void get_energy_index(
   }
 }
 
+// Return true if two floating-point values are approximately equal within a
+// combined relative and absolute tolerance.
+bool isclose(double a, double b, double rel_tol, double abs_tol)
+{
+  return std::abs(a - b) <=
+         std::max(rel_tol * std::max(std::abs(a), std::abs(b)), abs_tol);
+}
+
 } // namespace openmc

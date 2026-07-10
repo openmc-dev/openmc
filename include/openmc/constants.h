@@ -35,7 +35,7 @@ constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr array<int, 2> VERSION_PROPERTIES {1, 1};
 constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
-constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 1};
+constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 2};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -368,6 +368,7 @@ enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
+enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };
 
 //==============================================================================
 // Geometry Constants

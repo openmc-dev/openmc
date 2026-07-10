@@ -347,7 +347,7 @@ class R2SManager:
 
         # Run neutron transport and get fluxes and micros. Run via openmc.lib to
         # maintain a consistent parallelism strategy with the activation step.
-        with TemporarySession():
+        with TemporarySession(output=False):
             self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
                 self.neutron_model, domains, **micro_kwargs)
 

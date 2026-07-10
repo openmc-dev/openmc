@@ -34,6 +34,15 @@ class ModelModifier(Protocol):
         ...
 
 
+def _check_pixels(pixels: int | Sequence[int]) -> None:
+    if isinstance(pixels, Integral):
+        check_greater_than('pixels', pixels, 0)
+    else:
+        check_length('pixels', pixels, 2)
+        for p in pixels:
+            check_greater_than('pixels', p, 0)
+
+
 class Model:
     """Model container.
 
@@ -1051,12 +1060,7 @@ class Model:
         pixels: int | Sequence[int],
         basis: str
     ):
-        if isinstance(pixels, int):
-            check_greater_than('pixels', pixels, 0)
-        else:
-            check_length('pixels', pixels, 2)
-            for p in pixels:
-                check_greater_than('pixels', p, 0)
+        _check_pixels(pixels)
 
         x, y, _ = _BASIS_INDICES[basis]
 
@@ -1219,6 +1223,8 @@ class Model:
             or None if include_properties=False.
         """
         import openmc.lib
+
+        _check_pixels(pixels)
 
         if width is not None and (u_span is not None or v_span is not None):
             raise ValueError("width is mutually exclusive with u_span/v_span.")

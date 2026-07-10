@@ -281,7 +281,20 @@ bool FlatSourceDomain::region_has_strong_source(
 {
   for (int g = 0; g < negroups_; g++) {
     double src = reduced_source[g];
-    if (src < 0.0 || src > ADAPTIVE_VOLUME_KAPPA * std::max(flux_old[g], 0.0)) {
+    // A negative reduced source counts as strong only when the region's own
+    // previous flux is non-negative -- the transport-corrected (TCP0)
+    // signature, where negative within-group scattering drives the source
+    // negative independently of the flux. When the previous flux is itself
+    // negative, a negative source is just the sign-locked image of that
+    // fluctuation (exactly so in one-group problems, where q = c*phi +
+    // q_external); reacting to it iteration-by-iteration would condition the
+    // estimator choice on the sign of the noise, which is the bias the
+    // converged-negative demotion exists to avoid. Chronically negative
+    // regions are handled by that demotion instead.
+    if (src < 0.0 && flux_old[g] >= 0.0) {
+      return true;
+    }
+    if (src > ADAPTIVE_VOLUME_KAPPA * std::max(flux_old[g], 0.0)) {
       return true;
     }
   }

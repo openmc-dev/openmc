@@ -519,11 +519,9 @@ for all regions containing an external (fixed) source term. For all other
 source regions, the "simulation averaged" estimator is used. This typically achieves
 a best of both worlds result, with the benefits of the low bias simulation averaged
 estimator in most regions, while preventing instability and/or large biases in regions
-with external source terms via use of the naive estimator. The "hybrid"
-estimator was previously the default in OpenMC; it has been superseded by the
-"adaptive" estimator (described below), which generalizes it and is now the
-default. If instability is encountered despite high ray densities, then
-the naive estimator may be preferable.
+with external source terms via use of the naive estimator. If instability is
+encountered despite high ray densities, then the naive estimator may be
+preferable.
 
 OpenMC also features an "adaptive" volume estimator that generalizes the
 hybrid estimator. Rather than selecting the estimator from the presence of an
@@ -549,7 +547,7 @@ than reacting to individual per-iteration negatives -- avoids the upward bias
 that repairing or demoting on isolated fluctuations would introduce by clipping
 only the lower tail of the estimator's noise distribution; regions that are
 merely noisy but average non-negative retain the unbiased simulation averaged
-estimator. The trade-off is that non-negative fluxes are no longer strictly
+estimator. The trade-off is that non-negative fluxes are not strictly
 enforced in every active iteration, so a small number of near-zero regions may
 register slightly negative in the active tally; in variance reduction workflows
 these are discarded by the weight-window generator, which ignores non-positive

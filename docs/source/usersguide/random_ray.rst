@@ -1071,8 +1071,8 @@ following methods are currently available in OpenMC:
        cell whose converged (accumulated) flux is negative -- genuinely
        negative rather than merely noisy -- is demoted to the naive estimator
        for all of the active batches. The decision is made automatically from
-       each cell's behavior during the run, with no per-iteration rescue or
-       positivity floor.
+       each cell's accumulated statistics; individual iterations are never
+       modified.
      - * Retains the low bias of the simulation averaged estimator wherever it
          is well behaved
        * Eliminates the negative-flux instabilities that the simulation averaged

@@ -125,7 +125,7 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   // noise into cells already prone to negativity.
   if (volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE &&
       material != MATERIAL_VOID &&
-      (srh.n_negative_fluxes() > 0 ||
+      (srh.converged_negative() > 0 ||
         region_has_strong_source(&srh.source(0), &srh.scalar_flux_old(0)))) {
     for (int g = 0; g < negroups_; g++) {
       srh.source_gradients(g) = {0.0, 0.0, 0.0};

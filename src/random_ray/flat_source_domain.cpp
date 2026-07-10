@@ -107,7 +107,7 @@ void FlatSourceDomain::accumulate_iteration_flux()
 // others). Rather than reacting to per-iteration negatives, this estimator
 // runs the unmodified simulation-averaged update throughout the inactive phase
 // and decides demotion once, from the actual sign of each region's converged
-// estimate. During the inactive phase the (un-rescued) flux is accumulated;
+// estimate. During the inactive phase the flux is accumulated as computed;
 // on the final inactive batch, any region whose accumulated flux is negative
 // in any group is demoted to the naive (iteration) volume estimator for the
 // active phase -- a positively weighted estimator that cannot go negative with
@@ -116,7 +116,7 @@ void FlatSourceDomain::accumulate_iteration_flux()
 // accumulated mean rather than on individual fluctuations, the lower tail of
 // the noise distribution is not clipped, so regions that are merely noisy (and
 // average non-negative) are left unbiased. The demotion is recorded in
-// n_negative_fluxes (>= 1 == demoted), consumed by the volume switch and miss
+// converged_negative (>= 1 == demoted), consumed by the volume switch and miss
 // treatment in add_source_to_scalar_flux.
 void FlatSourceDomain::inactive_demotion_step()
 {
@@ -145,7 +145,7 @@ void FlatSourceDomain::inactive_demotion_step()
           break;
         }
       }
-      source_regions_.n_negative_fluxes(sr) = negative ? 1 : 0;
+      source_regions_.converged_negative(sr) = negative ? 1 : 0;
       for (int g = 0; g < negroups_; g++) {
         source_regions_.scalar_flux_final(sr, g) = 0.0;
       }
@@ -302,7 +302,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   // The adaptive estimator uses the proactive strong-source (kappa) test, the
   // demote-to-naive volume switch, and the previous-flux miss treatment, with
   // demotion decided once at the end of the inactive phase (recorded as a 0/1
-  // flag in n_negative_fluxes by inactive_demotion_step).
+  // flag in converged_negative by inactive_demotion_step).
   const bool is_adaptive =
     volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE;
 
@@ -344,7 +344,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     // within-group scattering term can be negative, driving q/Sigma_t below
     // zero even for a non-negative flux; it can also arise transiently from a
     // negative previous-iteration flux, which the estimator permits by design
-    // (there is no per-iteration positivity rescue). The diagonal (Gunow)
+    // (individual iterations are never modified). The diagonal (Gunow)
     // stabilization keeps the TCP0 iteration convergent but acts on the flux,
     // not on the source sign, so such regions still need the consistent
     // (naive) volume and previous-flux miss treatment to keep a negative
@@ -374,7 +374,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     // term is folded into q/Sigma_t. All are g-independent.
     bool external = source_regions_.external_source_present(sr);
     bool small = source_regions_.is_small(sr);
-    bool converged_neg = source_regions_.n_negative_fluxes(sr) > 0;
+    bool converged_neg = source_regions_.converged_negative(sr) > 0;
 
     // Every estimator reduces to two g-independent per-region decisions:
     //   1. which volume to use on a hit -- the simulation-averaged volume,

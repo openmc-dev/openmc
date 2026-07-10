@@ -262,7 +262,7 @@ def add_plot_params(func):
     return func
 
 
-def _check_pixels(pixels):
+def _check_pixels(pixels: int | Sequence[int]) -> None:
     if isinstance(pixels, Integral):
         cv.check_greater_than('pixels', pixels, 0)
     else:

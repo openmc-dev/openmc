@@ -1080,8 +1080,8 @@ following methods are currently available in OpenMC:
          and hybrid estimators can exhibit in optically thin, in-scatter-fed
          fixed source problems
        * The converged-feed latch removes the strongly fed cell population
-         whose phase-averaged flux could otherwise straddle zero, so tallies
-         are free of negative bins in all validation problems
+         whose phase-averaged flux could otherwise straddle zero, eliminating
+         the negative tally bins that class otherwise produces
        * No parameters to tune
      - * Does not strictly guarantee non-negative fluxes on individual
          active iterations (any residual non-positive tally values are

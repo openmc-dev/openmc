@@ -7,12 +7,12 @@ Developer cross sections : https://anl.box.com/shared/static/teaup95cqv8s9nn56hf
 
 ```sh
 conda create -n openmc-IF compilers=1.9.0 cmake hdf5 python libpng clang-format
-git clone --recurse-submodules git@github.inl.gov:paul-ferney/openmc-dev.git
+git clone --recurse-submodules https://github.com/pferney05/openmc-dev.git
 cd openmc
 git checkout ImplicitFunction
 mkdir build
 cd build
-cmake -DOPENMC_ENABLE_STRICT_FP=on -DOPENMC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/home/fernpa/miniforge/envs/openmc-IF/ ..
+cmake -DOPENMC_ENABLE_STRICT_FP=on -DOPENMC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/path/to/anaconda/envs/openmc-IF/ ..
 make -j 12
 make install
 cd ..

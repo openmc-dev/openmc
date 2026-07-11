@@ -159,11 +159,5 @@
         <parameters>0.0 0.0 0.0</parameters>
       </space>
     </source>
-    <implicit>
-      <name>fast</name>
-      <atol>1e-10</atol>
-      <ftol>1e-10</ftol>
-      <margin>5e-09</margin>
-    </implicit>
   </settings>
   </model>

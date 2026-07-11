@@ -6,18 +6,28 @@ Developer cross sections : https://anl.box.com/shared/static/teaup95cqv8s9nn56hf
 ## Quick install
 
 ```sh
-conda create -n openmc-IF compilers=1.9.0 cmake hdf5 python libpng clang-format
+conda create -n openmc-IF compilers=1.9.0 cmake hdf5 python libpng
 git clone --recurse-submodules https://github.com/pferney05/openmc-dev.git
 cd openmc
 git checkout ImplicitFunction
 mkdir build
 cd build
-cmake -DOPENMC_ENABLE_STRICT_FP=on -DOPENMC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/path/to/anaconda/envs/openmc-IF/ ..
+cmake -DOPENMC_ENABLE_STRICT_FP=on -DOPENMC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX ..
 make -j 12
 make install
 cd ..
 python -m pip install .[test]
 ```
+To get git-clang-format:
+```sh
+conda install clang-format=18.1.8 wget
+curl -L \
+  https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-18.1.8/clang/tools/clang-format/git-clang-format \
+  -o "$CONDA_PREFIX/bin/git-clang-format"
+chmod +x "$CONDA_PREFIX/bin/git-clang-format"
+./tools/dev/install-commit-hooks.sh
+```
+
 ## Local Notes:
 - TPMS: max event particles, to be checked
 - TPMS: Particle could not be located after crossing a boundary of lattice

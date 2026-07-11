@@ -34,7 +34,6 @@ def implicit_sphere_model():
     settings.particles = 1000
     settings.batches   = 20
     settings.inactive  = 5
-    settings.implicit = {"name": "fast", "atol":1e-10, "ftol":1e-10, "margin":5e-9}
  
     model = openmc.Model(settings=settings, geometry=geometry)
     model.settings.source = openmc.IndependentSource(

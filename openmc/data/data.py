@@ -1,15 +1,22 @@
+from __future__ import annotations
+
 import itertools
 import json
 import os
 import re
 from pathlib import Path
 from math import sqrt, log
+from typing import TYPE_CHECKING, Literal
 from warnings import warn
 
 from endf.data import (ATOMIC_NUMBER, ATOMIC_SYMBOL, ELEMENT_SYMBOL,
                        EV_PER_MEV, K_BOLTZMANN, gnds_name, zam)
 
 import openmc
+from openmc.checkvalue import PathLike
+
+if TYPE_CHECKING:
+    from openmc.deplete import Chain
 
 gnds_name.__module__ = __name__
 zam.__module__ = __name__
@@ -298,7 +305,10 @@ def atomic_weight(element):
         raise ValueError(f"No naturally-occurring isotopes for element '{element}'.")
 
 
-def half_life(isotope, chain_file=False):
+def half_life(
+    isotope: str,
+    chain_file: Literal[False] | None | PathLike | Chain = False
+) -> float | None:
     """Return half-life of isotope in seconds or None if isotope is stable
 
     By default, half-life values are from the `ENDF/B-VIII.0 decay sublibrary
@@ -345,7 +355,10 @@ def half_life(isotope, chain_file=False):
     return _HALF_LIFE.get(isotope.lower())
 
 
-def decay_constant(isotope, chain_file=False):
+def decay_constant(
+    isotope: str,
+    chain_file: Literal[False] | None | PathLike | Chain = False
+) -> float:
     """Return decay constant of isotope in [s^-1]
 
     Decay constants are based on half-life values from the

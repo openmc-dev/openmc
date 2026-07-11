@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 import tempfile
-from typing import Sequence, Dict
+from typing import TYPE_CHECKING, Literal, Sequence, Dict
 import warnings
 
 import lxml.etree as ET
@@ -27,6 +27,9 @@ from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, JOULE_PER_EV
 from openmc.data.function import Tabulated1D
 from openmc.data import mass_energy_absorption_coefficient, dose_coefficients
+
+if TYPE_CHECKING:
+    from openmc.deplete import Chain
 
 
 # Units for density supported by OpenMC
@@ -1390,7 +1393,7 @@ class Material(IDManagerMixin):
         units: str = 'Bq/cm3',
         by_nuclide: bool = False,
         volume: float | None = None,
-        chain_file=None
+        chain_file: Literal[False] | None | PathLike | Chain = None
     ) -> dict[str, float] | float:
         """Return the activity of the material or each nuclide within.
 

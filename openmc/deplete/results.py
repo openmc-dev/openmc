@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import numbers
 import bisect
 import math
 from collections.abc import Iterable
+from typing import Literal
 from warnings import warn
 
 import h5py
 import numpy as np
 
 import openmc
-from .chain import _get_chain
+from .chain import Chain, _get_chain
 from .stepresult import StepResult, VERSION_RESULTS
 import openmc.checkvalue as cv
 from openmc.data import atomic_mass, AVOGADRO
@@ -106,7 +109,7 @@ class Results(list):
         units: str = "Bq/cm3",
         by_nuclide: bool = False,
         volume: float | None = None,
-        chain_file=None
+        chain_file: Literal[False] | None | PathLike | Chain = None
     ) -> tuple[np.ndarray, np.ndarray | list[dict]]:
         """Get activity of material over time.
 

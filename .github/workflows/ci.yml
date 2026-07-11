@@ -179,7 +179,7 @@ jobs:
         continue-on-error: true
         if: ${{ failure() && contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 100
+        timeout-minutes: 10
 
       - name: Generate C++ coverage (gcovr)
         shell: bash

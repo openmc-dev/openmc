@@ -49,7 +49,7 @@ def test_export_hdf5_format(request, run_in_tmpdir):
 
 
 @pytest.mark.parametrize('library', ('libmesh', 'moab'))
-def test_export_hdf5_unstructured_mesh(request, run_in_tmpdir, library, capsys):
+def test_export_hdf5_unstructured_mesh(request, run_in_tmpdir, library):
     # UnstructuredMesh can't be serialized from pure Python; export_to_hdf5
     # routes it through openmc.lib.export_weight_windows (a live session).
     if library == 'libmesh' and not openmc.lib._libmesh_enabled():
@@ -60,8 +60,7 @@ def test_export_hdf5_unstructured_mesh(request, run_in_tmpdir, library, capsys):
     mesh = openmc.UnstructuredMesh(
         str(request.path.with_name('test_mesh_tets.exo')), library)
     ww = openmc.WeightWindows(mesh, np.ones((12_000,)), upper_bound_ratio=5.0)
-    with capsys.disabled():
-        openmc.WeightWindowsList([ww]).export_to_hdf5('ww.h5')
+    openmc.WeightWindowsList([ww]).export_to_hdf5('ww.h5')
 
     with h5py.File('ww.h5') as f:
         assert f.attrs['filetype'] == b'weight_windows'

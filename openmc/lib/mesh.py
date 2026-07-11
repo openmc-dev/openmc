@@ -751,11 +751,8 @@ _MESH_TYPE_MAP = {
 
 
 def export_unstructured_mesh(mesh, group):
-    import sys
     index = c_int32()
     _dll.openmc_get_mesh_index(mesh.id, index)
-    h5py.h5f.flush(group.id)
-    print(f"group {group.id.id} {group.id.valid}", file=sys.stderr)
     if not group.id.valid:
         raise RuntimeError("Invalid group id.")
     _dll.openmc_unstructured_mesh_export_hdf5(index.value, c_hid_t(group.id.id))

@@ -358,14 +358,20 @@ int64_t simulation_tracks_completed {0};
 
 namespace {
 
+//! Collect thread-local secondary banks into the shared secondary bank in
+//! sorted order.
+//!
+//! \param thread_banks  Secondary banks produced by each OpenMP thread
 void collect_sorted_history_secondary_banks(
   vector<vector<SourceSite>>& thread_banks)
 {
+  // Count the total number of all secondary sites produced
   int64_t n_collected = 0;
   for (const auto& bank : thread_banks) {
     n_collected += bank.size();
   }
 
+  // Count the expected number of progeny from per-parent progeny counts
   int64_t n_progeny = 0;
   for (int64_t count : simulation::progeny_per_particle) {
     n_progeny += count;
@@ -376,18 +382,20 @@ void collect_sorted_history_secondary_banks(
                 "secondary bank size during collection.");
   }
 
+  // Convert per-parent progeny counts to offsets into the sorted bank
   std::exclusive_scan(simulation::progeny_per_particle.begin(),
     simulation::progeny_per_particle.end(),
     simulation::progeny_per_particle.begin(), 0);
 
+  // Allocate the shared bank once for the complete generation
   simulation::shared_secondary_bank_write.resize(0);
   simulation::shared_secondary_bank_write.extend_uninitialized(n_progeny);
 
+  // Place each secondary according to its parent and progeny identifiers
   for (const auto& bank : thread_banks) {
     for (const auto& site : bank) {
       if (site.parent_id < 0 ||
-          site.parent_id >=
-            static_cast<int64_t>(simulation::progeny_per_particle.size())) {
+          site.parent_id >= simulation::progeny_per_particle.size()) {
         fatal_error(fmt::format("Invalid parent_id {} for banked site "
                                 "(expected range [0, {})).",
           site.parent_id, simulation::progeny_per_particle.size()));
@@ -403,8 +411,12 @@ void collect_sorted_history_secondary_banks(
   }
 }
 
+//! Collect particle-local secondary banks into the shared secondary bank.
+//!
+//! \param n_particles  Number of particles in the active event-based buffer
 void collect_event_secondary_banks(int64_t n_particles)
 {
+  // Compute offsets for each particle's local secondary bank.
   vector<int64_t> offsets(n_particles);
   int64_t total = 0;
   for (int64_t i = 0; i < n_particles; ++i) {
@@ -412,9 +424,11 @@ void collect_event_secondary_banks(int64_t n_particles)
     total += simulation::particles[i].local_secondary_bank().size();
   }
 
+  // Extend the shared bank once for all collected secondaries
   int64_t bank_offset =
     simulation::shared_secondary_bank_write.extend_uninitialized(total);
 
+  // Copy each local bank into its assigned range and clear the local storage
 #pragma omp parallel for schedule(static)
   for (int64_t i = 0; i < n_particles; ++i) {
     auto& local_bank = simulation::particles[i].local_secondary_bank();

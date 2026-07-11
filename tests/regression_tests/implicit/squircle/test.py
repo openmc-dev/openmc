@@ -8,7 +8,7 @@ from tests.testing_harness import PyAPITestHarness
  
  
 @pytest.fixture()
-def implicit_sphere_model():
+def implicit_squircle_model():
     # Material
     material = openmc.Material()
     material.add_nuclide('U235',  1.0)
@@ -51,6 +51,6 @@ def implicit_sphere_model():
     return model
  
  
-def test_implicit_sphere(implicit_sphere_model):
-    harness = PyAPITestHarness('statepoint.20.h5', model=implicit_sphere_model)
+def test_implicit_squircle(implicit_squircle_model):
+    harness = PyAPITestHarness('statepoint.20.h5', model=implicit_squircle_model)
     harness.main()

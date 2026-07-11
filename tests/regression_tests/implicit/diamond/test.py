@@ -15,17 +15,15 @@ def implicit_diamond_model():
     material.set_density('g/cm3', 16.0)
  
     # Diamond
-    x0 = openmc.XPlane(-0.5, boundary_type="periodic")
-    x1 = openmc.XPlane(+0.5, boundary_type="periodic")
-    y0 = openmc.YPlane(-0.5, boundary_type="periodic")
-    y1 = openmc.YPlane(+0.5, boundary_type="periodic")
-    z0 = openmc.ZPlane(-0.5, boundary_type="periodic")
-    z1 = openmc.ZPlane(+0.5, boundary_type="periodic")
-    x0.periodic_surface = x1
-    y0.periodic_surface = y1
-    z0.periodic_surface = z1
+    x0 = openmc.XPlane(-16.0, boundary_type="vacuum")
+    x1 = openmc.XPlane(+16.0, boundary_type="vacuum")
+    y0 = openmc.YPlane(-16.0, boundary_type="vacuum")
+    y1 = openmc.YPlane(+16.0, boundary_type="vacuum")
+    z0 = openmc.ZPlane(-16.0, boundary_type="vacuum")
+    z1 = openmc.ZPlane(+16.0, boundary_type="vacuum")
     box = +x0 & -x1 & +y0 & -y1 & +z0 & -z1
-    impl  = openmc.TPMS.from_pitch_isovalue("diamond", 1., 0.)
+    
+    impl  = openmc.TPMS.from_pitch_isovalue("diamond", 8., 0.)
  
     fuel_cell = openmc.Cell(region=-impl & box, fill=material)
     void_cell = openmc.Cell(region=+impl & box)

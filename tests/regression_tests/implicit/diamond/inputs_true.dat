@@ -10,12 +10,12 @@
   <geometry>
     <cell id="1" material="1" region="-7 1 -2 3 -4 5 -6" universe="1"/>
     <cell id="2" material="void" region="7 1 -2 3 -4 5 -6" universe="1"/>
-    <surface id="1" type="x-plane" boundary="periodic" coeffs="-0.5" periodic_surface_id="2"/>
-    <surface id="2" type="x-plane" boundary="periodic" coeffs="0.5" periodic_surface_id="1"/>
-    <surface id="3" type="y-plane" boundary="periodic" coeffs="-0.5" periodic_surface_id="4"/>
-    <surface id="4" type="y-plane" boundary="periodic" coeffs="0.5" periodic_surface_id="3"/>
-    <surface id="5" type="z-plane" boundary="periodic" coeffs="-0.5" periodic_surface_id="6"/>
-    <surface id="6" type="z-plane" boundary="periodic" coeffs="0.5" periodic_surface_id="5"/>
+    <surface id="1" type="x-plane" boundary="vacuum" coeffs="-16.0"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="16.0"/>
+    <surface id="3" type="y-plane" boundary="vacuum" coeffs="-16.0"/>
+    <surface id="4" type="y-plane" boundary="vacuum" coeffs="16.0"/>
+    <surface id="5" type="z-plane" boundary="vacuum" coeffs="-16.0"/>
+    <surface id="6" type="z-plane" boundary="vacuum" coeffs="16.0"/>
     <surface id="7" type="implicit" coeffs="0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" isovalue="0.0">
       <function>
         <add>
@@ -26,7 +26,7 @@
                   <scale value="6.283185307179586">
                     <x/>
                   </scale>
-                  <constant value="1.0"/>
+                  <constant value="8.0"/>
                 </div>
               </to_cache>
             </sin>
@@ -37,7 +37,7 @@
                     <scale value="6.283185307179586">
                       <y/>
                     </scale>
-                    <constant value="1.0"/>
+                    <constant value="8.0"/>
                   </div>
                 </to_cache>
                 <to_cache id="2">
@@ -45,7 +45,7 @@
                     <scale value="6.283185307179586">
                       <z/>
                     </scale>
-                    <constant value="1.0"/>
+                    <constant value="8.0"/>
                   </div>
                 </to_cache>
               </sub>

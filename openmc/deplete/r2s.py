@@ -157,7 +157,7 @@ class R2SManager:
         mat_vol_kwargs: dict | None = None,
         run_kwargs: dict | None = None,
         operator_kwargs: dict | None = None,
-        nuclide_dose_breakdown: bool = False,
+        by_parent_nuclide: bool = False,
     ):
         """Run the R2S calculation.
 
@@ -209,10 +209,11 @@ class R2SManager:
         operator_kwargs : dict, optional
             Additional keyword arguments passed to
             :class:`openmc.deplete.IndependentOperator`.
-        nuclide_dose_breakdown : bool, optional
-            Whether to add a :class:`~openmc.ParentNuclideFilter` to photon
-            tallies that do not already contain one. The filter bins are
-            determined automatically from the prepared decay photon sources.
+        by_parent_nuclide : bool, optional
+            Whether to score photon tallies separately for each parent
+            radionuclide. A :class:`~openmc.ParentNuclideFilter` is added to
+            tallies that do not already contain one, with bins determined from
+            the prepared decay photon sources.
 
         Returns
         -------
@@ -265,7 +266,7 @@ class R2SManager:
             self.step3_photon_source(
                 photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
                 mat_vol_kwargs=mat_vol_kwargs,
-                nuclide_dose_breakdown=nuclide_dose_breakdown,
+                by_parent_nuclide=by_parent_nuclide,
             )
             self.step4_photon_transport(
                 output_dir / 'photon_transport', run_kwargs=run_kwargs
@@ -454,7 +455,7 @@ class R2SManager:
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         output_dir: PathLike = 'photon_transport',
         mat_vol_kwargs: dict | None = None,
-        nuclide_dose_breakdown: bool = False,
+        by_parent_nuclide: bool = False,
     ):
         """Create decay photon sources.
 
@@ -482,10 +483,11 @@ class R2SManager:
         mat_vol_kwargs : dict, optional
             Additional keyword arguments passed to
             :meth:`openmc.MeshBase.material_volumes`.
-        nuclide_dose_breakdown : bool, optional
-            Whether to add a :class:`~openmc.ParentNuclideFilter` to photon
-            tallies that do not already contain one. The filter bins are
-            determined automatically from the prepared decay photon sources.
+        by_parent_nuclide : bool, optional
+            Whether to score photon tallies separately for each parent
+            radionuclide. A :class:`~openmc.ParentNuclideFilter` is added to
+            tallies that do not already contain one, with bins determined from
+            the prepared decay photon sources.
         """
 
         # Do not retain sources from an earlier successful call if this source
@@ -593,7 +595,7 @@ class R2SManager:
                 f'indices: {indices}')
 
         self.results['photon_sources'] = photon_sources
-        if nuclide_dose_breakdown:
+        if by_parent_nuclide:
             radionuclides = sorted({
                 nuclide
                 for sources in self.results['photon_sources'].values()
@@ -740,43 +742,40 @@ class R2SManager:
             self.neutron_model._get_all_materials()
             if self.method == 'mesh-based' else None
         )
+        step_result = self.results['depletion_results'][time_index]
         sources = []
         for item in work_items:
-            source = self._create_photon_source(time_index, item, mat_dict)
-            if source is not None:
-                sources.append(source)
+            if self.method == 'mesh-based':
+                index_mat, domain_id, bbox = item
+                original_mat = self.results['activation_materials'][index_mat]
+                domain = mat_dict[domain_id]
+            else:
+                domain, original_mat, bbox = item
+
+            activated_mat = step_result.get_material(str(original_mat.id))
+            nuclides = activated_mat.get_nuclide_atom_densities()
+            if not nuclides:
+                continue
+
+            # Eliminate nuclides with zero density.
+            nuclides = {
+                nuclide: density for nuclide, density in nuclides.items()
+                if density > 0
+            }
+            energy = openmc.stats.DecaySpectrum(
+                nuclides, activated_mat.volume)
+            energy.clip(inplace=True)
+            if not energy.nuclides:
+                continue
+
+            sources.append(openmc.IndependentSource(
+                space=openmc.stats.Box(bbox.lower_left, bbox.upper_right),
+                energy=energy,
+                particle='photon',
+                constraints={'domains': [domain]},
+            ))
 
         return sources
-
-    def _create_photon_source(self, time_index, item, mat_dict=None):
-        """Create a decay photon source for one activation region."""
-        step_result = self.results['depletion_results'][time_index]
-        if self.method == 'mesh-based':
-            index_mat, domain_id, bbox = item
-            original_mat = self.results['activation_materials'][index_mat]
-            domain = mat_dict[domain_id]
-        else:
-            domain, original_mat, bbox = item
-
-        activated_mat = step_result.get_material(str(original_mat.id))
-        nuclides = activated_mat.get_nuclide_atom_densities()
-        if not nuclides:
-            return None
-
-        # Eliminate nuclides with zero density.
-        nuclides = {nuclide: density for nuclide, density in nuclides.items()
-                    if density > 0}
-        energy = openmc.stats.DecaySpectrum(nuclides, activated_mat.volume)
-        energy.clip(inplace=True)
-        if not energy.nuclides:
-            return None
-
-        return openmc.IndependentSource(
-            space=openmc.stats.Box(bbox.lower_left, bbox.upper_right),
-            energy=energy,
-            particle='photon',
-            constraints={'domains': [domain]},
-        )
 
     def load_results(self, path: PathLike):
         """Load results from a previous R2S calculation.

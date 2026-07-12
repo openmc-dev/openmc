@@ -321,7 +321,7 @@ def test_photon_time_index_validation(
     assert 'photon_sources' not in r2s.results
 
 
-def test_r2s_nuclide_dose_breakdown(simple_model_and_mesh, tmp_path, monkeypatch):
+def test_r2s_by_parent_nuclide(simple_model_and_mesh, tmp_path, monkeypatch):
     model, (c1, c2), _ = simple_model_and_mesh
     tally = openmc.Tally()
     tally.scores = ['flux']
@@ -341,7 +341,7 @@ def test_r2s_nuclide_dose_breakdown(simple_model_and_mesh, tmp_path, monkeypatch
         timesteps=[(1.0, 'd'), (1.0, 'd')],
         source_rates=[1.0, 0.0],
         photon_time_indices=[1, 2],
-        nuclide_dose_breakdown=True,
+        by_parent_nuclide=True,
         output_dir=tmp_path,
         bounding_boxes={c1.id: c1.bounding_box, c2.id: c2.bounding_box},
         chain_file=chain,

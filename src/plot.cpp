@@ -103,7 +103,7 @@ void PropertyData::set_overlap(size_t y, size_t x, int /*overlap_idx*/)
 RasterData::RasterData(size_t h_res, size_t v_res, bool include_filter)
   : id_data_({v_res, h_res, include_filter ? 4u : 3u}, NOT_FOUND),
     property_data_({v_res, h_res, 2}, static_cast<double>(NOT_FOUND)),
-    include_filter_(include_filter), pixel_overlaps_(h_res * v_res)
+    include_filter_(include_filter)
 {}
 
 void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
@@ -162,9 +162,6 @@ void RasterData::set_overlap(size_t y, size_t x, int overlap_idx)
 
   property_data_(y, x, 0) = OVERLAP;
   property_data_(y, x, 1) = OVERLAP;
-
-  size_t pix = y * id_data_.shape(1) + x;
-  pixel_overlaps_[pix] = pairs;
 }
 
 //==============================================================================
@@ -176,8 +173,6 @@ namespace model {
 std::unordered_map<int, int> plot_map;
 vector<std::unique_ptr<PlottableInterface>> plots;
 uint64_t plotter_seed = 1;
-
-std::unique_ptr<RasterData> last_slice_data;
 
 } // namespace model
 
@@ -1982,10 +1977,6 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
     model::overlap_check_count.resize(model::cells.size());
   }
 
-  if (color_overlaps) {
-    settings::check_overlaps = true;
-  }
-
   try {
     // Create a temporary SlicePlotBase object to reuse get_map logic
     SlicePlotBase plot_params;
@@ -2005,9 +1996,10 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
     auto data = plot_params.get_map<RasterData>(filter_index);
     std::copy(data.id_data_.begin(), data.id_data_.end(), geom_data);
 
+    // Copy property data if requested
     if (property_data != nullptr) {
-      std::copy(model::last_slice_data->property_data_.begin(),
-        model::last_slice_data->property_data_.end(), property_data);
+      std::copy(
+        data.property_data_.begin(), data.property_data_.end(), property_data);
     }
   } catch (const std::exception& e) {
     set_errmsg(e.what());

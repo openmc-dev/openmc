@@ -37,7 +37,6 @@ std::unordered_map<OverlapKey, int, OverlapKeyHash> overlap_key_index;
 
 int check_cell_overlap(GeometryState& p, bool error)
 {
-  OverlapResult overlaps;
   int n_coord = p.n_coord();
 
   // If no overlap found, return a nonphysical index

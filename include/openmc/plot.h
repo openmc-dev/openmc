@@ -190,9 +190,6 @@ struct RasterData {
   tensor::Tensor<double>
     property_data_;     //!< [v_res, h_res, 2]: temperature, density
   bool include_filter_; //!< Whether filter bin index is included
-
-  // Vector for storing overlaps to later be flattened and sent through the API
-  std::vector<std::vector<OverlapKey>> pixel_overlaps_;
 };
 
 //===============================================================================

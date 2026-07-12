@@ -198,7 +198,7 @@ void Particle::from_source(const SourceSite* src)
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
 
-  if (delta_tracking()) {
+  if (settings::delta_tracking) {
     update_majorant();
   }
 }
@@ -332,34 +332,34 @@ void Particle::event_advance()
   }
 }
 
-void Particle::event_delta_advance()
+void Particle::event_update_majorant()
 {
   if (E() != E_last()) {
     update_majorant();
   }
+}
 
-  // Sample distance to next position
-  if (majorant() == 0.0) {
-    // For a void majorant (rare but possible for a source in a void),
-    // the collision distance is infinity.
-    collision_distance() = INFINITY;
+void Particle::event_delta_advance()
+{
+  // Compute the distance to the next collision with the hybrid approach.
+  collision_distance() = hybrid_distance_to_coll();
+
+  // Update distance to problem boundary if we've flagged that this particle
+  // should run with delta tracking. Otherwise, we need the distance to the
+  // nearest surface.
+  if (delta_tracking()) {
+    boundary() = distance_to_external_boundary(*this);
+    boundary().distance() -= FP_REL_PRECISION;
   } else {
-    // Sample collision distance based on the majorant for this energy.
-    collision_distance() = -std::log(prn(current_seed())) / majorant();
+    boundary() = distance_to_boundary(*this);
   }
-
-  // Update distance to problem boundary. Particles with large majorant
-  // cross sections will tunnel out of the domain if a floating point
-  // tolerance is not specified on the boundary distance calculation.
-  boundary() = distance_to_external_boundary(*this);
-  boundary().distance() -= FP_REL_PRECISION;
 
   double speed = this->speed();
   double time_cutoff = settings::time_cutoff[type().transport_index()];
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
-  // Move to the external boundary, delta tracking collision site, or time
+  // Move to the external boundary, collision site (real or virtual), or time
   // cutoff distance.
   double distance =
     std::min({collision_distance(), boundary().distance(), distance_cutoff});
@@ -370,19 +370,26 @@ void Particle::event_delta_advance()
   time() += dt;
   lifetime() += dt;
 
-  // Need to locate the particle at the collision site or boundary.
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).reset();
-  }
-  if (!exhaustive_find_cell(*this)) {
-    // We've lost this particle.
-    mark_as_lost(fmt::format(
-      "Particle {} could not be located while running delta tracking!", id()));
-    return;
+  // Need to locate the particle at the collision site or boundary if flagged
+  // for delta tracking.
+  if (delta_tracking()) {
+    for (int j = 0; j < n_coord(); ++j) {
+      coord(j).reset();
+    }
+    if (!exhaustive_find_cell(*this)) {
+      // We've lost this particle.
+      mark_as_lost(fmt::format(
+        "Particle {} could not be located while running delta tracking!",
+        id()));
+      return;
+    }
   }
 
-  // Force re-calculation of material properties at the collision site.
-  material_last() = C_NONE;
+  // Force re-calculation of material properties at the collision site if running
+  // delta tracking.
+  if (delta_tracking()) {
+    material_last() = C_NONE;
+  }
 
   // Set particle weight to zero if it hit the time boundary
   if (distance == distance_cutoff) {
@@ -604,6 +611,9 @@ void Particle::event_check_limit_and_revive()
   // In non-shared-secondary mode, revive from local secondary bank
   if (!alive() && !settings::use_shared_secondary_bank &&
       !local_secondary_bank().empty()) {
+    // Revive with delta tracking turned on.
+    delta_tracking() = settings::delta_tracking;
+
     SourceSite& site = local_secondary_bank().back();
     event_revive_from_secondary(site);
     local_secondary_bank().pop_back();
@@ -668,6 +678,23 @@ void Particle::event_death()
   if (settings::run_mode == RunMode::EIGENVALUE ||
       settings::use_shared_secondary_bank) {
     simulation::progeny_per_particle[current_work()] = n_progeny();
+  }
+}
+
+double Particle::hybrid_distance_to_coll()
+{
+  if (delta_tracking()) {
+    if (majorant() == 0.0) {
+      return INFINITY;
+    } else {
+      return -std::log(prn(current_seed())) / majorant();
+    }
+  } else {
+    if (macro_xs().total == 0.0) {
+      return INFINITY;
+    } else {
+      return -std::log(prn(current_seed())) / macro_xs().total;
+    }
   }
 }
 
@@ -941,6 +968,36 @@ bool Particle::kill_invalid_maj()
     return true;
   }
   return false;
+}
+
+void Particle::update_tracking_type()
+{
+  switch (settings::hybrid_delta_type) {
+    case HybridTrackingType::CrossSection:
+    {
+      // We need to decide if delta tracking or surface tracking should be used.
+      // This is done based on Eq. 9 in the Serpent paper:
+      // http://doi.org/10.1016/j.anucene.2010.01.011
+      const double th = 1.0 - settings::hybrid_xs_threshold;
+      if (alive() && (macro_xs().total / majorant()) > th) {
+        delta_tracking() = true;
+      } else if (alive()) {
+        delta_tracking() = false;
+      }
+      break;
+    }
+    case HybridTrackingType::Energy:
+    {
+      // Switch between tracking types based on energy. See
+      // Section 3.3 of https://doi.org/10.1080/23324309.2026.2618791
+      if (alive() && E() >= settings::hybrid_energy_threshold) {
+        delta_tracking() = true;
+      } else if (alive()) {
+        delta_tracking() = false;
+      }
+      break;
+    }
+  }
 }
 
 void Particle::mark_as_lost(const char* message)

@@ -95,6 +95,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.source_rejection_fraction = 0.01
     s.free_gas_threshold = 800.0
     s.delta_tracking = True
+    s.delta_tracking_threshold = 0.9
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -192,6 +193,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.source_rejection_fraction == 0.01
     assert s.free_gas_threshold == 800.0
     assert s.delta_tracking == True
+    assert s.delta_tracking_threshold == 0.9
 
 
 def test_properties_file_load(tmp_path, mpi_intracomm):

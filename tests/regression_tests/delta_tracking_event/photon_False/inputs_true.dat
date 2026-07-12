@@ -39,6 +39,7 @@
     <photon_transport>false</photon_transport>
     <event_based>true</event_based>
     <delta_tracking>true</delta_tracking>
+    <delta_tracking_threshold>1.0</delta_tracking_threshold>
   </settings>
   <tallies>
     <mesh id="1">

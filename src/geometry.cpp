@@ -282,7 +282,6 @@ bool find_cell_inner(
 
 bool neighbor_list_find_cell(GeometryState& p, bool verbose)
 {
-
   // Reset all the deeper coordinate levels.
   for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
     p.coord(i).reset();

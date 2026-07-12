@@ -69,12 +69,21 @@ public:
   // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();
+  void event_update_majorant();
   void event_delta_advance();
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary(const SourceSite& site);
   void event_check_limit_and_revive();
   void event_death();
+
+  //! Compute the distance to the next collision with hybrid delta tracking.
+  //! If the particle is flagged to be running with delta tracking, the
+  //! distance to next collision is sampled with the majorant. Otherwise,
+  //! the distance to next collision is sampled with the total cross section.
+  //
+  //! \return distance to the next collision
+  double hybrid_distance_to_coll();
 
   //! pulse-height recording
   void pht_collision_energy();
@@ -121,6 +130,12 @@ public:
   //! \return true if the majorant is invalid, false if not. If true,
   //!   the particle is also killed.
   bool kill_invalid_maj();
+
+  //! Switch between delta tracking or surface tracking based on the currently
+  //! employed hybrid tracking scheme. This changes the internal particle flag
+  //! for delta tracking to true if delta tracking should be used, false if
+  //! surface tracking should be used.
+  void update_tracking_type();
 
   //! create a particle restart HDF5 file
   void write_restart() const;

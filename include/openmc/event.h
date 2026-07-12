@@ -61,6 +61,7 @@ namespace simulation {
 // is provided which controls the append operations using atomics.
 extern SharedArray<EventQueueItem> calculate_fuel_xs_queue;
 extern SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
+extern SharedArray<EventQueueItem> calculate_majorant_xs_queue;
 extern SharedArray<EventQueueItem> advance_particle_queue;
 extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
@@ -143,6 +144,10 @@ void process_delta_init_events(int64_t n_particles, int64_t source_offset);
 //
 //! \param queue A reference to the desired XS lookup queue
 void process_delta_calculate_xs_events(SharedArray<EventQueueItem>& queue);
+
+//! Execute the majorant calculation event for all particles in this advance
+//! buffer
+void process_delta_calculate_majorant_events();
 
 //! Execute the delta advance particle event for all particles in this advance
 //! buffer

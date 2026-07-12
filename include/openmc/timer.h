@@ -28,6 +28,7 @@ extern Timer time_total;
 extern Timer time_transport;
 extern Timer time_event_init;
 extern Timer time_event_calculate_xs;
+extern Timer time_event_calculate_majorant_xs;
 extern Timer time_event_advance_particle;
 extern Timer time_event_surface_crossing;
 extern Timer time_event_collision;

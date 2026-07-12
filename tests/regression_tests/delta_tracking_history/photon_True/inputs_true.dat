@@ -38,6 +38,7 @@
     <inactive>5</inactive>
     <photon_transport>true</photon_transport>
     <delta_tracking>true</delta_tracking>
+    <delta_tracking_threshold>1.0</delta_tracking_threshold>
   </settings>
   <tallies>
     <mesh id="1">

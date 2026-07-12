@@ -95,7 +95,30 @@ class Settings:
 
         .. versionadded:: 0.12
     delta_tracking : bool
-        Whether transport should be performed with delta tracking or not.
+        Whether transport should be performed with hybrid delta tracking or not.
+
+        .. versionadded:: 0.15.4
+    delta_tracking_hybrid_type : str
+        The hybrid delta tracking scheme to use when running delta tracking.
+        Valid options are 'cross_section' for the approach taken by Serpent,
+        or 'energy' for the hybrid-in-energy approach proposed by J. P. Morgan
+        et al. (see https://doi.org/10.1080/23324309.2026.2618791).
+        .. versionadded:: 0.15.4
+    delta_tracking_xs_threshold : float
+        The threshold to use when running with hybrid-in-cross-section delta tracking.
+        If the ratio of the total cross section to the majorant cross section is
+        greater than 1 - delta_tracking_xs_threshold, delta tracking is used.
+        Otherwise, surface tracking is used. The type of tracking is determined
+        locally after every collision (real or delta scatter). A threshold of 0
+        runs surface tracking, which 1 runs delta tracking. A value of 0.9 is
+        used by default.
+
+        .. versionadded:: 0.15.4
+    delta_tracking_energy_threshold : float
+        The threshold to use when running hybrid-in-energy delta tracking. If
+        the particle energy is greater than delta_tracking_energy_threshold,
+        delta tracking is used. Otherwise surface tracking is used. 30 keV is
+        used by default.
 
         .. versionadded:: 0.16.1
     electron_treatment : {'led', 'ttb'}
@@ -487,6 +510,9 @@ class Settings:
         self._material_cell_offsets = None
         self._log_grid_bins = None
         self._delta_tracking = None
+        self._delta_tracking_hybrid_type = None
+        self._delta_tracking_xs_threshold = None
+        self._delta_tracking_energy_threshold = None
         self._event_based = None
         self._max_particles_in_flight = None
         self._max_particle_events = None
@@ -1252,6 +1278,38 @@ class Settings:
     def delta_tracking(self, value):
         cv.check_type('delta_tracking', value, bool)
         self._delta_tracking = value
+
+    @property
+    def delta_tracking_hybrid_type(self):
+        return self._delta_tracking_hybrid_type
+
+    @delta_tracking_hybrid_type.setter
+    def delta_tracking_hybrid_type(self, value):
+        cv.check_type('delta tracking hybrid type', value, str)
+        cv.check_value('delta tracking hybrid type', value,
+                       ['cross_section', 'energy'])
+        self.delta_tracking_hybrid_type = value
+
+    @property
+    def delta_tracking_xs_threshold(self):
+        return self._delta_tracking_xs_threshold
+
+    @delta_tracking_xs_threshold.setter
+    def delta_tracking_xs_threshold(self, value):
+        cv.check_type('delta tracking xs threshold', value, float)
+        cv.check_greater_than('delta tracking xs threshold', value, 0.0, True)
+        cv.check_less_than('delta tracking xs threshold', value, 1.0, True)
+        self._delta_tracking_xs_threshold = value
+
+    @property
+    def delta_tracking_energy_threshold(self):
+        return self._delta_tracking_energy_threshold
+
+    @delta_tracking_energy_threshold.setter
+    def delta_tracking_energy_threshold(self, value):
+        cv.check_type('delta tracking energy threshold', value, float)
+        cv.check_greater_than('delta tracking energy threshold', value, 0.0)
+        self._delta_tracking_energy_threshold = value
 
     @property
     def material_cell_offsets(self) -> bool:
@@ -2080,6 +2138,21 @@ class Settings:
             elem = ET.SubElement(root, "delta_tracking")
             elem.text = str(self._delta_tracking).lower()
 
+    def _create_delta_tracking_hybrid_type_subelement(self, root):
+        if self._delta_tracking_hybrid_type:
+            elem = ET.SubElement(root, "delta_tracking_hybrid_type")
+            elem.text = self._delta_tracking_hybrid_type.lower()
+
+    def _create_delta_tracking_xs_threshold_subelement(self, root):
+        if self._delta_tracking_xs_threshold:
+            elem = ET.SubElement(root, "delta_tracking_xs_threshold")
+            elem.text = str(self._delta_tracking_xs_threshold).lower()
+
+    def _create_delta_tracking_energy_threshold_subelement(self, root):
+        if self._delta_tracking_energy_threshold:
+            elem = ET.SubElement(root, "delta_tracking_energy_threshold")
+            elem.text = str(self._delta_tracking_energy_threshold).lower()
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -2583,6 +2656,21 @@ class Settings:
         if text is not None:
             self.delta_tracking = text in ('true', '1')
 
+    def _delta_tracking_hybrid_type_from_xml_element(self, root):
+        text = get_text(root, 'delta_tracking_hybrid_type')
+        if text is not None:
+            self.delta_tracking_hybrid_type = text
+
+    def _delta_tracking_xs_threshold_from_xml_element(self, root):
+        text = get_text(root, 'delta_tracking_xs_threshold')
+        if text is not None:
+            self.delta_tracking_xs_threshold = float(text)
+
+    def _delta_tracking_energy_threshold_from_xml_element(self, root):
+        text = get_text(root, 'delta_tracking_energy_threshold')
+        if text is not None:
+            self.delta_tracking_energy_threshold = float(text)
+
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
 
@@ -2661,6 +2749,9 @@ class Settings:
         self._create_source_rejection_fraction_subelement(element)
         self._create_free_gas_threshold_subelement(element)
         self._create_delta_tracking_subelement(element)
+        self._create_delta_tracking_hybrid_type_subelement(element)
+        self._create_delta_tracking_xs_threshold_subelement(element)
+        self._create_delta_tracking_energy_threshold_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2780,6 +2871,9 @@ class Settings:
         settings._source_rejection_fraction_from_xml_element(elem)
         settings._free_gas_threshold_from_xml_element(elem)
         settings._delta_tracking_from_xml_element(elem)
+        settings._delta_tracking_hybrid_type_from_xml_element(elem)
+        settings._delta_tracking_xs_threshold_from_xml_element(elem)
+        settings._delta_tracking_energy_threshold_from_xml_element(elem)
 
         return settings
 

@@ -9,6 +9,6 @@ from tests.testing_harness import PyAPITestHarness
 @pytest.mark.parametrize("boundary", ['vacuum', 'reflective', 'periodic', 'white'])
 def test_lattice(boundary):
     with change_directory(boundary):
-        model = delta_tracking_lattice(False, boundary)
+        model = delta_tracking_lattice(1.0, run_photon=False, boundary_type=boundary)
         harness = PyAPITestHarness('statepoint.10.h5', model)
         harness.main()

@@ -46,6 +46,16 @@ def simple_model_and_mesh():
     return model, (c1, c2), mesh
 
 
+@pytest.fixture
+def source_stage_manager(simple_model_and_mesh):
+    model, (c1, c2), _ = simple_model_and_mesh
+    r2s = R2SManager(model, [c1, c2])
+    r2s.results['depletion_results'] = [None, None]
+    r2s.results['activation_materials'] = [c1.fill, c2.fill]
+    bounding_boxes = {c1.id: c1.bounding_box, c2.id: c2.bounding_box}
+    return r2s, bounding_boxes
+
+
 def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     model, (c1, c2), mesh = simple_model_and_mesh
 
@@ -59,7 +69,6 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     outdir = r2s.run(
         timesteps=[(1.0, 'd')],
         source_rates=[1.0],
-        photon_time_indices=[1],
         output_dir=tmp_path,
         chain_file=chain,
     )
@@ -73,6 +82,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     assert (act / 'depletion_results.h5').exists()
     pt = Path(outdir) / 'photon_transport'
     assert (pt / 'tally_ids.json').exists()
+    assert not (pt / 'time_0').exists()
     assert (pt / 'time_1' / 'statepoint.10.h5').exists()
 
     # Basic results structure checks
@@ -226,12 +236,89 @@ def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
     assert len(r2s_loaded.results['depletion_results']) == 2
 
 
-def test_step4_requires_photon_sources(simple_model_and_mesh):
+def test_step4_requires_photon_sources(simple_model_and_mesh, tmp_path):
     model, (c1, c2), _ = simple_model_and_mesh
     r2s = R2SManager(model, [c1, c2])
+    output_dir = tmp_path / 'photon'
 
     with pytest.raises(RuntimeError, match='step3_photon_source'):
-        r2s.step4_photon_transport()
+        r2s.step4_photon_transport(output_dir)
+
+    r2s.results['photon_sources'] = {}
+    with pytest.raises(RuntimeError, match='No decay photon sources'):
+        r2s.step4_photon_transport(output_dir)
+
+    assert not output_dir.exists()
+
+
+def test_default_photon_times_skip_empty_sources(
+    source_stage_manager, tmp_path, monkeypatch
+):
+    r2s, bounding_boxes = source_stage_manager
+    source = object()
+    sources_by_time = {0: [], 1: [source]}
+    monkeypatch.setattr(
+        r2s, '_create_photon_sources',
+        lambda time_index, work_items: sources_by_time[time_index])
+
+    r2s.step3_photon_source(
+        bounding_boxes=bounding_boxes, output_dir=tmp_path)
+
+    assert r2s.results['photon_sources'] == {1: [source]}
+
+
+def test_explicit_empty_photon_source_fails(
+    source_stage_manager, tmp_path, monkeypatch
+):
+    r2s, bounding_boxes = source_stage_manager
+    source = object()
+    sources_by_time = {0: [], 1: [source]}
+    monkeypatch.setattr(
+        r2s, '_create_photon_sources',
+        lambda time_index, work_items: sources_by_time[time_index])
+    r2s.results['photon_sources'] = {99: [source]}
+
+    with pytest.raises(RuntimeError, match='requested time indices: 0'):
+        r2s.step3_photon_source(
+            [0, 1], bounding_boxes, output_dir=tmp_path)
+
+    assert 'photon_sources' not in r2s.results
+
+
+def test_default_photon_times_require_a_source(
+    source_stage_manager, tmp_path, monkeypatch
+):
+    r2s, bounding_boxes = source_stage_manager
+    monkeypatch.setattr(
+        r2s, '_create_photon_sources',
+        lambda time_index, work_items: [])
+
+    with pytest.raises(RuntimeError, match='at any depletion time'):
+        r2s.step3_photon_source(
+            bounding_boxes=bounding_boxes, output_dir=tmp_path)
+
+    assert 'photon_sources' not in r2s.results
+
+
+@pytest.mark.parametrize(
+    ('time_indices', 'exception'),
+    [
+        ([], ValueError),
+        ([2], IndexError),
+        ([-3], IndexError),
+        ([1.0], TypeError),
+    ],
+)
+def test_photon_time_index_validation(
+    source_stage_manager, tmp_path, time_indices, exception
+):
+    r2s, bounding_boxes = source_stage_manager
+
+    with pytest.raises(exception):
+        r2s.step3_photon_source(
+            time_indices, bounding_boxes, output_dir=tmp_path)
+
+    assert 'photon_sources' not in r2s.results
 
 
 def test_r2s_nuclide_dose_breakdown(simple_model_and_mesh, tmp_path, monkeypatch):

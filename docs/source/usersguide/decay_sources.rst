@@ -132,8 +132,9 @@ can be run::
     r2s.run(timesteps, source_rates, bounding_boxes=bounding_boxes)
 
 If not specified otherwise, a photon transport calculation is run at each time
-in the depletion schedule. That means in the case above, we would see three
-photon transport calculations. To specify specific times at which photon
+in the depletion schedule for which a decay photon source exists. Times without
+a decay photon source, such as the initial state of a model containing only
+stable nuclides, are omitted. To specify particular times at which photon
 transport calculations should be run, pass the ``photon_time_indices`` argument.
 For example, if we wanted to run a photon transport calculation only on the last
 time (after the 5 hour decay), we would run::

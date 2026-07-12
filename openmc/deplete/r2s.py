@@ -4,6 +4,7 @@ from contextlib import nullcontext
 import copy
 from datetime import datetime
 import json
+from numbers import Integral
 from pathlib import Path
 
 import numpy as np
@@ -180,7 +181,7 @@ class R2SManager:
             timesteps. For example, if two timesteps are specified, the array of
             times would contain three entries, and [2] would indicate computing
             photon results at the last time. A value of None indicates to run
-            photon transport for each time.
+            photon transport at each time that has a decay photon source.
         output_dir : PathLike, optional
             Path to directory where R2S calculation outputs will be saved. If
             not provided, a timestamped directory 'r2s_YYYY-MM-DDTHH-MM-SS' is
@@ -471,7 +472,7 @@ class R2SManager:
             timesteps. For example, if two timesteps are specified, the array of
             times would contain three entries, and [2] would indicate computing
             photon results at the last time. A value of None indicates to run
-            photon transport for each time.
+            photon transport at each time that has a decay photon source.
         bounding_boxes : dict[int, openmc.BoundingBox], optional
             Dictionary mapping cell IDs to bounding boxes used for spatial
             source sampling in cell-based R2S calculations. Required if method
@@ -487,6 +488,10 @@ class R2SManager:
             determined automatically from the prepared decay photon sources.
         """
 
+        # Do not retain sources from an earlier successful call if this source
+        # preparation attempt fails.
+        self.results.pop('photon_sources', None)
+
         # TODO: Automatically determine bounding box for each cell
         if bounding_boxes is None and self.method == 'cell-based':
             raise ValueError("bounding_boxes must be provided for cell-based "
@@ -495,12 +500,30 @@ class R2SManager:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Get default time indices if not provided
+        # Determine and validate time indices before preparing source data.
+        n_steps = len(self.results['depletion_results'])
+        implicit_time_indices = time_indices is None
         if time_indices is None:
-            n_steps = len(self.results['depletion_results'])
             time_indices = list(range(n_steps))
         else:
             time_indices = list(time_indices)
+            if not time_indices:
+                raise ValueError('time_indices must contain at least one index')
+
+            normalized_indices = []
+            for index in time_indices:
+                if isinstance(index, bool) or not isinstance(index, Integral):
+                    raise TypeError('time_indices must contain only integers')
+                index = int(index)
+                if index < -n_steps or index >= n_steps:
+                    raise IndexError(
+                        f'Photon time index {index} is out of range for '
+                        f'{n_steps} depletion results')
+                normalized_index = index + n_steps if index < 0 else index
+                normalized_indices.append(normalized_index)
+
+            # Remove duplicates while preserving order
+            time_indices = list(dict.fromkeys(normalized_indices))
 
         # Check whether the photon model is different
         neutron_univ = self.neutron_model.geometry.root_universe
@@ -543,14 +566,33 @@ class R2SManager:
                         continue
                 work_items.append((cell, original_mat, bounding_boxes[cell.id]))
 
-        # Normalize negative time indices before creating source lists.
-        n_steps = len(self.results['depletion_results'])
-        time_indices = [i + n_steps if i < 0 else i for i in time_indices]
-
-        self.results['photon_sources'] = {
+        # Create decay photon sources for each time index
+        photon_sources = {
             time_index: self._create_photon_sources(time_index, work_items)
-            for time_index in dict.fromkeys(time_indices)
+            for time_index in time_indices
         }
+
+        # Determine if any times have no decay photon sources. If the user
+        # didn't specify any specific time indices, remove those times from the
+        # photon_sources dictionary. If the user did specify time indices, raise
+        # an error if any of those times have no decay photon sources.
+        empty_indices = [
+            time_index for time_index, sources in photon_sources.items()
+            if not sources
+        ]
+        if implicit_time_indices:
+            for time_index in empty_indices:
+                del photon_sources[time_index]
+            if not photon_sources:
+                raise RuntimeError(
+                    'No decay photon sources were found at any depletion time')
+        elif empty_indices:
+            indices = ', '.join(str(index) for index in empty_indices)
+            raise RuntimeError(
+                f'No decay photon source was found for requested time '
+                f'indices: {indices}')
+
+        self.results['photon_sources'] = photon_sources
         if nuclide_dose_breakdown:
             radionuclides = sorted({
                 nuclide
@@ -583,6 +625,10 @@ class R2SManager:
             raise RuntimeError(
                 'Photon sources must be created with step3_photon_source '
                 'before running photon transport.')
+        photon_sources = self.results['photon_sources']
+        if not photon_sources:
+            raise RuntimeError(
+                'No decay photon sources are available for transport')
 
         if run_kwargs is None:
             run_kwargs = {}
@@ -601,7 +647,7 @@ class R2SManager:
         # Ensure photon transport is enabled in settings.
         self.photon_model.settings.photon_transport = True
 
-        for time_index, sources in self.results['photon_sources'].items():
+        for time_index, sources in photon_sources.items():
             self.photon_model.settings.source = sources
 
             # Run photon transport calculation

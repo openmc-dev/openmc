@@ -3057,7 +3057,7 @@ class Model:
 
                 cell_ids = geom_data[:, :, 0]
 
-                overlap_mask = (cell_ids == _OVERLAP)
+                overlap_mask = (cell_ids <= _OVERLAP)
                 _, _, internal = Model._classify_undefined_regions(cell_ids)
 
                 overlap_pixels = np.argwhere(overlap_mask)

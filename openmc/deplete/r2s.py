@@ -734,32 +734,32 @@ class R2SManager:
         list of openmc.IndependentSource
             Photon sources for each activated region.
         """
-        mat_dict = (
-            self.neutron_model._get_all_materials()
-            if self.method == 'mesh-based' else None
-        )
         step_result = self.results['depletion_results'][time_index]
+        materials = self.results['activation_materials']
+        mesh_based = self.method == 'mesh-based'
+        if mesh_based:
+            mat_dict = self.neutron_model._get_all_materials()
+
         sources = []
         for item in work_items:
-            if self.method == 'mesh-based':
+            if mesh_based:
                 index_mat, domain_id, bbox = item
-                original_mat = self.results['activation_materials'][index_mat]
+                original_mat = materials[index_mat]
                 domain = mat_dict[domain_id]
             else:
-                domain, original_mat, bbox = item
+                cell, original_mat, bbox = item
+                domain = cell
 
             activated_mat = step_result.get_material(str(original_mat.id))
             nuclides = activated_mat.get_nuclide_atom_densities()
             if not nuclides:
                 continue
 
-            # Eliminate nuclides with zero density.
-            nuclides = {
-                nuclide: density for nuclide, density in nuclides.items()
-                if density > 0
-            }
-            energy = openmc.stats.DecaySpectrum(
-                nuclides, activated_mat.volume)
+            # Eliminate nuclides with zero density
+            nuclides = {nuclide: density for nuclide, density in nuclides.items()
+                        if density > 0}
+
+            energy = openmc.stats.DecaySpectrum(nuclides, activated_mat.volume)
             energy.clip(inplace=True)
             if not energy.nuclides:
                 continue

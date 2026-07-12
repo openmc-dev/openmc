@@ -22,7 +22,8 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value, PathLike
+from openmc.checkvalue import (check_type, check_value, check_greater_than,
+                               check_length, PathLike)
 from openmc.exceptions import InvalidIDError
 from openmc.plots import add_plot_params, _BASIS_INDICES, id_map_to_rgb
 from openmc.utility_funcs import change_directory
@@ -32,6 +33,15 @@ from openmc.utility_funcs import change_directory
 class ModelModifier(Protocol):
     def __call__(self, val: float, **kwargs: Any) -> None:
         ...
+
+
+def _check_pixels(pixels: int | Sequence[int]) -> None:
+    if isinstance(pixels, Integral):
+        check_greater_than('pixels', pixels, 0)
+    else:
+        check_length('pixels', pixels, 2)
+        for p in pixels:
+            check_greater_than('pixels', p, 0)
 
 
 class Model:
@@ -1051,6 +1061,8 @@ class Model:
         pixels: int | Sequence[int],
         basis: str
     ):
+        _check_pixels(pixels)
+
         x, y, _ = _BASIS_INDICES[basis]
 
         bb = self.bounding_box
@@ -1213,6 +1225,8 @@ class Model:
         """
         import openmc.lib
 
+        _check_pixels(pixels)
+
         if width is not None and (u_span is not None or v_span is not None):
             raise ValueError("width is mutually exclusive with u_span/v_span.")
 
@@ -1302,7 +1316,11 @@ class Model:
         import matplotlib.pyplot as plt
 
         check_type('n_samples', n_samples, int | None)
+        if n_samples is not None:
+            check_greater_than('n_samples', n_samples, 0, equality=True)
         check_type('plane_tolerance', plane_tolerance, Real)
+        check_greater_than('plane_tolerance', plane_tolerance, 0.0)
+
         if legend_kwargs is None:
             legend_kwargs = {}
         legend_kwargs.setdefault('bbox_to_anchor', (1.05, 1))
@@ -2773,12 +2791,15 @@ class Model:
                     self.settings.run_mode = original_run_mode
                     break
 
-            # Make sure all materials have a name, and that the name is a valid HDF5
-            # dataset name
+            # Temporarily replace each material's name with a unique, valid HDF5
+            # dataset name (its name plus ID) for use as its MGXS library entry
+            # and macroscopic. The ID keeps the name unique even when materials
+            # share a name; the original names are restored at the end.
+            original_names = [material.name for material in self.materials]
             for material in self.materials:
-                if not material.name or not material.name.strip():
-                    material.name = f"material {material.id}"
-                material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
+                base = material.name if material.name and material.name.strip() \
+                    else "material"
+                material.name = re.sub(r'[^a-zA-Z0-9]', '_', base) + f"_{material.id}"
 
             # If needed, generate the needed MGXS data library file
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
@@ -2809,6 +2830,10 @@ class Model:
                 material.add_macroscopic(material.name)
 
             self.settings.energy_mode = 'multi-group'
+
+            # Restore the user's original material names.
+            for material, name in zip(self.materials, original_names):
+                material.name = name
 
     def convert_to_random_ray(self):
         """Convert a multigroup model to use random ray.

@@ -338,13 +338,14 @@ void Particle::event_cross_surface()
       boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
 
+    int i_lattice = coord(boundary().coord_level() - 1).lattice();
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
 
     // Score cell to cell partial currents
     if (!model::active_surface_tallies.empty()) {
-      auto& lat {*model::lattices[lowest_coord().lattice()]};
+      auto& lat {*model::lattices[i_lattice]};
       bool is_valid;
       Direction normal =
         lat.get_normal(boundary().lattice_translation(), is_valid);
@@ -553,15 +554,30 @@ void Particle::event_death()
     finalize_particle_track(*this);
   }
 
-// Contribute tally reduction variables to global accumulator
+  // Contribute tally reduction variables to global accumulator
+  const auto k_absorption = keff_tally_absorption();
+  const auto k_collision = keff_tally_collision();
+  const auto k_tracklength = keff_tally_tracklength();
+  const auto leakage = keff_tally_leakage();
+
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (k_absorption != 0.0) {
 #pragma omp atomic
-  global_tally_absorption += keff_tally_absorption();
+      global_tally_absorption += k_absorption;
+    }
+    if (k_collision != 0.0) {
 #pragma omp atomic
-  global_tally_collision += keff_tally_collision();
+      global_tally_collision += k_collision;
+    }
+    if (k_tracklength != 0.0) {
 #pragma omp atomic
-  global_tally_tracklength += keff_tally_tracklength();
+      global_tally_tracklength += k_tracklength;
+    }
+  }
+  if (leakage != 0.0) {
 #pragma omp atomic
-  global_tally_leakage += keff_tally_leakage();
+    global_tally_leakage += leakage;
+  }
 
   // Reset particle tallies once accumulated
   keff_tally_absorption() = 0.0;

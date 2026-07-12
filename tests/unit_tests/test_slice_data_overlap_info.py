@@ -1,177 +1,89 @@
-"""Tests for GUI-facing slice data overlap diagnostics.
-
-These tests exercise the overlap data that the plotter can show in the GUI
-after a user clicks a plotted overlap pixel. The GUI itself does not need to be
-opened here; we test the Python/C API that supplies the GUI message.
-"""
-
-import numpy as np
 import pytest
-
+import numpy as np
 import openmc
+import openmc.lib
+
+# Sentinel value matching _OVERLAP in plotmodel.py and OVERLAP in plot.cpp
+_OVERLAP = -3
 
 
-@pytest.fixture
-def overlapping_slice_model():
-    """Model with one known overlapping region and one known clean region.
-
-    Cells 1 and 2 overlap in the left half of a sphere. Cell 3 occupies the
-    right half without overlap. All cells live in root universe 10.
-    """
+@pytest.fixture(scope='module')
+def overlap_model():
     openmc.reset_auto_ids()
 
-    material = openmc.Material(name="water")
-    material.add_nuclide("H1", 2.0)
-    material.add_nuclide("O16", 1.0)
-    material.set_density("g/cm3", 1.0)
+    # Three cylinders: cyl1 and cyl2 overlap near x=0, cyl2 and cyl3 overlap
+    # near x=4. This gives us two spatially distinct overlap regions in one model.
+    mat1 = openmc.Material(components={'H1': 1.0})
+    mat2 = openmc.Material(components={'H1': 1.0})
+    mat3 = openmc.Material(components={'H1': 1.0})
 
-    sphere = openmc.Sphere(r=1.0, boundary_type="vacuum")
-    x_plane = openmc.XPlane(x0=0.0)
+    # cyl1 and cyl2 overlap on the left, cyl2 and cyl3 overlap on the right
+    cyl1 = openmc.ZCylinder(x0=-2.0, r=2.5)
+    cyl2 = openmc.ZCylinder(x0=0.0, r=2.5)
+    cyl3 = openmc.ZCylinder(x0=2.0, r=2.5)
+    boundary = openmc.Sphere(r=20.0, boundary_type='vacuum')
+    cell1 = openmc.Cell(region=-cyl1, fill=mat1)
+    cell2 = openmc.Cell(region=-cyl2, fill=mat2)
+    cell3 = openmc.Cell(region=-cyl3, fill=mat3)
+    cell_outside = openmc.Cell(region=+cyl1 & +cyl2 & +cyl3 & -boundary)
+    geometry = openmc.Geometry([cell1, cell2, cell3, cell_outside])
 
-    overlap_region = -sphere & -x_plane
-    clean_region = -sphere & +x_plane
+    settings = openmc.Settings()
+    settings.run_mode = 'fixed source'
+    settings.particles = 100
+    settings.batches = 1
+    model = openmc.Model(geometry=geometry, settings=settings)
 
-    cell_1 = openmc.Cell(cell_id=1, region=overlap_region, fill=material)
-    cell_2 = openmc.Cell(cell_id=2, region=overlap_region, fill=material)
-    cell_3 = openmc.Cell(cell_id=3, region=clean_region, fill=material)
-    root = openmc.Universe(universe_id=10, cells=[cell_1, cell_2, cell_3])
-
-    model = openmc.Model()
-    model.geometry = openmc.Geometry(root)
-    model.materials = openmc.Materials([material])
-    return model
-
-
-@pytest.fixture
-def triple_overlapping_slice_model():
-    """Model with three cells overlapping in one region.
-
-    Cells 1, 2, and 3 all occupy the left half of the sphere. Cell 4 occupies
-    the right half without overlap. All cells live in root universe 10.
-    """
-    openmc.reset_auto_ids()
-
-    material = openmc.Material(name="water")
-    material.add_nuclide("H1", 2.0)
-    material.add_nuclide("O16", 1.0)
-    material.set_density("g/cm3", 1.0)
-
-    sphere = openmc.Sphere(r=1.0, boundary_type="vacuum")
-    x_plane = openmc.XPlane(x0=0.0)
-
-    overlap_region = -sphere & -x_plane
-    clean_region = -sphere & +x_plane
-
-    cell_1 = openmc.Cell(cell_id=1, region=overlap_region, fill=material)
-    cell_2 = openmc.Cell(cell_id=2, region=overlap_region, fill=material)
-    cell_3 = openmc.Cell(cell_id=3, region=overlap_region, fill=material)
-    cell_4 = openmc.Cell(cell_id=4, region=clean_region, fill=material)
-    root = openmc.Universe(universe_id=10, cells=[cell_1, cell_2, cell_3, cell_4])
-
-    model = openmc.Model()
-    model.geometry = openmc.Geometry(root)
-    model.materials = openmc.Materials([material])
-    return model
+    with openmc.lib.TemporarySession(model, args=['-s', '1']):
+        yield
 
 
-def _run_overlap_slice(model):
-    """Run a small slice plot and return the geometry data while initialized."""
-    import openmc.lib
-
+def run_slice(origin=(0.0, 0.0, 0.0), width=(10.0, 6.0), show_overlaps=True):
+    # Helper that runs a slice over a region covering both overlap zones
     geom_data, _ = openmc.lib.slice_data(
-        origin=(0.0, 0.0, 0.0),
-        width=(2.0, 2.0),
-        pixels=(20, 20),
-        basis="xy",
-        show_overlaps=True,
+        origin=origin,
+        width=width,
+        basis='xy',
+        pixels=(100, 60),
+        show_overlaps=show_overlaps,
         include_properties=False,
     )
     return geom_data
 
 
-def _first_pixel_with_cell_id(geom_data, cell_id):
-    """Return the first (x, y) pixel whose plotted cell field equals cell_id."""
-    matches = np.argwhere(geom_data[:, :, 0] == cell_id)
-    assert matches.size > 0, f"No pixel found for cell ID {cell_id}"
-    y, x = matches[0]
-    return int(x), int(y)
+def test_overlaps_enabled(overlap_model):
+    # Run a single slice with overlap detection enabled and check all
+    # expected properties in one pass.
+    geom_data = run_slice()
+    overlap_info = openmc.lib.slice_data_overlap_info()
+    n = overlap_info.shape[0]
+    cell_ids = geom_data[:, :, 0]
+
+    # cell_ids should contain values more negative than _OVERLAP; RasterData
+    # encodes each unique overlap as OVERLAP - overlap_idx - 1 into slot 2.
+    assert np.any(cell_ids < _OVERLAP)
+
+    # overlap_keys should have 2 entries for the two distinct overlapping
+    # cylinder pairs in this model.
+    assert n == 2, f"Expected exactly 2 overlap entries, got {n}"
+
+    # Each entry is a (universe_id, cell1_id, cell2_id) triple; verify values.
+    for i in range(n):
+        universe_id = int(overlap_info[i, 0])
+        cell1_id = int(overlap_info[i, 1])
+        cell2_id = int(overlap_info[i, 2])
+        assert universe_id == 1
+        assert cell1_id in {1, 2, 3}
+        assert cell2_id in {1, 2, 3}
+        assert cell1_id != cell2_id
 
 
-def _first_overlap_pixel(geom_data):
-    """Return the first (x, y) pixel marked as an overlap."""
-    matches = np.argwhere(geom_data[:, :, 0] == -3)
-    assert matches.size > 0, "No overlap pixel was found"
-    y, x = matches[0]
-    return int(x), int(y)
+def test_overlaps_disabled(overlap_model):
+    # With show_overlaps=False, set_overlap is never called and overlap_keys
+    # is never written to, so the image and map should both be clean.
+    geom_data = run_slice(show_overlaps=False)
+    overlap_info = openmc.lib.slice_data_overlap_info()
+    n = overlap_info.shape[0]
 
-
-def _overlap_records(x, y):
-    """Return overlap data for one pixel as (cell1, cell2, universe) tuples."""
-    import openmc.lib
-
-    cell1, cell2, universe = openmc.lib.slice_data_overlap_info(x, y)
-    return list(zip(cell1.tolist(), cell2.tolist(), universe.tolist()))
-
-
-def test_slice_data_overlap_info_reports_cells_and_universe(
-    run_in_tmpdir, overlapping_slice_model
-):
-    """An overlap pixel should report the exact cells and universe to the GUI."""
-    import openmc.lib
-
-    with openmc.lib.TemporarySession(
-        overlapping_slice_model, output=False, args=["-c"]
-    ):
-        geom_data = _run_overlap_slice(overlapping_slice_model)
-        x, y = _first_overlap_pixel(geom_data)
-
-        assert openmc.lib.slice_data_overlap_count(x, y) == 1
-
-        cell1, cell2, universe = openmc.lib.slice_data_overlap_info(x, y)
-
-        assert cell1.tolist() == [1]
-        assert cell2.tolist() == [2]
-        assert universe.tolist() == [10]
-
-
-def test_slice_data_overlap_info_reports_triple_overlap_pairs(
-    run_in_tmpdir, triple_overlapping_slice_model
-):
-    """A triple-overlap pixel should report both overlapping cell pairs."""
-    import openmc.lib
-
-    with openmc.lib.TemporarySession(
-        triple_overlapping_slice_model, output=False, args=["-c"]
-    ):
-        geom_data = _run_overlap_slice(triple_overlapping_slice_model)
-        x, y = _first_overlap_pixel(geom_data)
-
-        assert openmc.lib.slice_data_overlap_count(x, y) == 2
-
-        records = _overlap_records(x, y)
-
-        assert records == [
-            (1, 2, 10),
-            (1, 3, 10),
-        ]
-
-
-def test_slice_plot_overlap_data_is_empty_for_non_overlap_pixel(
-    run_in_tmpdir, overlapping_slice_model
-):
-    """A normal plotted pixel should not produce GUI overlap details."""
-    import openmc.lib
-
-    with openmc.lib.TemporarySession(
-        overlapping_slice_model, output=False, args=["-c"]
-    ):
-        geom_data = _run_overlap_slice(overlapping_slice_model)
-        x, y = _first_pixel_with_cell_id(geom_data, 3)
-
-        assert openmc.lib.slice_data_overlap_count(x, y) == 0
-
-        cell1, cell2, universe = openmc.lib.slice_data_overlap_info(x, y)
-
-        assert cell1.size == 0
-        assert cell2.size == 0
-        assert universe.size == 0
+    assert not np.any(geom_data[:, :, 2] < _OVERLAP)
+    assert n == 0

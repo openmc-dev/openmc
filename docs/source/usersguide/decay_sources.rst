@@ -141,6 +141,19 @@ time (after the 5 hour decay), we would run::
     r2s.run(timesteps, source_rates, bounding_boxes=bounding_boxes,
             photon_time_indices=[2])
 
+To obtain a dose-rate breakdown by radionuclide, set
+``nuclide_dose_breakdown=True``. This automatically adds a
+:class:`openmc.ParentNuclideFilter` to every photon tally that does not already
+have one. The filter bins are the union of radionuclides contributing to the
+prepared decay photon sources. The resulting bins can be used directly when
+inspecting the tally results::
+
+    r2s.run(timesteps, source_rates, bounding_boxes=bounding_boxes,
+            photon_time_indices=[2], nuclide_dose_breakdown=True)
+
+    dose_tally = r2s.results['photon_tallies'][2][0]
+    dose_by_nuclide = dose_tally.get_pandas_dataframe()
+
 After an R2S calculation has been run, the :class:`~openmc.deplete.R2SManager`
 instance will have a ``results`` dictionary that allows you to directly access
 results from each of the steps. It will also write out all the output files into

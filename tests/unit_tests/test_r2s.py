@@ -169,6 +169,9 @@ def test_r2s_multi_mesh(simple_model_and_mesh, tmp_path):
 
 def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
     model, (c1, c2), _ = simple_model_and_mesh
+    tally = openmc.Tally()
+    tally.scores = ['flux']
+    model.tallies = [tally]
 
     # Use cell-based domains
     r2s = R2SManager(model, [c1, c2])
@@ -202,6 +205,8 @@ def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
     assert len(r2s.results['micros']) == 2
     assert len(r2s.results['activation_materials']) == 2
     assert len(r2s.results['depletion_results']) == 2
+    assert not r2s.photon_model.tallies[0].contains_filter(
+        openmc.ParentNuclideFilter)
 
     # Check activation materials
     amats = r2s.results['activation_materials']
@@ -227,3 +232,62 @@ def test_step4_requires_photon_sources(simple_model_and_mesh):
 
     with pytest.raises(RuntimeError, match='step3_photon_source'):
         r2s.step4_photon_transport()
+
+
+def test_r2s_nuclide_dose_breakdown(simple_model_and_mesh, tmp_path, monkeypatch):
+    model, (c1, c2), _ = simple_model_and_mesh
+    tally = openmc.Tally()
+    tally.scores = ['flux']
+    model.tallies = [tally]
+    r2s = R2SManager(model, [c1, c2])
+    chain = Chain.from_xml(Path(__file__).parents[1] / 'chain_ni.xml')
+    source_counts = {}
+    create_sources = r2s._create_photon_sources
+
+    def count_source_creation(time_index, work_items):
+        source_counts[time_index] = source_counts.get(time_index, 0) + 1
+        return create_sources(time_index, work_items)
+
+    monkeypatch.setattr(r2s, '_create_photon_sources', count_source_creation)
+
+    r2s.run(
+        timesteps=[(1.0, 'd'), (1.0, 'd')],
+        source_rates=[1.0, 0.0],
+        photon_time_indices=[1, 2],
+        nuclide_dose_breakdown=True,
+        output_dir=tmp_path,
+        bounding_boxes={c1.id: c1.bounding_box, c2.id: c2.bounding_box},
+        chain_file=chain,
+    )
+
+    filters = [
+        filter for filter in r2s.photon_model.tallies[0].filters
+        if isinstance(filter, openmc.ParentNuclideFilter)
+    ]
+    assert len(filters) == 1
+    assert list(filters[0].bins) == sorted(filters[0].bins)
+    assert filters[0].bins.size > 0
+    assert source_counts == {1: 1, 2: 1}
+
+    for time_index in (1, 2):
+        result_tally = r2s.results['photon_tallies'][time_index][0]
+        result_filter = next(
+            filter for filter in result_tally.filters
+            if isinstance(filter, openmc.ParentNuclideFilter)
+        )
+        assert list(result_filter.bins) == list(filters[0].bins)
+
+
+def test_r2s_preserves_parent_nuclide_filters(simple_model_and_mesh):
+    model, (c1, c2), _ = simple_model_and_mesh
+    tally = openmc.Tally()
+    tally.filters = [openmc.ParentNuclideFilter(['Co60'])]
+    unfiltered_tally = openmc.Tally()
+    model.tallies = [tally, unfiltered_tally]
+    r2s = R2SManager(model, [c1, c2])
+
+    r2s._add_parent_nuclide_filters(['Co60', 'Ni65'])
+
+    assert len(r2s.photon_model.tallies[0].filters) == 1
+    assert list(r2s.photon_model.tallies[0].filters[0].bins) == ['Co60']
+    assert list(r2s.photon_model.tallies[1].filters[0].bins) == ['Co60', 'Ni65']

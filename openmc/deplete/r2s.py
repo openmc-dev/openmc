@@ -156,6 +156,7 @@ class R2SManager:
         mat_vol_kwargs: dict | None = None,
         run_kwargs: dict | None = None,
         operator_kwargs: dict | None = None,
+        nuclide_dose_breakdown: bool = False,
     ):
         """Run the R2S calculation.
 
@@ -207,6 +208,10 @@ class R2SManager:
         operator_kwargs : dict, optional
             Additional keyword arguments passed to
             :class:`openmc.deplete.IndependentOperator`.
+        nuclide_dose_breakdown : bool, optional
+            Whether to add a :class:`~openmc.ParentNuclideFilter` to photon
+            tallies that do not already contain one. The filter bins are
+            determined automatically from the prepared decay photon sources.
 
         Returns
         -------
@@ -258,7 +263,8 @@ class R2SManager:
             )
             self.step3_photon_source(
                 photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
-                mat_vol_kwargs=mat_vol_kwargs
+                mat_vol_kwargs=mat_vol_kwargs,
+                nuclide_dose_breakdown=nuclide_dose_breakdown,
             )
             self.step4_photon_transport(
                 output_dir / 'photon_transport', run_kwargs=run_kwargs
@@ -447,6 +453,7 @@ class R2SManager:
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         output_dir: PathLike = 'photon_transport',
         mat_vol_kwargs: dict | None = None,
+        nuclide_dose_breakdown: bool = False,
     ):
         """Create decay photon sources.
 
@@ -474,6 +481,10 @@ class R2SManager:
         mat_vol_kwargs : dict, optional
             Additional keyword arguments passed to
             :meth:`openmc.MeshBase.material_volumes`.
+        nuclide_dose_breakdown : bool, optional
+            Whether to add a :class:`~openmc.ParentNuclideFilter` to photon
+            tallies that do not already contain one. The filter bins are
+            determined automatically from the prepared decay photon sources.
         """
 
         # TODO: Automatically determine bounding box for each cell
@@ -540,6 +551,14 @@ class R2SManager:
             time_index: self._create_photon_sources(time_index, work_items)
             for time_index in dict.fromkeys(time_indices)
         }
+        if nuclide_dose_breakdown:
+            radionuclides = sorted({
+                nuclide
+                for sources in self.results['photon_sources'].values()
+                for source in sources
+                for nuclide in source.energy.nuclides
+            })
+            self._add_parent_nuclide_filters(radionuclides)
 
     def step4_photon_transport(
         self,
@@ -639,6 +658,16 @@ class R2SManager:
                     index_mat += 1
 
         return work_items
+
+    def _add_parent_nuclide_filters(self, radionuclides):
+        """Add parent nuclide filters to photon tallies when needed."""
+        if not radionuclides:
+            return
+
+        parent_filter = openmc.ParentNuclideFilter(radionuclides)
+        for tally in self.photon_model.tallies:
+            if not tally.contains_filter(openmc.ParentNuclideFilter):
+                tally.filters.append(parent_filter)
 
     def _create_photon_sources(self, time_index, work_items):
         """Create decay photon sources for a set of regions.

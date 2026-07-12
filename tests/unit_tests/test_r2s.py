@@ -363,18 +363,3 @@ def test_r2s_by_parent_nuclide(simple_model_and_mesh, tmp_path, monkeypatch):
             if isinstance(filter, openmc.ParentNuclideFilter)
         )
         assert list(result_filter.bins) == list(filters[0].bins)
-
-
-def test_r2s_preserves_parent_nuclide_filters(simple_model_and_mesh):
-    model, (c1, c2), _ = simple_model_and_mesh
-    tally = openmc.Tally()
-    tally.filters = [openmc.ParentNuclideFilter(['Co60'])]
-    unfiltered_tally = openmc.Tally()
-    model.tallies = [tally, unfiltered_tally]
-    r2s = R2SManager(model, [c1, c2])
-
-    r2s._add_parent_nuclide_filters(['Co60', 'Ni65'])
-
-    assert len(r2s.photon_model.tallies[0].filters) == 1
-    assert list(r2s.photon_model.tallies[0].filters[0].bins) == ['Co60']
-    assert list(r2s.photon_model.tallies[1].filters[0].bins) == ['Co60', 'Ni65']

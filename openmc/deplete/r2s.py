@@ -266,10 +266,10 @@ class R2SManager:
             self.step3_photon_source(
                 photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
                 mat_vol_kwargs=mat_vol_kwargs,
-                by_parent_nuclide=by_parent_nuclide,
             )
             self.step4_photon_transport(
-                output_dir / 'photon_transport', run_kwargs=run_kwargs
+                output_dir / 'photon_transport', run_kwargs=run_kwargs,
+                by_parent_nuclide=by_parent_nuclide,
             )
 
         return output_dir
@@ -455,7 +455,6 @@ class R2SManager:
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         output_dir: PathLike = 'photon_transport',
         mat_vol_kwargs: dict | None = None,
-        by_parent_nuclide: bool = False,
     ):
         """Create decay photon sources.
 
@@ -483,11 +482,6 @@ class R2SManager:
         mat_vol_kwargs : dict, optional
             Additional keyword arguments passed to
             :meth:`openmc.MeshBase.material_volumes`.
-        by_parent_nuclide : bool, optional
-            Whether to score photon tallies separately for each parent
-            radionuclide. A :class:`~openmc.ParentNuclideFilter` is added to
-            tallies that do not already contain one, with bins determined from
-            the prepared decay photon sources.
         """
 
         # Do not retain sources from an earlier successful call if this source
@@ -595,19 +589,12 @@ class R2SManager:
                 f'indices: {indices}')
 
         self.results['photon_sources'] = photon_sources
-        if by_parent_nuclide:
-            radionuclides = sorted({
-                nuclide
-                for sources in self.results['photon_sources'].values()
-                for source in sources
-                for nuclide in source.energy.nuclides
-            })
-            self._add_parent_nuclide_filters(radionuclides)
 
     def step4_photon_transport(
         self,
         output_dir: PathLike = 'photon_transport',
         run_kwargs: dict | None = None,
+        by_parent_nuclide: bool = False,
     ):
         """Run photon transport using prepared decay photon sources.
 
@@ -622,6 +609,11 @@ class R2SManager:
         run_kwargs : dict, optional
             Additional keyword arguments passed to :meth:`openmc.Model.run`.
             By default, output is disabled.
+        by_parent_nuclide : bool, optional
+            Whether to score photon tallies separately for each parent
+            radionuclide. A :class:`~openmc.ParentNuclideFilter` is added to
+            tallies that do not already contain one, with bins determined from
+            the prepared decay photon sources.
         """
         if 'photon_sources' not in self.results:
             raise RuntimeError(
@@ -631,6 +623,20 @@ class R2SManager:
         if not photon_sources:
             raise RuntimeError(
                 'No decay photon sources are available for transport')
+
+        if by_parent_nuclide:
+            radionuclides = sorted({
+                nuclide
+                for sources in photon_sources.values()
+                for source in sources
+                for nuclide in source.energy.nuclides
+            })
+
+            if radionuclides:
+                parent_filter = openmc.ParentNuclideFilter(radionuclides)
+                for tally in self.photon_model.tallies:
+                    if not tally.contains_filter(openmc.ParentNuclideFilter):
+                        tally.filters.append(parent_filter)
 
         if run_kwargs is None:
             run_kwargs = {}
@@ -706,16 +712,6 @@ class R2SManager:
                     index_mat += 1
 
         return work_items
-
-    def _add_parent_nuclide_filters(self, radionuclides):
-        """Add parent nuclide filters to photon tallies when needed."""
-        if not radionuclides:
-            return
-
-        parent_filter = openmc.ParentNuclideFilter(radionuclides)
-        for tally in self.photon_model.tallies:
-            if not tally.contains_filter(openmc.ParentNuclideFilter):
-                tally.filters.append(parent_filter)
 
     def _create_photon_sources(self, time_index, work_items):
         """Create decay photon sources for a set of regions.

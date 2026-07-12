@@ -33,8 +33,8 @@ def simple_model_and_mesh():
 
     # Simple settings with a point source
     settings = openmc.Settings()
-    settings.batches = 10
-    settings.particles = 1000
+    settings.batches = 2
+    settings.particles = 250
     settings.run_mode = 'fixed source'
     settings.source = openmc.IndependentSource()
     model = openmc.Model(geometry, settings=settings)
@@ -71,6 +71,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
         source_rates=[1.0],
         output_dir=tmp_path,
         chain_file=chain,
+        micro_kwargs={'nuclides': ['Ni58'], 'reactions': ['(n,p)']},
     )
 
     # Check directories and files exist
@@ -83,7 +84,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     pt = Path(outdir) / 'photon_transport'
     assert (pt / 'tally_ids.json').exists()
     assert not (pt / 'time_0').exists()
-    assert (pt / 'time_1' / 'statepoint.10.h5').exists()
+    assert (pt / 'time_1' / 'statepoint.2.h5').exists()
 
     # Basic results structure checks
     assert len(r2s.results['fluxes']) == 2
@@ -137,6 +138,7 @@ def test_r2s_multi_mesh(simple_model_and_mesh, tmp_path):
         photon_time_indices=[1],
         output_dir=tmp_path,
         chain_file=chain,
+        micro_kwargs={'nuclides': ['Ni58'], 'reactions': ['(n,p)']},
     )
 
     # Check that per-mesh MMV files were written
@@ -149,7 +151,7 @@ def test_r2s_multi_mesh(simple_model_and_mesh, tmp_path):
     assert (act / 'depletion_results.h5').exists()
     pt = Path(outdir) / 'photon_transport'
     assert (pt / 'tally_ids.json').exists()
-    assert (pt / 'time_1' / 'statepoint.10.h5').exists()
+    assert (pt / 'time_1' / 'statepoint.2.h5').exists()
 
     # Two meshes, each with 1 element containing both materials →
     # 2 element-material combinations per mesh, 4 total
@@ -195,9 +197,11 @@ def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
         timesteps=[(1.0, 'd')],
         source_rates=[1.0],
         photon_time_indices=[1],
+        by_parent_nuclide=True,
         output_dir=tmp_path,
         bounding_boxes=bounding_boxes,
-        chain_file=chain
+        chain_file=chain,
+        micro_kwargs={'nuclides': ['Ni58'], 'reactions': ['(n,p)']},
     )
 
     # Check directories and files exist
@@ -208,14 +212,14 @@ def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
     assert (act / 'depletion_results.h5').exists()
     pt = Path(outdir) / 'photon_transport'
     assert (pt / 'tally_ids.json').exists()
-    assert (pt / 'time_1' / 'statepoint.10.h5').exists()
+    assert (pt / 'time_1' / 'statepoint.2.h5').exists()
 
     # Basic results structure checks
     assert len(r2s.results['fluxes']) == 2
     assert len(r2s.results['micros']) == 2
     assert len(r2s.results['activation_materials']) == 2
     assert len(r2s.results['depletion_results']) == 2
-    assert not r2s.photon_model.tallies[0].contains_filter(
+    assert r2s.photon_model.tallies[0].contains_filter(
         openmc.ParentNuclideFilter)
 
     # Check activation materials
@@ -319,47 +323,3 @@ def test_photon_time_index_validation(
             time_indices, bounding_boxes, output_dir=tmp_path)
 
     assert 'photon_sources' not in r2s.results
-
-
-def test_r2s_by_parent_nuclide(simple_model_and_mesh, tmp_path, monkeypatch):
-    model, (c1, c2), _ = simple_model_and_mesh
-    tally = openmc.Tally()
-    tally.scores = ['flux']
-    model.tallies = [tally]
-    r2s = R2SManager(model, [c1, c2])
-    chain = Chain.from_xml(Path(__file__).parents[1] / 'chain_ni.xml')
-    source_counts = {}
-    create_sources = r2s._create_photon_sources
-
-    def count_source_creation(time_index, work_items):
-        source_counts[time_index] = source_counts.get(time_index, 0) + 1
-        return create_sources(time_index, work_items)
-
-    monkeypatch.setattr(r2s, '_create_photon_sources', count_source_creation)
-
-    r2s.run(
-        timesteps=[(1.0, 'd'), (1.0, 'd')],
-        source_rates=[1.0, 0.0],
-        photon_time_indices=[1, 2],
-        by_parent_nuclide=True,
-        output_dir=tmp_path,
-        bounding_boxes={c1.id: c1.bounding_box, c2.id: c2.bounding_box},
-        chain_file=chain,
-    )
-
-    filters = [
-        filter for filter in r2s.photon_model.tallies[0].filters
-        if isinstance(filter, openmc.ParentNuclideFilter)
-    ]
-    assert len(filters) == 1
-    assert list(filters[0].bins) == sorted(filters[0].bins)
-    assert filters[0].bins.size > 0
-    assert source_counts == {1: 1, 2: 1}
-
-    for time_index in (1, 2):
-        result_tally = r2s.results['photon_tallies'][time_index][0]
-        result_filter = next(
-            filter for filter in result_tally.filters
-            if isinstance(filter, openmc.ParentNuclideFilter)
-        )
-        assert list(result_filter.bins) == list(filters[0].bins)

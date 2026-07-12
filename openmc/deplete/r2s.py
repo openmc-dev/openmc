@@ -256,9 +256,12 @@ class R2SManager:
                 timesteps, source_rates, timestep_units,
                 output_dir / 'activation', operator_kwargs=operator_kwargs
             )
-            self.step3_photon_transport(
+            self.step3_photon_source(
                 photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
-                mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs
+                mat_vol_kwargs=mat_vol_kwargs
+            )
+            self.step4_photon_transport(
+                output_dir / 'photon_transport', run_kwargs=run_kwargs
             )
 
         return output_dir
@@ -438,23 +441,20 @@ class R2SManager:
         # Get depletion results
         self.results['depletion_results'] = Results(output_path)
 
-    def step3_photon_transport(
+    def step3_photon_source(
         self,
         time_indices: Sequence[int] | None = None,
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         output_dir: PathLike = 'photon_transport',
         mat_vol_kwargs: dict | None = None,
-        run_kwargs: dict | None = None,
     ):
-        """Run the photon transport step.
+        """Create decay photon sources.
 
-        This step performs photon transport calculations using decay photon
-        sources created from the activated materials. For each specified time,
-        it creates appropriate photon sources and runs a transport calculation.
-        In mesh-based mode, the sources are created using the mesh material
-        volumes, while in cell-based mode, they are created using bounding boxes
-        for each cell.  This step will populate the 'photon_tallies' key in the
-        results dictionary.
+        This step creates decay photon sources from the activated materials for
+        each specified time. In mesh-based mode, the sources are created using
+        mesh material volumes, while in cell-based mode, they are created using
+        bounding boxes for each cell. This step will populate the
+        'photon_sources' key in the results dictionary.
 
         Parameters
         ----------
@@ -470,13 +470,10 @@ class R2SManager:
             source sampling in cell-based R2S calculations. Required if method
             is 'cell-based'.
         output_dir : PathLike, optional
-            Path to directory where photon transport outputs will be saved.
+            Path to directory where photon source outputs will be saved.
         mat_vol_kwargs : dict, optional
             Additional keyword arguments passed to
             :meth:`openmc.MeshBase.material_volumes`.
-        run_kwargs : dict, optional
-            Additional keyword arguments passed to :meth:`openmc.Model.run`
-            during the photon transport step. By default, output is disabled.
         """
 
         # TODO: Automatically determine bounding box for each cell
@@ -484,13 +481,6 @@ class R2SManager:
             raise ValueError("bounding_boxes must be provided for cell-based "
                              "R2S calculations.")
 
-        # Set default run arguments if not provided
-        if run_kwargs is None:
-            run_kwargs = {}
-        run_kwargs.setdefault('output', False)
-
-        # Write out JSON file with tally IDs that can be used for loading
-        # results
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -498,6 +488,8 @@ class R2SManager:
         if time_indices is None:
             n_steps = len(self.results['depletion_results'])
             time_indices = list(range(n_steps))
+        else:
+            time_indices = list(time_indices)
 
         # Check whether the photon model is different
         neutron_univ = self.neutron_model.geometry.root_universe
@@ -523,13 +515,6 @@ class R2SManager:
 
             self.results['mesh_material_volumes_photon'] = photon_mmv_list
 
-        if comm.rank == 0:
-            tally_ids = [tally.id for tally in self.photon_model.tallies]
-            with open(output_dir / 'tally_ids.json', 'w') as f:
-                json.dump(tally_ids, f)
-
-        self.results['photon_tallies'] = {}
-
         # Get dictionary of cells in the photon model
         if different_photon_model:
             photon_cells = self.photon_model.geometry.get_all_cells()
@@ -547,16 +532,57 @@ class R2SManager:
                         continue
                 work_items.append((cell, original_mat, bounding_boxes[cell.id]))
 
-        # Ensure photon transport is enabled in settings
+        # Normalize negative time indices before creating source lists.
+        n_steps = len(self.results['depletion_results'])
+        time_indices = [i + n_steps if i < 0 else i for i in time_indices]
+
+        self.results['photon_sources'] = {
+            time_index: self._create_photon_sources(time_index, work_items)
+            for time_index in dict.fromkeys(time_indices)
+        }
+
+    def step4_photon_transport(
+        self,
+        output_dir: PathLike = 'photon_transport',
+        run_kwargs: dict | None = None,
+    ):
+        """Run photon transport using prepared decay photon sources.
+
+        This step runs a photon transport calculation for each source list
+        created by :meth:`step3_photon_source`. It will populate the
+        'photon_tallies' key in the results dictionary.
+
+        Parameters
+        ----------
+        output_dir : PathLike, optional
+            Path to directory where photon transport outputs will be saved.
+        run_kwargs : dict, optional
+            Additional keyword arguments passed to :meth:`openmc.Model.run`.
+            By default, output is disabled.
+        """
+        if 'photon_sources' not in self.results:
+            raise RuntimeError(
+                'Photon sources must be created with step3_photon_source '
+                'before running photon transport.')
+
+        if run_kwargs is None:
+            run_kwargs = {}
+        run_kwargs.setdefault('output', False)
+
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        if comm.rank == 0:
+            tally_ids = [tally.id for tally in self.photon_model.tallies]
+            with open(output_dir / 'tally_ids.json', 'w') as f:
+                json.dump(tally_ids, f)
+
+        self.results['photon_tallies'] = {}
+
+        # Ensure photon transport is enabled in settings.
         self.photon_model.settings.photon_transport = True
 
-        for time_index in time_indices:
-            # Convert time_index (which may be negative) to a normal index
-            if time_index < 0:
-                time_index += len(self.results['depletion_results'])
-
-            # Build decay photon sources and assign to the photon model
-            sources = self._create_photon_sources(time_index, work_items)
+        for time_index, sources in self.results['photon_sources'].items():
             self.photon_model.settings.source = sources
 
             # Run photon transport calculation
@@ -635,44 +661,47 @@ class R2SManager:
         list of openmc.IndependentSource
             Photon sources for each activated region.
         """
-        step_result = self.results['depletion_results'][time_index]
-        materials = self.results['activation_materials']
-        mesh_based = self.method == 'mesh-based'
-        if mesh_based:
-            mat_dict = self.neutron_model._get_all_materials()
-
+        mat_dict = (
+            self.neutron_model._get_all_materials()
+            if self.method == 'mesh-based' else None
+        )
         sources = []
         for item in work_items:
-            if mesh_based:
-                index_mat, domain_id, bbox = item
-                original_mat = materials[index_mat]
-                domain = mat_dict[domain_id]
-            else:
-                cell, original_mat, bbox = item
-                domain = cell
-
-            activated_mat = step_result.get_material(str(original_mat.id))
-            nuclides = activated_mat.get_nuclide_atom_densities()
-            if not nuclides:
-                continue
-
-            # Eliminate nuclides with zero density
-            nuclides = {nuclide: density for nuclide, density in nuclides.items()
-                        if density > 0}
-
-            energy = openmc.stats.DecaySpectrum(nuclides, activated_mat.volume)
-            energy.clip(inplace=True)
-            if not energy.nuclides:
-                continue
-
-            sources.append(openmc.IndependentSource(
-                space=openmc.stats.Box(bbox.lower_left, bbox.upper_right),
-                energy=energy,
-                particle='photon',
-                constraints={'domains': [domain]},
-            ))
+            source = self._create_photon_source(time_index, item, mat_dict)
+            if source is not None:
+                sources.append(source)
 
         return sources
+
+    def _create_photon_source(self, time_index, item, mat_dict=None):
+        """Create a decay photon source for one activation region."""
+        step_result = self.results['depletion_results'][time_index]
+        if self.method == 'mesh-based':
+            index_mat, domain_id, bbox = item
+            original_mat = self.results['activation_materials'][index_mat]
+            domain = mat_dict[domain_id]
+        else:
+            domain, original_mat, bbox = item
+
+        activated_mat = step_result.get_material(str(original_mat.id))
+        nuclides = activated_mat.get_nuclide_atom_densities()
+        if not nuclides:
+            return None
+
+        # Eliminate nuclides with zero density.
+        nuclides = {nuclide: density for nuclide, density in nuclides.items()
+                    if density > 0}
+        energy = openmc.stats.DecaySpectrum(nuclides, activated_mat.volume)
+        energy.clip(inplace=True)
+        if not energy.nuclides:
+            return None
+
+        return openmc.IndependentSource(
+            space=openmc.stats.Box(bbox.lower_left, bbox.upper_right),
+            energy=energy,
+            particle='photon',
+            constraints={'domains': [domain]},
+        )
 
     def load_results(self, path: PathLike):
         """Load results from a previous R2S calculation.

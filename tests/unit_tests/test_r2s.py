@@ -82,6 +82,8 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     assert len(r2s.results['mesh_material_volumes'][0]) == 2
     assert len(r2s.results['activation_materials']) == 2
     assert len(r2s.results['depletion_results']) == 2
+    assert list(r2s.results['photon_sources']) == [1]
+    assert r2s.results['photon_sources'][1]
 
     # Check activation materials
     amats = r2s.results['activation_materials']
@@ -217,3 +219,11 @@ def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
     assert len(r2s_loaded.results['micros']) == 2
     assert len(r2s_loaded.results['activation_materials']) == 2
     assert len(r2s_loaded.results['depletion_results']) == 2
+
+
+def test_step4_requires_photon_sources(simple_model_and_mesh):
+    model, (c1, c2), _ = simple_model_and_mesh
+    r2s = R2SManager(model, [c1, c2])
+
+    with pytest.raises(RuntimeError, match='step3_photon_source'):
+        r2s.step4_photon_transport()

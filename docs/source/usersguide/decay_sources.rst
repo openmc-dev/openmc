@@ -148,12 +148,13 @@ a directory that is named "r2s_<timestamp>/". The ``output_dir`` argument to the
 :meth:`~openmc.deplete.R2SManager.run` method enables you to override the
 default output directory name if desired.
 
-The :meth:`~openmc.deplete.R2SManager.run` method actually runs three
+The :meth:`~openmc.deplete.R2SManager.run` method actually runs four
 lower-level methods under the hood::
 
     r2s.step1_neutron_transport(...)
     r2s.step2_activation(...)
-    r2s.step3_photon_transport(...)
+    r2s.step3_photon_source(...)
+    r2s.step4_photon_transport(...)
 
 For users looking for more control over the calculation, these lower-level
 methods can be used in lieu of the :meth:`openmc.deplete.R2SManager.run` method.
@@ -255,4 +256,3 @@ relevant tallies. This can be done with the aid of the
 
     # Apply time correction factors
     tally = d1s.apply_time_correction(dose_tally, factors, time_index)
-

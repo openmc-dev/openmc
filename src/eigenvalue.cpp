@@ -585,7 +585,7 @@ int openmc_get_keff(double* k_combined)
     // block matrices of the three estimator equations reduces to scalars here
     // See LA-12658-MS, Eqs. 36 and 40.
 
-    // We can use variance/covariances for the mean as the division by (n - 1)
+    // We can use the \Sigma matrix for the mean as the division by (n - 1)
     // cancels.
     const double f = cov(i, i) + cov(j, j) - 2.0 * cov(i, j);
     const double w_1 = (cov(j, j) - cov(i, j)) / f;
@@ -593,7 +593,7 @@ int openmc_get_keff(double* k_combined)
 
     k_combined[0] = kv[i] * w_1 + kv[j] * w_2;
 
-    // We must use the sums of squares for the variance as the division by
+    // We must use the S matrix for the variance as the division by
     // (n - 1) does not cancel.
     const double s_ii = cov(i, i) * (n - 1);
     const double s_jj = cov(j, j) * (n - 1);

@@ -600,7 +600,8 @@ int openmc_get_keff(double* k_combined)
     const double s_ij = cov(i, j) * (n - 1);
 
     const double g = s_ii - (s_ii - s_ij) * (s_ii - s_ij) / (f * (n - 1));
-    const double h = 1.0 / n + (kv[i] - kv[j]) * (kv[i] - kv[j]) / (f * (n - 1));
+    const double h =
+      1.0 / n + (kv[i] - kv[j]) * (kv[i] - kv[j]) / (f * (n - 1));
 
     k_combined[1] = 1.0 / (n - 2) * g * h;
     k_combined[1] = std::sqrt(k_combined[1]);

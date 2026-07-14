@@ -583,17 +583,26 @@ int openmc_get_keff(double* k_combined)
     // These equations are derived analogously to that done in the paper by
     // Urbatsch, but are simpler than for the three estimators case since the
     // block matrices of the three estimator equations reduces to scalars here
+    // See LA-12658-MS, Eqs. 36 and 40.
 
-    // Store the commonly used term
-    double f = kv[i] - kv[j];
-    double g = cov(i, i) + cov(j, j) - 2.0 * cov(i, j);
+    // We can use variance/covariances for the mean as the division by (n - 1)
+    // cancels.
+    const double f = cov(i, i) + cov(j, j) - 2.0 * cov(i, j);
+    const double w_1 = (cov(j, j) - cov(i, j)) / f;
+    const double w_2 = (cov(i, i) - cov(i, j)) / f;
 
-    // Calculate combined estimate of k-effective
-    k_combined[0] = kv[i] - (cov(i, i) - cov(i, j)) / g * f;
+    k_combined[0] = kv[i] * w_1 + kv[j] * w_2;
 
-    // Calculate standard deviation of combined estimate
-    k_combined[1] = (cov(i, i) * cov(j, j) - cov(i, j) * cov(i, j)) *
-                    (g + n * f * f) / (n * (n - 2) * g * g);
+    // We must use the sums of squares for the variance as the division by
+    // (n - 1) does not cancel.
+    const double s_ii = cov(i, i) * (n - 1);
+    const double s_jj = cov(j, j) * (n - 1);
+    const double s_ij = cov(i, j) * (n - 1);
+
+    const double g = s_ii - (s_ii - s_ij) * (s_ii - s_ij) / (f * (n - 1));
+    const double h = 1.0 / n + (kv[i] - kv[j]) * (kv[i] - kv[j]) / (f * (n - 1));
+
+    k_combined[1] = 1.0 / (n - 2) * g * h;
     k_combined[1] = std::sqrt(k_combined[1]);
   }
   return 0;

@@ -46,7 +46,7 @@ class SourceBase(ABC):
 
     Attributes
     ----------
-    type : {'independent', 'file', 'compiled', 'mesh'}
+    type : {'independent', 'file', 'compiled', 'mesh', 'tokamak'}
         Indicator of source type.
     strength : float
         Strength of the source
@@ -931,7 +931,9 @@ class TokamakSource(SourceBase):
         Normalized minor radius grid points, must start at 0 and end at 1
     emission_density : numpy.ndarray
         Emission density S(r) at each r/a point (arbitrary units, must be >= 0).
-        Must have the same length as ``r_over_a``.
+        Values are linearly interpolated between grid points and refined on an
+        internal grid for radial sampling. Must have the same length as
+        ``r_over_a`` and contain at least one positive value.
     energy : openmc.stats.Univariate or Sequence[openmc.stats.Univariate]
         Energy distribution(s). Either a single distribution used at all radii,
         or one distribution per ``r_over_a`` grid point. When one distribution
@@ -948,7 +950,9 @@ class TokamakSource(SourceBase):
     phi_extent : float
         Toroidal angle extent in [rad] (default: 2π)
     n_alpha : int
-        Number of poloidal angle grid points for CDF sampling (default: 101)
+        Number of poloidal angle grid points for CDF sampling (default: 101).
+        Values below 51 produce a warning because they may introduce noticeable
+        discretization bias.
     vertical_shift : float
         Vertical shift of the plasma center in [cm] (default: 0)
     strength : float
@@ -1027,8 +1031,10 @@ class TokamakSource(SourceBase):
         self.energy = energy
         self.time = time
 
-        # Cross-field consistency checks (each setter only validates its own
-        # field, so the relationships between fields are verified here)
+        self._validate()
+
+    def _validate(self):
+        """Validate relationships between tokamak source parameters."""
         if self.minor_radius >= self.major_radius:
             raise ValueError(
                 f"minor_radius ({self.minor_radius}) must be smaller than "
@@ -1041,6 +1047,8 @@ class TokamakSource(SourceBase):
             raise ValueError(
                 f"emission_density (length {len(self.emission_density)}) must "
                 f"have the same length as r_over_a (length {len(self.r_over_a)})")
+        if not np.any(self.emission_density > 0.0):
+            raise ValueError("emission_density must contain a positive value")
         if len(self.energy) not in (1, len(self.r_over_a)):
             raise ValueError(
                 f"Number of energy distributions ({len(self.energy)}) must be "
@@ -1182,6 +1190,10 @@ class TokamakSource(SourceBase):
     def n_alpha(self, value: int):
         cv.check_type('n_alpha', value, Integral)
         cv.check_greater_than('n_alpha', value, 2)
+        if value < 51:
+            warnings.warn(
+                "n_alpha values below 51 may introduce noticeable "
+                "discretization bias in tokamak source sampling", stacklevel=2)
         self._n_alpha = value
 
     @property
@@ -1202,6 +1214,8 @@ class TokamakSource(SourceBase):
             XML element containing source data
 
         """
+        self._validate()
+
         # Geometry parameters
         ET.SubElement(element, "major_radius").text = str(self.major_radius)
         ET.SubElement(element, "minor_radius").text = str(self.minor_radius)

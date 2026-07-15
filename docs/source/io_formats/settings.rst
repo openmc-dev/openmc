@@ -1044,8 +1044,10 @@ attributes/sub-elements:
   :emission_density:
     A list of neutron emission densities :math:`S(r)` evaluated at each
     ``r_over_a`` grid point (arbitrary units, must be non-negative). Only the
-    shape matters, since the profile is normalized internally. Must have the
-    same length as ``r_over_a``.
+    shape matters, since the profile is normalized internally. Values are
+    interpolated linearly between grid points and the profile is refined on an
+    internal grid for radial sampling. Must have the same length as
+    ``r_over_a`` and contain at least one positive value.
 
   :phi_start:
     The starting toroidal angle in [rad].
@@ -1060,7 +1062,8 @@ attributes/sub-elements:
 
   :n_alpha:
     The number of poloidal-angle grid points used to build the sampling CDFs
-    (must be > 2). Larger values reduce discretization bias.
+    (must be > 2). Larger values reduce discretization bias; values below 51
+    produce a warning.
 
     *Default*: 101
 

@@ -789,6 +789,10 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   if (n_alpha_ <= 2) {
     fatal_error("TokamakSource: n_alpha must be > 2.");
   }
+  if (n_alpha_ < 51) {
+    warning("TokamakSource: n_alpha values below 51 may introduce noticeable "
+            "discretization bias in source sampling.");
+  }
   if (energy_dists_.empty()) {
     fatal_error("TokamakSource: At least one energy distribution is required.");
   }

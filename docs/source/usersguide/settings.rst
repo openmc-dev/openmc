@@ -306,7 +306,9 @@ The plasma shape is described by the major radius :math:`R_0`, minor radius
 Shafranov shift :math:`\Delta`. The neutron birth profile is given as an
 emission density :math:`S(r/a)` tabulated on a normalized minor-radius grid that
 runs from 0 (magnetic axis) to 1 (last closed flux surface); only the shape of
-the profile matters, since it is normalized internally. For example::
+the profile matters, since it is normalized internally. The emission density
+is linearly interpolated between the supplied points and refined internally for
+radial sampling. For example::
 
   import numpy as np
 

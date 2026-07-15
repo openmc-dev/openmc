@@ -85,6 +85,7 @@ def test_tokamak_source_multiple_energies():
     (dict(r_over_a=np.linspace(0.1, 1.0, 10)), "must start at 0"),
     (dict(r_over_a=np.linspace(0.0, 0.9, 10)), "must end at 1"),
     (dict(emission_density=-np.linspace(0.0, 1.0, 10)), "cannot be negative"),
+    (dict(emission_density=np.zeros(10)), "must contain a positive value"),
 ])
 def test_tokamak_source_invalid(kwargs, match):
     with pytest.raises(ValueError, match=match):
@@ -100,6 +101,25 @@ def test_tokamak_source_invalid_triangularity(value):
 def test_tokamak_source_invalid_n_alpha():
     with pytest.raises(ValueError):
         make_source(n_alpha=2)
+
+
+def test_tokamak_source_low_n_alpha_warning():
+    with pytest.warns(UserWarning, match="below 51"):
+        make_source(n_alpha=50)
+
+
+@pytest.mark.parametrize(("attribute", "value", "match"), [
+    ("minor_radius", 700.0, "smaller than major_radius"),
+    ("shafranov_shift", 150.0, "half the minor_radius"),
+    ("emission_density", np.ones(5), "same length as r_over_a"),
+    ("energy", [openmc.stats.Discrete([1.0], [1.0])] * 2,
+     "Number of energy distributions"),
+])
+def test_tokamak_source_mutation_validation(attribute, value, match):
+    src = make_source()
+    setattr(src, attribute, value)
+    with pytest.raises(ValueError, match=match):
+        src.to_xml_element()
 
 
 @pytest.mark.parametrize(("emission_density", "expected_mean"), [

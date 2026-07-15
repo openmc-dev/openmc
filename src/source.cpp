@@ -4,7 +4,7 @@
 #define HAS_DYNAMIC_LINKING
 #endif
 
-#include <algorithm> // for lower_bound, max, distance
+#include <algorithm> // for max
 #include <cmath>     // for sin, cos, abs
 #include <utility>   // for move
 
@@ -1063,21 +1063,18 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
   const auto& cdf = poloidal_cdfs_[component];
   const size_t n_alpha = poloidal_alpha_grid_.size();
 
-  auto it = std::lower_bound(cdf.begin(), cdf.end(), eta);
-  size_t j = std::distance(cdf.begin(), it);
+  size_t i = lower_bound_index(cdf.begin(), cdf.end(), eta);
 
   // Sample alpha from [0, pi]
   double alpha;
-  if (j == 0) {
-    alpha = poloidal_alpha_grid_.front();
-  } else if (j >= n_alpha) {
+  if (i >= n_alpha - 1) {
     alpha = poloidal_alpha_grid_.back();
   } else {
     // Linear interpolation within the bin
-    double cdf_lo = cdf[j - 1];
-    double cdf_hi = cdf[j];
-    double alpha_lo = poloidal_alpha_grid_[j - 1];
-    double alpha_hi = poloidal_alpha_grid_[j];
+    double cdf_lo = cdf[i];
+    double cdf_hi = cdf[i + 1];
+    double alpha_lo = poloidal_alpha_grid_[i];
+    double alpha_hi = poloidal_alpha_grid_[i + 1];
     double t = (eta - cdf_lo) / (cdf_hi - cdf_lo);
     alpha = alpha_lo + t * (alpha_hi - alpha_lo);
   }
@@ -1100,10 +1097,7 @@ std::pair<double, double> TokamakSource::sample_energy(
 
   // Multiple distributions: stochastic selection between bracketing r points
   // Find the interval containing r_norm
-  auto it = std::lower_bound(r_over_a_.begin(), r_over_a_.end(), r_norm);
-  size_t i = std::distance(r_over_a_.begin(), it);
-  if (i > 0)
-    --i;
+  size_t i = lower_bound_index(r_over_a_.begin(), r_over_a_.end(), r_norm);
 
   // Handle boundary cases
   if (i >= energy_dists_.size() - 1) {

@@ -958,9 +958,7 @@ class TokamakSource(SourceBase):
     phi_extent : float
         Toroidal angle extent in [rad] (default: 2π)
     n_alpha : int
-        Number of poloidal angle grid points for CDF sampling (default: 101).
-        Values below 51 produce a warning because they may introduce noticeable
-        discretization bias.
+        Number of poloidal angle grid points for CDF sampling (default: 101)
     vertical_shift : float
         Vertical shift of the plasma center in [cm] (default: 0)
     strength : float

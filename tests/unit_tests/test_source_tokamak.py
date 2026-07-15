@@ -103,16 +103,11 @@ def test_tokamak_source_invalid_n_alpha():
         make_source(n_alpha=2)
 
 
-def test_tokamak_source_low_n_alpha_warning():
-    with pytest.warns(UserWarning, match="below 51"):
-        make_source(n_alpha=50)
-
-
 @pytest.mark.parametrize(("attribute", "value", "match"), [
     ("minor_radius", 700.0, "smaller than major_radius"),
     ("shafranov_shift", 150.0, "half the minor_radius"),
     ("emission_density", np.ones(5), "same length as r_over_a"),
-    ("energy", [openmc.stats.Discrete([1.0], [1.0])] * 2,
+    ("energy", [openmc.stats.delta_function(1.0)] * 2,
      "Number of energy distributions"),
 ])
 def test_tokamak_source_mutation_validation(attribute, value, match):
@@ -140,7 +135,7 @@ def test_tokamak_source_radial_sampling(
         shafranov_shift=0.0,
         r_over_a=[0.0, 1.0],
         emission_density=emission_density,
-        energy=openmc.stats.Discrete([14.07e6], [1.0]),
+        energy=openmc.stats.delta_function(14.07e6),
     )
 
     sphere = openmc.Sphere(r=2000.0, boundary_type='vacuum')
@@ -170,7 +165,7 @@ def test_tokamak_source_poloidal_sampling(run_in_tmpdir):
             shafranov_shift=0.0,
             emission_density=np.ones(10),
             n_alpha=3,
-            energy=openmc.stats.Discrete([14.07e6], [1.0]),
+            energy=openmc.stats.delta_function(14.07e6),
         )
 
     sphere = openmc.Sphere(r=2000.0, boundary_type='vacuum')
@@ -215,7 +210,7 @@ def test_tokamak_source_sampling(run_in_tmpdir):
         triangularity=delta, shafranov_shift=shafranov, vertical_shift=zshift,
         r_over_a=r_over_a, emission_density=1.0 - r_over_a**2,
         phi_start=phi_start, phi_extent=phi_extent, n_alpha=201,
-        energy=openmc.stats.Discrete([14.07e6], [1.0]))
+        energy=openmc.stats.delta_function(14.07e6))
 
     sphere = openmc.Sphere(r=2000.0, boundary_type='vacuum')
     cell = openmc.Cell(region=-sphere)

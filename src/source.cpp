@@ -808,10 +808,10 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   // Initialize isotropic angular distribution
   angle_ = UPtrAngle {new Isotropic()};
 
-  precompute_sampling_cdfs();
+  precompute_sampling_distributions();
 }
 
-void TokamakSource::precompute_sampling_cdfs()
+void TokamakSource::precompute_sampling_distributions()
 {
   // Use precomputed normalized geometry parameters
   double eps = epsilon_;    // Inverse aspect ratio (a/R0)
@@ -922,13 +922,13 @@ void TokamakSource::precompute_sampling_cdfs()
 
   // Build the alpha grid on [0, pi] (half domain due to up-down symmetry)
   int n_alpha = n_alpha_;
-  poloidal_alpha_grid_.resize(n_alpha);
+  vector<double> alpha_grid(n_alpha);
   double dalpha = PI / (n_alpha - 1);
   for (int i = 0; i < n_alpha; ++i) {
-    poloidal_alpha_grid_[i] = i * dalpha;
+    alpha_grid[i] = i * dalpha;
   }
 
-  // Compute basis function values g_k(alpha) for building CDFs
+  // Compute basis function values g_k(alpha) for tabular distributions
   // Using Bernstein form:
   //   R_tilde = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2
   //   J_tilde = b3*(1-r) + b4*r
@@ -944,11 +944,10 @@ void TokamakSource::precompute_sampling_cdfs()
   array<vector<double>, N_POLOIDAL_BASIS> basis;
   for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
     basis[k].resize(n_alpha);
-    poloidal_cdfs_[k].resize(n_alpha);
   }
 
   for (int i = 0; i < n_alpha; ++i) {
-    double alpha = poloidal_alpha_grid_[i];
+    double alpha = alpha_grid[i];
     double sin_alpha = std::sin(alpha);
     double cos_alpha = std::cos(alpha);
     double delta_sin_alpha = delta * sin_alpha;
@@ -974,23 +973,10 @@ void TokamakSource::precompute_sampling_cdfs()
     basis[5][i] = b2 * b4; // w5 = r^3
   }
 
-  // Build normalized CDFs for each basis function p_k(alpha)
+  // Build a linear-linear distribution for each basis function p_k(alpha)
   for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
-    // Build CDF using trapezoidal integration
-    poloidal_cdfs_[k][0] = 0.0;
-    for (int i = 1; i < n_alpha; ++i) {
-      double avg = 0.5 * (basis[k][i - 1] + basis[k][i]);
-      poloidal_cdfs_[k][i] = poloidal_cdfs_[k][i - 1] + avg * dalpha;
-    }
-
-    // Normalize CDF to [0, 1]
-    double norm = poloidal_cdfs_[k][n_alpha - 1];
-    if (norm > 0.0) {
-      double inv_norm = 1.0 / norm;
-      for (int i = 0; i < n_alpha; ++i) {
-        poloidal_cdfs_[k][i] *= inv_norm;
-      }
-    }
+    poloidal_dists_[k] = make_unique<Tabular>(
+      alpha_grid.data(), basis[k].data(), n_alpha, Interpolation::lin_lin);
   }
 }
 
@@ -1023,14 +1009,14 @@ double TokamakSource::mixture_weight(int k, double r) const
 double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
 {
   // Sample from the conditional distribution P(alpha | r_tilde) using
-  // mixture sampling with 6 precomputed basis CDFs.
+  // mixture sampling with 6 precomputed basis distributions.
   //
   // The conditional is: P(alpha | r) ~ sum_k w_k(r) * I_hat_k * p_k(alpha)
   // where:
   //   - w_k(r) are the "dynamic" Bernstein weight functions
   //   - I_hat_k are the "static" normalized integrals (precomputed in
   //   poloidal_integrals_)
-  //   - p_k(alpha) are the normalized basis distributions (precomputed CDFs)
+  //   - p_k(alpha) are the normalized, precomputed basis distributions
   //
   // The normalization sum_k w_k(r) * I_hat_k equals the radial geometric
   // polynomial evaluated at r, which is known analytically.
@@ -1038,7 +1024,7 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
   // Algorithm:
   // 1. Compute total from analytical normalization
   // 2. Lazily evaluate mixture weights with early exit to select component k
-  // 3. Sample alpha from CDF_k using inverse transform
+  // 3. Sample alpha from the selected basis distribution
 
   // Analytical normalization: sum_k w_k(r) * I_hat_k
   double total =
@@ -1058,26 +1044,8 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
     }
   }
 
-  // Sample alpha from the selected CDF using inverse transform
-  double eta = prn(seed);
-  const auto& cdf = poloidal_cdfs_[component];
-  const size_t n_alpha = poloidal_alpha_grid_.size();
-
-  size_t i = lower_bound_index(cdf.begin(), cdf.end(), eta);
-
   // Sample alpha from [0, pi]
-  double alpha;
-  if (i >= n_alpha - 1) {
-    alpha = poloidal_alpha_grid_.back();
-  } else {
-    // Linear interpolation within the bin
-    double cdf_lo = cdf[i];
-    double cdf_hi = cdf[i + 1];
-    double alpha_lo = poloidal_alpha_grid_[i];
-    double alpha_hi = poloidal_alpha_grid_[i + 1];
-    double t = (eta - cdf_lo) / (cdf_hi - cdf_lo);
-    alpha = alpha_lo + t * (alpha_hi - alpha_lo);
-  }
+  double alpha = poloidal_dists_[component]->sample(seed).first;
 
   // Exploit up-down symmetry: randomly flip to [pi, 2*pi] with 50% probability
   // This is equivalent to flipping the sign of Z in the final position

@@ -157,6 +157,42 @@ def test_tokamak_source_radial_sampling(
     assert_sample_mean(r_over_a, expected_mean)
 
 
+def test_tokamak_source_poloidal_sampling(run_in_tmpdir):
+    """Check linear-linear poloidal sampling on a coarse internal grid."""
+    major_radius = 620.0
+    minor_radius = 200.0
+    with pytest.warns(UserWarning, match="below 51"):
+        src = make_source(
+            major_radius=major_radius,
+            minor_radius=minor_radius,
+            elongation=1.0,
+            triangularity=0.0,
+            shafranov_shift=0.0,
+            emission_density=np.ones(10),
+            n_alpha=3,
+            energy=openmc.stats.Discrete([14.07e6], [1.0]),
+        )
+
+    sphere = openmc.Sphere(r=2000.0, boundary_type='vacuum')
+    model = openmc.Model(
+        geometry=openmc.Geometry([openmc.Cell(region=-sphere)]),
+        settings=openmc.Settings(
+            particles=100, batches=1, run_mode='fixed source', source=src),
+    )
+
+    sites = model.sample_external_source(100_000)
+    xyz = np.array([site.r for site in sites])
+    major_r = np.hypot(xyz[:, 0], xyz[:, 1])
+
+    # With three alpha points, linear interpolation of cos(alpha) on [0, pi]
+    # gives 1 - 2*alpha/pi. Integrating the resulting density gives this mean.
+    expected_R = (
+        major_radius
+        + 2.0 * minor_radius**2 / (np.pi**2 * major_radius)
+    )
+    assert_sample_mean(major_r, expected_R)
+
+
 @pytest.mark.flaky(reruns=1)
 def test_tokamak_source_sampling(run_in_tmpdir):
     """Exercise the compiled C++ sampling path and check invariants.

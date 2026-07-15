@@ -308,7 +308,7 @@ private:
   // Private methods
 
   //! Precompute data structures for efficient sampling
-  void precompute_sampling_cdfs();
+  void precompute_sampling_distributions();
 
   //! Sample minor radius from marginal CDF
   //! \param seed Pseudorandom seed pointer
@@ -387,12 +387,11 @@ private:
   //   J_tilde = b3*(1-r) + b4*r                      (Bernstein linear)
   // The product gives 6 non-negative basis functions g_k(alpha) with
   // weights w_k(r_tilde) that are products of Bernstein polynomials.
-  // CDFs are computed on [0, pi] exploiting up-down symmetry.
+  // Distributions are tabulated on [0, pi] exploiting up-down symmetry.
   static constexpr int N_POLOIDAL_BASIS = 6; //!< Number of basis functions
-  int n_alpha_;                        //!< Number of poloidal angle grid points
-  vector<double> poloidal_alpha_grid_; //!< alpha grid for CDF lookup [0, pi]
-  array<vector<double>, N_POLOIDAL_BASIS>
-    poloidal_cdfs_; //!< CDFs for each basis function g_k(alpha)
+  int n_alpha_; //!< Number of poloidal angle grid points
+  array<unique_ptr<Tabular>, N_POLOIDAL_BASIS>
+    poloidal_dists_; //!< Distributions for each basis function g_k(alpha)
   array<double, N_POLOIDAL_BASIS>
     poloidal_integrals_; //!< Integrals of g_k(alpha) over [0, pi]
 };

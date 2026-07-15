@@ -284,12 +284,6 @@ def test_xdg_mesh_tallies(model, test_opts):
     if not openmc.lib._xdg_enabled():
         pytest.skip("XDG is not enabled in this build.")
 
-    if test_opts["library"] == "moab" and not openmc.lib._dagmc_enabled():
-        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
-
-    if test_opts["library"] == "libmesh" and not openmc.lib._libmesh_enabled():
-        pytest.skip("LibMesh is not enabled in this build.")
-
     # reference mesh tally
     regular_mesh_tally = model.tallies[0]
     regular_mesh_tally.estimator = 'collision'

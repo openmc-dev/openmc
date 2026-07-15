@@ -372,8 +372,8 @@ private:
   double phi_start_;  //!< Starting toroidal angle [rad]
   double phi_extent_; //!< Toroidal angle extent [rad]
 
-  // Precomputed data for radial sampling
-  vector<double> radial_cdf_; //!< CDF for radial sampling (on r_over_a_ grid)
+  // Precomputed distribution for radial sampling
+  unique_ptr<Tabular> radial_dist_;
 
   // Coefficients of the radial geometric polynomial: A*r - B*r^2 - C*r^3
   // Also used as the analytical normalization for poloidal mixture weights

@@ -102,6 +102,41 @@ def test_tokamak_source_invalid_n_alpha():
         make_source(n_alpha=2)
 
 
+@pytest.mark.parametrize(("emission_density", "expected_mean"), [
+    ([1.0, 1.0], 2.0 / 3.0),
+    ([1.0, 0.0], 0.5),
+])
+def test_tokamak_source_radial_sampling(
+    run_in_tmpdir, emission_density, expected_mean
+):
+    """Check radial sampling for profiles on the coarsest valid grid."""
+    major_radius = 620.0
+    minor_radius = 200.0
+    src = make_source(
+        major_radius=major_radius,
+        minor_radius=minor_radius,
+        elongation=1.0,
+        triangularity=0.0,
+        shafranov_shift=0.0,
+        r_over_a=[0.0, 1.0],
+        emission_density=emission_density,
+        energy=openmc.stats.Discrete([14.07e6], [1.0]),
+    )
+
+    sphere = openmc.Sphere(r=2000.0, boundary_type='vacuum')
+    model = openmc.Model(
+        geometry=openmc.Geometry([openmc.Cell(region=-sphere)]),
+        settings=openmc.Settings(
+            particles=100, batches=1, run_mode='fixed source', source=src),
+    )
+
+    sites = model.sample_external_source(20_000)
+    xyz = np.array([site.r for site in sites])
+    major_r = np.hypot(xyz[:, 0], xyz[:, 1])
+    r_over_a = np.hypot(major_r - major_radius, xyz[:, 2]) / minor_radius
+    assert_sample_mean(r_over_a, expected_mean)
+
+
 @pytest.mark.flaky(reruns=1)
 def test_tokamak_source_sampling(run_in_tmpdir):
     """Exercise the compiled C++ sampling path and check invariants.

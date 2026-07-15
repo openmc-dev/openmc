@@ -846,39 +846,49 @@ void TokamakSource::precompute_sampling_cdfs()
   radial_poly_b_ = 0.375 * c1 * eps; // 3/8 * c1 * eps
   radial_poly_c_ = 2.0 * eps * Dt;
 
-  // Build the radial CDF on the user-provided r_over_a grid
-  const size_t n_r = r_over_a_.size();
-  radial_cdf_.resize(n_r);
-  vector<double> radial_pdf(n_r);
+  // Build a refined radial grid that retains the user-provided knots. The
+  // emission density is interpreted as linear-linear between those knots.
+  constexpr int MIN_SUBINTERVALS = 8;
+  constexpr double MAX_GRID_SPACING = 1.0e-3;
+  vector<double> radial_grid {r_over_a_.front()};
+  vector<double> radial_emission {emission_density_.front()};
+  for (size_t i = 1; i < r_over_a_.size(); ++i) {
+    double r_lo = r_over_a_[i - 1];
+    double r_hi = r_over_a_[i];
+    double s_lo = emission_density_[i - 1];
+    double s_hi = emission_density_[i];
+    int n_subintervals = std::max(MIN_SUBINTERVALS,
+      static_cast<int>(std::ceil((r_hi - r_lo) / MAX_GRID_SPACING)));
+    for (int j = 1; j <= n_subintervals; ++j) {
+      double t = static_cast<double>(j) / n_subintervals;
+      radial_grid.push_back(r_lo + t * (r_hi - r_lo));
+      radial_emission.push_back(s_lo + t * (s_hi - s_lo));
+    }
+  }
 
-  for (size_t i = 0; i < n_r; ++i) {
-    double r = r_over_a_[i];
-    double S = emission_density_[i];
+  vector<double> radial_pdf(radial_grid.size());
+  for (size_t i = 0; i < radial_grid.size(); ++i) {
+    double r = radial_grid[i];
     // p(r) ~ S(r) * [A*r - B*r^2 - C*r^3]
     double geometric_factor =
       radial_poly_a_ * r - radial_poly_b_ * r * r - radial_poly_c_ * r * r * r;
-    radial_pdf[i] = S * std::max(0.0, geometric_factor);
+    radial_pdf[i] = radial_emission[i] * std::max(0.0, geometric_factor);
   }
 
-  // Integrate to get CDF using trapezoidal rule on irregular grid
-  radial_cdf_[0] = 0.0;
-  for (size_t i = 1; i < n_r; ++i) {
-    double dr = r_over_a_[i] - r_over_a_[i - 1];
-    double avg = 0.5 * (radial_pdf[i - 1] + radial_pdf[i]);
-    radial_cdf_[i] = radial_cdf_[i - 1] + avg * dr;
+  // Check that the refined profile contains positive probability mass before
+  // constructing the normalized tabular distribution.
+  double total = 0.0;
+  for (size_t i = 1; i < radial_grid.size(); ++i) {
+    total += 0.5 * (radial_pdf[i - 1] + radial_pdf[i]) *
+             (radial_grid[i] - radial_grid[i - 1]);
   }
-
-  // Normalize CDF
-  double total = radial_cdf_[n_r - 1];
   if (total <= 0.0) {
     fatal_error(
       "TokamakSource: Integrated emission density is zero or negative. "
       "Check emission_density profile.");
   }
-  double inv_total = 1.0 / total;
-  for (size_t i = 0; i < n_r; ++i) {
-    radial_cdf_[i] *= inv_total;
-  }
+  radial_dist_ = make_unique<Tabular>(radial_grid.data(), radial_pdf.data(),
+    radial_grid.size(), Interpolation::lin_lin);
 
   //==========================================================================
   // POLOIDAL CDFs (for conditional sampling of alpha given r)
@@ -982,25 +992,7 @@ void TokamakSource::precompute_sampling_cdfs()
 
 double TokamakSource::sample_r_over_a(uint64_t* seed) const
 {
-  double xi = prn(seed);
-
-  // Binary search to find the interval in the CDF
-  auto it = std::lower_bound(radial_cdf_.begin(), radial_cdf_.end(), xi);
-  size_t i = std::distance(radial_cdf_.begin(), it);
-
-  if (i == 0)
-    return r_over_a_.front();
-  if (i >= radial_cdf_.size())
-    return r_over_a_.back();
-
-  // Linear interpolation within the interval
-  double cdf_lo = radial_cdf_[i - 1];
-  double cdf_hi = radial_cdf_[i];
-  double r_lo = r_over_a_[i - 1];
-  double r_hi = r_over_a_[i];
-
-  double t = (xi - cdf_lo) / (cdf_hi - cdf_lo);
-  return r_lo + t * (r_hi - r_lo);
+  return radial_dist_->sample(seed).first;
 }
 
 double TokamakSource::mixture_weight(int k, double r) const

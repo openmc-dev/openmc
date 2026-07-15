@@ -583,27 +583,18 @@ int openmc_get_keff(double* k_combined)
     // These equations are derived analogously to that done in the paper by
     // Urbatsch, but are simpler than for the three estimators case since the
     // block matrices of the three estimator equations reduces to scalars here
-    // See LA-12658-MS, Eqs. 36 and 40.
 
-    // We can use the \Sigma matrix for the mean as the division by (n - 1)
-    // cancels.
+    // Store common terms.
     const double f = cov(i, i) + cov(j, j) - 2.0 * cov(i, j);
-    const double w_1 = (cov(j, j) - cov(i, j)) / f;
-    const double w_2 = (cov(i, i) - cov(i, j)) / f;
+    const double g = cov(i, i) - cov(i, j);
+    const double h = kv[i] - kv[j];
 
-    k_combined[0] = kv[i] * w_1 + kv[j] * w_2;
+    // Eq. 36 in LA-12658-MS
+    k_combined[0] = kv[i] - g * h / f;
 
-    // We must use the S matrix for the variance as the division by
-    // (n - 1) does not cancel.
-    const double s_ii = cov(i, i) * (n - 1);
-    const double s_jj = cov(j, j) * (n - 1);
-    const double s_ij = cov(i, j) * (n - 1);
-
-    const double g = s_ii - (s_ii - s_ij) * (s_ii - s_ij) / (f * (n - 1));
-    const double h =
-      1.0 / n + (kv[i] - kv[j]) * (kv[i] - kv[j]) / (f * (n - 1));
-
-    k_combined[1] = 1.0 / (n - 2) * g * h;
+    // This is re-derived from the \Sigma matrix based on Eq. 40 in LA-12658-MS
+    k_combined[1] =
+      (cov(i, i) - g * g / f) * ((n - 1.0) / n + h * h / f) / (n - 2.0);
     k_combined[1] = std::sqrt(k_combined[1]);
   }
   return 0;

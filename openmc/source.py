@@ -899,19 +899,27 @@ class FileSource(SourceBase):
 
 
 class TokamakSource(SourceBase):
-    """A source representing neutron emission from a tokamak plasma.
+    r"""A source representing neutron emission from a tokamak plasma.
 
     This source samples neutron positions from a tokamak plasma geometry using
     Miller-style flux surface parameterization. The user provides an emission
     profile S(r/a) as a function of normalized minor radius, along with one or
     more energy distributions.
 
-    The flux surface parameterization is:
-        R = R0 + r*cos(α + δ*sin(α)) + Δ*(1 - (r/a)²)
-        Z = κ * r * sin(α)
+    The flux surface parameterization is
 
-    where R0 is major radius, a is minor radius, κ is elongation, δ is
-    triangularity, and Δ is the Shafranov shift.
+    .. math::
+
+        \begin{aligned}
+        R &= R_0 + r \cos\left(\alpha + \delta \sin\alpha\right)
+             + \Delta \left[1 - \left(\frac{r}{a}\right)^2\right] \\
+        Z &= Z_\mathrm{shift} + \kappa r \sin\alpha
+        \end{aligned}
+
+    where :math:`R_0` is major radius, :math:`a` is minor radius,
+    :math:`\kappa` is elongation, :math:`\delta` is triangularity,
+    :math:`\Delta` is the Shafranov shift, and :math:`Z_\mathrm{shift}` is
+    the vertical shift.
 
     .. versionadded:: 0.15.4
 

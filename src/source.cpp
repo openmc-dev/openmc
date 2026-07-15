@@ -850,8 +850,8 @@ void TokamakSource::precompute_sampling_cdfs()
   radial_poly_b_ = 0.375 * c1 * eps; // 3/8 * c1 * eps
   radial_poly_c_ = 2.0 * eps * Dt;
 
-  // Build a refined radial grid that retains the user-provided knots. The
-  // emission density is interpreted as linear-linear between those knots.
+  // Build a refined radial grid that retains the user-specified grid points.
+  // The emission density is interpreted as linear-linear between those points.
   constexpr int MIN_SUBINTERVALS = 8;
   constexpr double MAX_GRID_SPACING = 1.0e-3;
   vector<double> radial_grid {r_over_a_.front()};

@@ -515,7 +515,7 @@ class R2SManager:
                     raise IndexError(
                         f'Photon time index {index} is out of range for '
                         f'{n_steps} depletion results')
-                normalized_index = index + n_steps if index < 0 else index
+                normalized_index = index % n_steps
                 normalized_indices.append(normalized_index)
 
             # Remove duplicates while preserving order

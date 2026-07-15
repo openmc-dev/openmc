@@ -2730,6 +2730,9 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   int orig_cell = p.coord(0).cell();
   double orig_E_last = p.E_last();
 
+  // Set particle in top level
+  p.n_coord() = 1;
+
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
@@ -2740,7 +2743,6 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
     for (auto cell_id : cells) {
       // Temporarily change cell of particle
-      p.n_coord() = 1;
       p.coord(0).cell() = cell_id;
 
       // Determine index of cell in model::pulse_height_cells
@@ -2756,20 +2758,20 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       // we skip the assume_separate break below.
       auto filter_iter = FilterBinIter(tally, p);
       auto end = FilterBinIter(tally, true, &p.filter_matches());
-      if (filter_iter == end)
-        continue;
+      if (filter_iter != end) {
 
-      // Loop over filter bins.
-      for (; filter_iter != end; ++filter_iter) {
-        auto filter_index = filter_iter.index_;
-        auto filter_weight = filter_iter.weight_;
+        // Loop over filter bins.
+        for (; filter_iter != end; ++filter_iter) {
+          auto filter_index = filter_iter.index_;
+          auto filter_weight = filter_iter.weight_;
 
-        // Loop over scores.
-        for (auto score_index = 0; score_index < tally.scores_.size();
-             ++score_index) {
+          // Loop over scores.
+          for (auto score_index = 0; score_index < tally.scores_.size();
+               ++score_index) {
 #pragma omp atomic
-          tally.results_(filter_index, score_index, TallyResult::VALUE) +=
-            filter_weight;
+            tally.results_(filter_index, score_index, TallyResult::VALUE) +=
+              filter_weight;
+          }
         }
       }
 
@@ -2777,10 +2779,10 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       for (auto& match : p.filter_matches())
         match.bins_present_ = false;
     }
-    // Restore cell/energy
-    p.n_coord() = orig_n_coord;
-    p.coord(0).cell() = orig_cell;
-    p.E_last() = orig_E_last;
   }
+  // Restore cell/energy
+  p.n_coord() = orig_n_coord;
+  p.coord(0).cell() = orig_cell;
+  p.E_last() = orig_E_last;
 }
 } // namespace openmc

@@ -107,8 +107,12 @@ void XDGMesh::initialize()
   xdg_->mesh_manager()->parse_metadata();
 
   auto global_bbox = xdg_->mesh_manager()->global_bounding_box();
-  Position lower_left = length_multiplier_ * Position(global_bbox.min_x, global_bbox.min_y, global_bbox.min_z);
-  Position upper_right = length_multiplier_ * Position(global_bbox.max_x, global_bbox.max_y, global_bbox.max_z);
+  Position lower_left =
+    length_multiplier_ *
+    Position(global_bbox.min_x, global_bbox.min_y, global_bbox.min_z);
+  Position upper_right =
+    length_multiplier_ *
+    Position(global_bbox.max_x, global_bbox.max_y, global_bbox.max_z);
   lower_left_ = {lower_left.x, lower_left.y, lower_left.z};
   upper_right_ = {upper_right.x, upper_right.y, upper_right.z};
 }

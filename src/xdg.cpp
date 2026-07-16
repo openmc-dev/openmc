@@ -105,6 +105,12 @@ void XDGMesh::initialize()
   xdg_->mesh_manager()->load_file(filename_);
   xdg_->mesh_manager()->init();
   xdg_->mesh_manager()->parse_metadata();
+
+  auto global_bbox = xdg_->mesh_manager()->global_bounding_box();
+  Position lower_left = length_multiplier_ * Position(global_bbox.min_x, global_bbox.min_y, global_bbox.min_z);
+  Position upper_right = length_multiplier_ * Position(global_bbox.max_x, global_bbox.max_y, global_bbox.max_z);
+  lower_left_ = {lower_left.x, lower_left.y, lower_left.z};
+  upper_right_ = {upper_right.x, upper_right.y, upper_right.z};
 }
 
 void XDGMesh::prepare_for_point_location()
@@ -115,7 +121,11 @@ void XDGMesh::prepare_for_point_location()
 Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
   auto vertices = xdg_->mesh_manager()->element_vertices(bin_to_mesh_id(bin));
-  return this->sample_tet<xdg::Vertex>(vertices, seed);
+  Position sampled_position = this->sample_tet<xdg::Vertex>(vertices, seed);
+  if (length_multiplier_ > 0.0) {
+    sampled_position *= length_multiplier_;
+  }
+  return sampled_position;
 }
 
 void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
@@ -139,6 +149,9 @@ void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 int XDGMesh::get_bin(Position r) const
 {
   xdg::Position p {r.x, r.y, r.z};
+  if (length_multiplier_ > 0.0) {
+    p /= length_multiplier_;
+  }
   return mesh_id_to_bin(xdg_->find_element(p));
 }
 
@@ -185,6 +198,10 @@ Position XDGMesh::centroid(int bin) const
 
   center /= double(element_vertices.size());
 
+  if (length_multiplier_ > 0.0) {
+    center *= length_multiplier_;
+  }
+
   return {center[0], center[1], center[2]};
 }
 
@@ -197,6 +214,9 @@ Position XDGMesh::vertex(int id) const
 {
   xdg::MeshID mesh_id = xdg_->mesh_manager()->vertex_id(id);
   auto v = xdg_->mesh_manager()->vertex_coordinates(mesh_id);
+  if (length_multiplier_ > 0.0) {
+    v *= length_multiplier_;
+  }
   return {v[0], v[1], v[2]};
 }
 
@@ -211,7 +231,11 @@ std::vector<int> XDGMesh::connectivity(int id) const
 
 double XDGMesh::volume(int bin) const
 {
-  return xdg_->mesh_manager()->element_volume(bin_to_mesh_id(bin));
+  double vol = xdg_->mesh_manager()->element_volume(bin_to_mesh_id(bin));
+  if (length_multiplier_ > 0.0) {
+    vol *= length_multiplier_ * length_multiplier_ * length_multiplier_;
+  }
+  return vol;
 }
 
 xdg::MeshID XDGMesh::bin_to_mesh_id(int bin) const

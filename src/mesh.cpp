@@ -430,6 +430,25 @@ vector<double> Mesh::volumes() const
   return volumes;
 }
 
+//! Default (Cartesian) axis labels used for surface bin labels.
+std::array<const char*, 3> Mesh::axis_labels() const
+{
+  return {"x", "y", "z"};
+}
+
+//! Build the surface component of a mesh surface tally bin label.
+//! surf_index: 0=out/min, 1=in/min, 2=out/max, 3=in/max
+std::string Mesh::surface_bin_label(int surf_index) const
+{
+  auto labels = this->axis_labels();
+  int dim = surf_index / 4;
+  int code = surf_index % 4;
+  bool incoming = (code == 1) || (code == 3);
+  bool max = (code == 2) || (code == 3);
+  return fmt::format(" {}, {}-{}", incoming ? "Incoming" : "Outgoing",
+    labels[dim], max ? "max" : "min");
+}
+
 void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   int32_t* materials, double* volumes) const
 {
@@ -1815,6 +1834,11 @@ std::string CylindricalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+std::array<const char*, 3> CylindricalMesh::axis_labels() const
+{
+  return {"r", "phi", "z"};
+}
+
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
@@ -2106,6 +2130,11 @@ const std::string SphericalMesh::mesh_type = "spherical";
 std::string SphericalMesh::get_mesh_type() const
 {
   return mesh_type;
+}
+
+std::array<const char*, 3> SphericalMesh::axis_labels() const
+{
+  return {"r", "theta", "phi"};
 }
 
 StructuredMesh::MeshIndex SphericalMesh::get_indices(

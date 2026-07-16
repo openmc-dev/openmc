@@ -3282,25 +3282,17 @@ class UnstructuredMesh(MeshBase):
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         filename = group["filename"][()].decode()
         library = group["library"][()].decode()
+
+        kwargs = {'filename': filename,
+                  'library': library,
+                  'mesh_id': mesh_id,
+                  'name': name}
+
         if "options" in group.attrs:
-            options = group.attrs['options'].decode()
-        else:
-            options = None
+            kwargs['options'] = group.attrs['options'].decode()
 
-        mesh = cls(
-            filename=filename,
-            library=library,
-            mesh_id=mesh_id,
-            name=name,
-            options=options,
-        )
+        mesh = cls(**kwargs)
 
-        cls._read_hdf5_mesh_data(group, mesh)
-
-        return mesh
-
-    @staticmethod
-    def _read_hdf5_mesh_data(group: h5py.Group, mesh: MeshBase):
         mesh._has_statepoint_data = True
         vol_data = group["volumes"][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -3314,6 +3306,8 @@ class UnstructuredMesh(MeshBase):
 
         if "length_multiplier" in group:
             mesh.length_multiplier = group["length_multiplier"][()]
+
+        return mesh
 
     def to_xml_element(self):
         """Return XML representation of the mesh

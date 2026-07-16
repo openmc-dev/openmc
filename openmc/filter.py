@@ -1358,7 +1358,7 @@ class MeshSurfaceFilter(MeshFilter):
 
         # Generate multi-index sub-column for surface
         filter_dict[mesh_key, 'surf'] = _repeat_and_tile(
-            current_names, stride, data_size)
+            current_names[:n_surfs], stride, data_size)
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         return pd.concat([df, pd.DataFrame(filter_dict)])

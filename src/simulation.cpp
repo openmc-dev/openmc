@@ -395,7 +395,8 @@ void collect_sorted_history_secondary_banks(
   for (const auto& bank : thread_banks) {
     for (const auto& site : bank) {
       if (site.parent_id < 0 ||
-          site.parent_id >= simulation::progeny_per_particle.size()) {
+          site.parent_id >=
+            static_cast<int64_t>(simulation::progeny_per_particle.size())) {
         fatal_error(fmt::format("Invalid parent_id {} for banked site "
                                 "(expected range [0, {})).",
           site.parent_id, simulation::progeny_per_particle.size()));

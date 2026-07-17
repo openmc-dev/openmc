@@ -46,43 +46,20 @@ Type Definitions
 Functions
 ---------
 
-.. c:function:: int openmc_calculate_volumes()
+..
+   Once documentation is complete in capi.h, use:
+   .. doxygenfile:: capi.h
+   to populate this documentation without using
+   .. doxygenfunction::
+   for every function.
 
-   Run a stochastic volume calculation
+.. doxygenfunction:: openmc_calculate_volumes
 
-   :return: Return status (negative if an error occurred)
-   :rtype: int
+.. doxygenfunction:: openmc_cell_get_fill
 
-.. c:function:: int openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
+.. doxygenfunction:: openmc_cell_get_id
 
-   Get the fill for a cell
-
-   :param int32_t index: Index in the cells array
-   :param int* type: Type of the fill
-   :param int32_t** indices: Array of material indices for cell
-   :param int32_t* n: Length of indices array
-   :return: Return status (negative if an error occurred)
-   :rtype: int
-
-.. c:function:: int openmc_cell_get_id(int32_t index, int32_t* id)
-
-   Get the ID of a cell
-
-   :param int32_t index: Index in the cells array
-   :param int32_t* id: ID of the cell
-   :return: Return status (negative if an error occurred)
-   :rtype: int
-
-.. c:function:: int openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
-
-   Get the temperature of a cell
-
-   :param int32_t index: Index in the cells array
-   :param int32_t* instance: Which instance of the cell. If a null pointer is passed, the temperature
-                             of the first instance is returned.
-   :param double* T: temperature of the cell
-   :return: Return status (negative if an error occurred)
-   :rtype: int
+.. doxygenfunction:: openmc_cell_get_temperature
 
 .. c:function:: int openmc_cell_get_density(int32_t index, const int32_t* instance, double* density)
 

@@ -2695,9 +2695,10 @@ class Model:
             attributes of this object (see :meth:`openmc.Settings.update`).
             The run mode cannot be set here: ``"material_wise"`` always
             takes it from the model, while the ``"stochastic_slab"`` and
-            ``"infinite_medium"`` methods always run in fixed source mode
-            with ``create_fission_neutrons`` disabled and construct their
-            own sources. If the resolved settings include a
+            ``"infinite_medium"`` methods always run in fixed source mode.
+            The surrogate-geometry methods also construct their own
+            sources and default ``create_fission_neutrons`` to False
+            (fission treated as capture). If the resolved settings include a
             ``weight_windows_file`` (e.g., ``"weight_windows.h5"``), the
             ``"material_wise"`` method loads and applies those weight
             windows during the continuous energy generation simulation

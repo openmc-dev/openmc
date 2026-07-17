@@ -2604,66 +2604,9 @@ class Model:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
 
-    def mgxs_generation_settings(
-        self, method: str = "material_wise"
-    ) -> openmc.Settings:
-        """Default settings for the simulations used to generate a MGXS library.
-
-        Returns the :class:`openmc.Settings` object that
-        :meth:`Model.convert_to_multigroup` would use by default for the given
-        generation method: a copy of the model's own settings for the
-        ``"material_wise"`` method, or a fresh Settings object for the
-        surrogate-geometry methods (``"stochastic_slab"`` and
-        ``"infinite_medium"``, which also inherit the model's temperature
-        settings), with the generation defaults for batches, inactive
-        batches, particles, and output applied. To customize MGXS
-        generation, modify the returned object and pass it back via the
-        ``settings`` argument::
-
-            settings = model.mgxs_generation_settings()
-            settings.particles = 100_000
-            model.convert_to_multigroup(settings=settings)
-
-        The returned object records the method it was generated for, which
-        :meth:`Model.convert_to_multigroup` uses as its default ``method``,
-        so a non-default method only needs to be given here.
-
-        .. versionadded:: 0.15.4
-
-        Parameters
-        ----------
-        method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
-            MGXS generation method the settings are intended for.
-
-        Returns
-        -------
-        openmc.Settings
-            Default settings for the MGXS generation run(s).
-        """
-        check_value('method', method,
-                    ('material_wise', 'stochastic_slab', 'infinite_medium'))
-        if method == 'material_wise':
-            settings = copy.deepcopy(self.settings)
-        else:
-            settings = openmc.Settings()
-            settings.temperature = copy.deepcopy(self.settings.temperature)
-            # The surrogate-geometry methods always run in fixed source mode
-            # with fission treated as capture (nu-fission is still tallied)
-            settings.run_mode = 'fixed source'
-            settings.create_fission_neutrons = False
-
-        settings.batches = 100 if method == 'infinite_medium' else 200
-        if method != 'infinite_medium':
-            settings.inactive = 100
-        settings.particles = 2000
-        settings.output = {'summary': True, 'tallies': False}
-        # Record the method so convert_to_multigroup can default to it
-        settings._mgxs_generation_method = method
-        return settings
-
     def convert_to_multigroup(
         self,
-        method: str | None = None,
+        method: str = "material_wise",
         groups: str | Sequence[float] | openmc.mgxs.EnergyGroups = "CASMO-2",
         nparticles: int | None = None,
         overwrite_mgxs_library: bool = False,
@@ -2682,11 +2625,7 @@ class Model:
         Parameters
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
-            Method to generate the MGXS. If not given, defaults to the
-            method that the ``settings`` object was generated for by
-            :meth:`Model.mgxs_generation_settings`, or ``"material_wise"``
-            otherwise. Giving a method here that conflicts with the one the
-            settings were generated for is an error.
+            Method to generate the MGXS.
         groups : openmc.mgxs.EnergyGroups, str, or sequence of float, optional
             Energy group structure for the MGXS. Can be an
             :class:`openmc.mgxs.EnergyGroups` object, a string name of a
@@ -2739,15 +2678,27 @@ class Model:
                 Set ``temperature`` on the object passed via the ``settings``
                 argument instead.
         settings : openmc.Settings, optional
-            Settings used verbatim for the continuous energy simulation(s)
-            that generate the MGXS library. If not provided, defaults are
-            taken from :meth:`Model.mgxs_generation_settings`; to customize
-            a run, start from those defaults, modify them, and pass the
-            result here. Note that the ``"stochastic_slab"`` and
-            ``"infinite_medium"`` methods construct their own fixed source
-            and set ``run_mode``, ``source``, and
-            ``create_fission_neutrons`` accordingly. If the settings include
-            a ``weight_windows_file`` (e.g., ``"weight_windows.h5"``), the
+            Settings for customizing the continuous energy simulation(s)
+            used to generate the MGXS library. Only attributes that are
+            populated override the generation defaults, so a sparse object
+            may be used to adjust just a few fields, e.g.
+            ``settings=openmc.Settings(particles=100_000)`` only increases
+            the particle count. The settings of the generation run are
+            resolved in three layers, with later layers taking precedence:
+            (1) the model's own settings for the ``"material_wise"`` method,
+            or a fresh :class:`openmc.Settings` object for the
+            surrogate-geometry methods (which also inherit the model's
+            temperature settings); (2) the generation defaults (200 batches
+            with 100 inactive for ``"material_wise"`` and
+            ``"stochastic_slab"``, 100 batches for ``"infinite_medium"``,
+            2000 particles, and summary-only output); (3) all populated
+            attributes of this object (see :meth:`openmc.Settings.update`).
+            The run mode cannot be set here: ``"material_wise"`` always
+            takes it from the model, while the ``"stochastic_slab"`` and
+            ``"infinite_medium"`` methods always run in fixed source mode
+            with ``create_fission_neutrons`` disabled and construct their
+            own sources. If the resolved settings include a
+            ``weight_windows_file`` (e.g., ``"weight_windows.h5"``), the
             ``"material_wise"`` method loads and applies those weight
             windows during the continuous energy generation simulation
             (``weight_windows_on`` is enabled automatically). Applying
@@ -2758,35 +2709,20 @@ class Model:
             first generate weight windows with the ``"stochastic_slab"``
             method and the random ray solver, then "bootstrap" a
             higher-fidelity ``"material_wise"`` library by setting those
-            weight windows here; a warning is issued and the file is ignored
-            for the ``"stochastic_slab"`` and ``"infinite_medium"`` methods.
-            Cannot be combined with the deprecated ``nparticles`` or
-            ``temperature_settings`` arguments.
+            weight windows here; a warning is issued and the file is
+            ignored for the ``"stochastic_slab"`` and ``"infinite_medium"``
+            methods. Cannot be combined with the deprecated ``nparticles``
+            or ``temperature_settings`` arguments.
 
             .. versionadded:: 0.15.4
         """
         if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)
 
-        # Resolve the generation method: an explicit argument wins, otherwise
-        # the method the provided settings were generated for (recorded by
-        # mgxs_generation_settings) is used, defaulting to "material_wise".
-        # Conflicting specifications are rejected, since the generation
-        # defaults differ by method.
-        if settings is not None:
-            check_type('settings', settings, openmc.Settings)
-        settings_method = (settings._mgxs_generation_method
-                           if settings is not None else None)
-        if method is None:
-            method = settings_method or 'material_wise'
-        elif settings_method is not None and method != settings_method:
-            raise ValueError(
-                f'The "{method}" generation method conflicts with the '
-                'provided settings, which were generated for the '
-                f'"{settings_method}" method by '
-                'Model.mgxs_generation_settings().')
         check_value('method', method,
                     ('material_wise', 'stochastic_slab', 'infinite_medium'))
+        if settings is not None:
+            check_type('settings', settings, openmc.Settings)
 
         # The model may reference its materials only through the geometry.
         # The materials are converted in place and library-wide attributes
@@ -2798,46 +2734,61 @@ class Model:
                 self.geometry.get_all_materials().values(),
                 key=lambda mat: mat.id))
 
-        # Resolve the settings for the MGXS generation run(s): the provided
-        # settings are used verbatim, otherwise the generation defaults are
-        # used (with the deprecated arguments applied, if given).
         if nparticles is not None or temperature_settings is not None:
             warnings.warn(
                 'The "nparticles" and "temperature_settings" arguments are '
-                'deprecated. Customize MGXS generation by modifying the '
-                'Settings object returned by Model.mgxs_generation_settings()'
-                ' and passing it via the "settings" argument.', FutureWarning)
+                'deprecated. Pass a Settings object with the desired '
+                'attributes via the "settings" argument instead.',
+                FutureWarning)
             if settings is not None:
                 raise ValueError(
                     'The deprecated "nparticles" and "temperature_settings" '
                     'arguments cannot be combined with the "settings" '
                     'argument.')
 
-        if settings is None:
-            settings = self.mgxs_generation_settings(method)
-            if nparticles is not None:
-                settings.particles = nparticles
-            if temperature_settings is not None:
-                settings.temperature = temperature_settings
+        # Resolve the settings for the MGXS generation run(s) in three
+        # layers, with later layers taking precedence: the model's own
+        # settings ("material_wise") or a fresh Settings object (surrogate
+        # methods), then the generation defaults, then any attributes the
+        # user populated on the provided settings.
+        user_settings = settings
+        if method == 'material_wise':
+            settings = copy.deepcopy(self.settings)
         else:
-            # batches and particles are required for any OpenMC transport
-            # run; catch their absence here so a hand-built settings object
-            # fails with a pointer to the defaults rather than a mysterious
-            # error from inside the generation run
-            if settings.batches is None or settings.particles is None:
-                raise ValueError(
-                    'The provided settings are missing required attributes '
-                    '(batches, particles). Start from the defaults returned '
-                    'by Model.mgxs_generation_settings() and modify them '
-                    'rather than building a Settings object from scratch.')
-            settings = copy.deepcopy(settings)
+            settings = openmc.Settings()
+            settings.temperature = copy.deepcopy(self.settings.temperature)
+            # The surrogate-geometry methods treat fission as capture
+            # (nu-fission is still tallied)
+            settings.create_fission_neutrons = False
 
+        settings.batches = 100 if method == 'infinite_medium' else 200
+        if method != 'infinite_medium':
+            settings.inactive = 100
+        settings.particles = 2000
+        settings.output = {'summary': True, 'tallies': False}
+        if nparticles is not None:
+            settings.particles = nparticles
+        if temperature_settings is not None:
+            settings.temperature = temperature_settings
+
+        if user_settings is not None:
             # The surrogate-geometry methods construct their own sources
-            if method != "material_wise" and len(settings.source) > 0:
+            if method != "material_wise" and len(user_settings.source) > 0:
                 warnings.warn(
                     'The sources defined in "settings" are ignored by the '
                     f'"{method}" MGXS generation method, which constructs '
                     'its own sources.')
+            settings.update(user_settings)
+
+        # The run mode is the one attribute that cannot be detected as
+        # user-populated (a fresh Settings object defaults it to
+        # 'eigenvalue'), so it is owned by the generation method:
+        # "material_wise" always takes it from the model, while the
+        # surrogate-geometry methods always run in fixed source mode.
+        if method == 'material_wise':
+            settings.run_mode = self.settings.run_mode
+        else:
+            settings.run_mode = 'fixed source'
 
         # A weight windows file on the generation settings is loaded and
         # applied during the "material_wise" method's continuous energy

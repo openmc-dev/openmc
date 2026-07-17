@@ -1,5 +1,6 @@
 import os
 
+import openmc
 from openmc.examples import pwr_pin_cell
 from openmc import RegularMesh
 
@@ -22,10 +23,9 @@ def test_random_ray_diagonal_stabilization():
     # and transport correction enabled. This will generate
     # MGXS data with some negatives on the diagonal, in order
     # to trigger diagonal correction.
-    mgxs_settings = model.mgxs_generation_settings('material_wise')
-    mgxs_settings.particles = 13
     model.convert_to_multigroup(
-        method='material_wise', groups='CASMO-70', settings=mgxs_settings,
+        method='material_wise', groups='CASMO-70',
+        settings=openmc.Settings(particles=13),
         overwrite_mgxs_library=True, mgxs_path="mgxs.h5", correction='P0'
     )
 

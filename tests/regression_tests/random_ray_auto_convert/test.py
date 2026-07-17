@@ -26,10 +26,9 @@ def test_random_ray_auto_convert(method):
         model = pwr_pin_cell()
 
         # Convert to a multi-group model
-        mgxs_settings = model.mgxs_generation_settings(method)
-        mgxs_settings.particles = 100
         model.convert_to_multigroup(
-            method=method, groups='CASMO-2', settings=mgxs_settings,
+            method=method, groups='CASMO-2',
+            settings=openmc.Settings(particles=100),
             overwrite_mgxs_library=False, mgxs_path="mgxs.h5"
         )
 

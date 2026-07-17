@@ -363,12 +363,10 @@ def test_ww_generation_with_dagmc(run_in_tmpdir):
     rr_model = copy.deepcopy(model)
     rr_model.settings.inactive = 3
 
-    mgxs_settings = rr_model.mgxs_generation_settings("stochastic_slab")
-    mgxs_settings.particles = 10
     rr_model.convert_to_multigroup(
         method="stochastic_slab",
         overwrite_mgxs_library=True,
-        settings=mgxs_settings,
+        settings=openmc.Settings(particles=10),
         groups="CASMO-2"
     )
 

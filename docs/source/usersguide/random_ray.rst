@@ -700,23 +700,13 @@ existing MGXS library file, or ``False`` to skip generation and use an existing
 library file.
 
 The continuous energy simulations used to generate the cross section library
-can be customized via the ``settings`` parameter. To do so, start from the
-default settings returned by :meth:`openmc.Model.mgxs_generation_settings`,
-modify them as desired, and pass the result back. For example, the number of
-particles per batch (2,000 by default) can be increased to improve the fidelity
-of the generated cross section library as::
+can be customized via the ``settings`` parameter. Only the attributes that are
+populated on the passed :class:`openmc.Settings` object override the
+generation defaults, so a sparse object adjusts just the fields you set. For
+example, the number of particles per batch (2,000 by default) can be increased
+to improve the fidelity of the generated cross section library as::
 
-  settings = model.mgxs_generation_settings()
-  settings.particles = 100_000
-  model.convert_to_multigroup(settings=settings)
-
-The settings returned by :meth:`openmc.Model.mgxs_generation_settings` record
-the method they were generated for, so a non-default method only needs to be
-given once::
-
-  settings = model.mgxs_generation_settings("stochastic_slab")
-  settings.particles = 100_000
-  model.convert_to_multigroup(settings=settings)
+  model.convert_to_multigroup(settings=openmc.Settings(particles=100_000))
 
 .. note::
     MGXS transport correction (via setting the ``correction`` parameter in the
@@ -807,8 +797,7 @@ on the generation settings::
     # Then, bootstrap a higher fidelity material-wise library, applying those
     # weight windows during the continuous energy solve so that particles can
     # reach materials far from the source.
-    settings = model.mgxs_generation_settings()
-    settings.weight_windows_file = "weight_windows.h5"
+    settings = openmc.Settings(weight_windows_file="weight_windows.h5")
     model.convert_to_multigroup(settings=settings, overwrite_mgxs_library=True)
 
 A weight windows file on the generation settings is only used with the

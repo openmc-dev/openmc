@@ -37,10 +37,9 @@ def test_random_ray_auto_convert_source_energy(method, source_type):
             source_energy = openmc.stats.delta_function(1.0e4)
 
         # Convert to a multi-group model
-        mgxs_settings = model.mgxs_generation_settings(method)
-        mgxs_settings.particles = 100
         model.convert_to_multigroup(
-            method=method, groups='CASMO-8', settings=mgxs_settings,
+            method=method, groups='CASMO-8',
+            settings=openmc.Settings(particles=100),
             overwrite_mgxs_library=False, mgxs_path="mgxs.h5",
             source_energy=source_energy
         )

@@ -42,12 +42,10 @@ def test_convert_to_multigroup_without_particles_batches(run_in_tmpdir):
 
     # This should work without requiring particles/batches to be set
     # convert_to_multigroup handles initialization internally using non-transport mode
-    mgxs_settings = model.mgxs_generation_settings('material_wise')
-    mgxs_settings.particles = 10
     model.convert_to_multigroup(
         method='material_wise',
         groups='CASMO-2',
-        settings=mgxs_settings,
+        settings=openmc.Settings(particles=10),
         overwrite_mgxs_library=True
     )
 

@@ -302,7 +302,7 @@ int openmc_zernike_filter_set_params(
 int openmc_particle_filter_get_bins(int32_t idx, int32_t bins[]);
 
 //! Sets the mesh and energy grid for CMFD reweight
-//! \param[in] meshtyally_id id of CMFD Mesh Tally
+//! \param[in] meshtally_id id of CMFD Mesh Tally
 //! \param[in] cmfd_indices indices storing spatial and energy dimensions of
 //! CMFD problem \param[in] norm CMFD normalization factor
 void openmc_initialize_mesh_egrid(

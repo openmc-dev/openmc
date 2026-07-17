@@ -11,7 +11,10 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os, subprocess
+import os
+from pathlib import Path
+import subprocess
+import sys
 
 # Determine if we're on Read the Docs server
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
@@ -48,7 +51,8 @@ extensions = [
 ]
 if not on_rtd:
     extensions.append('sphinxcontrib.rsvgconverter')
-    subprocess.run(['doxygen'], cwd='../doxygen')
+    doxygen_dir = Path(__file__).parents[1] / 'doxygen'
+    subprocess.run(['doxygen'], cwd=doxygen_dir, check=True)
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -123,6 +127,7 @@ pygments_style = 'tango'
 
 breathe_projects = {"OpenMC": "../doxygen/xml"}
 breathe_default_project = "OpenMC"
+breathe_domain_by_file_pattern = {"*capi.h": "c"}
 
 # -- Options for HTML output ---------------------------------------------------
 

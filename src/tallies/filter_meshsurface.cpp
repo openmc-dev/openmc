@@ -32,7 +32,7 @@ std::string MeshSurfaceFilter::text_label(int bin) const
   int i_mesh = bin / (4 * n_dim);
   int surf_index = bin % (4 * n_dim);
 
-  // Get mesh index part of label, then append the surface part. 
+  // Get mesh index part of label, then append the surface part.
   // The surface is labeled by the underlying mesh.
   std::string out = MeshFilter::text_label(i_mesh);
   out += mesh.surface_bin_label(surf_index);

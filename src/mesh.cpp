@@ -325,10 +325,33 @@ void MaterialVolumes::add_volume_unsafe(
 // Mesh implementation
 //==============================================================================
 
-template<typename T>
-const std::unique_ptr<Mesh>& Mesh::create(
-  T dataset, const std::string& mesh_type, const std::string& mesh_library)
+std::string read_mesh_type(const pugi::xml_node& node)
 {
+  std::string mesh_type;
+  if (check_for_node(node, "type")) {
+    mesh_type = get_node_value(node, "type");
+  } else {
+    mesh_type = "regular";
+  }
+  return std::move(mesh_type);
+}
+
+std::string read_mesh_type(hid_t group)
+{
+  std::string mesh_type;
+  if (object_exists(group, "type")) {
+    read_dataset(group, "type", mesh_type);
+  } else {
+    mesh_type = "regular";
+  }
+  return std::move(mesh_type);
+}
+
+
+template<typename T>
+const std::unique_ptr<Mesh>& Mesh::create(T dataset)
+{
+  std::string mesh_type = read_mesh_type(dataset);
   // Determine mesh type. Add to model vector and map
   if (mesh_type == RegularMesh::mesh_type) {
     model::meshes.push_back(make_unique<RegularMesh>(dataset));
@@ -338,23 +361,8 @@ const std::unique_ptr<Mesh>& Mesh::create(
     model::meshes.push_back(make_unique<CylindricalMesh>(dataset));
   } else if (mesh_type == SphericalMesh::mesh_type) {
     model::meshes.push_back(make_unique<SphericalMesh>(dataset));
-#ifdef OPENMC_DAGMC_ENABLED
-  } else if (mesh_type == UnstructuredMesh::mesh_type &&
-             mesh_library == MOABMesh::mesh_lib_type) {
-    model::meshes.push_back(make_unique<MOABMesh>(dataset));
-#endif
-#ifdef OPENMC_XDG_ENABLED
-  } else if (mesh_type == XDGMesh::mesh_type) {
-    model::meshes.push_back(make_unique<XDGMesh>(dataset));
-#endif
-#ifdef OPENMC_LIBMESH_ENABLED
-  } else if (mesh_type == UnstructuredMesh::mesh_type &&
-             mesh_library == LibMesh::mesh_lib_type) {
-    model::meshes.push_back(make_unique<LibMesh>(dataset));
-#endif
   } else if (mesh_type == UnstructuredMesh::mesh_type) {
-    fatal_error("Unstructured mesh support is not enabled or the mesh "
-                "library is invalid.");
+    model::meshes.push_back(UnstructuredMesh::create(dataset));
   } else {
     fatal_error(fmt::format("Invalid mesh type: {}", mesh_type));
   }
@@ -812,17 +820,88 @@ Position StructuredMesh::sample_element(
 // Unstructured Mesh implementation
 //==============================================================================
 
+std::string read_mesh_implementation(const pugi::xml_node& node)
+{
+  std::string mesh_implementation;
+  if (check_for_node(node, "implementation")) {
+    mesh_implementation = get_node_value(node, "implementation");
+  } else {
+    mesh_implementation = "native";
+  }
+  return std::move(mesh_implementation);
+}
+
+std::string read_mesh_implementation(hid_t group)
+{
+  std::string mesh_implementation;
+  if (object_exists(group, "implementation")) {
+    read_dataset(group, "implementation", mesh_implementation);
+  } else {
+    mesh_implementation = "native";
+  }
+  return std::move(mesh_implementation);
+}
+
+std::string read_mesh_library(const pugi::xml_node& node)
+{
+  std::string mesh_library;
+  if (check_for_node(node, "library")) {
+    mesh_library = get_node_value(node, "library");
+  } else {
+    mesh_library = "moab";
+  }
+  return std::move(mesh_library);
+}
+
+std::string read_mesh_library(hid_t group)
+{
+  std::string mesh_library;
+  if (object_exists(group, "library")) {
+    read_dataset(group, "library", mesh_library);
+  } else {
+    mesh_library = "moab";
+  }
+  return std::move(mesh_library);
+}
+
+template<typename T>
+std::unique_ptr<UnstructuredMesh> UnstructuredMesh::create(T dataset)
+{
+  std::string mesh_implementation = read_mesh_implementation(dataset);
+  std::unique_ptr<UnstructuredMesh> out {nullptr};
+
+#ifdef OPENMC_XDG_ENABLED
+  if (!out && mesh_implementation == XDGMesh::mesh_type) {
+    out = make_unique<XDGMesh>(dataset);
+  }
+#endif
+
+  std::string mesh_library = read_mesh_library(dataset);
+
+#ifdef OPENMC_DAGMC_ENABLED
+  if (!out && mesh_library == MOABMesh::mesh_lib_type) {
+    out = make_unique<MOABMesh>(dataset);
+  }
+#endif
+
+#ifdef OPENMC_LIBMESH_ENABLED
+  if (!out && mesh_library == LibMesh::mesh_lib_type) {
+    out = make_unique<LibMesh>(dataset);
+  }
+#endif
+
+  if (!out) {
+    fatal_error(fmt::format("Unstructured mesh implementation '{}' and library '{}' is not "
+                            "enabled in this build of OpenMC.",
+      mesh_implementation, mesh_library));
+  }
+
+  return out;
+}
+
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 {
   n_dimension_ = 3;
-
-  // check the mesh type
-  // if (check_for_node(node, "type")) {
-  //   auto temp = get_node_value(node, "type", true, true);
-  //   if (temp != mesh_type) {
-  //     fatal_error(fmt::format("Invalid mesh type: {}", temp));
-  //   }
-  // }
 
   // check if a length unit multiplier was specified
   if (check_for_node(node, "length_multiplier")) {
@@ -4026,16 +4105,12 @@ void read_meshes(pugi::xml_node root)
     if (check_for_node(node, "type")) {
       mesh_type = get_node_value(node, "type", true, true);
     } else {
+      // legacy support: older versions of XML do not specify a type,
+      // so assume a regular mesh
       mesh_type = "regular";
     }
 
-    // determine the mesh library to use
-    std::string mesh_lib;
-    if (check_for_node(node, "library")) {
-      mesh_lib = get_node_value(node, "library", true, true);
-    }
-
-    Mesh::create(node, mesh_type, mesh_lib);
+    Mesh::create(node);
   }
 }
 
@@ -4070,16 +4145,12 @@ void read_meshes(hid_t group)
     if (object_exists(mesh_group, "type")) {
       read_dataset(mesh_group, "type", mesh_type);
     } else {
+      // legacy support: older versions of HDF5 do not specify a type,
+      // so assume a regular mesh
       mesh_type = "regular";
     }
 
-    // determine the mesh library to use
-    std::string mesh_lib;
-    if (object_exists(mesh_group, "library")) {
-      read_dataset(mesh_group, "library", mesh_lib);
-    }
-
-    Mesh::create(mesh_group, mesh_type, mesh_lib);
+    Mesh::create(mesh_group);
   }
 }
 

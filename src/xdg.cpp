@@ -91,6 +91,7 @@ XDGMesh::XDGMesh(std::shared_ptr<xdg::XDG> external_xdg)
 
 void XDGMesh::initialize()
 {
+  // the XDG instance has already been created, so no action is required
   if (xdg_)
     return;
 
@@ -183,6 +184,9 @@ std::string XDGMesh::library() const
   } else if (mesh_library_ == xdg::MeshLibrary::MOAB) {
     return "moab";
   }
+
+  fatal_error("Invalid mesh library specified for XDGMesh.");
+  return {};
 }
 
 void XDGMesh::write(const std::string& base_filename) const

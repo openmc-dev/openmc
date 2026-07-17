@@ -155,8 +155,7 @@ public:
 
   // Factory method for creating meshes from either an XML node or HDF5 group
   template<typename T>
-  static const std::unique_ptr<Mesh>& create(
-    T dataset, const std::string& mesh_type, const std::string& mesh_library);
+  static const std::unique_ptr<Mesh>& create(T dataset);
 
   // Methods
   //! Perform any preparation needed to support point location within the mesh
@@ -721,6 +720,9 @@ private:
 class UnstructuredMesh : public Mesh {
 
 public:
+  template<typename T>
+  static std::unique_ptr<UnstructuredMesh> create(T dataset);
+
   // Constructors
   UnstructuredMesh() { n_dimension_ = 3; };
   UnstructuredMesh(pugi::xml_node node);

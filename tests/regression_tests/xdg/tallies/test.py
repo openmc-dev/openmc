@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 import openmc
 import openmc.lib
-from openmc.xdg import XDGMesh
 
 from tests.testing_harness import PyAPITestHarness
 
@@ -43,7 +42,7 @@ class XDGMeshTallyTest(PyAPITestHarness):
         with openmc.StatePoint(self._sp_name) as sp:
             xdg_mesh = None
             for mesh in sp.meshes.values():
-                if isinstance(mesh, XDGMesh):
+                if isinstance(mesh, openmc.UnstructuredMesh):
                     xdg_mesh = mesh
                     break
 
@@ -289,7 +288,8 @@ def test_xdg_mesh_tallies(model, test_opts):
     regular_mesh_tally.estimator = 'collision'
 
     # add analogous XDG mesh tally
-    xdg_mesh = XDGMesh(test_opts["mesh_filename"], test_opts["library"])
+    xdg_mesh = openmc.UnstructuredMesh(test_opts["mesh_filename"], test_opts["library"])
+    xdg_mesh.interface = 'xdg'
     xdg_filter = openmc.MeshFilter(mesh=xdg_mesh)
 
     xdg_tally = openmc.Tally(name="xdg mesh tally")

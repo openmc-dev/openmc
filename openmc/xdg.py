@@ -87,21 +87,3 @@ class XDGMesh(openmc.UnstructuredMesh):
 
         return element
 
-    @classmethod
-    def from_xml_element(cls, elem: ET.Element):
-        """Generate unstructured mesh object from XML element
-
-        Parameters
-        ----------
-        elem : lxml.etree._Element
-            XML element
-
-        Returns
-        -------
-        openmc.UnstructuredMesh
-            UnstructuredMesh generated from an XML element
-        """
-        mesh_id = int(get_text(elem, 'id'))
-        filename = get_text(elem, 'filename')
-        library = get_text(elem, 'library')
-        return cls(filename, library, mesh_id)

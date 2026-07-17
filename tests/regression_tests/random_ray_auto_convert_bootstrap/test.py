@@ -91,7 +91,6 @@ def test_random_ray_auto_convert_bootstrap():
     # Run the continuous energy model with the improved weight windows,
     # tallying the flux in every region
     model.settings.weight_windows_file = 'weight_windows.h5'
-    model.settings.weight_windows_on = True
     model.settings.particles = 20
     model.settings.batches = 10
     tally = openmc.Tally(name='flux')

@@ -1169,13 +1169,12 @@ def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatc
     gen = _capture_generation_settings(
         monkeypatch, model, method='material_wise', settings=user)
 
-    # A weight windows file on the generation settings is applied to the
-    # "material_wise" generation run with weight windows turned on
+    # A weight windows file on the generation settings is passed through to
+    # the "material_wise" generation run (specifying a file turns weight
+    # windows on at run time)
     assert gen.weight_windows_file == ww_path
-    assert gen.weight_windows_on is True
     # The caller's object is never mutated
     assert user.weight_windows_file == ww_path
-    assert user.weight_windows_on is None
 
     # The surrogate-geometry methods ignore the file with a warning
     with pytest.warns(UserWarning, match='material_wise'):

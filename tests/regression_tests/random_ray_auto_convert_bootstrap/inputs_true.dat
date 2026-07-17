@@ -61,7 +61,6 @@
         <domain_ids>1</domain_ids>
       </constraints>
     </source>
-    <weight_windows_on>true</weight_windows_on>
     <weight_windows_file>weight_windows.h5</weight_windows_file>
     <weight_window_checkpoints>
       <collision>true</collision>

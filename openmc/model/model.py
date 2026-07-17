@@ -2701,8 +2701,8 @@ class Model:
             (fission treated as capture). If the resolved settings include a
             ``weight_windows_file`` (e.g., ``"weight_windows.h5"``), the
             ``"material_wise"`` method loads and applies those weight
-            windows during the continuous energy generation simulation
-            (``weight_windows_on`` is enabled automatically). Applying
+            windows during the continuous energy generation simulation.
+            Applying
             weight windows allows the simulation to obtain tallies -- and
             thus nonzero cross sections -- for materials located far from
             the source, for example behind a thick shield, which an analog
@@ -2792,24 +2792,23 @@ class Model:
             settings.run_mode = 'fixed source'
 
         # A weight windows file on the generation settings is loaded and
-        # applied during the "material_wise" method's continuous energy
-        # simulation of the original geometry, allowing materials far from
-        # the source -- which an analog simulation may struggle to reach --
-        # to still be tallied, and thus obtain nonzero cross sections. The
+        # applied (specifying a file turns weight windows on) during the
+        # "material_wise" method's continuous energy simulation of the
+        # original geometry, allowing materials far from the source --
+        # which an analog simulation may struggle to reach -- to still be
+        # tallied, and thus obtain nonzero cross sections. The
         # "stochastic_slab" and "infinite_medium" methods use simplified
         # surrogate geometries for which weight windows defined over the
         # original geometry are neither applicable nor needed.
-        if settings.weight_windows_file is not None:
-            if method == "material_wise":
-                settings.weight_windows_on = True
-            else:
-                warnings.warn(
-                    'The weight windows file set on the generation settings '
-                    'is only applicable to the "material_wise" MGXS '
-                    f'generation method and will be ignored for the '
-                    f'"{method}" method.'
-                )
-                settings.weight_windows_file = None
+        if settings.weight_windows_file is not None and \
+                method != "material_wise":
+            warnings.warn(
+                'The weight windows file set on the generation settings '
+                'is only applicable to the "material_wise" MGXS '
+                f'generation method and will be ignored for the '
+                f'"{method}" method.'
+            )
+            settings.weight_windows_file = None
 
         # Do all work (including MGXS generation) in a temporary directory
         # to avoid polluting the working directory with residual XML files

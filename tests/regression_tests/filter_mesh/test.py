@@ -40,9 +40,9 @@ class MeshSurfaceFilterTest(HashedPyAPITestHarness):
             else:
                 axis_labels = ('x', 'y', 'z')
             for axis in axis_labels[:nd]:
-            expected += [f'Outgoing, {axis}-min', f'Incoming, {axis}-min',
-                         f'Outgoing, {axis}-max', f'Incoming, {axis}-max']
-        expected.append(expected[0])
+                expected += [f'Outgoing, {axis}-min', f'Incoming, {axis}-min',
+                             f'Outgoing, {axis}-max', f'Incoming, {axis}-max']
+            expected.append(expected[0])
         assert len(labels) == len(expected)
         for line, exp in zip(labels, expected):
             assert exp in line, f"{exp} not in {line}"
@@ -161,5 +161,5 @@ def model():
 
 
 def test_filter_mesh(model):
-    harness = HashedPyAPITestHarness('statepoint.5.h5', model)
+    harness = MeshSurfaceFilterTest('statepoint.5.h5', model)
     harness.main()

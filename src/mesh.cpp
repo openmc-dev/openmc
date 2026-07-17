@@ -347,7 +347,6 @@ std::string read_mesh_type(hid_t group)
   return std::move(mesh_type);
 }
 
-
 template<typename T>
 const std::unique_ptr<Mesh>& Mesh::create(T dataset)
 {
@@ -891,8 +890,9 @@ std::unique_ptr<UnstructuredMesh> UnstructuredMesh::create(T dataset)
 #endif
 
   if (!out) {
-    fatal_error(fmt::format("Unstructured mesh implementation '{}' and library '{}' is not "
-                            "enabled in this build of OpenMC.",
+    fatal_error(fmt::format(
+      "Unstructured mesh implementation '{}' and library '{}' is not "
+      "enabled in this build of OpenMC.",
       mesh_implementation, mesh_library));
   }
 

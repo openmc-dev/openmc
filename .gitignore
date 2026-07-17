@@ -25,6 +25,7 @@ examples/**/*.xml
 
 # Documentation builds
 docs/build
+docs/doxygen/xml
 docs/source/_images/*.pdf
 docs/source/_images/*.aux
 docs/source/pythonapi/generated/

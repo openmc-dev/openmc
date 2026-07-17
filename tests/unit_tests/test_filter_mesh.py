@@ -416,8 +416,8 @@ def test_mesh_filter_dataframe_rectilinear():
 def test_axis_labels(mesh_type):
     if mesh_type == 'regular':
         mesh = openmc.RegularMesh()
-        mesh.lower_left = np.asarray([0.0]*3]
-        mesh.width = np.asarray([0.0]*3]
+        mesh.lower_left = np.asarray([0.0]*3)
+        mesh.width = np.asarray([0.0]*3)
         mesh.dimension = (1, 1, 1)
     elif mesh_type == 'rectilinear':
         mesh = openmc.RectilinearMesh()

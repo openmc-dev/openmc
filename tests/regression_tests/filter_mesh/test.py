@@ -7,6 +7,49 @@ import pytest
 from tests.testing_harness import HashedPyAPITestHarness
 
 
+class MeshSurfaceFilterTest(HashedPyAPITestHarness):
+
+    def _compare_results(self):
+        tally_meshes = {}
+        with openmc.StatePoint(self.statepoint_name) as sp:
+            for tally in sp.tallies.values():
+                for filt in tally.filters:
+                    if isinstance(filt, openmc.MeshSurfaceFilter):
+                        tally_meshes[tally.id] = filt.mesh
+                        break
+
+        with open('tallies.out') as fh:
+            text = fh.read()
+
+        for tally_id, mesh in tally_meshes.items():
+            # Snip the relevant text.
+            header = f"TALLY {tally_id}"
+            assert header in text
+            text = text[text.find(header) + len(header):]
+            end = text.find("TALLY")
+            section = text if end == -1 else text[:end]
+            # Define the relevant labels and ensure they wrap.
+            nd = mesh.n_dimension
+            labels = [ln for ln in section.splitlines() if "Mesh Index" in ln]
+            labels = labels[:4*nd + 1]  # just the first 4, 8, or 12, plus one
+            expected = []
+            if isinstance(mesh, openmc.SphericalMesh):
+                axis_labels = ('r', 'phi', 'theta')
+            elif isinstance(mesh, openmc.CylindricalMesh):
+                axis_labels = ('r', 'phi', 'z')
+            else:
+                axis_labels = ('x', 'y', 'z')
+            for axis in axis_labels[:nd]:
+            expected += [f'Outgoing, {axis}-min', f'Incoming, {axis}-min',
+                         f'Outgoing, {axis}-max', f'Incoming, {axis}-max']
+        expected.append(expected[0])
+        assert len(labels) == len(expected)
+        for line, exp in zip(labels, expected):
+            assert exp in line, f"{exp} not in {line}"
+
+        return super()._compare_results()
+
+
 @pytest.fixture
 def model():
     model = openmc.model.Model()

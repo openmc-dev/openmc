@@ -2696,42 +2696,18 @@ class Model:
                 Set ``temperature`` on the object passed via the ``settings``
                 argument instead.
         settings : openmc.Settings, optional
-            Settings for customizing the continuous energy simulation(s)
-            used to generate the MGXS library. Only attributes that are
-            populated override the generation defaults, so a sparse object
-            may be used to adjust just a few fields, e.g.
-            ``settings=openmc.Settings(particles=100_000)`` only increases
-            the particle count. The settings of the generation run are
-            resolved in three layers, with later layers taking precedence:
-            (1) the model's own settings for the ``"material_wise"`` method,
-            or a fresh :class:`openmc.Settings` object for the
-            surrogate-geometry methods (which also inherit the model's
-            temperature settings); (2) the generation defaults (200 batches
-            with 100 inactive for ``"material_wise"`` and
-            ``"stochastic_slab"``, 100 batches for ``"infinite_medium"``,
-            2000 particles, and summary-only output); (3) all populated
-            attributes of this object (see :meth:`openmc.Settings.update`).
-            The run mode cannot be set here: ``"material_wise"`` always
-            takes it from the model, while the ``"stochastic_slab"`` and
-            ``"infinite_medium"`` methods always run in fixed source mode.
-            The surrogate-geometry methods also construct their own
-            sources and default ``create_fission_neutrons`` to False
-            (fission treated as capture). If the resolved settings include a
-            ``weight_windows_file`` (e.g., ``"weight_windows.h5"``), the
-            ``"material_wise"`` method loads and applies those weight
-            windows during the continuous energy generation simulation.
-            Applying
-            weight windows allows the simulation to obtain tallies -- and
-            thus nonzero cross sections -- for materials located far from
-            the source, for example behind a thick shield, which an analog
-            simulation may be unable to reach. A typical use case is to
-            first generate weight windows with the ``"stochastic_slab"``
-            method and the random ray solver, then "bootstrap" a
-            higher-fidelity ``"material_wise"`` library by setting those
-            weight windows here; a warning is issued and the file is
-            ignored for the ``"stochastic_slab"`` and ``"infinite_medium"``
-            methods. Cannot be combined with the deprecated ``nparticles``
-            or ``temperature_settings`` arguments.
+            Settings overrides for the continuous energy simulation(s) used
+            to generate the MGXS library. Attributes populated on this
+            object take precedence over the generation defaults, so a
+            sparse object such as ``openmc.Settings(particles=100_000)``
+            adjusts just that field (see :meth:`openmc.Settings.update`).
+            The run mode cannot be overridden, as it is determined by the
+            generation method. A ``weight_windows_file`` is applied during
+            ``"material_wise"`` generation and ignored with a warning by
+            the other methods; see the user guide for the weight window
+            "bootstrapping" workflow this enables. Cannot be combined with
+            the deprecated ``nparticles`` or ``temperature_settings``
+            arguments.
 
             .. versionadded:: 0.15.4
         """

@@ -1575,6 +1575,7 @@ and 10. The verbosity levels are defined as follows:
   :5: all of the above + file I/O
   :6: all of the above + timing statistics and initialization messages
   :7: all of the above + :math:`k` by generation
+  :8: all of the above + random ray volume-estimator diagnostics
   :9: all of the above + indicate when each particle starts
   :10: all of the above + event information
 

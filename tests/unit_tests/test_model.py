@@ -1199,6 +1199,15 @@ def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatc
     # The caller's object is never mutated
     assert user.weight_windows_file == ww_path
 
+    # An explicit weight_windows_on=False rides along with the file and
+    # overrides the run-time file-implied enable
+    user = openmc.Settings(weight_windows_file=ww_path,
+                           weight_windows_on=False)
+    gen = _capture_generation_settings(
+        monkeypatch, model, method='material_wise', settings=user)
+    assert gen.weight_windows_file == ww_path
+    assert gen.weight_windows_on is False
+
     # The surrogate-geometry methods ignore the file with a warning
     with pytest.warns(UserWarning, match='material_wise'):
         gen = _capture_generation_settings(

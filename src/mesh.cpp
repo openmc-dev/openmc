@@ -819,26 +819,26 @@ Position StructuredMesh::sample_element(
 // Unstructured Mesh implementation
 //==============================================================================
 
-std::string read_mesh_implementation(const pugi::xml_node& node)
+std::string read_mesh_interface(const pugi::xml_node& node)
 {
-  std::string mesh_implementation;
-  if (check_for_node(node, "implementation")) {
-    mesh_implementation = get_node_value(node, "implementation");
+  std::string mesh_interface;
+  if (check_for_node(node, "interface")) {
+    mesh_interface = get_node_value(node, "interface");
   } else {
-    mesh_implementation = "native";
+    mesh_interface = "native";
   }
-  return std::move(mesh_implementation);
+  return std::move(mesh_interface);
 }
 
-std::string read_mesh_implementation(hid_t group)
+std::string read_mesh_interface(hid_t group)
 {
-  std::string mesh_implementation;
-  if (object_exists(group, "implementation")) {
-    read_dataset(group, "implementation", mesh_implementation);
+  std::string mesh_interface;
+  if (object_exists(group, "interface")) {
+    read_dataset(group, "interface", mesh_interface);
   } else {
-    mesh_implementation = "native";
+    mesh_interface = "native";
   }
-  return std::move(mesh_implementation);
+  return std::move(mesh_interface);
 }
 
 std::string read_mesh_library(const pugi::xml_node& node)
@@ -866,11 +866,11 @@ std::string read_mesh_library(hid_t group)
 template<typename T>
 std::unique_ptr<UnstructuredMesh> UnstructuredMesh::create(T dataset)
 {
-  std::string mesh_implementation = read_mesh_implementation(dataset);
+  std::string mesh_interface = read_mesh_interface(dataset);
   std::unique_ptr<UnstructuredMesh> out {nullptr};
 
 #ifdef OPENMC_XDG_ENABLED
-  if (!out && mesh_implementation == XDGMesh::mesh_type) {
+  if (!out && mesh_interface == XDGMesh::mesh_type) {
     out = make_unique<XDGMesh>(dataset);
   }
 #endif
@@ -891,9 +891,9 @@ std::unique_ptr<UnstructuredMesh> UnstructuredMesh::create(T dataset)
 
   if (!out) {
     fatal_error(fmt::format(
-      "Unstructured mesh implementation '{}' and library '{}' is not "
+      "Unstructured mesh interface '{}' and library '{}' is not "
       "enabled in this build of OpenMC.",
-      mesh_implementation, mesh_library));
+      mesh_interface, mesh_library));
   }
 
   return out;

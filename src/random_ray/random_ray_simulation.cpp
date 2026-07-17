@@ -633,27 +633,30 @@ void RandomRaySimulation::print_results_random_ray(
         domain_->n_final_naive_, domain_->n_final_naive_ * inv);
       // The per-cause diagnostic breakdown is developer-facing; verbosity 8
       // sits above the default (7) but below the per-particle output (9).
+      // The causes are mutually exclusive and sum to the total above:
+      // "end of inactive" causes are the one-shot demotions decided from the
+      // converged (accumulated) inactive flux, "per batch" causes are
+      // re-evaluated each batch and reported for the final batch.
       if (settings::verbosity >= 8) {
-        fmt::print("   Strong Source                   = {} SRs ({:.4f}%)\n",
+        fmt::print("   Strong source (end of inactive) = {} SRs ({:.4f}%)\n",
+          domain_->n_final_latch_, domain_->n_final_latch_ * inv);
+        fmt::print("   Strong source (per batch)       = {} SRs ({:.4f}%)\n",
           domain_->n_final_strong_, domain_->n_final_strong_ * inv);
-        fmt::print("   Converged Negative (demoted)    = {} SRs ({:.4f}%)\n",
-          domain_->n_final_demoted_, domain_->n_final_demoted_ * inv);
-        fmt::print("   Hit-Starved (Small)             = {} SRs ({:.4f}%)\n",
+        fmt::print("   Negative flux (end of inactive) = {} SRs ({:.4f}%)\n",
+          domain_->n_final_sign_, domain_->n_final_sign_ * inv);
+        fmt::print("   Hit-starved (per batch)         = {} SRs ({:.4f}%)\n",
           domain_->n_final_small_, domain_->n_final_small_ * inv);
-        // For linear-source runs, the strong-source and converged-negative
-        // regions additionally have their source gradients zeroed, reverting
-        // them to a flat source; this is the same data the volume switch
-        // uses, reported here as the linear -> flat fallback frequency.
+        // For linear-source runs, every demoted region except the purely
+        // hit-starved additionally has its source gradients zeroed,
+        // reverting it to a flat source; this is the same data the volume
+        // switch uses, reported here as the linear -> flat fallback
+        // frequency.
         if (RandomRay::source_shape_ != RandomRaySourceShape::FLAT) {
-          int64_t n_flat = domain_->n_final_strong_ + domain_->n_final_demoted_;
+          int64_t n_flat = domain_->n_final_latch_ + domain_->n_final_strong_ +
+                           domain_->n_final_sign_;
           fmt::print("   Demoted -> Flat (linear)        = {} SRs ({:.4f}%)\n",
             n_flat, n_flat * inv);
         }
-        fmt::print(" Transition Demotions (decided at end of inactive):\n");
-        fmt::print("   Converged Negative (sign)       = {} SRs ({:.4f}%)\n",
-          domain_->n_transition_sign_, domain_->n_transition_sign_ * inv);
-        fmt::print("   Strong-Feed Latch               = {} SRs ({:.4f}%)\n",
-          domain_->n_transition_latch_, domain_->n_transition_latch_ * inv);
       }
     }
 

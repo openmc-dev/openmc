@@ -104,21 +104,19 @@ public:
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
                                           // non-zero external source terms
 
-  // Final-iteration snapshot of the naive volume treatment, classified by
-  // cause with mutually exclusive attribution (the cause lines sum to the
-  // total), for end-of-simulation reporting
+  // Final-batch snapshot of the naive volume treatment, partitioned by
+  // mutually exclusive cause (the four counts sum to n_final_naive_), for
+  // end-of-simulation reporting. The two one-shot demotions decided at the
+  // inactive->active transition are counted with first priority -- a strong
+  // converged (accumulated) feed and a negative converged flux -- so their
+  // counts equal the decisions made at the transition; the per-batch
+  // strong-source test and hit-starved causes count the remainder.
   int64_t n_final_naive_ {0};
-  int64_t n_final_strong_ {0};
-  int64_t n_final_demoted_ {0};
-  int64_t n_final_small_ {0};
+  int64_t n_final_latch_ {0};  // strong source, from the converged feed
+  int64_t n_final_strong_ {0}; // strong source, from the per-batch test
+  int64_t n_final_sign_ {0};   // negative converged flux
+  int64_t n_final_small_ {0};  // hit-starved
   bool final_stats_valid_ {false};
-
-  // One-shot demotion decisions made at the inactive->active transition,
-  // reported separately from the final-iteration snapshot above (whose
-  // priority attribution would otherwise hide transition demotions behind
-  // the per-iteration strong-source cause)
-  int64_t n_transition_sign_ {0};  // accumulated inactive flux negative
-  int64_t n_transition_latch_ {0}; // strong accumulated feed (kappa latch)
 
   // 1D array representing source region starting offset for each OpenMC Cell
   // in model::cells

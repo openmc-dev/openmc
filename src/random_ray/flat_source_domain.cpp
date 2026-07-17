@@ -216,22 +216,10 @@ void FlatSourceDomain::inactive_demotion_step()
         source_regions_.scalar_flux_final(sr, g) = 0.0;
       }
     }
-    // Record the transition decisions for the end-of-run report (the
-    // final-iteration by-cause snapshot cannot show them: its priority
-    // attribution files most transition-demoted regions under the
-    // per-iteration strong-source cause).
-    int64_t n_sign = 0;
-    int64_t n_latch = 0;
-#pragma omp parallel for reduction(+ : n_sign, n_latch)
-    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-      if (source_regions_.converged_negative(sr) == 1) {
-        n_sign++;
-      } else if (source_regions_.converged_negative(sr) == 2) {
-        n_latch++;
-      }
-    }
-    n_transition_sign_ = n_sign;
-    n_transition_latch_ = n_latch;
+    // No separate decision-count bookkeeping is needed here: the flags are
+    // fixed for the whole active phase, so the final-batch by-cause snapshot
+    // in add_source_to_scalar_flux (which counts them with first priority)
+    // reports these decisions exactly.
   }
 }
 
@@ -390,8 +378,9 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   int64_t n_hits = 0;
   double inverse_batch = 1.0 / simulation::current_batch;
   int64_t n_naive = 0;
+  int64_t n_latch = 0;
   int64_t n_strong = 0;
-  int64_t n_demoted = 0;
+  int64_t n_sign = 0;
   int64_t n_small = 0;
   bool final_iteration = (simulation::current_batch == settings::n_batches);
   // The adaptive estimator uses the proactive strong-source (kappa) test, the
@@ -402,7 +391,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE;
 
 #pragma omp parallel for reduction(                                           \
-  + : n_hits, n_naive, n_strong, n_demoted, n_small)
+  + : n_hits, n_naive, n_latch, n_strong, n_sign, n_small)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
     double volume_simulation_avg = source_regions_.volume(sr);
@@ -469,7 +458,8 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     // term is folded into q/Sigma_t. All are g-independent.
     bool external = source_regions_.external_source_present(sr);
     bool small = source_regions_.is_small(sr);
-    bool converged_neg = source_regions_.converged_negative(sr) > 0;
+    int conv_flag = source_regions_.converged_negative(sr);
+    bool converged_neg = conv_flag > 0;
 
     // Every estimator reduces to two g-independent per-region decisions:
     //   1. which volume to use on a hit -- the simulation-averaged volume,
@@ -506,14 +496,19 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     double volume = use_naive_volume ? volume_iteration : volume_simulation_avg;
 
     // On the final iteration, classify the demoted (naive-volume) regions by
-    // cause -- mutually exclusive, in priority order, so the causes sum to the
-    // total -- for the end-of-simulation report.
+    // cause -- mutually exclusive, in priority order, so the causes sum to
+    // the total -- for the end-of-simulation report. The one-shot transition
+    // demotions are counted first (their flags are fixed for the whole
+    // active phase, so these counts equal the decisions made at the end of
+    // the inactive phase); the per-batch causes count only the remainder.
     if (final_iteration && is_adaptive && use_naive_volume) {
       n_naive++;
-      if (strong_source) {
+      if (conv_flag == 2) {
+        n_latch++;
+      } else if (conv_flag == 1) {
+        n_sign++;
+      } else if (strong_source) {
         n_strong++;
-      } else if (converged_neg) {
-        n_demoted++;
       } else if (small) {
         n_small++;
       }
@@ -549,8 +544,9 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   if (final_iteration &&
       volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE) {
     n_final_naive_ = n_naive;
+    n_final_latch_ = n_latch;
     n_final_strong_ = n_strong;
-    n_final_demoted_ = n_demoted;
+    n_final_sign_ = n_sign;
     n_final_small_ = n_small;
     final_stats_valid_ = true;
   }

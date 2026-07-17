@@ -302,9 +302,11 @@ def test_axis_labels(mesh_type):
         assert bin_names[8:] == ['z-min out', 'z-min in', 'z-max out', 'z-max in']
     if mesh_type in {'cylindrical', 'spherical'}:
         assert bin_names[:4] == ['r-min out', 'r-min in', 'r-max out', 'r-max in']
-        assert bin_names[4:8] == ['phi-min out', 'phi-min in', 'phi-max out', 'phi-max in']
     if mesh_type == 'spherical':
-        assert bin_names[8:] == ['theta-min out', 'theta-min in', 'theta-max out', 'theta-max in']
+        assert bin_names[4:] == ['theta-min out', 'theta-min in', 'theta-max out', 'theta-max in',
+                                 'phi-min out', 'phi-min in', 'phi-max out', 'phi-max in']
+    if mesh_type == 'cylindrical':
+        assert bin_names[4:8] == ['phi-min out', 'phi-min in', 'phi-max out', 'phi-max in']
    
 
 @pytest.mark.parametrize('mesh_type', ('regular', 'rectilinear', 'cylindrical', 'spherical'))

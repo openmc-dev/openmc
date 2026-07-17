@@ -34,7 +34,7 @@ class MeshSurfaceFilterTest(HashedPyAPITestHarness):
             labels = labels[:4*nd + 1]  # just the first 4, 8, or 12, plus one
             expected = []
             if isinstance(mesh, openmc.SphericalMesh):
-                axis_labels = ('r', 'phi', 'theta')
+                axis_labels = ('r', 'theta', 'phi')
             elif isinstance(mesh, openmc.CylindricalMesh):
                 axis_labels = ('r', 'phi', 'z')
             else:

@@ -913,13 +913,11 @@ class MeshFilter(Filter):
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
-        if isinstance(mesh, (openmc.UnstructuredMesh, openmc.XDGMesh)):
+        if isinstance(mesh, openmc.UnstructuredMesh):
             if mesh.has_statepoint_data:
                 self.bins = list(range(len(mesh.volumes)))
             else:
                 self.bins = []
-        elif isinstance(mesh, openmc.XDGMesh):
-            self.bins = []
         else:
             self.bins = list(mesh.indices)
 

@@ -244,6 +244,14 @@ def test_kerma(run_in_tmpdir, am244, h2):
     assert 901 in read_in
     assert np.all(read_in[901].xs['300K'].y == h2[901].xs['300K'].y)
 
+@needs_njoy
+def test_damage_energy(tmpdir, endf_data):
+    endf_file = os.path.join(endf_data, 'neutrons', 'n-014_Si_030.endf')
+    si30 = openmc.data.IncidentNeutron.from_njoy(endf_file)
+
+    si30_copy = openmc.data.IncidentNeutron.from_njoy(endf_file, damage_threshold=100)
+    assert not np.allclose(si30[444].xs['294K'].y, si30_copy[444].xs['294K'](si30[444].xs['294K'].x))
+                            
 
 def test_urr(pu239):
     for T, ptable in pu239.urr.items():

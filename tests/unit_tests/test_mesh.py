@@ -686,6 +686,57 @@ def test_material_volumes_regular_mesh(sphere_model, n_rays):
     assert volumes.by_element(0) == [(mats[2].id, 1.)]
 
 
+def test_material_volumes_outside_geometry():
+    """Test a regular mesh that extends outside a spherical geometry."""
+    openmc.reset_auto_ids()
+
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+    mat.set_density('g/cm3', 1.0)
+
+    # In the first model, space outside the material sphere is undefined. In
+    # the reference model, a larger void cell fully contains the mesh.
+    inner = openmc.Sphere(r=1.0, boundary_type='vacuum')
+    model = openmc.Model(
+        geometry=openmc.Geometry([openmc.Cell(fill=mat, region=-inner)]),
+        materials=[mat],
+    )
+
+    inner_ref = openmc.Sphere(r=1.0)
+    outer_ref = openmc.Sphere(r=4.0, boundary_type='vacuum')
+    model_ref = openmc.Model(
+        geometry=openmc.Geometry([
+            openmc.Cell(fill=mat, region=-inner_ref),
+            openmc.Cell(region=+inner_ref & -outer_ref),
+        ]),
+        materials=[mat],
+    )
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-2.0, -2.0, -2.0)
+    mesh.upper_right = (2.0, 2.0, 2.0)
+    mesh.dimension = (4, 4, 4)
+
+    volumes = mesh.material_volumes(model, (20, 20, 20))
+    volumes_ref = mesh.material_volumes(model_ref, (20, 20, 20))
+
+    found_material = False
+    for i, element_volume in enumerate(mesh.volumes.ravel()):
+        by_material = dict(volumes.by_element(i))
+        by_material_ref = dict(volumes_ref.by_element(i))
+
+        assert by_material.keys() == by_material_ref.keys()
+        for material_id in by_material:
+            assert by_material[material_id] == pytest.approx(
+                by_material_ref[material_id], rel=1e-12, abs=1e-12)
+
+        assert None in by_material
+        assert sum(by_material.values()) == pytest.approx(element_volume)
+        found_material |= mat.id in by_material
+
+    assert found_material
+
+
 def test_material_volumes_cylindrical_mesh(sphere_model):
     """Test the material_volumes method on a cylindrical mesh"""
     cyl_mesh = openmc.CylindricalMesh(

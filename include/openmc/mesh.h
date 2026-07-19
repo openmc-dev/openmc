@@ -254,6 +254,8 @@ public:
   virtual std::string get_mesh_type() const = 0;
 
   //! Determine volume of materials within each mesh element
+  //!
+  //! Portions of mesh elements outside the model geometry are treated as void.
   //
   //! \param[in] nx Number of samples in x direction
   //! \param[in] ny Number of samples in y direction
@@ -266,6 +268,8 @@ public:
     int32_t* materials, double* volumes) const;
 
   //! Determine volume and bounding boxes of materials within each mesh element
+  //!
+  //! Portions of mesh elements outside the model geometry are treated as void.
   //
   //! \param[in] nx Number of samples in x direction
   //! \param[in] ny Number of samples in y direction

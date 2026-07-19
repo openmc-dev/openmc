@@ -488,9 +488,6 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   width.y = (ny > 0) ? width.y / ny : 0.0;
   width.z = (nz > 0) ? width.z / nz : 0.0;
 
-  // Set flag for mesh being contained within model
-  bool out_of_model = false;
-
 #pragma omp parallel
   {
     // Preallocate vector for mesh indices and length fractions and particle
@@ -540,43 +537,32 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           p.from_source(&site);
 
           // Determine particle's location
-          if (!exhaustive_find_cell(p)) {
-            out_of_model = true;
-            continue;
-          }
+          bool inside_model = exhaustive_find_cell(p);
 
-          // Set birth cell attribute
-          if (p.cell_born() == C_NONE)
+          // Set birth cell attribute and initialize last cells
+          if (inside_model && p.cell_born() == C_NONE) {
             p.cell_born() = p.lowest_coord().cell();
-
-          // Initialize last cells from current cell
-          for (int j = 0; j < p.n_coord(); ++j) {
-            p.cell_last(j) = p.coord(j).cell();
           }
-          p.n_coord_last() = p.n_coord();
+          if (inside_model) {
+            for (int j = 0; j < p.n_coord(); ++j) {
+              p.cell_last(j) = p.coord(j).cell();
+            }
+            p.n_coord_last() = p.n_coord();
+          }
 
-          while (true) {
-            // Ray trace from r_start to r_end
-            Position r0 = p.r();
-            double max_distance = bbox.max[axis] - r0[axis];
+          // Add the contribution from a ray segment. The positions used here
+          // are kept separate from the particle position because the latter
+          // is moved a tiny distance across each surface for robust geometry
+          // searches.
+          auto add_segment = [&](Position r0, Position r1, int i_material) {
+            double distance = r1[axis] - r0[axis];
+            if (distance <= 0.0)
+              return;
 
-            // Find the distance to the nearest boundary
-            BoundaryInfo boundary = distance_to_boundary(p);
-
-            // Advance particle forward
-            double distance = std::min(boundary.distance(), max_distance);
-            p.move_distance(distance);
-
-            // Determine what mesh elements were crossed by particle
             bins.clear();
             length_fractions.clear();
-            this->bins_crossed(r0, p.r(), p.u(), bins, length_fractions);
+            this->bins_crossed(r0, r1, p.u(), bins, length_fractions);
 
-            // Add volumes to any mesh elements that were crossed
-            int i_material = p.material();
-            if (i_material != C_NONE) {
-              i_material = model::materials[i_material]->id();
-            }
             double cumulative_frac = 0.0;
             for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
               int mesh_index = bins[i_bin];
@@ -604,19 +590,97 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
                 result.add_volume(
                   mesh_index, i_material, volume, &contrib_bbox);
               } else {
-                // Add volume to result
                 result.add_volume(mesh_index, i_material, volume);
               }
             }
+          };
 
-            if (distance == max_distance)
+          // Physical position through which volume has been accumulated. This
+          // differs by TINY_BIT from p.r() after crossing a surface.
+          Position r_scored = site.r;
+
+          while (r_scored[axis] < bbox.max[axis]) {
+            if (!inside_model) {
+              // The ray is outside the model. Advance to the next surface of
+              // any cell in the root universe, as is done for ray-traced
+              // plots. Undefined space traversed along the way is void.
+              Position r0 = p.r();
+              p.advance_to_boundary_from_void();
+
+              if (p.boundary().surface() == SURFACE_NONE) {
+                Position r1 = r_scored;
+                r1[axis] = bbox.max[axis];
+                add_segment(r_scored, r1, C_NONE);
+                break;
+              }
+
+              Position r_boundary = r0 + p.boundary().distance() * p.u();
+              if (r_boundary[axis] >= bbox.max[axis]) {
+                Position r1 = r_scored;
+                r1[axis] = bbox.max[axis];
+                add_segment(r_scored, r1, C_NONE);
+                break;
+              }
+
+              add_segment(r_scored, r_boundary, C_NONE);
+              r_scored = r_boundary;
+
+              inside_model = exhaustive_find_cell(p);
+              if (inside_model) {
+                for (int j = 0; j < p.n_coord(); ++j) {
+                  p.cell_last(j) = p.coord(j).cell();
+                }
+                p.n_coord_last() = p.n_coord();
+              } else {
+                // Clear any partial coordinate search before looking for the
+                // next surface from undefined space.
+                Position r = p.r();
+                Direction u = p.u();
+                p.init_from_r_u(r, u);
+              }
+              continue;
+            }
+
+            // Find the distance to the nearest boundary
+            BoundaryInfo boundary = distance_to_boundary(p);
+
+            // Convert the material index to a user-facing ID
+            int i_material = p.material();
+            if (i_material != C_NONE) {
+              i_material = model::materials[i_material]->id();
+            }
+
+            // If the next model boundary is beyond the end of the mesh, score
+            // the remainder of the ray and finish.
+            if (boundary.distance() == INFTY ||
+                boundary.distance() == INFINITY) {
+              Position r1 = r_scored;
+              r1[axis] = bbox.max[axis];
+              add_segment(r_scored, r1, i_material);
               break;
+            }
 
-            // cross next geometric surface
+            Position r_boundary = p.r() + boundary.distance() * p.u();
+            if (r_boundary[axis] >= bbox.max[axis]) {
+              Position r1 = r_scored;
+              r1[axis] = bbox.max[axis];
+              add_segment(r_scored, r1, i_material);
+              break;
+            }
+
+            add_segment(r_scored, r_boundary, i_material);
+            r_scored = r_boundary;
+
+            // Cross the next geometric surface. The small forward movement
+            // and neighbor-list search mirror Ray::trace, allowing a failed
+            // search to mean that the ray has left the model rather than that
+            // a transport particle has been lost.
             for (int j = 0; j < p.n_coord(); ++j) {
               p.cell_last(j) = p.coord(j).cell();
             }
             p.n_coord_last() = p.n_coord();
+
+            p.move_distance(boundary.distance() + TINY_BIT);
 
             // Set surface that particle is on and adjust coordinate levels
             p.surface() = boundary.surface();
@@ -627,10 +691,15 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
                 boundary.lattice_translation()[2] != 0) {
               // Particle crosses lattice boundary
               cross_lattice(p, boundary);
-            } else {
-              // Particle crosses surface
-              const auto& surf {model::surfaces[p.surface_index()].get()};
-              p.cross_surface(*surf);
+            }
+
+            inside_model = neighbor_list_find_cell(p);
+            if (!inside_model) {
+              // Reset the geometry state so the next iteration can search for
+              // another disjoint portion of the model.
+              Position r = p.r();
+              Direction u = p.u();
+              p.init_from_r_u(r, u);
             }
           }
         }
@@ -639,9 +708,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   }
 
   // Check for errors
-  if (out_of_model) {
-    throw std::runtime_error("Mesh not fully contained in geometry.");
-  } else if (result.table_full()) {
+  if (result.table_full()) {
     throw std::runtime_error("Maximum number of materials for mesh material "
                              "volume calculation insufficient.");
   }

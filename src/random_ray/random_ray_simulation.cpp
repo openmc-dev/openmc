@@ -646,17 +646,11 @@ void RandomRaySimulation::print_results_random_ray(
           domain_->n_final_sign_, domain_->n_final_sign_ * inv);
         fmt::print("   Hit-starved (per batch)         = {} SRs ({:.4f}%)\n",
           domain_->n_final_small_, domain_->n_final_small_ * inv);
-        // For linear-source runs, every demoted region except the purely
-        // hit-starved additionally has its source gradients zeroed,
-        // reverting it to a flat source; this is the same data the volume
-        // switch uses, reported here as the linear -> flat fallback
-        // frequency.
-        if (RandomRay::source_shape_ != RandomRaySourceShape::FLAT) {
-          int64_t n_flat = domain_->n_final_latch_ + domain_->n_final_strong_ +
-                           domain_->n_final_sign_;
-          fmt::print("   Demoted -> Flat (linear)        = {} SRs ({:.4f}%)\n",
-            n_flat, n_flat * inv);
-        }
+        // No separate linear -> flat count is reported: under a linear
+        // source shape every demoted region runs with a flat representation
+        // (hit-starved regions through the small-region moment zeroing, the
+        // other causes through the adaptive gradient fallback), so that
+        // count is simply the demotion total above.
       }
     }
 

@@ -537,7 +537,8 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           p.from_source(&site);
 
           // Determine particle's location
-          bool inside_model = exhaustive_find_cell(p);
+          bool verbose = settings::verbosity >= 10 || p.trace();
+          bool inside_model = exhaustive_find_cell(p, verbose);
 
           // Set birth cell attribute and initialize last cells
           if (inside_model && p.cell_born() == C_NONE) {
@@ -610,7 +611,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               if (p.boundary().surface() == SURFACE_NONE) {
                 Position r1 = r_scored;
                 r1[axis] = bbox.max[axis];
-                add_segment(r_scored, r1, C_NONE);
+                add_segment(r_scored, r1, MATERIAL_VOID);
                 break;
               }
 
@@ -618,14 +619,14 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               if (r_boundary[axis] >= bbox.max[axis]) {
                 Position r1 = r_scored;
                 r1[axis] = bbox.max[axis];
-                add_segment(r_scored, r1, C_NONE);
+                add_segment(r_scored, r1, MATERIAL_VOID);
                 break;
               }
 
-              add_segment(r_scored, r_boundary, C_NONE);
+              add_segment(r_scored, r_boundary, MATERIAL_VOID);
               r_scored = r_boundary;
 
-              inside_model = exhaustive_find_cell(p);
+              inside_model = exhaustive_find_cell(p, verbose);
               if (inside_model) {
                 for (int j = 0; j < p.n_coord(); ++j) {
                   p.cell_last(j) = p.coord(j).cell();
@@ -690,10 +691,12 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
                 boundary.lattice_translation()[1] != 0 ||
                 boundary.lattice_translation()[2] != 0) {
               // Particle crosses lattice boundary
-              cross_lattice(p, boundary);
+              cross_lattice(p, boundary, verbose);
+              inside_model = true;
+            } else {
+              inside_model = neighbor_list_find_cell(p, verbose);
             }
 
-            inside_model = neighbor_list_find_cell(p);
             if (!inside_model) {
               // Reset the geometry state so the next iteration can search for
               // another disjoint portion of the model.

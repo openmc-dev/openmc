@@ -451,8 +451,9 @@ class MeshBase(IDManagerMixin, ABC):
         This method works by raytracing repeatedly through the mesh to count the
         estimated volume of each material in all mesh elements. Three sets of
         rays are used: one set parallel to the x-axis, one parallel to the
-        y-axis, and one parallel to the z-axis. Portions of mesh elements that
-        lie outside the model geometry are treated as void.
+        y-axis, and one parallel to the z-axis. Regions of the mesh that are
+        outside the model geometry are treated as void, equivalent to a cell
+        with no material.
 
         .. versionadded:: 0.15.1
 

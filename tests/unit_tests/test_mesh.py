@@ -717,8 +717,17 @@ def test_material_volumes_outside_geometry():
     mesh.upper_right = (2.0, 2.0, 2.0)
     mesh.dimension = (4, 4, 4)
 
-    volumes = mesh.material_volumes(model, (20, 20, 20))
-    volumes_ref = mesh.material_volumes(model_ref, (20, 20, 20))
+    kwargs = {
+        'n_samples': (20, 20, 20),
+        'max_materials': 2,
+        'bounding_boxes': True,
+        'output': False,
+    }
+    volumes = mesh.material_volumes(model, **kwargs)
+    volumes_ref = mesh.material_volumes(model_ref, **kwargs)
+
+    assert volumes.has_bounding_boxes
+    assert volumes_ref.has_bounding_boxes
 
     found_material = False
     for i, element_volume in enumerate(mesh.volumes.ravel()):

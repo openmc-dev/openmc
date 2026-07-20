@@ -43,9 +43,9 @@ class MeshSurfaceFilterTest(HashedPyAPITestHarness):
                 expected += [f'Outgoing, {axis}-min', f'Incoming, {axis}-min',
                              f'Outgoing, {axis}-max', f'Incoming, {axis}-max']
             expected.append(expected[0])
-        assert len(labels) == len(expected)
-        for line, exp in zip(labels, expected):
-            assert exp in line, f"{exp} not in {line}"
+            assert len(labels) == len(expected)
+            for line, exp in zip(labels, expected):
+                assert exp in line, f"{exp} not in {line}"
 
         return super()._compare_results()
 

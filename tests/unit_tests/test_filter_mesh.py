@@ -436,12 +436,12 @@ def test_axis_labels(mesh_type):
         mesh = openmc.SphericalMesh(r_grid=r_grid, theta_grid=t_grid, phi_grid=p_grid)
     else:
         raise ValueError(mesh_type)
-    
+
     filt = openmc.MeshSurfaceFilter(mesh)
     assert len(filt.bins) == 12
     bin_names = [b[3] for b in filt.bins]
     if mesh_type in {'regular', 'rectilinear'}:
-        assert bin_names[:8] == ['x-min out', 'x-min in', 'x-max out', 'x-max in', 
+        assert bin_names[:8] == ['x-min out', 'x-min in', 'x-max out', 'x-max in',
                                  'y-min out', 'y-min in', 'y-max out', 'y-max in']
     if mesh_type in {'regular', 'rectilinear', 'cylindrical'}:
         assert bin_names[8:] == ['z-min out', 'z-min in', 'z-max out', 'z-max in']

@@ -40,6 +40,7 @@ dependencies = [
 [project.optional-dependencies]
 depletion-mpi = ["mpi4py"]
 docs = [
+    "breathe",
     "sphinx",
     "sphinxcontrib-katex",
     "sphinx-numfig",

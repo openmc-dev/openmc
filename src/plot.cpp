@@ -88,10 +88,7 @@ void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level,
 {
   Cell* c = model::cells.at(p.lowest_coord().cell()).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
-  if (c->type_ != Fill::UNIVERSE && p.material() != MATERIAL_VOID) {
-    Material* m = model::materials.at(p.material()).get();
-    data_(y, x, 1) = m->density_gpcc_;
-  }
+  data_(y, x, 1) = c->density(p.cell_instance());
 }
 
 void PropertyData::set_overlap(size_t y, size_t x, int /*overlap_idx*/)
@@ -150,18 +147,18 @@ void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
   // set density (g/cm³)
   if (c->type_ != Fill::UNIVERSE && p.material() != MATERIAL_VOID) {
     Material* m = model::materials.at(p.material()).get();
-    property_data_(y, x, 1) = m->density_gpcc_;
+    property_data_(y, x, 1) = c->density(p.cell_instance());
   }
 }
 
 void RasterData::set_overlap(size_t y, size_t x, int overlap_idx)
 {
-  // Set cell, instance, and material to OVERLAP, but preserve filter bin
-  id_data_(y, x, 0) = OVERLAP;
+  // Set cell, instance, and material to OVERLAP, but preserve filter bin for
+  // tally plotting. Cell encodes the overlap index as a negative number so that
+  // it can be used to look up overlap information in the plotter.
+  id_data_(y, x, 0) = OVERLAP - overlap_idx - 1;
   id_data_(y, x, 1) = OVERLAP;
-  id_data_(y, x, 2) = OVERLAP - overlap_idx - 1;
-  // Note: id_data_(y, x, 3) is NOT overwritten - preserves filter bin for tally
-  // plotting
+  id_data_(y, x, 2) = OVERLAP;
 
   property_data_(y, x, 0) = OVERLAP;
   property_data_(y, x, 1) = OVERLAP;

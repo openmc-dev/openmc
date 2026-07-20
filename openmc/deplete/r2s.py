@@ -4,6 +4,7 @@ from contextlib import nullcontext
 import copy
 from datetime import datetime
 import json
+from numbers import Integral
 from pathlib import Path
 
 import numpy as np
@@ -156,6 +157,7 @@ class R2SManager:
         mat_vol_kwargs: dict | None = None,
         run_kwargs: dict | None = None,
         operator_kwargs: dict | None = None,
+        by_parent_nuclide: bool = False,
     ):
         """Run the R2S calculation.
 
@@ -179,7 +181,7 @@ class R2SManager:
             timesteps. For example, if two timesteps are specified, the array of
             times would contain three entries, and [2] would indicate computing
             photon results at the last time. A value of None indicates to run
-            photon transport for each time.
+            photon transport at each time that has a decay photon source.
         output_dir : PathLike, optional
             Path to directory where R2S calculation outputs will be saved. If
             not provided, a timestamped directory 'r2s_YYYY-MM-DDTHH-MM-SS' is
@@ -207,6 +209,11 @@ class R2SManager:
         operator_kwargs : dict, optional
             Additional keyword arguments passed to
             :class:`openmc.deplete.IndependentOperator`.
+        by_parent_nuclide : bool, optional
+            Whether to score photon tallies separately for each parent
+            radionuclide. A :class:`~openmc.ParentNuclideFilter` is added to
+            tallies that do not already contain one, with bins determined from
+            the prepared decay photon sources.
 
         Returns
         -------
@@ -256,9 +263,13 @@ class R2SManager:
                 timesteps, source_rates, timestep_units,
                 output_dir / 'activation', operator_kwargs=operator_kwargs
             )
-            self.step3_photon_transport(
+            self.step3_photon_source(
                 photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
-                mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs
+                mat_vol_kwargs=mat_vol_kwargs,
+            )
+            self.step4_photon_transport(
+                output_dir / 'photon_transport', run_kwargs=run_kwargs,
+                by_parent_nuclide=by_parent_nuclide,
             )
 
         return output_dir
@@ -438,23 +449,20 @@ class R2SManager:
         # Get depletion results
         self.results['depletion_results'] = Results(output_path)
 
-    def step3_photon_transport(
+    def step3_photon_source(
         self,
         time_indices: Sequence[int] | None = None,
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         output_dir: PathLike = 'photon_transport',
         mat_vol_kwargs: dict | None = None,
-        run_kwargs: dict | None = None,
     ):
-        """Run the photon transport step.
+        """Create decay photon sources.
 
-        This step performs photon transport calculations using decay photon
-        sources created from the activated materials. For each specified time,
-        it creates appropriate photon sources and runs a transport calculation.
-        In mesh-based mode, the sources are created using the mesh material
-        volumes, while in cell-based mode, they are created using bounding boxes
-        for each cell.  This step will populate the 'photon_tallies' key in the
-        results dictionary.
+        This step creates decay photon sources from the activated materials for
+        each specified time. In mesh-based mode, the sources are created using
+        mesh material volumes, while in cell-based mode, they are created using
+        bounding boxes for each cell. This step will populate the
+        'photon_sources' key in the results dictionary.
 
         Parameters
         ----------
@@ -464,40 +472,54 @@ class R2SManager:
             timesteps. For example, if two timesteps are specified, the array of
             times would contain three entries, and [2] would indicate computing
             photon results at the last time. A value of None indicates to run
-            photon transport for each time.
+            photon transport at each time that has a decay photon source.
         bounding_boxes : dict[int, openmc.BoundingBox], optional
             Dictionary mapping cell IDs to bounding boxes used for spatial
             source sampling in cell-based R2S calculations. Required if method
             is 'cell-based'.
         output_dir : PathLike, optional
-            Path to directory where photon transport outputs will be saved.
+            Path to directory where photon source outputs will be saved.
         mat_vol_kwargs : dict, optional
             Additional keyword arguments passed to
             :meth:`openmc.MeshBase.material_volumes`.
-        run_kwargs : dict, optional
-            Additional keyword arguments passed to :meth:`openmc.Model.run`
-            during the photon transport step. By default, output is disabled.
         """
+
+        # Do not retain sources from an earlier successful call if this source
+        # preparation attempt fails.
+        self.results.pop('photon_sources', None)
 
         # TODO: Automatically determine bounding box for each cell
         if bounding_boxes is None and self.method == 'cell-based':
             raise ValueError("bounding_boxes must be provided for cell-based "
                              "R2S calculations.")
 
-        # Set default run arguments if not provided
-        if run_kwargs is None:
-            run_kwargs = {}
-        run_kwargs.setdefault('output', False)
-
-        # Write out JSON file with tally IDs that can be used for loading
-        # results
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Get default time indices if not provided
+        # Determine and validate time indices before preparing source data.
+        n_steps = len(self.results['depletion_results'])
+        implicit_time_indices = time_indices is None
         if time_indices is None:
-            n_steps = len(self.results['depletion_results'])
             time_indices = list(range(n_steps))
+        else:
+            time_indices = list(time_indices)
+            if not time_indices:
+                raise ValueError('time_indices must contain at least one index')
+
+            normalized_indices = []
+            for index in time_indices:
+                if isinstance(index, bool) or not isinstance(index, Integral):
+                    raise TypeError('time_indices must contain only integers')
+                index = int(index)
+                if index < -n_steps or index >= n_steps:
+                    raise IndexError(
+                        f'Photon time index {index} is out of range for '
+                        f'{n_steps} depletion results')
+                normalized_index = index % n_steps
+                normalized_indices.append(normalized_index)
+
+            # Remove duplicates while preserving order
+            time_indices = list(dict.fromkeys(normalized_indices))
 
         # Check whether the photon model is different
         neutron_univ = self.neutron_model.geometry.root_universe
@@ -523,13 +545,6 @@ class R2SManager:
 
             self.results['mesh_material_volumes_photon'] = photon_mmv_list
 
-        if comm.rank == 0:
-            tally_ids = [tally.id for tally in self.photon_model.tallies]
-            with open(output_dir / 'tally_ids.json', 'w') as f:
-                json.dump(tally_ids, f)
-
-        self.results['photon_tallies'] = {}
-
         # Get dictionary of cells in the photon model
         if different_photon_model:
             photon_cells = self.photon_model.geometry.get_all_cells()
@@ -547,16 +562,100 @@ class R2SManager:
                         continue
                 work_items.append((cell, original_mat, bounding_boxes[cell.id]))
 
-        # Ensure photon transport is enabled in settings
+        # Create decay photon sources for each time index
+        photon_sources = {
+            time_index: self._create_photon_sources(time_index, work_items)
+            for time_index in time_indices
+        }
+
+        # Determine if any times have no decay photon sources. If the user
+        # didn't specify any specific time indices, remove those times from the
+        # photon_sources dictionary. If the user did specify time indices, raise
+        # an error if any of those times have no decay photon sources.
+        empty_indices = [
+            time_index for time_index, sources in photon_sources.items()
+            if not sources
+        ]
+        if implicit_time_indices:
+            for time_index in empty_indices:
+                del photon_sources[time_index]
+            if not photon_sources:
+                raise RuntimeError(
+                    'No decay photon sources were found at any depletion time')
+        elif empty_indices:
+            indices = ', '.join(str(index) for index in empty_indices)
+            raise RuntimeError(
+                f'No decay photon source was found for requested time '
+                f'indices: {indices}')
+
+        self.results['photon_sources'] = photon_sources
+
+    def step4_photon_transport(
+        self,
+        output_dir: PathLike = 'photon_transport',
+        run_kwargs: dict | None = None,
+        by_parent_nuclide: bool = False,
+    ):
+        """Run photon transport using prepared decay photon sources.
+
+        This step runs a photon transport calculation for each source list
+        created by :meth:`step3_photon_source`. It will populate the
+        'photon_tallies' key in the results dictionary.
+
+        Parameters
+        ----------
+        output_dir : PathLike, optional
+            Path to directory where photon transport outputs will be saved.
+        run_kwargs : dict, optional
+            Additional keyword arguments passed to :meth:`openmc.Model.run`.
+            By default, output is disabled.
+        by_parent_nuclide : bool, optional
+            Whether to score photon tallies separately for each parent
+            radionuclide. A :class:`~openmc.ParentNuclideFilter` is added to
+            tallies that do not already contain one, with bins determined from
+            the prepared decay photon sources.
+        """
+        if 'photon_sources' not in self.results:
+            raise RuntimeError(
+                'Photon sources must be created with step3_photon_source '
+                'before running photon transport.')
+        photon_sources = self.results['photon_sources']
+        if not photon_sources:
+            raise RuntimeError(
+                'No decay photon sources are available for transport')
+
+        if by_parent_nuclide:
+            radionuclides = sorted({
+                nuclide
+                for sources in photon_sources.values()
+                for source in sources
+                for nuclide in source.energy.nuclides
+            })
+
+            if radionuclides:
+                parent_filter = openmc.ParentNuclideFilter(radionuclides)
+                for tally in self.photon_model.tallies:
+                    if not tally.contains_filter(openmc.ParentNuclideFilter):
+                        tally.filters.append(parent_filter)
+
+        if run_kwargs is None:
+            run_kwargs = {}
+        run_kwargs.setdefault('output', False)
+
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        if comm.rank == 0:
+            tally_ids = [tally.id for tally in self.photon_model.tallies]
+            with open(output_dir / 'tally_ids.json', 'w') as f:
+                json.dump(tally_ids, f)
+
+        self.results['photon_tallies'] = {}
+
+        # Ensure photon transport is enabled in settings.
         self.photon_model.settings.photon_transport = True
 
-        for time_index in time_indices:
-            # Convert time_index (which may be negative) to a normal index
-            if time_index < 0:
-                time_index += len(self.results['depletion_results'])
-
-            # Build decay photon sources and assign to the photon model
-            sources = self._create_photon_sources(time_index, work_items)
+        for time_index, sources in photon_sources.items():
             self.photon_model.settings.source = sources
 
             # Run photon transport calculation

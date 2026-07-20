@@ -660,6 +660,29 @@ def test_model_plot():
     plt.close('all')
 
 
+def test_model_plot_invalid_inputs():
+    surface = openmc.Sphere(r=10.0, boundary_type="vacuum")
+    cell = openmc.Cell(region=-surface)
+    model = openmc.Model(openmc.Geometry([cell]))
+
+    with pytest.raises(ValueError):
+        model.plot(n_samples=-1)
+    with pytest.raises(TypeError):
+        model.plot(n_samples=1.5)
+    with pytest.raises(ValueError):
+        model.plot(plane_tolerance=0.0)
+    with pytest.raises(TypeError):
+        model.plot(plane_tolerance='1')
+    with pytest.raises(ValueError):
+        model.plot(pixels=-1)
+    with pytest.raises(ValueError):
+        model.plot(pixels=(0, 100))
+    with pytest.raises(ValueError):
+        model.plot(pixels=(100,))
+    with pytest.raises(ValueError):
+        model.slice_data(u_span=(2, 0, 0), v_span=(0, 2, 0), pixels=-1)
+
+
 def test_model_id_map_initialization(run_in_tmpdir):
     model = openmc.examples.pwr_assembly()
     model.init_lib(output=False)

@@ -128,7 +128,8 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   if (volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE &&
       material != MATERIAL_VOID &&
       (srh.converged_negative() > 0 ||
-        region_has_strong_source(&srh.source(0), &srh.scalar_flux_old(0)))) {
+        region_has_strong_source(&srh.source(0), &srh.scalar_flux_old(0),
+          simulation::current_batch <= settings::n_inactive))) {
     for (int g = 0; g < negroups_; g++) {
       srh.source_gradients(g) = {0.0, 0.0, 0.0};
     }

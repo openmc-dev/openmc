@@ -347,7 +347,7 @@ void FlatSourceDomain::set_flux_to_source(int64_t sr, int g)
 }
 
 bool FlatSourceDomain::region_has_strong_source(
-  const float* reduced_source, const double* flux_old) const
+  const float* reduced_source, const double* flux_old, bool include_ratio) const
 {
   for (int g = 0; g < negroups_; g++) {
     double src = reduced_source[g];
@@ -364,7 +364,16 @@ bool FlatSourceDomain::region_has_strong_source(
     if (src < 0.0 && flux_old[g] >= 0.0) {
       return true;
     }
-    if (src > ADAPTIVE_VOLUME_KAPPA * std::max(flux_old[g], 0.0)) {
+    // The ratio condition is consulted only while the source is converging
+    // (include_ratio is false in the active batches): evaluated on noisy
+    // single-batch iterates, it demotes a churning population of regions
+    // whose converged ratios are below kappa, and that noise-conditioned,
+    // one-sided treatment biases the accumulated tallies. Once the
+    // transition decisions are made from the converged flux, the stable
+    // classifications (the strong-feed latch, the converged-negative sign
+    // demotion, and the hit-starved treatment) govern the tallied batches.
+    if (include_ratio &&
+        src > ADAPTIVE_VOLUME_KAPPA * std::max(flux_old[g], 0.0)) {
       return true;
     }
   }
@@ -448,14 +457,20 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     bool strong_source =
       is_adaptive && source_regions_.material(sr) != MATERIAL_VOID &&
       region_has_strong_source(&source_regions_.source(sr, 0),
-        &source_regions_.scalar_flux_old(sr, 0));
-    // Per-region demotion reasons. The hit-starved (small) and strong-source
-    // flags are re-evaluated every iteration; converged_neg is the one-shot
-    // flag set at the end of the inactive phase by inactive_demotion_step. The
-    // external-source flag drives only the hybrid policy (and the default miss
-    // treatment); the adaptive estimator catches a low-cross-section external
-    // region through the kappa strong-source test instead, since its external
-    // term is folded into q/Sigma_t. All are g-independent.
+        &source_regions_.scalar_flux_old(sr, 0),
+        simulation::current_batch <= settings::n_inactive);
+    // Per-region demotion reasons. The hit-starved (small) flag is
+    // re-evaluated every iteration; the strong-source flag is re-evaluated
+    // every iteration during the inactive batches and reduces to the
+    // negative-source (TCP0) condition in the active batches, where the
+    // stable transition decisions govern instead; converged_neg is the
+    // one-shot flag set at the end of the inactive phase by
+    // inactive_demotion_step. The external-source flag drives only the
+    // hybrid policy (and the default miss treatment); the adaptive estimator
+    // catches a low-cross-section external region through the kappa
+    // strong-source test (during the inactive batches) and the strong-feed
+    // latch (thereafter), since its external term is folded into q/Sigma_t.
+    // All are g-independent.
     bool external = source_regions_.external_source_present(sr);
     bool small = source_regions_.is_small(sr);
     int conv_flag = source_regions_.converged_negative(sr);

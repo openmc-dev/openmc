@@ -1062,18 +1062,21 @@ following methods are currently available in OpenMC:
      - Generalizes the hybrid estimator. Uses the simulation averaged estimator
        by default, but falls back to the naive estimator (and the
        previous-iteration miss treatment) wherever it is needed for stability:
-       cells whose reduced source greatly exceeds their flux (a strong external
-       or in-scatter source), cells whose reduced source is itself negative
-       (possible under transport-corrected cross sections), hit-starved cells,
-       and -- decided once at the end of the inactive phase, from each cell's
+       during the inactive batches, cells whose reduced source greatly exceeds
+       their flux (a strong external or in-scatter source); in every batch,
+       cells whose reduced source is itself negative (possible under
+       transport-corrected cross sections) and hit-starved cells; and --
+       decided once at the end of the inactive phase, from each cell's
        accumulated (converged) flux -- cells whose accumulated flux is
        negative as well as cells whose flux-independent feed (cross-group
        in-scatter, fission, and external source) is strong relative to their
        own accumulated flux. The transition decisions are one-shot: the
        unmodified simulation averaged estimator runs throughout the inactive
        phase, and the demoted cells use the naive estimator for all of the
-       active batches. The decisions are made automatically from each cell's
-       accumulated statistics; individual iterations are never modified.
+       active batches, so the estimator choice in the tallied batches never
+       depends on single-batch noise. The decisions are made automatically
+       from each cell's accumulated statistics; individual iterations are
+       never modified.
      - * Retains the low bias of the simulation averaged estimator wherever it
          is well behaved
        * Eliminates the negative-flux instabilities that the simulation averaged

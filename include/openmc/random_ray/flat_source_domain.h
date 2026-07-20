@@ -187,13 +187,16 @@ protected:
   virtual void set_flux_to_old_flux(int64_t sr, int g);
 
   //! Adaptive-estimator "strong source" test: true if, in any group, the
-  //! region's reduced source q/Sigma_t is negative or exceeds
+  //! region's reduced source q/Sigma_t is negative (with a non-negative
+  //! previous-iteration flux), or -- when include_ratio is set, which the
+  //! callers do only during the inactive batches -- exceeds
   //! ADAPTIVE_VOLUME_KAPPA times the (non-negative) previous-iteration scalar
-  //! flux. Shared by the flat volume switch (add_source_to_scalar_flux) and the
-  //! linear gradient fallback (update_single_neutron_source); the region's
-  //! per-group reduced-source and previous-flux arrays are passed directly.
-  bool region_has_strong_source(
-    const float* reduced_source, const double* flux_old) const;
+  //! flux. Shared by the flat volume switch (add_source_to_scalar_flux) and
+  //! the linear gradient fallback (update_single_neutron_source); the
+  //! region's per-group reduced-source and previous-flux arrays are passed
+  //! directly.
+  bool region_has_strong_source(const float* reduced_source,
+    const double* flux_old, bool include_ratio) const;
 
   //----------------------------------------------------------------------------
   // Private data members

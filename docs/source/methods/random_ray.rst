@@ -537,8 +537,14 @@ source below zero even for a non-negative flux), a hit-starved region, a
 region whose flux converges to a negative value, and a region whose converged
 flux-independent source ("feed") is strong relative to its own converged flux.
 
-The first three conditions are evaluated each iteration from already-resident
-data. The last two are instead decided once, at the transition from the
+The negative-source and hit-starved conditions are evaluated each iteration
+from already-resident data. The strong-source ratio condition is evaluated
+each iteration as well, but only while the source is still converging (the
+inactive batches): applied to noisy single-iteration values in the active
+batches it would demote a churning population of regions whose converged
+ratios are below the threshold, and conditioning the estimator choice on
+per-iteration noise in the tallied batches introduces a systematic bias. The
+last two conditions are instead decided once, at the transition from the
 inactive to the active batches: the unmodified simulation averaged estimator
 is run throughout the inactive phase while each region's flux is accumulated,
 and at the transition a region is demoted to the naive estimator for all of
@@ -546,13 +552,15 @@ the active batches if its accumulated (and therefore noise-averaged) flux is
 negative in any group, or if its flux-independent feed -- the part of its
 source arising from cross-group in-scatter, fission, and any external source,
 evaluated from the same accumulated flux -- exceeds the strong-source
-threshold times its own accumulated flux in any group. Deferring these
-decisions to the converged estimate -- rather than reacting to individual
-per-iteration values -- avoids the upward bias that repairing or demoting on
-isolated fluctuations would introduce by clipping only the lower tail of the
-estimator's noise distribution; regions that are merely noisy but average
-non-negative (and are not strongly fed) retain the unbiased simulation
-averaged estimator.
+threshold times its own accumulated flux in any group. In the active batches
+these one-shot decisions, together with the per-iteration negative-source
+and hit-starved conditions, are what govern the estimator choice. Deferring
+the noise-sensitive decisions to the converged estimate -- rather than
+reacting to individual per-iteration values -- avoids the bias that
+demoting on isolated fluctuations would introduce by treating only one tail
+of the estimator's noise distribution; regions that are merely noisy but
+average non-negative (and are not strongly fed) retain the unbiased
+simulation averaged estimator.
 
 The feed-based latch exists because the per-iteration strong-source test,
 evaluated on noisy single-iteration values, has exactly one blind state: an

@@ -646,11 +646,6 @@ void RandomRaySimulation::print_results_random_ray(
           domain_->n_final_sign_, domain_->n_final_sign_ * inv);
         fmt::print("   Hit-starved (per batch)         = {} SRs ({:.4f}%)\n",
           domain_->n_final_small_, domain_->n_final_small_ * inv);
-        // No separate linear -> flat count is reported: under a linear
-        // source shape every demoted region runs with a flat representation
-        // (hit-starved regions through the small-region moment zeroing, the
-        // other causes through the adaptive gradient fallback), so that
-        // count is simply the demotion total above.
       }
     }
 

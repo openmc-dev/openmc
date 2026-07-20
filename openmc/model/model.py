@@ -17,6 +17,7 @@ import h5py
 import lxml.etree as ET
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy import ndimage
 
 import openmc
 import openmc._xml as xml
@@ -2918,51 +2919,21 @@ class Model:
             return None, None, None
 
         undefined = (cell_ids == _NOT_FOUND)
-        h, w = undefined.shape
 
-        outside = np.zeros_like(undefined, dtype=bool)
-        q = deque()
+        # Internal undefined pixels are holes in the defined-pixel mask.
+        internal = ndimage.binary_fill_holes(~undefined) & undefined
 
-        # Start with border undefined pixels at the edge of the plot
-        for x in range(w):
-            if undefined[0, x]:
-                outside[0, x] = True
-                q.append((0, x))
-            if undefined[h - 1, x] and not outside[h - 1, x]:
-                outside[h - 1, x] = True
-                q.append((h - 1, x))
-
-        for y in range(h):
-            if undefined[y, 0] and not outside[y, 0]:
-                outside[y, 0] = True
-                q.append((y, 0))
-            if undefined[y, w - 1] and not outside[y, w - 1]:
-                outside[y, w - 1] = True
-                q.append((y, w - 1))
-
-        neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-
-        while q:
-            y, x = q.popleft()
-            for dy, dx in neighbors:
-                ny, nx = y + dy, x + dx
-                if 0 <= ny < h and 0 <= nx < w:
-                    if undefined[ny, nx] and not outside[ny, nx]:
-                        outside[ny, nx] = True
-                        q.append((ny, nx))
-
-        internal = undefined & ~outside
+        # Anything undefined that is not internal is boundary-connected.
+        outside = undefined & ~internal
 
         # Guard: undefined regions exist, but none connect to the slice boundary.
-        # In this case, all undefined pixels are treated as internal in the
-        # sampled image, which may indicate a fully enclosed undefined region,
-        # a cropped plotting window, or insufficient resolution.
         if undefined.any() and not outside.any():
             warnings.warn(
                 "Undefined pixels were found, but none are connected to the "
                 "slice boundary. All undefined pixels are being classified as "
                 "internal for this slice. Consider increasing slice resolution."
             )
+
         return undefined, outside, internal
 
     def geometry_debug(
@@ -2991,7 +2962,7 @@ class Model:
             Upper-right corner of the sampled 3D region.
         n_samples : int or Sequence[int]
             Number of sample points in the x, y, and z directions. If a single
-            integer is given, the same value is used for all three directions.
+            integer is given, the value is split into all three directions.
         print_summary : bool, optional
             Whether to print a summary of overlap and undefined sample results.
         **init_kwargs
@@ -3006,7 +2977,10 @@ class Model:
 
         # Accepts 3 separate samples (for x y and z) or just one number
         if isinstance(n_samples, int):
-            nx = ny = nz = n_samples
+            base, extra = divmod(n_samples, 3)
+            nx = base + (1 if extra > 0 else 0)
+            ny = base + (1 if extra > 1 else 0)
+            nz = base
         else:
             if len(n_samples) != 3:
                 raise ValueError("n_samples must be an int or a length-3 iterable")
@@ -3032,13 +3006,11 @@ class Model:
         u_span = (x1 - x0, 0.0, 0.0)
         v_span = (0.0, y1 - y0, 0.0)
 
-        overlap_points = []
-        undefined_points = []
-
         n_overlap_samples = 0
         n_undefined_samples = 0
 
         max_examples = 10
+        overlap_boxes = {}
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             for k in range(nz):
@@ -3057,10 +3029,36 @@ class Model:
 
                 cell_ids = geom_data[:, :, 0]
 
-                overlap_mask = (cell_ids <= _OVERLAP)
+                overlap_data = openmc.lib.slice_data_overlap_info()
+
+                # Loop through overlap regions in this slice, finding pixels and updating bbox
+                for overlap_idx, key in enumerate(overlap_data):
+                    encoded_id = _OVERLAP - overlap_idx - 1
+                    pixels = np.argwhere(cell_ids == encoded_id)
+                
+                # Track the max and min of each coordinate for bbox
+                for y, x in pixels:
+                    x_coord = x0 + (x + 0.5) * dx
+                    y_coord = y1 - (y + 0.5) * dy
+                    if key not in overlap_boxes:
+                        overlap_boxes[key] = {
+                            "xmin": x, "xmax": x,
+                            "ymin": y, "ymax": y,
+                            "zmin": z, "zmax": z,
+                            "count": 1,
+                        }
+                    else:
+                        box = overlap_boxes[key]
+                        box["xmin"] = min(box["xmin"], x)
+                        box["xmax"] = max(box["xmax"], x)
+                        box["ymin"] = min(box["ymin"], y)
+                        box["ymax"] = max(box["ymax"], y)
+                        box["zmin"] = min(box["zmin"], z)
+                        box["zmax"] = max(box["zmax"], z)
+                        box["count"] += 1
+
                 _, _, internal = Model._classify_undefined_regions(cell_ids)
 
-                overlap_pixels = np.argwhere(overlap_mask)
                 undefined_pixels = np.argwhere(internal)
 
                 n_overlap_samples += len(overlap_pixels)

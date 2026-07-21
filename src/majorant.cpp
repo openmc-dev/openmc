@@ -98,7 +98,7 @@ void Majorant::compute_majorant()
   // Fill with zeros.
   xs_.resize(grid_.energy.size(), 0.0);
 
-  std::vector<double> material_maj_xs;
+  vector<double> material_maj_xs;
   for (int i_material : contained_materials_) {
     // Populate the per-material majorant cross section. We pass in
     // 'material_maj_xs' instead of returning a vector with the per-material
@@ -118,35 +118,35 @@ void Majorant::compute_majorant()
   }
 }
 
-void Majorant::post_process_grid(Nuclide::EnergyGrid& grid) const
+void Majorant::post_process_grid()
 {
   // Fetch the minimum and maximum transport energies from the superclass.
   const double E_min = min_transport_energy();
   const double E_max = max_transport_energy();
 
-  std::sort(grid.energy.begin(), grid.energy.end());
-  auto unique_end = std::unique(grid.energy.begin(), grid.energy.end());
-  grid.energy.resize(std::distance(grid.energy.begin(), unique_end));
+  std::sort(grid_.energy.begin(), grid_.energy.end());
+  auto unique_end = std::unique(grid_.energy.begin(), grid_.energy.end());
+  grid_.energy.resize(std::distance(grid_.energy.begin(), unique_end));
 
   // Remove all values below the minimum neutron energy.
-  auto min_it = grid.energy.begin();
+  auto min_it = grid_.energy.begin();
   while (*min_it < E_min) {
     min_it++;
   }
-  grid.energy.erase(grid.energy.begin(), min_it + 1);
+  grid_.energy.erase(grid_.energy.begin(), min_it + 1);
 
   // Insert the minimum neutron energy at the beginning.
-  grid.energy.insert(grid.energy.begin(), E_min);
+  grid_.energy.insert(grid_.energy.begin(), E_min);
 
   // Remove all values above the maximum neutron energy.
-  auto max_it = --grid.energy.end();
+  auto max_it = --grid_.energy.end();
   while (*max_it > E_max) {
     max_it--;
   }
-  grid.energy.erase(max_it - 1, grid.energy.end());
+  grid_.energy.erase(max_it - 1, grid_.energy.end());
 
   // Insert the maximum neutron energy at the end.
-  grid.energy.insert(grid.energy.end(), E_max);
+  grid_.energy.insert(grid_.energy.end(), E_max);
 }
 
 //==============================================================================
@@ -199,15 +199,15 @@ void NeutronMajorant::compute_unionized_grid()
   // Post-process the energy grid now that all points from nuclides are
   // included. This sorts the energy points, removes duplicates, and removes all
   // energies exceeding neutron transport bounds.
-  post_process_grid(grid_);
+  post_process_grid();
 
   // Initialize the grid for fast lookups. This only applies to neutrons.
   grid_.init();
 }
 
 void NeutronMajorant::fill_material_maj_xs(int i_material,
-  double max_density_mult, const std::vector<double>& to_grid,
-  std::vector<double>& mat_maj) const
+  double max_density_mult, const vector<double>& to_grid,
+  vector<double>& mat_maj) const
 {
   const auto& mat = *model::materials[i_material];
 
@@ -494,13 +494,13 @@ void PhotonMajorant::compute_unionized_grid()
   // Post-process the energy grid now that all points from photon interactions
   // are included. This sorts the energy points, removes duplicates, and removes
   // all energies exceeding photon transport bounds.
-  post_process_grid(grid_);
+  post_process_grid();
 }
 
 double PhotonMajorant::calculate_photon_xs(double energy) const
 {
   double log_energy = std::log(energy);
-  int i_grid = get_i_grid<std::vector<double>>(log_energy, grid_.energy);
+  int i_grid = get_i_grid<vector<double>>(log_energy, grid_.energy);
 
   // calculate interpolation factor
   double f = (log_energy - grid_.energy[i_grid]) /
@@ -511,8 +511,8 @@ double PhotonMajorant::calculate_photon_xs(double energy) const
 }
 
 void PhotonMajorant::fill_material_maj_xs(int i_material,
-  double max_density_mult, const std::vector<double>& to_grid,
-  std::vector<double>& mat_maj) const
+  double max_density_mult, const vector<double>& to_grid,
+  vector<double>& mat_maj) const
 {
   const auto& mat = *model::materials[i_material];
 

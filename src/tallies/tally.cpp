@@ -177,6 +177,13 @@ Tally::Tally(pugi::xml_node node)
         estimator_ = TallyEstimator::COLLISION;
       }
     }
+
+    // Check to make sure the user isn't adding a filter unsupported by delta
+    // tracking.
+    if (settings::delta_tracking && (filt_type == FilterType::SURFACE ||
+                                      filt_type == FilterType::MUSURFACE)) {
+      fatal_error("Surface filters cannot be used with delta tracking.");
+    }
   }
 
   // =======================================================================

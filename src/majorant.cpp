@@ -556,7 +556,7 @@ double PhotonMajorant::calculate_elem_micro_tot_xs(
   tensor::View<const double> xs_upper = elem.cross_sections_.slice(i_grid + 1);
 
   for (int i = 0; i < xs_upper.size(); ++i)
-    if (xs_lower(i) > 0)
+    if (xs_lower(i) != 0)
       photoelectric += std::exp(xs_lower(i) + f * (xs_upper(i) - xs_lower(i)));
 
   // Calculate microscopic pair production cross section

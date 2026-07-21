@@ -277,6 +277,19 @@ void detect_boundary_surfaces()
     // add it to the list of surfaces to track during delta tracking
     const auto& s = model::surfaces[i];
     if (s->bc_) {
+      // A bug in MOAB causes ray_fire to fail on surface primatives in
+      // DAGSurface. This prevents us from tracking the distance to the closest
+      // boundary for DAGMC geometry, and so we need to avoid applying BCs with
+      // DAGMC. This doesn't happen in surface tracking as ray_fire is called on
+      // a volume primative through DAGCell.
+      if (settings::delta_tracking && s->geom_type() == GeometryType::DAG) {
+        fatal_error("At present, the application of boundary conditions to "
+                    "DAGMC surfaces is not supported when running with delta "
+                    "tracking. If you wish to use DAGMC models with delta "
+                    "tracking, please remove all boundary conditions from the "
+                    "DAGMC universe (including the graveyard) and instead apply "
+                    "them with CSG cells filled with the DAGMC universe.");
+      }
       model::boundary_surfaces.push_back(i);
     }
   }

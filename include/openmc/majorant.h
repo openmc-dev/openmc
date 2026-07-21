@@ -2,11 +2,10 @@
 //! Majorant cross section type
 
 #ifndef OPENMC_MAJORANT_H
-#define OPENMC_MAJORANT_H
-
-#include <vector>
+#define OPENMC_MAJORANT_
 
 #include "openmc/nuclide.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -62,15 +61,12 @@ protected:
   //! \param[out] mat_maj The array to write the macroscopic majorant to.
   //!   The resulting cross section has units of [cm^-1]
   virtual void fill_material_maj_xs(int i_material, double max_density_mult,
-    const std::vector<double>& to_grid, std::vector<double>& mat_maj) const = 0;
+    const vector<double>& to_grid, vector<double>& mat_maj) const = 0;
 
-  //! Post-processes the energy grid by calling std::sort(), std::unique().
-  //! This also removes all energy values below the transport minimum and
-  //! above the transport maximum for a given particle type.
-  //!
-  //! \param[out] grid The energy grid to post-process. This is performed
-  //!   in-place.
-  void post_process_grid(Nuclide::EnergyGrid& grid) const;
+  //! Post-processes the energy grid by sorting it and removing duplicate
+  //! entries. This also removes all energy values below the transport
+  //! minimum and above the transport maximum for a given particle type.
+  void post_process_grid();
 
   //----------------------------------------------------------------------------
   // Protected data members
@@ -78,15 +74,19 @@ protected:
   //! Index into the universe array for the universe which this majorant uses
   //! to fetch material properties.
   int maj_universe_ = C_NONE;
-  //!< A vector of materials contained in maj_universe_.
-  std::vector<int> contained_materials_;
+
+  //! A vector of material indicies contained in the majorant's universe.
+  vector<int> contained_materials_;
+
   //! A map of each material index and the corresponding maximum density
   //! multiplier applied to that material by a cell.
   std::unordered_map<int, double> max_density_mult_;
+
   //! The unionized energy grid.
   Nuclide::EnergyGrid grid_;
+
   //! Macroscopic majorant cross sections at each energy point in grid_.
-  std::vector<double> xs_;
+  vector<double> xs_;
 }; // class Majorant
 
 //==============================================================================
@@ -144,8 +144,7 @@ protected:
   //! \param[out] mat_maj The array to write the macroscopic majorant to.
   //!   The resulting cross section has units of [cm^-1].
   virtual void fill_material_maj_xs(int i_material, double max_density_mult,
-    const std::vector<double>& to_grid,
-    std::vector<double>& mat_maj) const override;
+    const vector<double>& to_grid, vector<double>& mat_maj) const override;
 
 private:
   //----------------------------------------------------------------------------
@@ -249,8 +248,7 @@ protected:
   //! \param[out] mat_maj The array to write the macroscopic majorant to. The
   //!   resulting cross section has units of [cm^-1]
   virtual void fill_material_maj_xs(int i_material, double max_density_mult,
-    const std::vector<double>& to_grid,
-    std::vector<double>& mat_maj) const override;
+    const vector<double>& to_grid, vector<double>& mat_maj) const override;
 
 private:
   //----------------------------------------------------------------------------

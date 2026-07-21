@@ -259,18 +259,18 @@ void NeutronMajorant::fill_material_maj_xs(int i_material,
       double micro_smooth_tot_xs = 0.0;
       if (i_sab >= 0) {
         // Thermal scattering cross sections using S(a,b) tables.
-        micro_smooth_tot_xs = calculate_max_sab_tot_xs(
+        micro_smooth_tot_xs = calculate_max_sab_micro_tot_xs(
           mat.nuclide_[i], i_sab, sab_frac, union_energy);
       } else {
         // Free gas smooth cross section
         micro_smooth_tot_xs =
-          calculate_max_smooth_xs(mat.nuclide_[i], union_energy);
+          calculate_max_smooth_micro_xs(mat.nuclide_[i], union_energy);
       }
 
       // ======================================================================
       // Compute the URR cross section. This shouldn't intersect with the
       // S(a,b) cross section.
-      double micro_urr_xs = calculate_max_urr_xs(
+      double micro_urr_xs = calculate_max_urr_micro_xs(
         mat.nuclide_[i], union_energy, micro_smooth_tot_xs);
 
       // ======================================================================
@@ -281,7 +281,7 @@ void NeutronMajorant::fill_material_maj_xs(int i_material,
   }
 }
 
-double NeutronMajorant::calculate_max_smooth_xs(
+double NeutronMajorant::calculate_max_smooth_micro_xs(
   int i_nuclide, double energy) const
 {
   const auto& nuc = *data::nuclides[i_nuclide];
@@ -299,13 +299,9 @@ double NeutronMajorant::calculate_max_smooth_xs(
   return max_smooth_tot_xs;
 }
 
-double NeutronMajorant::calculate_max_urr_xs(
+double NeutronMajorant::calculate_max_urr_micro_xs(
   int i_nuclide, double energy, double smooth_xs) const
 {
-  // A tolerance on the URR check to make sure we include the URR energy grid
-  // bounds.
-  constexpr double URR_FUZZY_CHECK = 1e-6;
-
   const auto& nuc = *data::nuclides[i_nuclide];
   if (!nuc.urr_present_) {
     return 0.0;
@@ -313,8 +309,8 @@ double NeutronMajorant::calculate_max_urr_xs(
 
   double max_urr_xs = 0.0;
   for (const auto& urr : nuc.urr_data_) {
-    if (!(urr.energy_in_bounds(energy - URR_FUZZY_CHECK) ||
-          urr.energy_in_bounds(energy + URR_FUZZY_CHECK))) {
+    if (!(urr.energy_in_bounds(energy - MAJORANT_URR_TOL) ||
+          urr.energy_in_bounds(energy + MAJORANT_URR_TOL))) {
       continue;
     }
 
@@ -356,13 +352,13 @@ double NeutronMajorant::calculate_max_urr_xs(
       interp_urr_xs *= smooth_xs;
     }
 
-    max_urr_xs = std::max({max_urr_xs, interp_urr_xs, smooth_xs});
+    max_urr_xs = std::max(max_urr_xs, interp_urr_xs);
   }
 
   return max_urr_xs;
 }
 
-double NeutronMajorant::calculate_max_sab_tot_xs(
+double NeutronMajorant::calculate_max_sab_micro_tot_xs(
   int i_nuclide, int i_sab, double sab_frac, double energy) const
 {
   const auto& nuc = *data::nuclides[i_nuclide];
@@ -435,7 +431,7 @@ int NeutronMajorant::get_i_grid(
 {
   // Find energy index on energy grid
   int i_log_union =
-    std::log(energy / data::energy_min[i_neutron_]) / simulation::log_spacing;
+    std::log(energy / data::energy_min[I_NEUTRON]) / simulation::log_spacing;
 
   int i_grid;
   if (energy <= grid.energy.front()) {
@@ -526,14 +522,15 @@ void PhotonMajorant::fill_material_maj_xs(int i_material,
     for (int i = 0; i < mat.nuclide_.size(); ++i) {
       const int i_element = mat.element_[i];
 
-      mat_maj[i_energy] += calculate_elem_tot_xs(i_element, union_log_energy) *
-                           mat.atom_density(i, max_density_mult);
+      mat_maj[i_energy] +=
+        calculate_elem_micro_tot_xs(i_element, union_log_energy) *
+        mat.atom_density(i, max_density_mult);
     }
     mat_maj[i_energy] = std::log(mat_maj[i_energy]);
   }
 }
 
-double PhotonMajorant::calculate_elem_tot_xs(
+double PhotonMajorant::calculate_elem_micro_tot_xs(
   int i_element, double log_energy) const
 {
   const auto& elem = *data::elements[i_element];
@@ -559,7 +556,7 @@ double PhotonMajorant::calculate_elem_tot_xs(
   tensor::View<const double> xs_upper = elem.cross_sections_.slice(i_grid + 1);
 
   for (int i = 0; i < xs_upper.size(); ++i)
-    if (xs_lower(i) != 0)
+    if (xs_lower(i) > 0)
       photoelectric += std::exp(xs_lower(i) + f * (xs_upper(i) - xs_lower(i)));
 
   // Calculate microscopic pair production cross section

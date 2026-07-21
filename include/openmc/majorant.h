@@ -4,6 +4,8 @@
 #ifndef OPENMC_MAJORANT_H
 #define OPENMC_MAJORANT_
 
+#include <unordered_set>
+
 #include "openmc/nuclide.h"
 #include "openmc/vector.h"
 
@@ -38,6 +40,13 @@ public:
 
   //! A function to populate the majorant cross section.
   void compute_majorant();
+
+  //----------------------------------------------------------------------------
+  // Data members
+
+  //! A dilation factor to catch interpolation errors, inaccuracies in S(a,b)
+  //! maxes, and the URR treatment.
+  constexpr static double safety_factor_ {1.01};
 
 protected:
   //----------------------------------------------------------------------------
@@ -110,13 +119,6 @@ public:
   //! \return The neutron majorant cross section at the given energy in [cm^-1]
   double calculate_neutron_xs(double energy) const;
 
-  //----------------------------------------------------------------------------
-  // Data members
-
-  //! A dilation factor to ensure floating-point round off and inexact majorant
-  //! URR and S(a,b) cross sections don't bias results.
-  constexpr static double safety_factor_ {1.01};
-
 protected:
   //----------------------------------------------------------------------------
   // Protected Methods
@@ -126,7 +128,7 @@ protected:
   //! \return The minimum transport energy associated with the majorant [eV]
   virtual double min_transport_energy() const override
   {
-    return data::energy_min[i_neutron_];
+    return data::energy_min[(I_NEUTRON)];
   }
 
   //! Maximum neutron transport energy.
@@ -134,7 +136,7 @@ protected:
   //! \return The maximum transport energy associated with the majorant [eV]
   virtual double max_transport_energy() const override
   {
-    return data::energy_max[i_neutron_];
+    return data::energy_max[I_NEUTRON];
   }
 
   //! Compute a per-material macroscopic majorant cross section.
@@ -155,7 +157,7 @@ private:
   //! \param[in] i_nuclide Index into the nuclides array.
   //! \param[in] energy The energy to evaluate the cross section at in [eV].
   //! \return The maximum smooth cross section in [barn].
-  double calculate_max_smooth_xs(int i_nuclide, double energy) const;
+  double calculate_max_smooth_micro_xs(int i_nuclide, double energy) const;
 
   //! Compute the maximum microscopic total URR cross section.
   //!
@@ -164,7 +166,7 @@ private:
   //! \param[in] smooth_xs The smooth total cross section in units of [eV] to
   //!   use (if needed by the ptable).
   //! \return The maximum URR total cross section in [barn].
-  double calculate_max_urr_xs(
+  double calculate_max_urr_micro_xs(
     int i_nuclide, double energy, double smooth_xs) const;
 
   //! Compute the maximum microscopic S(a,b) total cross section.
@@ -177,7 +179,7 @@ private:
   //! \param[in] nuc The nuclide to compute the microscopic total cross section
   //!   of.
   //! \return The maximum S(a,b) total cross section in [barn].
-  double calculate_max_sab_tot_xs(
+  double calculate_max_sab_micro_tot_xs(
     int i_nuclide, int i_sab, double sab_frac, double energy) const;
 
   //! Get the grid index for energy interpolation.
@@ -190,7 +192,11 @@ private:
   //----------------------------------------------------------------------------
   // Private data members
 
-  static constexpr int i_neutron_ = ParticleType::neutron().transport_index();
+  static constexpr int I_NEUTRON = ParticleType::neutron().transport_index();
+
+  // A tolerance on the URR check to make sure we include the URR energy grid
+  // bounds.
+  static constexpr double MAJORANT_URR_TOL = 1e-6;
 }; // class NeutronMajorant
 
 //==============================================================================
@@ -213,12 +219,6 @@ public:
   //! \return The photon majorant cross section at the given energy in [cm^-1]
   double calculate_photon_xs(double energy) const;
 
-  //----------------------------------------------------------------------------
-  // Data members
-
-  //! A dilation factor to catch interpolation error.
-  constexpr static double safety_factor_ {1.01};
-
 protected:
   //----------------------------------------------------------------------------
   // Protected Methods
@@ -229,7 +229,7 @@ protected:
   //! majorant
   virtual double min_transport_energy() const override
   {
-    return std::log(data::energy_min[i_photon_]);
+    return std::log(data::energy_min[I_PHOTON]);
   }
 
   //! Maximum photon transport energy.
@@ -238,7 +238,7 @@ protected:
   //! majorant
   virtual double max_transport_energy() const override
   {
-    return std::log(data::energy_max[i_photon_]);
+    return std::log(data::energy_max[I_PHOTON]);
   }
 
   //! Compute a per-material macroscopic majorant cross section.
@@ -259,7 +259,7 @@ private:
   //! \param[in] i_element Index in the elements array.
   //! \param[in] energy The energy to evaluate the cross section at in [eV].
   //! \return The maximum microscopic total cross section in [barn].
-  double calculate_elem_tot_xs(int i_element, double log_energy) const;
+  double calculate_elem_micro_tot_xs(int i_element, double log_energy) const;
 
   //! Get the grid index for energy interpolation. This is templated due to the
   //! use of tensor::Tensor<double> in PhotonInteraction.
@@ -293,11 +293,11 @@ private:
   //----------------------------------------------------------------------------
   // Private data members
 
-  static constexpr int i_photon_ = ParticleType::photon().transport_index();
+  static constexpr int I_PHOTON = ParticleType::photon().transport_index();
 }; // class PhotonMajorant
 
 //==============================================================================
-// Static functions
+// Namespace functions
 //==============================================================================
 
 //! A function to create majorant cross sections.

@@ -182,10 +182,21 @@ void Particle::from_source(const SourceSite* src)
   parent_nuclide() = src->parent_nuclide;
   delayed_group() = src->delayed_group;
 
-  // Convert signed surface ID to signed index
+  // If the source has a surface ID assigned, attempt to determine the signed
+  // surface index by comparing the particle's direction with the surface
+  // normal. This only works if the particle is on the surface.
   if (src->surf_id != SURFACE_NONE) {
-    int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
-    surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
+    auto it = model::surface_map.find(std::abs(src->surf_id));
+    if (it != model::surface_map.end()) {
+      int i_surface = it->second;
+      const auto& surf = *model::surfaces[i_surface];
+      if (surf.geom_type() == GeometryType::CSG &&
+          std::abs(surf.evaluate(r())) < FP_COINCIDENT) {
+        int index_plus_one = i_surface + 1;
+        surface() =
+          (u().dot(surf.normal(r())) > 0.0) ? index_plus_one : -index_plus_one;
+      }
+    }
   }
 
   wgt_born() = src->wgt_born;

@@ -193,6 +193,46 @@ def test_particle_direction(parameter, run_in_tmpdir, model):
                 assert False
 
 
+@pytest.mark.parametrize(
+    "direction",
+    [(1.0, 0.0, 0.0), (-1.0, 0.0, 0.0)],
+)
+@pytest.mark.parametrize(
+    "source_surface_id, reuse_surface_id",
+    [(20, False), (10, False), (10, True)],
+    ids=["matching", "missing", "reused"],
+)
+def test_source_surface_id(
+    direction, source_surface_id, reuse_surface_id, run_in_tmpdir
+):
+    """A source surface is used only when it matches the model surface."""
+    source = openmc.SourceParticle(
+        r=(0.0, 0.0, 0.0), u=direction, surf_id=source_surface_id
+    )
+    openmc.write_source_file([source], "surface_source.h5")
+
+    # Surface 20 is the source surface in this model. Surface 10 is either
+    # absent or reused for an unrelated boundary that does not contain the
+    # source position.
+    left = openmc.XPlane(-1.0, surface_id=1, boundary_type="vacuum")
+    middle = openmc.XPlane(0.0, surface_id=20)
+    right = openmc.XPlane(1.0, surface_id=30, boundary_type="vacuum")
+    bottom = openmc.YPlane(-1.0, surface_id=40, boundary_type="vacuum")
+    top_id = 10 if reuse_surface_id else 50
+    top = openmc.YPlane(1.0, surface_id=top_id, boundary_type="vacuum")
+    cells = [
+        openmc.Cell(region=+left & -middle & +bottom & -top),
+        openmc.Cell(region=+middle & -right & +bottom & -top),
+    ]
+
+    model = openmc.Model(geometry=openmc.Geometry(cells))
+    model.settings.run_mode = "fixed source"
+    model.settings.particles = 10
+    model.settings.batches = 1
+    model.settings.source = openmc.FileSource("surface_source.h5")
+    model.run()
+
+
 @pytest.fixture
 def model_dagmc(request):
     """Model based on the mesh file 'dagmc.h5m' available from

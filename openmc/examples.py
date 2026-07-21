@@ -1630,7 +1630,7 @@ def sphere_with_shielded_pocket() -> openmc.Model:
     +x axis, so roughly a meter of concrete separates the source from the
     pocket while only a few centimeters of concrete back the cavity. The
     sphere is enclosed in a vacuum-bounded box, with a void gap in between, so
-    that solvers which sample uniformly over a rectangular domain (e.g.,
+    that solvers that sample uniformly over a rectangular domain (e.g.,
     random ray) can be applied directly. The geometry is designed for testing
     weight window and variance reduction workflows:
 
@@ -1718,10 +1718,8 @@ def sphere_with_shielded_pocket() -> openmc.Model:
 
     source = openmc.IndependentSource()
     source.space = openmc.stats.Box(
-        [cavity_center_x - cavity_half_width,
-         -cavity_half_width, -cavity_half_width],
-        [cavity_center_x + cavity_half_width,
-         cavity_half_width, cavity_half_width])
+        [cavity_center_x - cavity_half_width, -cavity_half_width, -cavity_half_width],
+        [cavity_center_x + cavity_half_width, cavity_half_width, cavity_half_width])
     source.constraints = {'domains': [cavity_cell]}
     source.angle = openmc.stats.Isotropic()
     source.energy = openmc.stats.delta_function(2.0e6)

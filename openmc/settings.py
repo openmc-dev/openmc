@@ -5,6 +5,7 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
+from typing import Self
 import traceback
 
 import lxml.etree as ET
@@ -242,7 +243,7 @@ class Settings:
             also tends to dampen the convergence rate of the solver, thus requiring
             more iterations to converge.
         :adjoint_source:
-            Source object used to define localized adjoint source/detector response 
+            Source object used to define localized adjoint source/detector response
             function.
 
         .. versionadded:: 0.15.0
@@ -515,7 +516,7 @@ class Settings:
                 warnings.warn(msg, stacklevel=2)
         super().__setattr__(name, value)
 
-    def update(self, other: 'Settings'):
+    def update(self, other: Self):
         """Update this object with all populated attributes of another instance.
 
         Every attribute of `other` that has been populated -- i.e., that is
@@ -542,22 +543,17 @@ class Settings:
         cv.check_type('other', other, Settings)
         for name, value in vars(other).items():
             # run_mode defaults to 'eigenvalue' rather than to an "unset"
-            # state, so only a non-default value is detectable (see note in
-            # the docstring).
+            # state, so only a non-default value is detectable
             if name == '_run_mode':
                 if value is not RunMode.EIGENVALUE:
                     self._run_mode = value
                 continue
 
             # None or an empty collection means the attribute was never set
-            # on `other` -- the same convention to_xml_element() relies on
-            # to decide which elements to export.
             if value is None or (hasattr(value, '__len__') and len(value) == 0):
                 continue
 
-            # Values on `other` were already validated by its property
-            # setters; deepcopy so later mutations of `other` cannot leak
-            # into this object.
+            # deepcopy so mutations of `other` cannot leak into this object
             setattr(self, name, copy.deepcopy(value))
 
     @property
@@ -2077,11 +2073,11 @@ class Settings:
                         path = f"./mesh[@id='{mesh.id}']"
                         if root.find(path) is None:
                             root.append(mesh.to_xml_element())
-                            if mesh_memo is not None:    
+                            if mesh_memo is not None:
                                 mesh_memo.add(mesh.id)
                 elif key == 'adjoint_source':
                     subelement = ET.SubElement(element, 'adjoint_source')
-                    # Check that all entries are valid SourceBase instances, in case 
+                    # Check that all entries are valid SourceBase instances, in case
                     # the random_ray setter was not used to populate dict entries.
                     if not isinstance(value, MutableSequence):
                         value = [value]

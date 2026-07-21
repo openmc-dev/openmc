@@ -1216,6 +1216,25 @@ def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatc
     assert user.weight_windows_file == ww_path
 
 
+def test_convert_to_multigroup_settings_kwargs(run_in_tmpdir, monkeypatch):
+    model = _steel_water_model()
+
+    # Keyword arguments are shorthand for settings=openmc.Settings(**kwargs)
+    gen = _capture_generation_settings(
+        monkeypatch, model, method='material_wise', particles=4321, seed=3)
+    assert gen.particles == 4321
+    assert gen.seed == 3
+    assert gen.batches == 200  # generation default retained
+
+    # kwargs cannot be combined with an explicit settings object, and the
+    # deprecated arguments are still rejected alongside them
+    with pytest.raises(ValueError, match='keyword'):
+        model.convert_to_multigroup(settings=openmc.Settings(), particles=5)
+    with pytest.raises(ValueError, match='deprecated'), \
+            pytest.warns(FutureWarning):
+        model.convert_to_multigroup(nparticles=1000, particles=500)
+
+
 def test_convert_to_multigroup_settings_validation(run_in_tmpdir):
     model = _steel_water_model()
 

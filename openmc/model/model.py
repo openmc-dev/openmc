@@ -2634,6 +2634,7 @@ class Model:
         temperatures: Sequence[float] | None = None,
         temperature_settings: dict | None = None,
         settings: openmc.Settings | None = None,
+        **kwargs,
     ):
         """Convert all materials from continuous energy to multigroup.
 
@@ -2656,8 +2657,7 @@ class Model:
             Defaults to 2000.
 
             .. deprecated:: 0.15.4
-                Set ``particles`` on the object passed via the ``settings``
-                argument instead.
+                Pass ``particles`` as a keyword argument instead.
         overwrite_mgxs_library : bool, optional
             Whether to overwrite an existing MGXS library file.
         mgxs_path : str, optional
@@ -2693,8 +2693,7 @@ class Model:
             entries in openmc.Settings.temperature_settings.
 
             .. deprecated:: 0.15.4
-                Set ``temperature`` on the object passed via the ``settings``
-                argument instead.
+                Pass ``temperature`` as a keyword argument instead.
         settings : openmc.Settings, optional
             Settings overrides for the continuous energy simulation(s) used
             to generate the MGXS library. Attributes populated on this
@@ -2710,6 +2709,13 @@ class Model:
             arguments.
 
             .. versionadded:: 0.15.4
+        **kwargs
+            Keyword arguments passed to the :class:`openmc.Settings`
+            constructor as a shorthand for the ``settings`` argument, e.g.
+            ``model.convert_to_multigroup(particles=100_000)``. Cannot be
+            combined with ``settings``.
+
+            .. versionadded:: 0.15.4
         """
         if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)
@@ -2718,6 +2724,15 @@ class Model:
                     ('material_wise', 'stochastic_slab', 'infinite_medium'))
         if settings is not None:
             check_type('settings', settings, openmc.Settings)
+
+        # Additional keyword arguments are Settings attributes, shorthand
+        # for passing settings=openmc.Settings(**kwargs)
+        if kwargs:
+            if settings is not None:
+                raise ValueError(
+                    'Only one of the "settings" argument and additional '
+                    'Settings keyword arguments may be specified.')
+            settings = openmc.Settings(**kwargs)
 
         # The model may reference its materials only through the geometry.
         # The materials are converted in place and library-wide attributes
@@ -2732,9 +2747,9 @@ class Model:
         if nparticles is not None or temperature_settings is not None:
             warnings.warn(
                 'The "nparticles" and "temperature_settings" arguments are '
-                'deprecated. Pass a Settings object with the desired '
-                'attributes via the "settings" argument instead.',
-                FutureWarning)
+                'deprecated. Pass "particles" and "temperature" as keyword '
+                'arguments (or on a Settings object via the "settings" '
+                'argument) instead.', FutureWarning)
             if settings is not None:
                 raise ValueError(
                     'The deprecated "nparticles" and "temperature_settings" '

@@ -193,33 +193,27 @@ def test_particle_direction(parameter, run_in_tmpdir, model):
                 assert False
 
 
-@pytest.mark.parametrize(
-    "direction",
-    [(1.0, 0.0, 0.0), (-1.0, 0.0, 0.0)],
-)
-@pytest.mark.parametrize(
-    "source_surface_id, reuse_surface_id",
-    [(20, False), (10, False), (10, True)],
-    ids=["matching", "missing", "reused"],
-)
-def test_source_surface_id(
-    direction, source_surface_id, reuse_surface_id, run_in_tmpdir
-):
-    """A source surface is used only when it matches the model surface."""
-    source = openmc.SourceParticle(
-        r=(0.0, 0.0, 0.0), u=direction, surf_id=source_surface_id
-    )
-    openmc.write_source_file([source], "surface_source.h5")
+def test_surface_source_id(run_in_tmpdir):
+    """Test handling of surface IDs for source particles."""
 
-    # Surface 20 is the source surface in this model. Surface 10 is either
-    # absent or reused for an unrelated boundary that does not contain the
-    # source position.
+    # Surface 20 is the surface matching the source in this model. Surface 11 is
+    # absent and surface 10 is reused for an unrelated boundary that does not
+    # contain the source position.
+    sources = []
+    for direction in ((1.0, 0.0, 0.0), (-1.0, 0.0, 0.0)):
+        for source_surface_id in (20, 11, 10):
+            filename = f"surface_source_{len(sources)}.h5"
+            site = openmc.SourceParticle(
+                r=(0.0, 0.0, 0.0), u=direction, surf_id=source_surface_id
+            )
+            openmc.write_source_file([site], filename)
+            sources.append(openmc.FileSource(filename))
+
     left = openmc.XPlane(-1.0, surface_id=1, boundary_type="vacuum")
     middle = openmc.XPlane(0.0, surface_id=20)
     right = openmc.XPlane(1.0, surface_id=30, boundary_type="vacuum")
     bottom = openmc.YPlane(-1.0, surface_id=40, boundary_type="vacuum")
-    top_id = 10 if reuse_surface_id else 50
-    top = openmc.YPlane(1.0, surface_id=top_id, boundary_type="vacuum")
+    top = openmc.YPlane(1.0, surface_id=10, boundary_type="vacuum")
     cells = [
         openmc.Cell(region=+left & -middle & +bottom & -top),
         openmc.Cell(region=+middle & -right & +bottom & -top),
@@ -227,9 +221,9 @@ def test_source_surface_id(
 
     model = openmc.Model(geometry=openmc.Geometry(cells))
     model.settings.run_mode = "fixed source"
-    model.settings.particles = 10
+    model.settings.particles = 1000
     model.settings.batches = 1
-    model.settings.source = openmc.FileSource("surface_source.h5")
+    model.settings.source = sources
     model.run()
 
 

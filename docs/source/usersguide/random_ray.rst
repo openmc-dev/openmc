@@ -678,10 +678,14 @@ one of "material_wise", "cell_wise", "stochastic_slab", or
        * Like ``material_wise``, but clones the material in each cell so every
          cell gets its own cross sections (each material-filled cell is assigned a
          distinct macroscopic).
-     - * Resolves intra-material spatial variation that ``material_wise`` averages
-         away, e.g. a thick shield or a steep flux gradient within a single material
+     - * Resolves spatial variation between distinct cells that share a material,
+         which ``material_wise`` averages away (e.g. a shield wall modelled as
+         several cells of one material, each covering a different depth)
        * Captures spatial self shielding between cells filled with the same material
      - * Most expensive (one cross section set per cell) and a larger library
+       * Fidelity is limited by the cell definitions, not the source region mesh:
+         a single large cell uses one cross section set throughout, so a steep
+         gradient is only resolved if the geometry is split into several cells
        * Same far-from-source limitation as ``material_wise``: a cell that is not
          tallied to yields zero cross sections for that cell
    * - ``stochastic_slab``
@@ -701,6 +705,13 @@ one of "material_wise", "cell_wise", "stochastic_slab", or
      - * Poor accuracy (no spatial information, no lattice physics, no resonance effects
          between materials)
        * May hang if a material has a k-infinity greater than 1.0
+
+.. note::
+    The ``cell_wise`` method generates one cross section set per cell definition,
+    not per cell instance. A cell that appears in several locations of a lattice
+    therefore shares a single cross section set across all of those locations. If
+    you need distinct cross sections per instance, subdivide the geometry into
+    separate cells.
 
 When selecting a non-default energy group structure, you can manually define
 group boundaries or specify the name of a known group structure (a list of which

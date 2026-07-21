@@ -92,7 +92,7 @@ private:
   vector<double> estimated_rank_load_totals_;
   double estimated_load_sum_;
 
-  // coefficients for load calculation
+  // Coefficients for load calculation
   double C1_ = 1.0;
   double C2_ = 0.1; 
   double C3_ = 0.1; 

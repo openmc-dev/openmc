@@ -104,20 +104,6 @@ class PolarAzimuthal(UnitSphere):
             self.phi = phi
         else:
             self.phi = Uniform(0., 2*pi)
-            
-    @property
-    def reference_vwu(self):
-        return self._reference_vwu
-
-    @reference_vwu.setter
-    def reference_vwu(self, vwu):
-        cv.check_type('reference v direction', vwu, Iterable, Real)
-        vwu = np.asarray(vwu)
-        uvw = self.reference_uvw
-        cv.check_greater_than('reference v direction must not be parallel to reference u direction', np.linalg.norm(np.cross(vwu,uvw)), 1e-6*np.linalg.norm(vwu))        
-        vwu -= vwu.dot(uvw)*uvw        
-        cv.check_less_than('reference v direction must be orthogonal to reference u direction', np.abs(vwu.dot(uvw)), 1e-6)
-        self._reference_vwu = vwu/np.linalg.norm(vwu)
 
     @property
     def reference_vwu(self):

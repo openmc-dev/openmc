@@ -150,8 +150,6 @@ struct McplApi {
       load_symbol_platform("mcpl_create_outfile"));
     hdr_set_srcname = reinterpret_cast<mcpl_hdr_set_srcname_fpt>(
       load_symbol_platform("mcpl_hdr_set_srcname"));
-    hdr_add_data = reinterpret_cast<mcpl_hdr_add_data_fpt>(
-      load_symbol_platform("mcpl_hdr_add_data"));
     add_particle = reinterpret_cast<mcpl_add_particle_fpt>(
       load_symbol_platform("mcpl_add_particle"));
     close_outfile = reinterpret_cast<mcpl_close_outfile_fpt>(

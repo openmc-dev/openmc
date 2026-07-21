@@ -96,7 +96,6 @@ public:
   //! Get size of surfaces
   int n_surfaces() const {return expression_.size(); }
 
-
   //----------------------------------------------------------------------------
   // Accessors
 

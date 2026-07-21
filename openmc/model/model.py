@@ -2164,20 +2164,6 @@ class Model:
         are defined on the model and the run mode is 'eigenvalue', then a
         default Watt spectrum source (strength = 0.99) is added.
 
-        Note that in all cases, a discrete source that is uniform over all
-        energy groups is created (strength = 0.01) to ensure that total cross
-        sections are generated for all energy groups. In the case that the user
-        has provided a source_energy distribution as an argument, an additional
-        source (strength = 0.99) is created using that energy distribution. If
-        the user has not provided a source_energy distribution, but the model
-        has sources defined, and all of those sources are of IndependentSource
-        type, then additional sources are created based on the model's existing
-        sources, keeping their energy distributions but replacing their
-        spatial/angular distributions, with their combined strength being 0.99.
-        If the user has not provided a source_energy distribution and no sources
-        are defined on the model and the run mode is 'eigenvalue', then a
-        default Watt spectrum source (strength = 0.99) is added.
-
         Parameters
         ----------
         groups : openmc.mgxs.EnergyGroups

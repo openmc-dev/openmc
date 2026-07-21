@@ -200,6 +200,7 @@ def test_powerlaw():
     assert_sample_mean(weighted_sample, exp_mean)
     assert np.all(weights != 1.0)
 
+
 @pytest.mark.flaky(reruns=1)
 def test_maxwell():
     theta = 1.2895e6

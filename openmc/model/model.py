@@ -2949,8 +2949,9 @@ class Model:
         The region between `lower_left` and `upper_right` is sampled on a regular
         3D grid by taking a sequence of 2D slices in z. Overlap and undefined
         locations are identified from cells marked with the overlap and undefined
-        sentinels, respectively. Example coordinates and unique overlap pairs
-        found in the slices are returned in a summary dictionary. This function
+        sentinels, respectively. A 3D bounding box is returned for each unique
+        overlap pair and for each distinct internal undefined region (found via
+        3D connected-component labeling), in a summary dictionary. This function
         is meant to be called from an input file on a 3D box encapsulating the
         entire model.
 
@@ -3006,11 +3007,15 @@ class Model:
         u_span = (x1 - x0, 0.0, 0.0)
         v_span = (0.0, y1 - y0, 0.0)
 
-        n_overlap_samples = 0
-        n_undefined_samples = 0
-
-        max_examples = 10
-        overlap_boxes = {}
+        # Accumulate overlap and internal-undefined pixels across all z-slices
+        # into 3D volumes so that spatially-connected regions can be labeled in
+        # 3D afterwards (rather than fragmented per-slice or per cell pair).
+        internal_volume = np.zeros((nz, ny, nx), dtype=bool)
+        # For overlaps we also remember which unique overlap key sits in each
+        # voxel, so the cell pairs involved in each spatial region can be listed.
+        overlap_key_volume = np.full((nz, ny, nx), -1, dtype=np.int64)
+        overlap_keys = []            # index -> (universe, cell1, cell2)
+        overlap_key_to_idx = {}
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             for k in range(nz):
@@ -3031,86 +3036,100 @@ class Model:
 
                 overlap_data = openmc.lib.slice_data_overlap_info()
 
-                # Loop through overlap regions in this slice, finding pixels and updating bbox
+                # Record which overlap key occupies each overlapping pixel.
                 for overlap_idx, key in enumerate(overlap_data):
                     encoded_id = _OVERLAP - overlap_idx - 1
-                    pixels = np.argwhere(cell_ids == encoded_id)
-                
-                # Track the max and min of each coordinate for bbox
-                for y, x in pixels:
-                    x_coord = x0 + (x + 0.5) * dx
-                    y_coord = y1 - (y + 0.5) * dy
-                    if key not in overlap_boxes:
-                        overlap_boxes[key] = {
-                            "xmin": x, "xmax": x,
-                            "ymin": y, "ymax": y,
-                            "zmin": z, "zmax": z,
-                            "count": 1,
-                        }
-                    else:
-                        box = overlap_boxes[key]
-                        box["xmin"] = min(box["xmin"], x)
-                        box["xmax"] = max(box["xmax"], x)
-                        box["ymin"] = min(box["ymin"], y)
-                        box["ymax"] = max(box["ymax"], y)
-                        box["zmin"] = min(box["zmin"], z)
-                        box["zmax"] = max(box["zmax"], z)
-                        box["count"] += 1
+                    mask = (cell_ids == encoded_id)
+                    if not mask.any():
+                        continue
+                    key_t = tuple(int(v) for v in key)
+                    if key_t not in overlap_key_to_idx:
+                        overlap_key_to_idx[key_t] = len(overlap_keys)
+                        overlap_keys.append(key_t)
+                    overlap_key_volume[k][mask] = overlap_key_to_idx[key_t]
 
                 _, _, internal = Model._classify_undefined_regions(cell_ids)
 
-                undefined_pixels = np.argwhere(internal)
+                internal_volume[k] = internal
 
-                n_overlap_samples += len(overlap_pixels)
-                n_undefined_samples += len(undefined_pixels)
+        overlap_volume = overlap_key_volume >= 0
 
-                # Record example coordinates
-                for y, x in overlap_pixels:
-                    x_coord = x0 + (x + 0.5) * (x1 - x0) / nx
-                    y_coord = y1 - (y + 0.5) * (y1 - y0) / ny
+        # Label spatially-connected regions in 3D and build a world-coordinate
+        # bounding box for each connected component. Edge (face, rank-1)
+        # connectivity is used; a feature thinner than the sample spacing can
+        # rasterize with breaks and split into several regions, so increase
+        # n_samples until thin features are resolved.
+        def _label_boxes(volume, key_volume=None):
+            boxes = []
+            if not volume.any():
+                return boxes
+            structure = ndimage.generate_binary_structure(3, 1)  # face connectivity
+            labeled, _ = ndimage.label(volume, structure=structure)
+            for region_id, sl in enumerate(ndimage.find_objects(labeled), start=1):
+                if sl is None:
+                    continue
+                kz, ky, kx = sl  # slice objects over the (z, y, x) index axes
 
-                    if len(overlap_points) < max_examples:
-                        overlap_points.append((float(x_coord), float(y_coord), float(z)))
+                # Voxel-edge world extents (start inclusive, stop exclusive)
+                x_lo = x0 + kx.start * (x1 - x0) / nx
+                x_hi = x0 + kx.stop * (x1 - x0) / nx
+                # The y (row) axis is flipped in world coordinates (row 0 == y1)
+                y_hi = y1 - ky.start * (y1 - y0) / ny
+                y_lo = y1 - ky.stop * (y1 - y0) / ny
+                z_lo = z0 + kz.start * dz
+                z_hi = z0 + kz.stop * dz
 
-                # Record internal undefined sample coordinates
-                for y, x in undefined_pixels:
-                    x_coord = x0 + (x + 0.5) * (x1 - x0) / nx
-                    y_coord = y1 - (y + 0.5) * (y1 - y0) / ny
+                region_mask = (labeled == region_id)
+                box = {
+                    "xmin": float(min(x_lo, x_hi)), "xmax": float(max(x_lo, x_hi)),
+                    "ymin": float(min(y_lo, y_hi)), "ymax": float(max(y_lo, y_hi)),
+                    "zmin": float(z_lo), "zmax": float(z_hi),
+                    "count": int(region_mask.sum()),
+                }
+                if key_volume is not None:
+                    idxs = np.unique(key_volume[region_mask])
+                    box["keys"] = [overlap_keys[i] for i in idxs if i >= 0]
+                boxes.append(box)
+            return boxes
 
-                    if len(undefined_points) < max_examples:
-                        undefined_points.append((float(x_coord), float(y_coord), float(z)))
+        overlap_boxes = _label_boxes(overlap_volume, overlap_key_volume)
+        undefined_boxes = _label_boxes(internal_volume)
 
         result = {
-            "n_overlap_samples": n_overlap_samples,
-            "n_undefined_samples": n_undefined_samples,
-            "overlap_points": overlap_points,
-            "undefined_points": undefined_points,
-            "n_more_overlap_points": max(0, n_overlap_samples - len(overlap_points)),
-            "n_more_undefined_points": max(0, n_undefined_samples - len(undefined_points)),
+            "overlap_boxes": overlap_boxes,
+            "undefined_boxes": undefined_boxes,
+            "n_overlap_regions": len(overlap_boxes),
+            "n_undefined_regions": len(undefined_boxes),
         }
 
         if print_summary:
             print("Geometry debug summary:")
-            print(f"  Overlap sample points found: {result['n_overlap_samples']}")
-            print(f"  Undefined sample points found: {result['n_undefined_samples']}")
 
-            if result["overlap_points"]:
-                print("  Example overlap points:")
-                for pt in result["overlap_points"]:
-                    print(f"    {pt}")
-                if result["n_more_overlap_points"] > 0:
-                    print(f"    ... and {result['n_more_overlap_points']} more")
+            if result["overlap_boxes"]:
+                print(f"  Overlap regions found: {result['n_overlap_regions']}")
+                for i, box in enumerate(result["overlap_boxes"], start=1):
+                    print(
+                        f"    region {i}: "
+                        f"x[{box['xmin']:.4g}, {box['xmax']:.4g}] "
+                        f"y[{box['ymin']:.4g}, {box['ymax']:.4g}] "
+                        f"z[{box['zmin']:.4g}, {box['zmax']:.4g}] "
+                        f"(count={box['count']}, cells={box['keys']})"
+                    )
             else:
-                print("  Example overlap points: None")
+                print("  Overlap bounding boxes: None")
 
-            if result["undefined_points"]:
-                print("  Example undefined points:")
-                for pt in result["undefined_points"]:
-                    print(f"    {pt}")
-                if result["n_more_undefined_points"] > 0:
-                    print(f"    ... and {result['n_more_undefined_points']} more")
+            if result["undefined_boxes"]:
+                print(f"  Undefined regions found: {result['n_undefined_regions']}")
+                for i, box in enumerate(result["undefined_boxes"], start=1):
+                    print(
+                        f"    region {i}: "
+                        f"x[{box['xmin']:.4g}, {box['xmax']:.4g}] "
+                        f"y[{box['ymin']:.4g}, {box['ymax']:.4g}] "
+                        f"z[{box['zmin']:.4g}, {box['zmax']:.4g}] "
+                        f"(count={box['count']})"
+                    )
             else:
-                print("  Example undefined points: None")
+                print("  Undefined bounding boxes: None")
 
         return result
 

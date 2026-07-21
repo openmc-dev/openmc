@@ -8,7 +8,7 @@ from tests.testing_harness import PyAPITestHarness
 
 @pytest.mark.parametrize("photon", [False, True])
 def test_lattice(photon):
-    with change_directory(str(photon)):
+    with change_directory('photon_'+str(photon)):
         model = delta_tracking_lattice(photon)
         harness = PyAPITestHarness('statepoint.10.h5', model)
         harness.main()

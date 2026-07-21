@@ -44,20 +44,16 @@ int main(int argc, char* argv[])
     break;
   case RunMode::PLOTTING:
     err = openmc_plot_geometry();
-    printf("Plotting finished\n");
     break;
   case RunMode::PARTICLE:
     if (mpi::master)
       run_particle_restart();
     err = 0;
-    printf("Particle finished\n");
     break;
   case RunMode::VOLUME:
     err = openmc_calculate_volumes();
-    printf("Volumes finished\n");
     break;
   default:
-    printf("Default finished\n");
     break;
   }
   if (err)
@@ -72,5 +68,4 @@ int main(int argc, char* argv[])
 #ifdef OPENMC_MPI
   MPI_Finalize();
 #endif
-
 }

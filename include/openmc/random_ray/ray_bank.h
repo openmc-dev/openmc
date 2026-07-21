@@ -11,11 +11,6 @@
 
 namespace openmc {
 
-// // Forward declaration
-// class FlatSourceDomain;
-// class RandomRay;
-// struct RayBufferContainer;
-
 class RayBank {
 public:
   //----------------------------------------------------------------------------
@@ -63,7 +58,7 @@ private:
   vector<LocalCoord> received_coord_;
   vector<int> received_cell_last_;
 
-}; // class DecompositionMap
+}; // class RayBank
 
 } // namespace openmc
 

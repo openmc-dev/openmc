@@ -15,8 +15,6 @@
 #include "openmc/distribution_spatial.h"
 #include "openmc/random_dist.h"
 #include "openmc/source.h"
-
-// #include "openmc/random_ray/ray_bank.h"
 #include "openmc/random_ray/decomposition_map.h"
 
 namespace openmc {
@@ -562,7 +560,6 @@ void RandomRay::attenuate_flux_flat_source(
   // Tally valid position inside the source region (e.g., midpoint of
   // the ray) if not done already
   if (!srh.position_recorded()) {
-    // Position midpoint = r + u() * (distance / 2.0);
     srh.position() = midpoint;
     srh.position_recorded() = 1;
   }
@@ -605,7 +602,6 @@ void RandomRay::attenuate_flux_flat_source_void(
     // Tally valid position inside the source region (e.g., midpoint of
     // the ray) if not done already
     if (!srh.position_recorded()) {
-      // Position midpoint = r + u() * (distance / 2.0);
       srh.position() = midpoint;
       srh.position_recorded() = 1;
     }

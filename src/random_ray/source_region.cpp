@@ -167,16 +167,12 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   mesh_.push_back(sr.scalars_.mesh_);
   parent_sr_.push_back(sr.scalars_.parent_sr_);
   key_.push_back(sr.scalars_.key_);
-
   centroid_.push_back(sr.scalars_.centroid_);
   centroid_iteration_.push_back(sr.scalars_.centroid_iteration_);
   centroid_t_.push_back(sr.scalars_.centroid_t_);
 
   // Only store these fields if is_linear_ is true
   if (is_linear_) {
-    // centroid_.push_back(sr.scalars_.centroid_);
-    // centroid_iteration_.push_back(sr.scalars_.centroid_iteration_);
-    // centroid_t_.push_back(sr.scalars_.centroid_t_);
     mom_matrix_.push_back(sr.scalars_.mom_matrix_);
     mom_matrix_t_.push_back(sr.scalars_.mom_matrix_t_);
   }
@@ -225,16 +221,12 @@ void SourceRegionContainer::assign(
   position_.clear();
   mesh_.clear();
   parent_sr_.clear();
-
   centroid_.clear();
   centroid_iteration_.clear();
   centroid_t_.clear();
   key_.clear();
 
   if (is_linear_) {
-    // centroid_.clear();
-    // centroid_iteration_.clear();
-    // centroid_t_.clear();
     mom_matrix_.clear();
     mom_matrix_t_.clear();
   }
@@ -301,7 +293,6 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   }
   handle.scalar_flux_final_ = &scalar_flux_final(sr, 0);
   handle.tally_task_ = &tally_task(sr, 0);
-
   handle.centroid_ = &centroid(sr);
   handle.centroid_iteration_ = &centroid_iteration(sr);
   handle.centroid_t_ = &centroid_t(sr);
@@ -309,9 +300,6 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
 
 
   if (handle.is_linear_) {
-    // handle.centroid_ = &centroid(sr);
-    // handle.centroid_iteration_ = &centroid_iteration(sr);
-    // handle.centroid_t_ = &centroid_t(sr);
     handle.mom_matrix_ = &mom_matrix(sr);
     handle.mom_matrix_t_ = &mom_matrix_t(sr);
     handle.source_gradients_ = &source_gradients(sr, 0);

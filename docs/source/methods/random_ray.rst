@@ -1100,13 +1100,175 @@ The adjoint external source will be computed for each source region in the
 simulation mesh, independent of any tallies. The adjoint external source is 
 always flat, even when a linear scattering and fission source shape is used. 
 
-When in adjoint mode, all reported results (e.g., tallies, eigenvalues, etc.) 
-are derived from the adjoint flux, even when the physical meaning is not 
-necessarily obvious. These values are still reported, though we emphasize that 
-the primary use case for adjoint mode is for producing adjoint flux tallies to 
-support subsequent perturbation studies and weight window generation. Note 
-however that the adjoint :math:`k_{eff}` is statistically the same as the 
+When in adjoint mode, all reported results (e.g., tallies, eigenvalues, etc.)
+are derived from the adjoint flux, even when the physical meaning is not
+necessarily obvious. These values are still reported, though we emphasize that
+the primary use case for adjoint mode is for producing adjoint flux tallies to
+support subsequent perturbation studies and weight window generation. Note
+however that the adjoint :math:`k_{eff}` is statistically the same as the
 forward :math:`k_{eff}`, despite the flux distributions taking different shapes.
+
+--------------------
+Domain Decomposition
+--------------------
+
+To enable parallelisation and scalability beyond the resources of a single
+computational node, a domain decomposition capability is available for the
+random ray solver.
+
+~~~~~~~~~~~~~~~~~~~~
+Voronoi Tessellation
+~~~~~~~~~~~~~~~~~~~~
+
+The domain decomposition scheme distributes the source regions across multiple
+MPI processes (ranks) according to a `capacity-constrained Voronoi tessellation
+<Balzer-2009_>`_. Each MPI rank is responsible for the transport sweeps and
+result tallying in one Voronoi region of the problem. Source regions are
+assigned to MPI ranks (and thus Voronoi regions) using a formula that evaluates
+the distance between the first intersection point :math:`\mathbf{x}` of a ray
+with that source region and the Voronoi region centroid
+:math:`\mathbf{c}_{\mathrm{rank}}`, combined with an additive weight
+:math:`\omega_{\mathrm{rank}}`: 
+
+.. math:: 
+    :label: mpi_ownership
+    
+    \mathrm{rank}(\mathbf{x}) = \arg\min_{\text{rank}} 
+    \left(\|\mathbf{c}_{\mathrm{rank}} - \mathbf{x}\|^2 - 
+    \omega_{\mathrm{rank}} \right)\;\mathrm{.}
+
+The initial weight is zero and subsequently changed for load balancing. This
+approach yields compact MPI rank subdomains. 
+
+.. figure:: ../_images/c5g7_geometry.png
+    :width: 48%
+    :align: center
+    :figclass: align-center
+
+    C5G7 geometry.
+
+.. figure:: ../_images/c5g7_voronoi.png
+    :width: 48%
+    :align: center
+    :figclass: align-center
+    
+    Voronoi decomposition of C5G7 source regions.
+
+In the OpenMC random ray implementation, the algorithm is not aware of the
+source regions in the geometry a priori. Instead, source regions are discovered
+dynamically as rays travel through the geometry and, once discovered, they get
+added to a list of known source regions. Whenever a ray enters a previously
+unknown source region, the responsible MPI rank is determined using the formula
+given above. Ideally, the source region centroid would be used to assign
+ownership unambiguously. However, centroid positions are not precalculated, and
+ownership is instead decided based on the ray entry point. If a source region
+happens to sit on a boundary between two Voronoi regions, it may be hit by rays
+from both MPI ranks at different locations, and both MPI ranks may therefore
+claim the same source region during the transport sweep. To resolve these
+conflicts, after each transport sweep, ownership of contested source regions is
+decided based on the estimated load of the ranks involved.
+
+Once each newly discovered source region has a unique owner rank, the ownership
+information is shared across all MPI ranks and saved in a decomposition map.
+This decomposition map is used to look up the responsible MPI rank every time a
+ray enters a source region that has already been recorded, thereby avoiding the
+need to evaluate Equation :eq:`mpi_ownership` again, which can be time-intensive
+if many MPI ranks are present. 
+
+~~~~~~~~~~~~~~~~~
+Ray Communication
+~~~~~~~~~~~~~~~~~
+
+When rays exit an MPI rank subdomain, they must be transmitted to their new
+owner rank so that the transport can continue until the rays reach their
+termination distance. Every time an MPI rank detects that a ray is leaving its
+subdomain, the transport of that ray stops, and the ray attributes (angular flux
+values, position, direction, distance traveled, etc.) are stored in a buffer.
+Once each MPI rank has processed all rays in its subdomain, i.e. the rays have
+either terminated or been moved into the buffer, all MPI ranks send their
+buffered ray data in a bulk synchronous communication pattern to the new MPI
+owner ranks. After communicating the ray data, each MPI rank reinitializes the
+received rays with the transmitted data, and the rays continue traveling. This
+communication pattern continues until all rays of a given batch have terminated.
+
+~~~~~~~~~~~~~~
+Load Balancing
+~~~~~~~~~~~~~~
+
+To ensure high parallel efficiency, it is crucial to assign each MPI rank
+approximately the same amount of computational workload, such that the
+individual MPI processes do not spend excessive time waiting at synchronization
+steps (like the synchronous communication phase described above), while others
+are still performing their calculations. In many computational fields, the
+amount of work that is performed is fixed per source region. In such cases, the
+overall load is simply a function of how many source regions are contained
+within a given subdomain, with each source region requiring the same set of
+operations to be performed. 
+
+However, in random ray, the load for a given source region is much
+more complex to determine. When a ray crosses a cell, the angular flux increment
+:math:`\Delta \psi_{r,g}` for each energy group is calculated according to
+Equation :eq:`delta_psi`. Additionally, to determine the length of the ray
+through the cell (and which cell comes next), ray tracing operations are
+performed. The frequency of these calculations and the cost of the ray trace
+operations depend on the size, aspect ratio and definition of a given cell,
+which can vary strongly across the simulation problem. To estimate the workload
+associated with a given source region, an empirical formula has been set up that
+accounts for 1) the number of ray crossings :math:`n_{\mathrm{hits}, i}`
+in a source region :math:`i`, and 2) the number of surface ray trace operations
+:math:`n_{\mathrm{RT}, i}` associated with the definition of that source
+region:
+
+.. math::
+    \mathrm{load}_{\mathrm{estimate}, i} = F_{r} \cdot \left(C_1 \cdot 
+    n_{\mathrm{hits}, i} \cdot N_{G} + C_2 \cdot n_{\mathrm{RT}, i} \right)\;
+    \mathrm{.}
+
+The quantities :math:`n_{\mathrm{hits}, i}` and  :math:`n_{\mathrm{RT}, i}` are
+recorded throughout the simulation. Both contributions are weighted with factors
+:math:`C_1` and  :math:`C_2`, which represent the relative computational cost
+of these operations. The values of these factors are set to :math:`C_1=1.0` and
+:math:`C_2=0.1`, according to empirical tests. These estimates per source
+region are then scaled by the additional prefactor :math:`F_{\mathrm{rank}}`
+for the respective MPI rank, which is calculated from the ratio between measured
+and estimated MPI rank load in the current batch. The measured load is
+determined based on the transport sweep times, which are recorded by default for
+diagnostics.
+
+Based on these load estimates, a load balancing routine tries to equalize the
+work per MPI rank. To do so, the weights
+:math:`\omega_{\mathrm{rank}}` in Equation :eq:`mpi_ownership` are
+adjusted according to the deviation of the estimated rank load 
+
+.. math::
+    \mathrm{load}_{\mathrm{estimate}, \mathrm{rank}} = \frac{\sum\limits_{i \, 
+    \in \, \mathrm{rank}} \mathrm{load}_{\mathrm{estimate},i}}{\sum\limits_{i=1}
+    ^{M} \mathrm{load}_{\mathrm{estimate}, i}}
+    
+from the target load 
+
+.. math::
+    \mathrm{load}_{\mathrm{target}} = \frac{1}{N_{\mathrm{rank}}}\;\mathrm{,}
+
+where :math:`N_{\mathrm{rank}}` is the total number of MPI ranks. 
+
+Changes to the weights :math:`\mathbf{\omega_{\mathrm{rank}}}` increase or
+decrease the reach of a specific MPI rank, and thus the number of source regions
+that belong to it. After each weight change, the rank load estimates are updated
+according to the anticipated changes in the ownership of source regions, and the
+new load estimates are then used again to calculate new weights. These load
+optimization iterations continue until the estimated load imbalance is smaller
+than 1% or until a maximum of 200 iterations is reached. 
+
+After the load balancing, numerous source regions will belong to new MPI ranks.
+The corresponding cell data is transferred to the new owner ranks and erased
+from the previous owner ranks. Since both the iterative load optimization and
+source region exchange can be computationally expensive, load balancing is
+restricted to the first 5 simulation batches. Because random ray simulations
+should use an appropriately large ray population, it is expected that sufficient
+load estimate data has been recorded for the vast majority of cells after 5
+batches, and the load per MPI rank will not change significantly beyond
+stochastic fluctuations associated with the changing quadrature. 
 
 ---------------------------
 Fundamental Sources of Bias
@@ -1162,6 +1324,7 @@ in random ray particle transport are:
 .. _Cosgrove-2023: https://doi.org/10.1080/00295639.2023.2270618
 .. _Ferrer-2016: https://doi.org/10.13182/NSE15-6
 .. _Gunow-2018: https://dspace.mit.edu/handle/1721.1/119030
+.. _Balzer-2009: https://doi.org/10.1109/ISVD.2009.28
 
 .. only:: html
 

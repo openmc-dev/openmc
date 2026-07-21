@@ -1018,16 +1018,18 @@ void apply_weight_window(Particle& p, WeightWindow weight_window)
     if (p.n_split() >= settings::max_history_splits)
       return;
 
-    // The (1 - WEIGHT_WINDOW_REL_TOL) factor keeps the number of splits
-    // stable when the weight-to-bound ratio sits within rounding of an exact
-    // integer, which the weight window arithmetic itself can produce (e.g., a
-    // roulette survivor assigned weight * max_split, later split against an
-    // upper bound that is an exact multiple of the same lower bound). Ratios
-    // within the dead band of an integer consistently round down; the lower
-    // clamp of 2 preserves the guarantee that the split branch always splits.
-    double n_split =
-      std::max(2.0, std::ceil((1.0 - WEIGHT_WINDOW_REL_TOL) * weight /
-                              weight_window.upper_weight));
+    // Dividing by the same dead-banded bound used in the branch condition
+    // keeps the number of splits stable when the weight-to-bound ratio sits
+    // within rounding of an exact integer, which the weight window arithmetic
+    // itself can produce (e.g., a roulette survivor assigned weight *
+    // max_split, later split against an upper bound that is an exact multiple
+    // of the same lower bound). Ratios within the dead band of an integer
+    // consistently round down, and the branch condition guarantees the ratio
+    // exceeds one; the lower clamp of 2 makes the always-splits invariant
+    // explicit.
+    double n_split = std::max(
+      2.0, std::ceil(weight / ((1.0 + WEIGHT_WINDOW_REL_TOL) *
+                               weight_window.upper_weight)));
     double max_split = weight_window.max_split;
     n_split = std::min(n_split, max_split);
 

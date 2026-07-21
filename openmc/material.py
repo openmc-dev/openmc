@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 import tempfile
-from typing import Sequence, Dict
+from typing import TYPE_CHECKING, Literal, Sequence, Dict
 import warnings
 
 import lxml.etree as ET
@@ -27,6 +27,9 @@ from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, JOULE_PER_EV
 from openmc.data.function import Tabulated1D
 from openmc.data import mass_energy_absorption_coefficient, dose_coefficients
+
+if TYPE_CHECKING:
+    from openmc.deplete import Chain
 
 
 # Units for density supported by OpenMC
@@ -296,6 +299,8 @@ class Material(IDManagerMixin):
                 mass += nuc.percent
 
         # Compute and return the molar mass
+        if moles == 0.0:
+            raise ValueError("Material has no nuclides; cannot compute molar mass")
         return mass / moles
 
     @property
@@ -1383,8 +1388,13 @@ class Material(IDManagerMixin):
         return densities
 
 
-    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: float | None = None) -> dict[str, float] | float:
+    def get_activity(
+        self,
+        units: str = 'Bq/cm3',
+        by_nuclide: bool = False,
+        volume: float | None = None,
+        chain_file: Literal[False] | None | PathLike | Chain = None
+    ) -> dict[str, float] | float:
         """Return the activity of the material or each nuclide within.
 
         .. versionadded:: 0.13.1
@@ -1403,13 +1413,22 @@ class Material(IDManagerMixin):
             :attr:`Material.volume` attribute.
 
             .. versionadded:: 0.13.3
+        chain_file : False, None, PathLike, or openmc.deplete.Chain, optional
+            Source of half-life values. If ``False``, only ENDF/B-VIII.0 data is
+            used. If ``None``, the chain specified by
+            ``openmc.config['chain_file']`` is used when available. If a path or
+            :class:`openmc.deplete.Chain` is given, that chain is used. For
+            ``None`` or an explicit chain, nuclides absent from the chain fall
+            back to ENDF/B-VIII.0 data.
+
+            .. versionadded:: 0.15.4
 
         Returns
         -------
         Union[dict, float]
-            If by_nuclide is True then a dictionary whose keys are nuclide
-            names and values are activity is returned. Otherwise the activity
-            of the material is returned as a float.
+            If by_nuclide is True then a dictionary whose keys are nuclide names
+            and values are activity is returned. Otherwise the activity of the
+            material is returned as a float.
         """
 
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3', 'Ci', 'Ci/m3'})
@@ -1417,6 +1436,9 @@ class Material(IDManagerMixin):
 
         if volume is None:
             volume = self.volume
+
+        if units in {'Bq', 'Ci'} and volume is None:
+            raise ValueError(f"Volume must be set in order to compute activity in '{units}'.")
 
         if units == 'Bq':
             multiplier = volume
@@ -1435,7 +1457,8 @@ class Material(IDManagerMixin):
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            inv_seconds = openmc.data.decay_constant(nuclide)
+            inv_seconds = openmc.data.decay_constant(
+                nuclide, chain_file=chain_file)
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())
@@ -1474,6 +1497,8 @@ class Material(IDManagerMixin):
 
         if units == 'W':
             multiplier = volume if volume is not None else self.volume
+            if multiplier is None:
+                raise ValueError("Volume must be set in order to compute total decay heat.")
         elif units == 'W/cm3':
             multiplier = 1
         elif units == 'W/m3':
@@ -2282,7 +2307,7 @@ class Materials(cv.CheckedList):
         multigroup_fluxes: Sequence[Sequence[float]]
             Energy-dependent multigroup flux values, where each sublist corresponds
             to a specific material. Will be normalized so that it sums to 1.
-        energy_group_structures': Sequence[Sequence[float] | str]
+        energy_group_structures: Sequence[Sequence[float] | str]
             Energy group boundaries in [eV] or the name of the group structure.
         timesteps : iterable of float or iterable of tuple
             Array of timesteps. Note that values are not cumulative. The units are
@@ -2317,6 +2342,11 @@ class Materials(cv.CheckedList):
         for mat in self:
             mat.depletable = True
 
+        if len(multigroup_fluxes) != len(self):
+            raise ValueError("multigroup_fluxes length must match number of materials")
+        if len(energy_group_structures) != len(self):
+            raise ValueError("energy_group_structures length must match number of materials")
+
         chain = _get_chain(chain_file)
 
         # Create MicroXS objects for all materials
@@ -2327,6 +2357,10 @@ class Materials(cv.CheckedList):
             for material, flux, energy in zip(
                 self, multigroup_fluxes, energy_group_structures
             ):
+                if material.volume is None:
+                    raise ValueError(
+                        f"Material {material.id} has no volume; cannot deplete"
+                    )
                 temperature = material.temperature or 293.6
                 micro_xs = openmc.deplete.MicroXS.from_multigroup_flux(
                     energies=energy,

@@ -1249,18 +1249,14 @@ def test_convert_to_multigroup_deprecated_args(run_in_tmpdir, monkeypatch):
     assert gen.batches == 200  # generation default unchanged
 
 
-def test_convert_to_multigroup_materials_from_geometry(run_in_tmpdir, monkeypatch):
+def test_convert_to_multigroup_materials_from_geometry(run_in_tmpdir):
     # A model whose materials are only referenced through the geometry gets
     # its materials collection populated (sorted by ID) for the conversion
     model = _steel_water_model()
     model.materials = openmc.Materials()
     ids = sorted(model.geometry.get_all_materials())
 
-    def fake_auto_generate(gen_model, groups, correction, directory):
-        raise _GenerationCaptured()
-
-    monkeypatch.setattr(openmc.Model, '_auto_generate_mgxs_lib',
-                        fake_auto_generate)
-    with pytest.raises(_GenerationCaptured):
-        model.convert_to_multigroup(method='stochastic_slab')
+    Path('mgxs.h5').touch()
+    model.convert_to_multigroup(
+        method='stochastic_slab', mgxs_path='mgxs.h5')
     assert [m.id for m in model.materials] == ids

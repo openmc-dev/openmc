@@ -552,14 +552,9 @@ double Tabular::sample_unbiased(uint64_t* seed) const
   double c = prn(seed);
 
   // Find first CDF bin which is above the sampled value
-  double c_i = c_[0];
-  int i;
-  std::size_t n = c_.size();
-  for (i = 0; i < n - 1; ++i) {
-    if (c <= c_[i + 1])
-      break;
-    c_i = c_[i + 1];
-  }
+  auto c_iter = std::lower_bound(c_.begin() + 1, c_.end(), c);
+  int i = std::distance(c_.begin(), c_iter) - 1;
+  double c_i = c_[i];
 
   // Determine bounding PDF values
   double x_i = x_[i];

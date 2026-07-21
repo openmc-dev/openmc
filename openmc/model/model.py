@@ -3007,15 +3007,11 @@ class Model:
         u_span = (x1 - x0, 0.0, 0.0)
         v_span = (0.0, y1 - y0, 0.0)
 
-        # Accumulate overlap and internal-undefined pixels across all z-slices
-        # into 3D volumes so that spatially-connected regions can be labeled in
-        # 3D afterwards (rather than fragmented per-slice or per cell pair).
+        # Each unique overlap key (universe, cell1, cell2) gets its own bounding
+        # box, accumulated in world coordinates across all z-slices. Internal
+        # undefined pixels are stacked into a 3D volume and labeled afterwards.
+        overlap_boxes = {}
         internal_volume = np.zeros((nz, ny, nx), dtype=bool)
-        # For overlaps we also remember which unique overlap key sits in each
-        # voxel, so the cell pairs involved in each spatial region can be listed.
-        overlap_key_volume = np.full((nz, ny, nx), -1, dtype=np.int64)
-        overlap_keys = []            # index -> (universe, cell1, cell2)
-        overlap_key_to_idx = {}
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             for k in range(nz):
@@ -3036,30 +3032,56 @@ class Model:
 
                 overlap_data = openmc.lib.slice_data_overlap_info()
 
-                # Record which overlap key occupies each overlapping pixel.
+                # Extend the bounding box for each unique overlap key.
                 for overlap_idx, key in enumerate(overlap_data):
                     encoded_id = _OVERLAP - overlap_idx - 1
-                    mask = (cell_ids == encoded_id)
-                    if not mask.any():
+                    pix = np.argwhere(cell_ids == encoded_id)
+                    if pix.size == 0:
                         continue
+
                     key_t = tuple(int(v) for v in key)
-                    if key_t not in overlap_key_to_idx:
-                        overlap_key_to_idx[key_t] = len(overlap_keys)
-                        overlap_keys.append(key_t)
-                    overlap_key_volume[k][mask] = overlap_key_to_idx[key_t]
+                    xc = x0 + (pix[:, 1] + 0.5) * (x1 - x0) / nx
+                    yc = y1 - (pix[:, 0] + 0.5) * (y1 - y0) / ny
+
+                    box = overlap_boxes.get(key_t)
+                    if box is None:
+                        overlap_boxes[key_t] = {
+                            "key": key_t,
+                            "xmin": float(xc.min()), "xmax": float(xc.max()),
+                            "ymin": float(yc.min()), "ymax": float(yc.max()),
+                            "zmin": float(z), "zmax": float(z),
+                        }
+                    else:
+                        box["xmin"] = min(box["xmin"], float(xc.min()))
+                        box["xmax"] = max(box["xmax"], float(xc.max()))
+                        box["ymin"] = min(box["ymin"], float(yc.min()))
+                        box["ymax"] = max(box["ymax"], float(yc.max()))
+                        box["zmin"] = min(box["zmin"], float(z))
+                        box["zmax"] = max(box["zmax"], float(z))
 
                 _, _, internal = Model._classify_undefined_regions(cell_ids)
 
                 internal_volume[k] = internal
 
-        overlap_volume = overlap_key_volume >= 0
+        overlap_boxes = list(overlap_boxes.values())
 
-        # Label spatially-connected regions in 3D and build a world-coordinate
-        # bounding box for each connected component. Edge (face, rank-1)
-        # connectivity is used; a feature thinner than the sample spacing can
-        # rasterize with breaks and split into several regions, so increase
-        # n_samples until thin features are resolved.
-        def _label_boxes(volume, key_volume=None):
+        # Flag overlaps that are under-resolved: for a blob-shaped overlap the
+        # bounding-box extent is the local thickness, so a region resolved by
+        # <= 2 voxels across its thinnest axis is unreliable. Features should
+        # span >= 3 voxels for trustworthy topology.
+        dx, dy = (x1 - x0) / nx, (y1 - y0) / ny
+        for box in overlap_boxes:
+            nvx = round((box["xmax"] - box["xmin"]) / dx) + 1
+            nvy = round((box["ymax"] - box["ymin"]) / dy) + 1
+            nvz = round((box["zmax"] - box["zmin"]) / dz) + 1
+            box["under_resolved"] = min(nvx, nvy, nvz) <= 2
+
+        # Label spatially-connected undefined regions in 3D and build a
+        # world-coordinate bounding box for each connected component. Edge
+        # (face, rank-1) connectivity is used; a feature thinner than the sample
+        # spacing can rasterize with breaks and split into several regions, so
+        # increase n_samples until thin features are resolved.
+        def _label_boxes(volume):
             boxes = []
             if not volume.any():
                 return boxes
@@ -3079,41 +3101,64 @@ class Model:
                 z_lo = z0 + kz.start * dz
                 z_hi = z0 + kz.stop * dz
 
-                region_mask = (labeled == region_id)
-                box = {
+                # Local-thickness test: a bounding box is misleading for thin
+                # curved shells (e.g. an annular gap whose bbox is large but
+                # which is only ~1 voxel thick radially). Erode the region's
+                # voxel mask; if erosion empties it, the region is nowhere
+                # thicker than ~2 voxels and is under-resolved.
+                mask = (labeled[sl] == region_id)
+                under_resolved = not ndimage.binary_erosion(mask).any()
+
+                boxes.append({
                     "xmin": float(min(x_lo, x_hi)), "xmax": float(max(x_lo, x_hi)),
                     "ymin": float(min(y_lo, y_hi)), "ymax": float(max(y_lo, y_hi)),
                     "zmin": float(z_lo), "zmax": float(z_hi),
-                    "count": int(region_mask.sum()),
-                }
-                if key_volume is not None:
-                    idxs = np.unique(key_volume[region_mask])
-                    box["keys"] = [overlap_keys[i] for i in idxs if i >= 0]
-                boxes.append(box)
+                    "under_resolved": bool(under_resolved),
+                })
             return boxes
 
-        overlap_boxes = _label_boxes(overlap_volume, overlap_key_volume)
         undefined_boxes = _label_boxes(internal_volume)
+
+        # Round coordinates to keep the reported boxes readable.
+        for box in overlap_boxes + undefined_boxes:
+            for coord in ("xmin", "xmax", "ymin", "ymax", "zmin", "zmax"):
+                box[coord] = round(box[coord], 4)
+
+        under_resolved = any(
+            b["under_resolved"] for b in overlap_boxes + undefined_boxes
+        )
 
         result = {
             "overlap_boxes": overlap_boxes,
             "undefined_boxes": undefined_boxes,
-            "n_overlap_regions": len(overlap_boxes),
+            "n_overlaps": len(overlap_boxes),
             "n_undefined_regions": len(undefined_boxes),
+            "under_resolved": under_resolved,
         }
+
+        if under_resolved:
+            n_ov = sum(b["under_resolved"] for b in overlap_boxes)
+            n_un = sum(b["under_resolved"] for b in undefined_boxes)
+            warnings.warn(
+                f"Sampling resolution may be insufficient: {n_ov} overlap and "
+                f"{n_un} undefined region(s) are resolved by <= 2 voxels across "
+                "their thinnest dimension, so they may be fragmented or missed. "
+                "Increase n_samples (roughly 2-3x, or scan a tighter box) so "
+                "thin features span at least 3 voxels."
+            )
 
         if print_summary:
             print("Geometry debug summary:")
 
             if result["overlap_boxes"]:
-                print(f"  Overlap regions found: {result['n_overlap_regions']}")
-                for i, box in enumerate(result["overlap_boxes"], start=1):
+                print(f"  Overlaps found: {result['n_overlaps']}")
+                for box in result["overlap_boxes"]:
+                    flag = "  [under-resolved]" if box["under_resolved"] else ""
                     print(
-                        f"    region {i}: "
+                        f"    cells {box['key']}: "
                         f"x[{box['xmin']:.4g}, {box['xmax']:.4g}] "
                         f"y[{box['ymin']:.4g}, {box['ymax']:.4g}] "
-                        f"z[{box['zmin']:.4g}, {box['zmax']:.4g}] "
-                        f"(count={box['count']}, cells={box['keys']})"
+                        f"z[{box['zmin']:.4g}, {box['zmax']:.4g}]{flag}"
                     )
             else:
                 print("  Overlap bounding boxes: None")
@@ -3121,15 +3166,22 @@ class Model:
             if result["undefined_boxes"]:
                 print(f"  Undefined regions found: {result['n_undefined_regions']}")
                 for i, box in enumerate(result["undefined_boxes"], start=1):
+                    flag = "  [under-resolved]" if box["under_resolved"] else ""
                     print(
                         f"    region {i}: "
                         f"x[{box['xmin']:.4g}, {box['xmax']:.4g}] "
                         f"y[{box['ymin']:.4g}, {box['ymax']:.4g}] "
-                        f"z[{box['zmin']:.4g}, {box['zmax']:.4g}] "
-                        f"(count={box['count']})"
+                        f"z[{box['zmin']:.4g}, {box['zmax']:.4g}]{flag}"
                     )
             else:
                 print("  Undefined bounding boxes: None")
+
+            if result["under_resolved"]:
+                print(
+                    "  WARNING: some regions are resolved by <= 2 voxels across "
+                    "their thinnest dimension and may be fragmented or missed; "
+                    "increase n_samples so thin features span at least 3 voxels."
+                )
 
         return result
 

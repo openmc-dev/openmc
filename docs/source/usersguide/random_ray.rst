@@ -748,12 +748,12 @@ multi-group cross sections are desired for multi-physics simulations. An
 individual cross section generation calculation is run for each temperature
 provided, where the materials in the model are set to the temperature. The
 temperature settings used during cross section generation default to those
-contained in the model and can be customized by setting
-:attr:`openmc.Settings.temperature` on the object passed via the ``settings``
-parameter. This approach yields isothermal cross section interpolation
-tables, which can be inaccurate for systems with large differences between temperatures
-in each material (often the case in fission reactors). If a more sophisticated
-temperature-dependence is required, we recommend generating cross sections manually.
+contained in the model and can be customized with the ``temperature`` keyword
+argument to :meth:`openmc.Model.convert_to_multigroup`. This approach yields
+isothermal cross section interpolation tables, which can be inaccurate for
+systems with large differences between temperatures in each material (often the
+case in fission reactors). If a more sophisticated temperature-dependence is
+required, we recommend generating cross sections manually.
 
 Ultimately, the methods described above are all just approximations.
 Approximations in the generated MGXS data will fundamentally limit the potential

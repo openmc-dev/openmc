@@ -887,18 +887,26 @@ void write_global_tallies(hid_t file_id)
 {
   // Get global tallies
   auto& gt = simulation::global_tallies;
-  write_dataset(file_id, "global_tallies", 
-  gt.slice(range(static_cast<int>(GlobalTally::K_COLLISION), static_cast<int>(GlobalTally::LEAKAGE) + 1), 
-           range(static_cast<int>(TallyResult::SUM), static_cast<int>(TallyResult::SUM_SQ) + 1))));
+  auto gt_view =
+    gt.slice(tensor::range(static_cast<int>(GlobalTally::K_COLLISION),
+               static_cast<int>(GlobalTally::LEAKAGE) + 1),
+      tensor::range(static_cast<int>(TallyResult::SUM),
+        static_cast<int>(TallyResult::SUM_SQ) + 1));
+  auto gt_reduced = tensor::Tensor<double>(gt_view.shape_vec());
+  gt_reduced = gt_view;
+  write_dataset(file_id, "global_tallies", gt_reduced);
 }
 
 void read_global_tallies(hid_t file_id)
 {
   // Get global tallies
   auto& gt = simulation::global_tallies;
-  auto gt_view = gt.slice(range(static_cast<int>(GlobalTally::K_COLLISION), static_cast<int>(GlobalTally::LEAKAGE) + 1), 
-           range(static_cast<int>(TallyResult::SUM), static_cast<int>(TallyResult::SUM_SQ) + 1)));
-  auto gt_reduced = Tensor<double>(gt_view.shape());
+  auto gt_view =
+    gt.slice(tensor::range(static_cast<int>(GlobalTally::K_COLLISION),
+               static_cast<int>(GlobalTally::LEAKAGE) + 1),
+      tensor::range(static_cast<int>(TallyResult::SUM),
+        static_cast<int>(TallyResult::SUM_SQ) + 1));
+  auto gt_reduced = tensor::Tensor<double>(gt_view.shape_vec());
   read_dataset_lowlevel(file_id, "global_tallies", H5T_NATIVE_DOUBLE, H5S_ALL,
     false, gt_reduced.data());
   gt_view = gt_reduced;

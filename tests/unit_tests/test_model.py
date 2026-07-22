@@ -1127,7 +1127,7 @@ def _capture_generation_settings(monkeypatch, model, **kwargs):
     return captured['settings']
 
 
-def test_convert_to_multigroup_settings_material_wise(run_in_tmpdir, monkeypatch):
+def test_convert_to_multigroup_material_wise(run_in_tmpdir, monkeypatch):
     model = _steel_water_model()
     model.settings.run_mode = 'fixed source'
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
@@ -1158,7 +1158,7 @@ def test_convert_to_multigroup_settings_material_wise(run_in_tmpdir, monkeypatch
     assert gen.run_mode == 'eigenvalue'
 
 
-def test_convert_to_multigroup_settings_stochastic_slab(run_in_tmpdir, monkeypatch):
+def test_convert_to_multigroup_stochastic_slab(run_in_tmpdir, monkeypatch):
     model = _steel_water_model()
     src = openmc.IndependentSource(space=openmc.stats.Point())
 
@@ -1178,7 +1178,7 @@ def test_convert_to_multigroup_settings_stochastic_slab(run_in_tmpdir, monkeypat
     assert all(s is not src for s in gen.source)
 
 
-def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatch):
+def test_convert_to_multigroup_weight_windows(run_in_tmpdir, monkeypatch):
     model = _steel_water_model()
     ww_path = Path('ww.h5').resolve()
 
@@ -1206,7 +1206,7 @@ def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatc
     assert gen.weight_windows_file is None
 
 
-def test_convert_to_multigroup_settings_validation(run_in_tmpdir):
+def test_convert_to_multigroup_validation(run_in_tmpdir):
     model = _steel_water_model()
 
     with pytest.raises(ValueError):

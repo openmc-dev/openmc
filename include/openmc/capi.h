@@ -9,14 +9,41 @@
 extern "C" {
 #endif
 
+//! Run a stochastic volume calculation
+//
+//! \return Status (negative if an error occurred)
 int openmc_calculate_volumes();
+
 int openmc_cell_filter_get_bins(
   int32_t index, const int32_t** cells, int32_t* n);
+
+//! Get the fill for a cell
+//
+//! \param index Index in the cells array
+//! \param type Type of the fill
+//! \param indices Array of material indices for cell
+//! \param n Length of indices array
+//! \return Status (negative if an error occurred)
 int openmc_cell_get_fill(
   int32_t index, int* type, int32_t** indices, int32_t* n);
+
+//! Get the ID of a cell
+//
+//! \param index Index in the cells array
+//! \param id ID of the cell
+//! \return Status (negative if an error occurred)
 int openmc_cell_get_id(int32_t index, int32_t* id);
+
+//! Get the temperature of a cell
+//
+//! \param index Index in the cells array
+//! \param instance Which instance of the cell. If a null pointer is
+//!                 passed, the temperature of the first instance is returned.
+//! \param T temperature of the cell
+//!\return Status (negative if an error occurred)
 int openmc_cell_get_temperature(
   int32_t index, const int32_t* instance, double* T);
+
 int openmc_cell_get_density(
   int32_t index, const int32_t* instance, double* rho);
 int openmc_cell_get_translation(int32_t index, double xyz[]);
@@ -123,8 +150,56 @@ int openmc_new_filter(const char* type, int32_t* index);
 int openmc_next_batch(int* status);
 int openmc_nuclide_name(int index, const char** name);
 int openmc_plot_geometry();
+// Deprecated; use openmc_slice_data.
 int openmc_id_map(const void* slice, int32_t* data_out);
+// Deprecated; use openmc_slice_data.
 int openmc_property_map(const void* slice, double* data_out);
+int openmc_slice_data(const double origin[3], const double u_span[3],
+  const double v_span[3], const size_t pixels[2], bool show_overlaps, int level,
+  int32_t filter_index, int32_t* geom_data, double* property_data);
+int openmc_get_plot_index(int32_t id, int32_t* index);
+int openmc_plot_get_id(int32_t index, int32_t* id);
+int openmc_plot_set_id(int32_t index, int32_t id);
+int openmc_solidraytrace_plot_create(int32_t* index);
+int openmc_solidraytrace_plot_get_pixels(
+  int32_t index, int32_t* width, int32_t* height);
+int openmc_solidraytrace_plot_set_pixels(
+  int32_t index, int32_t width, int32_t height);
+int openmc_solidraytrace_plot_get_color_by(int32_t index, int32_t* color_by);
+int openmc_solidraytrace_plot_set_color_by(int32_t index, int32_t color_by);
+int openmc_solidraytrace_plot_set_default_colors(int32_t index);
+int openmc_solidraytrace_plot_set_all_opaque(int32_t index);
+int openmc_solidraytrace_plot_set_opaque(
+  int32_t index, int32_t id, bool visible);
+int openmc_solidraytrace_plot_set_color(
+  int32_t index, int32_t id, uint8_t r, uint8_t g, uint8_t b);
+int openmc_solidraytrace_plot_get_camera_position(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_camera_position(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_look_at(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_look_at(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_up(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_up(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_light_position(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_light_position(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_fov(int32_t index, double* fov);
+int openmc_solidraytrace_plot_set_fov(int32_t index, double fov);
+int openmc_solidraytrace_plot_update_view(int32_t index);
+int openmc_solidraytrace_plot_create_image(
+  int32_t index, uint8_t* data_out, int32_t width, int32_t height);
+int openmc_solidraytrace_plot_get_color(
+  int32_t index, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b);
+int openmc_solidraytrace_plot_get_diffuse_fraction(
+  int32_t index, double* diffuse_fraction);
+int openmc_solidraytrace_plot_set_diffuse_fraction(
+  int32_t index, double diffuse_fraction);
 int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
   double** grid_y, int* ny, double** grid_z, int* nz);
 int openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
@@ -140,6 +215,7 @@ int openmc_remove_tally(int32_t index);
 int openmc_reset();
 int openmc_reset_timers();
 int openmc_run();
+void openmc_run_random_ray();
 int openmc_sample_external_source(size_t n, uint64_t* seed, void* sites);
 void openmc_set_seed(int64_t new_seed);
 void openmc_set_stride(uint64_t new_stride);
@@ -218,6 +294,7 @@ int openmc_weight_windows_set_weight_cutoff(int32_t index, double cutoff);
 int openmc_weight_windows_get_max_split(int32_t index, int* max_split);
 int openmc_weight_windows_set_max_split(int32_t index, int max_split);
 size_t openmc_weight_windows_size();
+size_t openmc_plots_size();
 int openmc_weight_windows_export(const char* filename = nullptr);
 int openmc_weight_windows_import(const char* filename = nullptr);
 int openmc_zernike_filter_get_order(int32_t index, int* order);
@@ -230,7 +307,7 @@ int openmc_zernike_filter_set_params(
 int openmc_particle_filter_get_bins(int32_t idx, int32_t bins[]);
 
 //! Sets the mesh and energy grid for CMFD reweight
-//! \param[in] meshtyally_id id of CMFD Mesh Tally
+//! \param[in] meshtally_id id of CMFD Mesh Tally
 //! \param[in] cmfd_indices indices storing spatial and energy dimensions of
 //! CMFD problem \param[in] norm CMFD normalization factor
 void openmc_initialize_mesh_egrid(

@@ -10,8 +10,8 @@ from openmc.mixin import EqualityMixin
 from openmc.stats import Univariate, Tabular, Uniform, Legendre
 from .function import INTERPOLATION_SCHEME
 from .data import EV_PER_MEV
-from .endf import get_head_record, get_cont_record, get_tab1_record, \
-    get_list_record, get_tab2_record
+from .endf import as_evaluation, get_head_record, get_cont_record, \
+    get_tab1_record, get_list_record, get_tab2_record
 
 
 class AngleDistribution(EqualityMixin):
@@ -213,7 +213,7 @@ class AngleDistribution(EqualityMixin):
 
         Parameters
         ----------
-        ev : openmc.data.endf.Evaluation
+        ev : openmc.data.endf.Evaluation or endf.Material
             ENDF evaluation
         mt : int
             The MT value of the reaction to get angular distributions for
@@ -224,6 +224,7 @@ class AngleDistribution(EqualityMixin):
             Angular distribution
 
         """
+        ev = as_evaluation(ev)
         file_obj = StringIO(ev.section[4, mt])
 
         # Read HEAD record

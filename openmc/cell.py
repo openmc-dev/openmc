@@ -636,8 +636,11 @@ class Cell(IDManagerMixin):
             element.set("material", str(self.fill.id))
 
         elif self.fill_type == 'distribmat':
-            element.set("material", ' '.join(['void' if m is None else str(m.id)
-                                              for m in self.fill]))
+            material_subelement= ET.SubElement(element, "material")
+            matlist_str = " ".join(
+                ["void" if m is None else str(m.id) for m in self.fill]
+            )
+            material_subelement.text = matlist_str
 
         elif self.fill_type in ('universe', 'lattice'):
             element.set("fill", str(self.fill.id))
@@ -677,14 +680,15 @@ class Cell(IDManagerMixin):
 
         if self.temperature is not None:
             if isinstance(self.temperature, Iterable):
-                element.set("temperature", ' '.join(
-                    str(t) for t in self.temperature))
+                temperature_subelement= ET.SubElement(element, "temperature")
+                temperature_subelement.text = ' '.join(str(t) for t in self.temperature)
             else:
                 element.set("temperature", str(self.temperature))
 
         if self.density is not None:
             if isinstance(self.density, Iterable):
-                element.set("density", ' '.join(str(t) for t in self.density))
+                density_subelement= ET.SubElement(element, "density")
+                density_subelement.text =  ' '.join(str(d) for d in self.density)
             else:
                 element.set("density", str(self.density))
 
@@ -743,15 +747,6 @@ class Cell(IDManagerMixin):
             c.region = Region.from_expression(region, surfaces)
 
         # Check for other attributes
-        temperature = get_elem_list(elem, 'temperature', float)
-        if temperature is not None:
-            if len(temperature) > 1:
-                c.temperature = temperature
-            else:
-                c.temperature = temperature[0]
-        density = get_elem_list(elem, 'density', float)
-        if density is not None:
-            c.density = density if len(density) > 1 else density[0]
         v = get_text(elem, 'volume')
         if v is not None:
             c.volume = float(v)
@@ -760,6 +755,8 @@ class Cell(IDManagerMixin):
             if values is not None:
                 if key == 'rotation' and len(values) == 9:
                     values = np.array(values).reshape(3, 3)
+                elif len(values) == 1:
+                    values = values[0]
                 setattr(c, key, values)
 
         # Add this cell to appropriate universe

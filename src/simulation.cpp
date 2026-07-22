@@ -13,10 +13,12 @@
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
 #include "openmc/photon.h"
 #include "openmc/random_lcg.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
 #include "openmc/state_point.h"
@@ -31,7 +33,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #ifdef OPENMC_MPI
 #include <mpi.h>
@@ -41,6 +43,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 #include <string>
 
 //==============================================================================
@@ -87,7 +90,7 @@ int openmc_simulation_init()
   }
 
   // Determine how much work each process should do
-  calculate_work();
+  calculate_work(settings::n_particles);
 
   // Allocate source, fission and surface source banks.
   allocate_banks();
@@ -123,6 +126,7 @@ int openmc_simulation_init()
   simulation::ssw_current_file = 1;
   simulation::k_generation.clear();
   simulation::entropy.clear();
+  reset_source_rejection_counters();
   openmc_reset();
 
   // If this is a restart run, load the state point data and binary source
@@ -200,9 +204,12 @@ int openmc_simulation_finalize()
   if (settings::output_tallies && mpi::master)
     write_tallies();
 
-  // If weight window generators are present in this simulation,
-  // write a weight windows file
-  if (variance_reduction::weight_windows_generators.size() > 0) {
+  // If weight window generators are present in this simulation, write a
+  // weight windows file. This is skipped during the forward solve of an
+  // adjoint (FW-CADIS) run, where only the adjoint-derived weight windows
+  // are meaningful.
+  if (variance_reduction::weight_windows_generators.size() > 0 &&
+      FlatSourceDomain::solve_ != RandomRaySolve::FORWARD_FOR_ADJOINT) {
     openmc_weight_windows_export();
   }
 
@@ -214,6 +221,20 @@ int openmc_simulation_finalize()
   // Stop timers and show timing statistics
   simulation::time_finalize.stop();
   simulation::time_total.stop();
+
+#ifdef OPENMC_MPI
+  // Reduce track count across ranks for correct reporting. In shared secondary
+  // bank mode, all ranks already have the global count; in non-shared mode,
+  // each rank only has its own count.
+  if (settings::weight_windows_on && !settings::use_shared_secondary_bank) {
+    int64_t total_tracks;
+    MPI_Reduce(&simulation::simulation_tracks_completed, &total_tracks, 1,
+      MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+    if (mpi::master)
+      simulation::simulation_tracks_completed = total_tracks;
+  }
+#endif
+
   if (mpi::master) {
     if (settings::solver_type != SolverType::RANDOM_RAY) {
       if (settings::verbosity >= 6)
@@ -254,9 +275,17 @@ int openmc_next_batch(int* status)
 
     // Transport loop
     if (settings::event_based) {
-      transport_event_based();
+      if (settings::use_shared_secondary_bank) {
+        transport_event_based_shared_secondary();
+      } else {
+        transport_event_based();
+      }
     } else {
-      transport_history_based();
+      if (settings::use_shared_secondary_bank) {
+        transport_history_based_shared_secondary();
+      } else {
+        transport_history_based();
+      }
     }
 
     // Accumulate time for transport
@@ -324,7 +353,97 @@ const RegularMesh* ufs_mesh {nullptr};
 vector<array<double, 2>> k_generation;
 vector<int64_t> work_index;
 
+int64_t simulation_tracks_completed {0};
+
 } // namespace simulation
+
+namespace {
+
+//! Collect thread-local secondary banks into the shared secondary bank in
+//! sorted order.
+//!
+//! \param thread_banks  Secondary banks produced by each OpenMP thread
+void collect_sorted_history_secondary_banks(
+  vector<vector<SourceSite>>& thread_banks)
+{
+  // Count the total number of all secondary sites produced
+  int64_t n_collected = 0;
+  for (const auto& bank : thread_banks) {
+    n_collected += bank.size();
+  }
+
+  // Count the expected number of progeny from per-parent progeny counts
+  int64_t n_progeny = 0;
+  for (int64_t count : simulation::progeny_per_particle) {
+    n_progeny += count;
+  }
+
+  if (n_collected != n_progeny) {
+    fatal_error("Mismatch detected between sum of all particle progeny and "
+                "secondary bank size during collection.");
+  }
+
+  // Convert per-parent progeny counts to offsets into the sorted bank
+  std::exclusive_scan(simulation::progeny_per_particle.begin(),
+    simulation::progeny_per_particle.end(),
+    simulation::progeny_per_particle.begin(), 0);
+
+  // Allocate the shared bank once for the complete generation
+  simulation::shared_secondary_bank_write.resize(0);
+  simulation::shared_secondary_bank_write.extend_uninitialized(n_progeny);
+
+  // Place each secondary according to its parent and progeny identifiers
+  for (const auto& bank : thread_banks) {
+    for (const auto& site : bank) {
+      if (site.parent_id < 0 ||
+          site.parent_id >=
+            static_cast<int64_t>(simulation::progeny_per_particle.size())) {
+        fatal_error(fmt::format("Invalid parent_id {} for banked site "
+                                "(expected range [0, {})).",
+          site.parent_id, simulation::progeny_per_particle.size()));
+      }
+      int64_t idx =
+        simulation::progeny_per_particle[site.parent_id] + site.progeny_id;
+      if (idx < 0 || idx >= n_progeny) {
+        fatal_error("Mismatch detected between sum of all particle progeny and "
+                    "secondary bank size during collection.");
+      }
+      simulation::shared_secondary_bank_write[idx] = site;
+    }
+  }
+}
+
+//! Collect particle-local secondary banks into the shared secondary bank.
+//!
+//! \param n_particles  Number of particles in the active event-based buffer
+void collect_event_secondary_banks(int64_t n_particles)
+{
+  // Compute offsets for each particle's local secondary bank.
+  vector<int64_t> offsets(n_particles);
+  int64_t total = 0;
+  for (int64_t i = 0; i < n_particles; ++i) {
+    offsets[i] = total;
+    total += simulation::particles[i].local_secondary_bank().size();
+  }
+
+  // Extend the shared bank once for all collected secondaries
+  int64_t bank_offset =
+    simulation::shared_secondary_bank_write.extend_uninitialized(total);
+
+  // Copy each local bank into its assigned range and clear the local storage
+#pragma omp parallel for schedule(static)
+  for (int64_t i = 0; i < n_particles; ++i) {
+    auto& local_bank = simulation::particles[i].local_secondary_bank();
+    if (!local_bank.empty()) {
+      std::copy(local_bank.cbegin(), local_bank.cend(),
+        simulation::shared_secondary_bank_write.data() + bank_offset +
+          offsets[i]);
+      local_bank.clear();
+    }
+  }
+}
+
+} // namespace
 
 //==============================================================================
 // Non-member functions
@@ -414,7 +533,7 @@ void finalize_batch()
 
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {
-    xt::view(simulation::global_tallies, xt::all()) = 0.0;
+    simulation::global_tallies.fill(0.0);
     simulation::n_realizations = 0;
   }
 
@@ -552,7 +671,7 @@ void finalize_generation()
     // If using shared memory, stable sort the fission bank (by parent IDs)
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
-    sort_fission_bank();
+    sort_bank(simulation::fission_bank, true);
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
@@ -576,32 +695,44 @@ void finalize_generation()
   }
 }
 
-void initialize_history(Particle& p, int64_t index_source)
+void sample_source_particle(Particle& p, int64_t index_source)
 {
-  // set defaults
+  // Sample a particle from the source bank
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    // set defaults for eigenvalue simulations from primary bank
     p.from_source(&simulation::source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed
-    int64_t id = (simulation::total_gen + overall_generation() - 1) *
-                   settings::n_particles +
-                 simulation::work_index[mpi::rank] + index_source;
+    int64_t id = compute_transport_seed(compute_particle_id(index_source));
     uint64_t seed = init_seed(id, STREAM_SOURCE);
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
     p.from_source(&site);
   }
-  p.current_work() = index_source;
+}
+
+void initialize_particle_track(
+  Particle& p, int64_t index_source, bool is_secondary)
+{
+  // Note: index_source is 1-based (first particle = 1), but current_work() is
+  // stored as 0-based for direct use as an array index into
+  // progeny_per_particle, source_bank, ifp banks, etc.
+  if (!is_secondary) {
+    sample_source_particle(p, index_source);
+  }
+
+  p.current_work() = index_source - 1;
 
   // set identifier for particle
-  p.id() = simulation::work_index[mpi::rank] + index_source;
+  p.id() = compute_particle_id(index_source);
 
   // set progeny count to zero
   p.n_progeny() = 0;
 
   // Reset particle event counter
   p.n_event() = 0;
+
+  // Initialize track counter (1 for this primary/secondary track)
+  p.n_tracks() = 1;
 
   // Reset split counter
   p.n_split() = 0;
@@ -616,9 +747,7 @@ void initialize_history(Particle& p, int64_t index_source)
   std::fill(p.pht_storage().begin(), p.pht_storage().end(), 0);
 
   // set random number seed
-  int64_t particle_seed =
-    (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
-    p.id();
+  int64_t particle_seed = compute_transport_seed(p.id());
   init_particle_seeds(particle_seed, p.seeds());
 
   // set particle trace
@@ -632,17 +761,21 @@ void initialize_history(Particle& p, int64_t index_source)
   p.write_track() = check_track_criteria(p);
 
   // Set the particle's initial weight window value.
-  p.wgt_ww_born() = -1.0;
-  apply_weight_windows(p);
+  if (!is_secondary) {
+    p.wgt_ww_born() = -1.0;
+    apply_weight_windows(p);
+  }
 
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {
     write_message("Simulating Particle {}", p.id());
   }
 
-// Add particle's starting weight to count for normalizing tallies later
+  // Add particle's starting weight to count for normalizing tallies later
+  if (!is_secondary) {
 #pragma omp atomic
-  simulation::total_weight += p.wgt();
+    simulation::total_weight += p.wgt();
+  }
 
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
@@ -660,13 +793,34 @@ int overall_generation()
   return settings::gen_per_batch * (current_batch - 1) + current_gen;
 }
 
-void calculate_work()
+int64_t compute_particle_id(int64_t index_source)
+{
+  if (settings::use_shared_secondary_bank) {
+    return simulation::work_index[mpi::rank] + index_source +
+           simulation::simulation_tracks_completed;
+  } else {
+    return simulation::work_index[mpi::rank] + index_source;
+  }
+}
+
+int64_t compute_transport_seed(int64_t particle_id)
+{
+  if (settings::use_shared_secondary_bank) {
+    return particle_id;
+  } else {
+    return (simulation::total_gen + overall_generation() - 1) *
+             settings::n_particles +
+           particle_id;
+  }
+}
+
+void calculate_work(int64_t n_particles)
 {
   // Determine minimum amount of particles to simulate on each processor
-  int64_t min_work = settings::n_particles / mpi::n_procs;
+  int64_t min_work = n_particles / mpi::n_procs;
 
   // Determine number of processors that have one extra particle
-  int64_t remainder = settings::n_particles % mpi::n_procs;
+  int64_t remainder = n_particles % mpi::n_procs;
 
   int64_t i_bank = 0;
   simulation::work_index.resize(mpi::n_procs + 1);
@@ -821,19 +975,138 @@ void transport_history_based_single_particle(Particle& p)
         p.event_collide();
       }
     }
-    p.event_revive_from_secondary();
+    p.event_check_limit_and_revive();
   }
   p.event_death();
 }
 
 void transport_history_based()
 {
-#pragma omp parallel for schedule(runtime)
-  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+#pragma omp parallel
+  {
     Particle p;
-    initialize_history(p, i_work);
-    transport_history_based_single_particle(p);
+#pragma omp for schedule(runtime)
+    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+      initialize_particle_track(p, i_work, false);
+      transport_history_based_single_particle(p);
+    }
   }
+}
+
+// The shared secondary bank transport algorithm works in two phases. In the
+// first phase, all primary particles are sampled then transported, and their
+// secondary particles are deposited into a shared secondary bank. The second
+// phase occurs in a loop, where all secondary tracks in the shared secondary
+// bank are transported. Any secondary particles generated during this phase are
+// deposited back into the shared secondary bank. The shared secondary bank is
+// sorted for consistent ordering and load balanced across MPI ranks. This loop
+// continues until there are no more secondary tracks left to transport.
+void transport_history_based_shared_secondary()
+{
+  // Clear shared secondary banks from any prior use
+  simulation::shared_secondary_bank_read.clear();
+  simulation::shared_secondary_bank_write.clear();
+
+  if (mpi::master) {
+    write_message(fmt::format(" Primary source          particles: {}",
+                    settings::n_particles),
+      6);
+  }
+
+  simulation::progeny_per_particle.resize(simulation::work_per_rank);
+  std::fill(simulation::progeny_per_particle.begin(),
+    simulation::progeny_per_particle.end(), 0);
+
+  vector<vector<SourceSite>> thread_banks(num_threads());
+
+  // Phase 1: Transport primary particles and deposit first generation of
+  // secondaries in the shared secondary bank
+#pragma omp parallel
+  {
+    auto& thread_bank = thread_banks[thread_num()];
+    Particle p;
+
+#pragma omp for schedule(runtime)
+    for (int64_t i = 1; i <= simulation::work_per_rank; i++) {
+      initialize_particle_track(p, i, false);
+      transport_history_based_single_particle(p);
+      for (auto& site : p.local_secondary_bank()) {
+        thread_bank.push_back(site);
+      }
+      p.local_secondary_bank().clear();
+    }
+  }
+  collect_sorted_history_secondary_banks(thread_banks);
+  thread_banks.clear();
+
+  simulation::simulation_tracks_completed += settings::n_particles;
+
+  // Phase 2: Now that the secondary bank has been populated, enter loop over
+  // all secondary generations
+  int n_generation_depth = 1;
+  int64_t alive_secondary = 1;
+  while (alive_secondary) {
+
+    // Synchronize the shared secondary bank amongst all MPI ranks, such
+    // that each MPI rank has an approximately equal number of secondary
+    // tracks. Also reports the total number of secondaries alive across
+    // all MPI ranks.
+    alive_secondary = synchronize_global_secondary_bank(
+      simulation::shared_secondary_bank_write);
+
+    // Recalculate work for each MPI rank based on number of alive secondary
+    // tracks
+    calculate_work(alive_secondary);
+
+    // Display the number of secondary tracks in this generation. This
+    // is useful for user monitoring so as to see if the secondary population is
+    // exploding and to determine how many generations of secondaries are being
+    // transported.
+    if (mpi::master) {
+      write_message(fmt::format(" Secondary generation {:<2}    tracks: {}",
+                      n_generation_depth, alive_secondary),
+        6);
+    }
+
+    simulation::shared_secondary_bank_read =
+      std::move(simulation::shared_secondary_bank_write);
+    simulation::shared_secondary_bank_write = SharedArray<SourceSite>();
+    simulation::progeny_per_particle.resize(
+      simulation::shared_secondary_bank_read.size());
+    std::fill(simulation::progeny_per_particle.begin(),
+      simulation::progeny_per_particle.end(), 0);
+    thread_banks.resize(num_threads());
+
+    // Transport all secondary tracks from the shared secondary bank
+#pragma omp parallel
+    {
+      auto& thread_bank = thread_banks[thread_num()];
+      Particle p;
+
+#pragma omp for schedule(runtime)
+      for (int64_t i = 1; i <= simulation::shared_secondary_bank_read.size();
+           i++) {
+        initialize_particle_track(p, i, true);
+        SourceSite& site = simulation::shared_secondary_bank_read[i - 1];
+        p.event_revive_from_secondary(site);
+        transport_history_based_single_particle(p);
+        for (auto& secondary_site : p.local_secondary_bank()) {
+          thread_bank.push_back(secondary_site);
+        }
+        p.local_secondary_bank().clear();
+      }
+    } // End of transport loop over tracks in shared secondary bank
+    simulation::shared_secondary_bank_write =
+      std::move(simulation::shared_secondary_bank_read);
+    simulation::shared_secondary_bank_read = SharedArray<SourceSite>();
+    collect_sorted_history_secondary_banks(thread_banks);
+    thread_banks.clear();
+    n_generation_depth++;
+    simulation::simulation_tracks_completed += alive_secondary;
+  } // End of loop over secondary generations
+
+  // Reset work so that fission bank etc works correctly
+  calculate_work(settings::n_particles);
 }
 
 void transport_event_based()
@@ -853,39 +1126,119 @@ void transport_event_based()
 
     // Initialize all particle histories for this subiteration
     process_init_events(n_particles, source_offset);
-
-    // Event-based transport loop
-    while (true) {
-      // Determine which event kernel has the longest queue
-      int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
-        simulation::calculate_nonfuel_xs_queue.size(),
-        simulation::advance_particle_queue.size(),
-        simulation::surface_crossing_queue.size(),
-        simulation::collision_queue.size()});
-
-      // Execute event with the longest queue
-      if (max == 0) {
-        break;
-      } else if (max == simulation::calculate_fuel_xs_queue.size()) {
-        process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
-      } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
-        process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
-      } else if (max == simulation::advance_particle_queue.size()) {
-        process_advance_particle_events();
-      } else if (max == simulation::surface_crossing_queue.size()) {
-        process_surface_crossing_events();
-      } else if (max == simulation::collision_queue.size()) {
-        process_collision_events();
-      }
-    }
-
-    // Execute death event for all particles
+    process_transport_events();
     process_death_events(n_particles);
 
     // Adjust remaining work and source offset variables
     remaining_work -= n_particles;
     source_offset += n_particles;
   }
+}
+
+void transport_event_based_shared_secondary()
+{
+  // Clear shared secondary banks from any prior use
+  simulation::shared_secondary_bank_read.clear();
+  simulation::shared_secondary_bank_write.clear();
+
+  if (mpi::master) {
+    write_message(fmt::format(" Primary source          particles: {}",
+                    settings::n_particles),
+      6);
+  }
+
+  simulation::progeny_per_particle.resize(simulation::work_per_rank);
+  std::fill(simulation::progeny_per_particle.begin(),
+    simulation::progeny_per_particle.end(), 0);
+
+  // Phase 1: Transport primary particles using event-based processing and
+  // deposit first generation of secondaries in the shared secondary bank
+  int64_t remaining_work = simulation::work_per_rank;
+  int64_t source_offset = 0;
+
+  while (remaining_work > 0) {
+    int64_t n_particles =
+      std::min(remaining_work, settings::max_particles_in_flight);
+
+    process_init_events(n_particles, source_offset);
+    process_transport_events();
+    process_death_events(n_particles);
+
+    collect_event_secondary_banks(n_particles);
+
+    remaining_work -= n_particles;
+    source_offset += n_particles;
+  }
+
+  simulation::simulation_tracks_completed += settings::n_particles;
+
+  // Phase 2: Now that the secondary bank has been populated, enter loop over
+  // all secondary generations
+  int n_generation_depth = 1;
+  int64_t alive_secondary = 1;
+  while (alive_secondary) {
+
+    // Sort the shared secondary bank by parent ID then progeny ID to
+    // ensure reproducibility.
+    sort_bank(simulation::shared_secondary_bank_write, false);
+
+    // Synchronize the shared secondary bank amongst all MPI ranks, such
+    // that each MPI rank has an approximately equal number of secondary
+    // tracks.
+    alive_secondary = synchronize_global_secondary_bank(
+      simulation::shared_secondary_bank_write);
+
+    // Recalculate work for each MPI rank based on number of alive secondary
+    // tracks
+    calculate_work(alive_secondary);
+
+    if (mpi::master) {
+      write_message(fmt::format(" Secondary generation {:<2}    tracks: {}",
+                      n_generation_depth, alive_secondary),
+        6);
+    }
+
+    simulation::shared_secondary_bank_read =
+      std::move(simulation::shared_secondary_bank_write);
+    simulation::shared_secondary_bank_write = SharedArray<SourceSite>();
+    simulation::progeny_per_particle.resize(
+      simulation::shared_secondary_bank_read.size());
+    std::fill(simulation::progeny_per_particle.begin(),
+      simulation::progeny_per_particle.end(), 0);
+
+    // Ensure particle buffer is large enough for this secondary generation
+    int64_t sec_buffer_length = std::min(
+      static_cast<int64_t>(simulation::shared_secondary_bank_read.size()),
+      settings::max_particles_in_flight);
+    if (sec_buffer_length >
+        static_cast<int64_t>(simulation::particles.size())) {
+      init_event_queues(sec_buffer_length);
+    }
+
+    // Transport secondary tracks using event-based processing
+    int64_t sec_remaining = simulation::shared_secondary_bank_read.size();
+    int64_t sec_offset = 0;
+
+    while (sec_remaining > 0) {
+      int64_t n_particles =
+        std::min(sec_remaining, settings::max_particles_in_flight);
+
+      process_init_secondary_events(
+        n_particles, sec_offset, simulation::shared_secondary_bank_read);
+      process_transport_events();
+      process_death_events(n_particles);
+
+      collect_event_secondary_banks(n_particles);
+
+      sec_remaining -= n_particles;
+      sec_offset += n_particles;
+    } // End of subiteration loop over secondary tracks
+    n_generation_depth++;
+    simulation::simulation_tracks_completed += alive_secondary;
+  } // End of loop over secondary generations
+
+  // Reset work so that fission bank etc works correctly
+  calculate_work(settings::n_particles);
 }
 
 } // namespace openmc

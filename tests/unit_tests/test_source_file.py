@@ -145,3 +145,27 @@ def test_source_file_transport(run_in_tmpdir):
 
     # Try running OpenMC
     model.run()
+
+
+def test_source_file_photon_transport(run_in_tmpdir):
+    # Create a source file containing a photon. Note that photon_transport is
+    # not explicitly enabled in the settings -- it should be turned on
+    # automatically because the source file contains a photon.
+    particle = openmc.SourceParticle(E=1.0e6, particle='photon')
+    openmc.write_source_file([particle], 'photon_source.h5')
+
+    # Create simple model to use the photon source file
+    model = openmc.Model()
+    al = openmc.Material()
+    al.add_element('Al', 1.0)
+    al.set_density('g/cm3', 2.7)
+    sph = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=al, region=-sph)
+    model.geometry = openmc.Geometry([cell])
+    model.settings.source = openmc.FileSource(path='photon_source.h5')
+    model.settings.particles = 10
+    model.settings.batches = 3
+    model.settings.run_mode = 'fixed source'
+
+    # Running OpenMC should succeed
+    model.run()

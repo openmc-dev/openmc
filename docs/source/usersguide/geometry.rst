@@ -248,6 +248,28 @@ The classes :class:`Halfspace`, :class:`Intersection`, :class:`Union`, and
 :class:`Complement` and all instances of :class:`openmc.Region` and can be
 assigned to the :attr:`Cell.region` attribute.
 
+Cells also contain :attr:`Cell.temperature` and :attr:`Cell.density`
+attributes which override the temperature and density of the fill. These can
+be quite useful when temperatures and densities are spatially varying, as the
+alternative would be to add a unique :class:`Material` for each permutation of
+temperature, density, and composition. You can set the temperature (K) and
+density (g/cc) of a cell like so::
+
+  fuel.temperature = 800.0
+  fuel.density = 10.0
+
+The real utility of cell temperatures and densities occurs when a cell is
+replicated across the geometry, such as when a cell is the root geometric element
+in a replicated :ref:`universe<usersguide_universes>` or :ref:`lattice
+<usersguide_lattices>`. In those cases, you can provide a list of temperatures
+and densities to apply a temperature/density field to all of the distributed cells::
+
+  fuel.temperature = [800.0, 900.0, 800.0, 900.0]
+  fuel.density = [10.0, 9.0, 10.0, 9.0]
+
+In this example, the fuel cell is distributed four times in the geometry. Each
+distributed instance then receives its own temperature and density.
+
 .. _usersguide_universes:
 
 ---------

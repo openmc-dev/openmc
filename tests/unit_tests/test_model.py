@@ -265,8 +265,8 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     # Check to see that values are assigned to the C and python representations
     # First python
     cell = model.geometry.get_all_cells()[1]
-    assert cell.temperature == [600.0]
-    assert cell.density == [pytest.approx(10.0, 1e-5)]
+    assert cell.temperature == 600.0
+    assert cell.density == pytest.approx(10.0, 1e-5)
     assert cell.fill.get_mass_density() == pytest.approx(5.0)
     # Now C
     assert openmc.lib.cells[1].get_temperature() == 600.
@@ -286,8 +286,8 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
         'with_properties/settings.xml'
     )
     cell = model_with_properties.geometry.get_all_cells()[1]
-    assert cell.temperature == [600.0]
-    assert cell.density == [pytest.approx(10.0, 1e-5)]
+    assert cell.temperature == 600.0
+    assert cell.density == pytest.approx(10.0, 1e-5)
     assert cell.fill.get_mass_density() == pytest.approx(5.0)
 
 
@@ -658,6 +658,29 @@ def test_model_plot():
     # Close plots to avoid warning
     import matplotlib.pyplot as plt
     plt.close('all')
+
+
+def test_model_plot_invalid_inputs():
+    surface = openmc.Sphere(r=10.0, boundary_type="vacuum")
+    cell = openmc.Cell(region=-surface)
+    model = openmc.Model(openmc.Geometry([cell]))
+
+    with pytest.raises(ValueError):
+        model.plot(n_samples=-1)
+    with pytest.raises(TypeError):
+        model.plot(n_samples=1.5)
+    with pytest.raises(ValueError):
+        model.plot(plane_tolerance=0.0)
+    with pytest.raises(TypeError):
+        model.plot(plane_tolerance='1')
+    with pytest.raises(ValueError):
+        model.plot(pixels=-1)
+    with pytest.raises(ValueError):
+        model.plot(pixels=(0, 100))
+    with pytest.raises(ValueError):
+        model.plot(pixels=(100,))
+    with pytest.raises(ValueError):
+        model.slice_data(u_span=(2, 0, 0), v_span=(0, 2, 0), pixels=-1)
 
 
 def test_model_id_map_initialization(run_in_tmpdir):
@@ -1038,3 +1061,32 @@ def test_id_map_to_rgb():
     )
     # Check that overlap region is green
     assert np.allclose(rgb_overlap[5:, 5:], [0.0, 1.0, 0.0])
+
+
+def test_convert_to_multigroup_preserves_material_names(run_in_tmpdir):
+    """convert_to_multigroup leaves the user's material names unchanged and keys
+    the MGXS library by a unique sanitised name + id, so distinct materials that
+    share a name do not collapse to a single cross section."""
+    a = openmc.Material(name="Steel Plate #1")
+    a.add_element("Fe", 1.0)
+    a.set_density("g/cm3", 7.9)
+    b = openmc.Material(name="Steel Plate #1")  # same name, distinct material
+    b.add_element("Fe", 1.0)
+    b.set_density("g/cm3", 7.9)
+
+    s1 = openmc.Sphere(r=1.0)
+    s2 = openmc.Sphere(r=2.0, boundary_type="vacuum")
+    c1 = openmc.Cell(fill=a, region=-s1)
+    c2 = openmc.Cell(fill=b, region=+s1 & -s2)
+    model = openmc.Model(openmc.Geometry([c1, c2]), openmc.Materials([a, b]))
+
+    # Pre-create the library so MGXS generation (and transport) is skipped.
+    Path("mgxs.h5").touch()
+    model.convert_to_multigroup(method="material_wise", mgxs_path="mgxs.h5")
+
+    # User names are preserved, not sanitised or de-duplicated.
+    assert [m.name for m in model.materials] == ["Steel Plate #1", "Steel Plate #1"]
+    # Each material reads a unique, sanitised library entry (name + id).
+    macro = [m._macroscopic for m in model.materials]
+    assert macro == [f"Steel_Plate__1_{a.id}", f"Steel_Plate__1_{b.id}"]
+    assert len(set(macro)) == 2

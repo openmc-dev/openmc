@@ -2,7 +2,8 @@ name: dockerhub-publish-latest-dagmc-libmesh
 
 on:
   push:
-    branches: master
+    branches:
+      - master
 
 jobs:
   main:

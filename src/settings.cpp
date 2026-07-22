@@ -322,7 +322,7 @@ void get_run_parameters(pugi::xml_node node_base)
         get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
     }
     if (check_for_node(random_ray_node, "adjoint")) {
-      FlatSourceDomain::adjoint_ =
+      FlatSourceDomain::adjoint_requested_ =
         get_node_value_bool(random_ray_node, "adjoint");
     }
     if (check_for_node(random_ray_node, "sample_method")) {
@@ -1247,6 +1247,7 @@ void read_settings_xml(pugi::xml_node root)
   // read weight windows from file
   if (check_for_node(root, "weight_windows_file")) {
     weight_windows_file = get_node_value(root, "weight_windows_file");
+    weight_windows_on = true;
   }
 
   // read settings for weight windows value, this will override

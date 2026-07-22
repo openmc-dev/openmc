@@ -4,50 +4,76 @@ import numpy as np
 
 import openmc.checkvalue as cv
 
-_FILES = {
-    ('icrp74', 'neutron'): Path('icrp74') / 'neutrons.txt',
-    ('icrp74', 'photon'): Path('icrp74') / 'photons.txt',
-    ('icrp116', 'electron'): Path('icrp116') / 'electrons.txt',
-    ('icrp116', 'helium'): Path('icrp116') / 'helium_ions.txt',
-    ('icrp116', 'mu-'): Path('icrp116') / 'negative_muons.txt',
-    ('icrp116', 'pi-'): Path('icrp116') / 'negative_pions.txt',
-    ('icrp116', 'neutron'): Path('icrp116') / 'neutrons.txt',
-    ('icrp116', 'photon'): Path('icrp116') / 'photons.txt',
-    ('icrp116', 'photon kerma'): Path('icrp116') / 'photons_kerma.txt',
-    ('icrp116', 'mu+'): Path('icrp116') / 'positive_muons.txt',
-    ('icrp116', 'pi+'): Path('icrp116') / 'positive_pions.txt',
-    ('icrp116', 'positron'): Path('icrp116') / 'positrons.txt',
-    ('icrp116', 'proton'): Path('icrp116') / 'protons.txt',
+_FULL_GEOMETRIES = ('AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO')
+_LIMITED_GEOMETRIES = ('AP', 'PA', 'ISO')
+
+_TABLES = {
+    ('icrp74', 'effective', 'neutron'): (
+        Path('icrp74') / 'neutrons.txt', _FULL_GEOMETRIES),
+    ('icrp74', 'effective', 'photon'): (
+        Path('icrp74') / 'photons.txt', _FULL_GEOMETRIES),
+    ('icrp116', 'effective', 'electron'): (
+        Path('icrp116') / 'electrons.txt', _LIMITED_GEOMETRIES),
+    ('icrp116', 'effective', 'helium'): (
+        Path('icrp116') / 'helium_ions.txt', _LIMITED_GEOMETRIES),
+    ('icrp116', 'effective', 'mu-'): (
+        Path('icrp116') / 'negative_muons.txt', _LIMITED_GEOMETRIES),
+    ('icrp116', 'effective', 'pi-'): (
+        Path('icrp116') / 'negative_pions.txt', _LIMITED_GEOMETRIES),
+    ('icrp116', 'effective', 'neutron'): (
+        Path('icrp116') / 'neutrons.txt', _FULL_GEOMETRIES),
+    ('icrp116', 'effective', 'photon'): (
+        Path('icrp116') / 'photons.txt', _FULL_GEOMETRIES),
+    ('icrp116', 'effective', 'photon kerma'): (
+        Path('icrp116') / 'photons_kerma.txt', _FULL_GEOMETRIES),
+    ('icrp116', 'effective', 'mu+'): (
+        Path('icrp116') / 'positive_muons.txt', _LIMITED_GEOMETRIES),
+    ('icrp116', 'effective', 'pi+'): (
+        Path('icrp116') / 'positive_pions.txt', _LIMITED_GEOMETRIES),
+    ('icrp116', 'effective', 'positron'): (
+        Path('icrp116') / 'positrons.txt', _LIMITED_GEOMETRIES),
+    ('icrp116', 'effective', 'proton'): (
+        Path('icrp116') / 'protons.txt', _FULL_GEOMETRIES),
+    ('icrp74', 'ambient', 'neutron'): (
+        Path('icrp74') / 'neutrons_H10.txt', None),
+    ('icrp74', 'ambient', 'photon'): (
+        Path('icrp74') / 'photons_H10.txt', None),
 }
 
 _DOSE_TABLES = {}
 
 
-def _load_dose_icrp(data_source: str, particle: str):
-    """Load effective dose tables from text files.
+def _load_dose_table(data_source: str, dose_quantity: str, particle: str):
+    """Load dose tables from text files.
 
     Parameters
     ----------
     data_source : {'icrp74', 'icrp116'}
         The dose conversion data source to use
+    dose_quantity : {'effective', 'ambient'}
+        Dose quantity to load. 'ambient' corresponds to ambient dose
+        equivalent H*(10).
     particle : {'neutron', 'photon', 'photon kerma', 'electron', 'positron'}
         Incident particle
 
     """
-    path = Path(__file__).parent / _FILES[data_source, particle]
+    key = (data_source, dose_quantity, particle)
+    path = Path(__file__).parent / _TABLES[key][0]
     data = np.loadtxt(path, skiprows=3, encoding='utf-8')
     data[:, 0] *= 1e6   # Change energies to eV
-    _DOSE_TABLES[data_source, particle] = data
+    _DOSE_TABLES[key] = data
 
 
-def dose_coefficients(particle, geometry='AP', data_source='icrp116'):
-    """Return effective dose conversion coefficients.
+def dose_coefficients(
+    particle, geometry='AP', data_source='icrp116', dose_quantity='effective'
+):
+    """Return dose conversion coefficients.
 
-    This function provides fluence (and air kerma) to effective or ambient dose
-    (H*(10)) conversion coefficients for various types of external exposures
-    based on values in ICRP publications. Corrected values found in a
-    corrigendum are used rather than the values in the original report.
-    Available libraries include `ICRP Publication 74
+    This function provides fluence (and air kerma) to effective dose or ambient
+    dose equivalent (H*(10)) conversion coefficients for various types of
+    external exposures based on values in ICRP publications. Corrected values
+    found in a corrigendum are used rather than the values in the original
+    report. Available libraries include `ICRP Publication 74
     <https://doi.org/10.1016/S0146-6453(96)90010-X>` and `ICRP Publication 116
     <https://doi.org/10.1016/j.icrp.2011.10.001>`.
 
@@ -63,45 +89,58 @@ def dose_coefficients(particle, geometry='AP', data_source='icrp116'):
     particle : {'neutron', 'photon', 'photon kerma', 'electron', 'positron'}
         Incident particle
     geometry : {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'}
-        Irradiation geometry assumed. Refer to ICRP-116 (Section 3.2) for the
-        meaning of the options here.
+        Irradiation geometry assumed for effective dose coefficients. Refer to
+        ICRP-116 (Section 3.2) for the meaning of the options here. This
+        argument does not apply when ``dose_quantity`` is 'ambient'.
     data_source : {'icrp74', 'icrp116'}
-        The data source for the effective dose conversion coefficients.
+        The data source for the dose conversion coefficients.
+    dose_quantity : {'effective', 'ambient'}
+        Dose quantity to return. 'effective' returns effective dose
+        coefficients; 'ambient' returns ambient dose equivalent (H*(10))
+        coefficients.
 
     Returns
     -------
     energy : numpy.ndarray
         Energies at which dose conversion coefficients are given
     dose_coeffs : numpy.ndarray
-        Effective dose coefficients in [pSv cm^2] at provided energies. For
-        'photon kerma', the coefficients are given in [Sv/Gy].
+        Dose coefficients in [pSv cm^2] at provided energies. For 'photon
+        kerma', the coefficients are given in [Sv/Gy].
 
     """
 
-    cv.check_value('geometry', geometry, {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'})
+    cv.check_value('geometry', geometry, _FULL_GEOMETRIES)
     cv.check_value('data_source', data_source, {'icrp74', 'icrp116'})
+    cv.check_value('dose_quantity', dose_quantity, {'effective', 'ambient'})
 
-    if (data_source, particle) not in _FILES:
-        available_particles = sorted({p for (ds, p) in _FILES if ds == data_source})
+    key = (data_source, dose_quantity, particle)
+    if key not in _TABLES:
+        available_particles = sorted(
+            p for ds, dq, p in _TABLES
+            if ds == data_source and dq == dose_quantity
+        )
         msg = (
-            f"'{particle}' has no dose data in data source {data_source}. "
-            f"Available particles for {data_source} are: {available_particles}"
+            f"'{particle}' has no {dose_quantity} dose data in data source "
+            f"{data_source}. Available particles for {data_source} "
+            f"with dose quantity {dose_quantity} are: {available_particles}"
         )
         raise ValueError(msg)
-    elif (data_source, particle) not in _DOSE_TABLES:
-        _load_dose_icrp(data_source, particle)
+    elif key not in _DOSE_TABLES:
+        _load_dose_table(data_source, dose_quantity, particle)
 
-    # Get all data for selected particle
-    data = _DOSE_TABLES[data_source, particle]
+    data = _DOSE_TABLES[key]
+    columns = _TABLES[key][1]
 
-    # Determine index for selected geometry
-    if particle in ('neutron', 'photon', 'proton', 'photon kerma'):
-        columns = ('AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO')
+    if columns is None:
+        if geometry != 'AP':
+            raise ValueError(
+                "Irradiation geometry is not defined for ambient dose "
+                "equivalent coefficients. Use the default geometry='AP'."
+            )
+        index = 0
     else:
-        columns = ('AP', 'PA', 'ISO')
-    index = columns.index(geometry)
+        index = columns.index(geometry)
 
-    # Pull out energy and dose from table
     energy = data[:, 0].copy()
     dose_coeffs = data[:, index + 1].copy()
     return energy, dose_coeffs

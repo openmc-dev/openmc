@@ -11,6 +11,7 @@ Simple Models
    :template: myfunction.rst
 
    openmc.examples.slab_mg
+   openmc.examples.sphere_with_shielded_pocket
 
 Reactor Models
 --------------

@@ -64,14 +64,14 @@ void write_message(
   int level, const std::string& message, const Params&... fmt_args)
 {
   if (settings::verbosity >= level) {
-    write_message(fmt::format(message, fmt_args...));
+    write_message(fmt::format(fmt::runtime(message), fmt_args...));
   }
 }
 
 template<typename... Params>
 void write_message(const std::string& message, const Params&... fmt_args)
 {
-  write_message(fmt::format(message, fmt_args...));
+  write_message(fmt::format(fmt::runtime(message), fmt_args...));
 }
 
 #ifdef OPENMC_MPI

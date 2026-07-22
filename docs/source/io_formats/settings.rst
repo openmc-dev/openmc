@@ -98,6 +98,11 @@ sub-elements:
     A list of strings representing the nuclide, to define specific
     define specific target nuclide collisions to be banked.
 
+    .. note::
+      Electron and positron collision-track events are not associated with
+      a specific nuclide. If a ``nuclides`` entry is specified, these events
+      are omitted.
+
     *Default*: None
 
   :reactions:
@@ -606,30 +611,30 @@ found in the :ref:`random ray user guide <random_ray>`.
     *Default*: None
 
   :adjoint_source:
-    Specifies an adjoint fixed source for adjoint transport simulations, and 
-    follows the format for :ref:`source_element`. The distributions which make 
-    up the adjoint source are subject to the same restrictions as forward 
+    Specifies an adjoint fixed source for adjoint transport simulations, and
+    follows the format for :ref:`source_element`. The distributions which make
+    up the adjoint source are subject to the same restrictions as forward
     fixed sources in Random Ray mode.
 
     *Default*: None
-  
+
   :adjoint:
-    Specifies whether to perform adjoint transport. The default is 'False', 
+    Specifies whether to perform adjoint transport. The default is 'False',
     corresponding to forward transport.
 
     *Default*: None
-  
+
   :volume_estimator:
-    Specifies choice of volume estimator for the random ray solver. Options 
+    Specifies choice of volume estimator for the random ray solver. Options
     are 'naive', 'simulation_averaged', or 'hybrid'. The default is 'hybrid'.
 
     *Default*: None
 
   :volume_normalized_flux_tallies:
-    Specifies whether to normalize flux tallies by volume (bool). The 
-    default is 'False'. When enabled, flux tallies will be reported in units 
-    of cm/cm^3. When disabled, flux tallies will be reported in units of cm 
-    (i.e., total distance traveled by neutrons in the spatial tally 
+    Specifies whether to normalize flux tallies by volume (bool). The
+    default is 'False'. When enabled, flux tallies will be reported in units
+    of cm/cm^3. When disabled, flux tallies will be reported in units of cm
+    (i.e., total distance traveled by neutrons in the spatial tally
     region).
 
     *Default*: None
@@ -772,9 +777,9 @@ attributes/sub-elements:
     *Default*: 1.0
 
   :type:
-    Indicator of source type. One of ``independent``, ``file``, ``compiled``, or
-    ``mesh``. The type of the source will be determined by this attribute if it
-    is present.
+    Indicator of source type. One of ``independent``, ``file``, ``compiled``,
+    ``mesh``, or ``tokamak``. The type of the source will be determined by this
+    attribute if it is present.
 
   :particle:
     The source particle type, specified as a PDG number or a string alias (e.g.,
@@ -1009,6 +1014,80 @@ attributes/sub-elements:
     For mesh sources, this sub-element specifies the source for an individual
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
+
+  For a source with ``type="tokamak"``, the spatial distribution is described by
+  a Miller-style flux-surface parameterization and the following sub-elements
+  are used instead of the ``space`` element:
+
+  :major_radius:
+    The major radius :math:`R_0` of the plasma in [cm].
+
+  :minor_radius:
+    The minor radius :math:`a` of the plasma in [cm]. Must be smaller than
+    ``major_radius``.
+
+  :elongation:
+    The plasma elongation :math:`\kappa` (must be > 0).
+
+  :triangularity:
+    The plasma triangularity :math:`\delta` (must be in [-1, 1]). Negative
+    values describe negative-triangularity plasmas.
+
+  :shafranov_shift:
+    The Shafranov shift :math:`\Delta` in [cm] (must be >= 0 and less than
+    ``minor_radius``/2).
+
+  :r_over_a:
+    A list of normalized minor-radius grid points :math:`r/a`. Must be strictly
+    increasing, start at 0, and end at 1.
+
+  :emission_density:
+    A list of neutron emission densities :math:`S(r)` evaluated at each
+    ``r_over_a`` grid point (arbitrary units, must be non-negative). Only the
+    shape matters, since the profile is normalized internally. Values are
+    interpolated linearly between grid points and the profile is refined on an
+    internal grid for radial sampling. Must have the same length as
+    ``r_over_a`` and contain at least one positive value.
+
+  :phi_start:
+    The starting toroidal angle in [rad].
+
+    *Default*: 0.0
+
+  :phi_extent:
+    The toroidal angle extent in [rad]. The source is sampled uniformly in
+    :math:`[\phi_\text{start},\ \phi_\text{start} + \phi_\text{extent}]`.
+
+    *Default*: :math:`2\pi`
+
+  :n_alpha:
+    The number of poloidal-angle grid points used to build the sampling CDFs
+    (must be > 2). Larger values reduce discretization bias; values below 51
+    produce a warning.
+
+    *Default*: 101
+
+  :vertical_shift:
+    A vertical shift of the plasma center in [cm].
+
+    *Default*: 0.0
+
+  :energy:
+    For a tokamak source, one or more ``energy`` sub-elements specify the
+    neutron energy distribution(s). Either a single distribution is given (used
+    at all radii) or exactly one distribution per ``r_over_a`` grid point is
+    given, in which case the energy is sampled from one of the two
+    distributions bracketing the sampled radius, selected stochastically with
+    probability proportional to the proximity of the radius to each grid point
+    (stochastic interpolation). Each follows the format of a univariate
+    probability distribution (see :ref:`univariate`).
+
+  :time:
+    An optional ``time`` sub-element specifying the time distribution of source
+    particles, following the format of a univariate probability distribution
+    (see :ref:`univariate`).
+
+    *Default*: particles are born at :math:`t=0`
 
   .. note:: Biased sampling can be applied to the spatial and energy distributions
             of a source by using the ``<bias>`` sub-element (see
@@ -1757,11 +1836,11 @@ mesh-based weight windows.
         The ratio of the lower to upper weight window bounds.
 
         *Default*: 5.0
-    
+
     For FW-CADIS:
 
       :targets:
-        A sequence of IDs corresponding to the tallies which cover phase 
+        A sequence of IDs corresponding to the tallies which cover phase
         space regions of interest for local variance reduction.
 
         *Default*: None

@@ -1027,9 +1027,9 @@ void apply_weight_window(Particle& p, WeightWindow weight_window)
     // consistently round down, and the branch condition guarantees the ratio
     // exceeds one; the lower clamp of 2 makes the always-splits invariant
     // explicit.
-    double n_split = std::max(
-      2.0, std::ceil(weight / ((1.0 + WEIGHT_WINDOW_REL_TOL) *
-                               weight_window.upper_weight)));
+    double n_split = std::max(2.0,
+      std::ceil(
+        weight / ((1.0 + WEIGHT_WINDOW_REL_TOL) * weight_window.upper_weight)));
     double max_split = weight_window.max_split;
     n_split = std::min(n_split, max_split);
 

@@ -2694,19 +2694,17 @@ class Model:
             .. deprecated:: 0.15.4
                 Pass ``temperature`` as a keyword argument instead.
         **kwargs
-            :class:`openmc.Settings` attributes used to customize the
-            continuous energy simulation(s) that generate the MGXS
-            library. Only the attributes given override the generation
-            defaults, e.g.
-            ``model.convert_to_multigroup(particles=100_000)`` adjusts
-            just the particle count (see :meth:`openmc.Settings.update`).
-            The run mode cannot be overridden, as it is determined by the
-            generation method. A ``weight_windows_file`` is applied during
-            ``"material_wise"`` generation and ignored with a warning by
-            the other methods; see the user guide for the weight window
-            "bootstrapping" workflow this enables. Cannot be combined with
-            the deprecated ``nparticles`` or ``temperature_settings``
-            arguments.
+            :class:`openmc.Settings` attributes used to customize the continuous
+            energy simulation(s) that generate the MGXS library. Only the
+            attributes given override the generation defaults. For example,
+            ``model.convert_to_multigroup(particles=100_000)`` adjusts only the
+            particle count (see :meth:`openmc.Settings.update`). The run mode
+            cannot be overridden, as it is determined by the generation method.
+            A ``weight_windows_file`` is applied during ``"material_wise"``
+            generation and ignored with a warning by the other methods; see the
+            user guide for the weight window "bootstrapping" workflow this
+            enables. Cannot be combined with the deprecated ``nparticles`` or
+            ``temperature_settings`` arguments.
 
             .. versionadded:: 0.15.4
         """

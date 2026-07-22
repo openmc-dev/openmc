@@ -1019,14 +1019,14 @@ std::pair<double, int32_t> Region::distance_complex(
     if (min_dist == INFTY)
       break;
     // Search for next closest intersection
-    auto [i_surf_next, next_dist] =
+    auto [next_dist, i_surf_next] =
       distance_simple(r + min_dist * u, u, i_surf);
     // If no next intersection we are done
     if (next_dist == INFTY)
       break;
     // If there is next intersection we will check point containment in the
     // middle to avoid close to boundary numerical errors
-    auto r_mid = r + (0.5 * (min_dist + next_dist)) * u;
+    auto r_mid = r + (min_dist + 0.5 * next_dist) * u;
     if (contains_complex(r_mid, u, i_surf) != in_region)
       break;
     atleast = min_dist;

@@ -1,5 +1,6 @@
 #include "openmc/random_ray/random_ray.h"
 
+#include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
@@ -9,13 +10,12 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
-#include "openmc/cell.h"
 #include <numeric>
 
 #include "openmc/distribution_spatial.h"
 #include "openmc/random_dist.h"
-#include "openmc/source.h"
 #include "openmc/random_ray/decomposition_map.h"
+#include "openmc/source.h"
 
 namespace openmc {
 
@@ -240,7 +240,7 @@ double RandomRay::distance_inactive_;
 double RandomRay::distance_active_;
 unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
-RandomRayGeomDim RandomRay::geom_dim_ {RandomRayGeomDim::THREE_DIM}; 
+RandomRayGeomDim RandomRay::geom_dim_ {RandomRayGeomDim::THREE_DIM};
 RandomRaySampleMethod RandomRay::sample_method_ {RandomRaySampleMethod::PRNG};
 
 RandomRay::RandomRay()
@@ -295,7 +295,7 @@ void RandomRay::event_advance_ray()
   double distance = boundary().distance();
 
   if (mpi::n_procs > 1) {
-    // If domain decomposition is being used, update counter for 
+    // If domain decomposition is being used, update counter for
     // ray trace operations in source region for load estimation
     int64_t sr = domain_->lookup_base_source_region_idx(*this);
     for (int i = 0; i < n_coord(); i++) {
@@ -364,7 +364,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 {
   // Lookup base source region index
   int64_t sr = domain_->lookup_base_source_region_idx(*this);
-  
+
   // Initialize values needed to buffer ray for domain decomposition
   double mesh_partial_length = 0.0;
   double tiny_multiplier = 0.0;
@@ -402,13 +402,13 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       double physical_length = reduced_distance * mesh_fractional_lengths_[b];
 
       if (mpi::n_procs > 1) {
-          mpi::decomp_map.num_mesh_bin_RT_[sr] += 1;
+        mpi::decomp_map.num_mesh_bin_RT_[sr] += 1;
       }
 
-      // Very flat angles can result in very small physical lengths, 
-      // despite the TINY_BIT adjustment for Position start. If this happens at an
-      // MPI boundary, this can cause rays to bounce back and forth indefinitely. 
-      // Very small lengths are therefore skipped.
+      // Very flat angles can result in very small physical lengths,
+      // despite the TINY_BIT adjustment for Position start. If this happens at
+      // an MPI boundary, this can cause rays to bounce back and forth
+      // indefinitely. Very small lengths are therefore skipped.
       if (physical_length <= TINY_BIT) {
         start += physical_length * u();
         continue;
@@ -421,7 +421,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 
       // If ray has left MPI subdomain, stop transport
       // and calculate position
-      if(has_left_subdomain()){
+      if (has_left_subdomain()) {
         for (int i = 0; i <= b - 1; i++) {
           mesh_partial_length += mesh_fractional_lengths_[i];
         }
@@ -430,22 +430,23 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
           // If ray is stopped within mesh of base source region,
           // need to add TINY_BIT to account for deleted length
           tiny_multiplier = 1.0;
-          // Reset last surface crossed to none if ray is stopped 
+          // Reset last surface crossed to none if ray is stopped
           // within mesh of base source region
-          surface() = 0; 
+          surface() = 0;
         }
 
-        mesh_partial_length = tiny_multiplier * TINY_BIT + reduced_distance * mesh_partial_length;
+        mesh_partial_length =
+          tiny_multiplier * TINY_BIT + reduced_distance * mesh_partial_length;
         break;
       }
     }
   }
 
   // If ray has left my subdomain, buffer ray state
-  if(has_left_subdomain()) {
-    Position position_buffer =  r() + (offset + mesh_partial_length) * u();
+  if (has_left_subdomain()) {
+    Position position_buffer = r() + (offset + mesh_partial_length) * u();
     double distance_buffer = distance_travelled_ + mesh_partial_length;
-    
+
 #ifdef OPENMC_DAGMC_ENABLED
     history().rollback_last_intersection();
 #endif
@@ -459,17 +460,17 @@ void RandomRay::attenuate_flux_inner(
 {
   SourceRegionKey sr_key {sr, mesh_bin};
 
-  if (mpi::n_procs > 1){
+  if (mpi::n_procs > 1) {
     // Check which rank owns the source region at the current position
     Position midpoint = r + u() * (distance / 2.0);
-    int owner = mpi::decomp_map.find_owner(SourceRegionKey(sr, mesh_bin), midpoint, 
-      domain_->discovered_source_regions_);
+    int owner = mpi::decomp_map.find_owner(SourceRegionKey(sr, mesh_bin),
+      midpoint, domain_->discovered_source_regions_);
 
     // If current rank is not the owner return and mark as not local.
     if (owner != mpi::rank) {
-    is_local_ = false;
-    owner_rank_ = owner;
-    return;
+      is_local_ = false;
+      owner_rank_ = owner;
+      return;
     }
   }
 
@@ -858,8 +859,8 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 }
 
-void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, float* angular_flux,
-                             LocalCoord* coord, int* cell_last_data)
+void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
+  float* angular_flux, LocalCoord* coord, int* cell_last_data)
 {
 
   domain_ = domain;
@@ -867,7 +868,7 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
   owner_rank_ = mpi::rank;
   ntemperature_ = domain->ntemperature_;
 
-  // Restore particle event counter from the transmitted ray 
+  // Restore particle event counter from the transmitted ray
   // This preserves the event count across MPI rank boundaries
   n_event() = data.n_event;
 
@@ -887,44 +888,47 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
   sqrtkT() = data.sqrtkT;
   sqrtkT_last() = data.sqrtkT_last;
   surface() = data.surface;
-  
+
   // Restore LocalCoord vector data (coord_)
-  // The vectors were already sized to model::n_coord_levels in the GeometryState constructor
-  // LocalCoord is POD so we can just copy the entire structure
+  // The vectors were already sized to model::n_coord_levels in the
+  // GeometryState constructor LocalCoord is POD so we can just copy the entire
+  // structure
   const int n_coord_max = model::n_coord_levels;
   for (int i = 0; i < n_coord_max; i++) {
     this->coord(i) = coord[i];
     cell_last(i) = cell_last_data[i];
   }
-  
-  // Override the position and direction at ALL coordinate levels with the buffered values
-  // These may have been adjusted when the ray left the previous subdomain
-  // We need to update all levels to maintain consistency in the coordinate hierarchy
+
+  // Override the position and direction at ALL coordinate levels with the
+  // buffered values These may have been adjusted when the ray left the previous
+  // subdomain We need to update all levels to maintain consistency in the
+  // coordinate hierarchy
   Position delta_r = data.position - r();
   for (int i = 0; i < n_coord(); i++) {
     this->coord(i).r() += delta_r;
   }
 
   u() = data.direction;
-  
+
 #ifdef OPENMC_DAGMC_ENABLED
   // Restore DAGMC fields
-  // Restore last_dir and rebuild the history by adding entities in reverse order
+  // Restore last_dir and rebuild the history by adding entities in reverse
+  // order
   last_dir() = data.last_dir;
   for (int i = data.n_handles - 1; i >= 0; i--) {
     history().add_entity(data.handles[i]);
   }
 #endif
-  
+
   // Set particle type and energy (for random ray, these are not actually used)
   type() = ParticleType::neutron();
   E() = 0.0;
 
-  // No need to call exhaustive_find_cell() since we have the full geometry state!
-  // Just verify we have valid cell information
+  // No need to call exhaustive_find_cell() since we have the full geometry
+  // state! Just verify we have valid cell information
   if (lowest_coord().cell() == C_NONE) {
-      this->mark_as_lost(
-      "Received particle " + std::to_string(id()) + " with invalid cell information");
+    this->mark_as_lost("Received particle " + std::to_string(id()) +
+                       " with invalid cell information");
   }
 
   // Set birth cell attribute if not set
@@ -932,12 +936,13 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
     cell_born() = lowest_coord().cell();
 
   // Set ray's angular flux to value before subdomain change
-  if (distance_travelled_ > 0.0 || is_active_){
+  if (distance_travelled_ > 0.0 || is_active_) {
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] = angular_flux[g];
     }
-  } 
-  // Initialize ray's starting angular flux to starting location's isotropic source 
+  }
+  // Initialize ray's starting angular flux to starting location's isotropic
+  // source
   else {
     SourceRegionKey sr_key = domain_->lookup_source_region_key(*this);
     SourceRegionHandle srh =
@@ -949,7 +954,6 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
       }
     }
   }
-
 }
 
 void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
@@ -1001,11 +1005,11 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 
   SourceRegionKey sr_key = domain_->lookup_source_region_key(*this);
 
-  if (mpi::n_procs > 1){
+  if (mpi::n_procs > 1) {
     // Check if ray sampling site belongs to subdomain
-    owner_rank_ = mpi::decomp_map.find_owner(sr_key, r(), 
-      domain_->discovered_source_regions_);
-      
+    owner_rank_ = mpi::decomp_map.find_owner(
+      sr_key, r(), domain_->discovered_source_regions_);
+
     if (owner_rank_ != mpi::rank) {
       for (int g = 0; g < negroups_; g++) {
         angular_flux_[g] = 0.0;
@@ -1024,7 +1028,6 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       angular_flux_[g] = srh.source(g);
     }
   }
-
 }
 
 SourceSite RandomRay::sample_prng()
@@ -1077,61 +1080,63 @@ SourceSite RandomRay::sample_halton()
   return site;
 }
 
-bool RandomRay::has_left_subdomain() {
+bool RandomRay::has_left_subdomain()
+{
   return !is_local_;
 }
 
-void RandomRay::pack_ray_for_buffer(double distance_buffer, Position position_buffer) {
- exchange_data_.position = position_buffer;
- exchange_data_.direction = u();
- exchange_data_.angular_flux = angular_flux_;
- exchange_data_.distance_travelled = distance_buffer;
- exchange_data_.surface = surface();
- exchange_data_.is_active = is_active_;
- exchange_data_.ray_id = id();
- exchange_data_.n_event = n_event();
+void RandomRay::pack_ray_for_buffer(
+  double distance_buffer, Position position_buffer)
+{
+  exchange_data_.position = position_buffer;
+  exchange_data_.direction = u();
+  exchange_data_.angular_flux = angular_flux_;
+  exchange_data_.distance_travelled = distance_buffer;
+  exchange_data_.surface = surface();
+  exchange_data_.is_active = is_active_;
+  exchange_data_.ray_id = id();
+  exchange_data_.n_event = n_event();
 
- // Pack GeometryState scalar fields
- exchange_data_.n_coord = n_coord();
- exchange_data_.cell_instance = cell_instance();
- exchange_data_.n_coord_last = n_coord_last();
- exchange_data_.material = material();
- exchange_data_.material_last = material_last();
- exchange_data_.sqrtkT = sqrtkT();
- exchange_data_.sqrtkT_last = sqrtkT_last();
- 
- // Pack GeometryState vector fields
- // LocalCoord is POD, so we can just copy the entire vector
- // We always pack model::n_coord_levels elements to ensure consistent sizes
- const int n_coord_max = model::n_coord_levels;
- 
- exchange_data_.coord.resize(n_coord_max);
- exchange_data_.cell_last.resize(n_coord_max);
- 
- for (int i = 0; i < n_coord_max; i++) {
-   exchange_data_.coord[i] = coord(i);
-   exchange_data_.cell_last[i] = cell_last(i);
- }
+  // Pack GeometryState scalar fields
+  exchange_data_.n_coord = n_coord();
+  exchange_data_.cell_instance = cell_instance();
+  exchange_data_.n_coord_last = n_coord_last();
+  exchange_data_.material = material();
+  exchange_data_.material_last = material_last();
+  exchange_data_.sqrtkT = sqrtkT();
+  exchange_data_.sqrtkT_last = sqrtkT_last();
+
+  // Pack GeometryState vector fields
+  // LocalCoord is POD, so we can just copy the entire vector
+  // We always pack model::n_coord_levels elements to ensure consistent sizes
+  const int n_coord_max = model::n_coord_levels;
+
+  exchange_data_.coord.resize(n_coord_max);
+  exchange_data_.cell_last.resize(n_coord_max);
+
+  for (int i = 0; i < n_coord_max; i++) {
+    exchange_data_.coord[i] = coord(i);
+    exchange_data_.cell_last[i] = cell_last(i);
+  }
 
 #ifdef OPENMC_DAGMC_ENABLED
- // Pack DAGMC fields
- // Extract up to MAX_N_HANDLES from the ray history by rolling back
- exchange_data_.last_dir = last_dir();
- exchange_data_.n_handles = 0;
- 
- for (int i = 0; i < MAX_N_HANDLES; i++) {
-   moab::EntityHandle handle;
-   if (history().get_last_intersection(handle) == moab::MB_SUCCESS) {
-     exchange_data_.handles[i] = handle;
-     exchange_data_.n_handles++;
-     history().rollback_last_intersection();
-   } else {
-     // No more handles in history
-     break;
-   }
- }
-#endif
+  // Pack DAGMC fields
+  // Extract up to MAX_N_HANDLES from the ray history by rolling back
+  exchange_data_.last_dir = last_dir();
+  exchange_data_.n_handles = 0;
 
+  for (int i = 0; i < MAX_N_HANDLES; i++) {
+    moab::EntityHandle handle;
+    if (history().get_last_intersection(handle) == moab::MB_SUCCESS) {
+      exchange_data_.handles[i] = handle;
+      exchange_data_.n_handles++;
+      history().rollback_last_intersection();
+    } else {
+      // No more handles in history
+      break;
+    }
+  }
+#endif
 }
 
 SourceSite RandomRay::sample_s2()

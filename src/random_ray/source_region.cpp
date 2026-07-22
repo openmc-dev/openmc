@@ -11,18 +11,23 @@ namespace openmc {
 //==============================================================================
 SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
   : negroups_(sr.scalar_flux_old_.size()), material_(&sr.scalars_.material_),
-    temperature_idx_(&sr.scalars_.temperature_idx_), density_mult_(&sr.scalars_.density_mult_),
+    temperature_idx_(&sr.scalars_.temperature_idx_),
+    density_mult_(&sr.scalars_.density_mult_),
     is_small_(&sr.scalars_.is_small_), n_hits_(&sr.scalars_.n_hits_),
     is_linear_(sr.source_gradients_.size() > 0), lock_(&sr.lock_),
-    volume_(&sr.scalars_.volume_), volume_t_(&sr.scalars_.volume_t_), volume_sq_(&sr.scalars_.volume_sq_),
-    volume_sq_t_(&sr.scalars_.volume_sq_t_), volume_naive_(&sr.scalars_.volume_naive_),
+    volume_(&sr.scalars_.volume_), volume_t_(&sr.scalars_.volume_t_),
+    volume_sq_(&sr.scalars_.volume_sq_),
+    volume_sq_t_(&sr.scalars_.volume_sq_t_),
+    volume_naive_(&sr.scalars_.volume_naive_),
     position_recorded_(&sr.scalars_.position_recorded_),
     external_source_present_(&sr.scalars_.external_source_present_),
     position_(&sr.scalars_.position_), centroid_(&sr.scalars_.centroid_),
-    centroid_iteration_(&sr.scalars_.centroid_iteration_), centroid_t_(&sr.scalars_.centroid_t_),
-    mom_matrix_(&sr.scalars_.mom_matrix_), mom_matrix_t_(&sr.scalars_.mom_matrix_t_),
-    volume_task_(&sr.volume_task_), mesh_(&sr.scalars_.mesh_),
-    parent_sr_(&sr.scalars_.parent_sr_), scalar_flux_old_(sr.scalar_flux_old_.data()),
+    centroid_iteration_(&sr.scalars_.centroid_iteration_),
+    centroid_t_(&sr.scalars_.centroid_t_),
+    mom_matrix_(&sr.scalars_.mom_matrix_),
+    mom_matrix_t_(&sr.scalars_.mom_matrix_t_), volume_task_(&sr.volume_task_),
+    mesh_(&sr.scalars_.mesh_), parent_sr_(&sr.scalars_.parent_sr_),
+    scalar_flux_old_(sr.scalar_flux_old_.data()),
     scalar_flux_new_(sr.scalar_flux_new_.data()), source_(sr.source_.data()),
     external_source_(sr.external_source_.data()),
     scalar_flux_final_(sr.scalar_flux_final_.data()),
@@ -112,21 +117,24 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
 }
 
 // combine two source regions from different ranks together
-void SourceRegion::merge(SourceRegion& sr_add, bool is_linear) {
+void SourceRegion::merge(SourceRegion& sr_add, bool is_linear)
+{
 
   // scalar fields
   scalars_.volume_ += sr_add.scalars_.volume_;
   scalars_.volume_sq_ += sr_add.scalars_.volume_sq_;
   scalars_.volume_naive_ += sr_add.scalars_.volume_naive_;
   scalars_.n_hits_ += sr_add.scalars_.n_hits_;
-  scalars_.external_source_present_ = std::max(scalars_.external_source_present_, sr_add.scalars_.external_source_present_);
+  scalars_.external_source_present_ =
+    std::max(scalars_.external_source_present_,
+      sr_add.scalars_.external_source_present_);
   scalars_.centroid_iteration_ += sr_add.scalars_.centroid_iteration_;
   if (is_linear) {
     scalars_.mom_matrix_ += sr_add.scalars_.mom_matrix_;
   }
 
-  // vector fields
-  #pragma omp simd
+// vector fields
+#pragma omp simd
   for (int g = 0; g < scalar_flux_new_.size(); g++) {
     scalar_flux_new_[g] += sr_add.scalar_flux_new_[g];
     scalar_flux_final_[g] += sr_add.scalar_flux_final_[g];
@@ -297,7 +305,6 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.centroid_iteration_ = &centroid_iteration(sr);
   handle.centroid_t_ = &centroid_t(sr);
   handle.key_ = &key(sr);
-
 
   if (handle.is_linear_) {
     handle.mom_matrix_ = &mom_matrix(sr);

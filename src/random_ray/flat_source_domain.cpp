@@ -9,6 +9,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/output.h"
 #include "openmc/plot.h"
+#include "openmc/random_ray/decomposition_map.h"
 #include "openmc/random_ray/random_ray.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/filter.h"
@@ -16,8 +17,6 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
 #include "openmc/weight_windows.h"
-#include "openmc/message_passing.h"
-#include "openmc/random_ray/decomposition_map.h"
 
 #include <cstdio>
 #include <numeric>
@@ -377,8 +376,10 @@ void FlatSourceDomain::compute_k_eff()
   // Sum up fission rates across all ranks
   if (mpi::n_procs > 1) {
     simulation::time_decomposition_handling.start();
-    MPI_Allreduce(MPI_IN_PLACE, &fission_rate_old, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
-    MPI_Allreduce(MPI_IN_PLACE, &fission_rate_new, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(
+      MPI_IN_PLACE, &fission_rate_old, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(
+      MPI_IN_PLACE, &fission_rate_new, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
     simulation::time_decomposition_handling.stop();
   }
 
@@ -863,7 +864,7 @@ void FlatSourceDomain::output_to_vtk() const
 
           bool found = exhaustive_find_cell(p);
           if (!found) {
-            voxel_indices_key[z * Ny * Nx + y * Nx + x] = {-1,-1};
+            voxel_indices_key[z * Ny * Nx + y * Nx + x] = {-1, -1};
             voxel_indices[z * Ny * Nx + y * Nx + x] = -1;
             voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
             weight_windows[z * Ny * Nx + y * Nx + x] = 0.0;
@@ -1034,7 +1035,6 @@ void FlatSourceDomain::output_to_vtk() const
   }
 }
 
-
 // Outputs all basic material, FSR ID, multigroup flux, and
 // fission source data to .vtk file that can be directly
 // loaded and displayed by Paraview. Note that .vtk binary
@@ -1043,12 +1043,13 @@ void FlatSourceDomain::output_to_vtk() const
 void FlatSourceDomain::output_to_vtk_decomp() const
 {
 
-  if (mpi::master){
+  if (mpi::master) {
     // Rename .h5 plot filename(s) to .vtk filenames
     for (int p = 0; p < model::plots.size(); p++) {
       PlottableInterface* plot = model::plots[p].get();
       plot->path_plot() =
-        plot->path_plot().substr(0, plot->path_plot().find_last_of('.')) + ".vtk";
+        plot->path_plot().substr(0, plot->path_plot().find_last_of('.')) +
+        ".vtk";
     }
 
     // Print header information
@@ -1084,7 +1085,7 @@ void FlatSourceDomain::output_to_vtk_decomp() const
     double y_delta = width.y / Ny;
     double z_delta = width.z / Nz;
     std::string filename = openmc_plot->path_plot();
-    
+
     // Tag plots written during the forward solve of an adjoint run
     if (solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT) {
       auto dot = filename.find_last_of('.');
@@ -1097,12 +1098,14 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       openmc_plot->id(), filename, bytes / 1.0e6);
     if (bytes / 1.0e9 > 1.0) {
       if (mpi::master) {
-        warning("Voxel plot specification is very large (>1 GB). Plotting may be "
-                "slow.");
+        warning(
+          "Voxel plot specification is very large (>1 GB). Plotting may be "
+          "slow.");
       }
     } else if (bytes / 1.0e9 > 100.0) {
       if (mpi::master) {
-        fatal_error("Voxel plot specification is too large (>100 GB). Exiting.");
+        fatal_error(
+          "Voxel plot specification is too large (>100 GB). Exiting.");
       }
     }
 
@@ -1149,11 +1152,11 @@ void FlatSourceDomain::output_to_vtk_decomp() const
           int assigned_rank = 0;
           // Which rank is responsible
           auto it = mpi::decomp_map.subdomain_map_.find(sr_key);
-          if (it != mpi::decomp_map.subdomain_map_.end()){
+          if (it != mpi::decomp_map.subdomain_map_.end()) {
             assigned_rank = it->second;
           }
           if (assigned_rank == mpi::rank) {
-            #pragma omp critical (create_my_voxel_ids)
+#pragma omp critical(create_my_voxel_ids)
             {
               my_voxel_ids.push_back(z * Ny * Nx + y * Nx + x);
             }
@@ -1223,17 +1226,23 @@ void FlatSourceDomain::output_to_vtk_decomp() const
         vector_out_float[voxel_id] = flux;
       }
 
-      if (mpi::master){
-        MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-        MPI_Reduce(MPI_IN_PLACE, &num_neg, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
-        MPI_Reduce(MPI_IN_PLACE, &num_samples, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      if (mpi::master) {
+        MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size,
+          MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+        MPI_Reduce(
+          MPI_IN_PLACE, &num_neg, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+        MPI_Reduce(MPI_IN_PLACE, &num_samples, 1, MPI_INT64_T, MPI_SUM, 0,
+          mpi::intracomm);
       } else {
-        MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-        MPI_Reduce(&num_neg, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
-        MPI_Reduce(&num_samples, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+        MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT,
+          MPI_SUM, 0, mpi::intracomm);
+        MPI_Reduce(
+          &num_neg, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+        MPI_Reduce(
+          &num_samples, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
       }
 
-      if (mpi::master){
+      if (mpi::master) {
         std::fprintf(plot, "SCALARS flux_group_%d float\n", g);
         std::fprintf(plot, "LOOKUP_TABLE default\n");
         for (float value : vector_out_float) {
@@ -1261,13 +1270,15 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       vector_out_float[voxel_id] = value;
     }
 
-    if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    if (mpi::master) {
+      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT,
+        MPI_SUM, 0, mpi::intracomm);
     } else {
-      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT,
+        MPI_SUM, 0, mpi::intracomm);
     }
 
-    if (mpi::master){
+    if (mpi::master) {
       std::fprintf(plot, "SCALARS FSRs float\n");
       std::fprintf(plot, "LOOKUP_TABLE default\n");
       for (float value : vector_out_float) {
@@ -1288,13 +1299,15 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       vector_out_int[voxel_id] = mat + 1; // To avoid -1 for void (MPI_SUM)
     }
 
-    if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, vector_out_int.data(), vector_size, MPI_INT, MPI_SUM, 0, mpi::intracomm);
+    if (mpi::master) {
+      MPI_Reduce(MPI_IN_PLACE, vector_out_int.data(), vector_size, MPI_INT,
+        MPI_SUM, 0, mpi::intracomm);
     } else {
-      MPI_Reduce(vector_out_int.data(), nullptr, vector_size, MPI_INT, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(vector_out_int.data(), nullptr, vector_size, MPI_INT, MPI_SUM,
+        0, mpi::intracomm);
     }
 
-    if (mpi::master){
+    if (mpi::master) {
       std::fprintf(plot, "SCALARS Materials int\n");
       std::fprintf(plot, "LOOKUP_TABLE default\n");
 
@@ -1313,13 +1326,15 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       vector_out_float[voxel_id] = value;
     }
 
-    if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    if (mpi::master) {
+      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT,
+        MPI_SUM, 0, mpi::intracomm);
     } else {
-      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT,
+        MPI_SUM, 0, mpi::intracomm);
     }
 
-    if (mpi::master){
+    if (mpi::master) {
       std::fprintf(plot, "SCALARS rank_subdomains float\n");
       std::fprintf(plot, "LOOKUP_TABLE default\n");
 
@@ -1337,13 +1352,15 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       vector_out_float[voxel_id] = value;
     }
 
-    if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    if (mpi::master) {
+      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT,
+        MPI_SUM, 0, mpi::intracomm);
     } else {
-      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT,
+        MPI_SUM, 0, mpi::intracomm);
     }
 
-    if (mpi::master){
+    if (mpi::master) {
       std::fprintf(plot, "SCALARS measured_load float\n");
       std::fprintf(plot, "LOOKUP_TABLE default\n");
 
@@ -1365,7 +1382,8 @@ void FlatSourceDomain::output_to_vtk_decomp() const
           int temp = source_regions_.temperature_idx(fsr);
           if (mat != MATERIAL_VOID) {
             for (int g = 0; g < negroups_; g++) {
-              float flux = evaluate_flux_at_point(voxel_positions[voxel_id], fsr, g);
+              float flux =
+                evaluate_flux_at_point(voxel_positions[voxel_id], fsr, g);
               double sigma_f =
                 sigma_f_[(mat * ntemperature_ + temp) * negroups_ + g] *
                 source_regions_.density_mult(fsr);
@@ -1397,18 +1415,20 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       }
     }
 
-    if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    if (mpi::master) {
+      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT,
+        MPI_SUM, 0, mpi::intracomm);
     } else {
-      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT,
+        MPI_SUM, 0, mpi::intracomm);
     }
 
-    if (mpi::master){
+    if (mpi::master) {
       if (settings::run_mode == RunMode::EIGENVALUE) {
         std::fprintf(plot, "SCALARS total_fission_source float\n");
       } else {
         std::fprintf(plot, "SCALARS external_source float\n");
-        }
+      }
       std::fprintf(plot, "LOOKUP_TABLE default\n");
       for (float value : vector_out_float) {
         float print_value = convert_to_big_endian<float>(value);
@@ -1427,24 +1447,26 @@ void FlatSourceDomain::output_to_vtk_decomp() const
         vector_out_float[voxel_id] = weight;
       }
 
-    if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-    } else {
-      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-    }
+      if (mpi::master) {
+        MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size,
+          MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+      } else {
+        MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT,
+          MPI_SUM, 0, mpi::intracomm);
+      }
 
-    if (mpi::master){
-      std::fprintf(plot, "SCALARS weight_window_lower float\n");
-      std::fprintf(plot, "LOOKUP_TABLE default\n");
+      if (mpi::master) {
+        std::fprintf(plot, "SCALARS weight_window_lower float\n");
+        std::fprintf(plot, "LOOKUP_TABLE default\n");
 
-      for (float value : vector_out_float) {
-        float print_value = convert_to_big_endian<float>(value);
-        std::fwrite(&print_value, sizeof(float), 1, plot);
+        for (float value : vector_out_float) {
+          float print_value = convert_to_big_endian<float>(value);
+          std::fwrite(&print_value, sizeof(float), 1, plot);
+        }
       }
     }
-    }
 
-    if (mpi::master){
+    if (mpi::master) {
       std::fclose(plot);
     }
   }
@@ -2297,7 +2319,7 @@ bool FlatSourceDomain::is_geometry_3D()
   // Get spatial box of ray_source_
   SpatialBox* sb = dynamic_cast<SpatialBox*>(
     dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space());
-  
+
   double x_length = sb->upper_right().x - sb->lower_left().x;
   double y_length = sb->upper_right().y - sb->lower_left().y;
   double z_length = sb->upper_right().z - sb->lower_left().z;
@@ -2310,11 +2332,11 @@ bool FlatSourceDomain::is_geometry_3D()
     Position sample;
     sample.x = sb->lower_left().x + x_length * prn(&seed);
     sample.y = sb->lower_left().y + y_length * prn(&seed);
-    
+
     SourceRegionKey sr_key_prev {-1, -1};
     bool check_key = false;
 
-    for (int j = 0; j < num_z_points; j++){
+    for (int j = 0; j < num_z_points; j++) {
       sample.z = sb->lower_left().z + z_length * prn(&seed);
 
       Particle p;
@@ -2332,8 +2354,9 @@ bool FlatSourceDomain::is_geometry_3D()
       SourceRegionKey sr_key = lookup_source_region_key(p);
 
       // Check if sr_key has changed in z-direction
-      if (check_key && (sr_key.base_source_region_id != sr_key_prev.base_source_region_id ||
-                        sr_key.mesh_bin != sr_key_prev.mesh_bin)) {
+      if (check_key &&
+          (sr_key.base_source_region_id != sr_key_prev.base_source_region_id ||
+            sr_key.mesh_bin != sr_key_prev.mesh_bin)) {
         return true;
       }
 

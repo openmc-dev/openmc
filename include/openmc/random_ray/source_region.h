@@ -370,7 +370,7 @@ public:
   // Scalar fields
 
   OpenMPMutex lock_;
-  
+
   // Container with all scalar fields of a source region
   ScalarSourceRegionFields scalars_;
 

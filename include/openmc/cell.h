@@ -94,7 +94,7 @@ public:
   vector<int32_t> surfaces() const;
 
   //! Get size of surfaces
-  int n_surfaces() const {return expression_.size(); }
+  int n_surfaces() const { return expression_.size(); }
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -232,7 +232,7 @@ public:
   virtual vector<int32_t> surfaces() const { return vector<int32_t>(); }
 
   //! Get the number of surfaces in the cell
-  virtual int n_surfaces() const {return 0; }
+  virtual int n_surfaces() const { return 0; }
 
   //! Check if the cell region expression is simple
   virtual bool is_simple() const { return true; }
@@ -426,7 +426,7 @@ public:
   // Methods
   vector<int32_t> surfaces() const override { return region_.surfaces(); }
 
-  int n_surfaces() const override {return region_.n_surfaces(); }
+  int n_surfaces() const override { return region_.n_surfaces(); }
 
   std::pair<double, int32_t> distance(Position r, Direction u,
     int32_t on_surface, GeometryState* p) const override

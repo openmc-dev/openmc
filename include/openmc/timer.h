@@ -40,7 +40,6 @@ extern Timer time_generate_voronoi_centers;
 extern Timer time_source_region_exchange;
 extern Timer time_mpi_imbalance;
 
-
 } // namespace simulation
 
 //==============================================================================

@@ -21,9 +21,9 @@ struct RayBufferContainer {
   vector<float> angular_flux;
   int surface;
   bool is_active;
-  uint64_t ray_id; 
-  int n_event;  // Number of events (surface crossings) the ray has undergone
-  
+  uint64_t ray_id;
+  int n_event; // Number of events (surface crossings) the ray has undergone
+
   // GeometryState scalar fields
   int n_coord;
   int cell_instance;
@@ -32,19 +32,20 @@ struct RayBufferContainer {
   int material_last;
   double sqrtkT;
   double sqrtkT_last;
-  
+
   // GeometryState vector fields (sized to model::n_coord_levels at runtime)
   // LocalCoord is POD, so we can send it as contiguous bytes
   vector<LocalCoord> coord;
-  
+
   // cell_last_ array
   vector<int> cell_last;
-  
+
 #ifdef OPENMC_DAGMC_ENABLED
   // DAGMC fields - fixed-size array to avoid variable-length vector
   Direction last_dir;
   moab::EntityHandle handles[MAX_N_HANDLES];
-  int n_handles;  // Actual number of valid handles (may be less than MAX_N_HANDLES)
+  int n_handles; // Actual number of valid handles (may be less than
+                 // MAX_N_HANDLES)
 #endif
 };
 
@@ -55,9 +56,9 @@ struct RayExchangeData {
   double distance_travelled;
   int surface;
   bool is_active;
-  uint64_t ray_id; 
-  int n_event;  // Number of events (surface crossings) the ray has undergone
-  
+  uint64_t ray_id;
+  int n_event; // Number of events (surface crossings) the ray has undergone
+
   // GeometryState scalar fields
   int n_coord;
   int cell_instance;
@@ -66,12 +67,13 @@ struct RayExchangeData {
   int material_last;
   double sqrtkT;
   double sqrtkT_last;
-  
+
 #ifdef OPENMC_DAGMC_ENABLED
   // DAGMC fields - fixed-size array to avoid variable-length vector
   Direction last_dir;
   moab::EntityHandle handles[MAX_N_HANDLES];
-  int n_handles;  // Actual number of valid handles (may be less than MAX_N_HANDLES)
+  int n_handles; // Actual number of valid handles (may be less than
+                 // MAX_N_HANDLES)
 #endif
 };
 
@@ -107,8 +109,8 @@ public:
     SourceRegionHandle& srh, double distance, bool is_active, Position r);
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
-  void restart_ray(FlatSourceDomain* domain, RayExchangeData& data, float* angular_flux,
-                   LocalCoord* coord, int* cell_last_data);
+  void restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
+    float* angular_flux, LocalCoord* coord, int* cell_last_data);
   uint64_t transport_history_based_single_ray();
   SourceSite sample_prng();
   SourceSite sample_halton();
@@ -132,7 +134,7 @@ public:
   RayBufferContainer exchange_data_;
 
   bool ray_trace_only_ {false}; // If true, only perform geometry operations
-  int owner_rank_ {C_NONE}; // Rank that owns this ray based on its position
+  int owner_rank_ {C_NONE};     // Rank that owns this ray based on its position
 
 private:
   //----------------------------------------------------------------------------

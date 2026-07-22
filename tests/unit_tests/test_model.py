@@ -574,11 +574,11 @@ def test_model_xml(run_in_tmpdir):
 
 def test_model_description(run_in_tmpdir):
     model = openmc.examples.pwr_pin_cell()
-    model.description = "PWR pin cell test model"
+    model.description = "PWR fuel & water <test model>"
     model.export_to_model_xml()
 
     reloaded = openmc.Model.from_model_xml()
-    assert reloaded.description == "PWR pin cell test model"
+    assert reloaded.description == "PWR fuel & water <test model>"
 
     # Verify that an empty description is not written to XML
     model2 = openmc.examples.pwr_pin_cell()

@@ -721,7 +721,11 @@ class Model:
             fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
             fh.write("<model>\n")
             if self.description:
-                fh.write(f"  <description>{self.description}</description>\n")
+                description_element = ET.Element('description')
+                description_element.text = self.description
+                fh.write("  ")
+                fh.write(ET.tostring(description_element, encoding="unicode"))
+                fh.write("\n")
             # Write the materials collection to the open XML file first.
             # This will write the XML header also
             materials._write_xml(fh, False, level=1,

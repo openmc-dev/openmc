@@ -687,7 +687,7 @@ void write_eigenvalue_hdf5(hid_t group)
   write_dataset(group, "n_inactive", settings::n_inactive);
   write_dataset(group, "generations_per_batch", settings::gen_per_batch);
   auto n = simulation::k_generation.size();
-  xt::xtensor<double, 2> k_generation({n, 2});
+  tensor::Tensor<double> k_generation({n, 2});
   for (int i = 0; i < n; ++i) {
     k_generation(i, 0) = simulation::k_generation[i][0];
     k_generation(i, 1) = simulation::k_generation[i][1];
@@ -708,7 +708,7 @@ void read_eigenvalue_hdf5(hid_t group)
 {
   read_dataset(group, "generations_per_batch", settings::gen_per_batch);
   size_t n = simulation::restart_batch * settings::gen_per_batch;
-  xt::xtensor<double, 2> k_generation({n, 2});
+  tensor::Tensor<double> k_generation({n, 2});
   read_dataset(group, "k_generation", k_generation);
   simulation::k_generation.resize(n);
   for (int i = 0; i < n; ++i) {

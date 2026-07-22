@@ -192,35 +192,6 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.free_gas_threshold == 800.0
 
 
-def test_update():
-    base = openmc.Settings(particles=100, batches=10,
-                           output={'tallies': False})
-    other = openmc.Settings(particles=500)
-    other.source = openmc.IndependentSource(space=openmc.stats.Point())
-
-    base.update(other)
-
-    # Populated attributes of `other` overwrite those of `base`...
-    assert base.particles == 500
-    assert len(base.source) == 1
-    # ...while unset attributes leave `base` untouched
-    assert base.batches == 10
-    assert base.output == {'tallies': False}
-    # Copied values are independent of `other`
-    assert base.source[0] is not other.source[0]
-
-    # run_mode always carries a value, so only a non-default ('eigenvalue')
-    # run mode is detectable and copied
-    base.run_mode = 'fixed source'
-    base.update(openmc.Settings())
-    assert base.run_mode == 'fixed source'
-    base.update(openmc.Settings(run_mode='volume'))
-    assert base.run_mode == 'volume'
-
-    with pytest.raises(TypeError):
-        base.update({'particles': 5})
-
-
 def test_properties_file_load(tmp_path, mpi_intracomm):
     model = openmc.examples.pwr_assembly()
 

@@ -2098,8 +2098,6 @@ class Model:
         # owned by the infinite medium method
         model.settings = copy.deepcopy(settings)
         model.settings.source = source
-        model.settings.run_mode = 'fixed source'
-        model.settings.create_fission_neutrons = False
 
         # Geometry
         box = openmc.model.RectangularPrism(
@@ -2356,8 +2354,6 @@ class Model:
         # owned by the stochastic slab method
         model.settings = copy.deepcopy(settings)
         model.settings.source = source
-        model.settings.run_mode = 'fixed source'
-        model.settings.create_fission_neutrons = False
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
@@ -2698,8 +2694,10 @@ class Model:
             energy simulation(s) that generate the MGXS library. Only the
             attributes given override the generation defaults. For example,
             ``model.convert_to_multigroup(particles=100_000)`` adjusts only the
-            particle count (see :meth:`openmc.Settings.update`). The run mode
-            cannot be overridden, as it is determined by the generation method.
+            particle count. The run mode cannot be overridden, as it is
+            determined by the generation method. The surrogate-geometry methods
+            also construct their own sources and always disable
+            ``create_fission_neutrons`` so that fission is treated as capture.
             A ``weight_windows_file`` is applied during ``"material_wise"``
             generation and ignored with a warning by the other methods; see the
             user guide for the weight window "bootstrapping" workflow this
@@ -2739,20 +2737,16 @@ class Model:
                     'arguments cannot be combined with Settings keyword '
                     'arguments.')
 
-        # Resolve the settings for the MGXS generation run(s) in three
-        # layers, with later layers taking precedence: the model's own
-        # settings ("material_wise") or a fresh Settings object (surrogate
-        # methods), then the generation defaults, then the user's
-        # keyword-argument overrides.
+        # Resolve the settings for the MGXS generation run(s) in three layers,
+        # with later layers taking precedence: the model's own settings
+        # ("material_wise") or a fresh Settings object (surrogate methods), then
+        # the generation defaults, then the user's keyword-argument overrides.
         user_settings = settings
         if method == 'material_wise':
             settings = copy.deepcopy(self.settings)
         else:
             settings = openmc.Settings()
             settings.temperature = copy.deepcopy(self.settings.temperature)
-            # The surrogate-geometry methods treat fission as capture
-            # (nu-fission is still tallied)
-            settings.create_fission_neutrons = False
 
         settings.batches = 100 if method == 'infinite_medium' else 200
         if method != 'infinite_medium':
@@ -2771,17 +2765,23 @@ class Model:
                     'The given "source" setting is ignored by the '
                     f'"{method}" MGXS generation method, which constructs '
                     'its own sources.')
-            settings.update(user_settings)
+            # Apply the settings attributes passed by the caller
+            for name in kwargs:
+                if hasattr(type(settings), name):
+                    setattr(settings, name, copy.deepcopy(
+                        getattr(user_settings, name)))
 
         # The run mode is the one attribute that cannot be detected as
-        # user-populated (a fresh Settings object defaults it to
-        # 'eigenvalue'), so it is owned by the generation method:
-        # "material_wise" always takes it from the model, while the
-        # surrogate-geometry methods always run in fixed source mode.
+        # user-populated (a fresh Settings object defaults it to 'eigenvalue'),
+        # so it is owned by the generation method: "material_wise" always takes
+        # it from the model, while the surrogate-geometry methods always run in
+        # fixed source mode. The surrogate-geometry methods also treat fission
+        # as capture (nu-fission is still tallied)
         if method == 'material_wise':
             settings.run_mode = self.settings.run_mode
         else:
             settings.run_mode = 'fixed source'
+            settings.create_fission_neutrons = False
 
         # A weight windows file on the generation settings is loaded and
         # applied (specifying a file turns weight windows on) during the

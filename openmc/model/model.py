@@ -1,6 +1,5 @@
 from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
-from collections import deque
 import copy
 from dataclasses import dataclass, field
 from functools import cache
@@ -3065,28 +3064,18 @@ class Model:
 
         overlap_boxes = list(overlap_boxes.values())
 
-        # Flag overlaps that are under-resolved: for a blob-shaped overlap the
-        # bounding-box extent is the local thickness, so a region resolved by
-        # <= 2 voxels across its thinnest axis is unreliable. Features should
-        # span >= 3 voxels for trustworthy topology.
-        dx, dy = (x1 - x0) / nx, (y1 - y0) / ny
-        for box in overlap_boxes:
-            nvx = round((box["xmax"] - box["xmin"]) / dx) + 1
-            nvy = round((box["ymax"] - box["ymin"]) / dy) + 1
-            nvz = round((box["zmax"] - box["zmin"]) / dz) + 1
-            box["under_resolved"] = min(nvx, nvy, nvz) <= 2
+        # Overlaps are not flagged for resolution: whether an overlap exists and
+        # which cells collide is determined by the (universe, cell1, cell2) key
 
         # Label spatially-connected undefined regions in 3D and build a
-        # world-coordinate bounding box for each connected component. Edge
-        # (face, rank-1) connectivity is used; a feature thinner than the sample
-        # spacing can rasterize with breaks and split into several regions, so
-        # increase n_samples until thin features are resolved.
-        def _label_boxes(volume):
-            boxes = []
-            if not volume.any():
-                return boxes
+        # world-coordinate bounding box for each connected component. A feature 
+        # thinner than the sample spacing can rasterize with breaks and split 
+        # into several regions, so give a suggestion to the user to increase n_samples.
+
+        undefined_boxes = []
+        if internal_volume.any():
             structure = ndimage.generate_binary_structure(3, 1)  # face connectivity
-            labeled, _ = ndimage.label(volume, structure=structure)
+            labeled, _ = ndimage.label(internal_volume, structure=structure)
             for region_id, sl in enumerate(ndimage.find_objects(labeled), start=1):
                 if sl is None:
                     continue
@@ -3109,24 +3098,19 @@ class Model:
                 mask = (labeled[sl] == region_id)
                 under_resolved = not ndimage.binary_erosion(mask).any()
 
-                boxes.append({
+                undefined_boxes.append({
                     "xmin": float(min(x_lo, x_hi)), "xmax": float(max(x_lo, x_hi)),
                     "ymin": float(min(y_lo, y_hi)), "ymax": float(max(y_lo, y_hi)),
                     "zmin": float(z_lo), "zmax": float(z_hi),
                     "under_resolved": bool(under_resolved),
                 })
-            return boxes
-
-        undefined_boxes = _label_boxes(internal_volume)
 
         # Round coordinates to keep the reported boxes readable.
         for box in overlap_boxes + undefined_boxes:
             for coord in ("xmin", "xmax", "ymin", "ymax", "zmin", "zmax"):
                 box[coord] = round(box[coord], 4)
 
-        under_resolved = any(
-            b["under_resolved"] for b in overlap_boxes + undefined_boxes
-        )
+        under_resolved = any(b["under_resolved"] for b in undefined_boxes)
 
         result = {
             "overlap_boxes": overlap_boxes,
@@ -3137,14 +3121,12 @@ class Model:
         }
 
         if under_resolved:
-            n_ov = sum(b["under_resolved"] for b in overlap_boxes)
             n_un = sum(b["under_resolved"] for b in undefined_boxes)
             warnings.warn(
-                f"Sampling resolution may be insufficient: {n_ov} overlap and "
-                f"{n_un} undefined region(s) are resolved by <= 2 voxels across "
-                "their thinnest dimension, so they may be fragmented or missed. "
-                "Increase n_samples (roughly 2-3x, or scan a tighter box) so "
-                "thin features span at least 3 voxels."
+                f"Sampling resolution may be insufficient: {n_un} undefined "
+                "region(s) are resolved by <= 2 voxels across their thinnest "
+                "dimension, so they may be fragmented. "
+                "Consider increasing n_samples."
             )
 
         if print_summary:
@@ -3153,12 +3135,11 @@ class Model:
             if result["overlap_boxes"]:
                 print(f"  Overlaps found: {result['n_overlaps']}")
                 for box in result["overlap_boxes"]:
-                    flag = "  [under-resolved]" if box["under_resolved"] else ""
                     print(
                         f"    cells {box['key']}: "
                         f"x[{box['xmin']:.4g}, {box['xmax']:.4g}] "
                         f"y[{box['ymin']:.4g}, {box['ymax']:.4g}] "
-                        f"z[{box['zmin']:.4g}, {box['zmax']:.4g}]{flag}"
+                        f"z[{box['zmin']:.4g}, {box['zmax']:.4g}]"
                     )
             else:
                 print("  Overlap bounding boxes: None")
@@ -3178,9 +3159,10 @@ class Model:
 
             if result["under_resolved"]:
                 print(
-                    "  WARNING: some regions are resolved by <= 2 voxels across "
-                    "their thinnest dimension and may be fragmented or missed; "
-                    "increase n_samples so thin features span at least 3 voxels."
+                    "  WARNING: some undefined regions are resolved by <= 2 "
+                    "voxels across their thinnest dimension and may be "
+                    "fragmented or missed; increase n_samples so thin features "
+                    "span at least 3 voxels."
                 )
 
         return result

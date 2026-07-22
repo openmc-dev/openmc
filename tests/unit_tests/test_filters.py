@@ -17,14 +17,16 @@ def box_model():
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.inactive = 0
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Point())
     return model
 
 
 def test_cell_instance():
     c1 = openmc.Cell()
     c2 = openmc.Cell()
-    f = openmc.CellInstanceFilter([(c1, 0), (c1, 1), (c1, 2), (c2, 0), (c2, 1)])
+    f = openmc.CellInstanceFilter(
+        [(c1, 0), (c1, 1), (c1, 2), (c2, 0), (c2, 1)])
 
     # Make sure __repr__ works
     repr(f)
@@ -234,7 +236,8 @@ def test_first_moment(run_in_tmpdir, box_model):
         flux, scatter = sp.tallies[plain_tally.id].mean.ravel()
 
         # Check that first moment matches
-        first_score = lambda t: sp.tallies[t.id].mean.ravel()[0]
+        def first_score(t):
+            return sp.tallies[t.id].mean.ravel()[0]
         assert first_score(leg_tally) == scatter
         assert first_score(leg_sptl_tally) == scatter
         assert first_score(sph_scat_tally) == scatter
@@ -258,7 +261,8 @@ def test_lethargy_bin_width():
     assert len(f.lethargy_bin_width) == 175
     energy_bins = openmc.mgxs.GROUP_STRUCTURES['VITAMIN-J-175']
     assert f.lethargy_bin_width[0] == np.log10(energy_bins[1]/energy_bins[0])
-    assert f.lethargy_bin_width[-1] == np.log10(energy_bins[-1]/energy_bins[-2])
+    assert f.lethargy_bin_width[-1] == np.log10(
+        energy_bins[-1]/energy_bins[-2])
 
 
 def test_energyfunc():
@@ -292,7 +296,8 @@ def test_tabular_from_energyfilter():
     # 'histogram' is the default
     assert tab.interpolation == 'histogram'
 
-    tab = efilter.get_tabular(values=np.array([10, 10, 5]), interpolation='linear-linear')
+    tab = efilter.get_tabular(values=np.array(
+        [10, 10, 5]), interpolation='linear-linear')
     assert tab.interpolation == 'linear-linear'
 
 
@@ -312,6 +317,100 @@ def test_energy_filter():
     msg = 'Unable to set "filter value" to "-1.2" since it is less than "0.0"'
     with raises(ValueError, match=msg):
         openmc.EnergyFilter([-1.2, 0.25, 0.5])
+
+
+def test_particle_production_filter():
+    energy_bins = [1e3, 1e4, 1e5, 1e6]
+
+    # --- Single particle with energy bins ---
+    f = openmc.ParticleProductionFilter('photon', energy_bins)
+
+    # particles getter always returns a list
+    assert isinstance(f.particles, list)
+    assert len(f.particles) == 1
+    assert f.particles[0] == openmc.ParticleType.PHOTON
+
+    assert f.num_energy_bins == 3
+    assert f.num_bins == 3
+    assert f.shape == (1, 3)
+    assert len(f.bins) == 3
+    # Each bin is (particle_name, e_low, e_high)
+    assert f.bins[0] == ('photon', 1e3, 1e4)
+    assert f.bins[2] == ('photon', 1e5, 1e6)
+
+    # __repr__ check
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'particleproduction'
+    assert elem.find('particles').text == 'photon'
+    assert elem.find('energies').text.split()[0] == str(energy_bins[0])
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert new_f.particles == f.particles
+    assert np.allclose(new_f.energies, f.energies)
+
+    # pandas output (with energy bins -> 3 MultiIndex columns)
+    df = f.get_pandas_dataframe(data_size=3, stride=1)
+    assert df.shape[0] == 3
+    assert ('particleproduction', 'particle') in df.columns
+    assert ('particleproduction', 'energy low [eV]') in df.columns
+    assert ('particleproduction', 'energy high [eV]') in df.columns
+
+    # --- Multiple particles with energy bins ---
+    f2 = openmc.ParticleProductionFilter(['photon', 'neutron'], energy_bins)
+    assert len(f2.particles) == 2
+    assert f2.num_bins == 6  # 2 particles * 3 energy bins
+    assert f2.shape == (2, 3)
+    assert len(f2.bins) == 6
+    # First 3 bins are photon, next 3 are neutron
+    assert f2.bins[0] == ('photon', 1e3, 1e4)
+    assert f2.bins[3] == ('neutron', 1e3, 1e4)
+
+    df2 = f2.get_pandas_dataframe(data_size=6, stride=1)
+    assert df2.shape[0] == 6
+    assert list(df2[('particleproduction', 'particle')]) == \
+        ['photon'] * 3 + ['neutron'] * 3
+
+    # XML round-trip
+    elem2 = f2.to_xml_element()
+    new_f2 = openmc.Filter.from_xml_element(elem2)
+    assert len(new_f2.particles) == 2
+    assert np.allclose(new_f2.energies, energy_bins)
+
+    # --- Multiple particles without energy bins ---
+    f3 = openmc.ParticleProductionFilter(['photon', 'neutron', 'electron'])
+    assert f3.energies is None
+    assert f3.num_bins == 3
+    assert f3.num_energy_bins == 1
+    assert f3.shape == (3, 1)
+    assert f3.bins == ['photon', 'neutron', 'electron']
+
+    repr(f3)
+
+    df3 = f3.get_pandas_dataframe(data_size=3, stride=1)
+    assert df3.shape[0] == 3
+    assert ('particleproduction', 'particle') in df3.columns
+    # Should not have energy columns
+    assert ('particleproduction', 'energy low [eV]') not in df3.columns
+
+    # XML round-trip without energies
+    elem3 = f3.to_xml_element()
+    assert elem3.find('energies') is None
+    new_f3 = openmc.Filter.from_xml_element(elem3)
+    assert new_f3.energies is None
+    assert len(new_f3.particles) == 3
+
+    # --- Energies from group structure name ---
+    f4 = openmc.ParticleProductionFilter('photon', energies='CCFE-709')
+    expected = openmc.mgxs.GROUP_STRUCTURES['CCFE-709']
+    assert np.allclose(f4.energies, expected)
+    assert f4.num_energy_bins == len(expected) - 1
+    assert f4.num_bins == len(expected) - 1
 
 
 def test_weight():

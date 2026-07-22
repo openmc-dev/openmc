@@ -17,7 +17,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"
@@ -43,6 +43,12 @@
 #include "openmc/timer.h"
 
 namespace openmc {
+
+#ifdef OPENMC_ENABLE_STRICT_FP
+const bool STRICT_FP_ENABLED = true;
+#else
+const bool STRICT_FP_ENABLED = false;
+#endif
 
 //==============================================================================
 
@@ -75,7 +81,7 @@ void title()
   // Write version information
   fmt::print(
     "                 | The OpenMC Monte Carlo Code\n"
-    "       Copyright | 2011-2025 MIT, UChicago Argonne LLC, and contributors\n"
+    "       Copyright | 2011-2026 MIT, UChicago Argonne LLC, and contributors\n"
     "         License | https://docs.openmc.org/en/latest/license.html\n"
     "         Version | {}.{}.{}{}{}\n",
     VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "",
@@ -295,7 +301,7 @@ void print_version()
     fmt::print("OpenMC version {}.{}.{}{}{}\n", VERSION_MAJOR, VERSION_MINOR,
       VERSION_RELEASE, VERSION_DEV ? "-dev" : "", VERSION_COMMIT_COUNT);
     fmt::print("Commit hash: {}\n", VERSION_COMMIT_HASH);
-    fmt::print("Copyright (c) 2011-2025 MIT, UChicago Argonne LLC, and "
+    fmt::print("Copyright (c) 2011-2026 MIT, UChicago Argonne LLC, and "
                "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
   }
@@ -315,8 +321,8 @@ void print_build_info()
   std::string png(n);
   std::string profiling(n);
   std::string coverage(n);
-  std::string mcpl(n);
   std::string uwuw(n);
+  std::string strict_fp(n);
 
 #ifdef PHDF5
   phdf5 = y;
@@ -330,9 +336,6 @@ void print_build_info()
 #ifdef OPENMC_LIBMESH_ENABLED
   libmesh = y;
 #endif
-#ifdef OPENMC_MCPL
-  mcpl = y;
-#endif
 #ifdef USE_LIBPNG
   png = y;
 #endif
@@ -344,6 +347,9 @@ void print_build_info()
 #endif
 #ifdef OPENMC_UWUW_ENABLED
   uwuw = y;
+#endif
+#ifdef OPENMC_ENABLE_STRICT_FP
+  strict_fp = y;
 #endif
 
   // Wraps macro variables in quotes
@@ -359,10 +365,10 @@ void print_build_info()
     fmt::print("PNG support:           {}\n", png);
     fmt::print("DAGMC support:         {}\n", dagmc);
     fmt::print("libMesh support:       {}\n", libmesh);
-    fmt::print("MCPL support:          {}\n", mcpl);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
     fmt::print("UWUW support:          {}\n", uwuw);
+    fmt::print("Strict FP:             {}\n", strict_fp);
   }
 }
 
@@ -495,6 +501,14 @@ void print_runtime()
     show_rate("Calculation Rate (inactive)", speed_inactive);
   }
   show_rate("Calculation Rate (active)", speed_active);
+
+  // Display track rate when weight windows are enabled
+  if (settings::weight_windows_on) {
+    double speed_tracks =
+      simulation::simulation_tracks_completed / time_active.elapsed();
+    fmt::print(
+      " {:<33} = {:.6} tracks/second\n", "Track Rate (active)", speed_tracks);
+  }
 }
 
 //==============================================================================
@@ -607,8 +621,15 @@ void write_tallies()
   if (model::tallies.empty())
     return;
 
+  // Tag tallies.out written during the forward solve of an adjoint run
+  const char* forward =
+    (FlatSourceDomain::solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT)
+      ? "forward."
+      : "";
+
   // Set filename for tallies_out
-  std::string filename = fmt::format("{}tallies.out", settings::path_output);
+  std::string filename =
+    fmt::format("{}tallies.{}out", settings::path_output, forward);
 
   // Open the tallies.out file.
   std::ofstream tallies_out;

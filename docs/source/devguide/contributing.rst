@@ -111,7 +111,8 @@ The TC consists of the following individuals:
 - `Paul Romano <https://github.com/paulromano>`_
 - `Patrick Shriwise <https://github.com/pshriwise>`_
 - `Adam Nelson <https://github.com/nelsonag>`_
-- `Benoit Forget <https://github.com/bforget>`_
+- `Jonathan Shimwell <https://github.com/shimwell>`_
+- `John Tramm <https://github.com/jtramm>`_
 
 The Project Lead is Paul Romano.
 

@@ -7,13 +7,19 @@
 #include <numeric>   // for accumulate
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
+#include <unordered_set>
 
+#include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/xml_interface.h"
+
+namespace {
+std::unordered_set<std::string> decay_spectrum_missing_chain_nuclides;
+}
 
 namespace openmc {
 
@@ -363,30 +369,92 @@ double Watt::evaluate(double x) const
 //==============================================================================
 // Normal implementation
 //==============================================================================
+
+Normal::Normal(double mean_value, double std_dev, double lower, double upper)
+  : mean_value_ {mean_value}, std_dev_ {std_dev}, lower_ {lower}, upper_ {upper}
+{
+  compute_normalization();
+}
+
 Normal::Normal(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
-  if (params.size() != 2) {
+  if (params.size() != 2 && params.size() != 4) {
     openmc::fatal_error("Normal energy distribution must have two "
-                        "parameters specified.");
+                        "parameters (mean, std_dev) or four parameters "
+                        "(mean, std_dev, lower, upper) specified.");
   }
 
   mean_value_ = params.at(0);
   std_dev_ = params.at(1);
 
+  // Optional truncation bounds
+  if (params.size() == 4) {
+    lower_ = params.at(2);
+    upper_ = params.at(3);
+  } else {
+    lower_ = -INFTY;
+    upper_ = INFTY;
+  }
+
+  compute_normalization();
   read_bias_from_xml(node);
+}
+
+void Normal::compute_normalization()
+{
+  // Validate bounds
+  if (lower_ >= upper_) {
+    openmc::fatal_error(
+      "Normal distribution lower bound must be less than upper bound.");
+  }
+
+  // Check if truncation bounds are finite
+  is_truncated_ = (lower_ > -INFTY || upper_ < INFTY);
+
+  if (is_truncated_) {
+    double alpha = (lower_ - mean_value_) / std_dev_;
+    double beta = (upper_ - mean_value_) / std_dev_;
+    double cdf_diff = standard_normal_cdf(beta) - standard_normal_cdf(alpha);
+
+    if (cdf_diff <= 0.0) {
+      openmc::fatal_error(
+        "Normal distribution truncation bounds exclude entire distribution.");
+    }
+    norm_factor_ = 1.0 / cdf_diff;
+  } else {
+    norm_factor_ = 1.0;
+  }
 }
 
 double Normal::sample_unbiased(uint64_t* seed) const
 {
-  return normal_variate(mean_value_, std_dev_, seed);
+  if (!is_truncated_) {
+    return normal_variate(mean_value_, std_dev_, seed);
+  }
+
+  // Rejection sampling for truncated normal
+  double x;
+  do {
+    x = normal_variate(mean_value_, std_dev_, seed);
+  } while (x < lower_ || x > upper_);
+  return x;
 }
 
 double Normal::evaluate(double x) const
 {
-  return (1.0 / (std::sqrt(2.0 / PI) * std_dev_)) *
-         std::exp(-(std::pow((x - mean_value_), 2.0)) /
-                  (2.0 * std::pow(std_dev_, 2.0)));
+  // Return 0 outside truncation bounds
+  if (x < lower_ || x > upper_) {
+    return 0.0;
+  }
+
+  // Standard normal PDF value
+  double pdf = (1.0 / (std::sqrt(2.0 * PI) * std_dev_)) *
+               std::exp(-std::pow((x - mean_value_), 2.0) /
+                        (2.0 * std::pow(std_dev_, 2.0)));
+
+  // Apply normalization for truncation
+  return pdf * norm_factor_;
 }
 
 //==============================================================================
@@ -401,6 +469,10 @@ Tabular::Tabular(pugi::xml_node node)
       interp_ = Interpolation::histogram;
     } else if (temp == "linear-linear") {
       interp_ = Interpolation::lin_lin;
+    } else if (temp == "log-linear") {
+      interp_ = Interpolation::log_lin;
+    } else if (temp == "log-log") {
+      interp_ = Interpolation::log_log;
     } else {
       openmc::fatal_error(
         "Unsupported interpolation type for distribution: " + temp);
@@ -437,13 +509,6 @@ void Tabular::init(
   std::copy(x, x + n, std::back_inserter(x_));
   std::copy(p, p + n, std::back_inserter(p_));
 
-  // Check interpolation parameter
-  if (interp_ != Interpolation::histogram &&
-      interp_ != Interpolation::lin_lin) {
-    openmc::fatal_error("Only histogram and linear-linear interpolation "
-                        "for tabular distribution is supported.");
-  }
-
   // Calculate cumulative distribution function
   if (c) {
     std::copy(c, c + n, std::back_inserter(c_));
@@ -455,6 +520,18 @@ void Tabular::init(
         c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]);
       } else if (interp_ == Interpolation::lin_lin) {
         c_[i] = c_[i - 1] + 0.5 * (p_[i - 1] + p_[i]) * (x_[i] - x_[i - 1]);
+      } else if (interp_ == Interpolation::log_lin) {
+        double m = std::log(p_[i] / p_[i - 1]) / (x_[i] - x_[i - 1]);
+        c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]) *
+                              exprel(m * (x_[i] - x_[i - 1]));
+      } else if (interp_ == Interpolation::log_log) {
+        double m = std::log((x_[i] * p_[i]) / (x_[i - 1] * p_[i - 1])) /
+                   std::log(x_[i] / x_[i - 1]);
+        c_[i] = c_[i - 1] + x_[i - 1] * p_[i - 1] *
+                              std::log(x_[i] / x_[i - 1]) *
+                              exprel(m * std::log(x_[i] / x_[i - 1]));
+      } else {
+        UNREACHABLE();
       }
     }
   }
@@ -475,14 +552,9 @@ double Tabular::sample_unbiased(uint64_t* seed) const
   double c = prn(seed);
 
   // Find first CDF bin which is above the sampled value
-  double c_i = c_[0];
-  int i;
-  std::size_t n = c_.size();
-  for (i = 0; i < n - 1; ++i) {
-    if (c <= c_[i + 1])
-      break;
-    c_i = c_[i + 1];
-  }
+  auto c_iter = std::lower_bound(c_.begin() + 1, c_.end(), c);
+  int i = std::distance(c_.begin(), c_iter) - 1;
+  double c_i = c_[i];
 
   // Determine bounding PDF values
   double x_i = x_[i];
@@ -495,7 +567,7 @@ double Tabular::sample_unbiased(uint64_t* seed) const
     } else {
       return x_i;
     }
-  } else {
+  } else if (interp_ == Interpolation::lin_lin) {
     // Linear-linear interpolation
     double x_i1 = x_[i + 1];
     double p_i1 = p_[i + 1];
@@ -508,6 +580,24 @@ double Tabular::sample_unbiased(uint64_t* seed) const
              (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
                m;
     }
+  } else if (interp_ == Interpolation::log_lin) {
+    // Log-linear interpolation
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    double m = std::log(p_i1 / p_i) / (x_i1 - x_i);
+    double f = (c - c_i) / p_i;
+    return x_i + f * log1prel(m * f);
+  } else if (interp_ == Interpolation::log_log) {
+    // Log-Log interpolation
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    double m = std::log((x_i1 * p_i1) / (x_i * p_i)) / std::log(x_i1 / x_i);
+    double f = (c - c_i) / (p_i * x_i);
+    return x_i * std::exp(f * log1prel(m * f));
+  } else {
+    UNREACHABLE();
   }
 }
 
@@ -669,6 +759,8 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     dist = UPtrDist {new Tabular(node)};
   } else if (type == "mixture") {
     dist = UPtrDist {new Mixture(node)};
+  } else if (type == "decay_spectrum") {
+    dist = UPtrDist {new DecaySpectrum(node)};
   } else if (type == "muir") {
     openmc::fatal_error(
       "'muir' distributions are now specified using the openmc.stats.muir() "
@@ -677,6 +769,122 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     openmc::fatal_error("Invalid distribution type: " + type);
   }
   return dist;
+}
+
+//==============================================================================
+// DecaySpectrum implementation
+//==============================================================================
+
+DecaySpectrum::DecaySpectrum(pugi::xml_node node)
+{
+  // Read the region volume [cm^3] needed for absolute emission rate
+  if (!check_for_node(node, "volume"))
+    fatal_error("DecaySpectrum: 'volume' attribute is required.");
+  double volume = std::stod(get_node_value(node, "volume"));
+
+  // Read nuclide names and atom densities from XML
+  vector<int> nuclide_indices;
+  vector<double> atoms;
+  auto names = get_node_array<std::string>(node, "nuclides");
+  auto densities = get_node_array<double>(node, "parameters");
+  if (names.size() != densities.size()) {
+    fatal_error("DecaySpectrum nuclides and parameters must have the same "
+                "length.");
+  }
+
+  for (size_t i = 0; i < names.size(); ++i) {
+    const auto& name = names[i];
+    double density = densities[i];
+
+    // Look up nuclide in the depletion chain
+    auto it = data::chain_nuclide_map.find(name);
+    if (it == data::chain_nuclide_map.end()) {
+      if (decay_spectrum_missing_chain_nuclides.insert(name).second) {
+        warning("Nuclide '" + name +
+                "' appears in a DecaySpectrum source but is not present in "
+                "the depletion chain; it will be ignored.");
+      }
+      continue;
+    }
+
+    int nuclide_index = it->second;
+    const auto& chain_nuc = data::chain_nuclides[nuclide_index];
+    const Distribution* photon_dist = chain_nuc->photon_energy();
+    if (!photon_dist)
+      continue;
+
+    // Skip non-positive densities and warn if negative
+    if (density <= 0.0) {
+      if (density < 0.0) {
+        warning("Nuclide '" + name +
+                "' has a negative density in a DecaySpectrum source; it will "
+                "be ignored.");
+      }
+      continue;
+    }
+
+    // atoms = density [atom/b-cm] * 1e24 [b/cm^2] * volume [cm^3]
+    double atoms_i = density * 1.0e24 * volume;
+
+    nuclide_indices.push_back(nuclide_index);
+    atoms.push_back(atoms_i);
+  }
+
+  init(std::move(nuclide_indices), atoms);
+}
+
+void DecaySpectrum::init(
+  vector<int> nuclide_indices, const vector<double>& atoms)
+{
+  if (nuclide_indices.size() != atoms.size()) {
+    fatal_error("DecaySpectrum nuclide index and atoms arrays must have "
+                "the same length.");
+  }
+
+  vector<double> probs;
+  probs.reserve(nuclide_indices.size());
+  for (size_t i = 0; i < nuclide_indices.size(); ++i) {
+    // Distribution integral is in [photons/s/atom]; multiplying by atoms gives
+    // the total emission rate [photons/s] for this nuclide.
+    const auto* dist =
+      data::chain_nuclides[nuclide_indices[i]]->photon_energy();
+    probs.push_back(atoms[i] * dist->integral());
+  }
+
+  nuclide_indices_ = std::move(nuclide_indices);
+  integral_ = std::accumulate(probs.begin(), probs.end(), 0.0);
+  if (nuclide_indices_.empty() || integral_ <= 0.0) {
+    fatal_error("DecaySpectrum source did not resolve any nuclides with decay "
+                "photon spectra and positive atom densities. Ensure "
+                "OPENMC_CHAIN_FILE is set and matches the nuclides in the "
+                "source definition.");
+  }
+  di_.assign(probs);
+}
+
+DecaySpectrum::Sample DecaySpectrum::sample_with_parent(uint64_t* seed) const
+{
+  size_t idx = di_.sample(seed);
+  int parent_nuclide = nuclide_indices_[idx];
+  const auto* dist = data::chain_nuclides[parent_nuclide]->photon_energy();
+  auto [energy, weight] = dist->sample(seed);
+  return {energy, weight, parent_nuclide};
+}
+
+std::pair<double, double> DecaySpectrum::sample(uint64_t* seed) const
+{
+  auto sample = sample_with_parent(seed);
+  return {sample.energy, sample.weight};
+}
+
+double DecaySpectrum::integral() const
+{
+  return integral_;
+}
+
+double DecaySpectrum::sample_unbiased(uint64_t* seed) const
+{
+  return sample_with_parent(seed).energy;
 }
 
 } // namespace openmc

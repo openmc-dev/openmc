@@ -56,7 +56,8 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 
   // Initialize source regions.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
-  source_regions_ = SourceRegionContainer(negroups_, is_linear);
+  bool is_adaptive = volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE;
+  source_regions_ = SourceRegionContainer(negroups_, is_linear, is_adaptive);
 
   // Initialize tally volumes
   if (volume_normalized_flux_tallies_) {
@@ -105,122 +106,145 @@ void FlatSourceDomain::accumulate_iteration_flux()
 
 // Demotion step for the adaptive volume estimator (no-op for the
 // others). Rather than reacting to per-iteration negatives, this estimator
-// runs the unmodified simulation-averaged update throughout the inactive phase
-// and makes two one-shot demotion decisions at the inactive->active
-// transition, each from the accumulated (converged) inactive flux:
+// runs the unmodified simulation-averaged update and accumulates every
+// batch's flux into a running sum (scalar_flux_t, kept separate from the
+// active-only tally accumulator), from which it makes two demotion
+// decisions:
 //
-//  1. Converged-negative (sign): any region whose accumulated flux is
+//  1. Accumulated-negative (sign): any region whose accumulated flux is
 //     negative in any group is demoted to the naive (iteration) volume
-//     estimator for the active phase -- a positively weighted estimator that
-//     cannot go negative with a non-negative source. Because the decision is
-//     made on the accumulated mean rather than on individual fluctuations,
+//     estimator -- a positively weighted estimator that cannot go negative
+//     with a non-negative source. During the active phase the test also
+//     watches the active-only tally accumulation (scalar_flux_final), the
+//     quantity tally means are actually computed from. Because the decision
+//     is made on accumulated means rather than on individual fluctuations,
 //     the lower tail of the noise distribution is not clipped, so regions
 //     that are merely noisy (and average non-negative) are left unbiased.
 //
 //  2. Strong-feed latch: any region whose flux-independent feed (cross-group
 //     in-scatter, fission, and external source), evaluated from the same
 //     accumulated flux, exceeds ADAPTIVE_VOLUME_KAPPA times its own
-//     accumulated flux in any group is likewise demoted for the active
-//     phase. This is the same physical condition the per-iteration
-//     strong-source test targets, decided from converged data: the
-//     per-iteration test, evaluated on noisy iterates, cannot fire in the
-//     joint excursion where a bad iteration drags a region's source and flux
-//     negative together, so a strong region would otherwise ride such
-//     excursions on unprotected simulation-averaged updates and can
-//     accumulate a negative window average. The latch removes the whole
-//     strong-feed class ahead of time. A region with no cross-group or
-//     external feed can never latch, so sign-locked (e.g. one-group) noise
-//     cannot cause demotion through this path.
+//     accumulated flux in any group is likewise demoted. This is the same
+//     physical condition the per-iteration strong-source test targets,
+//     decided from accumulated data: the per-iteration test, evaluated on
+//     noisy iterates, cannot fire in the joint excursion where a bad
+//     iteration drags a region's source and flux negative together, so a
+//     strong region would otherwise ride such excursions on unprotected
+//     simulation-averaged updates and can accumulate a negative window
+//     average. The latch removes the whole strong-feed class. A region with
+//     no cross-group or external feed can never latch, so sign-locked (e.g.
+//     one-group) noise cannot cause demotion through this path.
+//
+// Both conditions are first decided at the inactive->active transition and
+// then re-evaluated every active batch as the accumulation keeps growing.
+// Decisions are demote-only: a set flag is never released, so the estimator
+// choice cannot churn with active-batch noise (a release/re-demote cycle
+// conditioned on tallied iterations would bias the tallies), and a marginal
+// region whose accumulated ratio converges below the threshold is never
+// eroded into demotion by continued re-evaluation. The active-phase
+// re-evaluation exists for solves whose inactive phase is too short to
+// converge deep regions: there the transition-time decision alone misses
+// chronically unstable regions whose accumulated flux only turns negative
+// (or whose feed ratio only crosses the threshold) after active batches
+// begin, and an escapee left on unprotected simulation-averaged updates can
+// corrupt the solution far beyond its own boundary through scattering
+// feedback.
 //
 // The decisions are recorded in converged_negative (1 = sign, 2 = latch;
 // > 0 == demoted), consumed by the volume switch and miss treatment in
 // add_source_to_scalar_flux and by the linear-source gradient fallback.
-void FlatSourceDomain::inactive_demotion_step()
+void FlatSourceDomain::demotion_step()
 {
   if (volume_estimator_ != RandomRayVolumeEstimator::ADAPTIVE)
     return;
-  if (simulation::current_batch > settings::n_inactive)
-    return;
 
-    // scalar_flux_final is untouched until active accumulation begins, so it
-    // serves as the temporary inactive accumulator.
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
-    source_regions_.scalar_flux_final(se) +=
-      source_regions_.scalar_flux_new(se);
+    source_regions_.scalar_flux_t(se) += source_regions_.scalar_flux_new(se);
   }
 
-  // On the last inactive batch, settle the demotion decision and clear the
-  // accumulator so the active phase tallies start from zero.
-  if (simulation::current_batch == settings::n_inactive) {
+  // Decisions start on the last inactive batch and continue every active
+  // batch thereafter.
+  if (simulation::current_batch < settings::n_inactive)
+    return;
+
 #pragma omp parallel for
-    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-      bool negative = false;
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    // Demote-only: settled regions are never re-evaluated or released.
+    if (source_regions_.converged_negative(sr) > 0)
+      continue;
+    bool negative = false;
+    for (int g = 0; g < negroups_; g++) {
+      if (source_regions_.scalar_flux_t(sr, g) < 0.0) {
+        negative = true;
+        break;
+      }
+    }
+    // During the active phase, a negative accumulated tally flux
+    // (scalar_flux_final, the active-only sum that tally means are computed
+    // from) also demotes: a region with a strong positive inactive
+    // accumulation can hold the running sum positive while the active-only
+    // sum -- the quantity actually reported -- goes negative. This branch
+    // fires only when the reported mean has already lost positivity, so it
+    // clips realized-negative outcomes rather than one tail of a healthy
+    // region's noise.
+    if (!negative && simulation::current_batch > settings::n_inactive) {
       for (int g = 0; g < negroups_; g++) {
         if (source_regions_.scalar_flux_final(sr, g) < 0.0) {
           negative = true;
           break;
         }
       }
-      // One-shot strong-feed latch, decided here at the moment of maximum
-      // information from the same inactive-accumulated flux: a region whose
-      // flux-independent feed (cross-group in-scatter, fission, and external
-      // source) exceeds kappa times its own accumulated flux in any group is
-      // demoted for the entire active phase. This covers the joint excursion
-      // (per-iteration source and flux dragged negative together) that the
-      // per-iteration strong-source test cannot fire on, with a label that
-      // active-phase noise can never flip. A region with no cross-group or
-      // external feed can never latch, so sign-locked (one-group) noise
-      // cannot cause demotion through this path.
-      bool latched = false;
-      int material = source_regions_.material(sr);
-      if (!negative && material != MATERIAL_VOID) {
-        int temp = source_regions_.temperature_idx(sr);
-        const int material_offset =
-          (material * ntemperature_ + temp) * negroups_;
-        const int scatter_offset =
-          (material * ntemperature_ + temp) * negroups_ * negroups_;
-        double inverse_k_eff = 1.0 / k_eff_;
-        for (int g = 0; g < negroups_ && !latched; g++) {
-          double feed = 0.0;
-          double chi = chi_[material_offset + g];
-          for (int gp = 0; gp < negroups_; gp++) {
-            double phi =
-              std::max(source_regions_.scalar_flux_final(sr, gp), 0.0);
-            if (gp != g) {
-              feed += sigma_s_[scatter_offset + g * negroups_ + gp] * phi;
-            }
-            if (settings::create_fission_neutrons) {
-              feed +=
-                chi * nu_sigma_f_[material_offset + gp] * phi * inverse_k_eff;
-            }
+    }
+    bool latched = false;
+    int material = source_regions_.material(sr);
+    if (!negative && material != MATERIAL_VOID) {
+      int temp = source_regions_.temperature_idx(sr);
+      const int material_offset = (material * ntemperature_ + temp) * negroups_;
+      const int scatter_offset =
+        (material * ntemperature_ + temp) * negroups_ * negroups_;
+      double inverse_k_eff = 1.0 / k_eff_;
+      for (int g = 0; g < negroups_ && !latched; g++) {
+        double feed = 0.0;
+        double chi = chi_[material_offset + g];
+        for (int gp = 0; gp < negroups_; gp++) {
+          double phi = std::max(source_regions_.scalar_flux_t(sr, gp), 0.0);
+          if (gp != g) {
+            feed += sigma_s_[scatter_offset + g * negroups_ + gp] * phi;
           }
-          double sigma_t = sigma_t_[material_offset + g];
-          double q_indep = feed / sigma_t;
-          // The external source arrays are only allocated in fixed source
-          // mode, so the external term must not be read in an eigenvalue
-          // solve (where no external sources exist).
-          if (settings::run_mode == RunMode::FIXED_SOURCE) {
-            q_indep +=
-              settings::n_inactive * source_regions_.external_source(sr, g);
-          }
-          if (q_indep >
-              ADAPTIVE_VOLUME_KAPPA *
-                std::max(source_regions_.scalar_flux_final(sr, g), 0.0)) {
-            latched = true;
+          if (settings::create_fission_neutrons) {
+            feed +=
+              chi * nu_sigma_f_[material_offset + gp] * phi * inverse_k_eff;
           }
         }
-      }
-      source_regions_.converged_negative(sr) = negative ? 1 : (latched ? 2 : 0);
-      for (int g = 0; g < negroups_; g++) {
-        source_regions_.scalar_flux_final(sr, g) = 0.0;
+        double sigma_t = sigma_t_[material_offset + g];
+        double q_indep = feed / sigma_t;
+        // The external source arrays are only allocated in fixed source
+        // mode, so the external term must not be read in an eigenvalue
+        // solve (where no external sources exist). The external source is a
+        // per-batch quantity while the flux is an accumulated one, so the
+        // term is scaled by the number of accumulated batches.
+        if (settings::run_mode == RunMode::FIXED_SOURCE) {
+          q_indep +=
+            simulation::current_batch * source_regions_.external_source(sr, g);
+        }
+        if (q_indep >
+            ADAPTIVE_VOLUME_KAPPA *
+              std::max(source_regions_.scalar_flux_t(sr, g), 0.0)) {
+          latched = true;
+        }
       }
     }
-    // No separate decision-count bookkeeping is needed here: the flags are
-    // fixed for the whole active phase, so the final-batch by-cause snapshot
-    // in add_source_to_scalar_flux (which counts them with first priority)
-    // reports these decisions exactly.
+    if (negative) {
+      source_regions_.converged_negative(sr) = 1;
+    } else if (latched) {
+      source_regions_.converged_negative(sr) = 2;
+    }
   }
+  // No separate decision-count bookkeeping is needed here: demote-only flags
+  // can only accumulate, so the final-batch by-cause snapshot in
+  // add_source_to_scalar_flux (which counts them with first priority)
+  // reports the settled decisions exactly.
 }
 
 void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
@@ -394,8 +418,8 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   bool final_iteration = (simulation::current_batch == settings::n_batches);
   // The adaptive estimator uses the proactive strong-source (kappa) test, the
   // demote-to-naive volume switch, and the previous-flux miss treatment, with
-  // demotion decided once at the end of the inactive phase (recorded as a 0/1
-  // flag in converged_negative by inactive_demotion_step).
+  // demote-only decisions made from the running accumulated flux (recorded
+  // as a flag in converged_negative by demotion_step).
   const bool is_adaptive =
     volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE;
 
@@ -463,9 +487,9 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     // re-evaluated every iteration; the strong-source flag is re-evaluated
     // every iteration during the inactive batches and reduces to the
     // negative-source (TCP0) condition in the active batches, where the
-    // stable transition decisions govern instead; converged_neg is the
-    // one-shot flag set at the end of the inactive phase by
-    // inactive_demotion_step. The external-source flag drives only the
+    // stable accumulated-flux decisions govern instead; converged_neg is the
+    // demote-only flag set from the running accumulated flux by
+    // demotion_step. The external-source flag drives only the
     // hybrid policy (and the default miss treatment); the adaptive estimator
     // catches a low-cross-section external region through the kappa
     // strong-source test (during the inactive batches) and the strong-feed
@@ -512,10 +536,10 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 
     // On the final iteration, classify the demoted (naive-volume) regions by
     // cause -- mutually exclusive, in priority order, so the causes sum to
-    // the total -- for the end-of-simulation report. The one-shot transition
-    // demotions are counted first (their flags are fixed for the whole
-    // active phase, so these counts equal the decisions made at the end of
-    // the inactive phase); the per-batch causes count only the remainder.
+    // the total -- for the end-of-simulation report. The accumulated-flux
+    // demotions are counted first (their demote-only flags can only
+    // accumulate, so these counts equal the decisions settled by the final
+    // batch); the per-batch causes count only the remainder.
     if (final_iteration && is_adaptive && use_naive_volume) {
       n_naive++;
       if (conv_flag == 2) {

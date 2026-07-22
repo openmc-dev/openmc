@@ -104,6 +104,10 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
     scalar_flux_old_.push_back(sr.scalar_flux_old_[g]);
     scalar_flux_new_.push_back(sr.scalar_flux_new_[g]);
     scalar_flux_final_.push_back(sr.scalar_flux_final_[g]);
+    // A newly discovered region starts with nothing accumulated
+    if (is_adaptive_) {
+      scalar_flux_t_.push_back(0.0);
+    }
     source_.push_back(sr.source_[g]);
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       external_source_.push_back(sr.external_source_[g]);
@@ -156,6 +160,7 @@ void SourceRegionContainer::assign(
   scalar_flux_old_.clear();
   scalar_flux_new_.clear();
   scalar_flux_final_.clear();
+  scalar_flux_t_.clear();
   source_.clear();
   external_source_.clear();
 
@@ -258,6 +263,7 @@ void SourceRegionContainer::adjoint_reset()
     std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 1.0);
   }
   std::fill(scalar_flux_new_.begin(), scalar_flux_new_.end(), 0.0);
+  std::fill(scalar_flux_t_.begin(), scalar_flux_t_.end(), 0.0);
   std::fill(source_.begin(), source_.end(), 0.0f);
   std::fill(external_source_.begin(), external_source_.end(), 0.0f);
   std::fill(source_gradients_.begin(), source_gradients_.end(),

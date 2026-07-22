@@ -343,10 +343,12 @@ public:
     0};              //!< Is an external source present in this region?
   int is_small_ {0}; //!< Is it "small", receiving < 1.5 hits per iteration?
   int converged_negative_ {
-    0}; //!< One-shot demotion flag (adaptive estimator only): set to 1 at the
-        //!< end of the inactive phase when this region's accumulated flux was
-        //!< negative, demoting it to the naive volume estimator for the active
-        //!< phase.
+    0}; //!< Demote-only flag (adaptive estimator only), evaluated from the
+        //!< running accumulated flux at the inactive->active transition and
+        //!< re-evaluated every active batch: 1 = accumulated flux negative in
+        //!< some group, 2 = strong accumulated feed (latch). Any value > 0
+        //!< demotes the region to the naive volume estimator; once set, the
+        //!< flag is never released.
   int n_hits_ {0};    //!< Number of total hits (ray crossings)
                       // Mesh that subdivides this source region
   int mesh_ {C_NONE}; //!< Index in openmc::model::meshes array that subdivides
@@ -403,8 +405,8 @@ class SourceRegionContainer {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegionContainer(int negroups, bool is_linear)
-    : negroups_(negroups), is_linear_(is_linear)
+  SourceRegionContainer(int negroups, bool is_linear, bool is_adaptive)
+    : negroups_(negroups), is_linear_(is_linear), is_adaptive_(is_adaptive)
   {}
   SourceRegionContainer() = default;
 
@@ -585,6 +587,14 @@ public:
     return scalar_flux_final_[se];
   }
 
+  double& scalar_flux_t(int64_t sr, int g) { return scalar_flux_t_[index(sr, g)]; }
+  const double scalar_flux_t(int64_t sr, int g) const
+  {
+    return scalar_flux_t_[index(sr, g)];
+  }
+  double& scalar_flux_t(int64_t se) { return scalar_flux_t_[se]; }
+  const double scalar_flux_t(int64_t se) const { return scalar_flux_t_[se]; }
+
   float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
   const float source(int64_t sr, int g) const { return source_[index(sr, g)]; }
   float& source(int64_t se) { return source_[se]; }
@@ -652,6 +662,7 @@ private:
   int64_t n_source_regions_ {0};
   int negroups_ {0};
   bool is_linear_ {false};
+  bool is_adaptive_ {false};
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;
@@ -685,6 +696,12 @@ private:
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
   vector<double> scalar_flux_final_;
+  // Running sum of the scalar flux over every batch of the current solve
+  // (inactive and active; never reset within a solve, unlike
+  // scalar_flux_final which holds only the active-batch accumulation used
+  // for tallies). Allocated only for the adaptive volume estimator, which
+  // makes its demotion decisions from it.
+  vector<double> scalar_flux_t_;
   vector<float> source_;
   vector<float> external_source_;
 

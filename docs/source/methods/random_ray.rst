@@ -544,23 +544,34 @@ inactive batches): applied to noisy single-iteration values in the active
 batches it would demote a churning population of regions whose converged
 ratios are below the threshold, and conditioning the estimator choice on
 per-iteration noise in the tallied batches introduces a systematic bias. The
-last two conditions are instead decided once, at the transition from the
-inactive to the active batches: the unmodified simulation averaged estimator
-is run throughout the inactive phase while each region's flux is accumulated,
-and at the transition a region is demoted to the naive estimator for all of
-the active batches if its accumulated (and therefore noise-averaged) flux is
-negative in any group, or if its flux-independent feed -- the part of its
-source arising from cross-group in-scatter, fission, and any external source,
-evaluated from the same accumulated flux -- exceeds the strong-source
-threshold times its own accumulated flux in any group. In the active batches
-these one-shot decisions, together with the per-iteration negative-source
-and hit-starved conditions, are what govern the estimator choice. Deferring
-the noise-sensitive decisions to the converged estimate -- rather than
-reacting to individual per-iteration values -- avoids the bias that
-demoting on isolated fluctuations would introduce by treating only one tail
-of the estimator's noise distribution; regions that are merely noisy but
-average non-negative (and are not strongly fed) retain the unbiased
-simulation averaged estimator.
+last two conditions are instead decided from each region's accumulated flux:
+the unmodified simulation averaged estimator is run while every batch's flux
+is accumulated into a running sum, and -- beginning at the transition from
+the inactive to the active batches, and re-evaluated every active batch as
+the accumulation keeps growing -- a region is demoted to the naive estimator
+if its accumulated (and therefore noise-averaged) flux is negative in any
+group, or if its flux-independent feed -- the part of its source arising
+from cross-group in-scatter, fission, and any external source, evaluated
+from the same accumulated flux -- exceeds the strong-source threshold times
+its own accumulated flux in any group. These decisions are demote-only: once
+a region is demoted it is never returned to the simulation averaged
+estimator, so the estimator choice cannot churn with active-batch noise, and
+a marginal region whose accumulated ratio converges below the threshold is
+never eroded into demotion by the continued re-evaluation. The active-phase
+re-evaluation matters for problems whose inactive phase is too short to
+converge deep regions: there the transition-time decision alone can miss
+chronically unstable regions whose accumulated flux only turns negative (or
+whose feed ratio only crosses the threshold) after active batches begin, and
+a single such region left on unprotected simulation averaged updates can
+corrupt the solution well beyond its own boundary through scattering
+feedback. In the active batches these accumulated-flux decisions, together
+with the per-iteration negative-source and hit-starved conditions, are what
+govern the estimator choice. Basing the noise-sensitive decisions on the
+accumulated estimate -- rather than reacting to individual per-iteration
+values -- avoids the bias that demoting on isolated fluctuations would
+introduce by treating only one tail of the estimator's noise distribution;
+regions that are merely noisy but average non-negative (and are not strongly
+fed) retain the unbiased simulation averaged estimator.
 
 The feed-based latch exists because the per-iteration strong-source test,
 evaluated on noisy single-iteration values, has exactly one blind state: an
@@ -571,9 +582,9 @@ excursion on unprotected simulation averaged updates, and -- because for
 these regions the per-iteration noise scale is set by the reduced source
 rather than by the flux -- the average over a whole phase of active batches
 can land slightly negative. The latch identifies the entire strongly fed
-class once, from converged data that individual fluctuations cannot flip, and
-removes it from the simulation averaged estimator before active tallies
-begin. A region with no cross-group or external feed can never latch, so the
+class from accumulated data that individual fluctuations cannot flip, and
+removes it from the simulation averaged estimator. A region with no
+cross-group or external feed can never latch, so the
 estimator choice never reacts to noise whose sign is locked to the region's
 own flux (as in one-group media, where the source is proportional to the
 local flux). Non-negativity is still not strictly enforced on individual

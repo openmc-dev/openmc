@@ -352,11 +352,9 @@ void RandomRaySimulation::prepare_fw_fixed_sources_adjoint()
   } else {
     // In eigenvalue mode there are no fixed adjoint sources to derive from
     // the forward flux, but the accumulated forward flux must still be
-    // cleared so that the adjoint solve starts from a clean accumulator --
-    // otherwise the adaptive estimator's inactive-demotion decision (which
-    // accumulates into the same array during the adjoint inactive batches)
-    // would be swamped by the forward solve's strictly positive sums, and
-    // any consumer of the final flux would mix forward and adjoint modes.
+    // cleared so that the adjoint solve's active accumulation starts from a
+    // clean array -- otherwise any consumer of the final flux would mix
+    // forward and adjoint modes.
 #pragma omp parallel for
     for (int64_t se = 0; se < domain_->n_source_elements(); se++) {
       domain_->source_regions_.scalar_flux_final(se) = 0.0;
@@ -481,10 +479,10 @@ void RandomRaySimulation::simulate()
         domain_->random_ray_tally();
       }
 
-      // For the adaptive estimator, accumulate the inactive-phase flux and, on
-      // the final inactive batch, settle which regions are demoted to the naive
+      // For the adaptive estimator, accumulate this batch's flux into the
+      // running sum and update (demote-only) which regions use the naive
       // volume estimator (no-op for the other estimators).
-      domain_->inactive_demotion_step();
+      domain_->demotion_step();
 
       // Set phi_old = phi_new
       domain_->flux_swap();
@@ -627,22 +625,23 @@ void RandomRaySimulation::print_results_random_ray(
       double inv = 100.0 / domain_->n_source_regions();
       // Single summary at default verbosity: every source region that
       // received the naive volume treatment in the final batch, for any
-      // reason (the one-shot demotions decided at the inactive->active
-      // transition plus that batch's per-iteration demotions).
+      // reason (the demote-only decisions made from the accumulated flux
+      // plus that batch's per-iteration demotions).
       fmt::print(" Number of Naive Demotions         = {} SRs ({:.4f}%)\n",
         domain_->n_final_naive_, domain_->n_final_naive_ * inv);
       // The per-cause diagnostic breakdown is developer-facing; verbosity 8
       // sits above the default (7) but below the per-particle output (9).
       // The causes are mutually exclusive and sum to the total above:
-      // "end of inactive" causes are the one-shot demotions decided from the
-      // converged (accumulated) inactive flux, "per batch" causes are
-      // re-evaluated each batch and reported for the final batch.
+      // "accumulated" causes are the demote-only decisions made from the
+      // running accumulated flux (from the inactive->active transition
+      // onward), "per batch" causes are re-evaluated each batch and reported
+      // for the final batch.
       if (settings::verbosity >= 8) {
-        fmt::print("   Strong source (end of inactive) = {} SRs ({:.4f}%)\n",
+        fmt::print("   Strong source (accumulated)     = {} SRs ({:.4f}%)\n",
           domain_->n_final_latch_, domain_->n_final_latch_ * inv);
         fmt::print("   Strong source (per batch)       = {} SRs ({:.4f}%)\n",
           domain_->n_final_strong_, domain_->n_final_strong_ * inv);
-        fmt::print("   Negative flux (end of inactive) = {} SRs ({:.4f}%)\n",
+        fmt::print("   Negative flux (accumulated)     = {} SRs ({:.4f}%)\n",
           domain_->n_final_sign_, domain_->n_final_sign_ * inv);
         fmt::print("   Hit-starved (per batch)         = {} SRs ({:.4f}%)\n",
           domain_->n_final_small_, domain_->n_final_small_ * inv);

@@ -119,8 +119,8 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   // scalar flux, so the flat-source cancellation must be exact; the gradient
   // terms attenuate segments against the local rather than the flat source,
   // introducing per-iteration noise at the gradient scale that the volume
-  // choice cannot cancel. For regions demoted at the end of the inactive
-  // phase (converged_negative > 0: negative accumulated flux, or the
+  // choice cannot cancel. For regions demoted from the accumulated flux
+  // (converged_negative > 0: negative accumulated flux, or the
   // strong-feed latch), the same reasoning applies to their cause -- a
   // negative accumulated flux means the fitted gradients carry no meaningful
   // shape information, and a latched strong feed is the gradient-scale noise

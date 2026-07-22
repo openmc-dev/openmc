@@ -39,7 +39,7 @@ public:
   void reset_tally_volumes();
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
-  void inactive_demotion_step();
+  void demotion_step();
   void output_to_vtk() const;
   void convert_external_sources(bool use_adjoint_sources);
   void count_external_source_regions();
@@ -106,15 +106,15 @@ public:
 
   // Final-batch snapshot of the naive volume treatment, partitioned by
   // mutually exclusive cause (the four counts sum to n_final_naive_), for
-  // end-of-simulation reporting. The two one-shot demotions decided at the
-  // inactive->active transition are counted with first priority -- a strong
-  // converged (accumulated) feed and a negative converged flux -- so their
-  // counts equal the decisions made at the transition; the per-batch
+  // end-of-simulation reporting. The two demote-only decisions made from the
+  // running accumulated flux -- a strong accumulated feed and a negative
+  // accumulated flux -- are counted with first priority, so their counts
+  // equal the decisions settled by the final batch; the per-batch
   // strong-source test and hit-starved causes count the remainder.
   int64_t n_final_naive_ {0};
-  int64_t n_final_latch_ {0};  // strong source, from the converged feed
+  int64_t n_final_latch_ {0};  // strong source, from the accumulated feed
   int64_t n_final_strong_ {0}; // strong source, from the per-batch test
-  int64_t n_final_sign_ {0};   // negative converged flux
+  int64_t n_final_sign_ {0};   // negative accumulated flux
   int64_t n_final_small_ {0};  // hit-starved
   bool final_stats_valid_ {false};
 

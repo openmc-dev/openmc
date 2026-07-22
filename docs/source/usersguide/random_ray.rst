@@ -701,11 +701,10 @@ library file.
 
 The continuous energy simulations used to generate the cross section library
 can be customized by passing :class:`openmc.Settings` attributes as keyword
-arguments (or, equivalently, a sparse :class:`openmc.Settings` object via the
-``settings`` parameter). Only the fields you set override the generation
-defaults. For example, the number of particles per batch (2,000 by default)
-can be increased to improve the fidelity of the generated cross section
-library as::
+arguments; only the fields you set override the generation defaults. For
+example, the number of particles per batch (2,000 by default) can be
+increased to improve the fidelity of the generated cross section library
+as::
 
   model.convert_to_multigroup(particles=100_000)
 

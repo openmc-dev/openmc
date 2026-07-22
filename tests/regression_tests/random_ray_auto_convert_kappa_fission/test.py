@@ -28,7 +28,7 @@ def test_random_ray_auto_convert(method):
         # Convert to a multi-group model
         model.convert_to_multigroup(
             method=method, groups='CASMO-2',
-            settings=openmc.Settings(particles=100),
+            particles=100,
             overwrite_mgxs_library=False, mgxs_path="mgxs.h5"
         )
 

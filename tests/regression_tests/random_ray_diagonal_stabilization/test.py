@@ -25,7 +25,7 @@ def test_random_ray_diagonal_stabilization():
     # to trigger diagonal correction.
     model.convert_to_multigroup(
         method='material_wise', groups='CASMO-70',
-        settings=openmc.Settings(particles=13),
+        particles=13,
         overwrite_mgxs_library=True, mgxs_path="mgxs.h5", correction='P0'
     )
 

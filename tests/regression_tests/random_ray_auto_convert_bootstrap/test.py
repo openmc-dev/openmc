@@ -73,18 +73,16 @@ def test_random_ray_auto_convert_bootstrap():
     # stochastic_slab method and a random ray FW-CADIS solve
     slab_model = copy.deepcopy(model)
     slab_model.convert_to_multigroup(
-        method='stochastic_slab', groups=GROUPS,
-        settings=openmc.Settings(particles=50),
+        method='stochastic_slab', groups=GROUPS, particles=50,
         overwrite_mgxs_library=True, mgxs_path='mgxs.h5')
     generate_weight_windows(slab_model, mesh)
 
     # Bootstrap the material-wise MGXS generation with those weight windows,
     # then regenerate the weight windows from the higher-fidelity library
     boot_model = copy.deepcopy(model)
-    boot_settings = openmc.Settings(particles=1)
-    boot_settings.weight_windows_file = Path('weight_windows.h5').resolve()
     boot_model.convert_to_multigroup(
-        groups=GROUPS, settings=boot_settings,
+        groups=GROUPS, particles=1,
+        weight_windows_file=Path('weight_windows.h5').resolve(),
         overwrite_mgxs_library=True, mgxs_path='mgxs.h5')
     generate_weight_windows(boot_model, mesh)
 

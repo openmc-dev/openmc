@@ -2633,7 +2633,6 @@ class Model:
         source_energy: openmc.stats.Univariate | None = None,
         temperatures: Sequence[float] | None = None,
         temperature_settings: dict | None = None,
-        settings: openmc.Settings | None = None,
         **kwargs,
     ):
         """Convert all materials from continuous energy to multigroup.
@@ -2694,12 +2693,13 @@ class Model:
 
             .. deprecated:: 0.15.4
                 Pass ``temperature`` as a keyword argument instead.
-        settings : openmc.Settings, optional
-            Settings overrides for the continuous energy simulation(s) used
-            to generate the MGXS library. Attributes populated on this
-            object take precedence over the generation defaults, so a
-            sparse object such as ``openmc.Settings(particles=100_000)``
-            adjusts just that field (see :meth:`openmc.Settings.update`).
+        **kwargs
+            :class:`openmc.Settings` attributes used to customize the
+            continuous energy simulation(s) that generate the MGXS
+            library. Only the attributes given override the generation
+            defaults, e.g.
+            ``model.convert_to_multigroup(particles=100_000)`` adjusts
+            just the particle count (see :meth:`openmc.Settings.update`).
             The run mode cannot be overridden, as it is determined by the
             generation method. A ``weight_windows_file`` is applied during
             ``"material_wise"`` generation and ignored with a warning by
@@ -2709,30 +2709,16 @@ class Model:
             arguments.
 
             .. versionadded:: 0.15.4
-        **kwargs
-            Keyword arguments passed to the :class:`openmc.Settings`
-            constructor as a shorthand for the ``settings`` argument, e.g.
-            ``model.convert_to_multigroup(particles=100_000)``. Cannot be
-            combined with ``settings``.
-
-            .. versionadded:: 0.15.4
         """
         if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)
 
         check_value('method', method,
                     ('material_wise', 'stochastic_slab', 'infinite_medium'))
-        if settings is not None:
-            check_type('settings', settings, openmc.Settings)
 
-        # Additional keyword arguments are Settings attributes, shorthand
-        # for passing settings=openmc.Settings(**kwargs)
-        if kwargs:
-            if settings is not None:
-                raise ValueError(
-                    'Only one of the "settings" argument and additional '
-                    'Settings keyword arguments may be specified.')
-            settings = openmc.Settings(**kwargs)
+        # Keyword arguments are Settings attributes applied as overrides on
+        # the generation defaults
+        settings = openmc.Settings(**kwargs) if kwargs else None
 
         # The model may reference its materials only through the geometry.
         # The materials are converted in place and library-wide attributes
@@ -2748,19 +2734,18 @@ class Model:
             warnings.warn(
                 'The "nparticles" and "temperature_settings" arguments are '
                 'deprecated. Pass "particles" and "temperature" as keyword '
-                'arguments (or on a Settings object via the "settings" '
-                'argument) instead.', FutureWarning)
+                'arguments instead.', FutureWarning)
             if settings is not None:
                 raise ValueError(
                     'The deprecated "nparticles" and "temperature_settings" '
-                    'arguments cannot be combined with the "settings" '
-                    'argument.')
+                    'arguments cannot be combined with Settings keyword '
+                    'arguments.')
 
         # Resolve the settings for the MGXS generation run(s) in three
         # layers, with later layers taking precedence: the model's own
         # settings ("material_wise") or a fresh Settings object (surrogate
-        # methods), then the generation defaults, then any attributes the
-        # user populated on the provided settings.
+        # methods), then the generation defaults, then the user's
+        # keyword-argument overrides.
         user_settings = settings
         if method == 'material_wise':
             settings = copy.deepcopy(self.settings)
@@ -2785,7 +2770,7 @@ class Model:
             # The surrogate-geometry methods construct their own sources
             if method != "material_wise" and len(user_settings.source) > 0:
                 warnings.warn(
-                    'The sources defined in "settings" are ignored by the '
+                    'The given "source" setting is ignored by the '
                     f'"{method}" MGXS generation method, which constructs '
                     'its own sources.')
             settings.update(user_settings)
@@ -2812,10 +2797,9 @@ class Model:
         if settings.weight_windows_file is not None and \
                 method != "material_wise":
             warnings.warn(
-                'The weight windows file set on the generation settings '
-                'is only applicable to the "material_wise" MGXS '
-                f'generation method and will be ignored for the '
-                f'"{method}" method.'
+                'The "weight_windows_file" setting is only applicable to '
+                'the "material_wise" MGXS generation method and will be '
+                f'ignored for the "{method}" method.'
             )
             settings.weight_windows_file = None
 

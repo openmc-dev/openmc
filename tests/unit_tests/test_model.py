@@ -1134,11 +1134,11 @@ def test_convert_to_multigroup_settings_material_wise(run_in_tmpdir, monkeypatch
     model.settings.photon_transport = True
     model.settings.batches = 1200  # tuned for the final multigroup solve
 
-    user = openmc.Settings(particles=12345, seed=7)
     gen = _capture_generation_settings(
-        monkeypatch, model, method='material_wise', settings=user)
+        monkeypatch, model, method='material_wise', particles=12345, seed=7)
 
-    # User-populated attributes override the generation defaults...
+    # Keyword-argument overrides take precedence over the generation
+    # defaults...
     assert gen.particles == 12345
     assert gen.seed == 7
     # ...the generation defaults override the model's own settings...
@@ -1149,27 +1149,23 @@ def test_convert_to_multigroup_settings_material_wise(run_in_tmpdir, monkeypatch
     assert gen.run_mode == 'fixed source'
     assert gen.photon_transport is True
     assert len(gen.source) == 1
-    # The caller's object is never mutated
-    assert user.batches is None
 
     # The run mode is owned by the generation method: material_wise always
-    # takes it from the model, even when set on the provided settings
+    # takes it from the model, even when given as an override
     model.settings.run_mode = 'eigenvalue'
     gen = _capture_generation_settings(
-        monkeypatch, model, method='material_wise',
-        settings=openmc.Settings(run_mode='fixed source'))
+        monkeypatch, model, method='material_wise', run_mode='fixed source')
     assert gen.run_mode == 'eigenvalue'
 
 
 def test_convert_to_multigroup_settings_stochastic_slab(run_in_tmpdir, monkeypatch):
     model = _steel_water_model()
-
-    user = openmc.Settings(particles=999, batches=50, max_history_splits=42)
-    user.source = openmc.IndependentSource(space=openmc.stats.Point())
+    src = openmc.IndependentSource(space=openmc.stats.Point())
 
     with pytest.warns(UserWarning, match='constructs its own'):
         gen = _capture_generation_settings(
-            monkeypatch, model, method='stochastic_slab', settings=user)
+            monkeypatch, model, method='stochastic_slab', particles=999,
+            batches=50, max_history_splits=42, source=src)
 
     assert gen.particles == 999
     assert gen.batches == 50
@@ -1179,81 +1175,52 @@ def test_convert_to_multigroup_settings_stochastic_slab(run_in_tmpdir, monkeypat
     assert gen.run_mode == 'fixed source'
     assert gen.create_fission_neutrons is False
     assert len(gen.source) > 0
-    assert all(s is not user.source[0] for s in gen.source)
-    # The caller's object is never mutated
-    assert len(user.source) == 1
+    assert all(s is not src for s in gen.source)
 
 
 def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatch):
     model = _steel_water_model()
     ww_path = Path('ww.h5').resolve()
 
-    user = openmc.Settings(weight_windows_file=ww_path)
     gen = _capture_generation_settings(
-        monkeypatch, model, method='material_wise', settings=user)
+        monkeypatch, model, method='material_wise',
+        weight_windows_file=ww_path)
 
-    # A weight windows file on the generation settings is passed through to
-    # the "material_wise" generation run (specifying a file turns weight
-    # windows on at run time)
+    # A weight windows file is passed through to the "material_wise"
+    # generation run (specifying a file turns weight windows on at run time)
     assert gen.weight_windows_file == ww_path
-    # The caller's object is never mutated
-    assert user.weight_windows_file == ww_path
 
     # An explicit weight_windows_on=False rides along with the file and
     # overrides the run-time file-implied enable
-    user = openmc.Settings(weight_windows_file=ww_path,
-                           weight_windows_on=False)
     gen = _capture_generation_settings(
-        monkeypatch, model, method='material_wise', settings=user)
+        monkeypatch, model, method='material_wise',
+        weight_windows_file=ww_path, weight_windows_on=False)
     assert gen.weight_windows_file == ww_path
     assert gen.weight_windows_on is False
 
     # The surrogate-geometry methods ignore the file with a warning
     with pytest.warns(UserWarning, match='material_wise'):
         gen = _capture_generation_settings(
-            monkeypatch, model, method='stochastic_slab', settings=user)
+            monkeypatch, model, method='stochastic_slab',
+            weight_windows_file=ww_path)
     assert gen.weight_windows_file is None
-    assert user.weight_windows_file == ww_path
-
-
-def test_convert_to_multigroup_settings_kwargs(run_in_tmpdir, monkeypatch):
-    model = _steel_water_model()
-
-    # Keyword arguments are shorthand for settings=openmc.Settings(**kwargs)
-    gen = _capture_generation_settings(
-        monkeypatch, model, method='material_wise', particles=4321, seed=3)
-    assert gen.particles == 4321
-    assert gen.seed == 3
-    assert gen.batches == 200  # generation default retained
-
-    # kwargs cannot be combined with an explicit settings object, and the
-    # deprecated arguments are still rejected alongside them
-    with pytest.raises(ValueError, match='keyword'):
-        model.convert_to_multigroup(settings=openmc.Settings(), particles=5)
-    with pytest.raises(ValueError, match='deprecated'), \
-            pytest.warns(FutureWarning):
-        model.convert_to_multigroup(nparticles=1000, particles=500)
 
 
 def test_convert_to_multigroup_settings_validation(run_in_tmpdir):
     model = _steel_water_model()
 
-    with pytest.raises(TypeError):
-        model.convert_to_multigroup(settings={'particles': 100})
-
     with pytest.raises(ValueError):
         model.convert_to_multigroup(method='not_a_method')
 
-    # The deprecated arguments cannot be combined with settings
+    # The deprecated arguments cannot be combined with keyword overrides
     with pytest.raises(ValueError, match='deprecated'), \
             pytest.warns(FutureWarning):
-        model.convert_to_multigroup(nparticles=1000,
-                                    settings=openmc.Settings())
+        model.convert_to_multigroup(nparticles=1000, particles=500)
     with pytest.raises(ValueError, match='deprecated'), \
             pytest.warns(FutureWarning):
         model.convert_to_multigroup(
             temperature_settings={'method': 'interpolation'},
-            settings=openmc.Settings())
+            temperature={'method': 'interpolation'})
 
 
 def test_convert_to_multigroup_deprecated_args(run_in_tmpdir, monkeypatch):

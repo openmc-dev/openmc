@@ -35,7 +35,7 @@ def test_random_ray_auto_convert(method):
         # Convert to a multi-group model
         model.convert_to_multigroup(
             method=method, groups='CASMO-2',
-            settings=openmc.Settings(particles=100, temperature=temp_settings),
+            particles=100, temperature=temp_settings,
             overwrite_mgxs_library=False, mgxs_path="mgxs.h5",
             temperatures=[294.0, 394.0]
         )

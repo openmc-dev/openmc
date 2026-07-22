@@ -556,19 +556,17 @@ SourceSite FileSource::sample(uint64_t* seed) const
   // normal cell search to locate the particle.
   if (site.surf_id != SURFACE_NONE) {
     auto it = model::surface_map.find(std::abs(site.surf_id));
-    if (it == model::surface_map.end()) {
-      site.surf_id = SURFACE_NONE;
-    } else {
+    if (it != model::surface_map.end()) {
       const auto& surf = *model::surfaces[it->second];
       if (surf.geom_type() == GeometryType::CSG &&
           std::abs(surf.evaluate(site.r)) < FP_COINCIDENT) {
         int surf_id = std::abs(site.surf_id);
         site.surf_id =
           (site.u.dot(surf.normal(site.r)) > 0.0) ? surf_id : -surf_id;
-      } else {
-        site.surf_id = SURFACE_NONE;
+        return site;
       }
     }
+    site.surf_id = SURFACE_NONE;
   }
 
   return site;

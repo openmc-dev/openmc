@@ -449,3 +449,42 @@ to transfer xenon from one material to another, you'd use::
     ...
 
     integrator.add_transfer_rate(mat1, ['Xe'], 0.1, destination_material=mat2)
+
+Comparing to Other Codes
+========================
+
+Comparing depletion results from OpenMC with those from another code, such as
+MCNP or Serpent, requires more than constructing equivalent transport models.
+At each depletion step, differences in the transport solution, nuclear data,
+reaction rate normalization, and numerical integration can all affect the
+result. Small differences can also accumulate over successive depletion steps.
+
+For a meaningful comparison, align as many of the following inputs and methods
+as possible:
+
+- Geometry and material definitions and associated physical properties such as
+  temperature
+- Neutron cross section library (e.g., ENDF/B-VIII.0)
+- Treatment of thermal scattering and unresolved resonance probability tables
+- Neutron reactions accounted for in the depletion chain
+- Decay data in the depletion chain
+- Isomeric branching ratios for reactions in the depletion chain
+- Fission product yields in the depletion chain
+- Fission product yield interpolation method
+  (``CoupledOperator(fission_yield_mode=...)``)
+- Reaction rate normalization, including fission Q values
+  (``CoupledOperator(fission_q=...)``)
+- Depletion integration method (``PredictorIntegrator``, ``CECMIntegrator``,
+  etc.) and time-step sizes
+
+When comparing to codes that use ACE format cross sections, it is recommended to
+directly convert the ACE files to HDF5 format using functionality from the
+:mod:`openmc.data` module (see :ref:`create_xs_library`). Some of the
+LANL-distributed ACE libraries used with MCNP have also been converted to HDF5
+format and are available for download at https://openmc.org/data.
+
+Even after these choices have been aligned, exact agreement should not be
+expected. Codes may use different approximations or numerical methods that
+cannot be configured identically. When investigating a discrepancy, first
+compare transport results and one-group reaction rates at the initial time, then
+compare changes over subsequent timesteps.

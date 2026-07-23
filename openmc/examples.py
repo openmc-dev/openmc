@@ -150,7 +150,7 @@ def pwr_core() -> openmc.Model:
     rpv_steel.add_nuclide('Ni60', 0.0026776, 'wo')
     rpv_steel.add_nuclide('Mn55', 0.01, 'wo')
     rpv_steel.add_nuclide('Cr52', 0.002092475, 'wo')
-    rpv_steel.add_nuclide('C0', 0.0025, 'wo')
+    rpv_steel.add_element('C', 0.0025, 'wo')
     rpv_steel.add_nuclide('Cu63', 0.0013696, 'wo')
 
     lower_rad_ref = openmc.Material(6, name='Lower radial reflector')
@@ -1314,17 +1314,17 @@ def random_ray_three_region_cube() -> openmc.Model:
 def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     """Create a three region cube model with two external tally regions.
 
-    This is an adaptation of the simple monoenergetic problem of a cube with 
-    three concentric cubic regions. The innermost region is near void (with 
-    Sigma_t around 10^-5) and contains an external isotropic source term, the 
-    middle region is a mild scatterer (with Sigma_t around 10^-3), and the 
-    outer region of the cube is a scatterer and absorber (with Sigma_t around 
+    This is an adaptation of the simple monoenergetic problem of a cube with
+    three concentric cubic regions. The innermost region is near void (with
+    Sigma_t around 10^-5) and contains an external isotropic source term, the
+    middle region is a mild scatterer (with Sigma_t around 10^-3), and the
+    outer region of the cube is a scatterer and absorber (with Sigma_t around
     1).
 
-    Two cubic "detector" regions are found outside this geometry, one along the 
-    y-axis near z=0, and the other in the upper right corner of the system. 
-    The size of each detector is scaled to be equal to that of the source 
-    region. The model returned by this function contains cell tallies on each 
+    Two cubic "detector" regions are found outside this geometry, one along the
+    y-axis near z=0, and the other in the upper right corner of the system.
+    The size of each detector is scaled to be equal to that of the source
+    region. The model returned by this function contains cell tallies on each
     detector.
 
     Returns
@@ -1498,29 +1498,29 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
         fill=absorber_mat,
         region=detector2_region
     )
-    
+
     external_x = (
-        +x_high & +y_low & +z_low & -x_outer & 
+        +x_high & +y_low & +z_low & -x_outer &
         ((-y_outer & -z_high) | (-y_high & +z_high & -z_outer))
     )
     external_y = (
-        +y_high & -y_outer & 
+        +y_high & -y_outer &
         (
-            (+detector1_right & -x_high & +z_low & -z_outer) | 
-            (-detector1_right & +x_low & +detector1_top & -z_outer) | 
+            (+detector1_right & -x_high & +z_low & -z_outer) |
+            (-detector1_right & +x_low & +detector1_top & -z_outer) |
             (+x_high & -x_outer & +z_low & -z_high)
         )
     )
     external_z = (
-        +x_low & +y_low & +z_high & -z_outer & 
+        +x_low & +y_low & +z_high & -z_outer &
         ((-y_outer & -x_high) | (-y_high & +x_high & -x_outer))
     )
-    external_cell = openmc.Cell(fill=cavity_mat, 
-                                region=(external_x | external_y | external_z), 
+    external_cell = openmc.Cell(fill=cavity_mat,
+                                region=(external_x | external_y | external_z),
                                 name='outside cube')
 
     root = openmc.Universe(
-        name='root universe', 
+        name='root universe',
         cells=[cube_domain, detector1, detector2, external_cell]
     )
 
@@ -1604,8 +1604,8 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     source_tally.estimator = estimator
 
     # Instantiate a Tallies collection and export to XML
-    tallies = openmc.Tallies([detector1_tally, 
-                              detector2_tally, 
+    tallies = openmc.Tallies([detector1_tally,
+                              detector2_tally,
                               absorber_tally,
                               cavity_tally,
                               source_tally])
@@ -1617,5 +1617,116 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     model.materials = materials_file
     model.settings = settings
     model.tallies = tallies
+
+    return model
+
+
+def sphere_with_shielded_pocket() -> openmc.Model:
+    """Create a continuous energy deep-shielding model with a far detector pocket.
+
+    A concrete sphere is centered at the origin. A 2 MeV isotropic neutron
+    source sits in a small air cavity just inside the sphere surface on the -x
+    side, and a small steel pocket is embedded flush with the surface on the
+    +x axis, so roughly a meter of concrete separates the source from the
+    pocket while only a few centimeters of concrete back the cavity. The
+    sphere is enclosed in a vacuum-bounded box, with a void gap in between, so
+    that solvers that sample uniformly over a rectangular domain (e.g.,
+    random ray) can be applied directly. The geometry is designed for testing
+    weight window and variance reduction workflows:
+
+    - The probability that an analog source neutron reaches the steel pocket is
+      ~4e-5 (the product of the concrete attenuation and the pocket's small
+      solid angle), so an analog simulation with a few hundred histories
+      essentially never tallies the steel, while even crude global weight
+      windows allow particles to reach it reliably.
+    - Because the cavity sits near the surface, deep shielding (and thus a wide
+      weight window dynamic range) exists only within the small solid angle
+      subtended by the pocket, which keeps weight window splitting cheap and
+      convergent and the whole model fast enough for regression testing.
+
+    Returns
+    -------
+    model : openmc.Model
+        A deep-shielding model with a steel pocket behind a thick concrete
+        shield
+
+    """
+    model = openmc.Model()
+
+    ###########################################################################
+    # Materials (few nuclides, to keep data loading cheap in multi-solve tests)
+
+    air = openmc.Material(name='Air')
+    air.set_density('g/cm3', 0.001225)
+    air.add_nuclide('N14', 0.79, 'ao')
+    air.add_nuclide('O16', 0.21, 'ao')
+
+    concrete = openmc.Material(name='Concrete')
+    concrete.set_density('g/cm3', 2.3)
+    concrete.add_nuclide('H1', 0.168759, 'ao')
+    concrete.add_nuclide('O16', 0.562489, 'ao')
+    concrete.add_nuclide('Si28', 0.203031, 'ao')
+    concrete.add_nuclide('Ca40', 0.044849, 'ao')
+    concrete.add_nuclide('Al27', 0.020872, 'ao')
+
+    steel = openmc.Material(name='Steel')
+    steel.set_density('g/cm3', 7.87)
+    steel.add_nuclide('Fe56', 1.0)
+
+    ###########################################################################
+    # Geometry
+
+    # ~92 cm of concrete separates the cavity from the pocket face, while only
+    # ~6 cm of concrete backs the cavity on the -x side, so deep shielding is
+    # confined to the solid angle subtended by the pocket.
+    r_sphere = 66.0
+    box_half_width = 70.0
+    cavity_center_x = -54.0
+    cavity_half_width = 6.0
+    pocket_inner_face = 44.0
+    pocket_half_width = 4.0
+
+    sphere = openmc.Sphere(r=r_sphere)
+    outer_box = openmc.model.RectangularParallelepiped(
+        -box_half_width, box_half_width,
+        -box_half_width, box_half_width,
+        -box_half_width, box_half_width, boundary_type='vacuum')
+    cavity_box = openmc.model.RectangularParallelepiped(
+        cavity_center_x - cavity_half_width, cavity_center_x + cavity_half_width,
+        -cavity_half_width, cavity_half_width,
+        -cavity_half_width, cavity_half_width)
+    # The pocket box extends past the sphere surface and is clipped by it, so
+    # the pocket sits flush with (and just inside) the outer surface.
+    pocket_box = openmc.model.RectangularParallelepiped(
+        pocket_inner_face, r_sphere + 1.0,
+        -pocket_half_width, pocket_half_width,
+        -pocket_half_width, pocket_half_width)
+
+    cavity_cell = openmc.Cell(name='cavity', fill=air, region=-cavity_box)
+    pocket_cell = openmc.Cell(name='pocket', fill=steel,
+                              region=-pocket_box & -sphere)
+    concrete_cell = openmc.Cell(
+        name='concrete', fill=concrete,
+        region=-sphere & +cavity_box & ~(-pocket_box & -sphere))
+    void_cell = openmc.Cell(name='void', region=+sphere & -outer_box)
+
+    model.geometry = openmc.Geometry(
+        [cavity_cell, pocket_cell, concrete_cell, void_cell])
+
+    ###########################################################################
+    # Source and settings
+
+    source = openmc.IndependentSource()
+    source.space = openmc.stats.Box(
+        [cavity_center_x - cavity_half_width, -cavity_half_width, -cavity_half_width],
+        [cavity_center_x + cavity_half_width, cavity_half_width, cavity_half_width])
+    source.constraints = {'domains': [cavity_cell]}
+    source.angle = openmc.stats.Isotropic()
+    source.energy = openmc.stats.delta_function(2.0e6)
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = source
+    model.settings.particles = 1000
+    model.settings.batches = 10
 
     return model

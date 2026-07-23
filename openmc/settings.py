@@ -241,7 +241,7 @@ class Settings:
             also tends to dampen the convergence rate of the solver, thus requiring
             more iterations to converge.
         :adjoint_source:
-            Source object used to define localized adjoint source/detector response 
+            Source object used to define localized adjoint source/detector response
             function.
 
         .. versionadded:: 0.15.0
@@ -2031,11 +2031,11 @@ class Settings:
                         path = f"./mesh[@id='{mesh.id}']"
                         if root.find(path) is None:
                             root.append(mesh.to_xml_element())
-                            if mesh_memo is not None:    
+                            if mesh_memo is not None:
                                 mesh_memo.add(mesh.id)
                 elif key == 'adjoint_source':
                     subelement = ET.SubElement(element, 'adjoint_source')
-                    # Check that all entries are valid SourceBase instances, in case 
+                    # Check that all entries are valid SourceBase instances, in case
                     # the random_ray setter was not used to populate dict entries.
                     if not isinstance(value, MutableSequence):
                         value = [value]

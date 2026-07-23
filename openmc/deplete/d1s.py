@@ -6,6 +6,7 @@ shutdown dose rate calculations.
 """
 
 from copy import copy
+from numbers import Integral
 from typing import Sequence
 from math import log, prod
 
@@ -15,7 +16,7 @@ import openmc
 from openmc.data import half_life
 from .abc import _normalize_timesteps
 from .chain import Chain, _get_chain
-from ..checkvalue import PathLike
+from ..checkvalue import PathLike, check_iterable_type
 
 
 def get_radionuclides(model: openmc.Model, chain_file: PathLike | Chain | None = None) -> list[str]:
@@ -168,6 +169,7 @@ def apply_time_correction(
         raise ValueError('Tally must contain a ParentNuclideFilter')
 
     indices = list(index)
+    check_iterable_type('index', indices, Integral)
 
     # Get list of radionuclides based on tally filter
     radionuclides = [str(x) for x in tally.filters[i_filter].bins]

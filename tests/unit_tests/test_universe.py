@@ -248,7 +248,7 @@ def test_dagmc_length_multiplier_xml_roundtrip():
     root = ET.Element('geometry')
     dagmc_u.create_xml_subelement(root)
     dagmc_elem = root.find('dagmc_universe')
-    assert dagmc_elem.get('length_multiplier') == 0.1
+    assert dagmc_elem.get('length_multiplier') == '0.1'
     dagmc_u_roundtrip = openmc.DAGMCUniverse.from_xml_element(dagmc_elem)
     assert dagmc_u_roundtrip.length_multiplier == 0.1
     default_elem = ET.fromstring('<dagmc_universe id="100" filename="dagmc.h5m"/>')

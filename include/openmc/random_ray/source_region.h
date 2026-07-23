@@ -493,10 +493,7 @@ public:
   }
 
   SourceRegionKey& key(int64_t sr) { return key_[sr]; }
-  const SourceRegionKey key(int64_t sr) const
-  {
-    return key_[sr];
-  }
+  const SourceRegionKey key(int64_t sr) const { return key_[sr]; }
 
   MomentArray& source_gradients(int64_t sr, int g)
   {

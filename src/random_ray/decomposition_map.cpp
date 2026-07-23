@@ -474,10 +474,11 @@ void DecompositionMap::exchange_sr_info(
           if (mpi::rank == sender) {
             SourceRegion& contested_sr = discovered_source_regions[sr_key];
             double volume_sr = contested_sr.scalars_.volume_;
-            bcast_load = C1_ * 
-              (contested_sr.scalars_.n_hits_ / simulation::current_batch) * 
-              negroups_ + volume_sr * 
-              ray_tracing_cost_[sr_key.base_source_region_id];
+            bcast_load =
+              C1_ *
+                (contested_sr.scalars_.n_hits_ / simulation::current_batch) *
+                negroups_ +
+              volume_sr * ray_tracing_cost_[sr_key.base_source_region_id];
           }
           MPI_Bcast(&bcast_load, 1, MPI_DOUBLE, sender, mpi::intracomm);
 
@@ -623,7 +624,7 @@ void DecompositionMap::receive_sr_data(int sender, SourceRegion& sr_recv)
 
 int DecompositionMap::find_owner(SourceRegionKey sr_key, Position r,
   ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
-  discovered_source_regions)
+    discovered_source_regions)
 {
 
   // Check if source region key is in subdomain map
@@ -961,9 +962,11 @@ void DecompositionMap::update_load(FlatSourceDomain* domain,
       double volume_sr = domain->source_regions_.volume_t(sr);
       thread_load[owner] +=
         load_ratio[owner] *
-        (C1_ * (domain->source_regions_.n_hits(sr) / simulation::current_batch) *
-        negroups_ +  volume_sr * 
-        ray_tracing_cost_[domain->source_regions_.key(sr).base_source_region_id]);
+        (C1_ *
+            (domain->source_regions_.n_hits(sr) / simulation::current_batch) *
+            negroups_ +
+          volume_sr * ray_tracing_cost_[domain->source_regions_.key(sr)
+                          .base_source_region_id]);
     }
 
 // Combine results from different threads

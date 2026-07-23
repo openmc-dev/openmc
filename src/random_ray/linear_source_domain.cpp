@@ -131,6 +131,22 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 // update the simulation-averaged cell-wise volume estimates
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    // Offset of this batch's track centroid from the accumulated centroid
+    // the transport sweep evaluated the linear source against (the value
+    // held here before this batch is folded in). The flux update uses it to
+    // add back the source as actually sampled by this batch's tracks (see
+    // set_flux_to_flux_plus_source). Regions with no prior accumulated
+    // volume used per-segment midpoints in place of a centroid, for which
+    // the batch offset is identically zero.
+    if (source_regions_.volume_t(sr) > 0.0 &&
+        source_regions_.volume(sr) > 0.0) {
+      source_regions_.centroid_offset(sr) =
+        source_regions_.centroid_iteration(sr) *
+          (1.0 / source_regions_.volume(sr)) -
+        source_regions_.centroid(sr);
+    } else {
+      source_regions_.centroid_offset(sr) = {0.0, 0.0, 0.0};
+    }
     source_regions_.centroid_t(sr) += source_regions_.centroid_iteration(sr);
     source_regions_.mom_matrix_t(sr) += source_regions_.mom_matrix(sr);
     source_regions_.volume_t(sr) += source_regions_.volume(sr);
@@ -159,7 +175,33 @@ void LinearSourceDomain::set_flux_to_flux_plus_source(
     FlatSourceDomain::set_flux_to_flux_plus_source(sr, volume, g);
   } else {
     source_regions_.scalar_flux_new(sr, g) /= volume;
-    source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
+    // The source term added back includes the gradient part of the source
+    // that this batch's rays actually integrated. The sweep evaluates the
+    // linear source against the accumulated centroid, but the batch's tracks
+    // average it at their own track-length-weighted centroid: summing the
+    // exact chord integrals of a linear source over the batch's tracks gives
+    // a mean emission of source + gradient . centroid_offset, entering the
+    // transport sum with the batch's tracked volume -- hence the
+    // volume_naive / volume weight, which also prevents the correlation
+    // between the batch volume and batch centroid (both sampled by the same
+    // rays) from biasing the update when the two volumes differ. Adding back
+    // the flat source alone instead leaves the difference in the flux
+    // estimate as noise proportional to the gradient times the per-batch
+    // centroid fluctuation. In near-cancellation regions (scattering ratio
+    // near one), where the reduced source approximately equals the flux,
+    // that noise can exceed the flux itself at modest per-batch hit counts
+    // and ignite self-sustaining negativity through the scattering feedback.
+    // When the region is updated with its own batch (naive) volume the
+    // weight is one and the update becomes an exact per-batch track
+    // identity: the flux estimate is the track-length average of the angular
+    // flux, and so inherits its sign -- restoring to linear sources the
+    // property that a naive-volume update adds no noise of its own beyond
+    // the angular fluxes it averages.
+    source_regions_.scalar_flux_new(sr, g) +=
+      source_regions_.source(sr, g) +
+      (source_regions_.volume_naive(sr) / volume) *
+        source_regions_.source_gradients(sr, g)
+          .dot(source_regions_.centroid_offset(sr));
   }
   // If a source region is small, then the moments are likely noisy, so we zero
   // them. This is reasonable, given that small regions can get by with a flat

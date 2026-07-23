@@ -93,6 +93,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
     centroid_.push_back(sr.centroid_);
     centroid_iteration_.push_back(sr.centroid_iteration_);
     centroid_t_.push_back(sr.centroid_t_);
+    centroid_offset_.push_back({0.0, 0.0, 0.0});
     mom_matrix_.push_back(sr.mom_matrix_);
     mom_matrix_t_.push_back(sr.mom_matrix_t_);
   }
@@ -146,6 +147,7 @@ void SourceRegionContainer::assign(
     centroid_.clear();
     centroid_iteration_.clear();
     centroid_t_.clear();
+    centroid_offset_.clear();
     mom_matrix_.clear();
     mom_matrix_t_.clear();
   }
@@ -243,6 +245,8 @@ void SourceRegionContainer::adjoint_reset()
   std::fill(centroid_iteration_.begin(), centroid_iteration_.end(),
     Position {0.0, 0.0, 0.0});
   std::fill(centroid_t_.begin(), centroid_t_.end(), Position {0.0, 0.0, 0.0});
+  std::fill(centroid_offset_.begin(), centroid_offset_.end(),
+    Position {0.0, 0.0, 0.0});
   std::fill(mom_matrix_.begin(), mom_matrix_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),

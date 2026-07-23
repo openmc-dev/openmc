@@ -999,6 +999,52 @@ The contents of this section, alongside the equations for the flat source and
 scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively,
 completes the set of equations for LS.
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Consistency of the Scalar Flux Estimate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One subtlety of the linear source scheme deserves explicit treatment. During
+a batch, the transport sweep evaluates the linear source of region :math:`i`
+against the accumulated centroid estimate :math:`\mathbf{C}_i`, so every
+segment's attenuation calculation subtracts the local source value
+:math:`\bar{Q}_i + \vec{Q}_i \cdot (\mathbf{m}_s - \mathbf{C}_i)` at that
+segment's midpoint :math:`\mathbf{m}_s`. Because the chord integral of a
+linear function is exactly its midpoint value times the chord length,
+summing the segment balance equations over a batch's tracks shows that the
+tracks integrate a mean emission of
+
+.. math::
+    :label: batch_sampled_source
+
+    \bar{Q}_i + \vec{Q}_i \cdot (\mathbf{c}_{i,b} - \mathbf{C}_i)\;,
+
+where :math:`\mathbf{c}_{i,b}` is the batch's track-length-weighted centroid,
+which fluctuates about :math:`\mathbf{C}_i` from batch to batch as the rays
+sample the region unevenly. If the scalar flux update adds back only
+:math:`\bar{Q}_i`, the difference -- the source gradient dotted with the
+per-batch centroid fluctuation -- is silently absorbed by the flux estimate
+as a zero-mean noise term that has no counterpart in flat source mode (a
+constant source has the same average over any set of tracks). When a region
+is updated with its own batch (iteration) volume, this term is the only
+noise the update itself contributes: adding back the full batch-sampled
+source of Equation :eq:`batch_sampled_source` makes the update an exact
+per-batch track identity, in which the scalar flux estimate equals the
+track-length average of the angular flux and therefore inherits its sign.
+Omitting the term instead breaks, in linear source mode only, the property
+that a naive-volume update is exact given its rays -- and in
+near-cancellation regions (scattering ratios near unity, as in the
+air-filled regions of shielding problems), where the reduced source
+approximately equals the scalar flux, the absorbed noise can exceed the flux
+itself at modest per-batch hit counts and ignite self-sustaining negativity
+through the scattering feedback. When a region is instead updated with the
+simulation-averaged volume, the batch-sampled gradient term enters the
+transport sum weighted by the ratio of the batch volume to the
+simulation-averaged volume, and the update adds it back with the same
+weight; the weight matters because the batch volume and batch centroid are
+sampled by the same rays, and an unweighted term would convert their
+correlation into a systematic, gradient-aligned bias in regions cut by
+geometry.
+
 .. _methods-shannon-entropy-random-ray:
 
 -----------------------------

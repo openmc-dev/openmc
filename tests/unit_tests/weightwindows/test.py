@@ -249,7 +249,7 @@ def test_photon_heating(run_in_tmpdir, shared_secondary):
 
     model.settings.run_mode = 'fixed source'
     model.settings.batches = 5
-    model.settings.particles = 101
+    model.settings.particles = 100
     model.settings.shared_secondary_bank = shared_secondary
 
     tally = openmc.Tally()

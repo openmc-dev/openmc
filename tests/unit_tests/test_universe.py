@@ -239,6 +239,19 @@ def test_clone():
     assert dagmc_u1.auto_mat_ids != dagmc_u.auto_mat_ids
 
 
+def test_dagmc_length_multiplier_xml_roundtrip():
+    dagmc_u = openmc.DAGMCUniverse(filename="dagmc.h5m", universe_id=100, length_multiplier=0.1)
+    root = ET.Element('geometry')
+    dagmc_u.create_xml_subelement(root)
+    dagmc_elem = root.find('dagmc_universe')
+    assert dagmc_elem.get('length_multiplier') == 0.1
+    dagmc_u_roundtrip = openmc.DAGMCUniverse.from_xml_element(dagmc_elem)
+    assert dagmc_u_roundtrip.length_multiplier == 0.1
+    default_elem = ET.fromstring('<dagmc_universe id="100" filename="dagmc.h5m"/>')
+    default_univ = openmc.DAGMCUniverse.from_xml_element(default_elem)
+    assert default_univ.length_multiplier == 1.0
+
+
 def test_create_xml(cell_with_lattice):
     cells = [openmc.Cell() for i in range(5)]
     u = openmc.Universe(cells=cells)

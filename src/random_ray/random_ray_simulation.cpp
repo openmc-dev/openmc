@@ -388,10 +388,12 @@ void RandomRaySimulation::simulate()
   // Begin main simulation timer
   simulation::time_total.start();
 
+#ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     // Initialize subdomains for MPI ranks
     mpi::decomp_map.initialize();
   }
+#endif
 
   // Reset per-solve accumulators, as simulate() may run more than once on the
   // same object (e.g. forward then adjoint when generating weight windows)
@@ -425,11 +427,13 @@ void RandomRaySimulation::simulate()
       }
 
       // Generate Voronoi cells, each of which corresponds to a rank subdomain
+#ifdef OPENMC_MPI
       if (mpi::n_procs > 1) {
         simulation::time_generate_voronoi_centers.start();
         mpi::decomp_map.generate_rank_centers();
         simulation::time_generate_voronoi_centers.stop();
       }
+#endif
 
       geometry_setup_complete_ = true;
     }
@@ -438,6 +442,7 @@ void RandomRaySimulation::simulate()
     simulation::time_transport.start();
 
     // Transport sweep over all random rays for the iteration
+#ifdef OPENMC_MPI
     if (mpi::n_procs > 1) {
 
       // Create ray bank to store rays
@@ -458,6 +463,9 @@ void RandomRaySimulation::simulate()
     } else {
       transport_sweep();
     }
+#else
+    transport_sweep();
+#endif
 
     // Add any newly discovered source regions to the main source region
     // container
@@ -467,6 +475,7 @@ void RandomRaySimulation::simulate()
     domain_->normalize_scalar_flux_and_volumes(
       settings::n_particles * RandomRay::distance_active_);
 
+#ifdef OPENMC_MPI
     if (mpi::n_procs > 1 && simulation::current_batch <= ITER_LOAD_BALANCE) {
       // Balance load between MPI ranks by exchanging source regions
       simulation::time_load_balance.start();
@@ -474,6 +483,7 @@ void RandomRaySimulation::simulate()
       MPI_Barrier(mpi::intracomm);
       simulation::time_load_balance.stop();
     }
+#endif
 
     // Add source to scalar flux, compute number of FSR hits
     int64_t n_hits = domain_->add_source_to_scalar_flux();
@@ -543,6 +553,7 @@ void RandomRaySimulation::output_simulation_results()
   int64_t total_n_external_source_regions = domain_->n_external_source_regions_;
   double max_load_imbalance = 0.0;
 
+#ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
 
     // Average number of ray communications between ranks per batch
@@ -593,6 +604,7 @@ void RandomRaySimulation::output_simulation_results()
                            mpi::decomp_map.target_load_;
     }
   }
+#endif
 
   // Print random ray results
   if (mpi::master) {
@@ -603,11 +615,15 @@ void RandomRaySimulation::output_simulation_results()
   }
 
   if (model::plots.size() > 0) {
+#ifdef OPENMC_MPI
     if (mpi::n_procs > 1) {
       domain_->output_to_vtk_decomp();
     } else {
       domain_->output_to_vtk();
     }
+#else
+    domain_->output_to_vtk();
+#endif
   }
 }
 
@@ -619,6 +635,7 @@ void RandomRaySimulation::instability_check(
 
   uint64_t n_source_regions = domain_->n_source_regions();
 
+#ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     // Reduce n_hits and n_source_regions on master rank to compute
     // global miss rate
@@ -635,6 +652,7 @@ void RandomRaySimulation::instability_check(
     }
     simulation::time_decomposition_handling.stop();
   }
+#endif
 
   if (mpi::master) {
     double percent_missed =
@@ -840,6 +858,8 @@ void RandomRaySimulation::transport_sweep()
   simulation::time_transport.stop();
 }
 
+// Transport sweep for the domain decompososition case
+#ifdef OPENMC_MPI
 void RandomRaySimulation::transport_sweep_decomp(RayBank& RB)
 {
 
@@ -938,6 +958,7 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB)
 
   simulation::time_decomposition_handling.stop();
 }
+#endif // OPENMC_MPI
 
 } // namespace openmc
 

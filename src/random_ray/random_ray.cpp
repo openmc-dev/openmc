@@ -294,6 +294,7 @@ void RandomRay::event_advance_ray()
   boundary() = distance_to_boundary(*this);
   double distance = boundary().distance();
 
+#ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     // If domain decomposition is being used, update counter for
     // ray trace operations in source region for load estimation
@@ -303,6 +304,7 @@ void RandomRay::event_advance_ray()
       mpi::decomp_map.num_base_source_region_RT_[sr] += c.n_surfaces();
     }
   }
+#endif
 
   if (distance < 0.0) {
     mark_as_lost("Negative transport distance detected for particle " +
@@ -401,9 +403,11 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
     for (int b = 0; b < mesh_bins_.size(); b++) {
       double physical_length = reduced_distance * mesh_fractional_lengths_[b];
 
+#ifdef OPENMC_MPI
       if (mpi::n_procs > 1) {
         mpi::decomp_map.num_mesh_bin_RT_[sr] += 1;
       }
+#endif
 
       // Very flat angles can result in very small physical lengths,
       // despite the TINY_BIT adjustment for Position start. If this happens at
@@ -460,6 +464,7 @@ void RandomRay::attenuate_flux_inner(
 {
   SourceRegionKey sr_key {sr, mesh_bin};
 
+#ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     // Check which rank owns the source region at the current position
     Position midpoint = r + u() * (distance / 2.0);
@@ -473,6 +478,7 @@ void RandomRay::attenuate_flux_inner(
       return;
     }
   }
+#endif
 
   SourceRegionHandle srh;
   srh = domain_->get_subdivided_source_region_handle(sr_key, r, u());
@@ -1005,6 +1011,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 
   SourceRegionKey sr_key = domain_->lookup_source_region_key(*this);
 
+#ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     // Check if ray sampling site belongs to subdomain
     owner_rank_ = mpi::decomp_map.find_owner(
@@ -1019,6 +1026,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       return;
     }
   }
+#endif
 
   SourceRegionHandle srh =
     domain_->get_subdivided_source_region_handle(sr_key, r(), u());

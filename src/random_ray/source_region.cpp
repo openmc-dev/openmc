@@ -320,6 +320,10 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
 
 void SourceRegionContainer::adjoint_reset()
 {
+  // Note: key_ must NOT be reset here. Source region keys are permanent
+  // identifiers and required under domain decomposition to rebuild
+  // source_region_map_ during load balancing and to exchange source region data
+  // between ranks.
   std::fill(n_hits_.begin(), n_hits_.end(), 0);
   std::fill(volume_.begin(), volume_.end(), 0.0);
   std::fill(volume_t_.begin(), volume_t_.end(), 0.0);
@@ -333,7 +337,6 @@ void SourceRegionContainer::adjoint_reset()
   std::fill(centroid_iteration_.begin(), centroid_iteration_.end(),
     Position {0.0, 0.0, 0.0});
   std::fill(centroid_t_.begin(), centroid_t_.end(), Position {0.0, 0.0, 0.0});
-  std::fill(key_.begin(), key_.end(), SourceRegionKey {0, 0});
   std::fill(mom_matrix_.begin(), mom_matrix_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),

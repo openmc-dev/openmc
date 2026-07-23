@@ -12,6 +12,8 @@
 #include "openmc/vector.h"
 #include <numeric>
 
+#ifdef OPENMC_MPI
+
 namespace openmc {
 
 namespace mpi {
@@ -489,7 +491,6 @@ void DecompositionMap::exchange_sr_info(
 
           // Communicate source region data and merge on receiver side
           if (mpi::rank == sender) {
-
             SourceRegion& sr = discovered_source_regions[sr_key];
             send_sr_data(receiver, sr);
 
@@ -1140,3 +1141,4 @@ double DecompositionMap::calculate_load_ratio(int rank)
 }
 
 } // namespace openmc
+#endif // OPENMC_MPI

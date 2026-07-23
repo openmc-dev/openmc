@@ -11,6 +11,8 @@
 #include "openmc/timer.h"
 #include <numeric>
 
+#ifdef OPENMC_MPI
+
 namespace openmc {
 
 // Constructor
@@ -272,3 +274,5 @@ bool RayBank::is_any_ray_alive()
 }
 
 } // namespace openmc
+
+#endif // OPENMC_MPI

@@ -1,6 +1,7 @@
 #ifndef OPENMC_RANDOM_RAY_PARALLEL_HASH_MAP_H
 #define OPENMC_RANDOM_RAY_PARALLEL_HASH_MAP_H
 
+#include "openmc/error.h"
 #include "openmc/openmp_interface.h"
 
 #include <memory>
@@ -142,7 +143,11 @@ public:
   ValueType& operator[](const KeyType& key)
   {
     Bucket& bucket = get_bucket(key);
-    return *bucket.map_[key].get();
+    auto it = bucket.map_.find(key);
+    if (it == bucket.map_.end()) {
+      fatal_error("ParallelMap::operator[]: key not present in map.");
+    }
+    return *it->second;
   }
 
   ValueType* emplace(KeyType key, const ValueType& value)

@@ -374,6 +374,7 @@ void FlatSourceDomain::compute_k_eff()
   }
 
   // Sum up fission rates across all ranks
+#ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     simulation::time_decomposition_handling.start();
     MPI_Allreduce(
@@ -382,6 +383,7 @@ void FlatSourceDomain::compute_k_eff()
       MPI_IN_PLACE, &fission_rate_new, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
     simulation::time_decomposition_handling.stop();
   }
+#endif
 
   double k_eff_new = k_eff_ * (fission_rate_new / fission_rate_old);
 
@@ -400,6 +402,7 @@ void FlatSourceDomain::compute_k_eff()
     }
   }
 
+#ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     simulation::time_decomposition_handling.start();
     if (mpi::master) {
@@ -409,6 +412,7 @@ void FlatSourceDomain::compute_k_eff()
     }
     simulation::time_decomposition_handling.stop();
   }
+#endif
 
   // Adds entropy value to shared entropy vector in openmc namespace.
   simulation::entropy.push_back(H);
@@ -613,6 +617,13 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
     }
   }
 
+#ifdef OPENMC_MPI
+  if (mpi::n_procs > 1) {
+    MPI_Allreduce(MPI_IN_PLACE, &simulation_external_source_strength, 1,
+      MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+  }
+#endif
+
   // Step 2 is to determine the total user-specified external source strength
   double user_external_source_strength = 0.0;
   for (auto& ext_source : model::external_sources) {
@@ -750,6 +761,15 @@ void FlatSourceDomain::random_ray_tally()
   // see what index that score corresponds to. If that score is a flux score,
   // then we divide it by volume.
   if (volume_normalized_flux_tallies_) {
+#ifdef OPENMC_MPI
+    if (mpi::n_procs > 1) {
+      for (auto& volumes : tally_volumes_) {
+        MPI_Allreduce(MPI_IN_PLACE, volumes.data(),
+          static_cast<int>(volumes.size()), MPI_DOUBLE, MPI_SUM,
+          mpi::intracomm);
+      }
+    }
+#endif
     for (int i = 0; i < model::tallies.size(); i++) {
       Tally& tally {*model::tallies[i]};
 #pragma omp parallel for
@@ -1035,11 +1055,10 @@ void FlatSourceDomain::output_to_vtk() const
   }
 }
 
-// Outputs all basic material, FSR ID, multigroup flux, and
-// fission source data to .vtk file that can be directly
-// loaded and displayed by Paraview. Note that .vtk binary
-// files require big endian byte ordering, so endianness
-// is checked and flipped if necessary.
+// Variant of output_to_vtk() for domain decomposition case. Every rank
+// contributes the data of its own subdomain, reduced onto the master rank for
+// file output.
+#ifdef OPENMC_MPI
 void FlatSourceDomain::output_to_vtk_decomp() const
 {
 
@@ -1471,6 +1490,7 @@ void FlatSourceDomain::output_to_vtk_decomp() const
     }
   }
 }
+#endif // OPENMC_MPI
 
 void FlatSourceDomain::apply_external_source_to_source_region(
   int src_idx, SourceRegionHandle& srh)

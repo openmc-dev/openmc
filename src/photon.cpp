@@ -17,6 +17,8 @@
 
 #include <cmath>
 #include <fmt/core.h>
+#include <limits>
+#include <stdexcept>
 #include <tuple> // for tie
 
 namespace openmc {
@@ -252,7 +254,13 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   // Create Compton profile CDF
   auto n_profile = data::compton_profile_pz.size();
   auto n_shell_compton = profile_pdf_.shape(0);
+  if (n_profile < 2) {
+    throw std::runtime_error {
+      "At least two points are required in a Compton profile."};
+  }
   profile_cdf_ = tensor::Tensor<double>({n_shell_compton, n_profile});
+  profile_tail_slope_ = tensor::Tensor<double>({n_shell_compton});
+  profile_norm_ = tensor::Tensor<double>({n_shell_compton});
   for (int i = 0; i < n_shell_compton; ++i) {
     double c = 0.0;
     profile_cdf_(i, 0) = 0.0;
@@ -261,6 +269,31 @@ PhotonInteraction::PhotonInteraction(hid_t group)
            (data::compton_profile_pz(j + 1) - data::compton_profile_pz(j)) *
            (profile_pdf_(i, j) + profile_pdf_(i, j + 1));
       profile_cdf_(i, j + 1) = c;
+    }
+
+    // Extrapolate the profile beyond the tabulated grid linearly on a
+    // log-linear scale. The normalization includes the extrapolated tail.
+    double pz_last = data::compton_profile_pz(n_profile - 1);
+    double pz_prev = data::compton_profile_pz(n_profile - 2);
+    double profile_last = profile_pdf_(i, n_profile - 1);
+    double profile_prev = profile_pdf_(i, n_profile - 2);
+    if (!(pz_last > pz_prev) || !(profile_last > 0.0) ||
+        !(profile_prev > 0.0)) {
+      throw std::runtime_error {"The final two points of the Compton profile "
+                                "for element " +
+                                name_ + " are not valid for extrapolation."};
+    }
+    double slope = std::log(profile_last / profile_prev) / (pz_last - pz_prev);
+    if (!std::isfinite(slope) || slope >= 0.0) {
+      throw std::runtime_error {"The final two values of the Compton profile "
+                                "for element " +
+                                name_ + " do not form a decreasing tail."};
+    }
+    profile_tail_slope_(i) = slope;
+    profile_norm_(i) = 2.0 * (c - profile_last / slope);
+    if (!std::isfinite(profile_norm_(i)) || profile_norm_(i) <= 0.0) {
+      throw std::runtime_error {"The Compton profile for element " + name_ +
+                                " has an invalid normalization."};
     }
   }
 
@@ -451,11 +484,70 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
   }
 }
 
+double PhotonInteraction::compton_profile_cdf(int i_shell, double pz) const
+{
+  if (pz <= 0.0)
+    return 0.0;
+
+  auto n = data::compton_profile_pz.size();
+  double pz_last = data::compton_profile_pz(n - 1);
+  double c;
+  if (pz >= pz_last) {
+    c = profile_cdf_(i_shell, n - 1) + detail::compton_profile_tail_integral(pz,
+                                         pz_last, profile_pdf_(i_shell, n - 1),
+                                         profile_tail_slope_(i_shell));
+  } else {
+    int i = lower_bound_index(
+      data::compton_profile_pz.cbegin(), data::compton_profile_pz.cend(), pz);
+    double pz_l = data::compton_profile_pz(i);
+    double pz_r = data::compton_profile_pz(i + 1);
+    double p_l = profile_pdf_(i_shell, i);
+    double p_r = profile_pdf_(i_shell, i + 1);
+    double c_l = profile_cdf_(i_shell, i);
+    if (p_l == p_r) {
+      c = c_l + (pz - pz_l) * p_l;
+    } else {
+      double slope = (p_r - p_l) / (pz_r - pz_l);
+      double delta = pz - pz_l;
+      c = c_l + p_l * delta + 0.5 * slope * delta * delta;
+    }
+  }
+  return std::min(0.5, c / profile_norm_(i_shell));
+}
+
+double PhotonInteraction::invert_compton_profile_cdf(
+  int i_shell, double c) const
+{
+  auto n = data::compton_profile_pz.size();
+  double integral = c * profile_norm_(i_shell);
+  double c_last = profile_cdf_(i_shell, n - 1);
+  if (integral >= c_last) {
+    return detail::invert_compton_profile_tail(integral - c_last,
+      data::compton_profile_pz(n - 1), profile_pdf_(i_shell, n - 1),
+      profile_tail_slope_(i_shell));
+  }
+
+  tensor::View<const double> cdf_shell = profile_cdf_.slice(i_shell);
+  int i = lower_bound_index(cdf_shell.cbegin(), cdf_shell.cend(), integral);
+  double pz_l = data::compton_profile_pz(i);
+  double pz_r = data::compton_profile_pz(i + 1);
+  double p_l = profile_pdf_(i_shell, i);
+  double p_r = profile_pdf_(i_shell, i + 1);
+  double c_l = profile_cdf_(i_shell, i);
+  if (p_l == p_r) {
+    return pz_l + (integral - c_l) / p_l;
+  }
+
+  double slope = (p_r - p_l) / (pz_r - pz_l);
+  double delta_c = integral - c_l;
+  double discriminant = p_l * p_l + 2.0 * slope * delta_c;
+  double denominator = p_l + std::sqrt(std::max(0.0, discriminant));
+  return pz_l + 2.0 * delta_c / denominator;
+}
+
 void PhotonInteraction::compton_doppler(
   double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const
 {
-  auto n = data::compton_profile_pz.size();
-
   int shell; // index for shell
   while (true) {
     // Sample electron shell
@@ -466,102 +558,67 @@ void PhotonInteraction::compton_doppler(
       if (rn < c)
         break;
     }
+    double E = alpha * MASS_ELECTRON_EV;
 
     // Determine binding energy of shell
     double E_b = binding_energy_(shell);
 
-    // Determine p_z,max
-    double E = alpha * MASS_ELECTRON_EV;
-    if (E < E_b) {
-      *E_out = alpha / (1 + alpha * (1 - mu)) * MASS_ELECTRON_EV;
-      break;
-    }
+    // Resample if photon energy insufficient
+    if (E <= E_b)
+      continue;
 
     double pz_max = -FINE_STRUCTURE * (E_b - (E - E_b) * alpha * (1.0 - mu)) /
                     std::sqrt(2.0 * E * (E - E_b) * (1.0 - mu) + E_b * E_b);
+
+    // The minimum longitudinal momentum corresponds to zero outgoing photon
+    // energy. Determine the integrated profile over the kinematically allowed
+    // interval [p_z,min, p_z,max].
+    if (pz_max <= -FINE_STRUCTURE)
+      continue;
+    double c_negative = this->compton_profile_cdf(shell, FINE_STRUCTURE);
+    double c_limit;
+    double profile_mass;
     if (pz_max < 0.0) {
-      *E_out = alpha / (1 + alpha * (1 - mu)) * MASS_ELECTRON_EV;
-      break;
-    }
-
-    // Determine profile cdf value corresponding to p_z,max
-    double c_max;
-    if (pz_max > data::compton_profile_pz(n - 1)) {
-      c_max = profile_cdf_(shell, n - 1);
+      c_limit = this->compton_profile_cdf(shell, -pz_max);
+      profile_mass = c_negative - c_limit;
     } else {
-      int i = lower_bound_index(data::compton_profile_pz.cbegin(),
-        data::compton_profile_pz.cend(), pz_max);
-      double pz_l = data::compton_profile_pz(i);
-      double pz_r = data::compton_profile_pz(i + 1);
-      double p_l = profile_pdf_(shell, i);
-      double p_r = profile_pdf_(shell, i + 1);
-      double c_l = profile_cdf_(shell, i);
-      if (pz_l == pz_r) {
-        c_max = c_l;
-      } else if (p_l == p_r) {
-        c_max = c_l + (pz_max - pz_l) * p_l;
-      } else {
-        double m = (p_l - p_r) / (pz_l - pz_r);
-        c_max = c_l + (std::pow((m * (pz_max - pz_l) + p_l), 2) - p_l * p_l) /
-                        (2.0 * m);
-      }
+      c_limit = this->compton_profile_cdf(shell, pz_max);
+      profile_mass = c_negative + c_limit;
     }
 
-    // Sample value on bounded cdf
-    c = prn(seed) * c_max;
+    // Accept the shell according to its integrated Compton profile
+    if (prn(seed) >= profile_mass)
+      continue;
 
-    // Determine pz corresponding to sampled cdf value
-    tensor::View<const double> cdf_shell = profile_cdf_.slice(shell);
-    int i = lower_bound_index(cdf_shell.cbegin(), cdf_shell.cend(), c);
-    double pz_l = data::compton_profile_pz(i);
-    double pz_r = data::compton_profile_pz(i + 1);
-    double p_l = profile_pdf_(shell, i);
-    double p_r = profile_pdf_(shell, i + 1);
-    double c_l = profile_cdf_(shell, i);
+    // Sample signed longitudinal momentum from the allowed interval
     double pz;
-    if (pz_l == pz_r) {
-      pz = pz_l;
-    } else if (p_l == p_r) {
-      pz = pz_l + (c - c_l) / p_l;
+    if (pz_max < 0.0) {
+      c = c_limit + prn(seed) * profile_mass;
+      pz = -this->invert_compton_profile_cdf(shell, c);
     } else {
-      double m = (p_l - p_r) / (pz_l - pz_r);
-      pz = pz_l + (std::sqrt(p_l * p_l + 2.0 * m * (c - c_l)) - p_l) / m;
+      c = prn(seed) * profile_mass;
+      if (c < c_negative) {
+        pz = -this->invert_compton_profile_cdf(shell, c_negative - c);
+      } else {
+        pz = this->invert_compton_profile_cdf(shell, c - c_negative);
+      }
     }
 
     // Determine outgoing photon energy corresponding to electron momentum
-    // (solve Eq. 39 in LA-UR-04-0487 for E')
-    double momentum_sq = std::pow((pz / FINE_STRUCTURE), 2);
-    double f = 1.0 + alpha * (1.0 - mu);
-    double a = momentum_sq - f * f;
-    double b = 2.0 * E * (f - momentum_sq * mu);
-    c = E * E * (momentum_sq - 1.0);
-
-    double quad = b * b - 4.0 * a * c;
-    if (quad < 0) {
-      *E_out = alpha / (1 + alpha * (1 - mu)) * MASS_ELECTRON_EV;
-      break;
+    double energy_ratio = detail::compton_energy_ratio(alpha, mu, pz);
+    double max_energy_ratio = 1.0 - E_b / E;
+    if (!std::isfinite(energy_ratio) || energy_ratio <= 0.0) {
+      continue;
     }
-    quad = std::sqrt(quad);
-    double E_out1 = -(b + quad) / (2.0 * a);
-    double E_out2 = -(b - quad) / (2.0 * a);
+    double energy_tolerance = 16.0 * std::numeric_limits<double>::epsilon() *
+                              std::max(1.0, max_energy_ratio);
+    if (energy_ratio > max_energy_ratio + energy_tolerance)
+      continue;
+    energy_ratio = std::min(energy_ratio, max_energy_ratio);
+    *E_out = energy_ratio * E;
 
-    // Determine solution to quadratic equation that is positive
-    if (E_out1 > 0.0) {
-      if (E_out2 > 0.0) {
-        // If both are positive, pick one at random
-        *E_out = prn(seed) < 0.5 ? E_out1 : E_out2;
-      } else {
-        *E_out = E_out1;
-      }
-    } else {
-      if (E_out2 > 0.0) {
-        *E_out = E_out2;
-      } else {
-        // No positive solution -- resample
-        continue;
-      }
-    }
-    if (*E_out < E - E_b)
+    // Account for the outgoing energy factor in the approximate RIA DDCS
+    if (prn(seed) <= energy_ratio)
       break;
   }
 
@@ -846,6 +903,74 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+double detail::compton_profile_tail_integral(
+  double pz, double pz_last, double profile_last, double slope)
+{
+  return profile_last * std::expm1(slope * (pz - pz_last)) / slope;
+}
+
+double detail::invert_compton_profile_tail(
+  double integral, double pz_last, double profile_last, double slope)
+{
+  return pz_last + std::log1p(slope * integral / profile_last) / slope;
+}
+
+double detail::compton_energy_ratio(double alpha, double mu, double pz)
+{
+  if (pz == 0.0)
+    return 1.0 / (1.0 + alpha * (1.0 - mu));
+
+  double momentum_sq = std::pow(pz / FINE_STRUCTURE, 2);
+  double f = 1.0 + alpha * (1.0 - mu);
+  double a = momentum_sq - f * f;
+  double b = 2.0 * (f - momentum_sq * mu);
+  double c = momentum_sq - 1.0;
+  double discriminant = b * b - 4.0 * a * c;
+  double discriminant_tolerance = 16.0 *
+                                  std::numeric_limits<double>::epsilon() *
+                                  (b * b + std::abs(4.0 * a * c));
+  if (discriminant < -discriminant_tolerance)
+    return std::numeric_limits<double>::quiet_NaN();
+  discriminant = std::max(0.0, discriminant);
+
+  double root1;
+  double root2;
+  if (std::abs(a) < 1.0e-14 * (std::abs(b) + std::abs(c))) {
+    if (b == 0.0)
+      return std::numeric_limits<double>::quiet_NaN();
+    root1 = -c / b;
+    root2 = root1;
+  } else {
+    double sqrt_discriminant = std::sqrt(discriminant);
+    double q = -0.5 * (b + std::copysign(sqrt_discriminant, b));
+    root1 = q / a;
+    root2 = q == 0.0 ? (-b + sqrt_discriminant) / (2.0 * a) : c / q;
+  }
+
+  double root_min = std::numeric_limits<double>::infinity();
+  double root_max = -std::numeric_limits<double>::infinity();
+  if (std::isfinite(root1) && root1 > 0.0) {
+    root_min = root1;
+    root_max = root1;
+  }
+  if (std::isfinite(root2) && root2 > 0.0) {
+    root_min = std::min(root_min, root2);
+    root_max = std::max(root_max, root2);
+  }
+  if (!std::isfinite(root_min))
+    return std::numeric_limits<double>::quiet_NaN();
+
+  double energy_ratio = pz < 0.0 ? root_min : root_max;
+  double free_electron_ratio = 1.0 / f;
+  double tolerance = 16.0 * std::numeric_limits<double>::epsilon() *
+                     std::max(1.0, free_electron_ratio);
+  if ((pz < 0.0 && energy_ratio > free_electron_ratio + tolerance) ||
+      (pz > 0.0 && energy_ratio < free_electron_ratio - tolerance)) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+  return energy_ratio;
+}
 
 std::pair<double, double> klein_nishina(double alpha, uint64_t* seed)
 {

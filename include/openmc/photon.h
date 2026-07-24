@@ -86,6 +86,8 @@ public:
   // Compton profile data
   tensor::Tensor<double> profile_pdf_;
   tensor::Tensor<double> profile_cdf_;
+  tensor::Tensor<double> profile_tail_slope_;
+  tensor::Tensor<double> profile_norm_;
   tensor::Tensor<double> binding_energy_;
   tensor::Tensor<double> electron_pdf_;
 
@@ -113,6 +115,12 @@ private:
   void compton_doppler(
     double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const;
 
+  //! Evaluate the normalized integral of a Compton profile from zero to pz
+  double compton_profile_cdf(int i_shell, double pz) const;
+
+  //! Invert the normalized integral of a Compton profile
+  double invert_compton_profile_cdf(int i_shell, double c) const;
+
   //! Calculate the maximum size of the vacancy stack in atomic relaxation
   //
   //! These helper functions use the subshell transition data to calculate the
@@ -126,6 +134,21 @@ private:
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+namespace detail {
+
+//! Integrate an exponentially extrapolated Compton-profile tail
+double compton_profile_tail_integral(
+  double pz, double pz_last, double profile_last, double slope);
+
+//! Invert an exponentially extrapolated Compton-profile tail integral
+double invert_compton_profile_tail(
+  double integral, double pz_last, double profile_last, double slope);
+
+//! Calculate the outgoing-to-incident energy ratio for signed electron momentum
+double compton_energy_ratio(double alpha, double mu, double pz);
+
+} // namespace detail
 
 std::pair<double, double> klein_nishina(double alpha, uint64_t* seed);
 

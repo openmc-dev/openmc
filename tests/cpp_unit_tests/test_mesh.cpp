@@ -256,14 +256,14 @@ TEST_CASE("Test multiple meshes HDF5 roundtrip - spherical")
   REQUIRE(regular_mesh_hdf5->upper_right() == regular_mesh_xml->upper_right());
 }
 
-TEST_CASE("Test get_index_in_direction - regular mesh")
+TEST_CASE("Test get_index_in_direction - regular")
 {
   // The XML data as a string
   std::string xml_string = R"(
         <mesh id="1">
-            <dimension>3 4 5</dimension>
-            <lower_left>-2 -3 -5</lower_left>
-            <upper_right>2 3 5</upper_right>
+            <dimension>2 1 1</dimension>
+            <lower_left>-2 -2 -2</lower_left>
+            <upper_right>2 2 2</upper_right>
        </mesh>
     )";
 
@@ -277,20 +277,35 @@ TEST_CASE("Test get_index_in_direction - regular mesh")
 
   auto mesh = RegularMesh(root);
 
-  REQUIRE(mesh.get_index_in_direction(-2.0, 0) == 1);
-  REQUIRE(mesh.get_index_in_direction(-1.99, 0) == 1);
-  REQUIRE(mesh.get_index_in_direction(1.99, 0) == 3);
-  REQUIRE(mesh.get_index_in_direction(2.0, 0) == 3);
+  REQUIRE(mesh.get_index_in_direction(-4.1, 0) == -1);
+  REQUIRE(mesh.get_index_in_direction(-4.0, 0) == -1);
+  REQUIRE(mesh.get_index_in_direction(-3.9, 0) == 0);
+
+  REQUIRE(mesh.get_index_in_direction(-2.1, 0) == 0);
+  REQUIRE(mesh.get_index_in_direction(-2.0, 0) == 1); // lower left
+  REQUIRE(mesh.get_index_in_direction(-1.9, 0) == 1);
+
+  REQUIRE(mesh.get_index_in_direction(-0.1, 0) == 1);
+  REQUIRE(mesh.get_index_in_direction(0.0, 0) == 1);
+  REQUIRE(mesh.get_index_in_direction(0.1, 0) == 2);
+
+  REQUIRE(mesh.get_index_in_direction(1.9, 0) == 2);
+  REQUIRE(mesh.get_index_in_direction(2.0, 0) == 2); // upper right
+  REQUIRE(mesh.get_index_in_direction(2.1, 0) == 3);
+
+  REQUIRE(mesh.get_index_in_direction(3.9, 0) == 3);
+  REQUIRE(mesh.get_index_in_direction(4.0, 0) == 3);
+  REQUIRE(mesh.get_index_in_direction(4.1, 0) == 4);
 }
 
-TEST_CASE("Test get_index_in_direction - rectilinear mesh")
+TEST_CASE("Test get_index_in_direction - rectilinear")
 {
   // The XML data as a string
   std::string xml_string = R"(
         <mesh id="1" type="rectilinear">
-            <x_grid>0.0 1.0 5.0 10.0</x_grid>
-            <y_grid>-10.0 -5.0 0.0</y_grid>
-            <z_grid>-100.0 0.0 100.0</z_grid>
+            <x_grid>-1.0 0.0 2.0</x_grid>
+            <y_grid>-1.0 1.0</y_grid>
+            <z_grid>-1.0 1.0</z_grid>
         </mesh>
     )";
 
@@ -304,8 +319,15 @@ TEST_CASE("Test get_index_in_direction - rectilinear mesh")
 
   auto mesh = RectilinearMesh(root);
 
-  REQUIRE(mesh.get_index_in_direction(0.0, 0) == 1);
-  REQUIRE(mesh.get_index_in_direction(0.01, 0) == 1);
-  REQUIRE(mesh.get_index_in_direction(9.99, 0) == 3);
-  REQUIRE(mesh.get_index_in_direction(10.0, 0) == 3);
+  REQUIRE(mesh.get_index_in_direction(-5.0, 0) == 0);
+
+  REQUIRE(mesh.get_index_in_direction(-1.1, 0) == 0);
+  REQUIRE(mesh.get_index_in_direction(-1.0, 0) == 1); // lower left
+  REQUIRE(mesh.get_index_in_direction(-0.9, 0) == 1);
+
+  REQUIRE(mesh.get_index_in_direction(1.9, 0) == 2);
+  REQUIRE(mesh.get_index_in_direction(2.0, 0) == 2); // upper right
+  REQUIRE(mesh.get_index_in_direction(2.1, 0) == 3);
+
+  REQUIRE(mesh.get_index_in_direction(5.0, 0) == 3);
 }

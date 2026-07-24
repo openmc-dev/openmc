@@ -222,9 +222,6 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
             # Remove extra values based on the materials local to each rank
             if external_active:
                 external_source_rates.reformat_nuclide_vectors(n_result)
-                # Clamp negative values to 0
-                for n_material in n_result:
-                    np.maximum(n_material, 0.0, out=n_material)
 
             return n_result
 
@@ -244,8 +241,5 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
     # Remove extra value at the end of the nuclide vectors if external source rates are present
     if external_active:
         external_source_rates.reformat_nuclide_vectors(n_result)
-        # Clamp negative values to 0
-        for n_material in n_result:
-            np.maximum(n_material, 0.0, out=n_material)
 
     return n_result

@@ -966,7 +966,7 @@ void DecompositionMap::update_load(FlatSourceDomain* domain,
             (domain->source_regions_.n_hits(sr) / simulation::current_batch) *
             negroups_ +
           volume_sr * ray_tracing_cost_[domain->source_regions_.key(sr)
-                          .base_source_region_id]);
+                                          .base_source_region_id]);
     }
 
 // Combine results from different threads

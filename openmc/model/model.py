@@ -2958,6 +2958,11 @@ class Model:
             Whether to print a summary of overlap and undefined sample results.
         **init_kwargs
             Keyword arguments passed to :meth:`Model.init_lib`.
+
+        Returns
+        ----------
+        result : dict
+            Dictionary summarizing the sampled geometry.
         """
         import openmc.lib
 

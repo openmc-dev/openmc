@@ -1470,18 +1470,13 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
   }
 }
 
-int RegularMesh::get_index_in_direction(double r, double u, int i) const
+int RegularMesh::get_index_in_direction(double r, int i) const
 {
-  int idx = std::ceil((r - lower_left_[i]) / width_[i]);
-
-  // If on upper boundary with positive direction, use next index
-  if (r == lower_left_[i] + width_[i] * idx) {
-    if (u > 0.0) {
-      idx++;
-    }
+  if (r == lower_left_[i]) {
+    return 1;
+  } else {
+    return std::ceil((r - lower_left_[i]) / width_[i]);
   }
-
-  return idx;
 }
 
 const std::string RegularMesh::mesh_type = "regular";

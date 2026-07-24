@@ -1249,8 +1249,7 @@ void StructuredMesh::raytrace_mesh(
 
       // Calculate the new cell index and update all distances to next
       // surfaces.
-      ijk =
-        get_indices(global_r + (traveled_distance + TINY_BIT) * u, u, in_mesh);
+      ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, u, in_mesh);
       for (int k = 0; k < n; ++k) {
         distances[k] =
           distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);

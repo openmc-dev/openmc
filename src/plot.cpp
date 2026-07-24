@@ -1,7 +1,6 @@
 #include "openmc/plot.h"
 
 #include <algorithm>
-#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
 #include <cmath>
 #include <cstdio>
 #include <fstream>
@@ -1328,7 +1327,7 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   int horiz, int vert) const
 {
   // Compute field of view in radians
-  constexpr double DEGREE_TO_RADIAN = M_PI / 180.0;
+  constexpr double DEGREE_TO_RADIAN = PI / 180.0;
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
   double p0 = static_cast<double>(pixels()[0]);
   double p1 = static_cast<double>(pixels()[1]);

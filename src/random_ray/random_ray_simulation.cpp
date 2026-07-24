@@ -392,6 +392,11 @@ void RandomRaySimulation::simulate()
   // Begin main simulation timer
   simulation::time_total.start();
 
+  // Reset per-solve accumulators, as simulate() may run more than once on the
+  // same object (e.g. forward then adjoint when generating weight windows)
+  avg_miss_rate_ = 0.0;
+  total_geometric_intersections_ = 0;
+
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
     // Initialize the current batch

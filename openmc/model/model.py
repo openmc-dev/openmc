@@ -28,6 +28,37 @@ from openmc.exceptions import InvalidIDError
 from openmc.plots import add_plot_params, _BASIS_INDICES, id_map_to_rgb
 from openmc.utility_funcs import change_directory
 
+def classify_undefined_regions(cell_ids: np.ndarray) -> np.ndarray:
+    """Find internal undefined pixels in a 2D cell-ID slice.
+
+    Undefined pixels are identified by the `_NOT_FOUND` sentinel. Internal
+    undefined pixels are those enclosed by defined pixels (i.e. holes in the
+    defined-pixel mask), as opposed to undefined pixels connected to the
+    slice boundary, which represent the void outside the model. The
+    classification is based only on connectivity within the sampled pixel
+    grid, so it does not guarantee true geometric interior classification.
+
+    Parameters
+    ----------
+    cell_ids : numpy.ndarray
+        Two-dimensional array of cell IDs for a slice, intended to be
+        gotten from the slice_data function.
+
+    Returns
+    ----------
+    internal : numpy.ndarray of bool
+        Boolean mask of undefined pixels not connected to the boundary of the
+        sampled slice, i.e., undefined interior holes in the sampled grid.
+    """
+
+    _NOT_FOUND = -2
+    if cell_ids is None:
+        raise TypeError("cell_ids must be a 2D numpy array, got None")
+
+    undefined = (cell_ids == _NOT_FOUND)
+
+    # Internal undefined pixels are holes in the defined-pixel mask.
+    return ndimage.binary_fill_holes(~undefined) & undefined
 
 # Protocol for a function that is passed to search_keff
 class ModelModifier(Protocol):
@@ -2895,46 +2926,6 @@ class Model:
         # Take a wild guess as to how many rays are needed
         self.settings.particles = 2 * int(max_length)
 
-    @staticmethod
-    def _classify_undefined_regions(cell_ids: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Classify undefined pixels in a 2D cell-ID slice.
-
-        Undefined pixels are identified by the `_NOT_FOUND` sentinel and split
-        into two groups: boundary-connected undefined pixels (`outside`) and
-        non-boundary-connected undefined pixels (`internal`). This classification
-        is based only on connectivity within the sampled pixel grid, so it does
-        not guarantee true geometric exterior/interior classification. To be 
-        reused in the plotter for undefined region visualization.
-
-        Parameters
-        ----------
-        cell_ids : numpy.ndarray
-            Two-dimensional array of cell IDs for a slice, intended to be 
-            gotten from the slice_data function.
-        """
-
-        _NOT_FOUND = -2
-        if cell_ids is None:
-            return None, None, None
-
-        undefined = (cell_ids == _NOT_FOUND)
-
-        # Internal undefined pixels are holes in the defined-pixel mask.
-        internal = ndimage.binary_fill_holes(~undefined) & undefined
-
-        # Anything undefined that is not internal is boundary-connected.
-        outside = undefined & ~internal
-
-        # Guard: undefined regions exist, but none connect to the slice boundary.
-        if undefined.any() and not outside.any():
-            warnings.warn(
-                "Undefined pixels were found, but none are connected to the "
-                "slice boundary. All undefined pixels are being classified as "
-                "internal for this slice. Consider increasing slice resolution."
-            )
-
-        return undefined, outside, internal
-
     def geometry_debug(
         self,
         lower_left,
@@ -2977,18 +2968,26 @@ class Model:
 
         # Accepts 3 separate samples (for x y and z) or just one number
         if isinstance(n_samples, int):
-            base, extra = divmod(n_samples, 3)
-            nx = base + (1 if extra > 0 else 0)
-            ny = base + (1 if extra > 1 else 0)
-            nz = base
+            if n_samples < 1:
+                raise ValueError("n_samples must be >= 1")
+
+            lower_left_arr = np.asarray(lower_left, dtype=float)
+            upper_right_arr = np.asarray(upper_right, dtype=float)
+
+            width = upper_right_arr - lower_left_arr
+            if np.any(width <= 0.0):
+                raise ValueError("upper_right must be greater than lower_left in all dimensions")
+
+            # Choose nx, ny, nz proportional to the physical widths so that:
+            # nx * ny * nz ≈ n_samples and voxel sizes are similar in x/y/z.
+            scale = np.cbrt(n_samples / np.prod(width))
+            nx, ny, nz = np.maximum(1, np.rint(scale * width).astype(int))
         else:
             if len(n_samples) != 3:
                 raise ValueError("n_samples must be an int or a length-3 iterable")
-            nx, ny, nz = n_samples
+            nx, ny, nz = (int(n_samples[0]), int(n_samples[1]), int(n_samples[2]))
 
-        nx = int(nx)
-        ny = int(ny)
-        nz = int(nz)
+        nx, ny, nz = int(nx), int(ny), int(nz)
 
         if nx <= 0 or ny <= 0 or nz <= 0:
             raise ValueError("All n_samples values must be positive")
@@ -3031,7 +3030,7 @@ class Model:
 
                 overlap_data = openmc.lib.slice_data_overlap_info()
 
-                # Extend the bounding box for each unique overlap key.
+                # Union each overlap key's bounding box across z-slices.
                 for overlap_idx, key in enumerate(overlap_data):
                     encoded_id = _OVERLAP - overlap_idx - 1
                     pix = np.argwhere(cell_ids == encoded_id)
@@ -3042,27 +3041,20 @@ class Model:
                     xc = x0 + (pix[:, 1] + 0.5) * (x1 - x0) / nx
                     yc = y1 - (pix[:, 0] + 0.5) * (y1 - y0) / ny
 
-                    box = overlap_boxes.get(key_t)
-                    if box is None:
-                        overlap_boxes[key_t] = {
-                            "key": key_t,
-                            "xmin": float(xc.min()), "xmax": float(xc.max()),
-                            "ymin": float(yc.min()), "ymax": float(yc.max()),
-                            "zmin": float(z), "zmax": float(z),
-                        }
+                    slice_box = openmc.BoundingBox(
+                        (float(xc.min()), float(yc.min()), z),
+                        (float(xc.max()), float(yc.max()), z),
+                    )
+                    if key_t in overlap_boxes:
+                        overlap_boxes[key_t] |= slice_box
                     else:
-                        box["xmin"] = min(box["xmin"], float(xc.min()))
-                        box["xmax"] = max(box["xmax"], float(xc.max()))
-                        box["ymin"] = min(box["ymin"], float(yc.min()))
-                        box["ymax"] = max(box["ymax"], float(yc.max()))
-                        box["zmin"] = min(box["zmin"], float(z))
-                        box["zmax"] = max(box["zmax"], float(z))
+                        overlap_boxes[key_t] = slice_box
 
-                _, _, internal = Model._classify_undefined_regions(cell_ids)
+                internal_volume[k] = classify_undefined_regions(cell_ids)
 
-                internal_volume[k] = internal
-
-        overlap_boxes = list(overlap_boxes.values())
+        overlap_boxes = [
+            {"key": key_t, "bbox": bbox} for key_t, bbox in overlap_boxes.items()
+        ]
 
         # Overlaps are not flagged for resolution: whether an overlap exists and
         # which cells collide is determined by the (universe, cell1, cell2) key
@@ -3081,7 +3073,7 @@ class Model:
                     continue
                 kz, ky, kx = sl  # slice objects over the (z, y, x) index axes
 
-                # Voxel-edge world extents (start inclusive, stop exclusive)
+                # Voxel-edge world extents
                 x_lo = x0 + kx.start * (x1 - x0) / nx
                 x_hi = x0 + kx.stop * (x1 - x0) / nx
                 # The y (row) axis is flipped in world coordinates (row 0 == y1)
@@ -3098,17 +3090,20 @@ class Model:
                 mask = (labeled[sl] == region_id)
                 under_resolved = not ndimage.binary_erosion(mask).any()
 
+                bbox = openmc.BoundingBox(
+                    (x_lo, y_lo, z_lo),
+                    (x_hi, y_hi, z_hi),
+                )
                 undefined_boxes.append({
-                    "xmin": float(min(x_lo, x_hi)), "xmax": float(max(x_lo, x_hi)),
-                    "ymin": float(min(y_lo, y_hi)), "ymax": float(max(y_lo, y_hi)),
-                    "zmin": float(z_lo), "zmax": float(z_hi),
+                    "bbox": bbox,
                     "under_resolved": bool(under_resolved),
                 })
 
         # Round coordinates to keep the reported boxes readable.
         for box in overlap_boxes + undefined_boxes:
-            for coord in ("xmin", "xmax", "ymin", "ymax", "zmin", "zmax"):
-                box[coord] = round(box[coord], 4)
+            bbox = box["bbox"]
+            bbox.lower_left = np.round(bbox.lower_left, 4)
+            bbox.upper_right = np.round(bbox.upper_right, 4)
 
         under_resolved = any(b["under_resolved"] for b in undefined_boxes)
 
@@ -3135,11 +3130,12 @@ class Model:
             if result["overlap_boxes"]:
                 print(f"  Overlaps found: {result['n_overlaps']}")
                 for box in result["overlap_boxes"]:
+                    ll, ur = box["bbox"].lower_left, box["bbox"].upper_right
                     print(
                         f"    cells {box['key']}: "
-                        f"x[{box['xmin']:.4g}, {box['xmax']:.4g}] "
-                        f"y[{box['ymin']:.4g}, {box['ymax']:.4g}] "
-                        f"z[{box['zmin']:.4g}, {box['zmax']:.4g}]"
+                        f"x[{ll[0]:.4g}, {ur[0]:.4g}] "
+                        f"y[{ll[1]:.4g}, {ur[1]:.4g}] "
+                        f"z[{ll[2]:.4g}, {ur[2]:.4g}]"
                     )
             else:
                 print("  Overlap bounding boxes: None")
@@ -3148,18 +3144,19 @@ class Model:
                 print(f"  Undefined regions found: {result['n_undefined_regions']}")
                 for i, box in enumerate(result["undefined_boxes"], start=1):
                     flag = "  [under-resolved]" if box["under_resolved"] else ""
+                    ll, ur = box["bbox"].lower_left, box["bbox"].upper_right
                     print(
                         f"    region {i}: "
-                        f"x[{box['xmin']:.4g}, {box['xmax']:.4g}] "
-                        f"y[{box['ymin']:.4g}, {box['ymax']:.4g}] "
-                        f"z[{box['zmin']:.4g}, {box['zmax']:.4g}]{flag}"
+                        f"x[{ll[0]:.4g}, {ur[0]:.4g}] "
+                        f"y[{ll[1]:.4g}, {ur[1]:.4g}] "
+                        f"z[{ll[2]:.4g}, {ur[2]:.4g}]{flag}"
                     )
             else:
                 print("  Undefined bounding boxes: None")
 
             if result["under_resolved"]:
                 print(
-                    "  WARNING: some undefined regions are resolved by <= 2 "
+                    "WARNING: some undefined regions are resolved by <= 2 "
                     "voxels across their thinnest dimension and may be "
                     "fragmented or missed; increase n_samples so thin features "
                     "span at least 3 voxels."

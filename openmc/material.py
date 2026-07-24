@@ -1455,10 +1455,15 @@ class Material(IDManagerMixin):
         elif units == 'Ci/m3':
             multiplier = 1e6 / _BECQUEREL_PER_CURIE
 
+        # Resolve chain to avoid repeated lookups for each nuclide
+        from openmc.deplete.chain import _get_chain
+        if chain_file is not False:
+            if chain_file is not None or openmc.config.get('chain_file') is not None:
+                chain_file = _get_chain(chain_file)
+
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            inv_seconds = openmc.data.decay_constant(
-                nuclide, chain_file=chain_file)
+            inv_seconds = openmc.data.decay_constant(nuclide, chain_file=chain_file)
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())

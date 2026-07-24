@@ -41,6 +41,29 @@ def _distribute(items):
             return items[j:j + chunk_size]
         j += chunk_size
 
+
+def _add_external_source(
+    matrices, n, chain, external_source_rates, current_timestep
+):
+    """Augment depletion matrices and nuclide vectors with external sources."""
+    sources = map(chain.form_ext_source_term, repeat(external_source_rates),
+                  repeat(current_timestep), external_source_rates.local_mats)
+    matrices = [
+        hstack([matrix, source])
+        for matrix, source in zip(matrices, sources)
+    ]
+    n_solve = [arr.copy() for arr in n]
+
+    # Homogenize the augmented matrices and nuclide vectors
+    for i, matrix in enumerate(matrices):
+        if matrix.shape[0] + 1 == matrix.shape[1]:
+            matrices[i] = vstack(
+                [matrix, csc_array((1, matrix.shape[1]))])
+            n_solve[i] = np.append(n_solve[i], 1.0)
+
+    return matrices, n_solve
+
+
 def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
             transfer_rates=None, external_source_rates=None, substeps=1,
             *matrix_args):
@@ -127,22 +150,8 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
 
         # Add external sources if present
         if external_active:
-            n_solve = [arr.copy() for arr in n]
-            sources = map(chain.form_ext_source_term, repeat(external_source_rates),
-                          repeat(current_timestep), external_source_rates.local_mats)
-
-            # stack vector column at the end of the matrix
-            matrices = [
-                hstack([matrix, source])
-                for matrix, source in zip(matrices, sources)
-            ]
-
-            # Homogenize diagonal matrices to be square
-            for i, matrix in enumerate(matrices):
-                if matrix.shape[0] + 1 == matrix.shape[1]:
-                    # Add a row of zeroes to the matrix and append 1 to the last row of the nuclide vector
-                    matrices[i] = vstack([matrix, csc_array((1, matrix.shape[1]))])
-                    n_solve[i] = np.append(n_solve[i], 1.0)
+            matrices, n_solve = _add_external_source(
+                matrices, n, chain, external_source_rates, current_timestep)
 
         # Set transfer rate terms with destination material if present
         if current_timestep in transfer_rates.index_transfer:
@@ -220,22 +229,8 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
 
     # If only external source rates are present
     elif external_active:
-        n_solve = [arr.copy() for arr in n]
-        # Calculate external source term vectors
-        sources = map(chain.form_ext_source_term, repeat(external_source_rates),
-                      repeat(current_timestep), external_source_rates.local_mats)
-
-        # stack vector column at the end of the matrix
-        matrices = [
-            hstack([matrix, source])
-            for matrix, source in zip(matrices, sources)
-        ]
-        # Add a last row of zeroes to the matrices and append 1 to the last row
-        # of the nuclide vectors
-        for i, matrix in enumerate(matrices):
-            if matrix.shape[0] + 1 == matrix.shape[1]:
-                matrices[i] = vstack([matrix, csc_array((1, matrix.shape[1]))])
-                n_solve[i] = np.append(n_solve[i], 1.0)
+        matrices, n_solve = _add_external_source(
+            matrices, n, chain, external_source_rates, current_timestep)
 
     inputs = zip(matrices, n_solve, repeat(dt), repeat(substeps))
 

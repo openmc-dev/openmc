@@ -70,7 +70,7 @@ public:
   }
   int64_t lookup_base_source_region_idx(const GeometryState& p) const;
   SourceRegionKey lookup_source_region_key(const GeometryState& p) const;
-  int64_t lookup_mesh_bin(int64_t sr, Position r, const Direction& u) const;
+  int64_t lookup_mesh_bin(int64_t sr, Position r) const;
   int lookup_mesh_idx(int64_t sr) const;
 
   //----------------------------------------------------------------------------

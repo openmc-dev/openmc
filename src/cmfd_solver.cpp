@@ -94,7 +94,7 @@ tensor::Tensor<double> count_bank_sites(
     const auto& site = simulation::source_bank[i];
 
     // determine scoring bin for CMFD mesh
-    int mesh_bin = cmfd::mesh->get_bin(site.r, site.u);
+    int mesh_bin = cmfd::mesh->get_bin(site.r);
 
     // if outside mesh, skip particle
     if (mesh_bin < 0) {

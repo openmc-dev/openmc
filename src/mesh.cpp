@@ -1023,12 +1023,12 @@ ElementType UnstructuredMesh::element_type(int bin) const
 }
 
 StructuredMesh::MeshIndex StructuredMesh::get_indices(
-  Position r, Direction u, bool& in_mesh) const
+  Position r, bool& in_mesh) const
 {
   MeshIndex ijk;
   in_mesh = true;
   for (int i = 0; i < n_dimension_; ++i) {
-    ijk[i] = get_index_in_direction(r[i], u[i], i);
+    ijk[i] = get_index_in_direction(r[i], i);
 
     if (ijk[i] < 1 || ijk[i] > shape_[i])
       in_mesh = false;
@@ -1066,11 +1066,11 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
   return ijk;
 }
 
-int StructuredMesh::get_bin(Position r, Direction u) const
+int StructuredMesh::get_bin(Position r) const
 {
   // Determine indices
   bool in_mesh;
-  MeshIndex ijk = get_indices(r, u, in_mesh);
+  MeshIndex ijk = get_indices(r, in_mesh);
   if (!in_mesh)
     return -1;
 
@@ -1104,7 +1104,7 @@ tensor::Tensor<double> StructuredMesh::count_sites(
     const auto& site = bank[i];
 
     // determine scoring bin for entropy mesh
-    int mesh_bin = get_bin(site.r, site.u);
+    int mesh_bin = get_bin(site.r);
 
     // if outside mesh, skip particle
     if (mesh_bin < 0) {
@@ -1171,7 +1171,7 @@ void StructuredMesh::raytrace_mesh(
 
   // Calculate index of current cell. Offset the position a tiny bit in
   // direction of flight
-  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, u, in_mesh);
+  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
@@ -1249,7 +1249,7 @@ void StructuredMesh::raytrace_mesh(
 
       // Calculate the new cell index and update all distances to next
       // surfaces.
-      ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, u, in_mesh);
+      ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, in_mesh);
       for (int k = 0; k < n; ++k) {
         distances[k] =
           distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
@@ -1586,7 +1586,7 @@ tensor::Tensor<double> RegularMesh::count_sites(
     const auto& site = bank[i];
 
     // determine scoring bin for entropy mesh
-    int mesh_bin = get_bin(site.r, site.u);
+    int mesh_bin = get_bin(site.r);
 
     // if outside mesh, skip particle
     if (mesh_bin < 0) {
@@ -1827,7 +1827,7 @@ std::string CylindricalMesh::get_mesh_type() const
 }
 
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
-  Position r, Direction u, bool& in_mesh) const
+  Position r, bool& in_mesh) const
 {
   r = local_coords(r);
 
@@ -1843,7 +1843,7 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
       mapped_r[1] += 2 * M_PI;
   }
 
-  MeshIndex idx = StructuredMesh::get_indices(mapped_r, u, in_mesh);
+  MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
 
   idx[1] = sanitize_phi(idx[1]);
 
@@ -2042,7 +2042,7 @@ int CylindricalMesh::set_grid()
   return 0;
 }
 
-int CylindricalMesh::get_index_in_direction(double r, double u, int i) const
+int CylindricalMesh::get_index_in_direction(double r, int i) const
 {
   return lower_bound_index(grid_[i].begin(), grid_[i].end(), r) + 1;
 }
@@ -2120,7 +2120,7 @@ std::string SphericalMesh::get_mesh_type() const
 }
 
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
-  Position r, Direction u, bool& in_mesh) const
+  Position r, bool& in_mesh) const
 {
   r = local_coords(r);
 
@@ -2137,7 +2137,7 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
       mapped_r[2] += 2 * M_PI;
   }
 
-  MeshIndex idx = StructuredMesh::get_indices(mapped_r, u, in_mesh);
+  MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
 
   idx[1] = sanitize_theta(idx[1]);
   idx[2] = sanitize_phi(idx[2]);
@@ -2371,7 +2371,7 @@ int SphericalMesh::set_grid()
   return 0;
 }
 
-int SphericalMesh::get_index_in_direction(double r, double u, int i) const
+int SphericalMesh::get_index_in_direction(double r, int i) const
 {
   return lower_bound_index(grid_[i].begin(), grid_[i].end(), r) + 1;
 }
@@ -2656,14 +2656,13 @@ extern "C" int openmc_mesh_get_plot_bins(int32_t index, Position origin,
 #pragma omp parallel
   {
     Position r = xyz;
-    Direction placeholder_u = Direction(1.0, 0.0, 0.0);
 
 #pragma omp for
     for (int y = 0; y < pixel_height; y++) {
       r[out_i] = xyz[out_i] - out_pixel * y;
       for (int x = 0; x < pixel_width; x++) {
         r[in_i] = xyz[in_i] + in_pixel * x;
-        data[pixel_width * y + x] = mesh->get_bin(r, placeholder_u);
+        data[pixel_width * y + x] = mesh->get_bin(r);
       }
     }
   }
@@ -3096,7 +3095,7 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   // score to that tet and return.
   if (hits.size() == 0) {
     Position midpoint = r0 + u * (track_len * 0.5);
-    int bin = this->get_bin(midpoint, u);
+    int bin = this->get_bin(midpoint);
     if (bin != -1) {
       bins.push_back(bin);
       lengths.push_back(1.0);
@@ -3115,7 +3114,7 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
     // find the midpoint of this segment
     Position midpoint = current + u * (segment_length * 0.5);
     // try to find a tet for this position
-    int bin = this->get_bin(midpoint, u);
+    int bin = this->get_bin(midpoint);
 
     // determine the start point for this segment
     current = r0 + u * hit;
@@ -3135,7 +3134,7 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
     Position segment_start = r0 + u * hits.back();
     double segment_length = track_len - hits.back();
     Position midpoint = segment_start + u * (segment_length * 0.5);
-    int bin = this->get_bin(midpoint, u);
+    int bin = this->get_bin(midpoint);
     if (bin != -1) {
       bins.push_back(bin);
       lengths.push_back(segment_length / track_len);
@@ -3228,7 +3227,7 @@ double MOABMesh::tet_volume(moab::EntityHandle tet) const
   return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
 }
 
-int MOABMesh::get_bin(Position r, Direction u) const
+int MOABMesh::get_bin(Position r) const
 {
   moab::EntityHandle tet = get_tet(r);
   if (tet == 0) {
@@ -3312,10 +3311,9 @@ int MOABMesh::get_bin_from_index(int idx) const
   return ehs_[idx] - ehs_[0];
 }
 
-int MOABMesh::get_index(
-  const Position& r, const Direction& u, bool* in_mesh) const
+int MOABMesh::get_index(const Position& r, bool* in_mesh) const
 {
-  int bin = get_bin(r, u);
+  int bin = get_bin(r);
   *in_mesh = bin != -1;
   return bin;
 }
@@ -3868,7 +3866,7 @@ void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   fatal_error("Tracklength tallies on libMesh instances are not implemented.");
 }
 
-int LibMesh::get_bin(Position r, Direction u) const
+int LibMesh::get_bin(Position r) const
 {
   // look-up a tet using the point locator
   libMesh::Point p(r.x, r.y, r.z);
@@ -3969,7 +3967,7 @@ void AdaptiveLibMesh::write(const std::string& filename) const
     this->id_));
 }
 
-int AdaptiveLibMesh::get_bin(Position r, Direction u) const
+int AdaptiveLibMesh::get_bin(Position r) const
 {
   // look-up a tet using the point locator
   libMesh::Point p(r.x, r.y, r.z);

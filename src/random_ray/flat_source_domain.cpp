@@ -1600,7 +1600,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     }
   } else {
     Mesh* mesh = model::meshes[mesh_idx].get();
-    int bin_found = mesh->get_bin(r + TINY_BIT * u, u);
+    int bin_found = mesh->get_bin(r + TINY_BIT * u);
     if (bin_found != sr_key.mesh_bin) {
       discovered_source_regions_.unlock(sr_key);
       SourceRegionHandle handle;
@@ -1825,19 +1825,18 @@ SourceRegionKey FlatSourceDomain::lookup_source_region_key(
   const GeometryState& gs) const
 {
   int64_t sr = lookup_base_source_region_idx(gs);
-  int64_t mesh_bin = lookup_mesh_bin(sr, gs.r(), gs.u());
+  int64_t mesh_bin = lookup_mesh_bin(sr, gs.r());
   return SourceRegionKey {sr, mesh_bin};
 }
 
 // Determines the mesh bin that corresponds to a particular base source region
 // index and position.
-int64_t FlatSourceDomain::lookup_mesh_bin(
-  int64_t sr, Position r, const Direction& u) const
+int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
 {
   int mesh_idx = lookup_mesh_idx(sr);
   int mesh_bin = 0;
   if (mesh_idx != C_NONE) {
-    mesh_bin = model::meshes[mesh_idx]->get_bin(r, u);
+    mesh_bin = model::meshes[mesh_idx]->get_bin(r);
   }
   return mesh_bin;
 }

@@ -184,6 +184,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                             transfer_matrix = hstack([transfer_matrix,
                                 csc_array((transfer_matrix.shape[0], 1))])
                     transfer_pair[mat_pair] = transfer_matrix
+
                 # Combine all matrices together in a single block matrix of matrices
                 # to be solved on one rank
                 n_rows = n_cols = len(transfer_rates.burnable_mats)
@@ -211,20 +212,20 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
 
                 # Split back the nuclide vector result into the original form
                 n_result = np.split(n_result, np.cumsum([len(i) for i in n])[:-1])
-
-                # Remove extra value at the end of the nuclide vectors if external source rates are present
-                if external_active:
-                    external_source_rates.reformat_nuclide_vectors(n_result)
-                    # Clamp negative values to 0
-                    for n_material in n_result:
-                        np.maximum(n_material, 0.0, out=n_material)
-
             else:
                 n_result = None
-            # Braodcast result to other ranks
+
+            # Broadcast result to other MPI ranks and then distribute
             n_result = comm.bcast(n_result)
-            # Distribute results across MPI
             n_result = _distribute(n_result)
+
+            # Remove extra values based on the materials local to each rank
+            if external_active:
+                external_source_rates.reformat_nuclide_vectors(n_result)
+                # Clamp negative values to 0
+                for n_material in n_result:
+                    np.maximum(n_material, 0.0, out=n_material)
+
             return n_result
 
     # If only external source rates are present

@@ -548,8 +548,17 @@ double PhotonInteraction::invert_compton_profile_cdf(
 void PhotonInteraction::compton_doppler(
   double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const
 {
-  int shell; // index for shell
-  while (true) {
+  // Maximum number of shell/momentum sampling attempts before falling back
+  // to the free-electron Compton energy. Near-forward scattering can make
+  // the accessible profile mass for every shell vanishingly small (and, at
+  // the exact mu=1 boundary, exactly zero), so the bound must be generous
+  // enough that legitimate but low-probability acceptances are not cut off
+  // prematurely; it only exists to prevent an unbounded loop in that
+  // degenerate limit.
+  constexpr int MAX_SAMPLES = 100000;
+
+  int shell = 0; // index for shell
+  for (int attempt = 0; attempt < MAX_SAMPLES; ++attempt) {
     // Sample electron shell
     double rn = prn(seed);
     double c = 0.0;
@@ -618,10 +627,16 @@ void PhotonInteraction::compton_doppler(
     *E_out = energy_ratio * E;
 
     // Account for the outgoing energy factor in the approximate RIA DDCS
-    if (prn(seed) <= energy_ratio)
-      break;
+    if (prn(seed) <= energy_ratio) {
+      *i_shell = shell;
+      return;
+    }
   }
 
+  // No shell/momentum sample was accepted within the iteration budget.
+  // Fall back to the free-electron Compton energy for the last sampled
+  // shell rather than looping indefinitely.
+  *E_out = alpha / (1.0 + alpha * (1.0 - mu)) * MASS_ELECTRON_EV;
   *i_shell = shell;
 }
 

@@ -12,6 +12,7 @@ from . import _dll, Nuclide
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .filter import _get_filter
+from .material import Material
 
 
 __all__ = ['Tally', 'tallies', 'global_tallies', 'num_realizations']
@@ -320,8 +321,16 @@ class Tally(_FortranObjectWithID):
         nucs = POINTER(c_int)()
         n = c_int()
         _dll.openmc_tally_get_nuclides(self._index, nucs, n)
-        return [Nuclide(nucs[i]).name if nucs[i] >= 0 else 'total'
-                for i in range(n.value)]
+
+        def name(bin):
+            if bin >= 0:
+                return Nuclide(bin).name
+            if bin == -1:
+                return 'total'
+            # Virtual overlay material bin, see material_from_nuclide_bin
+            return f'material:{Material(index=-2 - bin).id}'
+
+        return [name(nucs[i]) for i in range(n.value)]
 
     @nuclides.setter
     def nuclides(self, nuclides):

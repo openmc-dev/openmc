@@ -26,6 +26,7 @@
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
+#include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -710,8 +711,12 @@ void write_tallies()
       int score_index = 0;
       for (auto i_nuclide : tally.nuclides_) {
         // Write label for this nuclide bin.
-        if (i_nuclide == -1) {
+        int i_material = material_from_nuclide_bin(i_nuclide);
+        if (i_nuclide == NUCLIDE_BIN_TOTAL) {
           fmt::print(tallies_out, "{0:{1}}Total Material\n", "", indent + 1);
+        } else if (i_material != C_NONE) {
+          fmt::print(tallies_out, "{0:{1}}Material {2}\n", "", indent + 1,
+            model::materials[i_material]->id());
         } else {
           if (settings::run_CE) {
             fmt::print(tallies_out, "{0:{1}}{2}\n", "", indent + 1,

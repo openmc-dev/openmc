@@ -7,6 +7,7 @@
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/material.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -44,6 +45,7 @@
 #include <cstddef>  // for size_t
 #include <iterator> // for back_inserter
 #include <string>
+#include <string_view>
 
 namespace openmc {
 
@@ -590,7 +592,7 @@ void Tally::set_scores(const vector<std::string>& scores)
     switch (score) {
     case SCORE_FLUX:
       if (!nuclides_.empty())
-        if (!(nuclides_.size() == 1 && nuclides_[0] == -1))
+        if (!(nuclides_.size() == 1 && nuclides_[0] == NUCLIDE_BIN_TOTAL))
           fatal_error("Cannot tally flux for an individual nuclide.");
       if (energyout_present)
         fatal_error("Cannot tally flux with an outgoing energy filter.");
@@ -734,23 +736,44 @@ void Tally::set_nuclides(pugi::xml_node node)
 
   // By default, we tally just the total material rates.
   if (!check_for_node(node, "nuclides")) {
-    nuclides_.push_back(-1);
+    nuclides_.push_back(NUCLIDE_BIN_TOTAL);
     return;
   }
 
   // The user provided specifics nuclides.  Parse it as an array with either
-  // "total" or a nuclide name like "U235" in each position.
+  // "total", a nuclide name like "U235", or a virtual overlay material like
+  // "material:3" in each position.
   auto words = get_node_array<std::string>(node, "nuclides");
   this->set_nuclides(words);
 }
 
 void Tally::set_nuclides(const vector<std::string>& nuclides)
 {
+  constexpr std::string_view material_prefix {"material:"};
+
   nuclides_.clear();
 
   for (const auto& nuc : nuclides) {
     if (nuc == "total") {
-      nuclides_.push_back(-1);
+      nuclides_.push_back(NUCLIDE_BIN_TOTAL);
+    } else if (nuc.compare(0, material_prefix.size(), material_prefix) == 0) {
+      // A virtual overlay material: the bin responds to the macroscopic cross
+      // section of the given material regardless of what fills the geometry.
+      int32_t mat_id;
+      try {
+        mat_id = std::stoi(nuc.substr(material_prefix.size()));
+      } catch (const std::exception&) {
+        throw std::runtime_error {fmt::format(
+          "Invalid material specification '{}' on tally {}.", nuc, id_)};
+      }
+      auto search = model::material_map.find(mat_id);
+      if (search == model::material_map.end()) {
+        throw std::runtime_error {
+          fmt::format("Could not find material {} specified as a nuclide bin "
+                      "on tally {}.",
+            mat_id, id_)};
+      }
+      nuclides_.push_back(nuclide_bin_from_material(search->second));
     } else {
       auto search = data::nuclide_map.find(nuc);
       if (search == data::nuclide_map.end()) {
@@ -761,6 +784,12 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       nuclides_.push_back(data::nuclide_map.at(nuc));
     }
   }
+}
+
+bool Tally::has_material_bins() const
+{
+  return std::any_of(nuclides_.begin(), nuclides_.end(),
+    [](int bin) { return material_from_nuclide_bin(bin) != C_NONE; });
 }
 
 void Tally::init_triggers(pugi::xml_node node)
@@ -963,8 +992,12 @@ std::string Tally::nuclide_name(int nuclide_idx) const
   }
 
   int nuclide = nuclides_.at(nuclide_idx);
-  if (nuclide == -1) {
+  if (nuclide == NUCLIDE_BIN_TOTAL) {
     return "total";
+  }
+  int i_material = material_from_nuclide_bin(nuclide);
+  if (i_material != C_NONE) {
+    return fmt::format("material:{}", model::materials.at(i_material)->id());
   }
   return data::nuclides.at(nuclide)->name_;
 }
@@ -1174,6 +1207,54 @@ void add_to_time_grid(vector<double> grid)
   model::time_grid.swap(merged);
 }
 
+//! Check that a tally using virtual overlay material bins is configured in a
+//! way the overlay can actually be scored.
+static void validate_material_bins(const Tally& tally)
+{
+  if (!tally.has_material_bins())
+    return;
+
+  if (tally.multiply_density()) {
+    fatal_error(fmt::format("Tally {} specifies a material as a nuclide bin, "
+                            "which requires multiply_density to be false.",
+      tally.id_));
+  }
+
+  if (tally.type_ != TallyType::VOLUME) {
+    fatal_error(
+      fmt::format("Tally {} specifies a material as a nuclide bin, which is "
+                  "only supported for volumetric tallies.",
+        tally.id_));
+  }
+
+  if (tally.estimator_ == TallyEstimator::ANALOG) {
+    fatal_error(
+      fmt::format("Tally {} specifies a material as a nuclide bin, which is "
+                  "not supported for the analog estimator. Use a tracklength "
+                  "or collision estimator instead.",
+        tally.id_));
+  }
+
+  // A material bin accumulates the contribution of every nuclide in the
+  // overlay material into a single bin, so scores that do not depend on the
+  // nuclide would be counted once per nuclide.
+  for (int score : tally.scores_) {
+    switch (score) {
+    case SCORE_FLUX:
+    case SCORE_INVERSE_VELOCITY:
+    case SCORE_EVENTS:
+    case SCORE_IFP_TIME_NUM:
+    case SCORE_IFP_BETA_NUM:
+    case SCORE_IFP_DENOM:
+      fatal_error(
+        fmt::format("Cannot tally {} on tally {} because the score does not "
+                    "depend on the nuclide and the tally specifies a material "
+                    "as a nuclide bin.",
+          reaction_name(score), tally.id_));
+    }
+  }
+}
+
 void setup_active_tallies()
 {
   model::active_tallies.clear();
@@ -1190,6 +1271,7 @@ void setup_active_tallies()
     const auto& tally {*model::tallies[i]};
 
     if (tally.active_) {
+      validate_material_bins(tally);
       model::active_tallies.push_back(i);
       bool mesh_present = (tally.get_filter<MeshFilter>() ||
                            tally.get_filter<MeshMaterialFilter>());
@@ -1501,24 +1583,12 @@ extern "C" int openmc_tally_set_nuclides(
   }
 
   vector<std::string> words(nuclides, nuclides + n);
-  vector<int> nucs;
-  for (auto word : words) {
-    if (word == "total") {
-      nucs.push_back(-1);
-    } else {
-      auto search = data::nuclide_map.find(word);
-      if (search == data::nuclide_map.end()) {
-        int err = openmc_load_nuclide(word.c_str(), nullptr, 0);
-        if (err < 0) {
-          set_errmsg(openmc_err_msg);
-          return OPENMC_E_DATA;
-        }
-      }
-      nucs.push_back(data::nuclide_map.at(word));
-    }
+  try {
+    model::tallies[index]->set_nuclides(words);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
   }
-
-  model::tallies[index]->nuclides_ = nucs;
 
   return 0;
 }

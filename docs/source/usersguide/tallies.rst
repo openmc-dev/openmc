@@ -93,6 +93,52 @@ U238 (separately), we'd set::
 You can also list 'all' as a nuclide which will give you a separate reaction
 rate for every nuclide in the model.
 
+.. _usersguide_virtual_overlay:
+
+-------------------------
+Virtual Overlay Materials
+-------------------------
+
+By default, reaction rate scores are multiplied by the atom density of the
+nuclide in whatever material the particle is travelling through, so a tally
+only responds where that nuclide is actually present. Setting
+:attr:`Tally.multiply_density` to ``False`` removes that factor, which makes it
+possible to score a response for a nuclide that appears nowhere in the model::
+
+  tally = openmc.Tally()
+  tally.scores = ['heating']
+  tally.nuclides = ['Si28']
+  tally.multiply_density = False
+
+Each bin then holds a microscopic quantity for a fictitious density of one
+atom per barn-cm. To get the response of a whole *material* rather than a
+single nuclide, pass an :class:`openmc.Material` in the nuclide list::
+
+  silicon = openmc.Material()
+  silicon.add_element('Si', 1.0)
+  silicon.set_density('g/cm3', 2.33)
+
+  tally = openmc.Tally()
+  tally.scores = ['heating']
+  tally.nuclides = [silicon]
+  tally.multiply_density = False
+
+This produces a single bin holding the material's macroscopic response, i.e.
+the sum over the material's nuclides of atom density times microscopic cross
+section, evaluated everywhere in the geometry including in void. With a
+'heating' score the result is in eV/cm\ :sup:`3` per source particle at the
+overlay material's own density, so the absorbed dose in Gy per source particle
+is the tally result multiplied by :math:`1.602\times 10^{-19}` J/eV and divided
+by the material's mass density in kg/cm\ :sup:`3`. A typical use is mapping the
+dose in a silicon detector or in tissue without perturbing the transport
+problem by adding those materials to the geometry.
+
+The overlay material does not need to be assigned to any cell, and it is
+written to the model automatically. A few restrictions apply: overlay materials
+require ``multiply_density`` to be ``False``, they cannot be used with the
+'analog' estimator or on surface and pulse-height tallies, and they cannot be
+combined with scores that do not depend on the nuclide such as 'flux'.
+
 The following tables show all valid scores:
 
 .. table:: **Flux scores: units are particle-cm per source particle.**

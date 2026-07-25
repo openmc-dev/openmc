@@ -50,6 +50,22 @@ The ``<tally>`` element accepts the following sub-elements:
 
         <nuclides>U235 Pu239 total</nuclides>
 
+    An entry of the form ``material:<id>`` is a *virtual overlay material*
+    rather than a nuclide. Such a bin scores the macroscopic response of the
+    given material (the sum over its nuclides of atom density times microscopic
+    cross section) everywhere in the geometry, including in void and in regions
+    filled with other materials. This makes it possible to map, say, the
+    response of a silicon detector without placing any silicon in the model:
+
+    .. code-block:: xml
+
+        <nuclides>material:7</nuclides>
+
+    Overlay materials require ``multiply_density`` to be false. They are not
+    supported for the ``analog`` estimator, for surface or pulse-height
+    tallies, or for scores that do not depend on the nuclide (``flux``,
+    ``inverse-velocity``, ``events`` and the IFP scores).
+
     *Default*: total
 
   :estimator:
@@ -71,7 +87,9 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :multiply_density:
     A boolean that indicates whether reaction rate scores should be computed by
-    multiplying by the atom density of a nuclide present in a material.
+    multiplying by the atom density of a nuclide present in a material. Setting
+    it to false decouples the tally from whatever fills the geometry, which is
+    what makes per-nuclide and ``material:<id>`` overlay bins meaningful.
 
     *Default*: true
 

@@ -17,6 +17,31 @@
 namespace openmc {
 
 //==============================================================================
+// Nuclide bin encoding
+//==============================================================================
+
+//! Entry in Tally::nuclides_ indicating the total rate over the local material
+constexpr int NUCLIDE_BIN_TOTAL {-1};
+
+//! Encode a material index as an entry in Tally::nuclides_.
+//
+//! Such a bin makes the tally respond to a virtual overlay material rather
+//! than to a single nuclide. Entries less than NUCLIDE_BIN_TOTAL are material
+//! bins; entries of zero or greater are indices into data::nuclides.
+inline int nuclide_bin_from_material(int i_material)
+{
+  return NUCLIDE_BIN_TOTAL - 1 - i_material;
+}
+
+//! Decode an entry in Tally::nuclides_ into an index into model::materials,
+//! or C_NONE if the entry is not a virtual overlay material bin.
+inline int material_from_nuclide_bin(int nuclide_bin)
+{
+  return nuclide_bin < NUCLIDE_BIN_TOTAL ? NUCLIDE_BIN_TOTAL - 1 - nuclide_bin
+                                         : C_NONE;
+}
+
+//==============================================================================
 //! A user-specified flux-weighted (or current) measurement.
 //==============================================================================
 
@@ -53,6 +78,9 @@ public:
   void set_nuclides(pugi::xml_node node);
 
   void set_nuclides(const vector<std::string>& nuclides);
+
+  //! Whether any nuclide bin refers to a virtual overlay material
+  bool has_material_bins() const;
 
   const tensor::Tensor<double>& results() const { return results_; }
 
@@ -152,8 +180,10 @@ public:
 
   vector<int> scores_; //!< Filter integrands (e.g. flux, fission)
 
-  //! Index of each nuclide to be tallied.  -1 indicates total material.
-  vector<int> nuclides_ {-1};
+  //! Index of each nuclide to be tallied.  NUCLIDE_BIN_TOTAL indicates the
+  //! total rate over the local material and values below it are virtual
+  //! overlay materials, see material_from_nuclide_bin.
+  vector<int> nuclides_ {NUCLIDE_BIN_TOTAL};
 
   //! Results for each bin -- the first dimension of the array is for the
   //! combination of filters (e.g. specific cell, specific energy group, etc.)

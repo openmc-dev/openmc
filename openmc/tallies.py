@@ -47,9 +47,10 @@ from .mesh import MeshBase
 _PRODUCT_TYPES = ['tensor', 'entrywise']
 
 # The following indicate acceptable types when setting Tally.scores,
-# Tally.nuclides, and Tally.filters
+# Tally.nuclides, and Tally.filters. A Material is only accepted as a nuclide
+# when multiply_density is False, where it acts as a virtual overlay material.
 _SCORE_CLASSES = (str, CrossScore, AggregateScore)
-_NUCLIDE_CLASSES = (str, CrossNuclide, AggregateNuclide)
+_NUCLIDE_CLASSES = (str, CrossNuclide, AggregateNuclide, openmc.Material)
 _FILTER_CLASSES = (Filter, CrossFilter, AggregateFilter)
 
 # Valid types of estimators
@@ -71,8 +72,10 @@ class Tally(IDManagerMixin):
         List of scores, e.g. ['flux', 'fission']
     filters : list of openmc.Filter, optional
         List of filters for the tally
-    nuclides : list of str, optional
-        List of nuclides to score results for
+    nuclides : list of str or openmc.Material, optional
+        List of nuclides to score results for. When :attr:`multiply_density` is
+        False, an :class:`openmc.Material` may be given in place of a nuclide
+        name to score the macroscopic response of a virtual overlay material.
     estimator : {'analog', 'tracklength', 'collision'}, optional
         Type of estimator for the tally
     triggers : list of openmc.Trigger, optional
@@ -92,8 +95,17 @@ class Tally(IDManagerMixin):
         .. versionadded:: 0.14.0
     filters : list of openmc.Filter
         List of specified filters for the tally
-    nuclides : list of str
-        List of nuclides to score results for
+    nuclides : list of str or openmc.Material
+        List of nuclides to score results for. A :class:`openmc.Material`
+        entry is a virtual overlay material: the bin scores that material's
+        macroscopic response (sum over its nuclides of atom density times
+        microscopic cross section) everywhere in the geometry, including in
+        void and in regions filled with other materials. Overlay materials
+        require :attr:`multiply_density` to be False and are not supported for
+        the 'analog' estimator or for scores that do not depend on the
+        nuclide, such as 'flux'.
+
+        .. versionadded:: 0.15.4
     scores : list of str
         List of defined scores, e.g. 'flux', 'fission', etc.
     estimator : {'analog', 'tracklength', 'collision'}
@@ -237,7 +249,10 @@ class Tally(IDManagerMixin):
             parts.append('{: <15}=\t{}'.format('Derivative ID', self.derivative.id))
         filters = ', '.join(type(f).__name__ for f in self.filters)
         parts.append('{: <15}=\t{}'.format('Filters', filters))
-        nuclides = ' '.join(str(nuclide) for nuclide in self.nuclides)
+        nuclides = ' '.join(
+            f'material:{nuclide.id}'
+            if isinstance(nuclide, openmc.Material) else str(nuclide)
+            for nuclide in self.nuclides)
         parts.append('{: <15}=\t{}'.format('Nuclides', nuclides))
         parts.append('{: <15}=\t{}'.format('Scores', self.scores))
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
@@ -331,6 +346,12 @@ class Tally(IDManagerMixin):
 
         self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides',
                                         nuclides)
+
+    @property
+    def overlay_materials(self):
+        """list of openmc.Material : Virtual overlay materials among the
+        tally's nuclide bins"""
+        return [n for n in self._nuclides if isinstance(n, openmc.Material)]
 
     @property
     def num_nuclides(self):
@@ -1446,8 +1467,14 @@ class Tally(IDManagerMixin):
 
         # Optional Nuclides
         if self.nuclides:
+            if self.overlay_materials and self.multiply_density:
+                raise ValueError(
+                    f'Tally ID="{self.id}" specifies a material as a nuclide '
+                    'bin, which requires multiply_density to be False.')
             subelement = ET.SubElement(element, "nuclides")
-            subelement.text = ' '.join(str(n) for n in self.nuclides)
+            subelement.text = ' '.join(
+                f'material:{n.id}' if isinstance(n, openmc.Material) else str(n)
+                for n in self.nuclides)
 
         # Scores
         if len(self.scores) == 0:
@@ -1633,8 +1660,11 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        nuclide : str
-            The name of the Nuclide (e.g., 'H1', 'U238')
+        nuclide : str or openmc.Material
+            The name of the Nuclide (e.g., 'H1', 'U238'), or a virtual overlay
+            material. An overlay material may also be given by the string
+            ``'material:<id>'``, which is how it is labelled in statepoint
+            files.
 
         Returns
         -------
@@ -1648,9 +1678,19 @@ class Tally(IDManagerMixin):
             in the Tally.
 
         """
+        # An overlay material is labelled 'material:<id>' once results have been
+        # read back, so match a Material against either representation
+        label = (f'material:{nuclide.id}'
+                 if isinstance(nuclide, openmc.Material) else nuclide)
+
         # Look for the user-requested nuclide in all of the Tally's nuclides
         for i, test_nuclide in enumerate(self.nuclides):
             if test_nuclide == nuclide:
+                return i
+            test_label = (f'material:{test_nuclide.id}'
+                          if isinstance(test_nuclide, openmc.Material)
+                          else test_nuclide)
+            if test_label == label:
                 return i
 
         msg = (f'Unable to get the nuclide index for Tally since "{nuclide}" '
@@ -1760,8 +1800,8 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        nuclides : list of str
-            A list of nuclide name strings
+        nuclides : list of str or openmc.Material
+            A list of nuclide name strings or virtual overlay materials
             (e.g., ['U235', 'U238']; default is [])
 
         Returns
@@ -1771,14 +1811,14 @@ class Tally(IDManagerMixin):
 
         """
 
-        cv.check_iterable_type('nuclides', nuclides, str)
+        cv.check_iterable_type('nuclides', nuclides, (str, openmc.Material))
 
         # If user did not specify any specific Nuclides, use them all
         if not nuclides:
             return np.arange(self.num_nuclides)
 
         # Determine the score indices from any of the requested scores
-        nuclide_indices = np.zeros_like(nuclides, dtype=int)
+        nuclide_indices = np.zeros(len(nuclides), dtype=int)
         for i, nuclide in enumerate(nuclides):
             nuclide_indices[i] = self.get_nuclide_index(nuclide)
         return nuclide_indices
@@ -1987,6 +2027,8 @@ class Tally(IDManagerMixin):
                 if isinstance(nuclide, openmc.AggregateNuclide):
                     nuclides.append(nuclide.name)
                     column_name = f'{nuclide.aggregate_op}(nuclide)'
+                elif isinstance(nuclide, openmc.Material):
+                    nuclides.append(f'material:{nuclide.id}')
                 else:
                     nuclides.append(nuclide)
 

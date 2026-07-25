@@ -245,6 +245,43 @@ class Model:
 
         return materials
 
+    def _materials_for_export(self) -> openmc.Materials:
+        """Collect the materials that need to be written to XML.
+
+        This is the materials collection if one was specified, otherwise all
+        materials found in the geometry. Virtual overlay materials used as
+        tally nuclide bins are appended since they need to be defined for the
+        transport solver even though nothing in the geometry is filled by them.
+
+        Returns
+        -------
+        openmc.Materials
+            Materials to export
+
+        """
+        if self.materials:
+            materials = self.materials
+        else:
+            materials = openmc.Materials(
+                self.geometry.get_all_materials().values())
+
+        existing_ids = {mat.id for mat in materials}
+        overlay = [mat for tally in self.tallies
+                   for mat in tally.overlay_materials
+                   if mat.id not in existing_ids]
+        if not overlay:
+            return materials
+
+        # Don't mutate a user-supplied collection, but keep its settings
+        combined = openmc.Materials(materials)
+        combined.cross_sections = materials.cross_sections
+        for mat in overlay:
+            if mat.id not in existing_ids:
+                combined.append(mat)
+                existing_ids.add(mat.id)
+
+        return combined
+
     def add_kinetics_parameters_tallies(self, num_groups: int | None = None):
         """Add tallies for calculating kinetics parameters using the IFP method.
 
@@ -635,12 +672,8 @@ class Model:
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build
         # a collection.
-        if self.materials:
-            self.materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
-        else:
-            materials = openmc.Materials(self.geometry.get_all_materials()
-                                         .values())
-            materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
+        materials = self._materials_for_export()
+        materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
 
         if self.tallies:
             self.tallies.export_to_xml(d)
@@ -701,11 +734,7 @@ class Model:
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build
         # a collection.
-        if self.materials:
-            materials = self.materials
-        else:
-            materials = openmc.Materials(self.geometry.get_all_materials()
-                                         .values())
+        materials = self._materials_for_export()
 
         with open(xml_path, 'w', encoding='utf-8', errors='xmlcharrefreplace') as fh:
             # write the XML header

@@ -2404,6 +2404,45 @@ void score_analog_tally_mg(Particle& p)
     match.bins_present_ = false;
 }
 
+//! Score a nuclide bin that refers to a virtual overlay material.
+//
+//! The bin responds to the overlay material's macroscopic cross section
+//! everywhere in the geometry, including in regions filled with other
+//! materials and in void. Each nuclide of the overlay material is scored into
+//! the same bin weighted by the overlay material's own atom density, so the
+//! bin accumulates Sum_i N_i * sigma_i. Only meaningful when the tally has
+//! multiply_density set to false.
+
+void score_material_overlay(Particle& p, int i_tally, int start_index,
+  int64_t filter_index, double filter_weight, double flux, int i_material,
+  int& i_log_union)
+{
+  const Material& mat {*model::materials[i_material]};
+
+  for (int i = 0; i < mat.nuclide_.size(); ++i) {
+    int i_nuclide = mat.nuclide_[i];
+    double atom_density = mat.atom_density_(i);
+
+    if (settings::run_CE) {
+      if (p.type().is_neutron()) {
+        // The overlay nuclide is generally absent from the material the
+        // particle is travelling through, so its micro xs cache is stale.
+        if (i_log_union == C_NONE) {
+          int neutron = ParticleType::neutron().transport_index();
+          i_log_union = std::log(p.E() / data::energy_min[neutron]) /
+                        simulation::log_spacing;
+        }
+        p.update_neutron_xs(i_nuclide, i_log_union);
+      }
+      score_general_ce_nonanalog(p, i_tally, start_index, filter_index,
+        filter_weight, i_nuclide, atom_density, flux);
+    } else {
+      score_general_mg(p, i_tally, start_index, filter_index, filter_weight,
+        i_nuclide, atom_density, flux);
+    }
+  }
+}
+
 void score_tracklength_tally_general(
   Particle& p, double flux, const vector<int>& tallies)
 {
@@ -2429,6 +2468,15 @@ void score_tracklength_tally_general(
       // Loop over nuclide bins.
       for (auto i = 0; i < tally.nuclides_.size(); ++i) {
         auto i_nuclide = tally.nuclides_[i];
+
+        // A nuclide bin may instead refer to a virtual overlay material, in
+        // which case every nuclide of that material scores into the same bin.
+        int i_overlay = material_from_nuclide_bin(i_nuclide);
+        if (i_overlay != C_NONE) {
+          score_material_overlay(p, i_tally, i * tally.scores_.size(),
+            filter_index, filter_weight, flux, i_overlay, i_log_union);
+          continue;
+        }
 
         double atom_density = 0.;
         if (i_nuclide >= 0) {
@@ -2559,6 +2607,15 @@ void score_collision_tally(Particle& p)
       // Loop over nuclide bins.
       for (auto i = 0; i < tally.nuclides_.size(); ++i) {
         auto i_nuclide = tally.nuclides_[i];
+
+        // A nuclide bin may instead refer to a virtual overlay material, in
+        // which case every nuclide of that material scores into the same bin.
+        int i_overlay = material_from_nuclide_bin(i_nuclide);
+        if (i_overlay != C_NONE) {
+          score_material_overlay(p, i_tally, i * tally.scores_.size(),
+            filter_index, filter_weight, flux, i_overlay, i_log_union);
+          continue;
+        }
 
         double atom_density = 0.;
         if (i_nuclide >= 0) {

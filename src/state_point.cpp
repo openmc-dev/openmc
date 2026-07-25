@@ -15,6 +15,7 @@
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
@@ -238,8 +239,12 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
         // Write the nuclides this tally scores
         vector<std::string> nuclides;
         for (auto i_nuclide : tally->nuclides_) {
-          if (i_nuclide == -1) {
+          int i_material = material_from_nuclide_bin(i_nuclide);
+          if (i_nuclide == NUCLIDE_BIN_TOTAL) {
             nuclides.push_back("total");
+          } else if (i_material != C_NONE) {
+            nuclides.push_back(
+              fmt::format("material:{}", model::materials[i_material]->id()));
           } else {
             if (settings::run_CE) {
               nuclides.push_back(data::nuclides[i_nuclide]->name_);

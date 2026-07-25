@@ -537,14 +537,15 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           p.from_source(&site);
 
           // Determine particle's location
-          bool verbose = settings::verbosity >= 10 || p.trace();
+          bool verbose = settings::verbosity >= 10;
           bool inside_model = exhaustive_find_cell(p, verbose);
 
-          // Set birth cell attribute and initialize last cells
-          if (inside_model && p.cell_born() == C_NONE) {
-            p.cell_born() = p.lowest_coord().cell();
-          }
           if (inside_model) {
+            // Set birth cell attribute
+            if (p.cell_born() == C_NONE)
+              p.cell_born() = p.lowest_coord().cell();
+
+            // Initialize last cells from current cell
             for (int j = 0; j < p.n_coord(); ++j) {
               p.cell_last(j) = p.coord(j).cell();
             }

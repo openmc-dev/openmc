@@ -235,7 +235,8 @@ def get_microxs_and_flux(
             model.export_to_model_xml()
         comm.barrier()
         # Reinitialize with tallies
-        openmc.lib.init(intracomm=comm)
+        output = run_kwargs.get('output', True) if run_kwargs else True
+        openmc.lib.init(intracomm=comm, output=output)
 
     with TemporaryDirectory() as temp_dir:
         # Indicate to run in temporary directory unless being executed through

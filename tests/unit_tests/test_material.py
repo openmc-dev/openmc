@@ -7,7 +7,7 @@ import numpy as np
 
 import openmc
 from openmc.data import decay_photon_energy
-from openmc.deplete import Chain
+from openmc.deplete import Chain, Nuclide
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -612,6 +612,35 @@ def test_get_activity():
     m3 = m4.volume * 1e-6
     assert (ci := m4.get_activity(units='Ci')) == pytest.approx(bq/3.7e10)
     assert m4.get_activity(units='Ci/m3') == pytest.approx(ci/m3)
+
+
+def test_get_activity_chain_file(tmp_path):
+    m = openmc.Material()
+    m.add_nuclide("H3", 1.0)
+    m.set_density('g/cm3', 1.0)
+
+    chain = Chain()
+    h3 = Nuclide("H3")
+    h3.half_life = 1.0
+    chain.add_nuclide(h3)
+
+    atoms_per_bcm = m.get_nuclide_atom_densities()["H3"]
+    expected = np.log(2.0) * 1e24 * atoms_per_bcm
+
+    assert m.get_activity(chain_file=chain) == pytest.approx(expected)
+
+    chain_path = tmp_path / "chain.xml"
+    chain.export_to_xml(chain_path)
+    assert m.get_activity(chain_file=chain_path) == pytest.approx(expected)
+
+    endf_activity = m.get_activity(chain_file=False)
+    with openmc.config.patch('chain_file', chain_path):
+        assert m.get_activity() == pytest.approx(expected)
+        assert m.get_activity(chain_file=False) == pytest.approx(endf_activity)
+
+    stable_chain = Chain()
+    stable_chain.add_nuclide(Nuclide("H3"))
+    assert m.get_activity(chain_file=stable_chain) == 0.0
 
 
 def test_get_decay_heat():

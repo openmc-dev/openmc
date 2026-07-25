@@ -512,7 +512,7 @@ void Tally::set_strides()
   // longest stride.
   auto n = filters_.size();
   strides_.resize(n, 0);
-  int stride = 1;
+  int64_t stride = 1;
   for (int i = n - 1; i >= 0; --i) {
     strides_[i] = stride;
     stride *= model::tally_filters[filters_[i]]->n_bins();
@@ -887,7 +887,7 @@ void Tally::accumulate()
     if (higher_moments_) {
 #pragma omp parallel for
       // filter bins (specific cell, energy bins)
-      for (int i = 0; i < results_.shape(0); ++i) {
+      for (int64_t i = 0; i < results_.shape(0); ++i) {
         // score bins (flux, total reaction rate, fission reaction rate, etc.)
         for (int j = 0; j < results_.shape(1); ++j) {
           double val = results_(i, j, TallyResult::VALUE) * norm;
@@ -902,7 +902,7 @@ void Tally::accumulate()
     } else {
 #pragma omp parallel for
       // filter bins (specific cell, energy bins)
-      for (int i = 0; i < results_.shape(0); ++i) {
+      for (int64_t i = 0; i < results_.shape(0); ++i) {
         // score bins (flux, total reaction rate, fission reaction rate, etc.)
         for (int j = 0; j < results_.shape(1); ++j) {
           double val = results_(i, j, TallyResult::VALUE) * norm;

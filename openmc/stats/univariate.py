@@ -17,7 +17,7 @@ import scipy
 import openmc.checkvalue as cv
 from openmc.data import atomic_mass, NEUTRON_MASS
 import openmc.data
-from .._xml import get_elem_list, get_text
+from .._xml import get_elem_list, get_text, get_elem_array
 from ..mixin import EqualityMixin
 
 _INTERPOLATION_SCHEMES = {
@@ -403,7 +403,7 @@ class Discrete(Univariate):
             Discrete distribution generated from XML element
 
         """
-        params = get_elem_list(elem, "parameters", float)
+        params = get_elem_array(elem, "parameters", float)
         x = params[:len(params)//2]
         p = params[len(params)//2:]
         bias_dist = cls._read_array_bias_from_xml(elem)
@@ -1768,7 +1768,7 @@ class Tabular(Univariate):
 
         """
         interpolation = get_text(elem, 'interpolation')
-        params = get_elem_list(elem, "parameters", float)
+        params = get_elem_array(elem, "parameters", float)
         m = (len(params) + 1)//2  # +1 for when len(params) is odd
         x = params[:m]
         p = params[m:]

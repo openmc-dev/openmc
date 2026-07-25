@@ -425,13 +425,13 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
       material) assignment. Required.
 
     :temperature:
-      Temperature(s) in [K] to assign to the cell. Must be ≥ 0. Multiple
-      space-separated values may be given.
+      Temperature(s) in [K] to assign to the cell. Must be greater than or equal
+      to 0. Multiple space-separated values may be given.
 
       *Default*: None
 
     :density:
-      Density in [g/cm³] to assign to the cell. Must be > 0. Requires a non-void
+      Density in [g/cm³] to assign to the cell. Must be greater than 0. Requires a non-void
       material fill. Multiple space-separated values may be given.
 
       *Default*: None

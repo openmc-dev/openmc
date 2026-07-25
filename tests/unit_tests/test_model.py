@@ -572,6 +572,24 @@ def test_model_xml(run_in_tmpdir):
     new_model.export_to_xml()
 
 
+def test_model_description(run_in_tmpdir):
+    model = openmc.examples.pwr_pin_cell()
+    model.description = "PWR fuel & water <test model>"
+    model.export_to_model_xml()
+
+    reloaded = openmc.Model.from_model_xml()
+    assert reloaded.description == "PWR fuel & water <test model>"
+
+    # Verify that an empty description is not written to XML
+    model2 = openmc.examples.pwr_pin_cell()
+    model2.export_to_model_xml('model_no_desc.xml')
+    with open('model_no_desc.xml') as f:
+        assert '<description>' not in f.read()
+
+    reloaded2 = openmc.Model.from_model_xml('model_no_desc.xml')
+    assert reloaded2.description == ''
+
+
 def test_single_xml_exec(run_in_tmpdir):
 
     pincell_model = openmc.examples.pwr_pin_cell()
@@ -658,6 +676,29 @@ def test_model_plot():
     # Close plots to avoid warning
     import matplotlib.pyplot as plt
     plt.close('all')
+
+
+def test_model_plot_invalid_inputs():
+    surface = openmc.Sphere(r=10.0, boundary_type="vacuum")
+    cell = openmc.Cell(region=-surface)
+    model = openmc.Model(openmc.Geometry([cell]))
+
+    with pytest.raises(ValueError):
+        model.plot(n_samples=-1)
+    with pytest.raises(TypeError):
+        model.plot(n_samples=1.5)
+    with pytest.raises(ValueError):
+        model.plot(plane_tolerance=0.0)
+    with pytest.raises(TypeError):
+        model.plot(plane_tolerance='1')
+    with pytest.raises(ValueError):
+        model.plot(pixels=-1)
+    with pytest.raises(ValueError):
+        model.plot(pixels=(0, 100))
+    with pytest.raises(ValueError):
+        model.plot(pixels=(100,))
+    with pytest.raises(ValueError):
+        model.slice_data(u_span=(2, 0, 0), v_span=(0, 2, 0), pixels=-1)
 
 
 def test_model_id_map_initialization(run_in_tmpdir):
@@ -1038,3 +1079,188 @@ def test_id_map_to_rgb():
     )
     # Check that overlap region is green
     assert np.allclose(rgb_overlap[5:, 5:], [0.0, 1.0, 0.0])
+
+
+def test_convert_to_multigroup_preserves_material_names(run_in_tmpdir):
+    """convert_to_multigroup leaves the user's material names unchanged and keys
+    the MGXS library by a unique sanitised name + id, so distinct materials that
+    share a name do not collapse to a single cross section."""
+    a = openmc.Material(name="Steel Plate #1")
+    a.add_element("Fe", 1.0)
+    a.set_density("g/cm3", 7.9)
+    b = openmc.Material(name="Steel Plate #1")  # same name, distinct material
+    b.add_element("Fe", 1.0)
+    b.set_density("g/cm3", 7.9)
+
+    s1 = openmc.Sphere(r=1.0)
+    s2 = openmc.Sphere(r=2.0, boundary_type="vacuum")
+    c1 = openmc.Cell(fill=a, region=-s1)
+    c2 = openmc.Cell(fill=b, region=+s1 & -s2)
+    model = openmc.Model(openmc.Geometry([c1, c2]), openmc.Materials([a, b]))
+
+    # Pre-create the library so MGXS generation (and transport) is skipped.
+    Path("mgxs.h5").touch()
+    model.convert_to_multigroup(method="material_wise", mgxs_path="mgxs.h5")
+
+    # User names are preserved, not sanitised or de-duplicated.
+    assert [m.name for m in model.materials] == ["Steel Plate #1", "Steel Plate #1"]
+    # Each material reads a unique, sanitised library entry (name + id).
+    macro = [m._macroscopic for m in model.materials]
+    assert macro == [f"Steel_Plate__1_{a.id}", f"Steel_Plate__1_{b.id}"]
+    assert len(set(macro)) == 2
+
+
+class _GenerationCaptured(Exception):
+    """Raised by the patched MGXS library builder to end generation early."""
+
+
+def _steel_water_model():
+    a = openmc.Material(name='steel')
+    a.add_element('Fe', 1.0)
+    a.set_density('g/cm3', 7.9)
+    b = openmc.Material(name='water')
+    b.add_element('H', 2.0)
+    b.add_element('O', 1.0)
+    b.set_density('g/cm3', 1.0)
+    s1 = openmc.Sphere(r=1.0)
+    s2 = openmc.Sphere(r=2.0, boundary_type='vacuum')
+    c1 = openmc.Cell(fill=a, region=-s1)
+    c2 = openmc.Cell(fill=b, region=+s1 & -s2)
+    return openmc.Model(openmc.Geometry([c1, c2]), openmc.Materials([a, b]))
+
+
+def _capture_generation_settings(monkeypatch, model, **kwargs):
+    """Return the Settings of the MGXS generation run by capturing the
+    generation model just before transport would start."""
+    captured = {}
+
+    def fake_auto_generate(gen_model, groups, correction, directory):
+        captured['settings'] = gen_model.settings
+        raise _GenerationCaptured()
+
+    monkeypatch.setattr(openmc.Model, '_auto_generate_mgxs_lib',
+                        fake_auto_generate)
+    with pytest.raises(_GenerationCaptured):
+        model.convert_to_multigroup(**kwargs)
+    return captured['settings']
+
+
+def test_convert_to_multigroup_material_wise(run_in_tmpdir, monkeypatch):
+    model = _steel_water_model()
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
+    model.settings.photon_transport = True
+    model.settings.batches = 1200  # tuned for the final multigroup solve
+
+    gen = _capture_generation_settings(
+        monkeypatch, model, method='material_wise', particles=12345, seed=7)
+
+    # Keyword-argument overrides take precedence over the generation
+    # defaults...
+    assert gen.particles == 12345
+    assert gen.seed == 7
+    # ...the generation defaults override the model's own settings...
+    assert gen.batches == 200
+    assert gen.inactive == 100
+    assert gen.output == {'summary': True, 'tallies': False}
+    # ...and everything else is inherited from the model
+    assert gen.run_mode == 'fixed source'
+    assert gen.photon_transport is True
+    assert len(gen.source) == 1
+
+    # The run mode is owned by the generation method: material_wise always
+    # takes it from the model, even when given as an override
+    model.settings.run_mode = 'eigenvalue'
+    gen = _capture_generation_settings(
+        monkeypatch, model, method='material_wise', run_mode='fixed source')
+    assert gen.run_mode == 'eigenvalue'
+
+
+def test_convert_to_multigroup_stochastic_slab(run_in_tmpdir, monkeypatch):
+    model = _steel_water_model()
+    src = openmc.IndependentSource(space=openmc.stats.Point())
+
+    with pytest.warns(UserWarning, match='constructs its own'):
+        gen = _capture_generation_settings(
+            monkeypatch, model, method='stochastic_slab', particles=999,
+            batches=50, max_history_splits=42, source=src)
+
+    assert gen.particles == 999
+    assert gen.batches == 50
+    assert gen.max_history_splits == 42
+    # The method constructs its own source and run mode; the user's source
+    # was discarded with a warning
+    assert gen.run_mode == 'fixed source'
+    assert gen.create_fission_neutrons is False
+    assert len(gen.source) > 0
+    assert all(s is not src for s in gen.source)
+
+
+def test_convert_to_multigroup_weight_windows(run_in_tmpdir, monkeypatch):
+    model = _steel_water_model()
+    ww_path = Path('ww.h5').resolve()
+
+    gen = _capture_generation_settings(
+        monkeypatch, model, method='material_wise',
+        weight_windows_file=ww_path)
+
+    # A weight windows file is passed through to the "material_wise"
+    # generation run (specifying a file turns weight windows on at run time)
+    assert gen.weight_windows_file == ww_path
+
+    # An explicit weight_windows_on=False rides along with the file and
+    # overrides the run-time file-implied enable
+    gen = _capture_generation_settings(
+        monkeypatch, model, method='material_wise',
+        weight_windows_file=ww_path, weight_windows_on=False)
+    assert gen.weight_windows_file == ww_path
+    assert gen.weight_windows_on is False
+
+    # The surrogate-geometry methods ignore the file with a warning
+    with pytest.warns(UserWarning, match='material_wise'):
+        gen = _capture_generation_settings(
+            monkeypatch, model, method='stochastic_slab',
+            weight_windows_file=ww_path)
+    assert gen.weight_windows_file is None
+
+
+def test_convert_to_multigroup_validation(run_in_tmpdir):
+    model = _steel_water_model()
+
+    with pytest.raises(ValueError):
+        model.convert_to_multigroup(method='not_a_method')
+
+    # The deprecated arguments cannot be combined with keyword overrides
+    with pytest.raises(ValueError, match='deprecated'), \
+            pytest.warns(FutureWarning):
+        model.convert_to_multigroup(nparticles=1000, particles=500)
+    with pytest.raises(ValueError, match='deprecated'), \
+            pytest.warns(FutureWarning):
+        model.convert_to_multigroup(
+            temperature_settings={'method': 'interpolation'},
+            temperature={'method': 'interpolation'})
+
+
+def test_convert_to_multigroup_deprecated_args(run_in_tmpdir, monkeypatch):
+    # The deprecated arguments still work, with a FutureWarning
+    model = _steel_water_model()
+    with pytest.warns(FutureWarning, match='deprecated'):
+        gen = _capture_generation_settings(
+            monkeypatch, model, method='stochastic_slab', nparticles=1234,
+            temperature_settings={'method': 'interpolation'})
+    assert gen.particles == 1234
+    assert gen.temperature == {'method': 'interpolation'}
+    assert gen.batches == 200  # generation default unchanged
+
+
+def test_convert_to_multigroup_materials_from_geometry(run_in_tmpdir):
+    # A model whose materials are only referenced through the geometry gets
+    # its materials collection populated (sorted by ID) for the conversion
+    model = _steel_water_model()
+    model.materials = openmc.Materials()
+    ids = sorted(model.geometry.get_all_materials())
+
+    Path('mgxs.h5').touch()
+    model.convert_to_multigroup(
+        method='stochastic_slab', mgxs_path='mgxs.h5')
+    assert [m.id for m in model.materials] == ids

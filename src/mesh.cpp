@@ -609,6 +609,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               Position r0 = p.r();
               p.advance_to_boundary_from_void();
 
+              // If no model surface is ahead, score void through the mesh edge.
               if (p.boundary().surface() == SURFACE_NONE) {
                 Position r1 = r_scored;
                 r1[axis] = bbox.max[axis];
@@ -616,6 +617,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
                 break;
               }
 
+              // Determine whether the next model surface lies within the mesh.
               Position r_boundary = r0 + p.boundary().distance() * p.u();
               if (r_boundary[axis] >= bbox.max[axis]) {
                 Position r1 = r_scored;
@@ -624,11 +626,14 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
                 break;
               }
 
+              // Score the exterior interval and record its physical endpoint.
               add_segment(r_scored, r_boundary, MATERIAL_VOID);
               r_scored = r_boundary;
 
+              // Check whether advancing through the surface entered the model.
               inside_model = exhaustive_find_cell(p, verbose);
               if (inside_model) {
+                // Initialize the previous-cell state at the point of entry.
                 for (int j = 0; j < p.n_coord(); ++j) {
                   p.cell_last(j) = p.coord(j).cell();
                 }
@@ -654,6 +659,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
             // If the next model boundary is beyond the end of the mesh, score
             // the remainder of the ray and finish.
+            // TODO: consistent use of INFTY vs INFINITY
             if (boundary.distance() == INFTY ||
                 boundary.distance() == INFINITY) {
               Position r1 = r_scored;
@@ -662,6 +668,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               break;
             }
 
+            // Determine whether the nearest boundary lies within the mesh.
             Position r_boundary = p.r() + boundary.distance() * p.u();
             if (r_boundary[axis] >= bbox.max[axis]) {
               Position r1 = r_scored;
@@ -670,6 +677,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               break;
             }
 
+            // Score the material interval and record its physical endpoint.
             add_segment(r_scored, r_boundary, i_material);
             r_scored = r_boundary;
 
@@ -682,12 +690,14 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
             }
             p.n_coord_last() = p.n_coord();
 
+            // Move just beyond the surface to make the next search robust.
             p.move_distance(boundary.distance() + TINY_BIT);
 
             // Set surface that particle is on and adjust coordinate levels
             p.surface() = boundary.surface();
             p.n_coord() = boundary.coord_level();
 
+            // Update the geometry state according to the boundary type.
             if (boundary.lattice_translation()[0] != 0 ||
                 boundary.lattice_translation()[1] != 0 ||
                 boundary.lattice_translation()[2] != 0) {
@@ -695,9 +705,11 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               cross_lattice(p, boundary, verbose);
               inside_model = true;
             } else {
+              // Search for the cell on the opposite side of a surface.
               inside_model = neighbor_list_find_cell(p, verbose);
             }
 
+            // Treat a failed cell search as a transition to exterior void.
             if (!inside_model) {
               // Reset the geometry state so the next iteration can search for
               // another disjoint portion of the model.

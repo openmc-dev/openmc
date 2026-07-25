@@ -499,6 +499,31 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
     site.E = 1.0;
     site.particle = ParticleType::neutron();
 
+    bool verbose = settings::verbosity >= 10;
+
+    // Save the cells occupied immediately before a boundary crossing.
+    auto save_cell_state = [&p]() {
+      for (int j = 0; j < p.n_coord(); ++j) {
+        p.cell_last(j) = p.coord(j).cell();
+      }
+      p.n_coord_last() = p.n_coord();
+    };
+
+    // Initialize cell history after locating a ray inside the model.
+    auto initialize_cell_state = [&p, &save_cell_state]() {
+      if (p.cell_born() == C_NONE)
+        p.cell_born() = p.lowest_coord().cell();
+
+      save_cell_state();
+    };
+
+    // Reset a failed coordinate search while preserving position and direction.
+    auto reset_geometry_state = [&p]() {
+      Position r = p.r();
+      Direction u = p.u();
+      p.init_from_r_u(r, u);
+    };
+
     for (int axis = 0; axis < 3; ++axis) {
       // Set starting position and direction
       site.r = {0.0, 0.0, 0.0};
@@ -527,6 +552,50 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
       int i1_start = mpi::rank * min_work + std::min(mpi::rank, remainder);
       int i1_end = i1_start + n1_local;
 
+      // Add the contribution from a ray segment. The positions used here are
+      // kept separate from the particle position because the latter is moved a
+      // tiny distance across each surface for robust geometry searches.
+      auto add_segment = [&](const Position& r0, const Position& r1,
+                           int i_material) {
+        double distance = r1[axis] - r0[axis];
+        if (distance <= 0.0)
+          return;
+
+        bins.clear();
+        length_fractions.clear();
+        this->bins_crossed(r0, r1, site.u, bins, length_fractions);
+
+        double cumulative_frac = 0.0;
+        for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
+          int mesh_index = bins[i_bin];
+          double length = distance * length_fractions[i_bin];
+          double volume = length * d1 * d2;
+
+          if (compute_bboxes) {
+            double axis_start = r0[axis] + distance * cumulative_frac;
+            double axis_end = axis_start + length;
+            cumulative_frac += length_fractions[i_bin];
+
+            Position contrib_min = site.r;
+            Position contrib_max = site.r;
+
+            contrib_min[ax1] = site.r[ax1] - 0.5 * d1;
+            contrib_max[ax1] = site.r[ax1] + 0.5 * d1;
+            contrib_min[ax2] = site.r[ax2] - 0.5 * d2;
+            contrib_max[ax2] = site.r[ax2] + 0.5 * d2;
+            contrib_min[axis] = std::min(axis_start, axis_end);
+            contrib_max[axis] = std::max(axis_start, axis_end);
+
+            BoundingBox contrib_bbox {contrib_min, contrib_max};
+            contrib_bbox &= bbox;
+
+            result.add_volume(mesh_index, i_material, volume, &contrib_bbox);
+          } else {
+            result.add_volume(mesh_index, i_material, volume);
+          }
+        }
+      };
+
       // Loop over rays on face of bounding box
 #pragma omp for collapse(2)
       for (int i1 = i1_start; i1 < i1_end; ++i1) {
@@ -536,72 +605,21 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
           p.from_source(&site);
 
+          // Set the physical endpoint of this ray at the far mesh face.
+          Position r_mesh_end = site.r;
+          r_mesh_end[axis] = bbox.max[axis];
+
           // Determine particle's location
-          bool verbose = settings::verbosity >= 10;
           bool inside_model = exhaustive_find_cell(p, verbose);
 
-          if (inside_model) {
-            // Set birth cell attribute
-            if (p.cell_born() == C_NONE)
-              p.cell_born() = p.lowest_coord().cell();
-
-            // Initialize last cells from current cell
-            for (int j = 0; j < p.n_coord(); ++j) {
-              p.cell_last(j) = p.coord(j).cell();
-            }
-            p.n_coord_last() = p.n_coord();
-          }
-
-          // Add the contribution from a ray segment. The positions used here
-          // are kept separate from the particle position because the latter
-          // is moved a tiny distance across each surface for robust geometry
-          // searches.
-          auto add_segment = [&](Position r0, Position r1, int i_material) {
-            double distance = r1[axis] - r0[axis];
-            if (distance <= 0.0)
-              return;
-
-            bins.clear();
-            length_fractions.clear();
-            this->bins_crossed(r0, r1, p.u(), bins, length_fractions);
-
-            double cumulative_frac = 0.0;
-            for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
-              int mesh_index = bins[i_bin];
-              double length = distance * length_fractions[i_bin];
-              double volume = length * d1 * d2;
-
-              if (compute_bboxes) {
-                double axis_start = r0[axis] + distance * cumulative_frac;
-                double axis_end = axis_start + length;
-                cumulative_frac += length_fractions[i_bin];
-
-                Position contrib_min = site.r;
-                Position contrib_max = site.r;
-
-                contrib_min[ax1] = site.r[ax1] - 0.5 * d1;
-                contrib_max[ax1] = site.r[ax1] + 0.5 * d1;
-                contrib_min[ax2] = site.r[ax2] - 0.5 * d2;
-                contrib_max[ax2] = site.r[ax2] + 0.5 * d2;
-                contrib_min[axis] = std::min(axis_start, axis_end);
-                contrib_max[axis] = std::max(axis_start, axis_end);
-
-                BoundingBox contrib_bbox {contrib_min, contrib_max};
-                contrib_bbox &= bbox;
-
-                result.add_volume(
-                  mesh_index, i_material, volume, &contrib_bbox);
-              } else {
-                result.add_volume(mesh_index, i_material, volume);
-              }
-            }
-          };
+          if (inside_model)
+            initialize_cell_state();
 
           // Physical position through which volume has been accumulated. This
           // differs by TINY_BIT from p.r() after crossing a surface.
           Position r_scored = site.r;
 
-          while (r_scored[axis] < bbox.max[axis]) {
+          while (r_scored[axis] < r_mesh_end[axis]) {
             if (!inside_model) {
               // The ray is outside the model. Advance to the next surface of
               // any cell in the root universe, as is done for ray-traced
@@ -611,12 +629,10 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
               // If no model surface lies before the mesh edge, score the
               // remaining exterior interval as void and finish the ray.
-              double distance_to_mesh_end = bbox.max[axis] - r0[axis];
+              double distance_to_mesh_end = r_mesh_end[axis] - r0[axis];
               if (p.boundary().surface() == SURFACE_NONE ||
                   p.boundary().distance() >= distance_to_mesh_end) {
-                Position r1 = r_scored;
-                r1[axis] = bbox.max[axis];
-                add_segment(r_scored, r1, MATERIAL_VOID);
+                add_segment(r_scored, r_mesh_end, MATERIAL_VOID);
                 break;
               }
 
@@ -630,17 +646,11 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               // Check whether advancing through the surface entered the model.
               inside_model = exhaustive_find_cell(p, verbose);
               if (inside_model) {
-                // Initialize the previous-cell state at the point of entry.
-                for (int j = 0; j < p.n_coord(); ++j) {
-                  p.cell_last(j) = p.coord(j).cell();
-                }
-                p.n_coord_last() = p.n_coord();
+                initialize_cell_state();
               } else {
                 // Clear any partial coordinate search before looking for the
                 // next surface from undefined space.
-                Position r = p.r();
-                Direction u = p.u();
-                p.init_from_r_u(r, u);
+                reset_geometry_state();
               }
               continue;
             }
@@ -656,11 +666,9 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
             // If no model boundary lies before the mesh edge, score the
             // remaining material interval and finish the ray.
-            double distance_to_mesh_end = bbox.max[axis] - p.r()[axis];
+            double distance_to_mesh_end = r_mesh_end[axis] - p.r()[axis];
             if (boundary.distance() >= distance_to_mesh_end) {
-              Position r1 = r_scored;
-              r1[axis] = bbox.max[axis];
-              add_segment(r_scored, r1, i_material);
+              add_segment(r_scored, r_mesh_end, i_material);
               break;
             }
 
@@ -675,10 +683,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
             // and neighbor-list search mirror Ray::trace, allowing a failed
             // search to mean that the ray has left the model rather than that
             // a transport particle has been lost.
-            for (int j = 0; j < p.n_coord(); ++j) {
-              p.cell_last(j) = p.coord(j).cell();
-            }
-            p.n_coord_last() = p.n_coord();
+            save_cell_state();
 
             // Move just beyond the surface to make the next search robust.
             p.move_distance(boundary.distance() + TINY_BIT);
@@ -703,9 +708,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
             if (!inside_model) {
               // Reset the geometry state so the next iteration can search for
               // another disjoint portion of the model.
-              Position r = p.r();
-              Direction u = p.u();
-              p.init_from_r_u(r, u);
+              reset_geometry_state();
             }
           }
         }

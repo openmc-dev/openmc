@@ -609,22 +609,19 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               Position r0 = p.r();
               p.advance_to_boundary_from_void();
 
-              // If no model surface is ahead, score void through the mesh edge.
-              if (p.boundary().surface() == SURFACE_NONE) {
+              // If no model surface lies before the mesh edge, score the
+              // remaining exterior interval as void and finish the ray.
+              double distance_to_mesh_end = bbox.max[axis] - r0[axis];
+              if (p.boundary().surface() == SURFACE_NONE ||
+                  p.boundary().distance() >= distance_to_mesh_end) {
                 Position r1 = r_scored;
                 r1[axis] = bbox.max[axis];
                 add_segment(r_scored, r1, MATERIAL_VOID);
                 break;
               }
 
-              // Determine whether the next model surface lies within the mesh.
+              // Determine the physical position of the model boundary.
               Position r_boundary = r0 + p.boundary().distance() * p.u();
-              if (r_boundary[axis] >= bbox.max[axis]) {
-                Position r1 = r_scored;
-                r1[axis] = bbox.max[axis];
-                add_segment(r_scored, r1, MATERIAL_VOID);
-                break;
-              }
 
               // Score the exterior interval and record its physical endpoint.
               add_segment(r_scored, r_boundary, MATERIAL_VOID);
@@ -657,25 +654,18 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               i_material = model::materials[i_material]->id();
             }
 
-            // If the next model boundary is beyond the end of the mesh, score
-            // the remainder of the ray and finish.
-            // TODO: consistent use of INFTY vs INFINITY
-            if (boundary.distance() == INFTY ||
-                boundary.distance() == INFINITY) {
+            // If no model boundary lies before the mesh edge, score the
+            // remaining material interval and finish the ray.
+            double distance_to_mesh_end = bbox.max[axis] - p.r()[axis];
+            if (boundary.distance() >= distance_to_mesh_end) {
               Position r1 = r_scored;
               r1[axis] = bbox.max[axis];
               add_segment(r_scored, r1, i_material);
               break;
             }
 
-            // Determine whether the nearest boundary lies within the mesh.
+            // Determine the physical position of the model boundary.
             Position r_boundary = p.r() + boundary.distance() * p.u();
-            if (r_boundary[axis] >= bbox.max[axis]) {
-              Position r1 = r_scored;
-              r1[axis] = bbox.max[axis];
-              add_segment(r_scored, r1, i_material);
-              break;
-            }
 
             // Score the material interval and record its physical endpoint.
             add_segment(r_scored, r_boundary, i_material);

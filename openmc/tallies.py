@@ -36,6 +36,7 @@ from openmc.arithmetic import (
 from ._sparse_compat import lil_array
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
+from .utility_funcs import set_xml_input_path
 from .mesh import MeshBase
 
 
@@ -3932,7 +3933,8 @@ class Tallies(cv.CheckedList):
             Tallies object
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
-        return cls.from_xml_element(root)
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
+            return cls.from_xml_element(root)

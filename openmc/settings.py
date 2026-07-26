@@ -15,7 +15,7 @@ from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
-from .utility_funcs import input_path
+from .utility_funcs import input_path, set_xml_input_path
 from .volume import VolumeCalculation
 from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
 
@@ -2775,8 +2775,9 @@ class Settings:
             Settings object
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
-        meshes = _read_meshes(root)
-        return cls.from_xml_element(root, meshes)
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
+            meshes = _read_meshes(root)
+            return cls.from_xml_element(root, meshes)

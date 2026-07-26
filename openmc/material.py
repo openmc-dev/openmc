@@ -20,7 +20,7 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
-from .utility_funcs import input_path
+from .utility_funcs import input_path, set_xml_input_path
 from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
@@ -2286,11 +2286,12 @@ class Materials(cv.CheckedList):
             Materials collection
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
 
-        return cls.from_xml_element(root)
+            return cls.from_xml_element(root)
 
 
     def deplete(

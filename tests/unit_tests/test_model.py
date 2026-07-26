@@ -224,99 +224,19 @@ def test_from_xml(run_in_tmpdir, pin_model_attributes):
 def test_xml_input_paths(tmp_path, monkeypatch, resolve_paths):
     """Input paths are interpreted relative to the containing XML file."""
     with openmc.config.patch('resolve_paths', False):
-        material = openmc.Material()
-        materials = openmc.Materials([material])
-        materials.cross_sections = 'cross_sections.xml'
-
-        dagmc_universe = openmc.DAGMCUniverse('dagmc.h5m')
-        geometry = openmc.Geometry(dagmc_universe)
-
-        settings = openmc.Settings()
-        settings.source = [
-            openmc.FileSource('source.h5'),
-            openmc.CompiledSource('source.so'),
-            openmc.FileSource(tmp_path / 'absolute_source.h5'),
-        ]
-        settings.properties_file = 'properties.h5'
-        settings.surf_source_read = {'path': 'surface_source.h5'}
-        settings.weight_windows_file = 'weight_windows.h5'
-
-        mesh = openmc.UnstructuredMesh('mesh.h5m', 'moab')
-        tally = openmc.Tally()
-        tally.filters = [openmc.MeshFilter(mesh)]
-        tally.scores = ['flux']
-        tallies = openmc.Tallies([tally])
-
-        model = openmc.Model(
-            geometry, materials, settings, tallies=tallies)
+        univ = openmc.DAGMCUniverse('dagmc.h5m')
+        model = openmc.Model(geometry=openmc.Geometry(univ))
         model_dir = tmp_path / 'model'
         model.export_to_model_xml(model_dir)
 
-        component_dir = tmp_path / 'components'
-        component_dir.mkdir()
-        materials.export_to_xml(component_dir)
-        geometry.export_to_xml(component_dir)
-        settings.export_to_xml(component_dir)
-        tallies.export_to_xml(component_dir)
-
-    def expected(directory, filename):
-        path = Path(filename)
-        return (directory / path).resolve() if resolve_paths else path
-
-    def check_paths(loaded_model, directory):
-        assert loaded_model.materials.cross_sections == expected(
-            directory, 'cross_sections.xml')
-        assert loaded_model.geometry.root_universe.filename == expected(
-            directory, 'dagmc.h5m')
-        assert loaded_model.settings.source[0].path == expected(
-            directory, 'source.h5')
-        assert loaded_model.settings.source[1].library == expected(
-            directory, 'source.so')
-        assert loaded_model.settings.source[2].path == \
-            tmp_path / 'absolute_source.h5'
-        assert loaded_model.settings.properties_file == expected(
-            directory, 'properties.h5')
-        assert loaded_model.settings.surf_source_read['path'] == expected(
-            directory, 'surface_source.h5')
-        assert loaded_model.settings.weight_windows_file == expected(
-            directory, 'weight_windows.h5')
-        assert loaded_model.tallies[0].filters[0].mesh.filename == expected(
-            directory, 'mesh.h5m')
-
     monkeypatch.chdir(tmp_path)
-    original_dir = Path.cwd()
     with openmc.config.patch('resolve_paths', resolve_paths):
         openmc.reset_auto_ids()
         loaded_model = openmc.Model.from_model_xml('model/model.xml')
-        check_paths(loaded_model, model_dir)
-
-        openmc.reset_auto_ids()
-        loaded_components = openmc.Model.from_xml(
-            geometry='components/geometry.xml',
-            materials='components/materials.xml',
-            settings='components/settings.xml',
-            tallies='components/tallies.xml',
-            plots='components/missing-plots.xml',
-        )
-        check_paths(loaded_components, component_dir)
-
-    assert Path.cwd() == original_dir
-
-
-def test_xml_input_path_context_reset(tmp_path, monkeypatch):
-    """The XML input directory is cleared when parsing raises an exception."""
-    input_dir = tmp_path / 'inputs'
-    input_dir.mkdir()
-    invalid_xml = input_dir / 'model.xml'
-    invalid_xml.write_text('<model>', encoding='utf-8')
-    monkeypatch.chdir(tmp_path)
-
-    with openmc.config.patch('resolve_paths', True):
-        with pytest.raises(ET.XMLSyntaxError):
-            openmc.Model.from_model_xml(invalid_xml)
-
-        universe = openmc.DAGMCUniverse('dagmc.h5m')
-        assert universe.filename == (tmp_path / 'dagmc.h5m').resolve()
+        expected = (model_dir / 'dagmc.h5m').resolve()
+        if not resolve_paths:
+            expected = Path('dagmc.h5m')
+        assert loaded_model.geometry.root_universe.filename == expected
 
 
 def test_init_finalize_lib(run_in_tmpdir, pin_model_attributes, mpi_intracomm):

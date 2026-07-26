@@ -2,7 +2,6 @@ from math import pi
 from pathlib import Path
 import os
 
-import lxml.etree as ET
 import numpy as np
 import pytest
 

@@ -436,7 +436,6 @@ void Particle::event_collide()
   // Reset banked weight during collision
   n_bank() = 0;
   bank_second_E() = 0.0;
-  secondary_q() = 0.0;
   wgt_bank() = 0.0;
 
   // Clear number of secondaries in this collision. This is
@@ -494,7 +493,6 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
     n_tracks()++;
   }
   bank_second_E() = 0.0;
-  secondary_q() = 0.0;
 
   // Subtract secondary particle energy from interim pulse-height results.
   // In shared secondary mode, this subtraction was already done on the parent

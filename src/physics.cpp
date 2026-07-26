@@ -487,9 +487,9 @@ bool process_charged_secondary(
       p.wgt(), -photon_u, MASS_ELECTRON_EV, ParticleType::photon());
 
     // The annihilation photons are now emitted during the parent photon
-    // collision. Offset the pair-production Q value so photon heating matches
-    // the prior explicit positron slowing-down and annihilation sequence.
-    p.secondary_q() += 2 * MASS_ELECTRON_EV;
+    // collision. Offset the pair-production Q value in the energy balance so
+    // heating matches the prior explicit positron slowing-down sequence.
+    p.bank_second_E() -= 2 * MASS_ELECTRON_EV;
   }
 
   return true;

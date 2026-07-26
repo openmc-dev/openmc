@@ -395,10 +395,11 @@ the region of interest that has its volume set in cm³.
     tally.apply_virtual_material(silicon)
 
     # Sum over nuclides and convert deposited energy to dose
-    ev_per_source = tally.mean.sum()
-    joule_per_source = ev_per_source * openmc.data.JOULE_PER_EV
-    kg = silicon.get_mass(volume=dose_cell.volume) * 1.0e-3
-    gy_per_source = joule_per_source / kg
+    eV_per_source = tally.mean.sum()
+    J_per_source = eV_per_source * openmc.data.JOULE_PER_EV
+    J_per_cm3_source = J_per_source / dose_cell.volume
+    kg_per_cm3 = silicon.get_mass_density() * 1.0e-3
+    Gy_per_source = J_per_cm3_source / kg_per_cm3
 
 Before the virtual material is applied, the nuclide-wise heating results have
 units of eV-b-cm/(atom-source). Multiplication by atom densities in atom/b-cm

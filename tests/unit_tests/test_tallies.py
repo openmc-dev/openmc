@@ -184,6 +184,40 @@ def _tally_from_data(x, *, higher_moments=True, normality=True):
         t._sum_fourth = np.array([[[np.sum(x**4)]]], dtype=float)
     return t
 
+
+def test_sparse_tally_data_roundtrip():
+    tally = _tally_from_data(np.arange(1.0, 21.0))
+    expected_sum = tally._sum.copy()
+    expected_sum_sq = tally._sum_sq.copy()
+    expected_sum_third = tally._sum_third.copy()
+    expected_sum_fourth = tally._sum_fourth.copy()
+    expected_mean = expected_sum / tally.num_realizations
+    expected_std_dev = np.sqrt(
+        (expected_sum_sq / tally.num_realizations - expected_mean**2)
+        / (tally.num_realizations - 1)
+    )
+
+    tally.sparse = True
+
+    assert tally.sum == pytest.approx(expected_sum)
+    assert tally.sum_sq == pytest.approx(expected_sum_sq)
+    assert tally.sum_third == pytest.approx(expected_sum_third)
+    assert tally.sum_fourth == pytest.approx(expected_sum_fourth)
+    assert tally.mean == pytest.approx(expected_mean)
+    assert tally.std_dev == pytest.approx(expected_std_dev)
+    expected_vov = tally.vov.copy()
+
+    tally.sparse = False
+
+    assert tally.sum == pytest.approx(expected_sum)
+    assert tally.sum_sq == pytest.approx(expected_sum_sq)
+    assert tally.sum_third == pytest.approx(expected_sum_third)
+    assert tally.sum_fourth == pytest.approx(expected_sum_fourth)
+    assert tally.mean == pytest.approx(expected_mean)
+    assert tally.std_dev == pytest.approx(expected_std_dev)
+    assert tally.vov == pytest.approx(expected_vov)
+
+
 @pytest.mark.parametrize(
     "x, skew_true, kurt_true",
     [   # Rademacher distribution

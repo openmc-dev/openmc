@@ -40,7 +40,7 @@ void sample_electron_reaction(Particle& p);
 void sample_positron_reaction(Particle& p);
 
 //! Process a secondary charged particle at its birth site
-bool process_charged_secondary(
+void process_charged_secondary(
   Particle& p, Direction u, double E, ParticleType type);
 
 //! Sample a nuclide based on their total cross sections and densities within

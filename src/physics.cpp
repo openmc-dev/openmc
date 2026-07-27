@@ -467,16 +467,15 @@ void sample_photon_reaction(Particle& p)
   }
 }
 
-bool process_charged_secondary(
+void process_charged_secondary(
   Particle& p, Direction u, double E, ParticleType type)
 {
   int idx = type.transport_index();
   if (idx == C_NONE || E < settings::energy_cutoff[idx])
-    return false;
+    return;
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
-    double E_lost;
-    thick_target_bremsstrahlung(p, type, u, E, &E_lost);
+    thick_target_bremsstrahlung(p, type, u, E);
   }
 
   if (type == ParticleType::positron()) {
@@ -491,8 +490,6 @@ bool process_charged_secondary(
     // heating matches the prior explicit positron slowing-down sequence.
     p.bank_second_E() -= 2 * MASS_ELECTRON_EV;
   }
-
-  return true;
 }
 
 void sample_electron_reaction(Particle& p)
@@ -500,8 +497,7 @@ void sample_electron_reaction(Particle& p)
   // TODO: create reaction types
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
-    double E_lost;
-    thick_target_bremsstrahlung(p, &E_lost);
+    thick_target_bremsstrahlung(p);
   }
 
   p.E() = 0.0;
@@ -514,8 +510,7 @@ void sample_positron_reaction(Particle& p)
   // TODO: create reaction types
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
-    double E_lost;
-    thick_target_bremsstrahlung(p, &E_lost);
+    thick_target_bremsstrahlung(p);
   }
 
   // Sample angle isotropically

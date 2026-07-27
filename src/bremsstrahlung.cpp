@@ -26,16 +26,14 @@ vector<Bremsstrahlung> ttb;
 // Non-member functions
 //==============================================================================
 
-void thick_target_bremsstrahlung(Particle& p, double* E_lost)
+void thick_target_bremsstrahlung(Particle& p)
 {
-  thick_target_bremsstrahlung(p, p.type(), p.u(), p.E(), E_lost);
+  thick_target_bremsstrahlung(p, p.type(), p.u(), p.E());
 }
 
 void thick_target_bremsstrahlung(
-  Particle& p, ParticleType type, Direction u, double E, double* E_lost)
+  Particle& p, ParticleType type, Direction u, double E)
 {
-  *E_lost = 0.0;
-
   if (p.material() == MATERIAL_VOID)
     return;
 
@@ -81,6 +79,8 @@ void thick_target_bremsstrahlung(
   if (n == 0)
     return;
 
+  double E_radiated = 0.0;
+
   // Sample index of the tabulated PDF in the energy grid, j or j+1
   double c_max;
   int i_e;
@@ -121,13 +121,13 @@ void thick_target_bremsstrahlung(
     if (w > settings::energy_cutoff[photon]) {
       // If the energy of the secondary photon is larger than the remaining
       // energy of the primary particle, adjust it to the remaining energy
-      if (*E_lost + w > E) {
-        w = E - *E_lost;
+      if (E_radiated + w > E) {
+        w = E - E_radiated;
       }
 
       // Create secondary photon
       p.create_secondary(p.wgt(), u, w, ParticleType::photon());
-      *E_lost += w;
+      E_radiated += w;
     }
   }
 }

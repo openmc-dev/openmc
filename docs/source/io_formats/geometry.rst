@@ -407,9 +407,7 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
     *Default*: None
 
   :length_multiplier:
-    Multiplicative factor applied to DAGMC geometry coordinates when loading
-    the model. Values other than ``1.0`` scale all coordinates by the provided
-    factor.
+    Coordinate scaling factor applied when loading a DAGMC geometry model.
 
     *Default*: 1.0
 

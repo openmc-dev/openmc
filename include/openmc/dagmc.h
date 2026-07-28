@@ -107,12 +107,12 @@ public:
   //! material IDs \param[in] length_multiplier Multiplicative factor applied to
   //! geometry coordinates
   explicit DAGUniverse(const std::string& filename, bool auto_geom_ids = false,
-    bool auto_mat_ids = false, double length_multiplier = -1.0);
+    bool auto_mat_ids = false, double length_multiplier = 1.0);
 
   //! Alternative DAGMC universe constructor for external DAGMC instance
   explicit DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
     const std::string& filename = "", bool auto_geom_ids = false,
-    bool auto_mat_ids = false, double length_multiplier = -1.0);
+    bool auto_mat_ids = false, double length_multiplier = 1.0);
 
   //! Initialize the DAGMC accel. data structures, indices, material
   //! assignments, etc.
@@ -211,7 +211,7 @@ private:
   bool adjust_material_ids_; //!< Indicates whether or not to automatically
                              //!< generate new material IDs for the universe
   double length_multiplier_ {
-    -1.0}; //!< Multiplicative factor applied to geometry coordinates
+    1.0}; //!< Multiplicative factor applied to geometry coordinates
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
 };

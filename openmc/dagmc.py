@@ -37,8 +37,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         Set IDs automatically on initialization (True)  or report overlaps in ID
         space between OpenMC and UWUW materials (False)
     length_multiplier : float
-        Factor to apply to DAGMC coordinate data. Values other than 1.0 scale
-        geometry coordinates by this multiplier.
+        Coordinate scaling factor applied when loading a DAGMC geometry model.
     Attributes
     ----------
     id : int
@@ -54,7 +53,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         Set IDs automatically on initialization (True)  or report overlaps in ID
         space between OpenMC and UWUW materials (False)
     length_multiplier : float
-        Factor applied to DAGMC coordinate data.
+        Coordinate scaling factor applied when loading a DAGMC geometry model.
     bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
@@ -107,8 +106,7 @@ class DAGMCUniverse(openmc.UniverseBase):
     def bounding_box(self):
         with h5py.File(self.filename) as dagmc_file:
             coords = dagmc_file['tstt']['nodes']['coordinates'][()]
-            if self.length_multiplier != 1.0:
-                coords = self.length_multiplier * coords
+            coords *= self.length_multiplier
             lower_left_corner = coords.min(axis=0)
             upper_right_corner = coords.max(axis=0)
             return openmc.BoundingBox(lower_left_corner, upper_right_corner)
@@ -195,6 +193,7 @@ class DAGMCUniverse(openmc.UniverseBase):
     @length_multiplier.setter
     def length_multiplier(self, length_multiplier):
         cv.check_type('DAGMC universe length multiplier', length_multiplier, Real)
+        cv.check_greater_than('DAGMC universe length multiplier', length_multiplier, 0.0)
         self._length_multiplier = length_multiplier
 
     @property

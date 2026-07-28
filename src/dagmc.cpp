@@ -81,7 +81,6 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
     adjust_material_ids_ = get_node_value_bool(node, "auto_mat_ids");
   }
 
-  length_multiplier_ = -1.0;
   if (check_for_node(node, "length_multiplier")) {
     length_multiplier_ = std::stod(get_node_value(node, "length_multiplier"));
   }
@@ -231,7 +230,7 @@ void DAGUniverse::init_dagmc()
   moab::ErrorCode rval = dagmc_instance_->load_file(filename_.c_str());
   MB_CHK_ERR_CONT(rval);
 
-  if (length_multiplier_ > 0.0) {
+  if (length_multiplier_ != 1.0) {
     moab::Range verts;
     rval = dagmc_instance_->moab_instance()->get_entities_by_dimension(0, 0, verts);
     MB_CHK_ERR_CONT(rval);
@@ -605,9 +604,7 @@ void DAGUniverse::to_hdf5(hid_t universes_group) const
     group, "auto_geom_ids", static_cast<int>(adjust_geometry_ids_));
   write_attribute(
     group, "auto_mat_ids", static_cast<int>(adjust_material_ids_));
-  if (length_multiplier_ > 0.0) {
-    write_attribute(group, "length_multiplier", length_multiplier_);
-  }
+  write_attribute(group, "length_multiplier", length_multiplier_);
 
   close_group(group);
 }

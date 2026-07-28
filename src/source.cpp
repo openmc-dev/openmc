@@ -38,9 +38,9 @@
 #include "openmc/simulation.h"
 #include "openmc/state_point.h"
 #include "openmc/string_utils.h"
+#include "openmc/surface.h"
 #include "openmc/tallies/next_event_scoring.h"
 #include "openmc/tallies/tally_scoring.h"
-#include "openmc/surface.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {

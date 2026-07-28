@@ -535,7 +535,7 @@ else()
 endif()
 
 if(OPENMC_USE_DAGMC)
-  target_compile_definitions(libopenmc PRIVATE OPENMC_DAGMC_ENABLED)
+  target_compile_definitions(libopenmc PUBLIC OPENMC_DAGMC_ENABLED)
   target_link_libraries(libopenmc dagmc-shared)
 
   if(OPENMC_USE_UWUW)

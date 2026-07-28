@@ -363,8 +363,8 @@ void sample_photon_reaction(Particle& p)
     // Allow electrons to fill orbital and produce Auger electrons and
     // fluorescent photons. Since Compton subshell data does not match atomic
     // relaxation data, use the mapping between the data to find the subshell
-    if (settings::atomic_relaxation && i_shell >= 0 &&
-        element.subshell_map_[i_shell] >= 0) {
+    if (settings::atomic_relaxation && element.has_atomic_relaxation_ &&
+        i_shell >= 0 && element.subshell_map_[i_shell] >= 0) {
       element.atomic_relaxation(element.subshell_map_[i_shell], p);
     }
 

@@ -44,7 +44,7 @@ public:
 
   FilterBinIter& operator++();
 
-  int index_ {1};
+  int64_t index_ {1};
   double weight_ {1.};
 
   vector<FilterMatch>& filter_matches_;

@@ -36,6 +36,7 @@ from openmc.arithmetic import (
 from ._sparse_compat import lil_array
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
+from .utility_funcs import set_xml_input_path
 from .mesh import MeshBase
 
 
@@ -479,10 +480,12 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
-                self._sum = lil_array(self._sum.flatten(), self._sum.shape)
-                self._sum_sq = lil_array(self._sum_sq.flatten(), self._sum_sq.shape)
-                self._sum_third = lil_array(self._sum_third.flatten(), self._sum_third.shape)
-                self._sum_fourth = lil_array(self._sum_fourth.flatten(), self._sum_fourth.shape)
+                self._sum = lil_array(self._sum.reshape(1, -1))
+                self._sum_sq = lil_array(self._sum_sq.reshape(1, -1))
+                if self._sum_third is not None:
+                    self._sum_third = lil_array(self._sum_third.reshape(1, -1))
+                if self._sum_fourth is not None:
+                    self._sum_fourth = lil_array(self._sum_fourth.reshape(1, -1))
 
             # Read simulation time (needed for figure of merit)
             self._simulation_time = f["runtime"]["simulation"][()]
@@ -578,7 +581,7 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._mean = lil_array(self._mean.flatten(), self._mean.shape)
+                self._mean = lil_array(self._mean.reshape(1, -1))
 
         if self.sparse:
             return np.reshape(self._mean.toarray(), self.shape)
@@ -599,7 +602,7 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = lil_array(self._std_dev.flatten(), self._std_dev.shape)
+                self._std_dev = lil_array(self._std_dev.reshape(1, -1))
 
             self.with_batch_statistics = True
 
@@ -630,7 +633,7 @@ class Tally(IDManagerMixin):
             self._vov[mask] = numerator[mask]/denominator[mask] - 1.0/n
 
             if self.sparse:
-                self._vov = lil_array(self._vov.flatten(), self._vov.shape)
+                self._vov = lil_array(self._vov.reshape(1, -1))
 
         if self.sparse:
             return np.reshape(self._vov.toarray(), self.shape)
@@ -1005,17 +1008,19 @@ class Tally(IDManagerMixin):
         # Convert NumPy arrays to SciPy sparse LIL matrices
         if sparse and not self.sparse:
             if self._sum is not None:
-                self._sum = lil_array(self._sum.flatten(), self._sum.shape)
+                self._sum = lil_array(self._sum.reshape(1, -1))
             if self._sum_sq is not None:
-                self._sum_sq = lil_array(self._sum_sq.flatten(), self._sum_sq.shape)
+                self._sum_sq = lil_array(self._sum_sq.reshape(1, -1))
             if self._sum_third is not None:
-                self._sum_third = lil_array(self._sum_third.flatten(), self._sum_third.shape)
+                self._sum_third = lil_array(self._sum_third.reshape(1, -1))
             if self._sum_fourth is not None:
-                self._sum_fourth = lil_array(self._sum_fourth.flatten(), self._sum_fourth.shape)
+                self._sum_fourth = lil_array(self._sum_fourth.reshape(1, -1))
             if self._mean is not None:
-                self._mean = lil_array(self._mean.flatten(), self._mean.shape)
+                self._mean = lil_array(self._mean.reshape(1, -1))
             if self._std_dev is not None:
-                self._std_dev = lil_array(self._std_dev.flatten(), self._std_dev.shape)
+                self._std_dev = lil_array(self._std_dev.reshape(1, -1))
+            if self._vov is not None:
+                self._vov = lil_array(self._vov.reshape(1, -1))
 
             self._sparse = True
 
@@ -1033,6 +1038,8 @@ class Tally(IDManagerMixin):
                 self._mean = np.reshape(self._mean.toarray(), self.shape)
             if self._std_dev is not None:
                 self._std_dev = np.reshape(self._std_dev.toarray(), self.shape)
+            if self._vov is not None:
+                self._vov = np.reshape(self._vov.toarray(), self.shape)
             self._sparse = False
 
     def remove_score(self, score):
@@ -3932,7 +3939,8 @@ class Tallies(cv.CheckedList):
             Tallies object
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
-        return cls.from_xml_element(root)
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
+            return cls.from_xml_element(root)

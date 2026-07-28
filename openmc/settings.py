@@ -15,7 +15,7 @@ from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
-from .utility_funcs import input_path
+from .utility_funcs import input_path, set_xml_input_path
 from .volume import VolumeCalculation
 from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
 
@@ -241,7 +241,7 @@ class Settings:
             also tends to dampen the convergence rate of the solver, thus requiring
             more iterations to converge.
         :adjoint_source:
-            Source object used to define localized adjoint source/detector response 
+            Source object used to define localized adjoint source/detector response
             function.
 
         .. versionadded:: 0.15.0
@@ -2031,11 +2031,11 @@ class Settings:
                         path = f"./mesh[@id='{mesh.id}']"
                         if root.find(path) is None:
                             root.append(mesh.to_xml_element())
-                            if mesh_memo is not None:    
+                            if mesh_memo is not None:
                                 mesh_memo.add(mesh.id)
                 elif key == 'adjoint_source':
                     subelement = ET.SubElement(element, 'adjoint_source')
-                    # Check that all entries are valid SourceBase instances, in case 
+                    # Check that all entries are valid SourceBase instances, in case
                     # the random_ray setter was not used to populate dict entries.
                     if not isinstance(value, MutableSequence):
                         value = [value]
@@ -2775,8 +2775,9 @@ class Settings:
             Settings object
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
-        meshes = _read_meshes(root)
-        return cls.from_xml_element(root, meshes)
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
+            meshes = _read_meshes(root)
+            return cls.from_xml_element(root, meshes)

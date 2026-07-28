@@ -158,8 +158,8 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
   initialize(material_overrides, temperature_overrides, density_overrides);
 }
 
-DAGUniverse::DAGUniverse(
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids, double length_multiplier)
+DAGUniverse::DAGUniverse(const std::string& filename, bool auto_geom_ids,
+  bool auto_mat_ids, double length_multiplier)
   : filename_(filename), adjust_geometry_ids_(auto_geom_ids),
     adjust_material_ids_(auto_mat_ids), length_multiplier_(length_multiplier)
 {
@@ -168,9 +168,11 @@ DAGUniverse::DAGUniverse(
 }
 
 DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids, double length_multiplier)
+  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids,
+  double length_multiplier)
   : dagmc_instance_(dagmc_ptr), filename_(filename),
-    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids), length_multiplier_(length_multiplier)
+    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids),
+    length_multiplier_(length_multiplier)
 {
   MaterialOverrides material_overrides;
   TemperatureOverrides temperature_overrides;
@@ -232,12 +234,14 @@ void DAGUniverse::init_dagmc()
 
   if (length_multiplier_ != 1.0) {
     moab::Range verts;
-    rval = dagmc_instance_->moab_instance()->get_entities_by_dimension(0, 0, verts);
+    rval =
+      dagmc_instance_->moab_instance()->get_entities_by_dimension(0, 0, verts);
     MB_CHK_ERR_CONT(rval);
 
     for (auto vert : verts) {
       std::array<double, 3> coord;
-      rval = dagmc_instance_->moab_instance()->get_coords(&vert, 1, coord.data());
+      rval =
+        dagmc_instance_->moab_instance()->get_coords(&vert, 1, coord.data());
       MB_CHK_ERR_CONT(rval);
 
       for (auto& c : coord) {

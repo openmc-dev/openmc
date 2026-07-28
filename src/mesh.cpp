@@ -788,17 +788,6 @@ std::string StructuredMesh::bin_label(int bin) const
   }
 }
 
-std::string StructuredMesh::surface_bin_label(int surface) const
-{
-  int axis = static_cast<int>(std::floor(surface / 4));
-  std::string label = axes_labels_[axis];
-  const std::vector<std::string> MINMAX = {"min", "max"};
-  const std::vector<std::string> OUTIN = {"Outgoing", "Incoming"};
-  auto minmax = MINMAX[static_cast<int>(std::floor((surface % 4) / 2))];
-  auto outin = OUTIN[surface % 2];
-  return fmt::format("{}, {}-{}", outin, minmax, label);
-}
-
 tensor::Tensor<int> StructuredMesh::get_shape_tensor() const
 {
   return tensor::Tensor<int>(shape_.data(), static_cast<size_t>(n_dimension_));
@@ -2513,14 +2502,14 @@ std::string HexagonalMesh::bin_label(int bin) const
     "Mesh Index ({}, {}, {}, {})", ijk[0], ijk[1], -ijk[0] - ijk[1], ijk[2]);
 }
 
-std::string HexagonalMesh::surface_bin_label(int surface) const
+std::string HexagonalMesh::surface_bin_label(int surf_index) const
 {
   auto labels = this->axis_labels();
   int dim = surf_index / 4;
   int code = surf_index % 4;
   bool incoming = (code == 1) || (code == 3);
   bool max = (code == 2) || (code == 3);
-  if (axis == 3)
+  if (dim == 3)
     return fmt::format(" {}, {}-{}", incoming ? "Incoming" : "Outgoing",
       labels[dim], max ? "max" : "min");
   int dim2 = (dim + 1) % 2;

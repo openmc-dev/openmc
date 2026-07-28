@@ -219,6 +219,25 @@ def test_from_xml(run_in_tmpdir, pin_model_attributes):
     assert test_model.is_initialized is False
 
 
+@pytest.mark.parametrize('resolve_paths', [True, False])
+def test_xml_input_paths(tmp_path, monkeypatch, resolve_paths):
+    """Input paths are interpreted relative to the containing XML file."""
+    with openmc.config.patch('resolve_paths', False):
+        univ = openmc.DAGMCUniverse('dagmc.h5m')
+        model = openmc.Model(geometry=openmc.Geometry(univ))
+        model_dir = tmp_path / 'model'
+        model.export_to_model_xml(model_dir)
+
+    monkeypatch.chdir(tmp_path)
+    with openmc.config.patch('resolve_paths', resolve_paths):
+        openmc.reset_auto_ids()
+        loaded_model = openmc.Model.from_model_xml('model/model.xml')
+        expected = (model_dir / 'dagmc.h5m').resolve()
+        if not resolve_paths:
+            expected = Path('dagmc.h5m')
+        assert loaded_model.geometry.root_universe.filename == expected
+
+
 def test_init_finalize_lib(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # We are going to init and then make sure data is loaded
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes

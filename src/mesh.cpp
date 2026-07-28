@@ -788,7 +788,7 @@ std::string StructuredMesh::bin_label(int bin) const
   }
 }
 
-std::string StructuredMesh::surface_label(int surface) const
+std::string StructuredMesh::surface_bin_label(int surface) const
 {
   int axis = static_cast<int>(std::floor(surface / 4));
   std::string label = axes_labels_[axis];
@@ -2513,18 +2513,7 @@ std::string HexagonalMesh::bin_label(int bin) const
     "Mesh Index ({}, {}, {}, {})", ijk[0], ijk[1], -ijk[0] - ijk[1], ijk[2]);
 }
 
-std::string HexagonalMesh::surface_bin_label(int surf_index) const
-{
-  auto labels = this->axis_labels();
-  int dim = surf_index / 4;
-  int code = surf_index % 4;
-  bool incoming = (code == 1) || (code == 3);
-  bool max = (code == 2) || (code == 3);
-  return fmt::format(" {}, {}-{}", incoming ? "Incoming" : "Outgoing",
-    labels[dim], max ? "max" : "min");
-}
-
-std::string HexagonalMesh::surface_label(int surface) const
+std::string HexagonalMesh::surface_bin_label(int surface) const
 {
   auto labels = this->axis_labels();
   int dim = surf_index / 4;

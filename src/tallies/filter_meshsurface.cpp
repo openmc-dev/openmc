@@ -25,16 +25,18 @@ void MeshSurfaceFilter::get_all_bins(
 
 std::string MeshSurfaceFilter::text_label(int bin) const
 {
-  auto mesh = dynamic_cast<StructuredMesh*>(model::meshes[mesh_].get());
-  int n_dim = mesh->n_dimension_;
+  auto& mesh = *model::meshes[mesh_];
+  int n_dim = mesh.n_dimension_;
 
-  // Get flattend mesh index and surface index.
+  // Get flattened mesh index and surface index.
   int i_mesh = bin / (4 * n_dim);
-  int i_surf = bin % (4 * n_dim);
+  int surf_index = bin % (4 * n_dim);
 
+  // Get mesh index part of label, then append the surface part.
+  // The surface is labeled by the underlying mesh.
   std::string out = MeshFilter::text_label(i_mesh);
-  out += " ";
-  out += mesh->surface_label(i_surf);
+  out += mesh.surface_bin_label(surf_index);
+
   return out;
 }
 

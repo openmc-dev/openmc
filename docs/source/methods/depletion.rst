@@ -339,3 +339,56 @@ where:
 
 Note that mass conservation is guaranteed by transferring the number
 of atoms directly.
+
+---------------------
+External Source Rates
+---------------------
+
+OpenMC allows the addition of external source rates to the depletion matrix.
+This is useful for modeling the feed or removal of fixed amounts of nuclides
+to or from a depletable material. Rates are specified as a mass flow (default
+units of [g/s]) and converted to [atom/s] source terms for the nuclides in the
+composition vector. A positive rate corresponds to feed and a negative rate to
+removal.
+
+Mathematically, this is represented as an external source term :math:`S_i` to
+the depletion equation:
+
+.. math::
+
+  \frac{dN_i}{dt} = \sum_j A_{ij} N_j + S_i
+
+The resulting linear system is non-homogeneous but can be recast in homogeneous
+form by augmenting the nuclide vector with a constant component equal to unity:
+
+.. math::
+
+  \frac{d}{dt}\begin{bmatrix}\mathbf{n}\\ 1\end{bmatrix} =
+  \begin{bmatrix}
+        \mathbf{A} & \mathbf{s}\\
+        \mathbf{0} & 0
+  \end{bmatrix}
+  \begin{bmatrix}
+        \mathbf{n}\\
+        1
+  \end{bmatrix}
+
+where :math:`\mathbf{s}` is the vector of external source rates in [atom/s]. The
+resulting system can be solved with the same integration algorithms that are
+used in the absence of the external source term.
+
+External source rates with transfer rates coupling materials
+------------------------------------------------------------
+
+In the presence of external source rates and coupled transfer rates between
+materials, the off-diagonal transfer blocks must match the dimensions of the
+corresponding diagonal blocks. Using the transfer example above, if an external
+source rate is applied to material 1 (the losing material), the coupling matrix
+:math:`\mathbf{T_{21}}` is extended with an additional column of zeroes so that
+its column count matches the augmented :math:`\mathbf{A_{11}}`. If the external
+source is applied to material 2 (the receiving material),
+:math:`\mathbf{T_{21}}` instead receives an additional row of zeroes so that its
+row count matches the augmented :math:`\mathbf{A_{22}}`.
+
+
+

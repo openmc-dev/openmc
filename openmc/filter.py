@@ -985,7 +985,7 @@ class MeshFilter(Filter):
         # Append mesh ID as outermost index of multi-index
         mesh_key = f'mesh {self.mesh.id}'
 
-        columns = [(mesh_key, label) for label in self.mesh._axis_labels]
+        columns = [(mesh_key, label) for label in self.mesh.axis_labels]
         indices = _repeat_and_tile(list(self.mesh.indices), stride, data_size)
         return pd.DataFrame(indices, columns=columns)
 
@@ -1259,7 +1259,8 @@ class MeshSurfaceFilter(MeshFilter):
         Unique identifier for the filter
     bins : list of tuple
         A list of mesh indices / surfaces for each filter bin, e.g. [(1, 1,
-        'x-min out'), (1, 1, 'x-min in'), ...]
+        'x-min out'), (1, 1, 'x-min in'), ...]. Surface names use the mesh's
+        axis labels (e.g. r/phi/z for a cylindrical mesh).
     num_bins : Integral
         The number of filter bins
 
@@ -1284,7 +1285,7 @@ class MeshSurfaceFilter(MeshFilter):
             return names
             
         names = []
-        for ax in mesh._axis_labels:
+        for ax in mesh.axis_labels:
             for minmax in ('min', 'max'):
                 for inout in ('out','in'):
                     names.append(f"{ax}-{minmax} {inout}")
@@ -1294,8 +1295,13 @@ class MeshSurfaceFilter(MeshFilter):
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
+
+        # Take the product of mesh indices and surface-crossing names, using
+        # the mesh's own axis labels so cylindrical/spherical meshes get the
+        # correct names.
+        current_names = self._current_names(mesh)
         self.bins = [mesh_tuple + (surf,) for mesh_tuple, surf in
-                     product(mesh.indices, self._current_names(mesh))]
+                     product(mesh.indices, current_names)]
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1314,9 +1320,11 @@ class MeshSurfaceFilter(MeshFilter):
         Returns
         -------
         pandas.DataFrame
-            A Pandas DataFrame with three columns describing the x,y,z mesh
-            cell indices corresponding to each filter bin.  The number of rows
-            in the DataFrame is the same as the total number of bins in the
+            A Pandas DataFrame with columns describing the mesh cell indices
+            corresponding to each filter bin, plus a surface column. Column
+            names depend on the mesh type (e.g., x/y/z for RegularMesh, r/phi/z
+            for CylindricalMesh, r/theta/phi for SphericalMesh). The number of
+            rows in the DataFrame is the same as the total number of bins in the
             corresponding tally, with the filter bin appropriately tiled to map
             to the corresponding tally bins.
 
@@ -1325,13 +1333,19 @@ class MeshSurfaceFilter(MeshFilter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
+        # Initialize Pandas DataFrame
+        df = pd.DataFrame()
+
+        # Initialize dictionary to build Pandas Multi-index column
+        filter_dict = {}
+
         # Append mesh ID as outermost index of multi-index
         mesh_key = f'mesh {self.mesh.id}'
 
         # Find mesh dimensions - use 3D indices for simplicity
         n_surfs = len(self._current_names(self._mesh))
 
-        columns = [(mesh_key, label) for label in self.mesh._axis_labels]
+        columns = [(mesh_key, label) for label in self.mesh.axis_labels]
         indices = _repeat_and_tile(list(self.mesh.indices), stride*n_surfs, data_size)
         filter_dict = dict(zip(columns,indices.T))
         surfs = _repeat_and_tile(self._current_names(self._mesh), stride, data_size)

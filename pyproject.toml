@@ -40,6 +40,7 @@ dependencies = [
 [project.optional-dependencies]
 depletion-mpi = ["mpi4py"]
 docs = [
+    "breathe",
     "sphinx",
     "sphinxcontrib-katex",
     "sphinx-numfig",
@@ -69,7 +70,7 @@ include = ['openmc*']
 exclude = ['tests*']
 
 [tool.setuptools.package-data]
-"openmc.data.dose" = ["**/*.txt"]
+"openmc.data.dose" = ["**/*.txt", "*.h5"]
 "openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
 "openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
 

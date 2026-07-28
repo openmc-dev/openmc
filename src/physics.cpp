@@ -44,7 +44,7 @@ void collision(Particle& p)
 {
   // Add to collision counter for particle
   ++(p.n_collision());
-  p.secondary_bank_index() = p.secondary_bank().size();
+  p.secondary_bank_index() = p.local_secondary_bank().size();
 
   // Sample reaction for the material the particle is in
   switch (p.type().pdg_number()) {
@@ -127,7 +127,8 @@ void sample_neutron_reaction(Particle& p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (p.secondary_bank().size() >= settings::max_secondaries) {
+      if (p.local_secondary_bank().size() >= settings::max_secondaries &&
+          !settings::use_shared_secondary_bank) {
         fatal_error(
           "The secondary particle bank appears to be growing without "
           "bound. You are likely running a subcritical multiplication problem "
@@ -228,7 +229,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     }
 
     // Set parent and progeny IDs
-    site.parent_id = p.id();
+    site.parent_id = p.current_work();
     site.progeny_id = p.n_progeny()++;
 
     // Store fission site in bank
@@ -253,7 +254,10 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         ifp(p, idx);
       }
     } else {
-      p.secondary_bank().push_back(site);
+      site.wgt_born = p.wgt_born();
+      site.wgt_ww_born = p.wgt_ww_born();
+      site.n_split = p.n_split();
+      p.local_secondary_bank().push_back(site);
       p.n_secondaries()++;
     }
 
@@ -355,7 +359,8 @@ void sample_photon_reaction(Particle& p)
     // Allow electrons to fill orbital and produce Auger electrons and
     // fluorescent photons. Since Compton subshell data does not match atomic
     // relaxation data, use the mapping between the data to find the subshell
-    if (i_shell >= 0 && element.subshell_map_[i_shell] >= 0) {
+    if (settings::atomic_relaxation && element.has_atomic_relaxation_ &&
+        i_shell >= 0 && element.subshell_map_[i_shell] >= 0) {
       element.atomic_relaxation(element.subshell_map_[i_shell], p);
     }
 
@@ -427,7 +432,9 @@ void sample_photon_reaction(Particle& p)
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
-        element.atomic_relaxation(i_shell, p);
+        if (settings::atomic_relaxation) {
+          element.atomic_relaxation(i_shell, p);
+        }
         p.event() = TallyEvent::ABSORB;
         p.event_mt() = 533 + shell.index_subshell;
         p.wgt() = 0.0;
@@ -1220,9 +1227,20 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     // Create the secondary photon
     bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon());
 
+    // Pre-add photon energy to pht_storage so pht_secondary_particles()
+    // subtraction results in net zero
+    if (created_photon && !model::active_pulse_height_tallies.empty()) {
+      auto it = std::find(model::pulse_height_cells.begin(),
+        model::pulse_height_cells.end(), p.lowest_coord().cell());
+      if (it != model::pulse_height_cells.end()) {
+        int index = std::distance(model::pulse_height_cells.begin(), it);
+        p.pht_storage()[index] += E;
+      }
+    }
+
     // Tag secondary particle with parent nuclide
     if (created_photon && settings::use_decay_photons) {
-      p.secondary_bank().back().parent_nuclide =
+      p.local_secondary_bank().back().parent_nuclide =
         rx->products_[i_product].parent_nuclide_;
     }
   }

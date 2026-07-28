@@ -78,6 +78,7 @@ class EnergyGroups:
     @group_edges.setter
     def group_edges(self, edges):
         cv.check_type('group edges', edges, Iterable, Real)
+        cv.check_increasing('group edges', edges)
         cv.check_greater_than('number of group edges', len(edges), 1)
         self._group_edges = np.array(edges)
 

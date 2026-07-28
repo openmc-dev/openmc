@@ -342,6 +342,14 @@ is summarized below:
    :eq:`compton-shell-probability`. Accept the shell with probability equal to
    this normalized profile integral; otherwise, repeat from step 2.
 
+   This rejection method usually accepts quickly. After two unsuccessful
+   attempts, OpenMC instead evaluates the integral for every shell and samples
+   directly from the normalized probability mass function in
+   :eq:`compton-shell-probability`. This is statistically equivalent to
+   repeating steps 2 and 3, while avoiding excessive rejection for
+   near-forward scattering. The profile integrals are cached for subsequent
+   attempts at the same collision.
+
 4. Sample a signed value of :math:`p_z` from :math:`J_i(p_z)`, conditional on
    :math:`-1/\alpha \leq p_z \leq p_{z,\text{max},i}`. When the upper bound is
    positive, choose between the negative and positive branches in proportion to

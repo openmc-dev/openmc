@@ -261,6 +261,12 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   profile_cdf_ = tensor::Tensor<double>({n_shell_compton, n_profile});
   profile_tail_slope_ = tensor::Tensor<double>({n_shell_compton});
   profile_norm_ = tensor::Tensor<double>({n_shell_compton});
+  profile_negative_mass_ = tensor::Tensor<double>({n_shell_compton});
+  if (n_shell_compton > SUBSHELLS.size()) {
+    throw std::runtime_error {"Photoatomic data for element " + name_ +
+                              " has more Compton profiles than supported "
+                              "electron subshells."};
+  }
   for (int i = 0; i < n_shell_compton; ++i) {
     double c = 0.0;
     profile_cdf_(i, 0) = 0.0;
@@ -295,6 +301,9 @@ PhotonInteraction::PhotonInteraction(hid_t group)
       throw std::runtime_error {"The Compton profile for element " + name_ +
                                 " has an invalid normalization."};
     }
+  }
+  for (int i = 0; i < n_shell_compton; ++i) {
+    profile_negative_mass_(i) = this->compton_profile_cdf(i, FINE_STRUCTURE);
   }
 
   // Calculate total pair production
@@ -548,64 +557,103 @@ double PhotonInteraction::invert_compton_profile_cdf(
 void PhotonInteraction::compton_doppler(
   double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const
 {
-  // Maximum number of shell/momentum sampling attempts before falling back
-  // to the free-electron Compton energy. Near-forward scattering can make
-  // the accessible profile mass for every shell vanishingly small (and, at
-  // the exact mu=1 boundary, exactly zero), so the bound must be generous
-  // enough that legitimate but low-probability acceptances are not cut off
-  // prematurely; it only exists to prevent an unbounded loop in that
-  // degenerate limit.
+  // Use ordinary rejection sampling first since it usually accepts quickly.
+  // If it does not, form the conditional shell PMF to bound the work required
+  // for near-forward scattering.
+  constexpr int N_FAST_SAMPLES = 2;
+
+  // Maximum number of momentum/energy sampling attempts before falling back
+  // to the free-electron Compton energy. The conditional shell PMF avoids
+  // repeated rejection when the accessible profile mass is small, but the
+  // bound still protects against degenerate kinematics and roundoff.
   constexpr int MAX_SAMPLES = 100000;
 
-  int shell = 0; // index for shell
-  for (int attempt = 0; attempt < MAX_SAMPLES; ++attempt) {
-    // Sample electron shell
-    double rn = prn(seed);
-    double c = 0.0;
-    for (shell = 0; shell < electron_pdf_.size(); ++shell) {
-      c += electron_pdf_(shell);
-      if (rn < c)
-        break;
-    }
-    double E = alpha * MASS_ELECTRON_EV;
+  array<bool, SUBSHELLS.size()> shell_evaluated {};
+  array<double, SUBSHELLS.size()> pz_max;
+  array<double, SUBSHELLS.size()> c_limit;
+  array<double, SUBSHELLS.size()> profile_mass;
+  array<double, SUBSHELLS.size()> shell_cdf;
+  bool shell_pmf_initialized = false;
+  double shell_pmf_norm = 0.0;
 
-    // Determine binding energy of shell
+  double E = alpha * MASS_ELECTRON_EV;
+  auto evaluate_shell = [&](int shell) {
+    if (shell_evaluated[shell])
+      return profile_mass[shell] > 0.0;
+
+    shell_evaluated[shell] = true;
+    profile_mass[shell] = 0.0;
     double E_b = binding_energy_(shell);
-
-    // Resample if photon energy insufficient
     if (E <= E_b)
-      continue;
+      return false;
 
-    double pz_max = -FINE_STRUCTURE * (E_b - (E - E_b) * alpha * (1.0 - mu)) /
+    pz_max[shell] = -FINE_STRUCTURE * (E_b - (E - E_b) * alpha * (1.0 - mu)) /
                     std::sqrt(2.0 * E * (E - E_b) * (1.0 - mu) + E_b * E_b);
 
     // The minimum longitudinal momentum corresponds to zero outgoing photon
     // energy. Determine the integrated profile over the kinematically allowed
     // interval [p_z,min, p_z,max].
-    if (pz_max <= -FINE_STRUCTURE)
-      continue;
-    double c_negative = this->compton_profile_cdf(shell, FINE_STRUCTURE);
-    double c_limit;
-    double profile_mass;
-    if (pz_max < 0.0) {
-      c_limit = this->compton_profile_cdf(shell, -pz_max);
-      profile_mass = c_negative - c_limit;
+    if (pz_max[shell] <= -FINE_STRUCTURE)
+      return false;
+
+    double c_negative = profile_negative_mass_(shell);
+    if (pz_max[shell] < 0.0) {
+      c_limit[shell] = this->compton_profile_cdf(shell, -pz_max[shell]);
+      profile_mass[shell] = c_negative - c_limit[shell];
     } else {
-      c_limit = this->compton_profile_cdf(shell, pz_max);
-      profile_mass = c_negative + c_limit;
+      c_limit[shell] = this->compton_profile_cdf(shell, pz_max[shell]);
+      profile_mass[shell] = c_negative + c_limit[shell];
+    }
+    return profile_mass[shell] > 0.0;
+  };
+
+  int shell = 0; // index for shell
+  for (int attempt = 0; attempt < MAX_SAMPLES; ++attempt) {
+    bool use_conditional_pmf = attempt >= N_FAST_SAMPLES;
+    if (use_conditional_pmf) {
+      if (!shell_pmf_initialized) {
+        for (int i = 0; i < electron_pdf_.size(); ++i) {
+          if (evaluate_shell(i)) {
+            shell_pmf_norm += electron_pdf_(i) * profile_mass[i];
+          }
+          shell_cdf[i] = shell_pmf_norm;
+        }
+        shell_pmf_initialized = true;
+        if (shell_pmf_norm == 0.0)
+          break;
+      }
+
+      double rn = prn(seed) * shell_pmf_norm;
+      for (shell = 0; shell < electron_pdf_.size(); ++shell) {
+        if (rn < shell_cdf[shell])
+          break;
+      }
+    } else {
+      // Sample electron shell according to its occupancy
+      double rn = prn(seed);
+      double c = 0.0;
+      for (shell = 0; shell < electron_pdf_.size(); ++shell) {
+        c += electron_pdf_(shell);
+        if (rn < c)
+          break;
+      }
+
+      if (!evaluate_shell(shell))
+        continue;
+
+      // Accept the shell according to its integrated Compton profile
+      if (prn(seed) >= profile_mass[shell])
+        continue;
     }
 
-    // Accept the shell according to its integrated Compton profile
-    if (prn(seed) >= profile_mass)
-      continue;
-
     // Sample signed longitudinal momentum from the allowed interval
+    double c_negative = profile_negative_mass_(shell);
     double pz;
-    if (pz_max < 0.0) {
-      c = c_limit + prn(seed) * profile_mass;
+    if (pz_max[shell] < 0.0) {
+      double c = c_limit[shell] + prn(seed) * profile_mass[shell];
       pz = -this->invert_compton_profile_cdf(shell, c);
     } else {
-      c = prn(seed) * profile_mass;
+      double c = prn(seed) * profile_mass[shell];
       if (c < c_negative) {
         pz = -this->invert_compton_profile_cdf(shell, c_negative - c);
       } else {
@@ -615,6 +663,7 @@ void PhotonInteraction::compton_doppler(
 
     // Determine outgoing photon energy corresponding to electron momentum
     double energy_ratio = detail::compton_energy_ratio(alpha, mu, pz);
+    double E_b = binding_energy_(shell);
     double max_energy_ratio = 1.0 - E_b / E;
     if (!std::isfinite(energy_ratio) || energy_ratio <= 0.0) {
       continue;
@@ -936,7 +985,8 @@ double detail::compton_energy_ratio(double alpha, double mu, double pz)
   if (pz == 0.0)
     return 1.0 / (1.0 + alpha * (1.0 - mu));
 
-  double momentum_sq = std::pow(pz / FINE_STRUCTURE, 2);
+  double momentum = pz / FINE_STRUCTURE;
+  double momentum_sq = momentum * momentum;
   double f = 1.0 + alpha * (1.0 - mu);
   double a = momentum_sq - f * f;
   double b = 2.0 * (f - momentum_sq * mu);

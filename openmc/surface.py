@@ -2869,8 +2869,7 @@ class TPMS(ImplicitSurface):
     """
 
     @classmethod
-    def from_pitch_isovalue(cls, tpms: str, pitch: float, isovalue: float,
-                             **kwargs) -> 'TPMS':
+    def from_pitch_isovalue(cls, tpms:str, pitch:float, isovalue:float, **kwargs) -> 'TPMS':
         """Construct a TPMS surface from a pitch length and isovalue.
 
         Parameters
@@ -2921,9 +2920,6 @@ class TPMS(ImplicitSurface):
         >>> surf.evaluate((0., 0., 0.))   # gyroid passes through the origin
         0.0
         """
-        
-    @classmethod
-    def from_pitch_isovalue(cls, tpms:str, pitch:float, isovalue:float, **kwargs):
         # Shortcuts
         X, Y, Z = implicit.X, implicit.Y, implicit.Z
         Cos, Sin = implicit.Cos, implicit.Sin

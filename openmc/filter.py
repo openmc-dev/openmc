@@ -1273,7 +1273,7 @@ class MeshSurfaceFilter(MeshFilter):
     def _current_names(mesh):
         if isinstance(mesh, openmc.HexagonalMesh):
             names = []
-            ax0, ax1, ax2, ax3 = mesh._axis_labels
+            ax0, ax1, ax2, ax3 = mesh.axis_labels
             pairs = [(ax0, ax1), (ax1, ax2), (ax2, ax0)]
             for ax0, ax1 in pairs:
                 for minmax0, minmax1 in [('max','min'),('min','max')]:

@@ -240,7 +240,7 @@ public:
   virtual std::array<const char*, 3> axis_labels() const;
 
   //! Build the surface component of a mesh surface tally bin label
-  std::string surface_bin_label(int surf_index) const;
+  virtual std::string surface_bin_label(int surf_index) const;
 
   //! Get the volume of a mesh bin
   //
@@ -437,9 +437,6 @@ public:
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
-
-  //! Get a label for the surface
-  virtual std::string surface_label(int surface) const;
 
   //! Get mesh dimensions as a tensor
   tensor::Tensor<int> get_shape_tensor() const;
@@ -757,7 +754,7 @@ public:
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
-  std::string surface_label(int surface) const override;
+  std::string surface_bin_label(int surf_index) const override;
 
   int n_bins() const override;
 

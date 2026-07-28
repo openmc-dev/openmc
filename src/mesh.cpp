@@ -2513,21 +2513,30 @@ std::string HexagonalMesh::bin_label(int bin) const
     "Mesh Index ({}, {}, {}, {})", ijk[0], ijk[1], -ijk[0] - ijk[1], ijk[2]);
 }
 
+std::string HexagonalMesh::surface_bin_label(int surf_index) const
+{
+  auto labels = this->axis_labels();
+  int dim = surf_index / 4;
+  int code = surf_index % 4;
+  bool incoming = (code == 1) || (code == 3);
+  bool max = (code == 2) || (code == 3);
+  return fmt::format(" {}, {}-{}", incoming ? "Incoming" : "Outgoing",
+    labels[dim], max ? "max" : "min");
+}
+
 std::string HexagonalMesh::surface_label(int surface) const
 {
-  int axis = static_cast<int>(std::floor(surface / 4));
-  int max = static_cast<int>(std::floor((surface % 4) / 2));
-  const std::vector<std::string> MINMAX = {"min", "max"};
-  const std::vector<std::string> OUTIN = {"Outgoing", "Incoming"};
-  auto minmax = MINMAX[max];
-  auto outin = OUTIN[surface % 2];
-  std::string label = axes_labels_[axis];
-  if (axis == 3) {
-    return fmt::format("{}, {}-{}", outin, label, minmax);
-  }
-  auto minmax2 = MINMAX[1 - max];
-  std::string label2 = axes_labels_[(axis + 1) % 2];
-  return fmt::format("{}, {}-{} {}-{}", outin, label, minmax, label2, minmax2);
+  auto labels = this->axis_labels();
+  int dim = surf_index / 4;
+  int code = surf_index % 4;
+  bool incoming = (code == 1) || (code == 3);
+  bool max = (code == 2) || (code == 3);
+  if (axis == 3)
+    return fmt::format(" {}, {}-{}", incoming ? "Incoming" : "Outgoing",
+      labels[dim], max ? "max" : "min");
+  int dim2 = (dim + 1) % 2;
+  return fmt::format(" {}, {}-{} {}-{}", incoming ? "Incoming" : "Outgoing",
+    labels[dim], max ? "max" : "min", labels[dim2], max ? "min" : "max");
 }
 
 int HexagonalMesh::n_bins() const

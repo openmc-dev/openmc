@@ -111,7 +111,7 @@ def test_correct_locations(model, run_in_tmpdir, estimator):
         assert tuple(df.loc[4]) == (0,-1,1,0)
         assert tuple(df.loc[5]) == (1,-1,0,0)
 
-def test_meshsurface(model, run_in_tmpdir):
+def test_meshsurface(model):
     tally, = model.tallies
     orientation = tally.filters[0].mesh.orientation
     

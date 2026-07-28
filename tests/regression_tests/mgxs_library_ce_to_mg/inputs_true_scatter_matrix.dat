@@ -1,0 +1,217 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="7" name="UO2 (2.4%)" depletable="true">
+      <density value="10.29769" units="g/cm3"/>
+      <nuclide name="U234" ao="4.4843e-06"/>
+      <nuclide name="U235" ao="0.00055815"/>
+      <nuclide name="U238" ao="0.022408"/>
+      <nuclide name="O16" ao="0.045829"/>
+    </material>
+    <material id="8" name="Zircaloy">
+      <density value="6.55" units="g/cm3"/>
+      <nuclide name="Zr90" ao="0.021827"/>
+      <nuclide name="Zr91" ao="0.00476"/>
+      <nuclide name="Zr92" ao="0.0072758"/>
+      <nuclide name="Zr94" ao="0.0073734"/>
+      <nuclide name="Zr96" ao="0.0011879"/>
+    </material>
+    <material id="9" name="Hot borated water">
+      <density value="0.740582" units="g/cm3"/>
+      <nuclide name="H1" ao="0.049457"/>
+      <nuclide name="O16" ao="0.024672"/>
+      <nuclide name="B10" ao="8.0042e-06"/>
+      <nuclide name="B11" ao="3.2218e-05"/>
+      <sab name="c_H_in_H2O"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="4" name="Fuel" material="7" region="-7" universe="0"/>
+    <cell id="5" name="Cladding" material="8" region="7 -8" universe="0"/>
+    <cell id="6" name="Water" material="9" region="8 9 -10 11 -12" universe="0"/>
+    <surface id="7" name="Fuel OR" type="z-cylinder" coeffs="0 0 0.39218"/>
+    <surface id="8" name="Clad OR" type="z-cylinder" coeffs="0 0 0.4572"/>
+    <surface id="9" name="left" type="x-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="10" name="right" type="x-plane" boundary="reflective" coeffs="0.63"/>
+    <surface id="11" name="bottom" type="y-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="12" name="top" type="y-plane" boundary="reflective" coeffs="0.63"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+  </settings>
+  <tallies>
+    <filter id="43" type="material">
+      <bins>7</bins>
+    </filter>
+    <filter id="44" type="energy">
+      <bins>0.0 0.625 20000000.0</bins>
+    </filter>
+    <filter id="49" type="energyout">
+      <bins>0.0 0.625 20000000.0</bins>
+    </filter>
+    <filter id="53" type="legendre">
+      <order>3</order>
+    </filter>
+    <filter id="54" type="material">
+      <bins>8</bins>
+    </filter>
+    <filter id="65" type="material">
+      <bins>9</bins>
+    </filter>
+    <tally id="76">
+      <filters>43 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="77">
+      <filters>43 44</filters>
+      <nuclides>total</nuclides>
+      <scores>total</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="78">
+      <filters>43 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="79">
+      <filters>43 44</filters>
+      <nuclides>total</nuclides>
+      <scores>absorption</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="80">
+      <filters>43 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="81">
+      <filters>43 44 49</filters>
+      <nuclides>total</nuclides>
+      <scores>nu-fission</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="82">
+      <filters>43 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="83">
+      <filters>43 44 49 53</filters>
+      <nuclides>total</nuclides>
+      <scores>scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="84">
+      <filters>54 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="85">
+      <filters>54 44</filters>
+      <nuclides>total</nuclides>
+      <scores>total</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="86">
+      <filters>54 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="87">
+      <filters>54 44</filters>
+      <nuclides>total</nuclides>
+      <scores>absorption</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="88">
+      <filters>54 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="89">
+      <filters>54 44 49</filters>
+      <nuclides>total</nuclides>
+      <scores>nu-fission</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="90">
+      <filters>54 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="91">
+      <filters>54 44 49 53</filters>
+      <nuclides>total</nuclides>
+      <scores>scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="92">
+      <filters>65 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="93">
+      <filters>65 44</filters>
+      <nuclides>total</nuclides>
+      <scores>total</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="94">
+      <filters>65 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="95">
+      <filters>65 44</filters>
+      <nuclides>total</nuclides>
+      <scores>absorption</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="96">
+      <filters>65 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="97">
+      <filters>65 44 49</filters>
+      <nuclides>total</nuclides>
+      <scores>nu-fission</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="98">
+      <filters>65 44</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="99">
+      <filters>65 44 49 53</filters>
+      <nuclides>total</nuclides>
+      <scores>scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+  </tallies>
+</model>

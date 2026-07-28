@@ -158,7 +158,7 @@ void score_fission_delayed_dg(int i_tally, int d_bin, double score,
   dg_match.bins_[i_bin] = d_bin;
 
   // Determine the filter scoring index
-  auto filter_index = 0;
+  int64_t filter_index = 0;
   double filter_weight = 1.;
   for (auto i = 0; i < tally.filters().size(); ++i) {
     auto i_filt = tally.filters(i);
@@ -449,7 +449,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
         (score_bin == SCORE_PROMPT_NU_FISSION && g == 0)) {
 
       // Find the filter scoring index for this filter combination
-      int filter_index = 0;
+      int64_t filter_index = 0;
       double filter_weight = 1.0;
       for (auto j = 0; j < tally.filters().size(); ++j) {
         auto i_filt = tally.filters(j);
@@ -497,7 +497,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
       } else {
 
         // Find the filter index and weight for this filter combination
-        int filter_index = 0;
+        int64_t filter_index = 0;
         double filter_weight = 1.;
         for (auto j = 0; j < tally.filters().size(); ++j) {
           auto i_filt = tally.filters(j);
@@ -578,8 +578,8 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
 //! collision estimator.
 
 void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
-  int filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -945,7 +945,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         if (p.type().is_neutron() && p.fission()) {
           if (is_generation_time_or_both()) {
             const auto& lifetimes =
-              simulation::ifp_source_lifetime_bank[p.current_work() - 1];
+              simulation::ifp_source_lifetime_bank[p.current_work()];
             if (lifetimes.size() == settings::ifp_n_generation) {
               score = lifetimes[0] * p.wgt_last();
             }
@@ -959,7 +959,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         if (p.type().is_neutron() && p.fission()) {
           if (is_beta_effective_or_both()) {
             const auto& delayed_groups =
-              simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
+              simulation::ifp_source_delayed_group_bank[p.current_work()];
             if (delayed_groups.size() == settings::ifp_n_generation) {
               if (delayed_groups[0] > 0) {
                 score = p.wgt_last();
@@ -985,12 +985,11 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
           int ifp_data_size;
           if (is_beta_effective_or_both()) {
             ifp_data_size = static_cast<int>(
-              simulation::ifp_source_delayed_group_bank[p.current_work() - 1]
+              simulation::ifp_source_delayed_group_bank[p.current_work()]
                 .size());
           } else {
             ifp_data_size = static_cast<int>(
-              simulation::ifp_source_lifetime_bank[p.current_work() - 1]
-                .size());
+              simulation::ifp_source_lifetime_bank[p.current_work()].size());
           }
           if (ifp_data_size == settings::ifp_n_generation) {
             score = p.wgt_last();
@@ -1113,8 +1112,8 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 //! is not used for analog tallies.
 
 void score_general_ce_analog(Particle& p, int i_tally, int start_index,
-  int filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -1616,8 +1615,8 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
 //! argument is really just used for filter weights.
 
 void score_general_mg(Particle& p, int i_tally, int start_index,
-  int filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   auto& tally {*model::tallies[i_tally]};
 
@@ -2731,6 +2730,9 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   int orig_cell = p.coord(0).cell();
   double orig_E_last = p.E_last();
 
+  // Set particle in top level
+  p.n_coord() = 1;
+
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
@@ -2741,7 +2743,6 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
     for (auto cell_id : cells) {
       // Temporarily change cell of particle
-      p.n_coord() = 1;
       p.coord(0).cell() = cell_id;
 
       // Determine index of cell in model::pulse_height_cells
@@ -2757,20 +2758,20 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       // we skip the assume_separate break below.
       auto filter_iter = FilterBinIter(tally, p);
       auto end = FilterBinIter(tally, true, &p.filter_matches());
-      if (filter_iter == end)
-        continue;
+      if (filter_iter != end) {
 
-      // Loop over filter bins.
-      for (; filter_iter != end; ++filter_iter) {
-        auto filter_index = filter_iter.index_;
-        auto filter_weight = filter_iter.weight_;
+        // Loop over filter bins.
+        for (; filter_iter != end; ++filter_iter) {
+          auto filter_index = filter_iter.index_;
+          auto filter_weight = filter_iter.weight_;
 
-        // Loop over scores.
-        for (auto score_index = 0; score_index < tally.scores_.size();
-             ++score_index) {
+          // Loop over scores.
+          for (auto score_index = 0; score_index < tally.scores_.size();
+               ++score_index) {
 #pragma omp atomic
-          tally.results_(filter_index, score_index, TallyResult::VALUE) +=
-            filter_weight;
+            tally.results_(filter_index, score_index, TallyResult::VALUE) +=
+              filter_weight;
+          }
         }
       }
 
@@ -2778,10 +2779,10 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       for (auto& match : p.filter_matches())
         match.bins_present_ = false;
     }
-    // Restore cell/energy
-    p.n_coord() = orig_n_coord;
-    p.coord(0).cell() = orig_cell;
-    p.E_last() = orig_E_last;
   }
+  // Restore cell/energy
+  p.n_coord() = orig_n_coord;
+  p.coord(0).cell() = orig_cell;
+  p.E_last() = orig_E_last;
 }
 } // namespace openmc

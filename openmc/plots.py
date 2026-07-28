@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from numbers import Integral, Real
 from pathlib import Path
@@ -14,6 +15,7 @@ from openmc.checkvalue import PathLike
 
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
+from .utility_funcs import set_xml_input_path
 
 _BASES = {'xy', 'xz', 'yz'}
 
@@ -383,7 +385,7 @@ def id_map_to_rgb(
     """
     # Initialize RGB array with white background (values between 0 and 1 for matplotlib)
     img = np.ones(id_map.shape, dtype=float)
-    
+
     # Get the appropriate index based on color_by
     if color_by == 'cell':
         id_index = 0  # Cell IDs are in the first channel
@@ -391,14 +393,14 @@ def id_map_to_rgb(
         id_index = 2  # Material IDs are in the third channel
     else:
         raise ValueError("color_by must be either 'cell' or 'material'")
-    
+
     # Get all unique IDs in the plot
     unique_ids = np.unique(id_map[:, :, id_index])
-    
+
     # Generate default colors if not provided
     if colors is None:
         colors = {}
-    
+
     # Convert colors dict to use IDs as keys
     color_map = {}
     for key, color in colors.items():
@@ -406,13 +408,13 @@ def id_map_to_rgb(
             color_map[key.id] = color
         else:
             color_map[key] = color
-    
+
     # Generate random colors for IDs not in color_map
     rng = np.random.RandomState(1)
     for uid in unique_ids:
         if uid > 0 and uid not in color_map:
             color_map[uid] = rng.randint(0, 256, (3,))
-    
+
     # Apply colors to each pixel
     for uid in unique_ids:
         if uid == -1:  # Background/void
@@ -432,7 +434,7 @@ def id_map_to_rgb(
                 rgb = color
             mask = id_map[:, :, id_index] == uid
             img[mask] = np.array(rgb) / 255.0
-    
+
     return img
 
 class PlotBase(IDManagerMixin):
@@ -2190,7 +2192,7 @@ class Plots(cv.CheckedList):
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem) -> Plots:
         """Generate plots collection from XML file
 
         Parameters
@@ -2224,7 +2226,7 @@ class Plots(cv.CheckedList):
         return plots
 
     @classmethod
-    def from_xml(cls, path='plots.xml'):
+    def from_xml(cls, path: PathLike = 'plots.xml') -> Plots:
         """Generate plots collection from XML file
 
         Parameters
@@ -2238,7 +2240,8 @@ class Plots(cv.CheckedList):
             Plots collection
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
-        return cls.from_xml_element(root)
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
+            return cls.from_xml_element(root)

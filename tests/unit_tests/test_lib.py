@@ -251,9 +251,9 @@ def test_material(lib_init):
     m.name = "Not hot borated water"
     assert m.name == "Not hot borated water"
 
-    assert m.depletable == False
+    assert not m.depletable
     m.depletable = True
-    assert m.depletable == True
+    assert m.depletable
 
 
 def test_properties_density(lib_init):
@@ -895,22 +895,23 @@ def test_load_nuclide(lib_init):
         openmc.lib.load_nuclide('Pu3')
 
 
+class LegacySlicePlot:
+    origin = (0.0, 0.0, 0.0)
+    width = 1.26
+    height = 1.26
+    basis = 'xy'
+    h_res = 3
+    v_res = 3
+    level = -1
+
+
 def test_id_map(lib_init):
     expected_ids = np.array([[(3, 0, 3), (2, 0, 2), (3, 0, 3)],
                              [(2, 0, 2), (1, 0, 1), (2, 0, 2)],
                              [(3, 0, 3), (2, 0, 2), (3, 0, 3)]], dtype='int32')
 
-    # create a plot object
-    s = openmc.lib.plot._PlotBase()
-    s.width = 1.26
-    s.height = 1.26
-    s.v_res = 3
-    s.h_res = 3
-    s.origin = (0.0, 0.0, 0.0)
-    s.basis = 'xy'
-    s.level = -1
-
-    ids = openmc.lib.plot.id_map(s)
+    with pytest.warns(FutureWarning, match="deprecated"):
+        ids = openmc.lib.id_map(LegacySlicePlot())
     assert np.array_equal(expected_ids, ids)
 
 
@@ -920,17 +921,24 @@ def test_property_map(lib_init):
          [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
          [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
 
-    # create a plot object
-    s = openmc.lib.plot._PlotBase()
-    s.width = 1.26
-    s.height = 1.26
-    s.v_res = 3
-    s.h_res = 3
-    s.origin = (0.0, 0.0, 0.0)
-    s.basis = 'xy'
-    s.level = -1
+    with pytest.warns(FutureWarning, match="deprecated"):
+        properties = openmc.lib.property_map(LegacySlicePlot())
+    assert np.allclose(expected_properties, properties, atol=1e-04)
 
-    properties = openmc.lib.plot.property_map(s)
+
+def test_slice_data(lib_init):
+    expected_properties = np.array(
+        [[(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)],
+         [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
+         [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
+    origin = (0.0, 0.0, 0.0)
+    _, properties = openmc.lib.slice_data(
+        origin,
+        width=(1.26, 1.26),
+        basis='xy',
+        pixels=(3, 3),
+        include_properties=True
+    )
     assert np.allclose(expected_properties, properties, atol=1e-04)
 
 

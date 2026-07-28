@@ -2808,7 +2808,7 @@ class HexagonalMesh(StructuredMesh):
         self.origin = origin
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('r', 'q', 's', 'z')
 
     @property
@@ -2929,6 +2929,16 @@ class HexagonalMesh(StructuredMesh):
             string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
             string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
         return string
+        
+    @classmethod        
+    def from_bounding_box(
+        cls,
+        bbox: openmc.BoundingBox,
+        dimension: Sequence[int] | int,
+        mesh_id: int | None = None,
+        name: str = '',
+        **kwargs):
+        raise NotImplementedError(f"The from_bounding_box method is not implemented for {cls}")        
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):

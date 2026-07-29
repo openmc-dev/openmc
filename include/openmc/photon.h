@@ -113,8 +113,22 @@ public:
   static constexpr int MAX_STACK_SIZE =
     7; //!< maximum possible size of atomic relaxation stack
 private:
+  struct ShellKinematics {
+    double pz_max;
+    double c_limit;
+    double profile_mass;
+  };
+
   void compton_doppler(
     double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const;
+
+  //! Determine the allowed momentum interval and profile mass for a shell
+  ShellKinematics compton_shell_kinematics(
+    double alpha, double mu, double E, int i_shell) const;
+
+  //! Sample momentum and outgoing energy for a selected shell
+  bool sample_compton_momentum(double alpha, double mu, double E, int i_shell,
+    const ShellKinematics& kinematics, double* E_out, uint64_t* seed) const;
 
   //! Sample from the shell PMF conditional on kinematically accessible mass
   bool compton_doppler_conditional(double alpha, double mu, double E,

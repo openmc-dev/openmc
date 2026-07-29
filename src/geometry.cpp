@@ -383,7 +383,7 @@ void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)
 
 //==============================================================================
 
-BoundaryInfo distance_to_boundary(GeometryState& p)
+BoundaryInfo distance_to_boundary(GeometryState& p, double max_distance)
 {
   BoundaryInfo info;
   double d_lat = INFINITY;
@@ -399,7 +399,7 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
     Cell& c {*model::cells[coord.cell()]};
 
     // Find the oncoming surface in this cell and the distance to it.
-    auto surface_distance = c.distance(r, u, p.surface(), &p);
+    auto surface_distance = c.distance(r, u, p.surface(), &p, max_distance);
     d_surf = surface_distance.first;
     level_surf_cross = surface_distance.second;
 

@@ -81,8 +81,8 @@ public:
   bool contains(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
-  std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface) const;
+  std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, double max_distance = INFINITY) const;
 
   //! Get the BoundingBox for this cell.
   BoundingBox bounding_box(int32_t cell_id) const;
@@ -205,8 +205,9 @@ public:
   virtual bool contains(Position r, Direction u, int32_t on_surface) const = 0;
 
   //! Find the oncoming boundary of this cell.
-  virtual std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, GeometryState* p) const = 0;
+  virtual std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, GeometryState* p,
+    double max_distance = INFTY) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -421,7 +422,8 @@ public:
   vector<int32_t> surfaces() const override { return region_.surfaces(); }
 
   std::pair<double, int32_t> distance(Position r, Direction u,
-    int32_t on_surface, GeometryState* p) const override
+    int32_t on_surface, GeometryState* p,
+    double max_distance = INFTY) const override
   {
     return region_.distance(r, u, on_surface);
   }

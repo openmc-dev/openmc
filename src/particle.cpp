@@ -270,9 +270,6 @@ void Particle::event_calculate_xs()
 
 void Particle::event_advance()
 {
-  // Find the distance to the nearest boundary
-  boundary() = distance_to_boundary(*this);
-
   // Sample a distance to collision
   if (type() == ParticleType::electron() ||
       type() == ParticleType::positron()) {
@@ -288,9 +285,19 @@ void Particle::event_advance()
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
+  // Find distance to nearest boundary;
+  // cap bvh traversal distance to collision distance
+  double max_distance = INFTY;
+  const auto& univ = model::universes[lowest_coord().universe()];
+  if (auto* dag_univ = dynamic_cast<DAGUniverse*>(univ.get())) {
+    if (dag_univ->use_collision_distance_cap()) {
+      max_distance = std::min(collision_distance(), distance_cutoff);
+    }
+  }
+  boundary() = distance_to_boundary(*this, max_distance);
+
   // Select smaller of the three distances
-  double distance =
-    std::min({boundary().distance(), collision_distance(), distance_cutoff});
+  double distance = std::min(boundary().distance(), collision_distance());
 
   // Advance particle in space and time
   this->move_distance(distance);

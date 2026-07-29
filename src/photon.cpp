@@ -25,6 +25,74 @@ namespace openmc {
 
 constexpr int PhotonInteraction::MAX_STACK_SIZE;
 
+namespace {
+
+struct ShellKinematics {
+  double pz_max;
+  double c_limit;
+  double profile_mass;
+};
+
+template<class ProfileCdf>
+bool get_shell_kinematics(double alpha, double mu, double E, double E_b,
+  double c_negative, ProfileCdf&& profile_cdf, ShellKinematics* kinematics)
+{
+  if (E <= E_b)
+    return false;
+
+  kinematics->pz_max = -FINE_STRUCTURE *
+                       (E_b - (E - E_b) * alpha * (1.0 - mu)) /
+                       std::sqrt(2.0 * E * (E - E_b) * (1.0 - mu) + E_b * E_b);
+  if (kinematics->pz_max <= -FINE_STRUCTURE)
+    return false;
+
+  if (kinematics->pz_max < 0.0) {
+    kinematics->c_limit = profile_cdf(-kinematics->pz_max);
+    kinematics->profile_mass = c_negative - kinematics->c_limit;
+  } else {
+    kinematics->c_limit = profile_cdf(kinematics->pz_max);
+    kinematics->profile_mass = c_negative + kinematics->c_limit;
+  }
+  return kinematics->profile_mass > 0.0;
+}
+
+template<class InvertProfileCdf>
+bool sample_compton_momentum(double alpha, double mu, double E, double E_b,
+  double c_negative, const ShellKinematics& kinematics,
+  InvertProfileCdf&& invert_profile_cdf, double* E_out, uint64_t* seed)
+{
+  double pz;
+  if (kinematics.pz_max < 0.0) {
+    double c = kinematics.c_limit + prn(seed) * kinematics.profile_mass;
+    pz = -invert_profile_cdf(c);
+  } else {
+    double c = prn(seed) * kinematics.profile_mass;
+    if (c < c_negative) {
+      pz = -invert_profile_cdf(c_negative - c);
+    } else {
+      pz = invert_profile_cdf(c - c_negative);
+    }
+  }
+
+  double energy_ratio = detail::compton_energy_ratio(alpha, mu, pz);
+  double max_energy_ratio = 1.0 - E_b / E;
+  if (!std::isfinite(energy_ratio) || energy_ratio <= 0.0)
+    return false;
+
+  double energy_tolerance = 16.0 * std::numeric_limits<double>::epsilon() *
+                            std::max(1.0, max_energy_ratio);
+  if (energy_ratio > max_energy_ratio + energy_tolerance)
+    return false;
+
+  energy_ratio = std::min(energy_ratio, max_energy_ratio);
+  *E_out = energy_ratio * E;
+
+  // Account for the outgoing energy factor in the approximate RIA DDCS
+  return prn(seed) <= energy_ratio;
+}
+
+} // namespace
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -554,6 +622,54 @@ double PhotonInteraction::invert_compton_profile_cdf(
   return pz_l + 2.0 * delta_c / denominator;
 }
 
+bool PhotonInteraction::compton_doppler_conditional(double alpha, double mu,
+  double E, double* E_out, int* i_shell, uint64_t* seed) const
+{
+  array<ShellKinematics, SUBSHELLS.size()> shell_data;
+  array<double, SUBSHELLS.size()> shell_cdf;
+  double shell_pmf_norm = 0.0;
+
+  for (int i = 0; i < electron_pdf_.size(); ++i) {
+    auto& kinematics = shell_data[i];
+    double E_b = binding_energy_(i);
+    double c_negative = profile_negative_mass_(i);
+    auto profile_cdf = [&](double pz) {
+      return this->compton_profile_cdf(i, pz);
+    };
+    if (get_shell_kinematics(
+          alpha, mu, E, E_b, c_negative, profile_cdf, &kinematics)) {
+      shell_pmf_norm += electron_pdf_(i) * kinematics.profile_mass;
+    }
+    shell_cdf[i] = shell_pmf_norm;
+  }
+  if (shell_pmf_norm == 0.0)
+    return false;
+
+  // The conditional shell PMF avoids repeated rejection when the accessible
+  // profile mass is small. Retain a bound to protect against degenerate
+  // momentum/energy sampling and roundoff.
+  constexpr int MAX_SAMPLES = 100000;
+  for (int attempt = 0; attempt < MAX_SAMPLES; ++attempt) {
+    double rn = prn(seed) * shell_pmf_norm;
+    int shell;
+    for (shell = 0; shell < electron_pdf_.size(); ++shell) {
+      if (rn < shell_cdf[shell])
+        break;
+    }
+    *i_shell = shell;
+
+    const auto& kinematics = shell_data[shell];
+    double c_negative = profile_negative_mass_(shell);
+    auto invert_profile_cdf = [&](double c) {
+      return this->invert_compton_profile_cdf(shell, c);
+    };
+    if (sample_compton_momentum(alpha, mu, E, binding_energy_(shell),
+          c_negative, kinematics, invert_profile_cdf, E_out, seed))
+      return true;
+  }
+  return false;
+}
+
 void PhotonInteraction::compton_doppler(
   double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const
 {
@@ -562,131 +678,50 @@ void PhotonInteraction::compton_doppler(
   // for near-forward scattering.
   constexpr int N_FAST_SAMPLES = 2;
 
-  // Maximum number of momentum/energy sampling attempts before falling back
-  // to the free-electron Compton energy. The conditional shell PMF avoids
-  // repeated rejection when the accessible profile mass is small, but the
-  // bound still protects against degenerate kinematics and roundoff.
-  constexpr int MAX_SAMPLES = 100000;
-
-  array<bool, SUBSHELLS.size()> shell_evaluated {};
-  array<double, SUBSHELLS.size()> pz_max;
-  array<double, SUBSHELLS.size()> c_limit;
-  array<double, SUBSHELLS.size()> profile_mass;
-  array<double, SUBSHELLS.size()> shell_cdf;
-  bool shell_pmf_initialized = false;
-  double shell_pmf_norm = 0.0;
-
   double E = alpha * MASS_ELECTRON_EV;
-  auto evaluate_shell = [&](int shell) {
-    if (shell_evaluated[shell])
-      return profile_mass[shell] > 0.0;
+  int shell = 0;
+  for (int attempt = 0; attempt < N_FAST_SAMPLES; ++attempt) {
+    // Sample electron shell according to its occupancy
+    double rn = prn(seed);
+    double c = 0.0;
+    for (shell = 0; shell < electron_pdf_.size(); ++shell) {
+      c += electron_pdf_(shell);
+      if (rn < c)
+        break;
+    }
 
-    shell_evaluated[shell] = true;
-    profile_mass[shell] = 0.0;
     double E_b = binding_energy_(shell);
-    if (E <= E_b)
-      return false;
-
-    pz_max[shell] = -FINE_STRUCTURE * (E_b - (E - E_b) * alpha * (1.0 - mu)) /
-                    std::sqrt(2.0 * E * (E - E_b) * (1.0 - mu) + E_b * E_b);
-
-    // The minimum longitudinal momentum corresponds to zero outgoing photon
-    // energy. Determine the integrated profile over the kinematically allowed
-    // interval [p_z,min, p_z,max].
-    if (pz_max[shell] <= -FINE_STRUCTURE)
-      return false;
-
+    ShellKinematics kinematics;
     double c_negative = profile_negative_mass_(shell);
-    if (pz_max[shell] < 0.0) {
-      c_limit[shell] = this->compton_profile_cdf(shell, -pz_max[shell]);
-      profile_mass[shell] = c_negative - c_limit[shell];
-    } else {
-      c_limit[shell] = this->compton_profile_cdf(shell, pz_max[shell]);
-      profile_mass[shell] = c_negative + c_limit[shell];
-    }
-    return profile_mass[shell] > 0.0;
-  };
-
-  int shell = 0; // index for shell
-  for (int attempt = 0; attempt < MAX_SAMPLES; ++attempt) {
-    bool use_conditional_pmf = attempt >= N_FAST_SAMPLES;
-    if (use_conditional_pmf) {
-      if (!shell_pmf_initialized) {
-        for (int i = 0; i < electron_pdf_.size(); ++i) {
-          if (evaluate_shell(i)) {
-            shell_pmf_norm += electron_pdf_(i) * profile_mass[i];
-          }
-          shell_cdf[i] = shell_pmf_norm;
-        }
-        shell_pmf_initialized = true;
-        if (shell_pmf_norm == 0.0)
-          break;
-      }
-
-      double rn = prn(seed) * shell_pmf_norm;
-      for (shell = 0; shell < electron_pdf_.size(); ++shell) {
-        if (rn < shell_cdf[shell])
-          break;
-      }
-    } else {
-      // Sample electron shell according to its occupancy
-      double rn = prn(seed);
-      double c = 0.0;
-      for (shell = 0; shell < electron_pdf_.size(); ++shell) {
-        c += electron_pdf_(shell);
-        if (rn < c)
-          break;
-      }
-
-      if (!evaluate_shell(shell))
-        continue;
-
-      // Accept the shell according to its integrated Compton profile
-      if (prn(seed) >= profile_mass[shell])
-        continue;
-    }
-
-    // Sample signed longitudinal momentum from the allowed interval
-    double c_negative = profile_negative_mass_(shell);
-    double pz;
-    if (pz_max[shell] < 0.0) {
-      double c = c_limit[shell] + prn(seed) * profile_mass[shell];
-      pz = -this->invert_compton_profile_cdf(shell, c);
-    } else {
-      double c = prn(seed) * profile_mass[shell];
-      if (c < c_negative) {
-        pz = -this->invert_compton_profile_cdf(shell, c_negative - c);
-      } else {
-        pz = this->invert_compton_profile_cdf(shell, c - c_negative);
-      }
-    }
-
-    // Determine outgoing photon energy corresponding to electron momentum
-    double energy_ratio = detail::compton_energy_ratio(alpha, mu, pz);
-    double E_b = binding_energy_(shell);
-    double max_energy_ratio = 1.0 - E_b / E;
-    if (!std::isfinite(energy_ratio) || energy_ratio <= 0.0) {
+    auto profile_cdf = [&](double pz) {
+      return this->compton_profile_cdf(shell, pz);
+    };
+    if (!get_shell_kinematics(
+          alpha, mu, E, E_b, c_negative, profile_cdf, &kinematics))
       continue;
-    }
-    double energy_tolerance = 16.0 * std::numeric_limits<double>::epsilon() *
-                              std::max(1.0, max_energy_ratio);
-    if (energy_ratio > max_energy_ratio + energy_tolerance)
-      continue;
-    energy_ratio = std::min(energy_ratio, max_energy_ratio);
-    *E_out = energy_ratio * E;
 
-    // Account for the outgoing energy factor in the approximate RIA DDCS
-    if (prn(seed) <= energy_ratio) {
+    // Accept the shell according to its integrated Compton profile
+    if (prn(seed) >= kinematics.profile_mass)
+      continue;
+
+    auto invert_profile_cdf = [&](double c) {
+      return this->invert_compton_profile_cdf(shell, c);
+    };
+    if (sample_compton_momentum(alpha, mu, E, E_b, c_negative, kinematics,
+          invert_profile_cdf, E_out, seed)) {
       *i_shell = shell;
       return;
     }
   }
 
+  *i_shell = shell;
+  if (this->compton_doppler_conditional(alpha, mu, E, E_out, i_shell, seed))
+    return;
+
   // No shell/momentum sample was accepted within the iteration budget.
   // Fall back to the free-electron Compton energy for the last sampled
   // shell rather than looping indefinitely.
   *E_out = alpha / (1.0 + alpha * (1.0 - mu)) * MASS_ELECTRON_EV;
-  *i_shell = shell;
 }
 
 void PhotonInteraction::calculate_xs(Particle& p) const

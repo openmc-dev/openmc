@@ -116,6 +116,10 @@ private:
   void compton_doppler(
     double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const;
 
+  //! Sample from the shell PMF conditional on kinematically accessible mass
+  bool compton_doppler_conditional(double alpha, double mu, double E,
+    double* E_out, int* i_shell, uint64_t* seed) const;
+
   //! Evaluate the normalized integral of a Compton profile from zero to pz
   double compton_profile_cdf(int i_shell, double pz) const;
 

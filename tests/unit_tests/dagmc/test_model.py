@@ -363,3 +363,51 @@ def test_dagmc_xml_temperature_roundtrip():
     dag_univ_roundtrip = openmc.DAGMCUniverse.from_xml_element(dagmc_elem, mats)
     assert dag_univ_roundtrip.cells[7].fill.id == 1
     assert dag_univ_roundtrip.cells[7].temperature == pytest.approx(825.0)
+
+
+def test_dagmc_length_multiplier_volume_scaling(request):
+    """Stochastic volume of a DAGMC sphere should scale as length_multiplier^3.
+    A DAGMC sphere with radius 5 cm (and no graveyard) is checked against the 
+    analytical volume (4/3 * pi * r^3) for length_multiplier values of 1.0 and 10.0.
+    """
+    p = Path(request.fspath).parent / "dagmc_sphere_r5.h5m"
+    n_samples = 1000000
+
+    def _compute_sphere_volume(length_multiplier):
+        openmc.reset_auto_ids()
+        daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True,
+                                       length_multiplier=length_multiplier)
+        root = daguniv.bounded_universe()
+        
+        mat = openmc.Material(name="test_mat")
+        mat.add_nuclide("H1", 1.0)
+        mat.set_density("g/cm3", 1.0)
+
+        settings = openmc.Settings()
+        settings.batches = 100
+        settings.inactive = 10
+        settings.particles = 1000
+        ll, ur = daguniv.bounding_box
+        vol_calc = openmc.VolumeCalculation([mat], n_samples, ll, ur)
+        settings.volume_calculations = [vol_calc]
+        model = openmc.Model()
+        model.geometry = openmc.Geometry(root)
+        model.materials = openmc.Materials([mat])
+        model.settings = settings
+        with change_directory(tmpdir=True):
+            try:
+                model.init_lib()
+                model.sync_dagmc_universes()
+                model.calculate_volumes()
+            finally:
+                model.finalize_lib()
+                openmc.reset_auto_ids()
+        return mat.volume
+
+    v1 = _compute_sphere_volume(length_multiplier=1.0)
+    v10 = _compute_sphere_volume(length_multiplier=10.0)
+    expected_v1 = 4.0 / 3.0 * np.pi * 5.0**3
+    expected_v10 = expected_v1 * 10.0**3
+    assert v1 == pytest.approx(expected_v1, rel=0.02)
+    assert v10 == pytest.approx(expected_v10, rel=0.02)
+    assert v10 / v1 == pytest.approx(10.0**3, rel=0.02)

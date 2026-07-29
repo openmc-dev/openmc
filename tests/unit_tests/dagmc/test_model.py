@@ -378,7 +378,7 @@ def test_dagmc_length_multiplier_volume_scaling(request):
         daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True,
                                        length_multiplier=length_multiplier)
         root = daguniv.bounded_universe()
-        
+
         mat = openmc.Material(name="test_mat")
         mat.add_nuclide("H1", 1.0)
         mat.set_density("g/cm3", 1.0)

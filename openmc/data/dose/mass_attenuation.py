@@ -110,9 +110,9 @@ _MASS_ATTENUATION: dict[int, object] = {}
 def mass_attenuation_coefficient(element):
     r"""Return the photon mass attenuation coefficient as a function of energy.
 
-    The mass energy-absorption coefficient, :math:`\mu_\text{en}/\rho`, is
-    defined as the fraction of incident photon energy absorbed in a material per
-    unit mass. Values for each element are obtained from `NIST Standard
+    The mass attenuation coefficient, :math:`\mu/\rho`, characterizes the
+    attenuation of a photon beam due to interactions in a material per unit
+    mass thickness. Values for each element are obtained from `NIST Standard
     Reference Database 8 <https://doi.org/10.18434/T48G6X>`_: XCOM Photon Cross
     Sections Database.
 

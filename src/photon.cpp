@@ -531,11 +531,15 @@ double PhotonInteraction::invert_compton_profile_cdf(
   double integral = c * profile_norm_(i_shell);
   double c_last = profile_cdf_(i_shell, n - 1);
   if (integral >= c_last) {
+    // Invert the log-linear extrapolated tail using Kaltiaisenaho Eq. (3.123).
     return detail::invert_compton_profile_tail(integral - c_last,
       data::compton_profile_pz(n - 1), profile_pdf_(i_shell, n - 1),
       profile_tail_slope_(i_shell));
   }
 
+  // Invert the piecewise-linear tabulated profile (Kaltiaisenaho Eq. 3.126).
+  // The rationalized quadratic root used below is equivalent to that equation
+  // but remains well-conditioned when the profile slope is small.
   tensor::View<const double> cdf_shell = profile_cdf_.slice(i_shell);
   int i = lower_bound_index(cdf_shell.cbegin(), cdf_shell.cend(), integral);
   double pz_l = data::compton_profile_pz(i);
@@ -562,11 +566,15 @@ PhotonInteraction::ShellKinematics PhotonInteraction::compton_shell_kinematics(
   if (E <= E_b)
     return kinematics;
 
+  // Kaltiaisenaho Eq. (3.73): substitute E' = E - E_b in the RIA
+  // kinematic relation to obtain the upper bound on the allowed pz interval.
   kinematics.pz_max = -FINE_STRUCTURE * (E_b - (E - E_b) * alpha * (1.0 - mu)) /
                       std::sqrt(2.0 * E * (E - E_b) * (1.0 - mu) + E_b * E_b);
   if (kinematics.pz_max <= -FINE_STRUCTURE)
     return kinematics;
 
+  // Eq. (3.118), using profile_negative_mass_ = K_i(1/alpha): the
+  // kinematically accessible mass is the integral from -1/alpha to pz_max.
   double c_negative = profile_negative_mass_(i_shell);
   if (kinematics.pz_max < 0.0) {
     kinematics.c_limit = this->compton_profile_cdf(i_shell, -kinematics.pz_max);
@@ -584,6 +592,9 @@ bool PhotonInteraction::sample_compton_momentum(double alpha, double mu,
 {
   double c_negative = profile_negative_mass_(i_shell);
   double pz;
+  // Inverse-transform sampling of the signed pz distribution, following
+  // Kaltiaisenaho Eqs. (3.120)--(3.126). The tabulated profile is symmetric,
+  // so its negative branch is obtained by reflecting the half-profile CDF.
   if (kinematics.pz_max < 0.0) {
     double c = kinematics.c_limit + prn(seed) * kinematics.profile_mass;
     pz = -this->invert_compton_profile_cdf(i_shell, c);
@@ -609,7 +620,8 @@ bool PhotonInteraction::sample_compton_momentum(double alpha, double mu,
   energy_ratio = std::min(energy_ratio, max_energy_ratio);
   *E_out = energy_ratio * E;
 
-  // Account for the outgoing energy factor in the approximate RIA DDCS
+  // Kaltiaisenaho Eq. (3.127): account for the E'/E factor in the
+  // approximate RIA DDCS after solving the scattered-photon energy.
   return prn(seed) <= energy_ratio;
 }
 
@@ -620,6 +632,9 @@ bool PhotonInteraction::compton_doppler_conditional(double alpha, double mu,
   array<double, SUBSHELLS.size()> shell_cdf;
   double shell_pmf_norm = 0.0;
 
+  // Form the shell PMF in Eq. (3.116), f_i times the accessible profile mass.
+  // This is algebraically equivalent to repeated shell rejection in Eq.
+  // (3.119).
   for (int i = 0; i < electron_pdf_.size(); ++i) {
     shell_data[i] = this->compton_shell_kinematics(alpha, mu, E, i);
     shell_pmf_norm += electron_pdf_(i) * shell_data[i].profile_mass;
@@ -651,15 +666,18 @@ bool PhotonInteraction::compton_doppler_conditional(double alpha, double mu,
 void PhotonInteraction::compton_doppler(
   double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const
 {
-  // Use ordinary rejection sampling first since it usually accepts quickly.
-  // If it does not, form the conditional shell PMF to bound the work required
-  // for near-forward scattering.
+  // Implements the approximate RIA Doppler-broadening algorithm in Sec. 3.4.8
+  // of T. Kaltiaisenaho, "Implementing a photon physics model in Serpent 2"
+  // (2016), https://aaltodoc.aalto.fi/handle/123456789/21004.
+  // First use Kaltiaisenaho's shell-rejection procedure (Eqs. 3.116--3.119),
+  // which usually accepts quickly. If it does not, sample its equivalent
+  // conditional shell PMF to bound work for near-forward scattering.
   constexpr int N_FAST_SAMPLES = 2;
 
   double E = alpha * MASS_ELECTRON_EV;
   int shell = 0;
   for (int attempt = 0; attempt < N_FAST_SAMPLES; ++attempt) {
-    // Sample electron shell according to its occupancy
+    // Propose shell i according to occupancy f_i (first step of Eq. 3.119).
     double rn = prn(seed);
     double c = 0.0;
     for (shell = 0; shell < electron_pdf_.size(); ++shell) {
@@ -672,7 +690,7 @@ void PhotonInteraction::compton_doppler(
     if (kinematics.profile_mass <= 0.0)
       continue;
 
-    // Accept the shell according to its integrated Compton profile
+    // Accept with the accessible Compton-profile mass (Eq. 3.119).
     if (prn(seed) >= kinematics.profile_mass)
       continue;
 

@@ -114,30 +114,30 @@ public:
     7; //!< maximum possible size of atomic relaxation stack
 private:
   struct ShellKinematics {
-    double pz_max;
-    double c_limit;
-    double profile_mass;
+    double pz_max;       //!< Upper bound in Kaltiaisenaho Eq. (3.73)
+    double c_limit;      //!< Half-profile integral K_i(|pz_max|), Eq. (3.117)
+    double profile_mass; //!< Accessible profile mass, Eq. (3.118)
   };
 
   void compton_doppler(
     double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const;
 
-  //! Determine the allowed momentum interval and profile mass for a shell
+  //! Determine pz_max and the accessible profile mass (Eqs. 3.73, 3.118)
   ShellKinematics compton_shell_kinematics(
     double alpha, double mu, double E, int i_shell) const;
 
-  //! Sample momentum and outgoing energy for a selected shell
+  //! Sample pz and E' for a selected shell (Eqs. 3.120--3.127)
   bool sample_compton_momentum(double alpha, double mu, double E, int i_shell,
     const ShellKinematics& kinematics, double* E_out, uint64_t* seed) const;
 
-  //! Sample from the shell PMF conditional on kinematically accessible mass
+  //! Sample from the shell PMF in Kaltiaisenaho Eq. (3.116)
   bool compton_doppler_conditional(double alpha, double mu, double E,
     double* E_out, int* i_shell, uint64_t* seed) const;
 
-  //! Evaluate the normalized integral of a Compton profile from zero to pz
+  //! Evaluate K_i(pz), the normalized half-profile integral (Eq. 3.117)
   double compton_profile_cdf(int i_shell, double pz) const;
 
-  //! Invert the normalized integral of a Compton profile
+  //! Invert K_i using the inverse transforms of Eqs. (3.123) and (3.126)
   double invert_compton_profile_cdf(int i_shell, double c) const;
 
   //! Calculate the maximum size of the vacancy stack in atomic relaxation

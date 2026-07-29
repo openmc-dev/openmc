@@ -877,7 +877,9 @@ void write_unstructured_mesh_results()
         simulation::current_batch, batch_width);
 
       // Write the unstructured mesh and data to file
-      umesh->write(filename);
+      if (mpi::master) {
+        umesh->write(filename);
+      }
 
       // remove score data added for this mesh write
       umesh->remove_scores();

@@ -237,7 +237,7 @@ public:
   virtual std::string bin_label(int bin) const = 0;
 
   //! Axis names (per dimension) used when labeling surface tally bins
-  virtual std::array<const char*, 3> axis_labels() const;
+  virtual std::vector<std::string> axis_labels() const;
 
   //! Build the surface component of a mesh surface tally bin label
   virtual std::string surface_bin_label(int surf_index) const;
@@ -472,7 +472,6 @@ public:
   // Data members
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
   std::vector<std::vector<int>> correlated_axes_ = {{0}, {1}, {2}};
-  std::vector<std::string> axes_labels_ = {"x", "y", "z"};
 
 protected:
 };
@@ -614,7 +613,7 @@ public:
 
   static const std::string mesh_type;
 
-  std::array<const char*, 3> axis_labels() const override;
+  std::vector<std::string> axis_labels() const override;
 
   Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
 
@@ -687,7 +686,7 @@ public:
 
   static const std::string mesh_type;
 
-  std::array<const char*, 3> axis_labels() const override;
+  std::vector<std::string> axis_labels() const override;
 
   Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
 
@@ -773,6 +772,8 @@ public:
   std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
+
+  std::vector<std::string> axis_labels() const override;
 
   Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
 

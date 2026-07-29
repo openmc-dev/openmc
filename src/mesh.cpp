@@ -432,7 +432,7 @@ vector<double> Mesh::volumes() const
 }
 
 //! Default (Cartesian) axis labels used for surface bin labels.
-std::array<const char*, 3> Mesh::axis_labels() const
+std::vector<std::string> Mesh::axis_labels() const
 {
   return {"x", "y", "z"};
 }
@@ -1849,7 +1849,7 @@ std::string CylindricalMesh::get_mesh_type() const
   return mesh_type;
 }
 
-std::array<const char*, 3> CylindricalMesh::axis_labels() const
+std::vector<std::string> CylindricalMesh::axis_labels() const
 {
   return {"r", "phi", "z"};
 }
@@ -2027,8 +2027,6 @@ int CylindricalMesh::set_grid()
     static_cast<int>(grid_[1].size()) - 1,
     static_cast<int>(grid_[2].size()) - 1};
 
-  axes_labels_ = {"r", "phi", "z"};
-
   for (const auto& g : grid_) {
     if (g.size() < 2) {
       set_errmsg("r-, phi-, and z- grids for cylindrical meshes "
@@ -2144,7 +2142,7 @@ std::string SphericalMesh::get_mesh_type() const
   return mesh_type;
 }
 
-std::array<const char*, 3> SphericalMesh::axis_labels() const
+std::vector<std::string> SphericalMesh::axis_labels() const
 {
   return {"r", "theta", "phi"};
 }
@@ -2360,8 +2358,6 @@ int SphericalMesh::set_grid()
     static_cast<int>(grid_[1].size()) - 1,
     static_cast<int>(grid_[2].size()) - 1};
 
-  axes_labels_ = {"r", "theta", "phi"};
-
   for (const auto& g : grid_) {
     if (g.size() < 2) {
       set_errmsg("r-, theta-, and phi- grids for spherical meshes "
@@ -2489,6 +2485,12 @@ HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
 }
 
 const std::string HexagonalMesh::mesh_type = "hexagonal";
+
+//! Hexagonal axis labels used for surface bin labels.
+std::vector<std::string> Mesh::axis_labels() const
+{
+  return {"r", "q", "s", "z"};
+}
 
 std::string HexagonalMesh::get_mesh_type() const
 {

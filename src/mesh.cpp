@@ -2487,7 +2487,7 @@ HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
 const std::string HexagonalMesh::mesh_type = "hexagonal";
 
 //! Hexagonal axis labels used for surface bin labels.
-std::vector<std::string> Mesh::axis_labels() const
+std::vector<std::string> HexagonalMesh::axis_labels() const
 {
   return {"r", "q", "s", "z"};
 }
@@ -2777,8 +2777,6 @@ int HexagonalMesh::set_grid()
 {
   n_dimension_ = 4;
   correlated_axes_ = {{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {3}};
-
-  axes_labels_ = {"r", "q", "s", "z"};
 
   if (orientation_ == Orientation::x) {
     q_ = {std::sqrt(3.0), 0.0, 0.0};

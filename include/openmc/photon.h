@@ -126,7 +126,7 @@ private:
   ShellKinematics compton_shell_kinematics(
     double alpha, double mu, double E, int i_shell) const;
 
-  //! Sample pz and E' for a selected shell (Eqs. 3.120--3.127)
+  //! Sample pz and E' for a selected shell (Eqs. 3.120-3.127)
   bool sample_compton_momentum(double alpha, double mu, double E, int i_shell,
     const ShellKinematics& kinematics, double* E_out, uint64_t* seed) const;
 

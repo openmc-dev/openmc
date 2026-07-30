@@ -593,7 +593,7 @@ bool PhotonInteraction::sample_compton_momentum(double alpha, double mu,
   double c_negative = profile_negative_mass_(i_shell);
   double pz;
   // Inverse-transform sampling of the signed pz distribution, following
-  // Kaltiaisenaho Eqs. (3.120)--(3.126). The tabulated profile is symmetric,
+  // Kaltiaisenaho Eqs. (3.120)-(3.126). The tabulated profile is symmetric,
   // so its negative branch is obtained by reflecting the half-profile CDF.
   if (kinematics.pz_max < 0.0) {
     double c = kinematics.c_limit + prn(seed) * kinematics.profile_mass;
@@ -669,7 +669,7 @@ void PhotonInteraction::compton_doppler(
   // Implements the approximate RIA Doppler-broadening algorithm in Sec. 3.4.8
   // of T. Kaltiaisenaho, "Implementing a photon physics model in Serpent 2"
   // (2016), https://aaltodoc.aalto.fi/handle/123456789/21004.
-  // First use Kaltiaisenaho's shell-rejection procedure (Eqs. 3.116--3.119),
+  // First use Kaltiaisenaho's shell-rejection procedure (Eqs. 3.116-3.119),
   // which usually accepts quickly. If it does not, sample its equivalent
   // conditional shell PMF to bound work for near-forward scattering.
   constexpr int N_FAST_SAMPLES = 2;

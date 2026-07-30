@@ -3868,6 +3868,14 @@ void LibMesh::set_score_data(const std::string& var_name,
 
 void LibMesh::write(const std::string& filename) const
 {
+  // A serial libMesh communicator considers every OpenMC rank to be its
+  // processor 0. Restrict the non-collective write to the OpenMC master in
+  // that case. With a parallel communicator, all ranks must participate in
+  // libMesh's solution assembly.
+  if (settings::libmesh_comm->size() == 1 && !mpi::master) {
+    return;
+  }
+
   write_message(fmt::format(
     "Writing file: {}.e for unstructured mesh {}", filename, this->id_));
   libMesh::ExodusII_IO exo(*m_);

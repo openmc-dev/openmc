@@ -380,6 +380,9 @@ public:
   //!
   //! \param[in] r Coordinate to get index for
   //! \param[in] i Direction index
+  //! \return Mesh index in [0, shape[i] + 1]. The external boundaries are
+  //! included in the mesh, and interior boundaries belong to the lower-index
+  //! mesh cell.
   virtual int get_index_in_direction(double r, int i) const = 0;
 
   //! Get the coordinate for the mesh grid boundary in the positive direction

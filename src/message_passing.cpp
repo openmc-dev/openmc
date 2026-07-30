@@ -87,6 +87,8 @@ template<>
 const MPI_Datatype MPITypeMap<int>::mpi_type = MPI_INT;
 template<>
 const MPI_Datatype MPITypeMap<double>::mpi_type = MPI_DOUBLE;
+template<>
+const MPI_Datatype MPITypeMap<int64_t>::mpi_type = MPI_INT64_T;
 #endif
 
 } // namespace mpi

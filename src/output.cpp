@@ -243,8 +243,8 @@ void print_overlap_check()
 {
 #ifdef OPENMC_MPI
   vector<int64_t> temp(model::overlap_check_count);
-  MPI_Reduce(temp.data(), model::overlap_check_count.data(),
-    model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(temp.data(), model::overlap_check_count.data(),
+    model::overlap_check_count.size(), MPI_SUM, 0, mpi::intracomm);
 #endif
 
   if (mpi::master) {

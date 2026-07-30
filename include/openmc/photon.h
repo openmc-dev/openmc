@@ -87,7 +87,6 @@ public:
   tensor::Tensor<double> profile_pdf_;
   tensor::Tensor<double> profile_cdf_;
   tensor::Tensor<double> profile_tail_slope_;
-  tensor::Tensor<double> profile_norm_;
   tensor::Tensor<double> profile_negative_mass_; //!< Mass from -1/alpha to 0
   tensor::Tensor<double> binding_energy_;
   tensor::Tensor<double> electron_pdf_;

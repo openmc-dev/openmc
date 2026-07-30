@@ -260,7 +260,6 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   }
   profile_cdf_ = tensor::Tensor<double>({n_shell_compton, n_profile});
   profile_tail_slope_ = tensor::Tensor<double>({n_shell_compton});
-  profile_norm_ = tensor::Tensor<double>({n_shell_compton});
   profile_negative_mass_ = tensor::Tensor<double>({n_shell_compton});
   if (n_shell_compton > SUBSHELLS.size()) {
     throw std::runtime_error {"Photoatomic data for element " + name_ +
@@ -296,10 +295,14 @@ PhotonInteraction::PhotonInteraction(hid_t group)
                                 name_ + " do not form a decreasing tail."};
     }
     profile_tail_slope_(i) = slope;
-    profile_norm_(i) = 2.0 * (c - profile_last / slope);
-    if (!std::isfinite(profile_norm_(i)) || profile_norm_(i) <= 0.0) {
+    double norm = 2.0 * (c - profile_last / slope);
+    if (!std::isfinite(norm) || norm <= 0.0) {
       throw std::runtime_error {"The Compton profile for element " + name_ +
                                 " has an invalid normalization."};
+    }
+    for (int j = 0; j < n_profile; ++j) {
+      profile_pdf_(i, j) /= norm;
+      profile_cdf_(i, j) /= norm;
     }
   }
   for (int i = 0; i < n_shell_compton; ++i) {
@@ -513,22 +516,18 @@ double PhotonInteraction::compton_profile_cdf(int i_shell, double pz) const
     double p_l = profile_pdf_(i_shell, i);
     double p_r = profile_pdf_(i_shell, i + 1);
     double c_l = profile_cdf_(i_shell, i);
-    if (p_l == p_r) {
-      c = c_l + (pz - pz_l) * p_l;
-    } else {
-      double slope = (p_r - p_l) / (pz_r - pz_l);
-      double delta = pz - pz_l;
-      c = c_l + p_l * delta + 0.5 * slope * delta * delta;
-    }
+    double slope = (p_r - p_l) / (pz_r - pz_l);
+    double delta = pz - pz_l;
+    c = c_l + p_l * delta + 0.5 * slope * delta * delta;
   }
-  return std::min(0.5, c / profile_norm_(i_shell));
+  return std::min(0.5, c);
 }
 
 double PhotonInteraction::invert_compton_profile_cdf(
   int i_shell, double c) const
 {
   auto n = data::compton_profile_pz.size();
-  double integral = c * profile_norm_(i_shell);
+  double integral = c;
   double c_last = profile_cdf_(i_shell, n - 1);
   if (integral >= c_last) {
     // Invert the log-linear extrapolated tail using Kaltiaisenaho Eq. (3.123).
@@ -576,13 +575,10 @@ PhotonInteraction::ShellKinematics PhotonInteraction::compton_shell_kinematics(
   // Eq. (3.118), using profile_negative_mass_ = K_i(1/alpha): the
   // kinematically accessible mass is the integral from -1/alpha to pz_max.
   double c_negative = profile_negative_mass_(i_shell);
-  if (kinematics.pz_max < 0.0) {
-    kinematics.c_limit = this->compton_profile_cdf(i_shell, -kinematics.pz_max);
-    kinematics.profile_mass = c_negative - kinematics.c_limit;
-  } else {
-    kinematics.c_limit = this->compton_profile_cdf(i_shell, kinematics.pz_max);
-    kinematics.profile_mass = c_negative + kinematics.c_limit;
-  }
+  kinematics.c_limit =
+    this->compton_profile_cdf(i_shell, std::abs(kinematics.pz_max));
+  kinematics.profile_mass =
+    c_negative + std::copysign(kinematics.c_limit, kinematics.pz_max);
   return kinematics;
 }
 

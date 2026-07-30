@@ -50,12 +50,11 @@ void reduce_buffer(const void* sendbuf, void* recvbuf, std::size_t count,
 {
   // Determine the maximum number of elements accepted by the selected API.
 #ifdef OPENMC_HAVE_MPI_REDUCE_C
-  const std::size_t api_limit {
+  const std::size_t chunk_limit {
     static_cast<std::size_t>(std::numeric_limits<MPI_Count>::max())};
 #else
-  constexpr std::size_t api_limit {INT_MAX};
+  constexpr std::size_t chunk_limit {INT_MAX};
 #endif
-  const std::size_t chunk_limit = api_limit;
 
   // A legacy MPI reduction accepts an int count, so split the logical buffer
   // into bounded chunks before converting the count.

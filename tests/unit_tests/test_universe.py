@@ -4,6 +4,8 @@ import lxml.etree as ET
 import numpy as np
 import openmc
 import pytest
+import h5py
+from openmc.utility_funcs import change_directory
 
 from tests.unit_tests import assert_unbounded
 
@@ -254,6 +256,73 @@ def test_dagmc_length_multiplier_xml_roundtrip():
     default_elem = ET.fromstring('<dagmc_universe id="100" filename="dagmc.h5m"/>')
     default_univ = openmc.DAGMCUniverse.from_xml_element(default_elem)
     assert default_univ.length_multiplier == 1.0
+
+
+def test_dagmc_length_multiplier_from_hdf5(run_in_tmpdir):
+    # length_multiplier explicitly defined
+    with h5py.File("test_dagmc.h5", "w") as f:
+        g = f.create_group("geometry/universe 100")
+        g.create_dataset("filename", data=np.bytes_("dagmc/dagmc.h5m"))
+        g.attrs["auto_geom_ids"] = np.int32(0)
+        g.attrs["auto_mat_ids"] = np.int32(0)
+        g.attrs["length_multiplier"] = 0.1
+
+    with h5py.File("test_dagmc.h5", "r") as f:
+        u = openmc.DAGMCUniverse.from_hdf5(f["geometry/universe 100"])
+
+    assert u.id == 100
+    assert u.filename == Path("dagmc/dagmc.h5m")
+    assert u.length_multiplier == pytest.approx(0.1)
+
+    # length_multiplier not defined - should default to 1.0
+    with h5py.File("test_dagmc_default.h5", "w") as f:
+        g = f.create_group("geometry/universe 101")
+        g.create_dataset("filename", data=np.bytes_("dagmc/dagmc.h5m"))
+        g.attrs["auto_geom_ids"] = np.int32(0)
+        g.attrs["auto_mat_ids"] = np.int32(0)
+
+    with h5py.File("test_dagmc_default.h5", "r") as f:
+        u_default = openmc.DAGMCUniverse.from_hdf5(f["geometry/universe 101"])
+
+    assert u_default.id == 101
+    assert u_default.filename == Path("dagmc/dagmc.h5m")
+    assert u_default.length_multiplier == 1.0
+
+
+def test_dagmc_length_multiplier_hdf5_roundtrip(request):
+    p = Path(request.fspath).parent / "dagmc/dagmc_sphere_r5.h5m"
+
+    daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True, length_multiplier=0.5)
+    root = daguniv.bounded_universe()
+
+    mat = openmc.Material(name="test_mat")
+    mat.add_nuclide("H1", 1.0)
+    mat.set_density("g/cm3", 1.0)
+
+    settings = openmc.Settings()
+    settings.batches = 100
+    settings.inactive = 10
+    settings.particles = 1000
+    ll, ur = daguniv.bounding_box
+
+    model = openmc.Model()
+    model.geometry = openmc.Geometry(root)
+    model.materials = openmc.Materials([mat])
+    model.settings = settings
+
+    with change_directory(tmpdir=True):
+        try:
+            model.init_lib()
+            model.sync_dagmc_universes()
+            summary = openmc.Summary("summary.h5")
+        finally:
+            model.finalize_lib()
+            openmc.reset_auto_ids()
+
+    all_univs = summary.geometry.get_all_universes()
+    u = all_univs[daguniv.id]
+    assert isinstance(u, openmc.DAGMCUniverse)
+    assert u.length_multiplier == pytest.approx(0.5)
 
 
 def test_create_xml(cell_with_lattice):

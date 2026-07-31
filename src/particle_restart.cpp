@@ -1,6 +1,7 @@
 #include "openmc/particle_restart.h"
 
 #include "openmc/array.h"
+#include "openmc/bank.h"
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/mgxs_interface.h"
@@ -106,20 +107,16 @@ void run_particle_restart()
   // Set all tallies to 0 for now (just tracking errors)
   model::tallies.clear();
 
-  // Compute random number seed
-  int64_t particle_seed;
-  switch (previous_run_mode) {
-  case RunMode::EIGENVALUE:
-  case RunMode::FIXED_SOURCE:
-    particle_seed = (simulation::total_gen + overall_generation() - 1) *
-                      settings::n_particles +
-                    p.id();
-    break;
-  default:
-    throw std::runtime_error {
-      "Unexpected run mode: " +
-      std::to_string(static_cast<int>(previous_run_mode))};
+  // Allocate progeny_per_particle if needed for shared secondary mode
+  // (event_death() writes to this array). Set current_work to 0 since we
+  // only have one particle being restarted.
+  if (settings::use_shared_secondary_bank) {
+    p.current_work() = 0;
+    simulation::progeny_per_particle.resize(1, 0);
   }
+
+  // Compute random number seed
+  int64_t particle_seed = compute_transport_seed(p.id());
   init_particle_seeds(particle_seed, p.seeds());
 
   // Force calculation of cross-sections by setting last energy to zero

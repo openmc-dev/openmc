@@ -6,6 +6,8 @@ set(TEST_NAMES
   test_math
   test_mcpl_stat_sum
   test_mesh
+  test_photon
+  test_ray
   test_region
   test_tensor
   # Add additional unit test files here

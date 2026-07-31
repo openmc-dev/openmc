@@ -2,17 +2,17 @@
 <model>
   <materials>
     <cross_sections>mgxs.h5</cross_sections>
-    <material id="1" name="UO2__2_4__" depletable="true" temperature="294.0">
+    <material id="1" name="UO2 (2.4%)" depletable="true" temperature="294.0">
       <density value="1.0" units="macro"/>
-      <macroscopic name="UO2__2_4__"/>
+      <macroscopic name="UO2__2_4___1"/>
     </material>
     <material id="2" name="Zircaloy" temperature="294.0">
       <density value="1.0" units="macro"/>
-      <macroscopic name="Zircaloy"/>
+      <macroscopic name="Zircaloy_2"/>
     </material>
-    <material id="3" name="Hot_borated_water" temperature="294.0">
+    <material id="3" name="Hot borated water" temperature="294.0">
       <density value="1.0" units="macro"/>
-      <macroscopic name="Hot_borated_water"/>
+      <macroscopic name="Hot_borated_water_3"/>
     </material>
   </materials>
   <geometry>
@@ -47,11 +47,13 @@
     <temperature_range>200.0 400.0</temperature_range>
     <temperature_tolerance>200.0</temperature_tolerance>
     <random_ray>
-      <source type="independent" strength="1.0" particle="neutron">
-        <space type="box">
-          <parameters>-0.63 -0.63 -1.0 0.63 0.63 1.0</parameters>
-        </space>
-      </source>
+      <ray_source>
+        <source type="independent" strength="1.0" particle="neutron">
+          <space type="box">
+            <parameters>-0.63 -0.63 -1.0 0.63 0.63 1.0</parameters>
+          </space>
+        </source>
+      </ray_source>
       <distance_inactive>30.0</distance_inactive>
       <distance_active>150.0</distance_active>
       <source_region_meshes>

@@ -1050,8 +1050,8 @@ void reduce_tally_results()
       tensor::Tensor<double> values_reduced(values.shape());
 
       // Reduce contiguous set of tally results
-      MPI_Reduce(values.data(), values_reduced.data(), values.size(),
-        MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+      mpi::reduce(values.data(), values_reduced.data(), values.size(), MPI_SUM,
+        0, mpi::intracomm);
 
       // Transfer values on master and reset on other ranks
       if (mpi::master) {

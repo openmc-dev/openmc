@@ -953,8 +953,8 @@ void write_tally_results_nr(hid_t file_id)
       // The MPI_IN_PLACE specifier allows the master to copy values into
       // a receive buffer without having a temporary variable
 #ifdef OPENMC_MPI
-      MPI_Reduce(MPI_IN_PLACE, values.data(), values.size(), MPI_DOUBLE,
-        MPI_SUM, 0, mpi::intracomm);
+      mpi::reduce(
+        MPI_IN_PLACE, values.data(), values.size(), MPI_SUM, 0, mpi::intracomm);
 #endif
 
       // At the end of the simulation, store the reduced results back
@@ -983,8 +983,8 @@ void write_tally_results_nr(hid_t file_id)
     } else {
       // Receive buffer not significant at other processors
 #ifdef OPENMC_MPI
-      MPI_Reduce(values.data(), nullptr, values.size(), MPI_DOUBLE, MPI_SUM, 0,
-        mpi::intracomm);
+      mpi::reduce<double>(
+        values.data(), nullptr, values.size(), MPI_SUM, 0, mpi::intracomm);
 #endif
     }
   }

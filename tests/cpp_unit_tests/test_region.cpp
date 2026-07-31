@@ -158,4 +158,16 @@ TEST_CASE("Find boundary after virtual surface crossings")
     REQUIRE(distance == Catch::Approx(1.0));
     REQUIRE(surface == -2);
   }
+
+  SECTION("Starting on a curved surface")
+  {
+    // Start on the sphere and travel obliquely through it. The plane crossing
+    // is virtual, and accumulated roundoff must not cause the sphere exit to
+    // be classified as another virtual crossing.
+    auto [distance, surface] =
+      region.distance({4.2, 0.6, 0.0}, {1.0, 0.0, 0.0}, -2);
+
+    REQUIRE(distance == Catch::Approx(1.6));
+    REQUIRE(surface == 2);
+  }
 }

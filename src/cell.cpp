@@ -998,12 +998,14 @@ std::pair<double, int32_t> Region::distance_complex(
     }
 
     // Move to the candidate surface and determine which side of it the ray is
-    // entering. Using the signed surface in the containment check avoids
-    // evaluating the surface equation at a numerically perturbed point.
+    // entering. The surface normal is used instead of evaluating the surface
+    // equation because accumulated roundoff may place the point slightly to
+    // the wrong side of a curved surface.
     r += distance * u;
     total_distance += distance;
     i_surf = std::abs(i_surf);
-    if (!model::surfaces[i_surf - 1]->sense(r, u)) {
+    const auto& surf {*model::surfaces[i_surf - 1]};
+    if (u.dot(surf.normal(r)) <= 0.0) {
       i_surf = -i_surf;
     }
 

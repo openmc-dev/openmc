@@ -1,9 +1,4 @@
-"""Test that CollisionFilter produces unbiased results with weight windows.
-
-Regression test for https://github.com/openmc-dev/openmc/issues/3916
-When weight windows split a particle, the child particles must inherit
-the parent's collision count. Otherwise CollisionFilter bins are biased.
-"""
+"""Test that CollisionFilter produces unbiased results with weight windows."""
 
 import numpy as np
 import openmc
@@ -43,8 +38,7 @@ def test_collision_filter_weight_windows():
     settings.particles = 2000
     settings.batches = 5
     settings.source = openmc.IndependentSource(
-        space=openmc.stats.Point((0, 0, 0)),
-        energy=openmc.stats.Discrete([14e6], [1.0]),
+        energy=openmc.stats.delta_function(14e6),
     )
     settings.survival_biasing = True
 
@@ -83,8 +77,7 @@ def test_collision_filter_weight_windows():
         model.settings = settings
         sp_analog = model.run()
 
-        import os
-        os.rename(sp_analog, 'statepoint.analog.h5')
+        sp_analog.rename('statepoint.analog.h5')
 
         # Run with weight windows
         settings.weight_windows = [ww]

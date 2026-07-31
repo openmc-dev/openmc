@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "openmc/cell.h"
@@ -28,6 +29,37 @@ public:
   }
 
   ~SurfaceFixture()
+  {
+    openmc::model::surfaces.clear();
+    openmc::model::surface_map.clear();
+  }
+};
+
+// Helper class for testing multiple intersections with the same surface
+class MultiIntersectionFixture {
+public:
+  MultiIntersectionFixture()
+  {
+    pugi::xml_document doc;
+
+    auto plane = doc.append_child("surface");
+    plane.append_attribute("id") = 1;
+    plane.append_attribute("type") = "x-plane";
+    plane.append_attribute("coeffs") = "5";
+    openmc::model::surfaces.push_back(
+      std::make_unique<openmc::SurfaceXPlane>(plane));
+    openmc::model::surface_map[1] = 0;
+
+    auto sphere = doc.append_child("surface");
+    sphere.append_attribute("id") = 2;
+    sphere.append_attribute("type") = "sphere";
+    sphere.append_attribute("coeffs") = "5 0 0 1";
+    openmc::model::surfaces.push_back(
+      std::make_unique<openmc::SurfaceSphere>(sphere));
+    openmc::model::surface_map[2] = 1;
+  }
+
+  ~MultiIntersectionFixture()
   {
     openmc::model::surfaces.clear();
     openmc::model::surface_map.clear();
@@ -97,5 +129,33 @@ TEST_CASE("Test region simplification")
   {
     auto region = openmc::Region("1 2 | 3 4 | 5 6", 0);
     REQUIRE(region.str() == " ( 1 2 ) | ( 3 4 ) | ( 5 6 )");
+  }
+}
+
+TEST_CASE("Find boundary after virtual surface crossings")
+{
+  MultiIntersectionFixture fixture;
+  openmc::Region region("-1 | -2", 0);
+
+  SECTION("Starting inside the region")
+  {
+    // Along +x from x=1, entering the sphere at x=4 is virtual because x < 5.
+    // Crossing the plane at x=5 is also virtual because the point is inside
+    // the sphere. Exiting the sphere at x=6 is the first true boundary.
+    auto [distance, surface] =
+      region.distance({1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, 0);
+
+    REQUIRE(distance == Catch::Approx(5.0));
+    REQUIRE(surface == 2);
+  }
+
+  SECTION("Starting outside the region")
+  {
+    // Along -x from x=7, entering the sphere at x=6 is the first boundary.
+    auto [distance, surface] =
+      region.distance({7.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, 0);
+
+    REQUIRE(distance == Catch::Approx(1.0));
+    REQUIRE(surface == -2);
   }
 }

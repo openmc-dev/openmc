@@ -947,7 +947,7 @@ std::pair<double, int32_t> Region::distance(
   Position r, Direction u, int32_t on_surface) const
 {
   if (simple_) {
-    return distance_simple(r, u, on_surface);
+    return distance_to_nearest_surface(r, u, on_surface);
   } else {
     return distance_complex(r, u, on_surface);
   }
@@ -955,7 +955,7 @@ std::pair<double, int32_t> Region::distance(
 
 //==============================================================================
 
-std::pair<double, int32_t> Region::distance_simple(
+std::pair<double, int32_t> Region::distance_to_nearest_surface(
   Position r, Direction u, int32_t on_surface) const
 {
   double min_dist {INFTY};
@@ -988,50 +988,32 @@ std::pair<double, int32_t> Region::distance_simple(
 std::pair<double, int32_t> Region::distance_complex(
   Position r, Direction u, int32_t on_surface) const
 {
-  double min_dist;
-  int32_t i_surf;
-  double atleast {-1.0};
-  bool in_region = contains_complex(r, u, on_surface);
+  const bool in_region = contains_complex(r, u, on_surface);
+  double total_distance {0.0};
 
   while (true) {
-    min_dist = INFTY;
-    i_surf = std::numeric_limits<int32_t>::max();
-
-    for (int32_t token : expression_) {
-      // Ignore this token if it corresponds to an operator rather than a
-      // region.
-      if (token >= OP_UNION)
-        continue;
-
-      // Calculate the distance to this surface.
-      // Note the off-by-one indexing
-      bool coincident {std::abs(token) == std::abs(on_surface)};
-      double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
-
-      // Check if this distance is the new minimum.
-      if ((d > atleast) && (d < min_dist)) {
-        if (min_dist - d >= FP_PRECISION * min_dist) {
-          min_dist = d;
-          i_surf = -token;
-        }
-      }
+    auto [distance, i_surf] = distance_to_nearest_surface(r, u, on_surface);
+    if (distance == INFTY) {
+      return {INFTY, std::numeric_limits<int32_t>::max()};
     }
-    if (min_dist == INFTY)
-      break;
-    // Search for next closest intersection
-    auto [next_dist, i_surf_next] =
-      distance_simple(r + min_dist * u, u, i_surf);
-    // If no next intersection we are done
-    if (next_dist == INFTY)
-      break;
-    // If there is next intersection we will check point containment in the
-    // middle to avoid close to boundary numerical errors
-    auto r_mid = r + (min_dist + 0.5 * next_dist) * u;
-    if (contains_complex(r_mid, u, i_surf) != in_region)
-      break;
-    atleast = min_dist;
+
+    // Move to the candidate surface and determine which side of it the ray is
+    // entering. Using the signed surface in the containment check avoids
+    // evaluating the surface equation at a numerically perturbed point.
+    r += distance * u;
+    total_distance += distance;
+    i_surf = std::abs(i_surf);
+    if (!model::surfaces[i_surf - 1]->sense(r, u)) {
+      i_surf = -i_surf;
+    }
+
+    // If crossing the candidate changes the region membership, it is a true
+    // boundary. Otherwise, continue the search from the virtual crossing.
+    if (contains_complex(r, u, i_surf) != in_region) {
+      return {total_distance, i_surf};
+    }
+    on_surface = i_surf;
   }
-  return {min_dist, i_surf};
 }
 
 //==============================================================================

@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+  </materials>
+  <geometry>
+    <cell id="1" material="void" region="1 -2 6 -7 8 -9" universe="1"/>
+    <cell id="2" material="void" region="2 -3 6 -7 8 -9" universe="1"/>
+    <cell id="3" material="void" region="3 -4 6 -7 8 -9" universe="1"/>
+    <cell id="4" material="void" region="4 -5 6 -7 8 -9" universe="1"/>
+    <cell id="5" material="void" region="1 -2 6 -7 9 -10" universe="1"/>
+    <cell id="6" material="void" region="2 -3 6 -7 9 -10" universe="1"/>
+    <cell id="7" material="void" region="3 -4 6 -7 9 -10" universe="1"/>
+    <cell id="8" material="void" region="4 -5 6 -7 9 -10" universe="1"/>
+    <cell id="9" material="void" region="1 -2 6 -7 10 -11" universe="1"/>
+    <cell id="10" material="void" region="2 -3 6 -7 10 -11" universe="1"/>
+    <cell id="11" material="void" region="3 -4 6 -7 10 -11" universe="1"/>
+    <cell id="12" material="void" region="4 -5 6 -7 10 -11" universe="1"/>
+    <surface id="1" type="x-plane" boundary="vacuum" coeffs="0"/>
+    <surface id="2" type="x-plane" coeffs="1"/>
+    <surface id="3" type="x-plane" coeffs="2"/>
+    <surface id="4" type="x-plane" coeffs="3"/>
+    <surface id="5" type="x-plane" boundary="vacuum" coeffs="4"/>
+    <surface id="6" type="y-plane" boundary="vacuum" coeffs="0"/>
+    <surface id="7" type="y-plane" boundary="vacuum" coeffs="1"/>
+    <surface id="8" type="z-plane" boundary="vacuum" coeffs="0"/>
+    <surface id="9" type="z-plane" coeffs="1"/>
+    <surface id="10" type="z-plane" coeffs="2"/>
+    <surface id="11" type="z-plane" boundary="vacuum" coeffs="3"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>60</particles>
+    <batches>5</batches>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>1.6 0.5 0.5</parameters>
+      </space>
+      <angle type="monodirectional" reference_uvw="0.0 0.0 1.0"/>
+    </source>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>2.6 0.5 0.5</parameters>
+      </space>
+      <angle type="monodirectional" reference_uvw="0.0 0.0 1.0"/>
+    </source>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>0.5 0.5 1.6</parameters>
+      </space>
+      <angle type="monodirectional" reference_uvw="1.0 0.0 0.0"/>
+    </source>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>3.5 0.5 1.5</parameters>
+      </space>
+      <angle type="monodirectional" reference_uvw="-1.0 0.0 0.0"/>
+    </source>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>1.5 0.5 2.5</parameters>
+      </space>
+      <angle type="monodirectional" reference_uvw="0.0 0.0 -1.0"/>
+    </source>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>2.5 0.5 2.5</parameters>
+      </space>
+      <angle type="monodirectional" reference_uvw="0.0 0.0 -1.0"/>
+    </source>
+    <surf_source_write>
+      <surface_ids>2 4 9 10</surface_ids>
+      <max_particles>300</max_particles>
+      <cells>6 7</cells>
+      <directions>to to</directions>
+    </surf_source_write>
+    <seed>1</seed>
+  </settings>
+  </model>

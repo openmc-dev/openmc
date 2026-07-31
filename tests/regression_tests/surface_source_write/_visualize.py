@@ -10,11 +10,11 @@ if __name__ == "__main__":
     # Select an option
     # "show": 3D visualization using matplotlib
     # "savefig": 2D representation using matplotlib and storing the fig under plot_2d.png
-    option = "show"
-    # option = "savefig"
+    #option = "show"
+    option = "savefig"
 
     # Select the case from its folder name
-    folder = "case-20"
+    folder = "case-24"
 
     # Reading the surface source file
     with h5py.File(f"{folder}/surface_source_true.h5", "r") as fp:

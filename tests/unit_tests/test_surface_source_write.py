@@ -33,6 +33,10 @@ def geometry():
         {"max_particles": 200, "surface_ids": [2], "cellto": 1},
         {"max_particles": 200, "surface_ids": [2], "cellfrom": 1},
         {"max_particles": 200, "surface_ids": [2], "max_source_files": 1},
+        {"max_particles": 200, "cells": [1]},
+        {"max_particles": 200, "surface_ids": [2], "cells": [1]},
+        {"max_particles": 200, "cells": [1], "directions": ["to"]},
+        {"max_particles": 200, "surface_ids": [2], "cells": [1], "directions": ["to"]},
     ],
 )
 def test_xml_serialization(parameter, run_in_tmpdir):
@@ -102,8 +106,22 @@ ERROR_MSG_1 = (
     "using the 'max_particles' parameter to store surface "
     "source points."
 )
-ERROR_MSG_2 = "'cell', 'cellfrom' and 'cellto' cannot be used at the same time."
-
+ERROR_MSG_2 = (
+    "In the <surf_source_write> element, 'cell', 'cellfrom' "
+    "and 'cellto' cannot be used at the same time."
+)
+ERROR_MSG_3 = (
+    "In the <surf_source_write> element, 'cells' cannot be used "
+    "at the same time with 'cell', 'cellfrom' or 'cellto'."
+)
+ERROR_MSG_4 = (
+    "In the <surf_source_write> element, 'directions' cannot be "
+    "used if 'cells' is not defined."
+)
+ERROR_MSG_5 = (
+    "In the <surf_source_write> element, 'directions' must have "
+    "the same length as 'cells'."
+)
 
 @pytest.mark.parametrize(
     "parameter, error",
@@ -113,6 +131,11 @@ ERROR_MSG_2 = "'cell', 'cellfrom' and 'cellto' cannot be used at the same time."
         ({"max_particles": 200, "cell": 1, "cellfrom": 1}, ERROR_MSG_2),
         ({"max_particles": 200, "cellto": 1, "cellfrom": 1}, ERROR_MSG_2),
         ({"max_particles": 200, "cell": 1, "cellto": 1, "cellfrom": 1}, ERROR_MSG_2),
+        ({"max_particles": 200, "cells": [1], "cell": 1}, ERROR_MSG_3),
+        ({"max_particles": 200, "cells": [1], "cellto": 1}, ERROR_MSG_3),
+        ({"max_particles": 200, "cells": [1], "cellfrom": 1}, ERROR_MSG_3),
+        ({"max_particles": 200, "directions": ["to"]}, ERROR_MSG_4),
+        ({"max_particles": 200, "cells": [1], "directions": ["to", "from"]}, ERROR_MSG_5),
     ],
 )
 def test_exceptions(parameter, error, run_in_tmpdir, geometry):

@@ -982,83 +982,98 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
     return;
   }
 
-  // If a cell/cellfrom/cellto parameter is defined
-  if (settings::ssw_cell_id != C_NONE) {
+  // Add the site if no cells have been requested (via 'cells', 'cell',
+  // 'cellfrom' or 'cellto')
+  bool add_site = true;
 
-    // Retrieve cell index and storage type
-    int cell_idx = model::cell_map[settings::ssw_cell_id];
+  // If cells have been requested (via 'cells', 'cell', 'cellfrom' or 'cellto')
+  if (!settings::ssw_cells.empty()) {
 
-    if (surf.bc_) {
-      // Leave if cellto with vacuum boundary condition
-      if (surf.bc_->type() == "vacuum" &&
-          settings::ssw_cell_type == SSWCellType::To) {
-        return;
-      }
-
-      // Leave if other boundary condition than vacuum
-      if (surf.bc_->type() != "vacuum") {
-        return;
-      }
+    // Leave if other boundary condition than vacuum
+    if (surf.bc_ && surf.bc_->type() != "vacuum") {
+      return;
     }
 
-    // Check if the cell of interest has been exited
-    bool exited = false;
-    for (int i = 0; i < p.n_coord_last(); ++i) {
-      if (p.cell_last(i) == cell_idx) {
-        exited = true;
-      }
-    }
+    // The site will only be added if at least one cell-direction pair is valid
+    add_site = false;
 
-    // Check if the cell of interest has been entered
-    bool entered = false;
-    for (int i = 0; i < p.n_coord(); ++i) {
-      if (p.coord(i).cell() == cell_idx) {
-        entered = true;
-      }
-    }
+    // Looping through all cell-direction pairs
+    for (auto& cell : settings::ssw_cells) {
+      // Retrieve cell index and storage type
+      int cell_idx = model::cell_map[cell.first];
+      SSWCellType direction = cell.second;
 
-    // Vacuum boundary conditions: return if cell is not exited
-    if (surf.bc_) {
-      if (surf.bc_->type() == "vacuum" && !exited) {
-        return;
-      }
-    } else {
-
-      // If we both enter and exit the cell of interest
-      if (entered && exited) {
-        return;
+      // Skip if cellto with vacuum boundary condition
+      if (surf.bc_ && surf.bc_->type() == "vacuum" &&
+          direction == SSWCellType::To) {
+        continue;
       }
 
-      // If we did not enter nor exit the cell of interest
-      if (!entered && !exited) {
-        return;
+      // Check if the cell of interest has been exited
+      bool exited = false;
+      for (int i = 0; i < p.n_coord_last(); ++i) {
+        if (p.cell_last(i) == cell_idx) {
+          exited = true;
+        }
       }
 
-      // If cellfrom and the cell before crossing is not the cell of
-      // interest
-      if (settings::ssw_cell_type == SSWCellType::From && !exited) {
-        return;
+      // Check if the cell of interest has been entered
+      bool entered = false;
+      for (int i = 0; i < p.n_coord(); ++i) {
+        if (p.coord(i).cell() == cell_idx) {
+          entered = true;
+        }
       }
 
-      // If cellto and the cell after crossing is not the cell of interest
-      if (settings::ssw_cell_type == SSWCellType::To && !entered) {
-        return;
+      // Vacuum boundary conditions: return if cell is not exited
+      if (surf.bc_) {
+        if (surf.bc_->type() == "vacuum" && !exited) {
+          continue;
+        }
+      } else {
+
+        // If we both enter and exit the cell of interest
+        if (entered && exited) {
+          continue;
+        }
+
+        // If we did not enter nor exit the cell of interest
+        if (!entered && !exited) {
+          continue;
+        }
+
+        // If cellfrom and the cell before crossing is not the cell of
+        // interest
+        if (direction == SSWCellType::From && !exited) {
+          continue;
+        }
+
+        // If cellto and the cell after crossing is not the cell of interest
+        if (direction == SSWCellType::To && !entered) {
+          continue;
+        }
       }
+      // If a cell-direction pair survived all the checks we add the site and
+      // terminate the loop
+      add_site = true;
+      break;
     }
   }
 
-  SourceSite site;
-  site.r = p.r();
-  site.u = p.u();
-  site.E = p.E();
-  site.time = p.time();
-  site.wgt = p.wgt();
-  site.delayed_group = p.delayed_group();
-  site.surf_id = surf.id_;
-  site.particle = p.type();
-  site.parent_id = p.id();
-  site.progeny_id = p.n_progeny();
-  int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+  if (add_site) {
+    SourceSite site;
+    site.r = p.r();
+    site.u = p.u();
+    site.E = p.E();
+    site.time = p.time();
+    site.wgt = p.wgt();
+    site.delayed_group = p.delayed_group();
+    site.surf_id = surf.id_;
+    site.particle = p.type();
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny();
+    int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+  }
 }
 
 } // namespace openmc

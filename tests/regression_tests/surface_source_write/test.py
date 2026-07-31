@@ -24,7 +24,8 @@ reflective and periodic Boundary Conditions (BC):
 - model_1: cylindrical core in 2 boxes (vacuum and transmission BC),
 - model_2: cylindrical core in 1 box (vacuum BC),
 - model_3: cylindrical core in 1 box (reflective BC),
-- model_4: cylindrical core in 1 box (periodic BC).
+- model_4: cylindrical core in 1 box (periodic BC),
+- model_5: 4*1*3 array of boxes (transmission BC).
 
 Two models including DAGMC geometries are also used, based on the mesh file 'dagmc.h5m'
 available from tests/regression_tests/dagmc/legacy:
@@ -79,6 +80,12 @@ case-19   model_3  Multiple   cellto (root universe)     R      None
 case-20   model_4  1          No                         P+R    Particles crossing the declared
                                                                 periodic surface
 case-21   model_4  1          cell (root universe)       P+R    None
+case-22   model_5  Multiple   cellto                     T      particles crossing the declared 
+                                                                surfaces that enters a cell
+case-23   model_5  Multiple   cellto                     T      particles crossing the declared 
+                                                                surfaces that enters a cell
+case-24   model_5  Multiple   cellto (multiple)          T      particles crossing the declared 
+                                                                surfaces that enters multiple cells
 ========  =======  =========  =========================  =====  ===================================
 
 *: BC stands for Boundary Conditions, T for Transmission, R for Reflective, and V for Vacuum.
@@ -603,6 +610,77 @@ def model_4():
 
     return model
 
+@pytest.fixture
+def model_5():
+    """4*1*3 array of boxes"""
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+
+    # =============================================================================
+    # Geometry
+    # =============================================================================
+
+    nx = 4
+    ny = 1
+    nz = 3
+
+    x_planes = [None] * (nx+1)
+    y_planes = [None] * (ny+1)
+    z_planes = [None] * (nz+1)
+
+    for i in range(nx+1):
+        x_planes[i] = openmc.XPlane(x0=i)
+    for i in range(ny+1):
+        y_planes[i] = openmc.YPlane(y0=i)
+    for i in range(nz+1):
+        z_planes[i] = openmc.ZPlane(z0=i)
+
+    for planes in (x_planes, y_planes, z_planes):
+        for i in (0,-1):
+            planes[i].boundary_type = 'vacuum'
+
+    cells = [[None]*nz for _ in range(nx)]
+    for j in range(nz):
+        for i in range(nx):
+            cells[i][j] = (openmc.Cell(region = +x_planes[i] & -x_planes[i+1] 
+                & +y_planes[0] & -y_planes[-1] & +z_planes[j] & -z_planes[j+1]))
+
+    cells_1D = [cells[i][j] for j in range(len(cells[0])) for i in range(len(cells))]
+    root = openmc.Universe(cells=cells_1D)
+    model.geometry = openmc.Geometry(root)
+
+    # =============================================================================
+    # Settings
+    # =============================================================================
+
+    model.settings = openmc.Settings()
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 60
+    model.settings.batches = 5
+    model.settings.seed = 1
+
+    point_21 = openmc.stats.Point((1.6,0.5,0.5))
+    point_31 = openmc.stats.Point((2.6,0.5,0.5))
+    point_12 = openmc.stats.Point((0.5,0.5,1.6))
+    point_42 = openmc.stats.Point((3.5,0.5,1.5))
+    point_23 = openmc.stats.Point((1.5,0.5,2.5))
+    point_33 = openmc.stats.Point((2.5,0.5,2.5))
+
+    x_pos = openmc.stats.Monodirectional((1,0,0))
+    x_neg = openmc.stats.Monodirectional((-1,0,0))
+    z_pos = openmc.stats.Monodirectional((0,0,1))
+    z_neg = openmc.stats.Monodirectional((0,0,-1))
+
+    source_1 = openmc.IndependentSource(space=point_21, angle=z_pos, strength=1.0)
+    source_2 = openmc.IndependentSource(space=point_31, angle=z_pos, strength=1.0)
+    source_3 = openmc.IndependentSource(space=point_12, angle=x_pos, strength=1.0)
+    source_4 = openmc.IndependentSource(space=point_42, angle=x_neg, strength=1.0)
+    source_5 = openmc.IndependentSource(space=point_23, angle=z_neg, strength=1.0)
+    source_6 = openmc.IndependentSource(space=point_33, angle=z_neg, strength=1.0)
+    model.settings.source = [source_1, source_2, source_3, source_4, source_5, source_6]
+
+    return model
+
 
 def return_surface_source_data(filepath):
     """Read a surface source file and return a sorted array composed
@@ -816,6 +894,21 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
             "case-21",
             "model_4",
             {"max_particles": 300, "surface_ids": [4], "cell": 3},
+        ),
+        (
+            "case-22",
+            "model_5",
+            {"max_particles": 300, "surface_ids": [2, 4, 9, 10], "cells": [6], "directions": ["to"]},
+        ),
+        (
+            "case-23",
+            "model_5",
+            {"max_particles": 300, "surface_ids": [2, 4, 9, 10], "cells": [7], "directions": ["to"]},
+        ),        
+        (
+            "case-24",
+            "model_5",
+            {"max_particles": 300, "surface_ids": [2, 4, 9, 10], "cells": [6, 7], "directions": ["to", "to"]},
         ),
     ],
 )

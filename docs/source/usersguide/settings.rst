@@ -370,20 +370,55 @@ crossing any surface of the model will be banked::
 
   settings.surf_source_write = {'max_particles': 10000}
 
-A cell ID can also be used to bank particles that are crossing any surface of
-a cell that particles are either coming from or going to::
+A list of cell IDs can also be used to bank particles that are crossing surfaces of 
+cells that particles are either coming from or going to::
+
+  settings.surf_source_write = {
+      'surfaces_ids': [1, 2, 3],
+      'cells': [1, 2],
+      'max_particles': 10000
+  }
+
+In this example, particles that are crossing surfaces with IDs of 1, 2, or 3 and 
+entering or exiting cells with IDs 1 or 2 will be banked excluding any surface
+that does not use a 'transmission' or 'vacuum' boundary condition.
+
+.. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
+          are not eligible to store any particles when using ``cells``, ``cell``, ``cellfrom``
+          or ``cellto`` attributes. It is recommended to use surface IDs instead.
+
+The constraint declared through the ``cells`` attribute is purely disjunctive.
+This means that a particle crossing a target surface will be banked if at least one of
+the clauses associated with all declared cells is true. In other terms, the logic inside
+the ``cells`` attribute corresponds to an "OR" relationship, and not an "AND".
+
+To account specifically for particles leaving or entering a given cell, 
+a list of directions can also be declared::
+
+  settings.surf_source_write = {
+      'surfaces_ids': [1, 2, 3],
+      'cells': [1, 2],
+      'directions': ["to", "from"],
+      'max_particles': 10000
+  }
+
+In this example, particles that are crossing surfaces with IDs of 1, 2, or 3 and 
+entering cell with ID 1 or exiting cell with ID 2 will be banked.
+
+.. note::
+
+  If only one cell is needed to filter particles, an alternative syntax can be used to bank particles
+  with the ``cell``, ``cellfrom`` and ``cellto`` attributes. However, this syntax will be deprecated
+  in the future.
+
+For a single cell, particles can be banked using the ``cell`` attribute::
 
   settings.surf_source_write = {'cell': 1, 'max_particles': 10000}
 
 In this example, particles that are crossing any surface that bounds cell 1 will
-be banked excluding any surface that does not use a 'transmission' or 'vacuum'
-boundary condition.
+be banked.
 
-.. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
-          are not eligible to store any particles when using ``cell``, ``cellfrom``
-          or ``cellto`` attributes. It is recommended to use surface IDs instead.
-
-Surface IDs can be used in combination with a cell ID::
+Another example that combines surface IDs with a cell ID::
 
   settings.surf_source_write = {
       'cell': 1,
@@ -408,7 +443,7 @@ or particles going to a cell::
       'max_particles': 10000
   }
 
-.. note:: The ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
+.. note:: The ``cells``, ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
           used simultaneously.
 
 To generate more than one surface source files when the maximum number of stored

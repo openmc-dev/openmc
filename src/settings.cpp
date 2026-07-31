@@ -4,6 +4,9 @@
 #include <cmath>  // for ceil, pow
 #include <limits> // for numeric_limits
 #include <string>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <fmt/core.h>
 #ifdef _OPENMP
@@ -137,8 +140,7 @@ std::unordered_set<int> source_write_surf_id;
 CollisionTrackConfig collision_track_config {};
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
-int64_t ssw_cell_id {C_NONE};
-SSWCellType ssw_cell_type {SSWCellType::None};
+std::unordered_map<int64_t, SSWCellType> ssw_cells;
 double surface_grazing_cutoff {0.001};
 double surface_grazing_ratio {0.5};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
@@ -955,29 +957,93 @@ void read_settings_xml(pugi::xml_node root)
       ssw_max_files = 1;
     }
 
+    // Determine if sites are to be stored in MCPL format
     if (check_for_node(node_ssw, "mcpl")) {
       surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
     }
-    // Get cell information
-    if (check_for_node(node_ssw, "cell")) {
-      ssw_cell_id = std::stoll(get_node_value(node_ssw, "cell"));
-      ssw_cell_type = SSWCellType::Both;
-    }
-    if (check_for_node(node_ssw, "cellfrom")) {
-      if (ssw_cell_id != C_NONE) {
-        fatal_error(
-          "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+
+    // Get cells information from 'cells'
+    if (check_for_node(node_ssw, "cells")) {
+      // Error if the new syntax is mixed with the previous syntax
+      if (check_for_node(node_ssw, "cell") ||
+          check_for_node(node_ssw, "cellfrom") ||
+          check_for_node(node_ssw, "cellto")) {
+        fatal_error("In the <surf_source_write> element, 'cells' cannot be "
+                    "used at the same time with 'cell', "
+                    "'cellfrom' or 'cellto'.");
       }
-      ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellfrom"));
-      ssw_cell_type = SSWCellType::From;
-    }
-    if (check_for_node(node_ssw, "cellto")) {
-      if (ssw_cell_id != C_NONE) {
-        fatal_error(
-          "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+
+      // Read 'cells' information
+      auto ids = get_node_array<int64_t>(node_ssw, "cells");
+      // If 'directions' is declared, retrieve directions
+      if (check_for_node(node_ssw, "directions")) {
+        auto directions = get_node_array<std::string>(node_ssw, "directions");
+
+        // Check that 'cells' and 'directions' have the same length
+        if (directions.size() != ids.size()) {
+          fatal_error("In the <surf_source_write> element, 'directions' must "
+                      "have the same length as 'cells'.");
+        }
+
+        // Store directions
+        for (std::size_t i {0}; i < ids.size(); ++i) {
+          SSWCellType direction = ssw_cell_type_from_string(directions[i]);
+          auto [it, inserted] = ssw_cells.emplace(ids[i], direction);
+          // check for duplicate keys with different values
+          if (!inserted && it->second != direction) {
+            // the union of different values will always be 'Both'
+            it->second = SSWCellType::Both;
+          }
+        }
+      } else {
+        // If 'directions' is not declared, assume 'both' for every cells
+        for (std::size_t i {0}; i < ids.size(); ++i) {
+          ssw_cells.emplace(ids[i], SSWCellType::Both);
+        }
       }
-      ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellto"));
-      ssw_cell_type = SSWCellType::To;
+    } else {
+      // If 'cells' is not declared, get cells information from 'cell', 'cellto'
+      // or 'cellfrom' instead - will be deprecated in the future
+      int64_t ssw_cell_id {C_NONE};
+
+      // Error if 'directions' is set without 'cells'
+      if (check_for_node(node_ssw, "directions")) {
+        fatal_error("In the <surf_source_write> element, 'directions' cannot "
+                    "be used if 'cells' is not defined.");
+      }
+
+      // Cell
+      if (check_for_node(node_ssw, "cell")) {
+        warning("In the <surf_source_write> element, 'cell' is deprecated and "
+                "will be removed in the future. Please use "
+                "'cells' and 'directions' instead.");
+        ssw_cell_id = std::stoll(get_node_value(node_ssw, "cell"));
+        ssw_cells.emplace(ssw_cell_id, SSWCellType::Both);
+      }
+      // Cellfrom
+      if (check_for_node(node_ssw, "cellfrom")) {
+        warning("In the <surf_source_write> element, 'cellfrom' is deprecated "
+                "and will be removed in the future. "
+                "Please use 'cells' and 'directions' instead.");
+        if (ssw_cell_id != C_NONE) {
+          fatal_error("In the <surf_source_write> element, 'cell', 'cellfrom' "
+                      "and 'cellto' cannot be used at the same time.");
+        }
+        ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellfrom"));
+        ssw_cells.emplace(ssw_cell_id, SSWCellType::From);
+      }
+      // Cellto
+      if (check_for_node(node_ssw, "cellto")) {
+        warning("In the <surf_source_write> element, 'cellto' is deprecated "
+                "and will be removed in the future. Please use "
+                "'cells' and 'directions' instead.");
+        if (ssw_cell_id != C_NONE) {
+          fatal_error("In the <surf_source_write> element, 'cell', 'cellfrom' "
+                      "and 'cellto' cannot be used at the same time.");
+        }
+        ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellto"));
+        ssw_cells.emplace(ssw_cell_id, SSWCellType::To);
+      }
     }
   }
 
@@ -1350,7 +1416,19 @@ void free_memory_settings()
   settings::statepoint_batch.clear();
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
+  settings::ssw_cells.clear();
   settings::res_scat_nuclides.clear();
+}
+
+SSWCellType ssw_cell_type_from_string(std::string_view s)
+{
+  if (s == "from")
+    return SSWCellType::From;
+  if (s == "to")
+    return SSWCellType::To;
+  if (s == "both")
+    return SSWCellType::Both;
+  fatal_error("Direction must be 'from', 'to', or 'both'");
 }
 
 //==============================================================================

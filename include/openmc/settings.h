@@ -6,6 +6,8 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "pugixml.hpp"
@@ -181,12 +183,12 @@ extern int64_t ssw_max_particles; //!< maximum number of particles to be
                                   //!< banked on surfaces per process
 extern int64_t ssw_max_files;     //!< maximum number of surface source files
                                   //!<  to be created
-extern int64_t ssw_cell_id;       //!< Cell id for the surface source
-                                  //!< write setting
-extern SSWCellType ssw_cell_type; //!< Type of option for the cell
-                                  //!< argument of surface source write
+extern std::unordered_map<int64_t, SSWCellType>
+  ssw_cells; //!< Cell ids and directions for the surface source write setting
+
 extern double surface_grazing_cutoff; //!< surface flux cosine cutoff
 extern double surface_grazing_ratio;  //!< surface flux substitution ratio
+
 extern TemperatureMethod
   temperature_method; //!< method for choosing temperatures
 extern double
@@ -218,6 +220,8 @@ void read_settings_xml();
 void read_settings_xml(pugi::xml_node root);
 
 void free_memory_settings();
+
+SSWCellType ssw_cell_type_from_string(std::string_view s);
 
 } // namespace openmc
 

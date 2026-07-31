@@ -63,8 +63,9 @@ Surface::Surface(pugi::xml_node surf_node)
 {
   if (check_for_node(surf_node, "id")) {
     id_ = std::stoi(get_node_value(surf_node, "id"));
-    if (contains(settings::source_write_surf_id, id_) ||
-        settings::source_write_surf_id.empty()) {
+    if (settings::surf_source_write &&
+        (contains(settings::source_write_surf_id, id_) ||
+          settings::source_write_surf_id.empty())) {
       surf_source_ = true;
     }
   } else {

@@ -303,15 +303,24 @@ class Settings:
                    process (int)
         :max_source_files: Maximum number of surface source files to be created (int)
         :mcpl: Output in the form of an MCPL-file (bool)
+        :cells: List of cell IDs used to determine if particles crossing identified
+                surfaces are to be banked. Particles coming from or going to these
+                declared cells will be banked depending on the requested direction
+                via the 'directions' keyword or both directions by default (int)
+        :directions: List of directions corresponding to cells. Acceptable entries are: 
+                     "from", "to", or "both" (str)
         :cell: Cell ID used to determine if particles crossing identified
                surfaces are to be banked. Particles coming from or going to this
-               declared cell will be banked (int)
+               declared cell will be banked (int) ("cell" will be deprecated in the future, 
+               please use "cells" instead.)
         :cellfrom: Cell ID used to determine if particles crossing identified
                    surfaces are to be banked. Particles coming from this
-                   declared cell will be banked (int)
+                   declared cell will be banked (int) ("cellfrom" will be deprecated in the future, 
+                   please use "cells" and "directions" instead.)
         :cellto: Cell ID used to determine if particles crossing identified
                  surfaces are to be banked. Particles going to this declared
-                 cell will be banked (int)
+                 cell will be banked (int) ("cellto" will be deprecated in the future, 
+                 please use "cells" and "directions" instead.)
     surface_grazing_cutoff : float
         Surface flux cosine cutoff. If not specified, the default value is
         0.001. For more information, see the surface tally section in the theory
@@ -320,6 +329,7 @@ class Settings:
         Surface flux cosine substitution ratio. If not specified, the default
         value is 0.5. For more information, see the surface tally section in the
         theory manual.
+
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -910,16 +920,21 @@ class Settings:
                 "surface source writing key",
                 key,
                 ("surface_ids", "max_particles", "max_source_files",
-                 "mcpl", "cell", "cellfrom", "cellto"),
+                 "mcpl", "cells", "directions", "cell", "cellfrom", "cellto"),
             )
-            if key == "surface_ids":
-                cv.check_type(
-                    "surface ids for source banking", value, Iterable, Integral
-                )
-                for surf_id in value:
-                    cv.check_greater_than(
-                        "surface id for source banking", surf_id, 0)
-
+            if key in ("surface_ids", "cells"):
+                name = {
+                    "surface_ids": "surface id(s) for source banking",
+                    "cells": "Cell ID(s) for source banking",
+                }[key]
+                cv.check_type(name, value, Iterable, Integral)
+                for x in value:
+                    cv.check_greater_than(name, x, 0)
+            elif key == "directions":
+                cv.check_type("directions corresponding to cells (from, to or both)", value, Iterable, str)
+                for direction in value:
+                    if (direction not in ["from", "to", "both"]):
+                        raise ValueError("Allowed values for directions are: 'from', 'to', or 'both'.")
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
             elif key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
@@ -1629,18 +1644,28 @@ class Settings:
     def _create_surf_source_write_subelement(self, root):
         if self._surf_source_write:
             element = ET.SubElement(root, "surf_source_write")
+
             if "surface_ids" in self._surf_source_write:
                 subelement = ET.SubElement(element, "surface_ids")
                 subelement.text = " ".join(
                     str(x) for x in self._surf_source_write["surface_ids"]
                 )
+
             if "mcpl" in self._surf_source_write:
                 subelement = ET.SubElement(element, "mcpl")
                 subelement.text = str(self._surf_source_write["mcpl"]).lower()
+
             for key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
                 if key in self._surf_source_write:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(self._surf_source_write[key])
+
+            for key in ("cells", "directions"):
+                if key in self._surf_source_write:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = " ".join(
+                        str(x) for x in self._surf_source_write[key]
+                    )
 
     def _create_collision_track_subelement(self, root):
         if self._collision_track:
@@ -2177,9 +2202,12 @@ class Settings:
         elem = root.find('surf_source_write')
         if elem is None:
             return
-        for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cell', 'cellto', 'cellfrom'):
-            if key == 'surface_ids':
+        for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cells',
+                    'directions', 'cell', 'cellto', 'cellfrom'):
+            if key in ('surface_ids', 'cells'):
                 value = get_elem_list(elem, key, int)
+            elif key == 'directions':
+                value = get_elem_list(elem, key, str)
             else:
                 value = get_text(elem, key)
             if value is not None:

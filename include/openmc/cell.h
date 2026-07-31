@@ -118,8 +118,8 @@ private:
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the nearest intersection with any surface in the region expression.
-  std::pair<double, int32_t> distance_to_nearest_surface(
-    Position r, Direction u, int32_t on_surface) const;
+  std::pair<double, int32_t> distance_to_nearest_surface(Position r,
+    Direction u, int32_t on_surface, bool ignore_coincident_surfaces) const;
 
   //! Find the oncoming boundary of this cell for a complex cell.
   std::pair<double, int32_t> distance_complex(

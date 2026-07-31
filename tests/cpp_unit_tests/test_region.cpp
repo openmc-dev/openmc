@@ -66,6 +66,40 @@ public:
   }
 };
 
+// Helper class for testing coincident surfaces with different representations
+class CoincidentSurfaceFixture {
+public:
+  CoincidentSurfaceFixture()
+  {
+    pugi::xml_document doc;
+
+    auto cylinder = doc.append_child("surface");
+    cylinder.append_attribute("id") = 1;
+    cylinder.append_attribute("type") = "z-cylinder";
+    cylinder.append_attribute("coeffs") = "0 0 499.0000001";
+    openmc::model::surfaces.push_back(
+      std::make_unique<openmc::SurfaceZCylinder>(cylinder));
+    openmc::model::surface_map[1] = 0;
+
+    auto quadric = doc.append_child("surface");
+    quadric.append_attribute("id") = 2;
+    quadric.append_attribute("type") = "quadric";
+    quadric.append_attribute("coeffs") =
+      "1 1 7.498798913309288e-33 -7.498798913309288e-33 "
+      "-1.2246467991473532e-16 -1.2246467991473532e-16 0 0 0 "
+      "-249001.00009980003";
+    openmc::model::surfaces.push_back(
+      std::make_unique<openmc::SurfaceQuadric>(quadric));
+    openmc::model::surface_map[2] = 1;
+  }
+
+  ~CoincidentSurfaceFixture()
+  {
+    openmc::model::surfaces.clear();
+    openmc::model::surface_map.clear();
+  }
+};
+
 } // anonymous namespace
 
 TEST_CASE("Test region simplification")
@@ -170,4 +204,22 @@ TEST_CASE("Find boundary after virtual surface crossings")
     REQUIRE(distance == Catch::Approx(1.6));
     REQUIRE(surface == 2);
   }
+}
+
+TEST_CASE("Ignore roundoff-scale virtual surface crossings")
+{
+  CoincidentSurfaceFixture fixture;
+
+  // These two surfaces describe effectively coincident cylinders, but the
+  // small rotation in the general quadric causes their calculated
+  // intersections to differ by roundoff. The nearby quadric intersection is
+  // virtual and the next meaningful crossing is on the far side of the
+  // cylinders.
+  openmc::Region region("1 | -2", 0);
+  auto [distance, surface] = region.distance(
+    {-427.64056354508085, -257.1469395319449, -20.851278766740666},
+    {0.8131471271523302, -0.39377148555937275, 0.4286441026822566}, -1);
+
+  REQUIRE(distance == Catch::Approx(603.9161175466262));
+  REQUIRE(surface == 1);
 }

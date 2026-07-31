@@ -947,7 +947,7 @@ std::pair<double, int32_t> Region::distance(
   Position r, Direction u, int32_t on_surface) const
 {
   if (simple_) {
-    return distance_to_nearest_surface(r, u, on_surface);
+    return distance_to_nearest_surface(r, u, on_surface, false);
   } else {
     return distance_complex(r, u, on_surface);
   }
@@ -955,8 +955,8 @@ std::pair<double, int32_t> Region::distance(
 
 //==============================================================================
 
-std::pair<double, int32_t> Region::distance_to_nearest_surface(
-  Position r, Direction u, int32_t on_surface) const
+std::pair<double, int32_t> Region::distance_to_nearest_surface(Position r,
+  Direction u, int32_t on_surface, bool ignore_coincident_surfaces) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -970,6 +970,13 @@ std::pair<double, int32_t> Region::distance_to_nearest_surface(
     // Note the off-by-one indexing
     bool coincident {std::abs(token) == std::abs(on_surface)};
     double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+
+    // Different surface definitions can represent the same geometric surface.
+    // When the ray is already known to be on a surface, ignore intersections
+    // with other surfaces at the same location to avoid repeatedly crossing
+    // between them due to roundoff.
+    if (ignore_coincident_surfaces && d < FP_COINCIDENT)
+      continue;
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -992,7 +999,8 @@ std::pair<double, int32_t> Region::distance_complex(
   double total_distance {0.0};
 
   while (true) {
-    auto [distance, i_surf] = distance_to_nearest_surface(r, u, on_surface);
+    auto [distance, i_surf] =
+      distance_to_nearest_surface(r, u, on_surface, on_surface != 0);
     if (distance == INFTY) {
       return {INFTY, std::numeric_limits<int32_t>::max()};
     }

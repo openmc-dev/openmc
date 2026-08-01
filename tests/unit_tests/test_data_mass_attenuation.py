@@ -1,3 +1,4 @@
+import numpy as np
 from pytest import approx, raises
 
 from openmc.data import mass_energy_absorption_coefficient, mass_attenuation_coefficient
@@ -7,6 +8,11 @@ from openmc.data.function import Tabulated1D
 def test_mass_attenuation_type():
     mu = mass_attenuation_coefficient(26)  # Fe
     assert isinstance(mu, Tabulated1D)
+    assert np.all(np.diff(mu.x) > 0.0)
+
+    # The Mo table has three entries at 20 keV.
+    mu = mass_attenuation_coefficient(42)
+    assert np.all(np.diff(mu.x) > 0.0)
 
 
 def test_mass_attenuation_spot_values():
@@ -36,6 +42,21 @@ def test_mass_energy_absorption_type():
     # Spot checks on values from NIST tables
     mu_en = mass_energy_absorption_coefficient("air")
     assert isinstance(mu_en, Tabulated1D)
+    assert np.all(np.diff(mu_en.x) > 0.0)
+
+
+def test_mass_energy_absorption_element():
+    mu_en_symbol = mass_energy_absorption_coefficient('Si')
+    mu_en_number = mass_energy_absorption_coefficient(14)
+
+    assert isinstance(mu_en_symbol, Tabulated1D)
+    assert np.array_equal(mu_en_symbol.x, mu_en_number.x)
+    assert np.array_equal(mu_en_symbol.y, mu_en_number.y)
+    assert np.all(np.diff(mu_en_symbol.x) > 0.0)
+    assert mu_en_symbol(1e3) == approx(1567.0)
+    assert mu_en_symbol(1838.9) == approx(3059.0)
+    assert mu_en_symbol(1e6) == approx(0.02778)
+    assert mu_en_symbol(2e7) == approx(0.01757)
 
 
 def test_mass_energy_absorption_spot_values():

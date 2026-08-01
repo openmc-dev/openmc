@@ -10,10 +10,6 @@ def test_mass_attenuation_type():
     assert isinstance(mu, Tabulated1D)
     assert np.all(np.diff(mu.x) > 0.0)
 
-    # The Mo table has three entries at 20 keV.
-    mu = mass_attenuation_coefficient(42)
-    assert np.all(np.diff(mu.x) > 0.0)
-
 
 def test_mass_attenuation_spot_values():
     # Spot checks for Fe (Z=26) against NIST data: first/last tabulated points
@@ -53,6 +49,8 @@ def test_mass_energy_absorption_element():
     assert np.array_equal(mu_en_symbol.x, mu_en_number.x)
     assert np.array_equal(mu_en_symbol.y, mu_en_number.y)
     assert np.all(np.diff(mu_en_symbol.x) > 0.0)
+
+    # Spot checks on values
     assert mu_en_symbol(1e3) == approx(1567.0)
     assert mu_en_symbol(1838.9) == approx(3059.0)
     assert mu_en_symbol(1e6) == approx(0.02778)

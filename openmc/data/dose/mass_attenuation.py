@@ -52,22 +52,33 @@ _NIST126_AIR = np.array([
     [2.00000e01, 1.311e-02],
 ])
 
-def _adjust_absorption_edges(energy):
-    """Make an energy grid with repeated absorption edges strictly increasing."""
-    energy = np.array(energy)
-    duplicates = np.flatnonzero(np.diff(energy) == 0.0)
-    for i in duplicates[::-1]:
-        energy[i] = np.nextafter(energy[i + 1], -np.inf)
-    return energy
+def _clean_coefficient_table(data):
+    """Remove consecutive duplicate points and adjust absorption edges."""
+
+    # Remove consecutive points that duplicate both the energy and coefficient.
+    data = np.array(data)
+    duplicate = np.all(data[:, 1:] == data[:, :-1], axis=0)
+    if np.any(duplicate):
+        keep = np.ones(data.shape[1], dtype=bool)
+        keep[1:] = ~duplicate
+        data = data[:, keep]
+
+    # Preserve shell-edge jumps, but make their repeated energies strictly
+    # increasing for interpolation routines that reject duplicate grid points.
+    edge = np.flatnonzero(np.diff(data[0]) == 0.0)
+    for i in edge[::-1]:
+        data[0, i] = np.nextafter(data[0, i + 1], -np.inf)
+
+    return data
 
 
 # Registry of embedded tables: (data_source, material) -> ndarray
 # Table shape: (2, N) with rows [Energy (eV), μ_en/ρ (cm^2/g)]
 _MUEN_TABLES = {
-    ("nist126", "air"): np.array([
-        _adjust_absorption_edges(_NIST126_AIR[:, 0] * EV_PER_MEV),
+    ("nist126", "air"): _clean_coefficient_table(np.array([
+        _NIST126_AIR[:, 0] * EV_PER_MEV,
         _NIST126_AIR[:, 1],
-    ]),
+    ])),
 }
 
 
@@ -79,8 +90,7 @@ def _load_elemental_muen(data_source):
     data_file = Path(__file__).with_name('mass_energy_absorption.h5')
     with h5py.File(data_file) as f:
         for key, dataset in f.items():
-            data = dataset[()].copy()
-            data[0] = _adjust_absorption_edges(data[0])
+            data = _clean_coefficient_table(dataset[()])
             _MUEN_TABLES[(data_source, int(key))] = data
 
 
@@ -168,8 +178,7 @@ def mass_attenuation_coefficient(element):
         data_file = Path(__file__).with_name('mass_attenuation.h5')
         with h5py.File(data_file, 'r') as f:
             for key, dataset in f.items():
-                energies, mu_rho = dataset[()]  # shape (2, N)
-                energies = _adjust_absorption_edges(energies)
+                energies, mu_rho = _clean_coefficient_table(dataset[()])
                 _MASS_ATTENUATION[int(key)] = Tabulated1D(
                     energies, mu_rho,
                     breakpoints=[len(energies)],

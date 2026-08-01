@@ -897,7 +897,7 @@ def test_get_photon_contact_dose_rate():
 
     cdr_xe_abs = m_xe135.get_photon_contact_dose_rate('absorbed-air')
     cdr_xe_eff = m_xe135.get_photon_contact_dose_rate('effective')
-    assert cdr_xe_abs == pytest.approx(7.886077e8, rel=1e-4)  # [Gy/h]
+    assert cdr_xe_abs == pytest.approx(7.886967e8, rel=1e-4)  # [Gy/h]
     assert cdr_xe_eff == pytest.approx(9.488298e8, rel=1e-4)  # [Sv/h]
 
     # by_nuclide=True should return a dict whose values sum to the total

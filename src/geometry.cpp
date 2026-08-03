@@ -306,6 +306,39 @@ bool neighbor_list_find_cell(GeometryState& p, bool verbose)
   return found;
 }
 
+void reconcile_cell_after_collision(GeometryState& p)
+{
+  // Find the first coordinate level whose current cell is inconsistent with
+  // the particle's post-collision direction.
+  int invalid_level = C_NONE;
+  for (int level = 0; level < p.n_coord(); ++level) {
+    const auto& coord {p.coord(level)};
+    if (coord.cell() == C_NONE || !model::cells[coord.cell()]->contains(
+                                    coord.r(), coord.u(), SURFACE_NONE)) {
+      invalid_level = level;
+      break;
+    }
+  }
+
+  if (invalid_level == C_NONE)
+    return;
+
+  // Search from the first inconsistent level so that parent cells and
+  // transformed lower universes are both handled correctly.
+  if (p.coord(invalid_level).cell() != C_NONE) {
+    p.n_coord() = invalid_level + 1;
+    if (neighbor_list_find_cell(p))
+      return;
+  }
+
+  // The current cell may not have a complete neighbor list yet. Fall back to
+  // the normal exhaustive search used after a failed surface crossing.
+  p.n_coord() = 1;
+  if (!exhaustive_find_cell(p)) {
+    p.mark_as_lost("Could not find particle after a collision near a surface.");
+  }
+}
+
 bool exhaustive_find_cell(GeometryState& p, bool verbose)
 {
   int i_universe = p.lowest_coord().universe();

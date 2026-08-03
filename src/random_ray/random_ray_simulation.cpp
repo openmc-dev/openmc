@@ -55,8 +55,8 @@ void validate_random_ray_inputs()
     // only store a single position to use for determining which tally they map
     // to, so r() == r_last() and bins_crossed(...) may fail to match due to the
     // zero segment length. This has no impact on the results as random ray
-    // simulations are MOC-based; tallies all use tracklength estimators regardless
-    // of the value of 'estimator_'.
+    // simulations are MOC-based; tallies all use tracklength estimators
+    // regardless of the value of 'estimator_'.
     for (auto& tally : model::tallies) {
       tally->estimator_ = TallyEstimator::COLLISION;
     }

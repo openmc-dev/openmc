@@ -50,6 +50,17 @@ void validate_random_ray_inputs()
       }
     }
 
+    // Silently set tally estimators to collision to ensure that source
+    // regions correctly map to tally bins. This is required as source regions
+    // only store a single position to use for determining which tally they map
+    // to, so r() == r_last() and bins_crossed(...) may fail to match due to the
+    // zero segment length. This has no impact on the results as random ray
+    // simulations are MOC-based; tallies all use tracklength estimators regardless
+    // of the value of 'estimator_'.
+    for (auto& tally : model::tallies) {
+      tally->estimator_ = TallyEstimator::COLLISION;
+    }
+
     // Validate filter types
     for (auto f : tally->filters()) {
       auto& filter = *model::tally_filters[f];

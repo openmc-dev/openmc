@@ -1072,23 +1072,12 @@ class WeightWindowsList(list):
         import openmc.lib
         cv.check_type('path', path, PathLike)
 
-        # Create a minimal model without serializing the weight window bounds to
-        # XML. The meshes and weight windows are added through openmc.lib after
-        # the shared library has been initialized.
-        model = openmc.Model()
-        sph = openmc.Sphere(boundary_type='vacuum')
-        cell = openmc.Cell(region=-sph)
-        model.geometry = openmc.Geometry([cell])
-        model.settings.particles = 1
-        model.settings.batches = 1
-        model.settings.output = {'summary': False}
-
         # Get absolute path before moving to temporary directory
         path = Path(path).resolve()
         original_dir = Path.cwd()
 
         # Populate the C++ model directly and use its existing HDF5 writer.
-        with openmc.lib.TemporarySession(model, **init_kwargs):
+        with openmc.lib.TemporarySession(**init_kwargs):
             lib_meshes = {}
             for ww in self:
                 mesh = ww.mesh

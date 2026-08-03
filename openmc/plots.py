@@ -365,6 +365,8 @@ def id_map_to_rgb(
 ) -> np.ndarray:
     """Convert ID map array to RGB image array.
 
+    .. versionadded:: 0.16.0
+
     Parameters
     ----------
     id_map : numpy.ndarray
@@ -1140,7 +1142,7 @@ class VoxelPlot(PlotBase):
     (255, 255, 255) would be white, or by a string indicating a
     valid `SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
 
-    .. versionadded:: 0.15.1
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------

@@ -348,8 +348,9 @@ def convert_flux_groups(flux, source_groups, target_groups):
     -----
     The assumption of constant flux per unit lethargy within each source
     group is physically reasonable for most reactor spectra but is not
-    exact. For best accuracy, use source spectra with sufficiently fine
-    energy resolution.
+    exact [1]_. For best accuracy, use source spectra with sufficiently fine
+    energy resolution. A similar group-conversion approach is available in
+    FISPACT-II [2]_.
 
     Examples
     --------

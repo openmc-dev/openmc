@@ -21,6 +21,7 @@ Simulation Settings
    :nosignatures:
    :template: myclass.rst
 
+   openmc.ParticleType
    openmc.SourceBase
    openmc.IndependentSource
    openmc.FileSource
@@ -184,6 +185,13 @@ Geometry Plotting
    openmc.WireframeRayTracePlot
    openmc.SolidRayTracePlot
    openmc.Plots
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.id_map_to_rgb
 
 Running OpenMC
 --------------

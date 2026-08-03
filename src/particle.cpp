@@ -378,22 +378,17 @@ void Particle::event_collide()
   if (!model::active_meshsurf_tallies.empty())
     score_meshsurface_tally(*this, model::active_meshsurf_tallies);
 
-  auto last_surface = std::abs(surface());
-
-  // Clear surface component
+  // Preserve whether the particle is still associated with a recently crossed
+  // surface so that a direction change during a near-surface collision can be
+  // reconciled afterward. The surface marker is no longer needed during the
+  // collision itself.
+  const bool near_surface = surface() != SURFACE_NONE;
   surface() = SURFACE_NONE;
 
   if (settings::run_CE) {
     collision(*this);
   } else {
     collision_mg(*this);
-  }
-
-  if (last_surface != SURFACE_NONE) {
-    const auto& surf {*model::surfaces[last_surface - 1].get()};
-    Direction normal = surf.normal(r());
-    if (normal.dot(u()) * normal.dot(u_last()) < 0.0)
-      neighbor_list_find_cell(*this);
   }
 
   // Collision track feature to recording particle interaction
@@ -460,6 +455,9 @@ void Particle::event_collide()
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
+
+  if (near_surface && alive())
+    reconcile_cell_after_collision(*this);
 }
 
 void Particle::event_revive_from_secondary()

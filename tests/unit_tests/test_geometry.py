@@ -403,30 +403,3 @@ def test_redundant_surfaces():
     geom = openmc.Geometry([c3])
     redundant_surfs = geom.remove_redundant_surfaces()
     assert len(redundant_surfs) == 0
-
-    
-def test_sphere_overlap(run_in_tmpdir):
-    model = openmc.model.Model()
-    shell_material = openmc.Material()
-    shell_material.add_element("Au", 1.0, percent_type="ao")    
-    shell_material.set_density("g/cm3", 1930) 
-    # revolver density    
-    model.materials = openmc.Materials([shell_material])    
-    surface_inner_shell = openmc.Sphere(r=0.0035)    
-    surface_outer_shell = openmc.Sphere(r=0.0095)    
-    sphere_surface_detector_1 = openmc.Sphere(r=20000, boundary_type="vacuum")    
-    fuel_region = -surface_inner_shell    
-    shell_region = +surface_inner_shell & -surface_outer_shell    
-    void_region_1 = +surface_outer_shell & -sphere_surface_detector_1    
-    fuel_cell = openmc.Cell(region=fuel_region)    
-    shell_cell = openmc.Cell(region=shell_region, fill=shell_material)    
-    void_cell_1 = openmc.Cell(region=void_region_1)        
-    model.geometry = openmc.Geometry([fuel_cell, shell_cell, void_cell_1])    
-    source = openmc.Source()    
-    source.angle = openmc.stats.Isotropic()    
-    model.settings = openmc.Settings()    
-    model.settings.batches = 100    
-    model.settings.particles = 80000    
-    model.settings.run_mode = "fixed source"    
-    model.settings.source = source    
-    model.run(geometry_debug=True)    

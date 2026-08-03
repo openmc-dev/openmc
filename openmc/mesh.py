@@ -22,9 +22,8 @@ from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
 
 
-# VTKHDF format version and element type used for structured mesh output
+# VTKHDF format version used for structured mesh output
 _VTKHDF_VERSION = (2, 1)
-_VTK_HEXAHEDRON = 12
 
 
 def _write_vtkhdf_type(group, name: str):
@@ -1039,8 +1038,8 @@ class StructuredMesh(MeshBase):
                 data=np.arange(0, connectivity.size + 1, _N_HEX_VERTICES),
                 dtype="i8",
             )
-            root.create_dataset("Types",
-                                data=np.full(n_cells, _VTK_HEXAHEDRON),
+            # 12 is the VTK cell type for a linear hexahedron
+            root.create_dataset("Types", data=np.full(n_cells, 12),
                                 dtype="uint8")
 
             cell_data_group = root.create_group("CellData")

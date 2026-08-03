@@ -339,11 +339,7 @@ void Particle::event_delta_advance()
   }
 
   // Sample distance to next position
-  if (type() == ParticleType::electron() ||
-      type() == ParticleType::positron()) {
-    // Electrons/positrons don't move
-    collision_distance() = 0.0;
-  } else if (majorant() == 0.0) {
+  if (majorant() == 0.0) {
     // For a void majorant (rare but possible for a source in a void),
     // the collision distance is infinity.
     collision_distance() = INFINITY;

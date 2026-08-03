@@ -996,28 +996,20 @@ void transport_delta_history_based_single_particle(Particle& p)
   while (p.alive()) {
     p.event_delta_advance();
 
-    if (p.alive()) {
-      // Electrons and positrons collide in-place, no need to rejection sample.
-      if (p.type() == ParticleType::electron() ||
-          p.type() == ParticleType::positron()) {
+    if (p.alive() && p.collision_distance() < p.boundary().distance()) {
+      // Collided before hitting an external boundary. Rejection sample the
+      // majorant.
+      p.event_calculate_xs();
+      if (p.kill_invalid_maj()) {
+        break;
+      }
+      if (p.alive() &&
+          (prn(p.current_seed()) < (p.macro_xs().total / p.majorant()))) {
         p.event_collide();
       }
-
-      if (p.alive() && p.collision_distance() < p.boundary().distance()) {
-        // Collided before hitting an external boundary. Rejection sample the
-        // majorant.
-        p.event_calculate_xs();
-        if (p.kill_invalid_maj()) {
-          break;
-        }
-        if (p.alive() &&
-            (prn(p.current_seed()) < (p.macro_xs().total / p.majorant()))) {
-          p.event_collide();
-        }
-      } else if (p.alive()) {
-        // Crossed an external boundary before colliding.
-        p.event_cross_surface();
-      }
+    } else if (p.alive()) {
+      // Crossed an external boundary before colliding.
+      p.event_cross_surface();
     }
 
     p.event_check_limit_and_revive();

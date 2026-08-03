@@ -290,14 +290,6 @@ void process_delta_advance_particle_events()
     if (!p.alive())
       continue;
 
-    if (p.type() == ParticleType::electron() ||
-        p.type() == ParticleType::positron()) {
-      // Electrons / positrons collide in place and don't require cross section
-      // calculations. Can append to the collision queue directly.
-      simulation::collision_queue.thread_safe_append({p, buffer_idx});
-      continue;
-    }
-
     if (p.collision_distance() < p.boundary().distance()) {
       // We need to compute cross sections prior to processing a collision.
       dispatch_xs_event(buffer_idx);
@@ -339,19 +331,14 @@ void process_delta_collision_events()
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
 
-    if (p.type() == ParticleType::electron() ||
-        p.type() == ParticleType::positron()) {
-      p.event_collide();
-    } else {
-      if (p.kill_invalid_maj()) {
-        continue;
-      }
+    if (p.kill_invalid_maj()) {
+      continue;
+    }
 
-      if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
-        // Real collision, need to process the collision prior to enqueuing an
-        // advance event.
-        p.event_collide();
-      }
+    if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
+      // Real collision, need to process the collision prior to enqueuing an
+      // advance event.
+      p.event_collide();
     }
 
     p.event_check_limit_and_revive();

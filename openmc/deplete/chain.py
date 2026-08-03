@@ -18,7 +18,7 @@ from typing import List
 
 import lxml.etree as ET
 
-from openmc.checkvalue import check_type, check_greater_than, PathLike
+from openmc.checkvalue import check_type, check_length, check_greater_than, PathLike
 from openmc.data import gnds_name, zam
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
@@ -269,6 +269,7 @@ class Chain:
         self.reactions = []
         self.nuclide_dict = {}
         self._fission_yields = None
+        self._decay_matrix = None
 
     def __contains__(self, nuclide):
         return nuclide in self.nuclide_dict
@@ -318,16 +319,16 @@ class Chain:
 
         String arguments in ``decay_files``, ``fpy_files``, and
         ``neutron_files`` will be treated as file names to be read.
-        Alternatively, :class:`openmc.data.endf.Evaluation` instances
-        can be included in these arguments.
+        Alternatively, :class:`openmc.data.endf.Evaluation` or
+        ``endf.Material`` instances can be included in these arguments.
 
         Parameters
         ----------
-        decay_files : list of str or openmc.data.endf.Evaluation
+        decay_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF decay sub-library files
-        fpy_files : list of str or openmc.data.endf.Evaluation
+        fpy_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF neutron-induced fission product yield sub-library files
-        neutron_files : list of str or openmc.data.endf.Evaluation
+        neutron_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF neutron reaction sub-library files
         reactions : iterable of str, optional
             Transmutation reactions to include in the depletion chain, e.g.,
@@ -362,7 +363,7 @@ class Chain:
             print('Processing neutron sub-library files...')
         reactions = {}
         for f in neutron_files:
-            evaluation = openmc.data.endf.Evaluation(f)
+            evaluation = openmc.data.endf.as_evaluation(f)
             name = evaluation.gnds_name
             reactions[name] = {}
             for mf, mt, nc, mod in evaluation.reaction_list:
@@ -412,6 +413,8 @@ class Chain:
                     type_ = ','.join(mode.modes)
                     if mode.daughter in decay_data:
                         target = mode.daughter
+                    elif 'sf' in type_:
+                        target = None
                     else:
                         print('missing {} {} {}'.format(
                             parent, type_, mode.daughter))
@@ -560,9 +563,6 @@ class Chain:
             nuc = Nuclide.from_xml(nuclide_elem, root, this_q)
             chain.add_nuclide(nuc)
 
-        # Store path of XML file (used for handling cache invalidation)
-        chain._xml_path = str(Path(filename).resolve())
-
         return chain
 
     def export_to_xml(self, filename):
@@ -604,8 +604,152 @@ class Chain:
             out[nuc.name] = dict(yield_obj)
         return out
 
+    @property
+    def decay_matrix(self):
+        """Sparse CSC decay transmutation matrix.
+
+        Contains only terms from radioactive decay: diagonal loss terms
+        and off-diagonal gain terms (branching ratios, alpha/proton
+        production). Independent of reaction rates, so computed once and
+        cached.
+
+        See Also
+        --------
+        :meth:`form_rxn_matrix`, :meth:`form_matrix`
+        """
+        if self._decay_matrix is None:
+            n = len(self)
+            rows, cols, vals = [], [], []
+
+            def setval(i, j, val):
+                rows.append(i)
+                cols.append(j)
+                vals.append(val)
+
+            for i, nuc in enumerate(self.nuclides):
+                # Loss from radioactive decay
+                if nuc.half_life is not None:
+                    decay_constant = math.log(2) / nuc.half_life
+                    if decay_constant != 0.0:
+                        setval(i, i, -decay_constant)
+
+                # Gain from radioactive decay
+                if nuc.n_decay_modes != 0:
+                    for decay_type, target, branching_ratio in nuc.decay_modes:
+                        branch_val = branching_ratio * decay_constant
+
+                        # Allow for total annihilation for debug purposes
+                        if branch_val != 0.0:
+                            if target is not None and 'sf' not in decay_type:
+                                k = self.nuclide_dict[target]
+                                setval(k, i, branch_val)
+
+                            # Produce alphas and protons from decay
+                            if 'alpha' in decay_type:
+                                k = self.nuclide_dict.get('He4')
+                                if k is not None:
+                                    count = decay_type.count('alpha')
+                                    setval(k, i, count * branch_val)
+                            elif 'p' in decay_type:
+                                k = self.nuclide_dict.get('H1')
+                                if k is not None:
+                                    count = decay_type.count('p')
+                                    setval(k, i, count * branch_val)
+
+            self._decay_matrix = csc_array((vals, (rows, cols)), shape=(n, n))
+        return self._decay_matrix
+
+    def form_rxn_matrix(self, rates, fission_yields=None):
+        """Form the reaction-rate portion of the transmutation matrix.
+
+        Builds only the terms that depend on reaction rates: transmutation
+        reactions and fission product yields. Does not include radioactive
+        decay terms (see :attr:`decay_matrix`).
+
+        Parameters
+        ----------
+        rates : numpy.ndarray
+            2D array indexed by (nuclide, reaction)
+        fission_yields : dict, optional
+            Option to use a custom set of fission yields. Expected
+            to be of the form ``{parent : {product : f_yield}}``
+            with string nuclide names for ``parent`` and ``product``,
+            and ``f_yield`` as the respective fission yield
+
+        Returns
+        -------
+        scipy.sparse.csc_array
+            Sparse matrix representing reaction-rate terms.
+
+        See Also
+        --------
+        :attr:`decay_matrix`, :meth:`form_matrix`
+        """
+        reactions = set()
+        n = len(self)
+
+        # Accumulate indices/values and then create the matrix at the end to
+        # avoid expensive index checks scipy otherwise does.
+        rows, cols, vals = [], [], []
+
+        def setval(i, j, val):
+            rows.append(i)
+            cols.append(j)
+            vals.append(val)
+
+        if fission_yields is None:
+            fission_yields = self.get_default_fission_yields()
+
+        # Save local variables to avoid attribute lookups in loop
+        index_nuc = rates.index_nuc
+        index_rx = rates.index_rx
+
+        for i, nuc in enumerate(self.nuclides):
+            if nuc.name not in index_nuc:
+                continue
+
+            nuc_ind = index_nuc[nuc.name]
+            nuc_rates = rates[nuc_ind, :]
+
+            for r_type, target, _, br in nuc.reactions:
+                r_id = index_rx[r_type]
+                path_rate = nuc_rates[r_id]
+
+                # Loss term -- make sure we only count loss once for
+                # reactions with branching ratios
+                if r_type not in reactions:
+                    reactions.add(r_type)
+                    if path_rate != 0.0:
+                        setval(i, i, -path_rate)
+
+                # Gain term; allow for total annihilation for debug purposes
+                if r_type != 'fission':
+                    if target is not None and path_rate != 0.0:
+                        k = self.nuclide_dict[target]
+                        setval(k, i, path_rate * br)
+
+                    # Determine light nuclide production, e.g., (n,d) should
+                    # produce H2
+                    if path_rate != 0.0:
+                        light_nucs = REACTIONS[r_type].secondaries
+                        for light_nuc in light_nucs:
+                            k = self.nuclide_dict.get(light_nuc)
+                            if k is not None:
+                                setval(k, i, path_rate * br)
+
+                else:
+                    for product, y in fission_yields[nuc.name].items():
+                        yield_val = y * path_rate
+                        if yield_val != 0.0:
+                            k = self.nuclide_dict[product]
+                            setval(k, i, yield_val)
+
+            reactions.clear()
+
+        return csc_array((vals, (rows, cols)), shape=(n, n))
+
     def form_matrix(self, rates, fission_yields=None):
-        """Forms depletion matrix.
+        """Form the full transmutation matrix (decay + reactions).
 
         Parameters
         ----------
@@ -624,96 +768,10 @@ class Chain:
 
         See Also
         --------
+        :attr:`decay_matrix`, :meth:`form_rxn_matrix`,
         :meth:`get_default_fission_yields`
         """
-        reactions = set()
-
-        n = len(self)
-
-        # we accumulate indices and value entries for everything and create the matrix
-        # in one step at the end to avoid expensive index checks scipy otherwise does.
-        rows, cols, vals = [], [], []
-        def setval(i, j, val):
-            rows.append(i)
-            cols.append(j)
-            vals.append(val)
-
-        if fission_yields is None:
-            fission_yields = self.get_default_fission_yields()
-
-        for i, nuc in enumerate(self.nuclides):
-            # Loss from radioactive decay
-            if nuc.half_life is not None:
-                decay_constant = math.log(2) / nuc.half_life
-                if decay_constant != 0.0:
-                    setval(i, i, -decay_constant)
-
-            # Gain from radioactive decay
-            if nuc.n_decay_modes != 0:
-                for decay_type, target, branching_ratio in nuc.decay_modes:
-                    branch_val = branching_ratio * decay_constant
-
-                    # Allow for total annihilation for debug purposes
-                    if branch_val != 0.0:
-                        if target is not None:
-                            k = self.nuclide_dict[target]
-                            setval(k, i, branch_val)
-
-                        # Produce alphas and protons from decay
-                        if 'alpha' in decay_type:
-                            k = self.nuclide_dict.get('He4')
-                            if k is not None:
-                                count = decay_type.count('alpha')
-                                setval(k, i, count * branch_val)
-                        elif 'p' in decay_type:
-                            k = self.nuclide_dict.get('H1')
-                            if k is not None:
-                                count = decay_type.count('p')
-                                setval(k, i, count * branch_val)
-
-            if nuc.name in rates.index_nuc:
-                # Extract all reactions for this nuclide in this cell
-                nuc_ind = rates.index_nuc[nuc.name]
-                nuc_rates = rates[nuc_ind, :]
-
-                for r_type, target, _, br in nuc.reactions:
-                    # Extract reaction index, and then final reaction rate
-                    r_id = rates.index_rx[r_type]
-                    path_rate = nuc_rates[r_id]
-
-                    # Loss term -- make sure we only count loss once for
-                    # reactions with branching ratios
-                    if r_type not in reactions:
-                        reactions.add(r_type)
-                        if path_rate != 0.0:
-                            setval(i, i, -path_rate)
-
-                    # Gain term; allow for total annihilation for debug purposes
-                    if r_type != 'fission':
-                        if target is not None and path_rate != 0.0:
-                            k = self.nuclide_dict[target]
-                            setval(k, i, path_rate * br)
-
-                        # Determine light nuclide production, e.g., (n,d) should
-                        # produce H2
-                        light_nucs = REACTIONS[r_type].secondaries
-                        for light_nuc in light_nucs:
-                            k = self.nuclide_dict.get(light_nuc)
-                            if k is not None:
-                                setval(k, i, path_rate * br)
-
-                    else:
-                        for product, y in fission_yields[nuc.name].items():
-                            yield_val = y * path_rate
-                            if yield_val != 0.0:
-                                k = self.nuclide_dict[product]
-                                setval(k, i, yield_val)
-
-                # Clear set of reactions
-                reactions.clear()
-
-        # Return CSC representation instead of DOK
-        return csc_array((vals, (rows, cols)), shape=(n, n))
+        return self.decay_matrix + self.form_rxn_matrix(rates, fission_yields)
 
     def add_redox_term(self, matrix, buffer, oxidation_states):
         r"""Adds a redox term to the depletion matrix from data contained in
@@ -808,35 +866,27 @@ class Chain:
         n = len(self)
         matrix = dok_array((n, n))
 
+        check_type("mats", mats, (tuple, str))
+        if not isinstance(mats, str):
+            check_type("mats", mats, tuple, str)
+            check_length("mats", mats, 2, 2)
+            dest_mat, mat = mats
+        else:
+            mat = mats
+            dest_mat = None
+
+        # Build transfer term
+        components = tr_rates.get_components(mat, current_timestep, dest_mat)
+
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
-            # Build transfer terms (nuclide transfer only)
-            if isinstance(mats, str):
-                mat = mats
-                components = tr_rates.get_components(mat, current_timestep)
-                if not components:
-                    break
-                if elm in components:
-                    matrix[i, i] = sum(
-                        tr_rates.get_external_rate(mat, elm, current_timestep))
-                elif nuc.name in components:
-                    matrix[i, i] = sum(
-                        tr_rates.get_external_rate(mat, nuc.name, current_timestep))
-                else:
-                    matrix[i, i] = 0.0
-
-            # Build transfer terms (transfer from one material into another)
-            elif isinstance(mats, tuple):
-                dest_mat, mat = mats
-                components = tr_rates.get_components(mat, current_timestep, dest_mat)
-                if elm in components:
-                    matrix[i, i] = tr_rates.get_external_rate(
-                        mat, elm, current_timestep, dest_mat)[0]
-                elif nuc.name in components:
-                    matrix[i, i] = tr_rates.get_external_rate(
-                        mat, nuc.name, current_timestep, dest_mat)[0]
-                else:
-                    matrix[i, i] = 0.0
+            if elm in components:
+                key = elm
+            elif nuc.name in components:
+                key = nuc.name
+            else:
+                continue
+            matrix[i, i] = sum(tr_rates.get_external_rate(mat, key, current_timestep, dest_mat))
 
         # Return CSC instead of DOK
         return matrix.tocsc()
@@ -866,14 +916,13 @@ class Chain:
         # Use DOK as intermediate representation
         n = len(self)
         vector = dok_array((n, 1))
+        components = ext_source_rates.get_components(mat, current_timestep)
 
         for i, nuc in enumerate(self.nuclides):
             # Build source term vector
-            if nuc.name in ext_source_rates.get_components(mat, current_timestep):
+            if nuc.name in components:
                 vector[i] = sum(ext_source_rates.get_external_rate(
                     mat, nuc.name, current_timestep))
-            else:
-                vector[i] = 0.0
 
         # Return CSC instead of DOK
         return vector.tocsc()
@@ -1356,12 +1405,18 @@ def _get_chain(
     elif not isinstance(chain_file, PathLike):
         raise TypeError("chain_file must be path-like, a Chain, or None")
 
-    # Determine the key for the cache, which consists of the absolute path, the
-    # file modification time, the file size, and the fission Q values.
-    chain_path = Path(chain_file).resolve()
+    # Determine the key for the cache, which consists of the file identity,
+    # modification time, file size, and fission Q values.
+    chain_path = Path(chain_file).absolute()
     stat_result = chain_path.stat()
     fq_tuple = tuple(sorted(fission_q.items())) if fission_q else ()
-    key = (chain_path, stat_result.st_mtime, stat_result.st_size, fq_tuple)
+    key = (
+        stat_result.st_dev,
+        stat_result.st_ino,
+        stat_result.st_mtime_ns,
+        stat_result.st_size,
+        fq_tuple,
+    )
 
     # Check the global cache. If not cached, load the chain from XML and store
     global _CHAIN_CACHE
@@ -1371,9 +1426,8 @@ def _get_chain(
 
 
 def _invalidate_chain_cache(chain):
-    """Invalidate the cache for a specific Chain (when it is modifed)."""
-    if hasattr(chain, '_xml_path'):
-        # Remove all entries with the same path as self._xml_path
-        for key in list(_CHAIN_CACHE.keys()):
-            if str(key[0]) == chain._xml_path:
-                del _CHAIN_CACHE[key]
+    """Invalidate the cache for a specific Chain (when it is modified)."""
+    chain._decay_matrix = None
+    for key, cached_chain in list(_CHAIN_CACHE.items()):
+        if cached_chain is chain:
+            del _CHAIN_CACHE[key]

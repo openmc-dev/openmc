@@ -1,11 +1,12 @@
 #include "openmc/mesh.h"
 #include <algorithm> // for copy, equal, min, min_element
 #include <cassert>
-#include <cstdint>        // for uint64_t
-#include <cstring>        // for memcpy
-#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
-#include <cmath>          // for ceil
-#include <cstddef>        // for size_t
+#include <cmath>   // for ceil
+#include <cstddef> // for size_t
+#include <cstdint> // for uint64_t
+#include <cstring> // for memcpy
+#include <limits>
+#include <numeric> // for accumulate
 #include <string>
 
 #ifdef _MSC_VER
@@ -16,13 +17,7 @@
 #include "mpi.h"
 #endif
 
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xeval.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xsort.hpp"
-#include "xtensor/xtensor.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h> // for fmt
 
 #include "openmc/capi.h"
@@ -434,6 +429,25 @@ vector<double> Mesh::volumes() const
   return volumes;
 }
 
+//! Default (Cartesian) axis labels used for surface bin labels.
+std::array<const char*, 3> Mesh::axis_labels() const
+{
+  return {"x", "y", "z"};
+}
+
+//! Build the surface component of a mesh surface tally bin label.
+//! surf_index: 0=out/min, 1=in/min, 2=out/max, 3=in/max
+std::string Mesh::surface_bin_label(int surf_index) const
+{
+  auto labels = this->axis_labels();
+  int dim = surf_index / 4;
+  int code = surf_index % 4;
+  bool incoming = (code == 1) || (code == 3);
+  bool max = (code == 2) || (code == 3);
+  return fmt::format(" {}, {}-{}", incoming ? "Incoming" : "Outgoing",
+    labels[dim], max ? "max" : "min");
+}
+
 void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   int32_t* materials, double* volumes) const
 {
@@ -772,11 +786,9 @@ std::string StructuredMesh::bin_label(int bin) const
   }
 }
 
-xt::xtensor<int, 1> StructuredMesh::get_x_shape() const
+tensor::Tensor<int> StructuredMesh::get_shape_tensor() const
 {
-  // because method is const, shape_ is const as well and can't be adapted
-  auto tmp_shape = shape_;
-  return xt::adapt(tmp_shape, {n_dimension_});
+  return tensor::Tensor<int>(shape_.data(), static_cast<size_t>(n_dimension_));
 }
 
 Position StructuredMesh::sample_element(
@@ -961,10 +973,11 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
 
   // write vertex coordinates
-  xt::xtensor<double, 2> vertices({static_cast<size_t>(this->n_vertices()), 3});
+  tensor::Tensor<double> vertices(
+    {static_cast<size_t>(this->n_vertices()), static_cast<size_t>(3)});
   for (int i = 0; i < this->n_vertices(); i++) {
     auto v = this->vertex(i);
-    xt::view(vertices, i, xt::all()) = xt::xarray<double>({v.x, v.y, v.z});
+    vertices.slice(i) = {v.x, v.y, v.z};
   }
   write_dataset(mesh_group, "vertices", vertices);
 
@@ -972,8 +985,10 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
 
   // write element types and connectivity
   vector<double> volumes;
-  xt::xtensor<int, 2> connectivity({static_cast<size_t>(this->n_bins()), 8});
-  xt::xtensor<int, 2> elem_types({static_cast<size_t>(this->n_bins()), 1});
+  tensor::Tensor<int> connectivity(
+    {static_cast<size_t>(this->n_bins()), static_cast<size_t>(8)});
+  tensor::Tensor<int> elem_types(
+    {static_cast<size_t>(this->n_bins()), static_cast<size_t>(1)});
   for (int i = 0; i < this->n_bins(); i++) {
     auto conn = this->connectivity(i);
 
@@ -981,21 +996,18 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
 
     // write linear tet element
     if (conn.size() == 4) {
-      xt::view(elem_types, i, xt::all()) =
-        static_cast<int>(ElementType::LINEAR_TET);
-      xt::view(connectivity, i, xt::all()) =
-        xt::xarray<int>({conn[0], conn[1], conn[2], conn[3], -1, -1, -1, -1});
+      elem_types.slice(i) = static_cast<int>(ElementType::LINEAR_TET);
+      connectivity.slice(i) = {
+        conn[0], conn[1], conn[2], conn[3], -1, -1, -1, -1};
       // write linear hex element
     } else if (conn.size() == 8) {
-      xt::view(elem_types, i, xt::all()) =
-        static_cast<int>(ElementType::LINEAR_HEX);
-      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1],
-        conn[2], conn[3], conn[4], conn[5], conn[6], conn[7]});
+      elem_types.slice(i) = static_cast<int>(ElementType::LINEAR_HEX);
+      connectivity.slice(i) = {
+        conn[0], conn[1], conn[2], conn[3], conn[4], conn[5], conn[6], conn[7]};
     } else {
       num_elem_skipped++;
-      xt::view(elem_types, i, xt::all()) =
-        static_cast<int>(ElementType::UNSUPPORTED);
-      xt::view(connectivity, i, xt::all()) = -1;
+      elem_types.slice(i) = static_cast<int>(ElementType::UNSUPPORTED);
+      connectivity.slice(i) = -1;
     }
   }
 
@@ -1087,16 +1099,29 @@ int StructuredMesh::get_bin(Position r) const
 
 int StructuredMesh::n_bins() const
 {
-  return std::accumulate(
-    shape_.begin(), shape_.begin() + n_dimension_, 1, std::multiplies<>());
+  // Bin indices are stored as 32-bit ints in the tally system.
+  int64_t n = 1;
+  for (int i = 0; i < n_dimension_; ++i)
+    n *= shape_[i];
+  if (n > std::numeric_limits<int>::max()) {
+    fatal_error(fmt::format(
+      "Mesh {} has too many bins ({}) for 32-bit tally indexing", id_, n));
+  }
+  return static_cast<int>(n);
 }
 
 int StructuredMesh::n_surface_bins() const
 {
-  return 4 * n_dimension_ * n_bins();
+  // Surface bin indices are stored as 32-bit ints in the tally system.
+  int64_t n = static_cast<int64_t>(n_bins()) * 4 * n_dimension_;
+  if (n > std::numeric_limits<int>::max()) {
+    fatal_error(fmt::format(
+      "Mesh {} has too many surface bins ({}) for tally indexing", id_, n));
+  }
+  return static_cast<int>(n);
 }
 
-xt::xtensor<double, 1> StructuredMesh::count_sites(
+tensor::Tensor<double> StructuredMesh::count_sites(
   const SourceSite* bank, int64_t length, bool* outside) const
 {
   // Determine shape of array for counts
@@ -1104,7 +1129,7 @@ xt::xtensor<double, 1> StructuredMesh::count_sites(
   vector<std::size_t> shape = {m};
 
   // Create array of zeros
-  xt::xarray<double> cnt {shape, 0.0};
+  auto cnt = tensor::zeros<double>(shape);
   bool outside_ = false;
 
   for (int64_t i = 0; i < length; i++) {
@@ -1123,30 +1148,23 @@ xt::xtensor<double, 1> StructuredMesh::count_sites(
     cnt(mesh_bin) += site.wgt;
   }
 
-  // Create copy of count data. Since ownership will be acquired by xtensor,
-  // std::allocator must be used to avoid Valgrind mismatched free() / delete
-  // warnings.
+  // Create reduced count data
+  auto counts = tensor::zeros<double>(shape);
   int total = cnt.size();
-  double* cnt_reduced = std::allocator<double> {}.allocate(total);
 
 #ifdef OPENMC_MPI
   // collect values from all processors
-  MPI_Reduce(
-    cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(cnt.data(), counts.data(), total, MPI_SUM, 0, mpi::intracomm);
 
   // Check if there were sites outside the mesh for any processor
   if (outside) {
     MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);
   }
 #else
-  std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
+  std::copy(cnt.data(), cnt.data() + total, counts.data());
   if (outside)
     *outside = outside_;
 #endif
-
-  // Adapt reduced values in array back into an xarray
-  auto arr = xt::adapt(cnt_reduced, total, xt::acquire_ownership(), shape);
-  xt::xarray<double> counts = arr;
 
   return counts;
 }
@@ -1340,10 +1358,10 @@ void StructuredMesh::surface_bins_crossed(
 
 int RegularMesh::set_grid()
 {
-  auto shape = xt::adapt(shape_, {n_dimension_});
+  tensor::Tensor<int> shape(shape_.data(), static_cast<size_t>(n_dimension_));
 
   // Check that dimensions are all greater than zero
-  if (xt::any(shape <= 0)) {
+  if ((shape <= 0).any()) {
     set_errmsg("All entries for a regular mesh dimensions "
                "must be positive.");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -1365,13 +1383,13 @@ int RegularMesh::set_grid()
     }
 
     // Check for negative widths
-    if (xt::any(width_ < 0.0)) {
+    if ((width_ < 0.0).any()) {
       set_errmsg("Cannot have a negative width on a regular mesh.");
       return OPENMC_E_INVALID_ARGUMENT;
     }
 
     // Set width and upper right coordinate
-    upper_right_ = xt::eval(lower_left_ + shape * width_);
+    upper_right_ = lower_left_ + shape * width_;
 
   } else if (upper_right_.size() > 0) {
 
@@ -1383,7 +1401,7 @@ int RegularMesh::set_grid()
     }
 
     // Check that upper-right is above lower-left
-    if (xt::any(upper_right_ < lower_left_)) {
+    if ((upper_right_ < lower_left_).any()) {
       set_errmsg(
         "The upper_right coordinates of a regular mesh must be greater than "
         "the lower_left coordinates.");
@@ -1391,11 +1409,11 @@ int RegularMesh::set_grid()
     }
 
     // Set width
-    width_ = xt::eval((upper_right_ - lower_left_) / shape);
+    width_ = (upper_right_ - lower_left_) / shape;
   }
 
   // Set material volumes
-  volume_frac_ = 1.0 / xt::prod(shape)();
+  volume_frac_ = 1.0 / shape.prod();
 
   element_volume_ = 1.0;
   for (int i = 0; i < n_dimension_; i++) {
@@ -1411,7 +1429,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
     fatal_error("Must specify <dimension> on a regular mesh.");
   }
 
-  xt::xtensor<int, 1> shape = get_node_xarray<int>(node, "dimension");
+  tensor::Tensor<int> shape = get_node_tensor<int>(node, "dimension");
   int n = n_dimension_ = shape.size();
   if (n != 1 && n != 2 && n != 3) {
     fatal_error("Mesh must be one, two, or three dimensions.");
@@ -1421,7 +1439,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
   // Check for lower-left coordinates
   if (check_for_node(node, "lower_left")) {
     // Read mesh lower-left corner location
-    lower_left_ = get_node_xarray<double>(node, "lower_left");
+    lower_left_ = get_node_tensor<double>(node, "lower_left");
   } else {
     fatal_error("Must specify <lower_left> on a mesh.");
   }
@@ -1432,11 +1450,11 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
       fatal_error("Cannot specify both <upper_right> and <width> on a mesh.");
     }
 
-    width_ = get_node_xarray<double>(node, "width");
+    width_ = get_node_tensor<double>(node, "width");
 
   } else if (check_for_node(node, "upper_right")) {
 
-    upper_right_ = get_node_xarray<double>(node, "upper_right");
+    upper_right_ = get_node_tensor<double>(node, "upper_right");
 
   } else {
     fatal_error("Must specify either <upper_right> or <width> on a mesh.");
@@ -1454,7 +1472,7 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
     fatal_error("Must specify <dimension> on a regular mesh.");
   }
 
-  xt::xtensor<int, 1> shape;
+  tensor::Tensor<int> shape;
   read_dataset(group, "dimension", shape);
   int n = n_dimension_ = shape.size();
   if (n != 1 && n != 2 && n != 3) {
@@ -1485,6 +1503,11 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
 
 int RegularMesh::get_index_in_direction(double r, int i) const
 {
+  if (r <= lower_left_[i])
+    return r == lower_left_[i] ? 1 : 0;
+  if (r >= upper_right_[i])
+    return r == upper_right_[i] ? shape_[i] : shape_[i] + 1;
+
   return std::ceil((r - lower_left_[i]) / width_[i]);
 }
 
@@ -1569,13 +1592,13 @@ std::pair<vector<double>, vector<double>> RegularMesh::plot(
 
 void RegularMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  write_dataset(mesh_group, "dimension", get_x_shape());
+  write_dataset(mesh_group, "dimension", get_shape_tensor());
   write_dataset(mesh_group, "lower_left", lower_left_);
   write_dataset(mesh_group, "upper_right", upper_right_);
   write_dataset(mesh_group, "width", width_);
 }
 
-xt::xtensor<double, 1> RegularMesh::count_sites(
+tensor::Tensor<double> RegularMesh::count_sites(
   const SourceSite* bank, int64_t length, bool* outside) const
 {
   // Determine shape of array for counts
@@ -1583,7 +1606,7 @@ xt::xtensor<double, 1> RegularMesh::count_sites(
   vector<std::size_t> shape = {m};
 
   // Create array of zeros
-  xt::xarray<double> cnt {shape, 0.0};
+  auto cnt = tensor::zeros<double>(shape);
   bool outside_ = false;
 
   for (int64_t i = 0; i < length; i++) {
@@ -1602,30 +1625,23 @@ xt::xtensor<double, 1> RegularMesh::count_sites(
     cnt(mesh_bin) += site.wgt;
   }
 
-  // Create copy of count data. Since ownership will be acquired by xtensor,
-  // std::allocator must be used to avoid Valgrind mismatched free() / delete
-  // warnings.
+  // Create reduced count data
+  auto counts = tensor::zeros<double>(shape);
   int total = cnt.size();
-  double* cnt_reduced = std::allocator<double> {}.allocate(total);
 
 #ifdef OPENMC_MPI
   // collect values from all processors
-  MPI_Reduce(
-    cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(cnt.data(), counts.data(), total, MPI_SUM, 0, mpi::intracomm);
 
   // Check if there were sites outside the mesh for any processor
   if (outside) {
     MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);
   }
 #else
-  std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
+  std::copy(cnt.data(), cnt.data() + total, counts.data());
   if (outside)
     *outside = outside_;
 #endif
-
-  // Adapt reduced values in array back into an xarray
-  auto arr = xt::adapt(cnt_reduced, total, xt::acquire_ownership(), shape);
-  xt::xarray<double> counts = arr;
 
   return counts;
 }
@@ -1820,6 +1836,11 @@ std::string CylindricalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+std::array<const char*, 3> CylindricalMesh::axis_labels() const
+{
+  return {"r", "phi", "z"};
+}
+
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
@@ -1834,7 +1855,7 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   } else {
     mapped_r[1] = std::atan2(r.y, r.x);
     if (mapped_r[1] < 0)
-      mapped_r[1] += 2 * M_PI;
+      mapped_r[1] += 2 * PI;
   }
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
@@ -1893,18 +1914,19 @@ double CylindricalMesh::find_r_crossing(
   const double inv_denominator = 1.0 / denominator;
 
   const double p = (u.x * r.x + u.y * r.y) * inv_denominator;
-  double c = r.x * r.x + r.y * r.y - r0 * r0;
-  double D = p * p - c * inv_denominator;
+  double R = std::sqrt(r.x * r.x + r.y * r.y);
+  double D = p * p - (R - r0) * (R + r0) * inv_denominator;
 
   if (D < 0.0)
     return INFTY;
 
   D = std::sqrt(D);
 
-  // the solution -p - D is always smaller as -p + D : Check this one first
-  if (std::abs(c) <= RADIAL_MESH_TOL)
+  // Particle is already on the shell surface; avoid spurious crossing
+  if (std::abs(R - r0) <= RADIAL_MESH_TOL * (1.0 + std::abs(r0)))
     return INFTY;
 
+  // Check -p - D first because it is always smaller as -p + D
   if (-p - D > l)
     return -p - D;
   if (-p + D > l)
@@ -2112,6 +2134,11 @@ std::string SphericalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+std::array<const char*, 3> SphericalMesh::axis_labels() const
+{
+  return {"r", "theta", "phi"};
+}
+
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
@@ -2127,7 +2154,7 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
     mapped_r[1] = std::acos(r.z / mapped_r.x);
     mapped_r[2] = std::atan2(r.y, r.x);
     if (mapped_r[2] < 0)
-      mapped_r[2] += 2 * M_PI;
+      mapped_r[2] += 2 * PI;
   }
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
@@ -2178,15 +2205,16 @@ double SphericalMesh::find_r_crossing(
   if (r0 == 0.0)
     return INFTY;
   const double p = r.dot(u);
-  double c = r.dot(r) - r0 * r0;
-  double D = p * p - c;
+  double R = r.norm();
+  double D = p * p - (R - r0) * (R + r0);
 
-  if (std::abs(c) <= RADIAL_MESH_TOL)
+  // Particle is already on the shell surface; avoid spurious crossing
+  if (std::abs(R - r0) <= RADIAL_MESH_TOL * (1.0 + std::abs(r0)))
     return INFTY;
 
   if (D >= 0.0) {
     D = std::sqrt(D);
-    // the solution -p - D is always smaller as -p + D : Check this one first
+    // Check -p - D first because it is always smaller as -p + D
     if (-p - D > l)
       return -p - D;
     if (-p + D > l)
@@ -2696,7 +2724,7 @@ extern "C" int openmc_regular_mesh_get_params(
     return err;
   RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
-  if (m->lower_left_.dimension() == 0) {
+  if (m->lower_left_.empty()) {
     set_errmsg("Mesh parameters have not been set.");
     return OPENMC_E_ALLOCATE;
   }
@@ -2723,17 +2751,17 @@ extern "C" int openmc_regular_mesh_set_params(
 
   vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
-    m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
-    m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
-    m->width_ = (m->upper_right_ - m->lower_left_) / m->get_x_shape();
+    m->lower_left_ = tensor::Tensor<double>(ll, n);
+    m->upper_right_ = tensor::Tensor<double>(ur, n);
+    m->width_ = (m->upper_right_ - m->lower_left_) / m->get_shape_tensor();
   } else if (ll && width) {
-    m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
-    m->width_ = xt::adapt(width, n, xt::no_ownership(), shape);
-    m->upper_right_ = m->lower_left_ + m->get_x_shape() * m->width_;
+    m->lower_left_ = tensor::Tensor<double>(ll, n);
+    m->width_ = tensor::Tensor<double>(width, n);
+    m->upper_right_ = m->lower_left_ + m->get_shape_tensor() * m->width_;
   } else if (ur && width) {
-    m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
-    m->width_ = xt::adapt(width, n, xt::no_ownership(), shape);
-    m->lower_left_ = m->upper_right_ - m->get_x_shape() * m->width_;
+    m->upper_right_ = tensor::Tensor<double>(ur, n);
+    m->width_ = tensor::Tensor<double>(width, n);
+    m->lower_left_ = m->upper_right_ - m->get_shape_tensor() * m->width_;
   } else {
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2743,7 +2771,7 @@ extern "C" int openmc_regular_mesh_set_params(
 
   // TODO: incorporate this into method in RegularMesh that can be called from
   // here and from constructor
-  m->volume_frac_ = 1.0 / xt::prod(m->get_x_shape())();
+  m->volume_frac_ = 1.0 / m->get_shape_tensor().prod();
   m->element_volume_ = 1.0;
   for (int i = 0; i < m->n_dimension_; i++) {
     m->element_volume_ *= m->width_[i];
@@ -2792,7 +2820,7 @@ int openmc_structured_mesh_get_grid_impl(int32_t index, double** grid_x,
     return err;
   C* m = dynamic_cast<C*>(model::meshes[index].get());
 
-  if (m->lower_left_.dimension() == 0) {
+  if (m->lower_left_.empty()) {
     set_errmsg("Mesh parameters have not been set.");
     return OPENMC_E_ALLOCATE;
   }
@@ -3669,8 +3697,15 @@ void LibMesh::initialize()
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
   libMesh::Point ll = bbox_.min();
   libMesh::Point ur = bbox_.max();
-  lower_left_ = {ll(0), ll(1), ll(2)};
-  upper_right_ = {ur(0), ur(1), ur(2)};
+  if (length_multiplier_ > 0.0) {
+    lower_left_ = {length_multiplier_ * ll(0), length_multiplier_ * ll(1),
+      length_multiplier_ * ll(2)};
+    upper_right_ = {length_multiplier_ * ur(0), length_multiplier_ * ur(1),
+      length_multiplier_ * ur(2)};
+  } else {
+    lower_left_ = {ll(0), ll(1), ll(2)};
+    upper_right_ = {ur(0), ur(1), ur(2)};
+  }
 }
 
 // Sample position within a tet for LibMesh type tets
@@ -3680,11 +3715,16 @@ Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
   // Get tet vertex coordinates from LibMesh
   std::array<Position, 4> tet_verts;
   for (int i = 0; i < elem.n_nodes(); i++) {
-    auto node_ref = elem.node_ref(i);
+    const auto& node_ref = elem.node_ref(i);
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates
-  return this->sample_tet(tet_verts, seed);
+  Position sampled_position = this->sample_tet(tet_verts, seed);
+  if (length_multiplier_ > 0.0) {
+    return length_multiplier_ * sampled_position;
+  } else {
+    return sampled_position;
+  }
 }
 
 Position LibMesh::centroid(int bin) const
@@ -3705,7 +3745,7 @@ int LibMesh::n_vertices() const
 
 Position LibMesh::vertex(int vertex_id) const
 {
-  const auto node_ref = m_->node_ref(vertex_id);
+  const auto& node_ref = m_->node_ref(vertex_id);
   if (length_multiplier_ > 0.0) {
     return length_multiplier_ * Position(node_ref(0), node_ref(1), node_ref(2));
   } else {
@@ -3831,6 +3871,14 @@ void LibMesh::set_score_data(const std::string& var_name,
 
 void LibMesh::write(const std::string& filename) const
 {
+  // A serial libMesh communicator considers every OpenMC rank to be its
+  // processor 0. Restrict the non-collective write to the OpenMC master in
+  // that case. With a parallel communicator, all ranks must participate in
+  // libMesh's solution assembly.
+  if (settings::libmesh_comm->size() == 1 && !mpi::master) {
+    return;
+  }
+
   write_message(fmt::format(
     "Writing file: {}.e for unstructured mesh {}", filename, this->id_));
   libMesh::ExodusII_IO exo(*m_);

@@ -4,11 +4,15 @@
 #ifndef OPENMC_SOURCE_H
 #define OPENMC_SOURCE_H
 
+#include <atomic>
 #include <limits>
 #include <unordered_set>
+#include <utility> // for pair
 
 #include "pugixml.hpp"
 
+#include "openmc/array.h"
+#include "openmc/distribution.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
 #include "openmc/memory.h"
@@ -25,15 +29,24 @@ namespace openmc {
 // source_rejection_fraction
 constexpr int EXTSRC_REJECT_THRESHOLD {10000};
 
+// Maximum number of source rejections allowed while sampling a single site
+constexpr int64_t MAX_SOURCE_REJECTIONS_PER_SAMPLE {1'000'000};
+
 //==============================================================================
 // Global variables
 //==============================================================================
+
+// Cumulative counters for source rejection diagnostics. These are atomic to
+// allow thread-safe concurrent sampling of external sources.
+extern std::atomic<int64_t> source_n_accept;
+extern std::atomic<int64_t> source_n_reject;
 
 class Source;
 
 namespace model {
 
 extern vector<unique_ptr<Source>> external_sources;
+extern vector<unique_ptr<Source>> adjoint_sources;
 
 // Probability distribution for selecting external sources
 extern DiscreteIndex external_sources_probability;
@@ -251,6 +264,139 @@ private:
 };
 
 //==============================================================================
+//! Parametric tokamak plasma neutron source
+//!
+//! This source samples neutron positions from a tokamak plasma geometry using
+//! Miller-style flux surface parameterization with user-specified emission
+//! profiles and energy distributions.
+//!
+//! Flux surface parameterization:
+//!   R = R0 + r*cos(alpha + delta*sin(alpha)) + Delta*(1 - (r/a)^2)
+//!   Z = kappa * r * sin(alpha)
+//!
+//! The sampling algorithm:
+//! 1. Sample minor radius r from precomputed CDF of S(r) * Jacobian
+//! 2. Sample poloidal angle alpha from conditional P(alpha|r) using mixture
+//!    of precomputed CDFs weighted by functions of r
+//! 3. Sample energy and time from user-provided distribution(s)
+//! 4. Sample isotropic direction
+//! 5. Sample toroidal angle phi uniformly in [phi_start, phi_start +
+//! phi_extent]
+//! 6. Transform (r, alpha, phi) to Cartesian (x, y, z), applying the optional
+//!    vertical shift of the plasma center
+//!
+//! The user provides the emission density S(r) directly (e.g., from transport
+//! codes like TRANSP, ASTRA, etc.), allowing full flexibility in reaction
+//! physics calculations. S(r) is a profile in arbitrary units sampled on the
+//! r_over_a grid; only its shape matters, since it is normalized internally.
+//! Energy distributions can be specified as either a single distribution for
+//! all r, or one distribution per radial point.
+//==============================================================================
+
+class TokamakSource : public Source {
+public:
+  // Constructors
+  explicit TokamakSource(pugi::xml_node node);
+
+  //! Sample from the tokamak source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
+private:
+  //==========================================================================
+  // Private methods
+
+  //! Precompute data structures for efficient sampling
+  void precompute_sampling_distributions();
+
+  //! Sample minor radius from marginal CDF
+  //! \param seed Pseudorandom seed pointer
+  //! \return Sampled r/a value
+  double sample_r_over_a(uint64_t* seed) const;
+
+  //! Sample poloidal angle given r using mixture of precomputed CDFs
+  //! \param r_norm Normalized minor radius r/a
+  //! \param seed Pseudorandom seed pointer
+  //! \return Sampled poloidal angle alpha [rad]
+  double sample_poloidal_angle(double r_norm, uint64_t* seed) const;
+
+  //! Compute the k-th mixture weight w_k(r) * I_hat_k for poloidal sampling
+  //! \param k Basis function index (0-5)
+  //! \param r Normalized minor radius r/a
+  //! \return Mixture weight for component k
+  double mixture_weight(int k, double r) const;
+
+  //! Sample energy from the distribution(s)
+  //! \param r_norm Normalized minor radius r/a (for distribution selection)
+  //! \param seed Pseudorandom seed pointer
+  //! \return (Sampled energy [eV], importance weight)
+  std::pair<double, double> sample_energy(double r_norm, uint64_t* seed) const;
+
+  //! Transform from flux coordinates (r, alpha, phi) to Cartesian (x, y, z)
+  //! \param r Minor radius [cm]
+  //! \param alpha Poloidal angle [rad]
+  //! \param phi Toroidal angle [rad]
+  //! \return Position in Cartesian coordinates [cm]
+  Position flux_to_cartesian(double r, double alpha, double phi) const;
+
+  //==========================================================================
+  // Data members
+
+  // Emission profile (input)
+  vector<double> r_over_a_;         //!< Normalized minor radius grid points
+  vector<double> emission_density_; //!< Emission density S(r) at grid points
+
+  // Energy distribution(s): either 1 for all r, or one per r point
+  vector<unique_ptr<Distribution>> energy_dists_;
+
+  // Time distribution (defaults to a delta distribution at t=0)
+  UPtrDist time_;
+
+  // Angular distribution (isotropic)
+  UPtrAngle angle_;
+
+  // Tokamak geometry parameters
+  double major_radius_;    //!< Major radius R0 [cm]
+  double minor_radius_;    //!< Minor radius a [cm]
+  double elongation_;      //!< Elongation kappa
+  double triangularity_;   //!< Triangularity delta
+  double shafranov_shift_; //!< Shafranov shift Delta [cm]
+  double vertical_shift_;  //!< Vertical shift of plasma center [cm]
+
+  // Normalized geometry parameters (precomputed for efficiency)
+  double epsilon_;     //!< Inverse aspect ratio a/R0
+  double delta_tilde_; //!< Normalized Shafranov shift Delta/a
+
+  // Toroidal angle bounds
+  double phi_start_;  //!< Starting toroidal angle [rad]
+  double phi_extent_; //!< Toroidal angle extent [rad]
+
+  // Precomputed distribution for radial sampling
+  unique_ptr<Tabular> radial_dist_;
+
+  // Coefficients of the radial geometric polynomial: A*r - B*r^2 - C*r^3
+  // Also used as the analytical normalization for poloidal mixture weights
+  double radial_poly_a_; //!< 1 + ε·Δ̃
+  double radial_poly_b_; //!< (3/8)·c₁·ε
+  double radial_poly_c_; //!< 2·ε·Δ̃
+
+  // Precomputed Bernstein basis functions for poloidal angle sampling.
+  // Using the factorization f(r_tilde, alpha) = R_tilde x J_tilde where:
+  //   R_tilde = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2  (Bernstein quadratic)
+  //   J_tilde = b3*(1-r) + b4*r                      (Bernstein linear)
+  // The product gives 6 non-negative basis functions g_k(alpha) with
+  // weights w_k(r_tilde) that are products of Bernstein polynomials.
+  // Distributions are tabulated on [0, pi] exploiting up-down symmetry.
+  static constexpr int N_POLOIDAL_BASIS = 6; //!< Number of basis functions
+  int n_alpha_; //!< Number of poloidal angle grid points
+  array<unique_ptr<Tabular>, N_POLOIDAL_BASIS>
+    poloidal_dists_; //!< Distributions for each basis function g_k(alpha)
+  array<double, N_POLOIDAL_BASIS>
+    poloidal_integrals_; //!< Integrals of g_k(alpha) over [0, pi]
+};
+
+//==============================================================================
 // Functions
 //==============================================================================
 
@@ -264,6 +410,9 @@ extern "C" void initialize_source();
 SourceSite sample_external_source(uint64_t* seed);
 
 void free_memory_source();
+
+//! Reset cumulative source rejection counters
+void reset_source_rejection_counters();
 
 } // namespace openmc
 

@@ -265,23 +265,29 @@ private:
 };
 
 //==============================================================================
-//! Normal distributions with form 1/2*std_dev*sqrt(pi) exp
-//! (-(e-E0)/2*std_dev)^2
+//! Normal distribution with optional truncation bounds.
+//!
+//! The standard normal PDF is 1/(sqrt(2*pi)*sigma) *
+//! exp(-(x-mu)^2/(2*sigma^2)). When truncated to [lower, upper], the PDF is
+//! renormalized so that it integrates to 1 over the truncation interval.
 //==============================================================================
 
 class Normal : public Distribution {
 public:
   explicit Normal(pugi::xml_node node);
-  Normal(double mean_value, double std_dev)
-    : mean_value_ {mean_value}, std_dev_ {std_dev} {};
+  Normal(double mean_value, double std_dev, double lower = -INFTY,
+    double upper = INFTY);
 
   //! Evaluate probability density, f(x), at a point
   //! \param x Point to evaluate f(x)
-  //! \return f(x)
+  //! \return f(x), accounting for truncation normalization
   double evaluate(double x) const override;
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
+  double lower() const { return lower_; }
+  double upper() const { return upper_; }
+  bool is_truncated() const { return is_truncated_; }
 
 protected:
   //! Sample a value (unbiased) from the distribution
@@ -290,8 +296,15 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
-  double mean_value_; //!< middle of distribution [eV]
-  double std_dev_;    //!< standard deviation [eV]
+  double mean_value_;  //!< Mean of distribution
+  double std_dev_;     //!< Standard deviation
+  double lower_;       //!< Lower truncation bound (default: -INFTY)
+  double upper_;       //!< Upper truncation bound (default: +INFTY)
+  bool is_truncated_;  //!< True if bounds are finite
+  double norm_factor_; //!< Normalization factor for truncated distribution
+
+  //! Compute normalization factor for truncated distribution
+  void compute_normalization();
 };
 
 //==============================================================================
@@ -392,6 +405,71 @@ private:
   vector<double> weight_; //!< Importance weights for component selection
   DiscreteIndex di_;      //!< Discrete probability distribution of indices
   double integral_;       //!< Integral of distribution
+};
+
+//==============================================================================
+// DecaySpectrum — non-owning mixture of decay photon distributions
+//==============================================================================
+
+//! Energy distribution formed by mixing multiple decay photon spectra.
+//!
+//! Unlike the general Mixture distribution, this class holds non-owning
+//! pointers to the component distributions (which live in
+//! data::chain_nuclides). Each component is weighted by the activity
+//! (atoms * decay_constant) of the corresponding nuclide.
+
+class DecaySpectrum : public Distribution {
+public:
+  //============================================================================
+  // Types, aliases
+
+  struct Sample {
+    double energy;
+    double weight;
+    int parent_nuclide;
+  };
+
+  //============================================================================
+  // Constructors
+
+  //! Construct from an XML node containing nuclide names and atom densities.
+  //!
+  //! Reads child ``<nuclide>`` elements with ``name`` and ``density``
+  //! attributes, resolves them against the loaded depletion chain, and
+  //! constructs the mixed distribution.
+  explicit DecaySpectrum(pugi::xml_node node);
+
+  //============================================================================
+  // Methods
+
+  //! Sample a value from the distribution and return the parent nuclide index
+  //! \param seed Pseudorandom number seed pointer
+  //! \return (Sampled energy, sample weight, chain nuclide index)
+  Sample sample_with_parent(uint64_t* seed) const;
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
+
+  double integral() const override;
+
+protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  double sample_unbiased(uint64_t* seed) const override;
+
+private:
+  //! Initialize decay spectrum sampling data
+  //! \param nuclide_indices  Indices of decay photon emitters in
+  //!   data::chain_nuclides
+  //! \param atoms  Number of atoms for each component.
+  void init(vector<int> nuclide_indices, const vector<double>& atoms);
+
+  vector<int> nuclide_indices_; //!< Indices of emitting nuclides in the chain
+  DiscreteIndex di_;            //!< Discrete index for component selection
+  double integral_;             //!< Total photon emission rate
 };
 
 } // namespace openmc

@@ -98,6 +98,11 @@ sub-elements:
     A list of strings representing the nuclide, to define specific
     define specific target nuclide collisions to be banked.
 
+    .. note::
+      Electron and positron collision-track events are not associated with
+      a specific nuclide. If a ``nuclides`` entry is specified, these events
+      are omitted.
+
     *Default*: None
 
   :reactions:
@@ -606,30 +611,30 @@ found in the :ref:`random ray user guide <random_ray>`.
     *Default*: None
 
   :adjoint_source:
-    Specifies an adjoint fixed source for adjoint transport simulations, and 
-    follows the format for :ref:`source_element`. The distributions which make 
-    up the adjoint source are subject to the same restrictions as forward 
+    Specifies an adjoint fixed source for adjoint transport simulations, and
+    follows the format for :ref:`source_element`. The distributions which make
+    up the adjoint source are subject to the same restrictions as forward
     fixed sources in Random Ray mode.
 
     *Default*: None
-  
+
   :adjoint:
-    Specifies whether to perform adjoint transport. The default is 'False', 
+    Specifies whether to perform adjoint transport. The default is 'False',
     corresponding to forward transport.
 
     *Default*: None
-  
+
   :volume_estimator:
-    Specifies choice of volume estimator for the random ray solver. Options 
+    Specifies choice of volume estimator for the random ray solver. Options
     are 'naive', 'simulation_averaged', or 'hybrid'. The default is 'hybrid'.
 
     *Default*: None
 
   :volume_normalized_flux_tallies:
-    Specifies whether to normalize flux tallies by volume (bool). The 
-    default is 'False'. When enabled, flux tallies will be reported in units 
-    of cm/cm^3. When disabled, flux tallies will be reported in units of cm 
-    (i.e., total distance traveled by neutrons in the spatial tally 
+    Specifies whether to normalize flux tallies by volume (bool). The
+    default is 'False'. When enabled, flux tallies will be reported in units
+    of cm/cm^3. When disabled, flux tallies will be reported in units of cm
+    (i.e., total distance traveled by neutrons in the spatial tally
     region).
 
     *Default*: None
@@ -741,14 +746,16 @@ pseudo-random number generator.
 
   *Default*: 1
 
---------------------
-``<stride>`` Element
---------------------
+-----------------------------------
+``<shared_secondary_bank>`` Element
+-----------------------------------
 
-The ``stride`` element is used to specify how many random numbers are allocated
-for each source particle history.
-
-  *Default*: 152,917
+  The ``shared_secondary_bank`` element indicates whether to use a shared
+  secondary particle bank. When enabled, secondary particles are collected into
+  a global bank, sorted for reproducibility, and load-balanced across MPI ranks
+  between generations. If not specified, the shared secondary bank is enabled
+  automatically for fixed-source simulations with weight windows active, and
+  disabled otherwise.
 
 .. _source_element:
 
@@ -770,9 +777,9 @@ attributes/sub-elements:
     *Default*: 1.0
 
   :type:
-    Indicator of source type. One of ``independent``, ``file``, ``compiled``, or
-    ``mesh``. The type of the source will be determined by this attribute if it
-    is present.
+    Indicator of source type. One of ``independent``, ``file``, ``compiled``,
+    ``mesh``, or ``tokamak``. The type of the source will be determined by this
+    attribute if it is present.
 
   :particle:
     The source particle type, specified as a PDG number or a string alias (e.g.,
@@ -1008,6 +1015,80 @@ attributes/sub-elements:
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
 
+  For a source with ``type="tokamak"``, the spatial distribution is described by
+  a Miller-style flux-surface parameterization and the following sub-elements
+  are used instead of the ``space`` element:
+
+  :major_radius:
+    The major radius :math:`R_0` of the plasma in [cm].
+
+  :minor_radius:
+    The minor radius :math:`a` of the plasma in [cm]. Must be smaller than
+    ``major_radius``.
+
+  :elongation:
+    The plasma elongation :math:`\kappa` (must be > 0).
+
+  :triangularity:
+    The plasma triangularity :math:`\delta` (must be in [-1, 1]). Negative
+    values describe negative-triangularity plasmas.
+
+  :shafranov_shift:
+    The Shafranov shift :math:`\Delta` in [cm] (must be >= 0 and less than
+    ``minor_radius``/2).
+
+  :r_over_a:
+    A list of normalized minor-radius grid points :math:`r/a`. Must be strictly
+    increasing, start at 0, and end at 1.
+
+  :emission_density:
+    A list of neutron emission densities :math:`S(r)` evaluated at each
+    ``r_over_a`` grid point (arbitrary units, must be non-negative). Only the
+    shape matters, since the profile is normalized internally. Values are
+    interpolated linearly between grid points and the profile is refined on an
+    internal grid for radial sampling. Must have the same length as
+    ``r_over_a`` and contain at least one positive value.
+
+  :phi_start:
+    The starting toroidal angle in [rad].
+
+    *Default*: 0.0
+
+  :phi_extent:
+    The toroidal angle extent in [rad]. The source is sampled uniformly in
+    :math:`[\phi_\text{start},\ \phi_\text{start} + \phi_\text{extent}]`.
+
+    *Default*: :math:`2\pi`
+
+  :n_alpha:
+    The number of poloidal-angle grid points used to build the sampling CDFs
+    (must be > 2). Larger values reduce discretization bias; values below 51
+    produce a warning.
+
+    *Default*: 101
+
+  :vertical_shift:
+    A vertical shift of the plasma center in [cm].
+
+    *Default*: 0.0
+
+  :energy:
+    For a tokamak source, one or more ``energy`` sub-elements specify the
+    neutron energy distribution(s). Either a single distribution is given (used
+    at all radii) or exactly one distribution per ``r_over_a`` grid point is
+    given, in which case the energy is sampled from one of the two
+    distributions bracketing the sampled radius, selected stochastically with
+    probability proportional to the proximity of the radius to each grid point
+    (stochastic interpolation). Each follows the format of a univariate
+    probability distribution (see :ref:`univariate`).
+
+  :time:
+    An optional ``time`` sub-element specifying the time distribution of source
+    particles, following the format of a univariate probability distribution
+    (see :ref:`univariate`).
+
+    *Default*: particles are born at :math:`t=0`
+
   .. note:: Biased sampling can be applied to the spatial and energy distributions
             of a source by using the ``<bias>`` sub-element (see
             :ref:`univariate` for details on how to specify bias distributions).
@@ -1058,17 +1139,19 @@ variable and whose sub-elements/attributes are as follows:
 
 :type:
   The type of the distribution. Valid options are "uniform", "discrete",
-  "tabular", "maxwell", "watt", and "mixture". The "uniform" option produces
-  variates sampled from a uniform distribution over a finite interval. The
-  "discrete" option produces random variates that can assume a finite number
-  of values (i.e., a distribution characterized by a probability mass function).
-  The "tabular" option produces random variates sampled from a tabulated
-  distribution where the density function is either a histogram or
+  "tabular", "maxwell", "watt", "mixture", and "decay_spectrum". The "uniform"
+  option produces variates sampled from a uniform distribution over a finite
+  interval. The "discrete" option produces random variates that can assume a
+  finite number of values (i.e., a distribution characterized by a probability
+  mass function). The "tabular" option produces random variates sampled from a
+  tabulated distribution where the density function is either a histogram or
   linearly-interpolated between tabulated points. The "watt" option produces
   random variates is sampled from a Watt fission spectrum (only used for
   energies). The "maxwell" option produce variates sampled from a Maxwell
-  fission spectrum (only used for energies). The "mixture" option produces samples
-  from univariate sub-distributions with given probabilities.
+  fission spectrum (only used for energies). The "mixture" option produces
+  samples from univariate sub-distributions with given probabilities. The
+  "decay_spectrum" option produces photon energies sampled from decay photon
+  spectra in a depletion chain (only used for energies).
 
   *Default*: None
 
@@ -1085,6 +1168,10 @@ variable and whose sub-elements/attributes are as follows:
   For a "discrete" or "tabular" distribution, ``parameters`` provides the
   :math:`(x,p)` pairs defining the discrete/tabular distribution. All :math:`x`
   points are given first followed by corresponding :math:`p` points.
+
+  For a "decay_spectrum" distribution, ``parameters`` gives the atom densities
+  in [atom/b-cm] for the nuclides listed in the ``nuclides`` element, in the
+  same order.
 
   For a "watt" distribution, ``parameters`` should be given as two real numbers
   :math:`a` and :math:`b` that parameterize the distribution :math:`p(x) dx = c
@@ -1115,6 +1202,21 @@ variable and whose sub-elements/attributes are as follows:
     This sub-element of a ``pair`` element provides information on the
     corresponding univariate distribution.
 
+:volume:
+  For a "decay_spectrum" distribution, this attribute specifies the source
+  region volume in cm\ :sup:`3`. It is used together with atom densities to
+  determine the absolute photon emission rate. When a source uses a
+  "decay_spectrum" energy distribution, the source strength is set from this
+  emission rate.
+
+:nuclides:
+  For a "decay_spectrum" distribution, this element specifies a
+  whitespace-separated list of nuclide names contributing to the decay photon
+  source. The atom densities for these nuclides are given by the ``parameters``
+  element in the same order. Nuclides are resolved against the depletion chain,
+  and nuclides without decay photon spectra do not contribute to the
+  distribution.
+
 :bias:
   This optional element specifies a biased distribution for importance sampling.
   For continuous distributions, the ``bias`` element should contain another
@@ -1134,23 +1236,6 @@ external source sites that must be accepted when applying rejection sampling
 based on constraints.
 
    *Default*: 0.05
-
--------------------------
-``<state_point>`` Element
--------------------------
-
-The ``<state_point>`` element indicates at what batches a state point file
-should be written. A state point file can be used to restart a run or to get
-tally results at any batch. The default behavior when using this tag is to
-write out the source bank in the state_point file. This behavior can be
-customized by using the ``<source_point>`` element. This element has the
-following attributes/sub-elements:
-
-  :batches:
-    A list of integers separated by spaces indicating at what batches a state
-    point file should be written.
-
-    *Default*: Last batch only
 
 --------------------------
 ``<source_point>`` Element
@@ -1200,6 +1285,32 @@ attributes/sub-elements:
     is set to true.
 
     *Default*: false
+
+-------------------------
+``<state_point>`` Element
+-------------------------
+
+The ``<state_point>`` element indicates at what batches a state point file
+should be written. A state point file can be used to restart a run or to get
+tally results at any batch. The default behavior when using this tag is to
+write out the source bank in the state_point file. This behavior can be
+customized by using the ``<source_point>`` element. This element has the
+following attributes/sub-elements:
+
+  :batches:
+    A list of integers separated by spaces indicating at what batches a state
+    point file should be written.
+
+    *Default*: Last batch only
+
+--------------------
+``<stride>`` Element
+--------------------
+
+The ``stride`` element is used to specify how many random numbers are allocated
+for each source particle history.
+
+  *Default*: 152,917
 
 ------------------------------
 ``<surf_source_read>`` Element
@@ -1300,7 +1411,7 @@ The ``<surface_grazing_cutoff>`` element specifies the surface flux cosine cutof
 ``<surface_grazing_ratio>`` Element
 -----------------------------------
 
-The ``<surface_grazing_ratio>`` element specifies the surface flux cosine 
+The ``<surface_grazing_ratio>`` element specifies the surface flux cosine
 substitution ratio.
 
   *Default*: 0.5
@@ -1725,11 +1836,11 @@ mesh-based weight windows.
         The ratio of the lower to upper weight window bounds.
 
         *Default*: 5.0
-    
+
     For FW-CADIS:
 
       :targets:
-        A sequence of IDs corresponding to the tallies which cover phase 
+        A sequence of IDs corresponding to the tallies which cover phase
         space regions of interest for local variance reduction.
 
         *Default*: None

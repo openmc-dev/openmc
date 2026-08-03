@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import numbers
 import bisect
 import math
 from collections.abc import Iterable
+from typing import Literal
 from warnings import warn
 
 import h5py
 import numpy as np
 
+import openmc
+from .chain import Chain, _get_chain
 from .stepresult import StepResult, VERSION_RESULTS
 import openmc.checkvalue as cv
 from openmc.data import atomic_mass, AVOGADRO
@@ -103,7 +108,8 @@ class Results(list):
         mat: Material | str,
         units: str = "Bq/cm3",
         by_nuclide: bool = False,
-        volume: float | None = None
+        volume: float | None = None,
+        chain_file: Literal[False] | None | PathLike | Chain = None
     ) -> tuple[np.ndarray, np.ndarray | list[dict]]:
         """Get activity of material over time.
 
@@ -115,22 +121,31 @@ class Results(list):
             Material object or material id to evaluate
         units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3'}
             Specifies the type of activity to return, options include total
-            activity [Bq], specific [Bq/g, Bq/kg] or volumetric activity [Bq/cm3].
+            activity [Bq], specific [Bq/g, Bq/kg] or volumetric activity
+            [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
             :attr:`Material.volume` attribute.
+        chain_file : False, None, PathLike, or openmc.deplete.Chain, optional
+            Source of half-life values. If ``False``, only ENDF/B-VIII.0 data is
+            used. If ``None``, the chain specified by
+            ``openmc.config['chain_file']`` is used when available. If a path or
+            :class:`openmc.deplete.Chain` is given, that chain is used. For
+            ``None`` or an explicit chain, nuclides absent from the chain fall
+            back to ENDF/B-VIII.0 data.
+
+            .. versionadded:: 0.15.4
 
         Returns
         -------
         times : numpy.ndarray
             Array of times in [s]
         activities : numpy.ndarray or List[dict]
-            Array of total activities if by_nuclide = False (default)
-            or list of dictionaries of activities by nuclide if
-            by_nuclide = True.
+            Array of total activities if by_nuclide = False (default) or list of
+            dictionaries of activities by nuclide if by_nuclide = True.
 
         """
         if isinstance(mat, Material):
@@ -139,6 +154,13 @@ class Results(list):
             mat_id = mat
         else:
             raise TypeError('mat should be of type openmc.Material or str')
+
+        if chain_file is not False:
+            if chain_file is None:
+                if openmc.config.get('chain_file') is not None:
+                    chain_file = _get_chain(None)
+            else:
+                chain_file = _get_chain(chain_file)
 
         times = np.empty_like(self, dtype=float)
         if by_nuclide:
@@ -149,7 +171,8 @@ class Results(list):
         # Evaluate activity for each depletion time
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            activities[i] = result.get_material(mat_id).get_activity(units, by_nuclide, volume)
+            activities[i] = result.get_material(mat_id).get_activity(
+                units, by_nuclide, volume, chain_file=chain_file)
 
         return times, activities
 

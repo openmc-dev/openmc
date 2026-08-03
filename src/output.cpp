@@ -243,8 +243,8 @@ void print_overlap_check()
 {
 #ifdef OPENMC_MPI
   vector<int64_t> temp(model::overlap_check_count);
-  MPI_Reduce(temp.data(), model::overlap_check_count.data(),
-    model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(temp.data(), model::overlap_check_count.data(),
+    model::overlap_check_count.size(), MPI_SUM, 0, mpi::intracomm);
 #endif
 
   if (mpi::master) {
@@ -501,6 +501,14 @@ void print_runtime()
     show_rate("Calculation Rate (inactive)", speed_inactive);
   }
   show_rate("Calculation Rate (active)", speed_active);
+
+  // Display track rate when weight windows are enabled
+  if (settings::weight_windows_on) {
+    double speed_tracks =
+      simulation::simulation_tracks_completed / time_active.elapsed();
+    fmt::print(
+      " {:<33} = {:.6} tracks/second\n", "Track Rate (active)", speed_tracks);
+  }
 }
 
 //==============================================================================
@@ -613,8 +621,15 @@ void write_tallies()
   if (model::tallies.empty())
     return;
 
+  // Tag tallies.out written during the forward solve of an adjoint run
+  const char* forward =
+    (FlatSourceDomain::solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT)
+      ? "forward."
+      : "";
+
   // Set filename for tallies_out
-  std::string filename = fmt::format("{}tallies.out", settings::path_output);
+  std::string filename =
+    fmt::format("{}tallies.{}out", settings::path_output, forward);
 
   // Open the tallies.out file.
   std::ofstream tallies_out;

@@ -94,24 +94,32 @@ private:
 class DAGUniverse : public Universe {
 
 public:
+  using MaterialOverrides = std::unordered_map<int32_t, vector<int32_t>>;
+  using TemperatureOverrides = std::unordered_map<int32_t, vector<double>>;
+  using DensityOverrides = std::unordered_map<int32_t, vector<double>>;
+
   explicit DAGUniverse(pugi::xml_node node);
 
   //! Create a new DAGMC universe
   //! \param[in] filename Name of the DAGMC file
   //! \param[in] auto_geom_ids Whether or not to automatically assign cell and
   //! surface IDs \param[in] auto_mat_ids Whether or not to automatically assign
-  //! material IDs
+  //! material IDs \param[in] length_multiplier Multiplicative factor applied to
+  //! geometry coordinates
   explicit DAGUniverse(const std::string& filename, bool auto_geom_ids = false,
-    bool auto_mat_ids = false);
+    bool auto_mat_ids = false, double length_multiplier = 1.0);
 
   //! Alternative DAGMC universe constructor for external DAGMC instance
   explicit DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
     const std::string& filename = "", bool auto_geom_ids = false,
-    bool auto_mat_ids = false);
+    bool auto_mat_ids = false, double length_multiplier = 1.0);
 
   //! Initialize the DAGMC accel. data structures, indices, material
   //! assignments, etc.
   void initialize();
+  void initialize(const MaterialOverrides& material_overrides,
+    const TemperatureOverrides& temperature_overrides,
+    const DensityOverrides& density_overrides = {});
 
   //! Reads UWUW materials and returns an ID map
   void read_uwuw_materials();
@@ -146,7 +154,8 @@ public:
 
   //! Assign a material overriding normal assignement to a cell
   //! \param[in] c The OpenMC cell to which the material is assigned
-  void override_assign_material(std::unique_ptr<DAGCell>& c) const;
+  void override_assign_material(std::unique_ptr<DAGCell>& c,
+    const MaterialOverrides& material_overrides) const;
 
   //! Return the index into the model cells vector for a given DAGMC volume
   //! handle in the universe
@@ -187,7 +196,9 @@ private:
   void set_id();        //!< Deduce the universe id from model::universes
   void init_dagmc();    //!< Create and initialise DAGMC pointer
   void init_metadata(); //!< Create and initialise dagmcMetaData pointer
-  void init_geometry(); //!< Create cells and surfaces from DAGMC entities
+  void init_geometry(const MaterialOverrides& material_overrides,
+    const TemperatureOverrides& temperature_overrides,
+    const DensityOverrides& density_overrides);
 
   std::string
     filename_; //!< Name of the DAGMC file used to create this universe
@@ -199,13 +210,10 @@ private:
                              //!< universe
   bool adjust_material_ids_; //!< Indicates whether or not to automatically
                              //!< generate new material IDs for the universe
+  double length_multiplier_ {
+    1.0}; //!< Multiplicative factor applied to geometry coordinates
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
-  std::unordered_map<int32_t, vector<int32_t>>
-    material_overrides_; //!< Map of material overrides
-                         //!< keys correspond to the DAGMCCell id
-                         //!< values are a list of material ids used
-                         //!< for the override
 };
 
 //==============================================================================

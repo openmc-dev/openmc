@@ -259,6 +259,12 @@ class MeshBase(IDManagerMixin, ABC):
     def n_elements(self):
         pass
 
+    @property
+    @abstractmethod
+    def axis_labels(self):
+        """tuple of str : Names of the mesh axes, one per dimension."""
+        pass
+
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
@@ -538,7 +544,8 @@ class StructuredMesh(MeshBase):
 
     @property
     @abstractmethod
-    def _axis_labels(self):
+    def axis_labels(self):
+        """tuple of str : Names of the mesh axes, one per dimension."""
         pass
 
     @property
@@ -1058,6 +1065,9 @@ class RegularMesh(StructuredMesh):
         The number of mesh cells in each direction (x, y, z).
     n_dimension : int
         Number of mesh dimensions.
+    axis_labels : tuple of str
+        Names of the mesh axes ('x', 'y', 'z'), truncated to the mesh
+        dimensionality.
     lower_left : Iterable of float
         The lower-left corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
@@ -1101,7 +1111,7 @@ class RegularMesh(StructuredMesh):
             return None
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('x', 'y', 'z')[:self.n_dimension]
 
     @property
@@ -1640,6 +1650,8 @@ class RectilinearMesh(StructuredMesh):
         The number of mesh cells in each direction (x, y, z).
     n_dimension : int
         Number of mesh dimensions (always 3 for a RectilinearMesh).
+    axis_labels : tuple of str
+        Names of the mesh axes ('x', 'y', 'z').
     x_grid : numpy.ndarray
         1-D array of mesh boundary points along the x-axis.
     y_grid : numpy.ndarray
@@ -1673,7 +1685,7 @@ class RectilinearMesh(StructuredMesh):
         return 3
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('x', 'y', 'z')
 
     @property
@@ -1985,6 +1997,8 @@ class CylindricalMesh(StructuredMesh):
         The number of mesh cells in each direction (r_grid, phi_grid, z_grid).
     n_dimension : int
         Number of mesh dimensions (always 3 for a CylindricalMesh).
+    axis_labels : tuple of str
+        Names of the mesh axes ('r', 'phi', 'z').
     r_grid : numpy.ndarray
         1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
@@ -2039,7 +2053,7 @@ class CylindricalMesh(StructuredMesh):
         return 3
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('r', 'phi', 'z')
 
     @property
@@ -2464,6 +2478,8 @@ class SphericalMesh(StructuredMesh):
         theta_grid, phi_grid).
     n_dimension : int
         Number of mesh dimensions (always 3 for a SphericalMesh).
+    axis_labels : tuple of str
+        Names of the mesh axes ('r', 'theta', 'phi').
     r_grid : numpy.ndarray
         1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
@@ -2518,7 +2534,7 @@ class SphericalMesh(StructuredMesh):
         return 3
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('r', 'theta', 'phi')
 
     @property
@@ -3149,7 +3165,7 @@ class UnstructuredMesh(MeshBase):
         return 3
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('element_index',)
 
     @property

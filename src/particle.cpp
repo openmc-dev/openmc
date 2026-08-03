@@ -135,6 +135,7 @@ void Particle::split(double wgt)
   bank.wgt_born = wgt_born();
   bank.wgt_ww_born = wgt_ww_born();
   bank.n_split = n_split();
+  bank.n_collision = n_collision();
   bank.parent_id = current_work();
   if (settings::use_shared_secondary_bank) {
     bank.progeny_id = n_progeny()++;
@@ -150,7 +151,7 @@ void Particle::from_source(const SourceSite* src)
   surface() = SURFACE_NONE;
   cell_born() = C_NONE;
   material() = C_NONE;
-  n_collision() = 0;
+  n_collision() = src->n_collision;
   fission() = false;
   zero_flux_derivs();
   lifetime() = 0.0;
@@ -184,8 +185,11 @@ void Particle::from_source(const SourceSite* src)
 
   // Convert signed surface ID to signed index
   if (src->surf_id != SURFACE_NONE) {
-    int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
-    surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
+    auto it = model::surface_map.find(std::abs(src->surf_id));
+    if (it != model::surface_map.end()) {
+      int index_plus_one = it->second + 1;
+      surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
+    }
   }
 
   wgt_born() = src->wgt_born;
@@ -338,13 +342,14 @@ void Particle::event_cross_surface()
       boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
 
+    int i_lattice = coord(boundary().coord_level() - 1).lattice();
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
 
     // Score cell to cell partial currents
     if (!model::active_surface_tallies.empty()) {
-      auto& lat {*model::lattices[lowest_coord().lattice()]};
+      auto& lat {*model::lattices[i_lattice]};
       bool is_valid;
       Direction normal =
         lat.get_normal(boundary().lattice_translation(), is_valid);
@@ -553,15 +558,30 @@ void Particle::event_death()
     finalize_particle_track(*this);
   }
 
-// Contribute tally reduction variables to global accumulator
+  // Contribute tally reduction variables to global accumulator
+  const auto k_absorption = keff_tally_absorption();
+  const auto k_collision = keff_tally_collision();
+  const auto k_tracklength = keff_tally_tracklength();
+  const auto leakage = keff_tally_leakage();
+
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (k_absorption != 0.0) {
 #pragma omp atomic
-  global_tally_absorption += keff_tally_absorption();
+      global_tally_absorption += k_absorption;
+    }
+    if (k_collision != 0.0) {
 #pragma omp atomic
-  global_tally_collision += keff_tally_collision();
+      global_tally_collision += k_collision;
+    }
+    if (k_tracklength != 0.0) {
 #pragma omp atomic
-  global_tally_tracklength += keff_tally_tracklength();
+      global_tally_tracklength += k_tracklength;
+    }
+  }
+  if (leakage != 0.0) {
 #pragma omp atomic
-  global_tally_leakage += keff_tally_leakage();
+    global_tally_leakage += leakage;
+  }
 
   // Reset particle tallies once accumulated
   keff_tally_absorption() = 0.0;

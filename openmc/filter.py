@@ -1404,7 +1404,7 @@ class CollisionFilter(Filter):
 class ReactionFilter(Filter):
     """Bins tally events based on the reaction type (MT number).
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------
@@ -1821,7 +1821,7 @@ class ParticleProductionFilter(Filter):
 
     The incident particle type can be filtered using :class:`ParticleFilter`.
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------

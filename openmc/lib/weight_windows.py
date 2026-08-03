@@ -194,10 +194,15 @@ class WeightWindows(_FortranObjectWithID):
 
     @energy_bounds.setter
     def energy_bounds(self, e_bounds):
-        e_bounds_arr = np.asarray(e_bounds, dtype=float)
-        e_bounds_ptr = e_bounds_arr.ctypes.data_as(POINTER(c_double))
+        if e_bounds is None:
+            e_bounds_ptr = None
+            size = 0
+        else:
+            e_bounds_arr = np.ascontiguousarray(e_bounds, dtype=np.float64)
+            e_bounds_ptr = e_bounds_arr.ctypes.data_as(POINTER(c_double))
+            size = e_bounds_arr.size
         _dll.openmc_weight_windows_set_energy_bounds(
-            self._index, e_bounds_ptr, e_bounds_arr.size)
+            self._index, e_bounds_ptr, size)
 
     @property
     def particle(self):
@@ -222,8 +227,8 @@ class WeightWindows(_FortranObjectWithID):
 
     @bounds.setter
     def bounds(self, bounds):
-        lower = np.asarray(bounds[0])
-        upper = np.asarray(bounds[1])
+        lower = np.ascontiguousarray(bounds[0], dtype=np.float64)
+        upper = np.ascontiguousarray(bounds[1], dtype=np.float64)
 
         lower_p = lower.ctypes.data_as(POINTER(c_double))
         upper_p = upper.ctypes.data_as(POINTER(c_double))

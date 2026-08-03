@@ -140,9 +140,7 @@ class WeightWindows(IDManagerMixin):
                              "upper_bound_ratio must be present.")
 
         if upper_bound_ratio:
-            self.upper_ww_bounds = [
-                lb * upper_bound_ratio for lb in self.lower_ww_bounds
-            ]
+            self.upper_ww_bounds = self.lower_ww_bounds * upper_bound_ratio
 
         if upper_ww_bounds is not None:
             self.upper_ww_bounds = upper_ww_bounds
@@ -1074,18 +1072,78 @@ class WeightWindowsList(list):
         import openmc.lib
         cv.check_type('path', path, PathLike)
 
-        # Create a temporary model with the weight windows
+        # Create a minimal model without serializing the weight window bounds to
+        # XML. The meshes and weight windows are added through openmc.lib after
+        # the shared library has been initialized.
         model = openmc.Model()
         sph = openmc.Sphere(boundary_type='vacuum')
         cell = openmc.Cell(region=-sph)
         model.geometry = openmc.Geometry([cell])
-        model.settings.weight_windows = self
-        model.settings.particles = 100
+        model.settings.particles = 1
         model.settings.batches = 1
+        model.settings.output = {'summary': False}
 
         # Get absolute path before moving to temporary directory
         path = Path(path).resolve()
+        original_dir = Path.cwd()
 
-        # Load the model with openmc.lib and then export it to an HDF5 file
+        # Populate the C++ model directly and use its existing HDF5 writer.
         with openmc.lib.TemporarySession(model, **init_kwargs):
+            lib_meshes = {}
+            for ww in self:
+                mesh = ww.mesh
+                if mesh.id not in lib_meshes:
+                    lib_meshes[mesh.id] = _create_lib_mesh(mesh, original_dir)
+
+                lib_ww = openmc.lib.WeightWindows(ww.id)
+                lib_ww.particle = ww.particle_type
+                lib_ww.mesh = lib_meshes[mesh.id]
+                lib_ww.energy_bounds = ww.energy_bounds
+
+                lower = np.ascontiguousarray(
+                    ww.lower_ww_bounds.ravel(order='F'), dtype=np.float64)
+                upper = np.ascontiguousarray(
+                    ww.upper_ww_bounds.ravel(order='F'), dtype=np.float64)
+                lib_ww.bounds = lower, upper
+
+                lib_ww.survival_ratio = ww.survival_ratio
+                if ww.max_lower_bound_ratio is not None:
+                    lib_ww.max_lower_bound_ratio = ww.max_lower_bound_ratio
+                lib_ww.max_split = ww.max_split
+                lib_ww.weight_cutoff = ww.weight_cutoff
+
             openmc.lib.export_weight_windows(path)
+
+
+def _create_lib_mesh(mesh: MeshBase, original_dir: Path):
+    """Create an openmc.lib mesh corresponding to a Python API mesh."""
+    import openmc.lib
+
+    if isinstance(mesh, openmc.RegularMesh):
+        lib_mesh = openmc.lib.RegularMesh(uid=mesh.id)
+        lib_mesh.dimension = mesh.dimension
+        lib_mesh.set_parameters(
+            lower_left=mesh.lower_left, upper_right=mesh.upper_right)
+    elif isinstance(mesh, openmc.RectilinearMesh):
+        lib_mesh = openmc.lib.RectilinearMesh(uid=mesh.id)
+        lib_mesh.set_grid(mesh.x_grid, mesh.y_grid, mesh.z_grid)
+    elif isinstance(mesh, openmc.CylindricalMesh):
+        lib_mesh = openmc.lib.CylindricalMesh(uid=mesh.id)
+        lib_mesh.set_grid(mesh.r_grid, mesh.phi_grid, mesh.z_grid)
+        lib_mesh.origin = mesh.origin
+    elif isinstance(mesh, openmc.SphericalMesh):
+        lib_mesh = openmc.lib.SphericalMesh(uid=mesh.id)
+        lib_mesh.set_grid(mesh.r_grid, mesh.theta_grid, mesh.phi_grid)
+        lib_mesh.origin = mesh.origin
+    elif isinstance(mesh, openmc.UnstructuredMesh):
+        filename = Path(mesh.filename)
+        if not filename.is_absolute():
+            filename = original_dir / filename
+        lib_mesh = openmc.lib.UnstructuredMesh.from_file(
+            filename.resolve(), mesh.library, uid=mesh.id,
+            length_multiplier=mesh.length_multiplier, options=mesh.options)
+    else:
+        raise TypeError(f'Unsupported weight window mesh type: {type(mesh)}')
+
+    lib_mesh.name = mesh.name
+    return lib_mesh

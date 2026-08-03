@@ -36,6 +36,12 @@ _dll.openmc_mesh_get_id.errcheck = _error_handler
 _dll.openmc_mesh_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_mesh_set_id.restype = c_int
 _dll.openmc_mesh_set_id.errcheck = _error_handler
+_dll.openmc_mesh_get_name.argtypes = [c_int32, POINTER(c_char_p)]
+_dll.openmc_mesh_get_name.restype = c_int
+_dll.openmc_mesh_get_name.errcheck = _error_handler
+_dll.openmc_mesh_set_name.argtypes = [c_int32, c_char_p]
+_dll.openmc_mesh_set_name.restype = c_int
+_dll.openmc_mesh_set_name.errcheck = _error_handler
 _dll.openmc_mesh_get_n_elements.argtypes = [c_int32, POINTER(c_size_t)]
 _dll.openmc_mesh_get_n_elements.restype = c_int
 _dll.openmc_mesh_get_n_elements.errcheck = _error_handler
@@ -97,6 +103,12 @@ _dll.openmc_cylindrical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
     c_int, POINTER(c_double), c_int, POINTER(c_double), c_int]
 _dll.openmc_cylindrical_mesh_set_grid.restype = c_int
 _dll.openmc_cylindrical_mesh_set_grid.errcheck = _error_handler
+_dll.openmc_cylindrical_mesh_get_origin.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_cylindrical_mesh_get_origin.restype = c_int
+_dll.openmc_cylindrical_mesh_get_origin.errcheck = _error_handler
+_dll.openmc_cylindrical_mesh_set_origin.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_cylindrical_mesh_set_origin.restype = c_int
+_dll.openmc_cylindrical_mesh_set_origin.errcheck = _error_handler
 
 _dll.openmc_spherical_mesh_get_grid.argtypes = [c_int32,
     POINTER(POINTER(c_double)), POINTER(c_int), POINTER(POINTER(c_double)),
@@ -107,6 +119,17 @@ _dll.openmc_spherical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
     c_int, POINTER(c_double), c_int, POINTER(c_double), c_int]
 _dll.openmc_spherical_mesh_set_grid.restype = c_int
 _dll.openmc_spherical_mesh_set_grid.errcheck = _error_handler
+_dll.openmc_spherical_mesh_get_origin.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_spherical_mesh_get_origin.restype = c_int
+_dll.openmc_spherical_mesh_get_origin.errcheck = _error_handler
+_dll.openmc_spherical_mesh_set_origin.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_spherical_mesh_set_origin.restype = c_int
+_dll.openmc_spherical_mesh_set_origin.errcheck = _error_handler
+
+_dll.openmc_add_unstructured_mesh_with_properties.argtypes = [
+    c_char_p, c_char_p, c_double, c_char_p, c_int32, POINTER(c_int32)]
+_dll.openmc_add_unstructured_mesh_with_properties.restype = c_int
+_dll.openmc_add_unstructured_mesh_with_properties.errcheck = _error_handler
 
 
 class Mesh(_FortranObjectWithID):
@@ -154,6 +177,16 @@ class Mesh(_FortranObjectWithID):
     @id.setter
     def id(self, mesh_id):
         _dll.openmc_mesh_set_id(self._index, mesh_id)
+
+    @property
+    def name(self):
+        name = c_char_p()
+        _dll.openmc_mesh_get_name(self._index, name)
+        return name.value.decode()
+
+    @name.setter
+    def name(self, name):
+        _dll.openmc_mesh_set_name(self._index, name.encode())
 
     @property
     def n_elements(self) -> int:
@@ -621,6 +654,21 @@ class CylindricalMesh(Mesh):
         _dll.openmc_cylindrical_mesh_set_grid(self._index, r_grid, nr, phi_grid,
                                               nphi, z_grid, nz)
 
+    @property
+    def origin(self):
+        origin = np.empty(3)
+        _dll.openmc_cylindrical_mesh_get_origin(
+            self._index, origin.ctypes.data_as(POINTER(c_double)))
+        return origin
+
+    @origin.setter
+    def origin(self, origin):
+        origin = np.ascontiguousarray(origin, dtype=np.float64)
+        if origin.shape != (3,):
+            raise ValueError('Mesh origin must have three coordinates')
+        _dll.openmc_cylindrical_mesh_set_origin(
+            self._index, origin.ctypes.data_as(POINTER(c_double)))
+
 
 class SphericalMesh(Mesh):
     """SphericalMesh stored internally.
@@ -726,9 +774,54 @@ class SphericalMesh(Mesh):
         _dll.openmc_spherical_mesh_set_grid(self._index, r_grid, nr, theta_grid,
                                               ntheta, phi_grid, nphi)
 
+    @property
+    def origin(self):
+        origin = np.empty(3)
+        _dll.openmc_spherical_mesh_get_origin(
+            self._index, origin.ctypes.data_as(POINTER(c_double)))
+        return origin
+
+    @origin.setter
+    def origin(self, origin):
+        origin = np.ascontiguousarray(origin, dtype=np.float64)
+        if origin.shape != (3,):
+            raise ValueError('Mesh origin must have three coordinates')
+        _dll.openmc_spherical_mesh_set_origin(
+            self._index, origin.ctypes.data_as(POINTER(c_double)))
+
 
 class UnstructuredMesh(Mesh):
-    pass
+    @classmethod
+    def from_file(cls, filename, library, uid=None, length_multiplier=1.0,
+                  options=None):
+        """Create an unstructured mesh from a file.
+
+        Parameters
+        ----------
+        filename : path-like
+            Path to the unstructured mesh file.
+        library : {'libmesh', 'moab'}
+            Library used to load the mesh.
+        uid : int, optional
+            Unique ID for the mesh. If omitted, an ID is assigned.
+        length_multiplier : float, optional
+            Multiplicative factor applied to mesh coordinates.
+        options : str, optional
+            Options used to construct spatial search data structures.
+
+        Returns
+        -------
+        openmc.lib.UnstructuredMesh
+            The newly allocated mesh.
+
+        """
+        index = c_int32()
+        mesh_id = -1 if uid is None else uid
+        options = None if options is None else options.encode()
+        _dll.openmc_add_unstructured_mesh_with_properties(
+            str(filename).encode(), library.encode(), length_multiplier,
+            options, mesh_id, index)
+        return cls(index=index.value)
 
 
 _MESH_TYPE_MAP = {

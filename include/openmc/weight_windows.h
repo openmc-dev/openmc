@@ -109,6 +109,9 @@ public:
   //! Ready the weight window class for use
   void set_defaults();
 
+  //! Replace the energy grid with defaults for the selected particle type
+  void reset_energy_bounds();
+
   //! Ensure the weight window lower bounds are properly allocated
   void allocate_ww_bounds();
 

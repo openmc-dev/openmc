@@ -126,10 +126,10 @@ _dll.openmc_spherical_mesh_set_origin.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_spherical_mesh_set_origin.restype = c_int
 _dll.openmc_spherical_mesh_set_origin.errcheck = _error_handler
 
-_dll.openmc_add_unstructured_mesh_with_properties.argtypes = [
+_dll.openmc_add_unstructured_mesh.argtypes = [
     c_char_p, c_char_p, c_double, c_char_p, c_int32, POINTER(c_int32)]
-_dll.openmc_add_unstructured_mesh_with_properties.restype = c_int
-_dll.openmc_add_unstructured_mesh_with_properties.errcheck = _error_handler
+_dll.openmc_add_unstructured_mesh.restype = c_int
+_dll.openmc_add_unstructured_mesh.errcheck = _error_handler
 
 
 class Mesh(_FortranObjectWithID):
@@ -818,7 +818,7 @@ class UnstructuredMesh(Mesh):
         index = c_int32()
         mesh_id = -1 if uid is None else uid
         options = None if options is None else options.encode()
-        _dll.openmc_add_unstructured_mesh_with_properties(
+        _dll.openmc_add_unstructured_mesh(
             str(filename).encode(), library.encode(), length_multiplier,
             options, mesh_id, index)
         return cls(index=index.value)

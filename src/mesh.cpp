@@ -2506,9 +2506,9 @@ extern "C" int openmc_extend_meshes(
 }
 
 //! Adds a new unstructured mesh to OpenMC with all supported properties
-extern "C" int openmc_add_unstructured_mesh_with_properties(
-  const char filename[], const char library[], double length_multiplier,
-  const char options[], int32_t id, int32_t* index)
+extern "C" int openmc_add_unstructured_mesh(const char filename[],
+  const char library[], double length_multiplier, const char options[],
+  int32_t id, int32_t* index)
 {
   std::string lib_name(library);
   std::string mesh_file(filename);
@@ -2541,20 +2541,6 @@ extern "C" int openmc_add_unstructured_mesh_with_properties(
   model::meshes.back()->set_id(id);
   *index = model::meshes.size() - 1;
 
-  return 0;
-}
-
-//! Adds a new unstructured mesh to OpenMC
-extern "C" int openmc_add_unstructured_mesh(
-  const char filename[], const char library[], int* id)
-{
-  int32_t index;
-  int err = openmc_add_unstructured_mesh_with_properties(
-    filename, library, 1.0, nullptr, C_NONE, &index);
-  if (err)
-    return err;
-
-  *id = model::meshes[index]->id_;
   return 0;
 }
 

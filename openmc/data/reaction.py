@@ -1,9 +1,12 @@
 from collections.abc import Iterable, Callable, MutableMapping
 from copy import deepcopy
+from dataclasses import dataclass, field
 from io import StringIO
+import math
 from numbers import Real
 from warnings import warn
 
+import h5py
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -80,6 +83,792 @@ REACTION_MT['absorption'] = 27
 REACTION_MT['capture'] = 102
 
 FISSION_MTS = (18, 19, 20, 21, 38)
+
+
+_METADATA_SEMANTIC_STATUS = (
+    'complete', 'unsupported_lang', 'unsupported_ltp', 'unsupported_frame',
+    'invalid_combination')
+_METADATA_STRUCTURAL_FAILURE = (
+    'unknown_law', 'unproven_cursor', 'truncated_record', 'count_mismatch',
+    'premature_end', 'trailing_record', 'invalid_header',
+    'invalid_law6_control')
+_METADATA_JP = (0, 1, 2, 10, 11, 12, 20, 21, 22)
+_METADATA_SCHEMA = 'openmc-evaluated-product-metadata/v2'
+_METADATA_RESULT = 'published_structurally_complete'
+_METADATA_UTF8 = h5py.string_dtype(encoding='utf-8')
+
+
+class _MetadataParseError(ValueError):
+    """Internal typed terminal outcome from the MF=6 cursor reader."""
+
+    def __init__(self, reason):
+        self.reason = reason
+        super().__init__(reason)
+
+
+def _metadata_declared_record_lines(reader, line):
+    """Return the number of physical lines declared by a record header."""
+    try:
+        n1 = int(line[44:55].strip() or 0)
+        n2 = int(line[55:66].strip() or 0)
+    except ValueError:
+        return None
+    if n1 < 0 or n2 < 0:
+        return (-1 if reader in (
+            get_list_record, get_tab1_record, get_tab2_record) else 1)
+    if reader is get_list_record:
+        return 1 + (n1 + 5)//6
+    if reader is get_tab1_record:
+        return 1 + (n1 + 2)//3 + (n2 + 2)//3
+    if reader is get_tab2_record:
+        return 1 + (n1 + 2)//3
+    return 1
+
+
+def _metadata_record(reader, file_obj, failure='truncated_record',
+                     eof_failure=None, parse_failure=None):
+    """Read one declared record envelope or raise a typed terminal outcome."""
+    if file_obj.tell() >= len(file_obj.getvalue()):
+        raise _MetadataParseError(eof_failure or failure)
+    remaining = file_obj.getvalue()[file_obj.tell():]
+    lines = remaining.splitlines(keepends=True)
+    expected_lines = _metadata_declared_record_lines(reader, lines[0])
+    if expected_lines == -1:
+        raise _MetadataParseError('count_mismatch')
+    if (expected_lines is not None and
+            (len(lines) < expected_lines or any(
+                len(line.rstrip('\r\n')) < 66
+                for line in lines[:expected_lines]))):
+        raise _MetadataParseError(failure)
+    try:
+        return reader(file_obj)
+    except (EOFError, IndexError, OSError, ValueError, TypeError) as exc:
+        raise _MetadataParseError(parse_failure or failure) from exc
+
+
+@dataclass(frozen=True)
+class EvaluatedProductMetadataEntry:
+    """Immutable evaluated MF=6 product-provenance entry.
+
+    The attributes are evaluated-data metadata only. They are not an OpenMC
+    transport product and do not describe a sampled final state.
+    """
+
+    subsection_index: int
+    zap: int
+    awp: float
+    awp_interpretation: str
+    lip: int
+    law: int
+    lang_values: tuple
+    lidp: int | None
+    ltp_values: tuple
+    semantic_status: str
+    identity_status: str
+    derived_particle: str | None
+    apsx: float | None = None
+    npsx: int | None = None
+
+    def __post_init__(self):
+        """Require LAW=6 controls only for LAW=6 entries."""
+        if self.law == 6:
+            if self.apsx is None or self.npsx is None:
+                raise ValueError('LAW=6 metadata requires APSX and NPSX')
+            if (isinstance(self.apsx, (bool, np.bool_)) or
+                    not isinstance(self.apsx, Real)):
+                raise ValueError('invalid LAW=6 metadata APSX')
+            apsx = float(self.apsx)
+            if not math.isfinite(apsx) or apsx <= 0.0:
+                raise ValueError('invalid LAW=6 metadata APSX')
+            if (isinstance(self.npsx, (bool, np.bool_)) or
+                    not isinstance(self.npsx, (int, np.integer)) or
+                    not 3 <= self.npsx <= 2**31 - 1):
+                raise ValueError('invalid LAW=6 metadata NPSX')
+        elif self.apsx is not None or self.npsx is not None:
+            raise ValueError('non-LAW=6 metadata cannot contain APSX or NPSX')
+
+
+@dataclass(frozen=True)
+class EvaluatedProductMetadata:
+    """Immutable, transport-isolated published MF=6 section metadata."""
+
+    mt: int
+    jp: int
+    lct: int
+    section_semantic_status: str
+    entries: tuple
+
+
+@dataclass(frozen=True)
+class EvaluatedProductMetadataResult:
+    """Result of direct MF=6 metadata parsing before any attachment.
+
+    A structural failure and an absent MF=6 section intentionally contain no
+    published metadata. This prevents a partially consumed cursor from being
+    attached to an ACE-derived reaction.
+    """
+
+    mt: int
+    result_status: str
+    structural_failure: str | None = None
+    jp: int | None = None
+    lct: int | None = None
+    section_semantic_status: str | None = None
+    hdf5_group_version: int | None = None
+    entries: tuple = ()
+    schema: str = field(default=_METADATA_SCHEMA, init=False)
+    source_format: str = field(default='ENDF-6', init=False)
+    mf: int = field(default=6, init=False)
+
+    def __post_init__(self):
+        if (isinstance(self.mt, (bool, np.bool_)) or
+                not isinstance(self.mt, (int, np.integer)) or
+                not 1 <= self.mt <= 999):
+            raise ValueError('invalid evaluated product metadata result MT')
+        empty = (self.jp is None and self.lct is None and
+                 self.section_semantic_status is None and
+                 self.hdf5_group_version is None and not self.entries)
+        if self.result_status == 'absent':
+            if self.structural_failure is not None or not empty:
+                raise ValueError('invalid absent metadata result')
+        elif self.result_status == 'structural_failure':
+            if self.structural_failure not in _METADATA_STRUCTURAL_FAILURE:
+                raise ValueError('invalid metadata structural failure')
+            if not empty:
+                raise ValueError('invalid structural-failure metadata result')
+        elif self.result_status == _METADATA_RESULT:
+            if (self.structural_failure is not None or
+                    self.hdf5_group_version != 1):
+                raise ValueError('invalid published metadata result')
+            _metadata_validate_published(self.metadata)
+        else:
+            raise ValueError('invalid evaluated product metadata result status')
+
+    @property
+    def metadata(self):
+        """Return the attachable object only for a published result."""
+        if self.result_status != _METADATA_RESULT:
+            return None
+        return EvaluatedProductMetadata(
+            self.mt, self.jp, self.lct, self.section_semantic_status,
+            self.entries)
+
+
+def _metadata_int(value, failure='count_mismatch'):
+    """Return an ENDF control integer or raise for a non-integral value."""
+    try:
+        valid = not isinstance(value, (bool, np.bool_)) and int(value) == value
+    except (OverflowError, TypeError, ValueError):
+        valid = False
+    if not valid:
+        raise _MetadataParseError(failure)
+    return int(value)
+
+
+def _metadata_status(statuses):
+    """Return the canonical maximum semantic status."""
+    return max(statuses, key=_METADATA_SEMANTIC_STATUS.index, default='complete')
+
+
+def _metadata_identity(zap, lip):
+    """Derive only unambiguous convenience identities from raw ZAP/LIP."""
+    if zap == 0:
+        return 'special_particle', 'photon'
+    if zap == 1:
+        return 'special_particle', 'neutron'
+    return 'raw_only', None
+
+
+def _metadata_identity_is_valid(zap, lip, status, derived):
+    """Return whether a raw or optionally derived identity is conservative."""
+    if zap in (0, 1):
+        return (status, derived) == _metadata_identity(zap, lip)
+    if status == 'raw_only':
+        return derived is None
+    if status != 'ground_state_nuclide' or derived is None or lip != 0:
+        return False
+    z, a = divmod(zap, 1000)
+    return (zap != 1000 and 1 <= z <= a < 1000 and
+            z < len(ATOMIC_SYMBOL) and derived == f'{ATOMIC_SYMBOL[z]}{a}')
+
+
+def _metadata_entry(index, params):
+    """Create a raw entry and its mutable semantic-reason collection."""
+    try:
+        awp = float(params[1])
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise _MetadataParseError('invalid_header') from exc
+    zap, lip, law = (_metadata_int(params[0], 'invalid_header'),
+                     _metadata_int(params[2], 'invalid_header'),
+                     _metadata_int(params[3], 'invalid_header'))
+    if not math.isfinite(awp) or awp < 0.0:
+        raise _MetadataParseError('invalid_header')
+    identity_status, derived_particle = _metadata_identity(zap, lip)
+    return {
+        'subsection_index': index, 'zap': zap, 'awp': awp, 'lip': lip,
+        'law': law, 'lang_values': [], 'lidp': None, 'ltp_values': [],
+        'semantic_statuses': [], 'identity_status': identity_status,
+        'derived_particle': derived_particle, 'apsx': None, 'npsx': None,
+    }
+
+
+def _metadata_law1(file_obj, entry, lct):
+    params, _ = _metadata_record(get_tab2_record, file_obj)
+    lang, ne = _metadata_int(params[2]), _metadata_int(params[5])
+    if ne < 0:
+        raise _MetadataParseError('count_mismatch')
+    entry['lang_values'].append(lang)
+    for _ in range(ne):
+        items, values = _metadata_record(get_list_record, file_obj)
+        nd, na, nw, nep = (_metadata_int(items[2]), _metadata_int(items[3]),
+                           _metadata_int(items[4]), _metadata_int(items[5]))
+        if (min(nd, na, nw, nep) < 0 or nd > nep or
+                nw != nep*(na + 2) or len(values) != nw):
+            raise _MetadataParseError('count_mismatch')
+        if lang == 2 and na not in (0, 1, 2):
+            raise _MetadataParseError('count_mismatch')
+        if lang in (11, 12, 13, 14, 15) and (na < 2 or na % 2):
+            raise _MetadataParseError('count_mismatch')
+    if lang not in (1, 2, 11, 12, 13, 14, 15):
+        entry['semantic_statuses'].append('unsupported_lang')
+    if lang == 2 and lct != 2:
+        entry['semantic_statuses'].append('invalid_combination')
+
+
+def _metadata_law2(file_obj, entry, lct):
+    params, _ = _metadata_record(get_tab2_record, file_obj)
+    ne = _metadata_int(params[5])
+    if ne < 0:
+        raise _MetadataParseError('count_mismatch')
+    for _ in range(ne):
+        items, values = _metadata_record(get_list_record, file_obj)
+        lang, nw, nl = (_metadata_int(items[2]), _metadata_int(items[4]),
+                        _metadata_int(items[5]))
+        if min(nw, nl) < 0 or len(values) != nw:
+            raise _MetadataParseError('count_mismatch')
+        entry['lang_values'].append(lang)
+        if lang == 0 and (nl < 1 or nw != nl):
+            raise _MetadataParseError('count_mismatch')
+        if lang in (12, 14) and (nl < 2 or nw != 2*nl):
+            raise _MetadataParseError('count_mismatch')
+        if lang not in (0, 12, 14):
+            entry['semantic_statuses'].append('unsupported_lang')
+    if lct != 2:
+        entry['semantic_statuses'].append('unsupported_frame')
+
+
+def _metadata_law5(file_obj, entry):
+    params, _ = _metadata_record(get_tab2_record, file_obj)
+    lidp, ne = _metadata_int(params[2]), _metadata_int(params[5])
+    if ne < 0:
+        raise _MetadataParseError('count_mismatch')
+    entry['lidp'] = lidp
+    if lidp not in (0, 1):
+        entry['semantic_statuses'].append('invalid_combination')
+    for _ in range(ne):
+        items, values = _metadata_record(get_list_record, file_obj)
+        ltp, nw, nl = (_metadata_int(items[2]), _metadata_int(items[4]),
+                       _metadata_int(items[5]))
+        if min(nw, nl) < 0 or len(values) != nw:
+            raise _MetadataParseError('count_mismatch')
+        entry['ltp_values'].append(ltp)
+        if ltp == 1 and lidp in (0, 1):
+            expected = 4*nl + 3 if lidp == 0 else 3*nl + 3
+        elif ltp == 2:
+            expected = nl + 1
+        elif ltp in (12, 14, 15):
+            expected = 2*nl
+        else:
+            expected = None
+        if expected is not None and nw != expected:
+            raise _MetadataParseError('count_mismatch')
+        if ltp not in (1, 2, 12, 14, 15):
+            entry['semantic_statuses'].append('unsupported_ltp')
+
+
+def _metadata_law6(file_obj, entry):
+    apsx, c2, l1, l2, n1, npsx = _metadata_record(
+        get_cont_record, file_obj, parse_failure='invalid_law6_control')
+    try:
+        apsx = float(apsx)
+        c2 = float(c2)
+        controls = (_metadata_int(l1, 'invalid_law6_control'),
+                    _metadata_int(l2, 'invalid_law6_control'),
+                    _metadata_int(n1, 'invalid_law6_control'))
+        npsx = _metadata_int(npsx, 'invalid_law6_control')
+    except _MetadataParseError as exc:
+        raise _MetadataParseError('invalid_law6_control') from exc
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise _MetadataParseError('invalid_law6_control') from exc
+    if (not math.isfinite(apsx) or apsx <= 0.0 or c2 != 0.0 or
+            controls != (0, 0, 0) or not 3 <= npsx <= 2**31 - 1):
+        raise _MetadataParseError('invalid_law6_control')
+    entry['apsx'] = apsx
+    entry['npsx'] = npsx
+
+
+def _metadata_law7(file_obj, entry, lct):
+    params, _ = _metadata_record(get_tab2_record, file_obj)
+    ne = _metadata_int(params[5])
+    if ne < 0:
+        raise _MetadataParseError('count_mismatch')
+    for _ in range(ne):
+        inner, _ = _metadata_record(get_tab2_record, file_obj)
+        nmu = _metadata_int(inner[5])
+        if nmu < 0:
+            raise _MetadataParseError('count_mismatch')
+        for _ in range(nmu):
+            _metadata_record(get_tab1_record, file_obj)
+    if lct != 1:
+        entry['semantic_statuses'].append('unsupported_frame')
+
+
+def _metadata_fission_semantics(mt, jp, entries):
+    """Apply the ENDF-102 MT=18 multiplicity-product sequence constraints."""
+    if jp == 0:
+        if any(entry['law'] < 0 for entry in entries):
+            for entry in entries:
+                entry['semantic_statuses'].append('invalid_combination')
+        return
+    if mt != 18:
+        for entry in entries:
+            entry['semantic_statuses'].append('invalid_combination')
+        return
+    jpp, jpn = divmod(jp, 10)
+    kinds = []
+    for entry in entries:
+        if entry['zap'] == 1:
+            kinds.append('neutron')
+        elif entry['zap'] == 0:
+            kinds.append('photon')
+        else:
+            entry['semantic_statuses'].append('invalid_combination')
+            kinds.append('other')
+    if kinds != sorted(kinds, key=lambda value: value == 'photon') or 'other' in kinds:
+        for entry in entries:
+            entry['semantic_statuses'].append('invalid_combination')
+    for kind, digit, negative in (('neutron', jpn, -5), ('photon', jpp, -15)):
+        subset = [
+            entry for entry, entry_kind in zip(entries, kinds)
+            if entry_kind == kind]
+        if digit == 0:
+            if any(entry['law'] < 0 for entry in subset):
+                for entry in subset:
+                    entry['semantic_statuses'].append('invalid_combination')
+            continue
+        if not subset:
+            for entry in entries:
+                entry['semantic_statuses'].append('invalid_combination')
+            continue
+        if subset[0]['law'] != 0:
+            for entry in subset:
+                entry['semantic_statuses'].append('invalid_combination')
+            continue
+        later = subset[1:]
+        valid = bool(later) and (
+            all(entry['law'] == negative for entry in later) if digit == 1
+            else all(entry['law'] > 0 for entry in later))
+        if not valid:
+            for entry in subset:
+                entry['semantic_statuses'].append('invalid_combination')
+
+
+def _metadata_validate_published(metadata, expected_mt=None):
+    """Validate the closed published object independently of its HDF5 wire."""
+    mt = _metadata_int(metadata.mt, 'invalid_header')
+    jp = _metadata_int(metadata.jp, 'invalid_header')
+    lct = _metadata_int(metadata.lct, 'invalid_header')
+    if not 1 <= mt <= 999 or jp not in _METADATA_JP or lct not in (1, 2, 3, 4):
+        raise ValueError('invalid evaluated product metadata controls')
+    if expected_mt is not None and mt != expected_mt:
+        raise ValueError('evaluated product metadata MT does not match reaction')
+    if jp != 0 and not metadata.entries:
+        raise ValueError('active JP requires an MF=6 product subsection')
+    raw_entries = []
+    for index, entry in enumerate(metadata.entries):
+        controls = (entry.subsection_index, entry.zap, entry.lip, entry.law)
+        if any(_metadata_int(value, 'invalid_header') != value
+               for value in controls):
+            raise ValueError('invalid evaluated product metadata entry control')
+        if entry.subsection_index != index:
+            raise ValueError('non-contiguous evaluated product metadata entries')
+        awp = float(entry.awp)
+        if not math.isfinite(awp) or awp < 0.0:
+            raise ValueError('invalid evaluated product metadata AWP')
+        law = entry.law
+        if law not in (-15, -5, 0, 1, 2, 3, 4, 5, 6, 7):
+            raise ValueError('invalid evaluated product metadata LAW')
+        photon_energy = (mt, entry.zap, law) == (102, 0, 2)
+        expected_awp = ('primary_photon_energy_eV' if photon_energy
+                        else 'mass_ratio')
+        if entry.awp_interpretation != expected_awp:
+            raise ValueError('invalid evaluated product metadata AWP interpretation')
+        if not _metadata_identity_is_valid(
+                entry.zap, entry.lip, entry.identity_status,
+                entry.derived_particle):
+            raise ValueError('invalid evaluated product metadata identity')
+        if entry.semantic_status not in _METADATA_SEMANTIC_STATUS:
+            raise ValueError('invalid evaluated product metadata status')
+        lang = tuple(_metadata_int(value) for value in entry.lang_values)
+        ltp = tuple(_metadata_int(value) for value in entry.ltp_values)
+        statuses = []
+        if lct == 3 and law != 1:
+            statuses.append('invalid_combination')
+        if law == 1:
+            if len(lang) != 1 or ltp or entry.lidp is not None:
+                raise ValueError('invalid LAW=1 metadata selectors')
+            if lang[0] not in (1, 2, 11, 12, 13, 14, 15):
+                statuses.append('unsupported_lang')
+            if lang[0] == 2 and lct != 2:
+                statuses.append('invalid_combination')
+        elif law == 2:
+            if ltp or entry.lidp is not None:
+                raise ValueError('invalid LAW=2 metadata selectors')
+            if any(value not in (0, 12, 14) for value in lang):
+                statuses.append('unsupported_lang')
+            if lct != 2:
+                statuses.append('unsupported_frame')
+        elif law == 5:
+            if lang or entry.lidp is None:
+                raise ValueError('invalid LAW=5 metadata selectors')
+            _metadata_int(entry.lidp)
+            if entry.lidp not in (0, 1):
+                statuses.append('invalid_combination')
+            if any(value not in (1, 2, 12, 14, 15) for value in ltp):
+                statuses.append('unsupported_ltp')
+        elif lang or ltp or entry.lidp is not None:
+            raise ValueError('invalid evaluated product metadata selectors')
+        if law == 7 and lct != 1:
+            statuses.append('unsupported_frame')
+        if law == 6:
+            if entry.apsx is None or entry.npsx is None:
+                raise ValueError('LAW=6 metadata requires APSX and NPSX')
+            if (isinstance(entry.apsx, (bool, np.bool_)) or
+                    not isinstance(entry.apsx, Real)):
+                raise ValueError('invalid LAW=6 metadata APSX')
+            apsx = float(entry.apsx)
+            if (not math.isfinite(apsx) or apsx <= 0.0 or
+                    isinstance(entry.npsx, (bool, np.bool_)) or
+                    not isinstance(entry.npsx, (int, np.integer)) or
+                    not 3 <= entry.npsx <= 2**31 - 1):
+                raise ValueError('invalid LAW=6 metadata controls')
+        elif entry.apsx is not None or entry.npsx is not None:
+            raise ValueError('non-LAW=6 metadata cannot contain APSX or NPSX')
+        raw_entries.append({
+            'zap': entry.zap, 'law': law, 'semantic_statuses': statuses})
+    _metadata_fission_semantics(mt, jp, raw_entries)
+    expected_statuses = tuple(
+        _metadata_status(entry['semantic_statuses']) for entry in raw_entries)
+    if expected_statuses != tuple(
+            entry.semantic_status for entry in metadata.entries):
+        raise ValueError('inconsistent evaluated product metadata semantics')
+    if _metadata_status(expected_statuses) != metadata.section_semantic_status:
+        raise ValueError('invalid evaluated product metadata aggregate status')
+
+
+def get_evaluated_product_metadata(ev, mt):
+    """Read a transport-isolated MF=6 metadata result for one MT.
+
+    The Evaluation section boundary is trusted because Evaluation has removed
+    SEND. All known LAW envelopes are consumed by this reader itself; it never
+    calls a sampled-distribution constructor and never touches ``Product``.
+    Structural completeness is limited to the supported envelopes and declared
+    counts; it is not a full ENDF normalization or conservation audit.
+
+    Parameters
+    ----------
+    ev : openmc.data.endf.Evaluation
+        Evaluation containing the selected MF=6 section text.
+    mt : int
+        Requested ENDF reaction number.
+
+    Returns
+    -------
+    EvaluatedProductMetadataResult
+        Closed direct result. Absent and structurally failed results retain the
+        requested MT but contain null controls and no entries. Only a
+        ``published_structurally_complete`` result exposes attachable
+        :attr:`EvaluatedProductMetadataResult.metadata`.
+
+    """
+    if (6, mt) not in ev.section:
+        return EvaluatedProductMetadataResult(mt=mt, result_status='absent')
+    try:
+        file_obj = StringIO(ev.section[6, mt])
+        head = _metadata_record(get_head_record, file_obj, 'invalid_header')
+        jp, lct, nk = (_metadata_int(head[2], 'invalid_header'),
+                       _metadata_int(head[3], 'invalid_header'),
+                       _metadata_int(head[4], 'invalid_header'))
+        head_n2 = _metadata_int(head[5], 'invalid_header')
+        if (jp not in _METADATA_JP or lct not in (1, 2, 3, 4) or
+                nk < 0 or head_n2 != 0):
+            return EvaluatedProductMetadataResult(
+                mt=mt, result_status='structural_failure',
+                structural_failure='invalid_header')
+        if jp != 0 and nk == 0:
+            return EvaluatedProductMetadataResult(
+                mt=mt, result_status='structural_failure',
+                structural_failure='invalid_header')
+        raw_entries = []
+        for index in range(nk):
+            params, _ = _metadata_record(
+                get_tab1_record, file_obj, eof_failure='premature_end')
+            entry = _metadata_entry(index, params)
+            law = entry['law']
+            if law not in (-15, -5, 0, 1, 2, 3, 4, 5, 6, 7):
+                return EvaluatedProductMetadataResult(
+                    mt=mt, result_status='structural_failure',
+                    structural_failure='unknown_law')
+            if lct == 3 and law != 1:
+                entry['semantic_statuses'].append('invalid_combination')
+            if law == 1:
+                _metadata_law1(file_obj, entry, lct)
+            elif law == 2:
+                _metadata_law2(file_obj, entry, lct)
+            elif law == 5:
+                _metadata_law5(file_obj, entry)
+            elif law == 6:
+                _metadata_law6(file_obj, entry)
+            elif law == 7:
+                _metadata_law7(file_obj, entry, lct)
+            raw_entries.append(entry)
+        if file_obj.read().strip():
+            return EvaluatedProductMetadataResult(
+                mt=mt, result_status='structural_failure',
+                structural_failure='trailing_record')
+        _metadata_fission_semantics(mt, jp, raw_entries)
+        entries = []
+        for entry in raw_entries:
+            law = entry['law']
+            interpretation = ('primary_photon_energy_eV'
+                              if (mt, entry['zap'], law) == (102, 0, 2)
+                              else 'mass_ratio')
+            entries.append(EvaluatedProductMetadataEntry(
+                entry['subsection_index'], entry['zap'], entry['awp'],
+                interpretation, entry['lip'], law, tuple(entry['lang_values']),
+                entry['lidp'], tuple(entry['ltp_values']),
+                _metadata_status(entry['semantic_statuses']),
+                entry['identity_status'], entry['derived_particle'],
+                entry['apsx'], entry['npsx']))
+        metadata = EvaluatedProductMetadata(
+            mt, jp, lct,
+            _metadata_status([entry.semantic_status for entry in entries]),
+            tuple(entries))
+        _metadata_validate_published(metadata)
+        return EvaluatedProductMetadataResult(
+            mt=mt, result_status=_METADATA_RESULT, jp=jp, lct=lct,
+            section_semantic_status=metadata.section_semantic_status,
+            hdf5_group_version=1, entries=metadata.entries)
+    except _MetadataParseError as exc:
+        return EvaluatedProductMetadataResult(
+            mt=mt, result_status='structural_failure',
+            structural_failure=exc.reason)
+    except (EOFError, IndexError, OSError, ValueError, TypeError):
+        return EvaluatedProductMetadataResult(
+            mt=mt, result_status='structural_failure',
+            structural_failure='unproven_cursor')
+
+
+def _metadata_text(value):
+    """Return a UTF-8 HDF5 attribute as text."""
+    if isinstance(value, bytes):
+        return value.decode('utf-8')
+    if not isinstance(value, str):
+        raise ValueError('invalid evaluated product metadata UTF-8 scalar')
+    return value
+
+
+def _metadata_hdf5_scalar(group, name, dtype):
+    """Return a scalar with the required HDF5 kind and width."""
+    value = group.attrs[name]
+    actual = group.attrs.get_id(name).dtype
+    expected = np.dtype(dtype)
+    if (np.asarray(value).shape != () or actual.kind != expected.kind or
+            actual.itemsize != expected.itemsize):
+        raise ValueError('invalid evaluated product metadata scalar dtype')
+    return value
+
+
+def _metadata_hdf5_text(group, name):
+    """Return a scalar variable-length UTF-8 HDF5 attribute."""
+    value = group.attrs[name]
+    dtype = group.attrs.get_id(name).dtype
+    info = h5py.check_string_dtype(dtype)
+    if (np.asarray(value).shape != () or info is None or
+            info.encoding != 'utf-8' or info.length is not None):
+        raise ValueError('invalid evaluated product metadata string dtype')
+    return _metadata_text(value)
+
+
+def _metadata_to_hdf5(metadata, group, expected_mt):
+    """Write the closed metadata wire representation below a reaction group."""
+    _metadata_validate_published(metadata, expected_mt)
+    metadata_group = group.create_group('evaluated_product_metadata')
+    metadata_group.attrs.create('version', np.int32(1), dtype=np.int32)
+    metadata_group.attrs.create('schema', _METADATA_SCHEMA,
+                                dtype=_METADATA_UTF8)
+    metadata_group.attrs.create('source_format', 'ENDF-6',
+                                dtype=_METADATA_UTF8)
+    metadata_group.attrs.create('result_status', _METADATA_RESULT,
+                                dtype=_METADATA_UTF8)
+    metadata_group.attrs.create('mf', np.int32(6), dtype=np.int32)
+    metadata_group.attrs.create('mt', np.int32(metadata.mt), dtype=np.int32)
+    metadata_group.attrs.create('jp', np.int32(metadata.jp), dtype=np.int32)
+    metadata_group.attrs.create('lct', np.int32(metadata.lct), dtype=np.int32)
+    metadata_group.attrs.create(
+        'section_semantic_status', metadata.section_semantic_status,
+        dtype=_METADATA_UTF8)
+    for index, entry in enumerate(metadata.entries):
+        entry_group = metadata_group.create_group(f'entry_{index}')
+        entry_group.attrs.create(
+            'subsection_index', np.int32(entry.subsection_index),
+            dtype=np.int32)
+        entry_group.attrs.create('zap', np.int32(entry.zap), dtype=np.int32)
+        entry_group.attrs.create('awp', np.float64(entry.awp),
+                                 dtype=np.float64)
+        entry_group.attrs.create(
+            'awp_interpretation', entry.awp_interpretation,
+            dtype=_METADATA_UTF8)
+        entry_group.attrs.create('lip', np.int32(entry.lip), dtype=np.int32)
+        entry_group.attrs.create('law', np.int32(entry.law), dtype=np.int32)
+        entry_group.attrs.create(
+            'lidp', np.int32(-1 if entry.lidp is None else entry.lidp),
+            dtype=np.int32)
+        entry_group.attrs.create(
+            'semantic_status', entry.semantic_status, dtype=_METADATA_UTF8)
+        entry_group.attrs.create(
+            'identity_status', entry.identity_status, dtype=_METADATA_UTF8)
+        entry_group.attrs.create(
+            'derived_particle', entry.derived_particle or '',
+            dtype=_METADATA_UTF8)
+        if entry.law == 6:
+            entry_group.attrs.create('apsx', np.float64(entry.apsx),
+                                     dtype=np.float64)
+            entry_group.attrs.create('npsx', np.int32(entry.npsx),
+                                     dtype=np.int32)
+        entry_group.create_dataset(
+            'lang_values', data=np.asarray(entry.lang_values, dtype=np.int32),
+            dtype=np.int32)
+        entry_group.create_dataset(
+            'ltp_values', data=np.asarray(entry.ltp_values, dtype=np.int32),
+            dtype=np.int32)
+
+
+def _metadata_from_hdf5(group, mt):
+    """Read and validate the closed metadata wire representation."""
+    required = {'version', 'schema', 'source_format', 'result_status', 'mf',
+                'mt', 'jp', 'lct', 'section_semantic_status'}
+    if set(group.attrs) != required:
+        raise ValueError('invalid evaluated product metadata group attributes')
+    if _metadata_int(_metadata_hdf5_scalar(
+            group, 'version', np.int32)) != 1:
+        raise ValueError('invalid evaluated product metadata group version')
+    if (_metadata_hdf5_text(group, 'schema') != _METADATA_SCHEMA or
+            _metadata_hdf5_text(group, 'source_format') != 'ENDF-6' or
+            _metadata_hdf5_text(group, 'result_status') != _METADATA_RESULT or
+            _metadata_int(_metadata_hdf5_scalar(group, 'mf', np.int32)) != 6 or
+            _metadata_int(_metadata_hdf5_scalar(
+                group, 'mt', np.int32)) != mt):
+        raise ValueError('invalid evaluated product metadata group identity')
+    jp = _metadata_int(_metadata_hdf5_scalar(group, 'jp', np.int32))
+    lct = _metadata_int(_metadata_hdf5_scalar(group, 'lct', np.int32))
+    if jp not in _METADATA_JP or lct not in (1, 2, 3, 4):
+        raise ValueError('invalid evaluated product metadata controls')
+    section_status = _metadata_hdf5_text(
+        group, 'section_semantic_status')
+    if section_status not in _METADATA_SEMANTIC_STATUS:
+        raise ValueError('invalid evaluated product metadata status')
+    names = sorted(
+        group,
+        key=lambda name: int(name[6:])
+        if name.startswith('entry_') and name[6:].isdigit() else -1)
+    if names != [f'entry_{i}' for i in range(len(names))]:
+        raise ValueError('non-contiguous evaluated product metadata entries')
+    entries = []
+    entry_attrs = {'subsection_index', 'zap', 'awp', 'awp_interpretation', 'lip',
+                   'law', 'lidp', 'semantic_status', 'identity_status',
+                   'derived_particle'}
+    for index, name in enumerate(names):
+        entry_group = group[name]
+        if (not isinstance(entry_group, h5py.Group) or
+                not entry_attrs <= set(entry_group.attrs) or
+                set(entry_group) != {'lang_values', 'ltp_values'}):
+            raise ValueError('invalid evaluated product metadata entry')
+        subsection_index = _metadata_int(_metadata_hdf5_scalar(
+            entry_group, 'subsection_index', np.int32))
+        zap = _metadata_int(_metadata_hdf5_scalar(
+            entry_group, 'zap', np.int32))
+        lip = _metadata_int(_metadata_hdf5_scalar(
+            entry_group, 'lip', np.int32))
+        law = _metadata_int(_metadata_hdf5_scalar(
+            entry_group, 'law', np.int32))
+        expected_attrs = entry_attrs | ({'apsx', 'npsx'} if law == 6 else set())
+        if set(entry_group.attrs) != expected_attrs:
+            raise ValueError('invalid evaluated product metadata entry')
+        lidp = _metadata_int(_metadata_hdf5_scalar(
+            entry_group, 'lidp', np.int32))
+        awp = float(_metadata_hdf5_scalar(
+            entry_group, 'awp', np.float64))
+        if subsection_index != index or not math.isfinite(awp) or awp < 0.0:
+            raise ValueError('invalid evaluated product metadata scalar')
+        if law not in (-15, -5, 0, 1, 2, 3, 4, 5, 6, 7):
+            raise ValueError('invalid evaluated product metadata LAW')
+        if law == 6:
+            apsx = float(_metadata_hdf5_scalar(
+                entry_group, 'apsx', np.float64))
+            npsx = _metadata_int(_metadata_hdf5_scalar(
+                entry_group, 'npsx', np.int32))
+            if (not math.isfinite(apsx) or apsx <= 0.0 or
+                    not 3 <= npsx <= 2**31 - 1):
+                raise ValueError('invalid LAW=6 metadata controls')
+        else:
+            apsx = None
+            npsx = None
+        interpretation = _metadata_hdf5_text(
+            entry_group, 'awp_interpretation')
+        photon_energy = (mt, zap, law) == (102, 0, 2)
+        expected_interpretation = (
+            'primary_photon_energy_eV' if photon_energy else 'mass_ratio')
+        if interpretation != expected_interpretation:
+            raise ValueError('invalid evaluated product metadata AWP interpretation')
+        lang_dset = entry_group['lang_values']
+        ltp_dset = entry_group['ltp_values']
+        if (not isinstance(lang_dset, h5py.Dataset) or
+                not isinstance(ltp_dset, h5py.Dataset) or
+                lang_dset.ndim != 1 or ltp_dset.ndim != 1 or
+                lang_dset.dtype.kind != np.dtype(np.int32).kind or
+                ltp_dset.dtype.kind != np.dtype(np.int32).kind or
+                lang_dset.dtype.itemsize != np.dtype(np.int32).itemsize or
+                ltp_dset.dtype.itemsize != np.dtype(np.int32).itemsize):
+            raise ValueError('invalid evaluated product metadata selector dtype')
+        lang = tuple(int(value) for value in lang_dset[()])
+        ltp = tuple(int(value) for value in ltp_dset[()])
+        status = _metadata_hdf5_text(entry_group, 'semantic_status')
+        identity = _metadata_hdf5_text(entry_group, 'identity_status')
+        derived = _metadata_hdf5_text(
+            entry_group, 'derived_particle') or None
+        identities = ('raw_only', 'special_particle',
+                      'ground_state_nuclide')
+        if status not in _METADATA_SEMANTIC_STATUS or identity not in identities:
+            raise ValueError('invalid evaluated product metadata entry status')
+        if law == 1 and (len(lang) != 1 or ltp or lidp != -1):
+            raise ValueError('invalid LAW=1 metadata selectors')
+        if law == 2 and (ltp or lidp != -1):
+            raise ValueError('invalid LAW=2 metadata selectors')
+        if law == 5 and (lang or lidp < 0):
+            raise ValueError('invalid LAW=5 metadata selectors')
+        if law not in (1, 2, 5) and (lang or ltp or lidp != -1):
+            raise ValueError('invalid metadata selectors')
+        if not _metadata_identity_is_valid(zap, lip, identity, derived):
+            raise ValueError('invalid evaluated product metadata identity')
+        entries.append(EvaluatedProductMetadataEntry(
+            subsection_index, zap, awp, interpretation, lip, law, lang,
+            None if lidp == -1 else lidp, ltp, status, identity, derived,
+            apsx, npsx))
+    metadata = EvaluatedProductMetadata(
+        mt, jp, lct, section_status, tuple(entries))
+    _metadata_validate_published(metadata)
+    return metadata
 
 
 def _get_products(ev, mt):
@@ -852,6 +1641,7 @@ class Reaction(EqualityMixin):
         self._xs = {}
         self._products = []
         self._derived_products = []
+        self.evaluated_product_metadata = None
 
         self.mt = mt
 
@@ -946,6 +1736,9 @@ class Reaction(EqualityMixin):
         for i, p in enumerate(self.products):
             pgroup = group.create_group(f'product_{i}')
             p.to_hdf5(pgroup)
+        if self.evaluated_product_metadata is not None:
+            _metadata_to_hdf5(
+                self.evaluated_product_metadata, group, self.mt)
 
     @classmethod
     def from_hdf5(cls, group, energy):
@@ -998,6 +1791,10 @@ class Reaction(EqualityMixin):
         for i in range(n_product):
             pgroup = group[f'product_{i}']
             rx.products.append(Product.from_hdf5(pgroup))
+
+        if 'evaluated_product_metadata' in group:
+            rx.evaluated_product_metadata = _metadata_from_hdf5(
+                group['evaluated_product_metadata'], mt)
 
         return rx
 

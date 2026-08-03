@@ -65,6 +65,63 @@ temperature-dependent data set.  For example, the data set corresponding to
 
    Reaction product data is described in :ref:`product`.
 
+**/<nuclide name>/reactions/reaction_<mt>/evaluated_product_metadata/**
+
+   Optional, transport-isolated evaluated ENDF MF=6 product provenance. This
+   group is written only when
+   :meth:`openmc.data.IncidentNeutron.from_njoy` is explicitly called with
+   ``include_evaluated_product_metadata=True`` and the MF=6 section was
+   structurally consumed. It is not a ``product_<j>`` group and is not sampled
+   by OpenMC transport.
+
+   :Attributes: - **version** (*int32*) -- Group-local format version (1)
+                - **schema** (*UTF-8*) --
+                  ``openmc-evaluated-product-metadata/v2``
+                - **source_format** (*UTF-8*) -- ``ENDF-6``
+                - **result_status** (*UTF-8*) -- Always
+                  ``published_structurally_complete``
+                - **mf**, **mt**, **jp**, **lct** (*int32*) -- Raw ENDF section
+                  identity and controls
+                - **section_semantic_status** (*UTF-8*) -- ``complete``,
+                  ``unsupported_lang``, ``unsupported_ltp``,
+                  ``unsupported_frame``, or ``invalid_combination``
+
+   The group has exactly ordered children ``entry_0`` through ``entry_N-1``.
+   Every child stores raw **subsection_index**, **zap**, **lip**, and **law**
+   (*int32*); **awp** (*float64*); **awp_interpretation**,
+   **semantic_status**, **identity_status**, and **derived_particle** (*UTF-8*);
+   and **lidp** (*int32*, with -1 encoding null). It has rank-one int32
+   datasets **lang_values** and **ltp_values**, including zero-length datasets.
+   LAW=6 children additionally require scalar **apsx** (*float64*, finite and
+   positive) and **npsx** (*int32*, 3 through 2\ :sup:`31` - 1); other LAW
+   children contain neither attribute. APSX is the dimensionless total
+   final-state mass in neutron-mass units and NPSX is the dimensionless
+   final-state particle count.
+
+   AWP is a dimensionless mass ratio except for the ENDF primary-photon case
+   MT=102, ZAP=0, LAW=2, where it is an energy in eV. Raw ZAP/AWP/LIP remain
+   authoritative; derived identity is deliberately conservative. Missing groups
+   mean only ``not_published``; the direct parser distinguishes an absent MF=6
+   section from a typed structural failure. Unknown versions, malformed fields,
+   or gapped entry names are refused. The incident-neutron HDF5 file version
+   remains 3.0.
+
+   This representation is evaluated-data provenance only. It does not add ACE
+   products, alter secondary sampling, transport, random-number use, scoring,
+   or detector-response modelling; it does not establish final-state
+   completeness. ``published_structurally_complete`` means that the supported
+   MF=6 record envelopes and declared counts were consumed exactly. ``complete``
+   means that no implemented finite semantic rule was violated. LAW=1 with
+   LANG=2 requires LCT=2; another LCT makes that entry and its section
+   ``invalid_combination`` without preventing structural publication. The raw
+   section LCT control is retained, but no per-product frame interpretation is
+   published. This representation does not independently validate every ENDF
+   interpolation grid or constant control, nor does it establish distribution
+   normalization, conservation, or evaluation-wide physical consistency. In
+   particular, raw LAW=6 persistence does not enforce the sampling-level
+   relationship between APSX and an entry's AWP; consumers that interpret the
+   controls physically must validate that relationship separately.
+
 **/<nuclide name>/urr/<TTT>K/**
 
 <TTT>K is the temperature in Kelvin, rounded to the nearest integer, of the

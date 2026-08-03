@@ -1,10 +1,13 @@
 from collections.abc import Mapping, Callable
+import inspect
 import os
 
 import numpy as np
 import pandas as pd
 import pytest
+import h5py
 import openmc.data
+import openmc.data.neutron as neutron_module
 
 from . import needs_njoy
 
@@ -525,3 +528,757 @@ def test_high_temperature(endf_data):
 
     # Ensure that from_njoy works when given a high temperature
     openmc.data.IncidentNeutron.from_njoy(endf_file, temperatures=[123_456.0])
+
+
+class _MetadataEvaluation:
+    def __init__(self, text, mt=51):
+        self.section = {(6, mt): text}
+
+
+def _endf_record(c1=0.0, c2=0.0, l1=0, l2=0, n1=0, n2=0):
+    """Minimal fixed-width ENDF record for direct MF=6 parser tests."""
+    return (f'{c1:11.5E}{c2:11.5E}{l1:11d}{l2:11d}'
+            f'{n1:11d}{n2:11d}\n')
+
+
+def _endf_values(*values):
+    """One or more 66-column ENDF floating-point payload records."""
+    records = []
+    for start in range(0, len(values), 6):
+        fields = ''.join(f'{value:11.5E}' for value in values[start:start + 6])
+        records.append(f'{fields:66s}\n')
+    return ''.join(records)
+
+
+def _endf_integers(*values):
+    fields = ''.join(f'{value:11d}' for value in values)
+    return f'{fields:66s}\n'
+
+
+def _metadata_tab1(zap, awp, lip, law):
+    return (_endf_record(zap, awp, lip, law, 1, 2) +
+            _endf_integers(2, 2) +
+            _endf_values(0.0, 0.0, 20.0e6, 1.0))
+
+
+def _metadata_tab2(l1=0, n2=0):
+    return (_endf_record(0.0, 0.0, l1, 0, 1, n2) +
+            _endf_integers(n2, 2))
+
+
+def _metadata_list(l1, l2, n1, n2):
+    return (_endf_record(0.0, 0.0, l1, l2, n1, n2) +
+            _endf_values(*range(n1)))
+
+
+def _metadata_section(mt, lct, entries, jp=0, trailing=''):
+    text = _endf_record(26056.0, 55.0, jp, lct, len(entries), 0)
+    for zap, awp, lip, law, payload in entries:
+        text += _metadata_tab1(zap, awp, lip, law) + payload
+    return _MetadataEvaluation(text + trailing, mt)
+
+
+def _law1(lang, lists):
+    payload = _metadata_tab2(lang, len(lists))
+    for nep, na, nd, nw in lists:
+        payload += _metadata_list(nd, na, nw, nep)
+    return payload
+
+
+def _law2(lists):
+    payload = _metadata_tab2(0, len(lists))
+    for lang, nl, nw in lists:
+        payload += _metadata_list(lang, 0, nw, nl)
+    return payload
+
+
+def _law5(lidp, lists):
+    payload = _metadata_tab2(lidp, len(lists))
+    for ltp, nl, nw in lists:
+        payload += _metadata_list(ltp, 0, nw, nl)
+    return payload
+
+
+def _law6(apsx=4.0, c2=0.0, l1=0, l2=0, n1=0, npsx=3):
+    npsx_field = (f'{npsx:11d}' if isinstance(npsx, int)
+                  else f'{npsx:>11}')
+    return (f'{apsx:11.5E}{c2:11.5E}{l1:11d}{l2:11d}'
+            f'{n1:11d}{npsx_field}\n')
+
+
+def _law7(nmu_values):
+    payload = _metadata_tab2(0, len(nmu_values))
+    for nmu in nmu_values:
+        payload += _metadata_tab2(0, nmu)
+        payload += _metadata_tab1(0, 0.0, 0, 0) * nmu
+    return payload
+
+
+def _matrix_cases():
+    law1 = (1, 1.0, 0, 1,
+            _law1(2, [(3, 1, 0, 9), (2, 2, 2, 8)]))
+    law1_bad = (1, 1.0, 0, 1, _law1(1, [(2, 0, 0, 3)]))
+    law1_even = (1, 1.0, 0, 1, _law1(12, [(2, 2, 1, 8)]))
+    law2 = (1, 1.0, 0, 2, _law2([(0, 3, 3), (14, 2, 4)]))
+    capture = (0, 6129000.0, 0, 2, _law2([(0, 1, 1)]))
+    law5 = (1001, 1.0, 0, 5,
+            _law5(1, [(1, 2, 9), (2, 2, 3), (15, 2, 4)]))
+    law6 = (1, 1.0, 0, 6, _law6())
+    law7 = (1, 1.0, 0, 7, _law7([0, 2]))
+    fission_negative = [
+        (1, 1.0, 0, 0, ''), (1, 1.0, 0, -5, ''),
+        (0, 0.0, 0, 0, ''), (0, 0.0, 0, -15, '')]
+    fission_positive = [
+        (1, 1.0, 0, 0, ''), (1, 1.0, 0, 3, ''),
+        (0, 0.0, 0, 0, ''), (0, 0.0, 0, 4, '')]
+    return [
+        ('law1_exact_counts', _metadata_section(51, 3, [law1]),
+         'published_structurally_complete'),
+        ('law1_bad_nw', _metadata_section(51, 1, [law1_bad]),
+         'count_mismatch'),
+        ('law1_tabulated_even_na', _metadata_section(51, 1, [law1_even]),
+         'published_structurally_complete'),
+        ('law2_cm_and_counts', _metadata_section(51, 2, [law2]),
+         'published_structurally_complete'),
+        ('law2_capture_photon_awp_ev', _metadata_section(102, 2, [capture]),
+         'published_structurally_complete'),
+        ('law5_exact_lidp_counts', _metadata_section(51, 1, [law5]),
+         'published_structurally_complete'),
+        ('law6_controls', _metadata_section(51, 1, [law6]),
+         'published_structurally_complete'),
+        ('law7_nested_counts', _metadata_section(51, 1, [law7]),
+         'published_structurally_complete'),
+        ('law0_zero_payload', _metadata_section(
+            51, 1, [(1, 1.0, 0, 0, '')]),
+         'published_structurally_complete'),
+        ('law3_zero_payload', _metadata_section(
+            51, 1, [(1, 1.0, 0, 3, '')]),
+         'published_structurally_complete'),
+        ('law4_zero_payload', _metadata_section(
+            51, 1, [(1, 1.0, 0, 4, '')]),
+         'published_structurally_complete'),
+        ('negative_law_fission_order', _metadata_section(
+            18, 1, fission_negative, jp=11),
+         'published_structurally_complete'),
+        ('jp2_positive_law_sequence', _metadata_section(
+            18, 1, fission_positive, jp=22),
+         'published_structurally_complete'),
+        ('unknown_law_never_publishes', _metadata_section(
+            51, 1, [(1, 1.0, 0, 99, '')]), 'unknown_law'),
+        ('trailing_record_never_publishes', _metadata_section(
+            51, 1, [(1, 1.0, 0, 0, '')], trailing='unexpected'),
+         'trailing_record'),
+    ]
+
+
+@pytest.mark.parametrize('name,evaluation,expected', _matrix_cases(),
+                         ids=[case[0] for case in _matrix_cases()])
+def test_evaluated_product_metadata_matrix(name, evaluation, expected):
+    mt = next(mt for mf, mt in evaluation.section if mf == 6)
+    result = openmc.data.get_evaluated_product_metadata(evaluation, mt)
+    if expected == 'published_structurally_complete':
+        assert result.result_status == expected
+        assert result.structural_failure is None
+        assert result.metadata is not None
+        assert result.hdf5_group_version == 1
+        assert result.entries == result.metadata.entries
+        assert (result.jp, result.lct, result.section_semantic_status) == (
+            result.metadata.jp, result.metadata.lct,
+            result.metadata.section_semantic_status)
+        if name == 'law2_capture_photon_awp_ev':
+            entry = result.metadata.entries[0]
+            assert entry.awp == 6129000.0
+            assert entry.awp_interpretation == 'primary_photon_energy_eV'
+        elif name == 'law5_exact_lidp_counts':
+            entry = result.metadata.entries[0]
+            assert (entry.identity_status, entry.derived_particle) == (
+                'raw_only', None)
+            assert entry.ltp_values == (1, 2, 15)
+        elif name == 'law6_controls':
+            entry = result.metadata.entries[0]
+            assert (entry.apsx, entry.npsx) == (4.0, 3)
+        elif name == 'negative_law_fission_order':
+            assert tuple(entry.law for entry in result.metadata.entries) == (
+                0, -5, 0, -15)
+    else:
+        assert result.result_status == 'structural_failure'
+        assert result.structural_failure == expected
+        assert result.metadata is None
+        assert (result.jp, result.lct, result.section_semantic_status,
+                result.hdf5_group_version, result.entries) == (
+            None, None, None, None, ())
+
+
+def test_evaluated_product_metadata_direct_parser():
+    law0 = _metadata_section(51, 1, [(1, 1.0, 0, 0, '')])
+    result = openmc.data.get_evaluated_product_metadata(law0, 51)
+    assert result.result_status == 'published_structurally_complete'
+    assert result.metadata.entries[0].subsection_index == 0
+    assert result.metadata.entries[0].derived_particle == 'neutron'
+    assert result.metadata.entries[0].law == 0
+    assert (result.metadata.entries[0].apsx,
+            result.metadata.entries[0].npsx) == (None, None)
+
+    with pytest.raises(ValueError):
+        openmc.data.EvaluatedProductMetadataEntry(
+            0, 1, 1.0, 'mass_ratio', 0, 6, (), None, (), 'complete',
+            'special_particle', 'neutron')
+    for invalid_apsx in (True, '4.0'):
+        with pytest.raises(ValueError):
+            openmc.data.EvaluatedProductMetadataEntry(
+                0, 1, 1.0, 'mass_ratio', 0, 6, (), None, (), 'complete',
+                'special_particle', 'neutron', invalid_apsx, 3)
+    with pytest.raises(ValueError):
+        openmc.data.EvaluatedProductMetadataEntry(
+            0, 1, 1.0, 'mass_ratio', 0, 0, (), None, (), 'complete',
+            'special_particle', 'neutron', 4.0, 3)
+
+    absent = openmc.data.get_evaluated_product_metadata(
+        _MetadataEvaluation('', 52), 51)
+    assert absent == openmc.data.EvaluatedProductMetadataResult(51, 'absent')
+    assert (absent.schema, absent.source_format, absent.mf, absent.mt) == (
+        'openmc-evaluated-product-metadata/v2', 'ENDF-6', 6, 51)
+    assert (absent.jp, absent.lct, absent.section_semantic_status,
+            absent.hdf5_group_version, absent.entries) == (
+        None, None, None, None, ())
+
+    premature = _MetadataEvaluation(
+        _endf_record(26056.0, 55.0, 0, 1, 1, 0))
+    result = openmc.data.get_evaluated_product_metadata(premature, 51)
+    assert result.structural_failure == 'premature_end'
+
+    empty_active = _MetadataEvaluation(
+        _endf_record(26056.0, 55.0, 1, 1, 0, 0), 18)
+    result = openmc.data.get_evaluated_product_metadata(empty_active, 18)
+    assert result.result_status == 'structural_failure'
+    assert result.structural_failure == 'invalid_header'
+
+    nonzero_head_n2 = _MetadataEvaluation(
+        _endf_record(26056.0, 55.0, 0, 1, 0, 1))
+    result = openmc.data.get_evaluated_product_metadata(nonzero_head_n2, 51)
+    assert result.structural_failure == 'invalid_header'
+
+
+def test_evaluated_product_metadata_semantic_refusals():
+    invalid_lidp = _metadata_section(51, 1, [
+        (1001, 1.0, 0, 5, _law5(2, [(1, 2, 1)]))])
+    result = openmc.data.get_evaluated_product_metadata(invalid_lidp, 51)
+    entry = result.metadata.entries[0]
+    assert entry.identity_status == 'raw_only'
+    assert entry.derived_particle is None
+    assert entry.semantic_status == 'invalid_combination'
+
+    unsupported = _metadata_section(51, 1, [
+        (1, 1.0, 0, 1, _law1(999, [(1, 0, 0, 2)]))])
+    result = openmc.data.get_evaluated_product_metadata(unsupported, 51)
+    assert result.metadata.section_semantic_status == 'unsupported_lang'
+
+    inactive_negative = _metadata_section(
+        18, 1, [(1, 1.0, 0, -5, '')], jp=0)
+    result = openmc.data.get_evaluated_product_metadata(inactive_negative, 18)
+    assert result.metadata.section_semantic_status == 'invalid_combination'
+
+    chance_fission = _metadata_section(19, 1, [
+        (1, 1.0, 0, 0, ''), (1, 1.0, 0, -5, '')], jp=1)
+    result = openmc.data.get_evaluated_product_metadata(chance_fission, 19)
+    assert result.metadata.section_semantic_status == 'invalid_combination'
+
+    crossed_neutron = _metadata_section(18, 1, [
+        (1, 1.0, 0, -15, ''),
+        (0, 0.0, 0, 0, ''), (0, 0.0, 0, -15, '')], jp=10)
+    result = openmc.data.get_evaluated_product_metadata(crossed_neutron, 18)
+    assert result.metadata.section_semantic_status == 'invalid_combination'
+
+    crossed_photon = _metadata_section(18, 1, [
+        (1, 1.0, 0, 0, ''), (1, 1.0, 0, -5, ''),
+        (0, 0.0, 0, -5, '')], jp=1)
+    result = openmc.data.get_evaluated_product_metadata(crossed_photon, 18)
+    assert result.metadata.section_semantic_status == 'invalid_combination'
+
+    bad_tabulated_na = _metadata_section(51, 1, [
+        (1, 1.0, 0, 1, _law1(12, [(1, 0, 0, 2)]))])
+    result = openmc.data.get_evaluated_product_metadata(bad_tabulated_na, 51)
+    assert result.structural_failure == 'count_mismatch'
+
+
+@pytest.mark.parametrize('lang,na,expected', [
+    (1, 0, 'complete'),
+    (2, 0, 'complete'),
+    (2, 1, 'complete'),
+    (2, 2, 'complete'),
+    (11, 2, 'complete'),
+    (12, 2, 'complete'),
+    (13, 2, 'complete'),
+    (14, 2, 'complete'),
+    (15, 2, 'complete'),
+    (999, 0, 'unsupported_lang'),
+])
+def test_evaluated_product_metadata_law1_selectors(lang, na, expected):
+    nw = na + 2
+    evaluation = _metadata_section(51, 2 if lang == 2 else 1, [
+        (1, 1.0, 0, 1, _law1(lang, [(1, na, 0, nw)]))])
+    result = openmc.data.get_evaluated_product_metadata(evaluation, 51)
+    assert result.result_status == 'published_structurally_complete'
+    assert result.entries[0].semantic_status == expected
+
+
+@pytest.mark.parametrize('lct,expected', [
+    (1, 'invalid_combination'),
+    (2, 'complete'),
+    (3, 'invalid_combination'),
+    (4, 'invalid_combination'),
+])
+def test_evaluated_product_metadata_law1_lang2_lct_semantics(lct, expected):
+    evaluation = _metadata_section(51, lct, [
+        (1, 1.0, 0, 1, _law1(2, [(1, 0, 0, 2)]))])
+    result = openmc.data.get_evaluated_product_metadata(evaluation, 51)
+
+    assert result.result_status == 'published_structurally_complete'
+    assert result.metadata is not None
+    assert result.entries[0].semantic_status == expected
+    assert result.section_semantic_status == expected
+
+
+@pytest.mark.parametrize('lang,nl,nw,expected', [
+    (0, 1, 1, 'complete'),
+    (12, 2, 4, 'complete'),
+    (14, 2, 4, 'complete'),
+    (999, 0, 0, 'unsupported_lang'),
+])
+def test_evaluated_product_metadata_law2_selectors(lang, nl, nw, expected):
+    evaluation = _metadata_section(51, 2, [
+        (1, 1.0, 0, 2, _law2([(lang, nl, nw)]))])
+    result = openmc.data.get_evaluated_product_metadata(evaluation, 51)
+    assert result.result_status == 'published_structurally_complete'
+    assert result.entries[0].semantic_status == expected
+
+
+@pytest.mark.parametrize('lidp,ltp,nl,nw,expected', [
+    (0, 1, 1, 7, 'complete'),
+    (1, 1, 1, 6, 'complete'),
+    (0, 2, 1, 2, 'complete'),
+    (0, 12, 1, 2, 'complete'),
+    (0, 14, 1, 2, 'complete'),
+    (0, 15, 1, 2, 'complete'),
+    (0, 99, 0, 0, 'unsupported_ltp'),
+    (2, 1, 1, 1, 'invalid_combination'),
+])
+def test_evaluated_product_metadata_law5_selectors(
+        lidp, ltp, nl, nw, expected):
+    evaluation = _metadata_section(51, 1, [
+        (1001, 1.0, 0, 5, _law5(lidp, [(ltp, nl, nw)]))])
+    result = openmc.data.get_evaluated_product_metadata(evaluation, 51)
+    assert result.result_status == 'published_structurally_complete'
+    assert result.entries[0].semantic_status == expected
+
+
+def test_evaluated_product_metadata_law_envelope_mutations():
+    missing_law6 = _metadata_section(51, 1, [(1, 1.0, 0, 6, '')])
+    result = openmc.data.get_evaluated_product_metadata(missing_law6, 51)
+    assert result.structural_failure == 'truncated_record'
+
+    extra_law6 = _metadata_section(51, 1, [
+        (1, 1.0, 0, 6, _law6())],
+        trailing=_endf_record())
+    result = openmc.data.get_evaluated_product_metadata(extra_law6, 51)
+    assert result.structural_failure == 'trailing_record'
+
+    for nmu_values in ([], [1], [0, 1, 2]):
+        law7 = _metadata_section(51, 1, [
+            (1, 1.0, 0, 7, _law7(nmu_values))])
+        result = openmc.data.get_evaluated_product_metadata(law7, 51)
+        assert result.result_status == 'published_structurally_complete'
+
+    truncated_law7 = _metadata_section(51, 1, [
+        (1, 1.0, 0, 7, _metadata_tab2(0, 1) + _metadata_tab2(0, 1))])
+    result = openmc.data.get_evaluated_product_metadata(truncated_law7, 51)
+    assert result.structural_failure == 'truncated_record'
+
+    bad_law5 = _metadata_section(51, 1, [
+        (1001, 1.0, 0, 5, _law5(0, [(12, 1, 1)]))])
+    result = openmc.data.get_evaluated_product_metadata(bad_law5, 51)
+    assert result.structural_failure == 'count_mismatch'
+
+
+@pytest.mark.parametrize('payload', [
+    _law6(0.0),
+    _law6(float('nan')),
+    _law6(4.0, c2=1.0),
+    _law6(4.0, l1=1),
+    _law6(4.0, l2=1),
+    _law6(4.0, n1=1),
+    _law6(4.0, npsx='3.5'),
+    _law6(4.0, npsx=2),
+    _law6(4.0, npsx=2**31),
+], ids=[
+    'nonpositive_apsx', 'nonfinite_apsx', 'reserved_c2', 'reserved_l1',
+    'reserved_l2', 'reserved_n1', 'nonintegral_npsx', 'small_npsx',
+    'unrepresentable_npsx',
+])
+def test_evaluated_product_metadata_law6_invalid_controls_are_atomic(payload):
+    evaluation = _metadata_section(51, 1, [(1, 1.0, 0, 6, payload)])
+    result = openmc.data.get_evaluated_product_metadata(evaluation, 51)
+
+    assert result.result_status == 'structural_failure'
+    assert result.structural_failure == 'invalid_law6_control'
+    assert result.metadata is None
+    assert result.entries == ()
+
+
+def test_evaluated_product_metadata_law6_truncated_control_is_atomic():
+    evaluation = _metadata_section(51, 1, [
+        (1, 1.0, 0, 6, _law6()[:65])])
+    result = openmc.data.get_evaluated_product_metadata(evaluation, 51)
+
+    assert result.result_status == 'structural_failure'
+    assert result.structural_failure == 'truncated_record'
+    assert result.metadata is None
+    assert result.entries == ()
+
+
+def test_evaluated_product_metadata_boundaries_and_atomicity():
+    lct4 = _metadata_section(51, 4, [(1, 1.0, 0, 0, '')])
+    result = openmc.data.get_evaluated_product_metadata(lct4, 51)
+    assert result.section_semantic_status == 'complete'
+
+    lct3_nonlaw1 = _metadata_section(51, 3, [(1, 1.0, 0, 0, '')])
+    result = openmc.data.get_evaluated_product_metadata(lct3_nonlaw1, 51)
+    assert result.section_semantic_status == 'invalid_combination'
+
+    unknown_lct = _MetadataEvaluation(
+        _endf_record(26056.0, 55.0, 0, 5, 0, 0))
+    result = openmc.data.get_evaluated_product_metadata(unknown_lct, 51)
+    assert result.structural_failure == 'invalid_header'
+
+    truncated_tab1 = _MetadataEvaluation(
+        _endf_record(26056.0, 55.0, 0, 1, 1, 0) +
+        _endf_record(1.0, 1.0, 0, 0, 1, 2))
+    result = openmc.data.get_evaluated_product_metadata(truncated_tab1, 51)
+    assert result.structural_failure == 'truncated_record'
+    assert result.entries == ()
+
+    truncated_list = _metadata_section(51, 1, [
+        (1, 1.0, 0, 1,
+         _metadata_tab2(1, 1) + _endf_record(0.0, 0.0, 0, 0, 2, 1))])
+    result = openmc.data.get_evaluated_product_metadata(truncated_list, 51)
+    assert result.structural_failure == 'truncated_record'
+    assert result.entries == ()
+
+    corrupt_list_length = _metadata_section(51, 1, [
+        (1, 1.0, 0, 1,
+         _metadata_tab2(1, 1) + _endf_record(0.0, 0.0, 0, 0, -1, 1))])
+    result = openmc.data.get_evaluated_product_metadata(
+        corrupt_list_length, 51)
+    assert result.structural_failure == 'count_mismatch'
+    assert result.entries == ()
+
+    nk_over = _MetadataEvaluation(
+        _endf_record(26056.0, 55.0, 0, 1, 2, 0) +
+        _metadata_tab1(1, 1.0, 0, 0))
+    result = openmc.data.get_evaluated_product_metadata(nk_over, 51)
+    assert result.structural_failure == 'premature_end'
+
+    nk_under = _MetadataEvaluation(
+        _endf_record(26056.0, 55.0, 0, 1, 0, 0) +
+        _metadata_tab1(1, 1.0, 0, 0))
+    result = openmc.data.get_evaluated_product_metadata(nk_under, 51)
+    assert result.structural_failure == 'trailing_record'
+
+
+def test_evaluated_product_metadata_hdf5(tmp_path):
+    entry = openmc.data.EvaluatedProductMetadataEntry(
+        0, 0, 6129000.0, 'primary_photon_energy_eV', 0, 2, (0,), None,
+        (), 'complete', 'special_particle', 'photon')
+    metadata = openmc.data.EvaluatedProductMetadata(
+        102, 0, 2, 'complete', (entry,))
+    reaction = openmc.data.Reaction(102)
+    transport_product = openmc.data.Product('neutron')
+    reaction.products = [transport_product]
+    reaction.evaluated_product_metadata = metadata
+    filename = tmp_path / 'metadata.h5'
+    with h5py.File(filename, 'w') as h5file:
+        group = h5file.create_group('reaction_102')
+        reaction.to_hdf5(group)
+        metadata_group = group['evaluated_product_metadata']
+        assert metadata_group.attrs['version'] == 1
+        assert metadata_group.attrs['schema'] == (
+            'openmc-evaluated-product-metadata/v2')
+        assert metadata_group.attrs['result_status'] == (
+            'published_structurally_complete')
+        assert h5py.check_string_dtype(
+            metadata_group.attrs.get_id('schema').dtype).length is None
+        assert metadata_group.attrs.get_id('version').dtype == np.dtype('int32')
+        assert set(metadata_group) == {'entry_0'}
+        assert not any(name.startswith('product_') for name in metadata_group)
+        assert metadata_group['entry_0']['lang_values'].dtype == np.dtype('int32')
+        assert 'apsx' not in metadata_group['entry_0'].attrs
+        assert 'npsx' not in metadata_group['entry_0'].attrs
+        copied = openmc.data.Reaction.from_hdf5(group, {})
+        assert copied.products[0].particle == 'neutron'
+        assert copied.evaluated_product_metadata == metadata
+        del group['evaluated_product_metadata']
+        copied = openmc.data.Reaction.from_hdf5(group, {})
+        assert copied.evaluated_product_metadata is None
+
+    with h5py.File(filename, 'a') as h5file:
+        reaction.to_hdf5(h5file.create_group('malformed'))
+        h5file['malformed/evaluated_product_metadata'].attrs['version'] = 2
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(h5file['malformed'], {})
+
+        fixed = h5file.create_group('fixed_string')
+        reaction.to_hdf5(fixed)
+        wire = fixed['evaluated_product_metadata']
+        del wire.attrs['schema']
+        wire.attrs['schema'] = np.bytes_(
+            'openmc-evaluated-product-metadata/v2')
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(fixed, {})
+
+        unknown_field = h5file.create_group('unknown_field')
+        reaction.to_hdf5(unknown_field)
+        unknown_field['evaluated_product_metadata'].attrs['extra'] = 1
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(unknown_field, {})
+
+        gapped = h5file.create_group('gapped')
+        reaction.to_hdf5(gapped)
+        wire = gapped['evaluated_product_metadata']
+        wire.move('entry_0', 'entry_1')
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(gapped, {})
+
+        bad_rank = h5file.create_group('bad_rank')
+        reaction.to_hdf5(bad_rank)
+        entry_group = bad_rank['evaluated_product_metadata/entry_0']
+        del entry_group['lang_values']
+        entry_group.create_dataset(
+            'lang_values', data=np.zeros((1, 1), dtype=np.int32))
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(bad_rank, {})
+
+        inconsistent = h5file.create_group('inconsistent')
+        reaction.to_hdf5(inconsistent)
+        inconsistent['evaluated_product_metadata'].attrs['jp'] = np.int32(1)
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(inconsistent, {})
+
+        portable = h5file.create_group('opposite_endian')
+        reaction.to_hdf5(portable)
+        wire = portable['evaluated_product_metadata']
+        del wire.attrs['version']
+        wire.attrs.create('version', np.asarray(1, dtype='>i4'), dtype='>i4')
+        entry_group = wire['entry_0']
+        del entry_group.attrs['awp']
+        entry_group.attrs.create(
+            'awp', np.asarray(6129000.0, dtype='>f8'), dtype='>f8')
+        del entry_group['lang_values']
+        entry_group.create_dataset(
+            'lang_values', data=np.asarray([0], dtype='>i4'), dtype='>i4')
+        copied = openmc.data.Reaction.from_hdf5(portable, {})
+        assert copied.evaluated_product_metadata == metadata
+
+        bad_awp = h5file.create_group('bad_awp_interpretation')
+        reaction.to_hdf5(bad_awp)
+        entry_group = bad_awp['evaluated_product_metadata/entry_0']
+        entry_group.attrs.modify('awp_interpretation', 'arbitrary')
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(bad_awp, {})
+
+    invalid_metadata = openmc.data.EvaluatedProductMetadata(
+        102, 1, 2, 'complete', (entry,))
+    invalid_reaction = openmc.data.Reaction(102)
+    invalid_reaction.evaluated_product_metadata = invalid_metadata
+    with h5py.File(tmp_path / 'invalid_metadata.h5', 'w') as h5file:
+        with pytest.raises(ValueError):
+            invalid_reaction.to_hdf5(h5file.create_group('reaction_102'))
+
+    empty_active = openmc.data.EvaluatedProductMetadata(
+        18, 1, 1, 'complete', ())
+    empty_reaction = openmc.data.Reaction(18)
+    empty_reaction.evaluated_product_metadata = empty_active
+    with h5py.File(tmp_path / 'empty_active.h5', 'w') as h5file:
+        with pytest.raises(ValueError):
+            empty_reaction.to_hdf5(h5file.create_group('reaction_18'))
+
+    mismatched_reaction = openmc.data.Reaction(51)
+    mismatched_reaction.evaluated_product_metadata = metadata
+    with h5py.File(tmp_path / 'mismatched_mt.h5', 'w') as h5file:
+        with pytest.raises(ValueError):
+            mismatched_reaction.to_hdf5(h5file.create_group('reaction_51'))
+
+    ordered_evaluation = _metadata_section(18, 1, [
+        (1, 1.0, 0, 0, ''), (1, 1.0, 0, -5, ''),
+        (0, 0.0, 0, 0, ''), (0, 0.0, 0, -15, '')], jp=11)
+    ordered = openmc.data.get_evaluated_product_metadata(
+        ordered_evaluation, 18).metadata
+    ordered_reaction = openmc.data.Reaction(18)
+    ordered_reaction.evaluated_product_metadata = ordered
+    with h5py.File(tmp_path / 'ordered_metadata.h5', 'w') as h5file:
+        group = h5file.create_group('reaction_18')
+        ordered_reaction.to_hdf5(group)
+        copied = openmc.data.Reaction.from_hdf5(group, {})
+        assert copied.evaluated_product_metadata == ordered
+        assert tuple(entry.zap for entry in ordered.entries) == (1, 1, 0, 0)
+
+
+def test_evaluated_product_metadata_law6_hdf5_wire(tmp_path):
+    entry = openmc.data.EvaluatedProductMetadataEntry(
+        0, 1, 1.0, 'mass_ratio', 0, 6, (), None, (), 'complete',
+        'special_particle', 'neutron', 4.25, 3)
+    metadata = openmc.data.EvaluatedProductMetadata(
+        51, 0, 1, 'complete', (entry,))
+    reaction = openmc.data.Reaction(51)
+    reaction.evaluated_product_metadata = metadata
+    filename = tmp_path / 'law6_metadata.h5'
+
+    with h5py.File(filename, 'w') as h5file:
+        group = h5file.create_group('law6')
+        reaction.to_hdf5(group)
+        entry_group = group['evaluated_product_metadata/entry_0']
+        assert entry_group.attrs['apsx'] == 4.25
+        assert entry_group.attrs['npsx'] == 3
+        assert entry_group.attrs.get_id('apsx').dtype == np.dtype('float64')
+        assert entry_group.attrs.get_id('npsx').dtype == np.dtype('int32')
+        copied = openmc.data.Reaction.from_hdf5(group, {})
+        assert copied.evaluated_product_metadata == metadata
+
+    with h5py.File(filename, 'a') as h5file:
+        for name, mutate in [
+            ('missing_apsx', lambda attrs: attrs.__delitem__('apsx')),
+            ('missing_npsx', lambda attrs: attrs.__delitem__('npsx')),
+        ]:
+            group = h5file.create_group(name)
+            reaction.to_hdf5(group)
+            attrs = group['evaluated_product_metadata/entry_0'].attrs
+            mutate(attrs)
+            with pytest.raises(ValueError):
+                openmc.data.Reaction.from_hdf5(group, {})
+
+        wrong_apsx_dtype = h5file.create_group('wrong_apsx_dtype')
+        reaction.to_hdf5(wrong_apsx_dtype)
+        attrs = wrong_apsx_dtype['evaluated_product_metadata/entry_0'].attrs
+        del attrs['apsx']
+        attrs.create('apsx', np.float32(4.25), dtype=np.float32)
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(wrong_apsx_dtype, {})
+
+        wrong_apsx_rank = h5file.create_group('wrong_apsx_rank')
+        reaction.to_hdf5(wrong_apsx_rank)
+        attrs = wrong_apsx_rank['evaluated_product_metadata/entry_0'].attrs
+        del attrs['apsx']
+        attrs.create('apsx', np.asarray([4.25], dtype=np.float64),
+                     dtype=np.float64)
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(wrong_apsx_rank, {})
+
+        wrong_npsx_dtype = h5file.create_group('wrong_npsx_dtype')
+        reaction.to_hdf5(wrong_npsx_dtype)
+        attrs = wrong_npsx_dtype['evaluated_product_metadata/entry_0'].attrs
+        del attrs['npsx']
+        attrs.create('npsx', np.int64(2**31), dtype=np.int64)
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(wrong_npsx_dtype, {})
+
+        nonfinite = h5file.create_group('nonfinite_apsx')
+        reaction.to_hdf5(nonfinite)
+        nonfinite['evaluated_product_metadata/entry_0'].attrs.modify(
+            'apsx', np.float64(float('nan')))
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(nonfinite, {})
+
+        nonpositive = h5file.create_group('nonpositive_apsx')
+        reaction.to_hdf5(nonpositive)
+        nonpositive['evaluated_product_metadata/entry_0'].attrs.modify(
+            'apsx', np.float64(0.0))
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(nonpositive, {})
+
+        small_npsx = h5file.create_group('small_npsx')
+        reaction.to_hdf5(small_npsx)
+        small_npsx['evaluated_product_metadata/entry_0'].attrs.modify(
+            'npsx', np.int32(2))
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(small_npsx, {})
+
+        nonlaw = h5file.create_group('nonlaw_has_law6_field')
+        nonlaw_entry = openmc.data.EvaluatedProductMetadataEntry(
+            0, 1, 1.0, 'mass_ratio', 0, 0, (), None, (), 'complete',
+            'special_particle', 'neutron')
+        nonlaw_reaction = openmc.data.Reaction(51)
+        nonlaw_reaction.evaluated_product_metadata = (
+            openmc.data.EvaluatedProductMetadata(
+                51, 0, 1, 'complete', (nonlaw_entry,)))
+        nonlaw_reaction.to_hdf5(nonlaw)
+        nonlaw['evaluated_product_metadata/entry_0'].attrs.create(
+            'apsx', np.float64(4.25), dtype=np.float64)
+        with pytest.raises(ValueError):
+            openmc.data.Reaction.from_hdf5(nonlaw, {})
+
+
+def test_evaluated_product_metadata_default_is_off():
+    reaction = openmc.data.Reaction(51)
+    assert reaction.evaluated_product_metadata is None
+    assert reaction.products == []
+    parameter = inspect.signature(
+        openmc.data.IncidentNeutron.from_njoy).parameters[
+            'include_evaluated_product_metadata']
+    assert parameter.default is False
+
+
+def test_evaluated_product_metadata_from_njoy_opt_in(monkeypatch):
+    class FakeLibrary:
+        def __init__(self, filename):
+            self.tables = [object()]
+
+    created = []
+
+    def fake_from_ace(cls, table):
+        data = type('FakeIncidentNeutron', (), {})()
+        data.reactions = {51: openmc.data.Reaction(51)}
+        data.energy = {'0K': np.array([0.0])}
+        created.append(data)
+        return data
+
+    monkeypatch.setattr(neutron_module, 'make_ace', lambda *args, **kwargs: None)
+    monkeypatch.setattr(neutron_module, 'Library', FakeLibrary)
+    monkeypatch.setattr(
+        openmc.data.IncidentNeutron, 'from_ace', classmethod(fake_from_ace))
+
+    evaluation = type('FakeEvaluation', (), {
+        'gnds_name': 'Fe56', 'section': {}})()
+    calls = []
+
+    def fake_metadata(ev, mt):
+        calls.append((ev, mt))
+        entry = openmc.data.EvaluatedProductMetadataEntry(
+            0, 1, 1.0, 'mass_ratio', 0, 0, (), None, (), 'complete',
+            'special_particle', 'neutron')
+        return openmc.data.EvaluatedProductMetadataResult(
+            mt=mt, result_status='published_structurally_complete',
+            jp=0, lct=1, section_semantic_status='complete',
+            hdf5_group_version=1, entries=(entry,))
+
+    monkeypatch.setattr(
+        neutron_module, 'get_evaluated_product_metadata', fake_metadata)
+    default_data = openmc.data.IncidentNeutron.from_njoy(
+        'unused.endf', evaluation=evaluation, heatr=False)
+    assert calls == []
+    assert default_data.reactions[51].evaluated_product_metadata is None
+
+    opted_in = openmc.data.IncidentNeutron.from_njoy(
+        'unused.endf', evaluation=evaluation, heatr=False,
+        include_evaluated_product_metadata=True)
+    assert calls == [(evaluation, 51)]
+    assert opted_in.reactions[51].evaluated_product_metadata.mt == 51
+    assert opted_in.reactions[51].products == []
+
+    monkeypatch.setattr(
+        neutron_module, 'get_evaluated_product_metadata',
+        lambda ev, mt: openmc.data.EvaluatedProductMetadataResult(
+            mt=mt, result_status='structural_failure',
+            structural_failure='unknown_law'))
+    failed = openmc.data.IncidentNeutron.from_njoy(
+        'unused.endf', evaluation=evaluation, heatr=False,
+        include_evaluated_product_metadata=True)
+    assert failed.reactions[51].evaluated_product_metadata is None

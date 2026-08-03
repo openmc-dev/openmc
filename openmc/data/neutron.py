@@ -19,7 +19,10 @@ from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
 from .njoy import make_ace, make_pendf
 from .product import Product
-from .reaction import Reaction, _get_photon_products_ace, FISSION_MTS
+from .reaction import (
+    Reaction, _get_photon_products_ace, FISSION_MTS,
+    get_evaluated_product_metadata,
+)
 from . import resonance as res
 from . import resonance_covariance as res_cov
 from .urr import ProbabilityTables
@@ -727,7 +730,8 @@ class IncidentNeutron(EqualityMixin):
         return data
 
     @classmethod
-    def from_njoy(cls, filename, temperatures=None, evaluation=None, **kwargs):
+    def from_njoy(cls, filename, temperatures=None, evaluation=None,
+                  include_evaluated_product_metadata=False, **kwargs):
         """Generate incident neutron data by running NJOY.
 
         Parameters
@@ -740,6 +744,11 @@ class IncidentNeutron(EqualityMixin):
         evaluation : openmc.data.endf.Evaluation, optional
             If the ENDF file contains multiple material evaluations, this
             argument indicates which evaluation to use.
+        include_evaluated_product_metadata : bool, optional
+            If True, attach structurally complete evaluated MF=6 provenance
+            metadata to matching ACE-derived reactions. The default False
+            preserves the pre-existing ACE/NJOY output and performs no MF=6
+            metadata parsing.
         **kwargs
             Keyword arguments passed to :func:`openmc.data.njoy.make_ace`
 
@@ -767,6 +776,12 @@ class IncidentNeutron(EqualityMixin):
             # may be wrong for higher metastable states (e.g., Hf178_m2)
             ev = evaluation if evaluation is not None else Evaluation(filename)
             data.name = ev.gnds_name
+
+            if include_evaluated_product_metadata:
+                for mt, reaction in data.reactions.items():
+                    result = get_evaluated_product_metadata(ev, mt)
+                    if result.result_status == 'published_structurally_complete':
+                        reaction.evaluated_product_metadata = result.metadata
 
             # Add 0K elastic scattering cross section
             if '0K' not in data.energy:

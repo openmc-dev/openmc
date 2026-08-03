@@ -1634,6 +1634,49 @@ class XSdata:
                 scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
                                subdomains=subdomain)
 
+    def set_photon_production_mgxs(
+            self, production, temperature=ROOM_TEMPERATURE_KELVIN,
+            xs_type='macro', subdomain=None):
+        """Set the scattering data from a photon production matrix MGXS.
+
+        The production matrix is written as the zeroth-order scattering
+        matrix. Its multiplicity is already included in the matrix values, so
+        no separate multiplicity matrix is written.
+
+        Parameters
+        ----------
+        production : openmc.mgxs.PhotonProductionMatrixXS
+            Photon production matrix to use
+        temperature : float, optional
+            Temperature of the cross section data in kelvin
+        xs_type : {'macro'}, optional
+            Cross section type. Photon production is only available as a
+            macroscopic cross section.
+        subdomain : iterable of int, optional
+            Mesh subdomain for which data are requested
+        """
+
+        check_type('production', production,
+                   openmc.mgxs.PhotonProductionMatrixXS)
+        check_value('energy_groups', production.energy_groups,
+                    [self.energy_groups])
+        check_value('domain_type', production.domain_type,
+                    openmc.mgxs.DOMAIN_TYPES)
+        check_value('xs_type', xs_type, ['macro'])
+        self._check_temperature(temperature)
+
+        if self.representation != REPRESENTATION_ISOTROPIC:
+            raise ValueError('Photon production only supports an isotropic '
+                             'representation')
+
+        self.scatter_format = SCATTER_LEGENDRE
+        self.order = 0
+        i = self._temperature_index(temperature)
+        self._scatter_matrix[i] = np.zeros(
+            self.xs_shapes["[G][G'][Order]"])
+        self._scatter_matrix[i][:, :, 0] = production.get_xs(
+            xs_type=xs_type, subdomains=subdomain)
+
     def set_multiplicity_matrix_mgxs(self, nuscatter, scatter=None,
                                      temperature=ROOM_TEMPERATURE_KELVIN, nuclide='total',
                                      xs_type='macro', subdomain=None):
@@ -2364,6 +2407,8 @@ class MGXSLibrary:
         Energy group structure
     num_delayed_groups : int
         Num delayed groups
+    particle_type : {'neutron', 'photon'}, optional
+        Particle type represented by the library
 
     Attributes
     ----------
@@ -2371,13 +2416,19 @@ class MGXSLibrary:
         Energy group structure.
     num_delayed_groups : int
         Num delayed groups
+    particle_type : openmc.ParticleType or None
+        Particle type represented by the library
     xsdatas : Iterable of openmc.XSdata
         Iterable of multi-Group cross section data objects
     """
 
-    def __init__(self, energy_groups, num_delayed_groups=0):
+    def __init__(self, energy_groups, num_delayed_groups=0,
+                 particle_type=None):
         self.energy_groups = energy_groups
         self.num_delayed_groups = num_delayed_groups
+        self._particle_type = None
+        if particle_type is not None:
+            self.particle_type = particle_type
         self._xsdatas = []
 
     def __deepcopy__(self, memo):
@@ -2388,6 +2439,7 @@ class MGXSLibrary:
             clone = type(self).__new__(type(self))
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._num_delayed_groups = self.num_delayed_groups
+            clone._particle_type = self.particle_type
             clone._xsdatas = copy.deepcopy(self.xsdatas, memo)
 
             memo[id(self)] = clone
@@ -2419,6 +2471,18 @@ class MGXSLibrary:
         check_less_than('num_delayed_groups', num_delayed_groups,
                         openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
         self._num_delayed_groups = num_delayed_groups
+
+    @property
+    def particle_type(self):
+        return self._particle_type
+
+    @particle_type.setter
+    def particle_type(self, particle_type):
+        particle_type = openmc.ParticleType(particle_type)
+        check_value('particle type', particle_type,
+                    (openmc.ParticleType.NEUTRON,
+                     openmc.ParticleType.PHOTON))
+        self._particle_type = particle_type
 
     @property
     def xsdatas(self):
@@ -2592,6 +2656,8 @@ class MGXSLibrary:
         file.attrs['energy_groups'] = self.energy_groups.num_groups
         file.attrs['delayed_groups'] = self.num_delayed_groups
         file.attrs['group structure'] = self.energy_groups.group_edges
+        if self.particle_type is not None:
+            file.attrs['particle_type'] = np.bytes_(str(self.particle_type))
 
         for xsdata in self._xsdatas:
             xsdata.to_hdf5(file)
@@ -2633,7 +2699,10 @@ class MGXSLibrary:
             group_structure = file.attrs['group structure']
             num_delayed_groups = file.attrs['delayed_groups']
             energy_groups = openmc.mgxs.EnergyGroups(group_structure)
-            data = cls(energy_groups, num_delayed_groups)
+            particle_type = file.attrs.get('particle_type')
+            if isinstance(particle_type, bytes):
+                particle_type = particle_type.decode()
+            data = cls(energy_groups, num_delayed_groups, particle_type)
 
             for group_name, group in file.items():
                 data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,

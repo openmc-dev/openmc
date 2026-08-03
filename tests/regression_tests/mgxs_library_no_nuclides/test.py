@@ -20,8 +20,9 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.by_nuclide = False
 
         # Test relevant MGXS types
-        relevant_MGXS_TYPES = [item for item in openmc.mgxs.MGXS_TYPES
-                               if item != 'current']
+        relevant_MGXS_TYPES = [
+            item for item in openmc.mgxs.MGXS_TYPES
+            if item not in ('current', 'photon-production matrix')]
         # Add in a subset of openmc.mgxs.ARBITRARY_VECTOR_TYPES and
         # openmc.mgxs.ARBITRARY_MATRIX_TYPES so we can see the code works,
         # but not use too much resources

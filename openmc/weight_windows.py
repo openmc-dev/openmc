@@ -1093,7 +1093,8 @@ class WeightWindowsList(list):
             for ww in self:
                 mesh = ww.mesh
                 if mesh.id not in lib_meshes:
-                    lib_meshes[mesh.id] = _create_lib_mesh(mesh, original_dir)
+                    lib_meshes[mesh.id] = mesh.to_lib_object(
+                        base_dir=original_dir)
 
                 lib_ww = openmc.lib.WeightWindows(ww.id)
                 lib_ww.particle = ww.particle_type
@@ -1113,37 +1114,3 @@ class WeightWindowsList(list):
                 lib_ww.weight_cutoff = ww.weight_cutoff
 
             openmc.lib.export_weight_windows(path)
-
-
-def _create_lib_mesh(mesh: MeshBase, original_dir: Path):
-    """Create an openmc.lib mesh corresponding to a Python API mesh."""
-    import openmc.lib
-
-    if isinstance(mesh, openmc.RegularMesh):
-        lib_mesh = openmc.lib.RegularMesh(uid=mesh.id)
-        lib_mesh.dimension = mesh.dimension
-        lib_mesh.set_parameters(
-            lower_left=mesh.lower_left, upper_right=mesh.upper_right)
-    elif isinstance(mesh, openmc.RectilinearMesh):
-        lib_mesh = openmc.lib.RectilinearMesh(uid=mesh.id)
-        lib_mesh.set_grid(mesh.x_grid, mesh.y_grid, mesh.z_grid)
-    elif isinstance(mesh, openmc.CylindricalMesh):
-        lib_mesh = openmc.lib.CylindricalMesh(uid=mesh.id)
-        lib_mesh.set_grid(mesh.r_grid, mesh.phi_grid, mesh.z_grid)
-        lib_mesh.origin = mesh.origin
-    elif isinstance(mesh, openmc.SphericalMesh):
-        lib_mesh = openmc.lib.SphericalMesh(uid=mesh.id)
-        lib_mesh.set_grid(mesh.r_grid, mesh.theta_grid, mesh.phi_grid)
-        lib_mesh.origin = mesh.origin
-    elif isinstance(mesh, openmc.UnstructuredMesh):
-        filename = Path(mesh.filename)
-        if not filename.is_absolute():
-            filename = original_dir / filename
-        lib_mesh = openmc.lib.UnstructuredMesh.from_file(
-            filename.resolve(), mesh.library, uid=mesh.id,
-            length_multiplier=mesh.length_multiplier, options=mesh.options)
-    else:
-        raise TypeError(f'Unsupported weight window mesh type: {type(mesh)}')
-
-    lib_mesh.name = mesh.name
-    return lib_mesh

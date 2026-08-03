@@ -265,6 +265,75 @@ class MeshBase(IDManagerMixin, ABC):
         """tuple of str : Names of the mesh axes, one per dimension."""
         pass
 
+    def to_lib_object(self, uid: int | None = None,
+                      base_dir: PathLike | None = None):
+        """Create a corresponding :mod:`openmc.lib` mesh.
+
+        The OpenMC shared library must be initialized before calling this
+        method. The returned object is tied to the active library session and
+        becomes invalid when that session is finalized.
+
+        Parameters
+        ----------
+        uid : int, optional
+            ID to assign to the library mesh. If omitted, the ID of this mesh
+            is used.
+        base_dir : path-like, optional
+            Directory used to resolve relative filenames for unstructured
+            meshes. If omitted, the current working directory is used.
+
+        Returns
+        -------
+        openmc.lib.Mesh
+            The corresponding library mesh. The concrete type depends on the
+            type of this mesh.
+
+        Raises
+        ------
+        RuntimeError
+            If the OpenMC shared library has not been initialized.
+
+        """
+        import openmc.lib
+
+        if not openmc.lib.is_initialized:
+            raise RuntimeError(
+                'The OpenMC shared library must be initialized before '
+                'creating a library mesh.')
+
+        if uid is None:
+            uid = self.id
+        base_dir = Path.cwd() if base_dir is None else Path(base_dir)
+
+        if isinstance(self, RegularMesh):
+            lib_mesh = openmc.lib.RegularMesh(uid=uid)
+            lib_mesh.dimension = self.dimension
+            lib_mesh.set_parameters(
+                lower_left=self.lower_left, upper_right=self.upper_right)
+        elif isinstance(self, RectilinearMesh):
+            lib_mesh = openmc.lib.RectilinearMesh(uid=uid)
+            lib_mesh.set_grid(self.x_grid, self.y_grid, self.z_grid)
+        elif isinstance(self, CylindricalMesh):
+            lib_mesh = openmc.lib.CylindricalMesh(uid=uid)
+            lib_mesh.set_grid(self.r_grid, self.phi_grid, self.z_grid)
+            lib_mesh.origin = self.origin
+        elif isinstance(self, SphericalMesh):
+            lib_mesh = openmc.lib.SphericalMesh(uid=uid)
+            lib_mesh.set_grid(self.r_grid, self.theta_grid, self.phi_grid)
+            lib_mesh.origin = self.origin
+        elif isinstance(self, UnstructuredMesh):
+            filename = Path(self.filename)
+            if not filename.is_absolute():
+                filename = base_dir / filename
+            lib_mesh = openmc.lib.UnstructuredMesh.from_file(
+                filename.resolve(), self.library, uid=uid,
+                length_multiplier=self.length_multiplier, options=self.options)
+        else:
+            raise TypeError(f'Unsupported mesh type: {type(self)}')
+
+        lib_mesh.name = self.name
+        return lib_mesh
+
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)

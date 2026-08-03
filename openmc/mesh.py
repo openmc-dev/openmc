@@ -661,7 +661,7 @@ class StructuredMesh(MeshBase):
     def write_data_to_vtk(self,
                           filename: PathLike,
                           datasets: dict | None = None,
-                          volume_normalization: bool | None = None,
+                          volume_normalization: bool = True,
                           curvilinear: bool = False):
         """Creates a VTK object of the mesh and writes it to a file.
 
@@ -681,9 +681,9 @@ class StructuredMesh(MeshBase):
             with structured indexing in "C" ordering. See the "expand_dims" flag
             of :meth:`~openmc.Tally.get_reshaped_data` on reshaping tally data when using
             :class:`~openmc.MeshFilter`'s.
-        volume_normalization : bool or None, optional
+        volume_normalization : bool, optional
             Whether or not to normalize the data by the volume of the mesh
-            elements. Defaults to True.
+            elements.
         curvilinear : bool
             Whether or not to write curvilinear elements. Only applies to
             ``SphericalMesh`` and ``CylindricalMesh``.
@@ -716,9 +716,6 @@ class StructuredMesh(MeshBase):
            >>> heating = tally.get_reshaped_data(expand_dims=True)
            >>> mesh.write_data_to_vtk({'heating': heating})
         """
-        if volume_normalization is None:
-            volume_normalization = True
-
         if Path(filename).suffix == ".vtkhdf":
             self._write_vtk_hdf5(filename, datasets, volume_normalization)
             return None

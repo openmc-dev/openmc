@@ -9,7 +9,7 @@ if [[ "$DAGMC" == 'y' ]]; then
     --tags 5.5.1 )" >> $GITHUB_ENV
 
     echo "DAGMC_HASH=$(git ls-remote https://github.com/svalinn/dagmc.git \
-    --head develop )" >> $GITHUB_ENV
+    --branches develop )" >> $GITHUB_ENV
 fi
 
 if [[ "$LIBMESH" == 'y' ]]; then

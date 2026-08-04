@@ -427,14 +427,16 @@ void RandomRaySimulation::simulate()
       // Start timer for transport
       simulation::time_transport.start();
 
-// Transport sweep over all random rays for the iteration
-#pragma omp parallel for schedule(dynamic)                                     \
-  reduction(+ : total_geometric_intersections_)
+      // Transport sweep over all random rays for the iteration. NOTE: Naming a
+      // class member in a reduction clause is allowed as of OpenMP 5.1, but not
+      // every implementation supports it yet; accumulate into a local
+      uint64_t n_intersections = 0;
+#pragma omp parallel for schedule(dynamic) reduction(+ : n_intersections)
       for (int i = 0; i < settings::n_particles; i++) {
         RandomRay ray(i, domain_.get());
-        total_geometric_intersections_ +=
-          ray.transport_history_based_single_ray();
+        n_intersections += ray.transport_history_based_single_ray();
       }
+      total_geometric_intersections_ += n_intersections;
 
       simulation::time_transport.stop();
 

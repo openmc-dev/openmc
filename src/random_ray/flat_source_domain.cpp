@@ -1074,13 +1074,16 @@ void FlatSourceDomain::apply_external_source_to_cell_and_children(
 
 void FlatSourceDomain::count_external_source_regions()
 {
-  n_external_source_regions_ = 0;
-#pragma omp parallel for reduction(+ : n_external_source_regions_)
+  // Naming a class member in a reduction clause is allowed as of OpenMP 5.1,
+  // but not every implementation supports it yet; accumulate into a local
+  int64_t n_external = 0;
+#pragma omp parallel for reduction(+ : n_external)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     if (source_regions_.external_source_present(sr)) {
-      n_external_source_regions_++;
+      n_external++;
     }
   }
+  n_external_source_regions_ = n_external;
 }
 
 void FlatSourceDomain::convert_external_sources(bool use_adjoint_sources)

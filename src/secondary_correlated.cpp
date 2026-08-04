@@ -199,7 +199,7 @@ Distribution& CorrelatedAngleEnergy::sample_dist(
   }
 
   // Continuous portion
-  double c_k1;
+  double c_k1 {INFINITY};
   for (int j = n_discrete; j < end; ++j) {
     k = j;
     c_k1 = distribution_[l].c[k + 1];

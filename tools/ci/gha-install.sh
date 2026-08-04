@@ -7,14 +7,18 @@ pip install --upgrade pytest
 pip install --upgrade numpy
 
 # Install NJOY 2016
-if [[ ! -d "$HOME/NJOY2016" ]]; then
+if [[ "$NJOY_HIT" == "true" ]]; then
     ./tools/ci/gha-install-njoy.sh
 fi
 
 # Install DAGMC if needed
 if [[ "$DAGMC" == "y" ]]; then
-    if [[ ! -d "$HOME/DAGMC" ]] || [[ ! -d "$HOME/MOAB" ]]; then
+    if [[ "$DAGMC_HIT" == "true" ]]; then
         ./tools/ci/gha-install-dagmc.sh
+    fi
+
+    if [[ "$MOAB_HIT" == "true" ]]; then
+        ./tools/ci/gha-install-moab.sh
     fi
 fi
 
@@ -24,7 +28,7 @@ nctool --test
 
 # Install libMesh if needed
 if [[ "$LIBMESH" == "y" ]]; then
-    if [[ ! -d "$HOME/LIBMESH" ]]; then
+    if [[ "$LIBMESH_HIT" == "true" ]]; then
         ./tools/ci/gha-install-libmesh.sh
     fi
 fi

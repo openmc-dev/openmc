@@ -13,12 +13,12 @@ fi
 
 # Install DAGMC if needed
 if [[ "$DAGMC" == "y" ]]; then
-    if [[ "$DAGMC_HIT" != "true" ]]; then
-        ./tools/ci/gha-install-dagmc.sh
-    fi
-
     if [[ "$MOAB_HIT" != "true" ]]; then
         ./tools/ci/gha-install-moab.sh
+    fi
+
+    if [[ "$DAGMC_HIT" != "true" ]]; then
+        ./tools/ci/gha-install-dagmc.sh
     fi
 fi
 

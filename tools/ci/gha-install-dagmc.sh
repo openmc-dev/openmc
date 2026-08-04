@@ -1,6 +1,11 @@
 #!/bin/bash
 set -ex
 
+# MOAB Variables
+MOAB_BRANCH='5.5.1'
+MOAB_REPO='https://bitbucket.org/fathomteam/moab/'
+MOAB_INSTALL_DIR=$HOME/MOAB/
+
 # DAGMC Variables
 DAGMC_BRANCH='develop'
 DAGMC_REPO='https://github.com/svalinn/dagmc'

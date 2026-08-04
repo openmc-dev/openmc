@@ -10,19 +10,24 @@ namespace openmc {
 // SourceRegionHandle implementation
 //==============================================================================
 SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
-  : negroups_(sr.scalar_flux_old_.size()), material_(&sr.material_),
-    temperature_idx_(&sr.temperature_idx_), density_mult_(&sr.density_mult_),
-    is_small_(&sr.is_small_), n_hits_(&sr.n_hits_),
+  : negroups_(sr.scalar_flux_old_.size()), material_(&sr.scalars_.material_),
+    temperature_idx_(&sr.scalars_.temperature_idx_),
+    density_mult_(&sr.scalars_.density_mult_),
+    is_small_(&sr.scalars_.is_small_), n_hits_(&sr.scalars_.n_hits_),
     is_linear_(sr.source_gradients_.size() > 0), lock_(&sr.lock_),
-    volume_(&sr.volume_), volume_t_(&sr.volume_t_), volume_sq_(&sr.volume_sq_),
-    volume_sq_t_(&sr.volume_sq_t_), volume_naive_(&sr.volume_naive_),
-    position_recorded_(&sr.position_recorded_),
-    external_source_present_(&sr.external_source_present_),
-    position_(&sr.position_), centroid_(&sr.centroid_),
-    centroid_iteration_(&sr.centroid_iteration_), centroid_t_(&sr.centroid_t_),
-    mom_matrix_(&sr.mom_matrix_), mom_matrix_t_(&sr.mom_matrix_t_),
-    volume_task_(&sr.volume_task_), mesh_(&sr.mesh_),
-    parent_sr_(&sr.parent_sr_), scalar_flux_old_(sr.scalar_flux_old_.data()),
+    volume_(&sr.scalars_.volume_), volume_t_(&sr.scalars_.volume_t_),
+    volume_sq_(&sr.scalars_.volume_sq_),
+    volume_sq_t_(&sr.scalars_.volume_sq_t_),
+    volume_naive_(&sr.scalars_.volume_naive_),
+    position_recorded_(&sr.scalars_.position_recorded_),
+    external_source_present_(&sr.scalars_.external_source_present_),
+    position_(&sr.scalars_.position_), centroid_(&sr.scalars_.centroid_),
+    centroid_iteration_(&sr.scalars_.centroid_iteration_),
+    centroid_t_(&sr.scalars_.centroid_t_),
+    mom_matrix_(&sr.scalars_.mom_matrix_),
+    mom_matrix_t_(&sr.scalars_.mom_matrix_t_), volume_task_(&sr.volume_task_),
+    mesh_(&sr.scalars_.mesh_), parent_sr_(&sr.scalars_.parent_sr_),
+    scalar_flux_old_(sr.scalar_flux_old_.data()),
     scalar_flux_new_(sr.scalar_flux_new_.data()), source_(sr.source_.data()),
     external_source_(sr.external_source_.data()),
     scalar_flux_final_(sr.scalar_flux_final_.data()),
@@ -30,7 +35,7 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     flux_moments_old_(sr.flux_moments_old_.data()),
     flux_moments_new_(sr.flux_moments_new_.data()),
     flux_moments_t_(sr.flux_moments_t_.data()),
-    tally_task_(sr.tally_task_.data())
+    tally_task_(sr.tally_task_.data()), key_(&sr.scalars_.key_)
 {}
 
 //==============================================================================
@@ -61,6 +66,88 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   }
 }
 
+SourceRegion::SourceRegion(const SourceRegionHandle& handle)
+  : SourceRegion(handle.negroups_, handle.is_linear_)
+{
+  scalars_.material_ = handle.material();
+  scalars_.is_small_ = handle.is_small();
+  scalars_.temperature_idx_ = handle.temperature_idx();
+  scalars_.density_mult_ = handle.density_mult();
+  scalars_.n_hits_ = handle.n_hits();
+  scalars_.volume_ = handle.volume();
+  scalars_.volume_t_ = handle.volume_t();
+  scalars_.volume_sq_ = handle.volume_sq();
+  scalars_.volume_sq_t_ = handle.volume_sq_t();
+  scalars_.volume_naive_ = handle.volume_naive();
+  scalars_.position_recorded_ = handle.position_recorded();
+  scalars_.position_ = handle.position();
+  scalars_.centroid_ = handle.centroid();
+  scalars_.centroid_iteration_ = handle.centroid_iteration();
+  scalars_.centroid_t_ = handle.centroid_t();
+  scalars_.key_ = handle.key();
+  scalars_.mesh_ = handle.mesh();
+  scalars_.parent_sr_ = handle.parent_sr();
+
+  if (handle.is_linear_) {
+    scalars_.mom_matrix_ = handle.mom_matrix();
+    scalars_.mom_matrix_t_ = handle.mom_matrix_t();
+  }
+
+  for (int g = 0; g < scalar_flux_new_.size(); g++) {
+    scalar_flux_old_[g] = handle.scalar_flux_old(g);
+    scalar_flux_new_[g] = handle.scalar_flux_new(g);
+    source_[g] = handle.source(g);
+    scalar_flux_final_[g] = handle.scalar_flux_final(g);
+    if (handle.is_linear_) {
+      source_gradients_[g] = handle.source_gradients(g);
+      flux_moments_old_[g] = handle.flux_moments_old(g);
+      flux_moments_new_[g] = handle.flux_moments_new(g);
+      flux_moments_t_[g] = handle.flux_moments_t(g);
+    }
+    tally_task_[g] = handle.tally_task(g);
+  }
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    scalars_.external_source_present_ = handle.external_source_present();
+    for (int g = 0; g < scalar_flux_new_.size(); g++) {
+      external_source_[g] = handle.external_source(g);
+    }
+  }
+
+  volume_task_ = handle.volume_task();
+}
+
+// combine two source regions from different ranks together
+void SourceRegion::merge(SourceRegion& sr_add, bool is_linear)
+{
+
+  // scalar fields
+  scalars_.volume_ += sr_add.scalars_.volume_;
+  scalars_.volume_sq_ += sr_add.scalars_.volume_sq_;
+  scalars_.volume_naive_ += sr_add.scalars_.volume_naive_;
+  scalars_.n_hits_ += sr_add.scalars_.n_hits_;
+  scalars_.external_source_present_ =
+    std::max(scalars_.external_source_present_,
+      sr_add.scalars_.external_source_present_);
+  scalars_.centroid_iteration_ += sr_add.scalars_.centroid_iteration_;
+  if (is_linear) {
+    scalars_.mom_matrix_ += sr_add.scalars_.mom_matrix_;
+  }
+
+// vector fields
+#pragma omp simd
+  for (int g = 0; g < scalar_flux_new_.size(); g++) {
+    scalar_flux_new_[g] += sr_add.scalar_flux_new_[g];
+    scalar_flux_final_[g] += sr_add.scalar_flux_final_[g];
+
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      external_source_[g] += sr_add.external_source_[g];
+    }
+    if (is_linear) {
+      flux_moments_new_[g] += sr_add.flux_moments_new_[g];
+    }
+  }
+}
+
 //==============================================================================
 // SourceRegionContainer implementation
 //==============================================================================
@@ -70,31 +157,32 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   n_source_regions_++;
 
   // Scalar fields
-  material_.push_back(sr.material_);
-  temperature_idx_.push_back(sr.temperature_idx_);
-  density_mult_.push_back(sr.density_mult_);
-  is_small_.push_back(sr.is_small_);
-  n_hits_.push_back(sr.n_hits_);
+  material_.push_back(sr.scalars_.material_);
+  temperature_idx_.push_back(sr.scalars_.temperature_idx_);
+  density_mult_.push_back(sr.scalars_.density_mult_);
+  is_small_.push_back(sr.scalars_.is_small_);
+  n_hits_.push_back(sr.scalars_.n_hits_);
   lock_.push_back(sr.lock_);
-  volume_.push_back(sr.volume_);
-  volume_t_.push_back(sr.volume_t_);
-  volume_sq_.push_back(sr.volume_sq_);
-  volume_sq_t_.push_back(sr.volume_sq_t_);
-  volume_naive_.push_back(sr.volume_naive_);
-  position_recorded_.push_back(sr.position_recorded_);
-  external_source_present_.push_back(sr.external_source_present_);
-  position_.push_back(sr.position_);
+  volume_.push_back(sr.scalars_.volume_);
+  volume_t_.push_back(sr.scalars_.volume_t_);
+  volume_sq_.push_back(sr.scalars_.volume_sq_);
+  volume_sq_t_.push_back(sr.scalars_.volume_sq_t_);
+  volume_naive_.push_back(sr.scalars_.volume_naive_);
+  position_recorded_.push_back(sr.scalars_.position_recorded_);
+  external_source_present_.push_back(sr.scalars_.external_source_present_);
+  position_.push_back(sr.scalars_.position_);
   volume_task_.push_back(sr.volume_task_);
-  mesh_.push_back(sr.mesh_);
-  parent_sr_.push_back(sr.parent_sr_);
+  mesh_.push_back(sr.scalars_.mesh_);
+  parent_sr_.push_back(sr.scalars_.parent_sr_);
+  key_.push_back(sr.scalars_.key_);
+  centroid_.push_back(sr.scalars_.centroid_);
+  centroid_iteration_.push_back(sr.scalars_.centroid_iteration_);
+  centroid_t_.push_back(sr.scalars_.centroid_t_);
 
   // Only store these fields if is_linear_ is true
   if (is_linear_) {
-    centroid_.push_back(sr.centroid_);
-    centroid_iteration_.push_back(sr.centroid_iteration_);
-    centroid_t_.push_back(sr.centroid_t_);
-    mom_matrix_.push_back(sr.mom_matrix_);
-    mom_matrix_t_.push_back(sr.mom_matrix_t_);
+    mom_matrix_.push_back(sr.scalars_.mom_matrix_);
+    mom_matrix_t_.push_back(sr.scalars_.mom_matrix_t_);
   }
 
   // Energy-dependent fields
@@ -141,11 +229,12 @@ void SourceRegionContainer::assign(
   position_.clear();
   mesh_.clear();
   parent_sr_.clear();
+  centroid_.clear();
+  centroid_iteration_.clear();
+  centroid_t_.clear();
+  key_.clear();
 
   if (is_linear_) {
-    centroid_.clear();
-    centroid_iteration_.clear();
-    centroid_t_.clear();
     mom_matrix_.clear();
     mom_matrix_t_.clear();
   }
@@ -212,11 +301,12 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   }
   handle.scalar_flux_final_ = &scalar_flux_final(sr, 0);
   handle.tally_task_ = &tally_task(sr, 0);
+  handle.centroid_ = &centroid(sr);
+  handle.centroid_iteration_ = &centroid_iteration(sr);
+  handle.centroid_t_ = &centroid_t(sr);
+  handle.key_ = &key(sr);
 
   if (handle.is_linear_) {
-    handle.centroid_ = &centroid(sr);
-    handle.centroid_iteration_ = &centroid_iteration(sr);
-    handle.centroid_t_ = &centroid_t(sr);
     handle.mom_matrix_ = &mom_matrix(sr);
     handle.mom_matrix_t_ = &mom_matrix_t(sr);
     handle.source_gradients_ = &source_gradients(sr, 0);
@@ -230,6 +320,10 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
 
 void SourceRegionContainer::adjoint_reset()
 {
+  // Note: key_ must NOT be reset here. Source region keys are permanent
+  // identifiers and required under domain decomposition to rebuild
+  // source_region_map_ during load balancing and to exchange source region data
+  // between ranks.
   std::fill(n_hits_.begin(), n_hits_.end(), 0);
   std::fill(volume_.begin(), volume_.end(), 0.0);
   std::fill(volume_t_.begin(), volume_t_.end(), 0.0);

@@ -165,6 +165,7 @@ public:
   Position* centroid_t_;
   MomentMatrix* mom_matrix_;
   MomentMatrix* mom_matrix_t_;
+  SourceRegionKey* key_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
@@ -254,6 +255,9 @@ public:
   MomentMatrix& mom_matrix_t() { return *mom_matrix_t_; }
   const MomentMatrix mom_matrix_t() const { return *mom_matrix_t_; }
 
+  SourceRegionKey& key() { return *key_; }
+  const SourceRegionKey key() const { return *key_; }
+
   std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()
   {
     return *volume_task_;
@@ -311,24 +315,13 @@ public:
 
 }; // class SourceRegionHandle
 
-class SourceRegion {
+class ScalarSourceRegionFields {
 public:
-  //----------------------------------------------------------------------------
-  // Constructors
-  SourceRegion(int negroups, bool is_linear);
-  SourceRegion() = default;
-
-  //----------------------------------------------------------------------------
-  // Public Data members
-
-  //---------------------------------------
-  // Scalar fields
   int material_ {0}; //!< Index in openmc::model::materials array
   int temperature_idx_ {
     0}; //!< Index into the MGXS array representing temperature
   double density_mult_ {1.0}; //!< A density multiplier queried from the cell
                               //!< corresponding to the source region.
-  OpenMPMutex lock_;
   double volume_ {
     0.0}; //!< Volume (computed from the sum of ray crossing lengths)
   double volume_t_ {0.0};     //!< Volume totaled over all iterations
@@ -343,6 +336,7 @@ public:
                       // Mesh that subdivides this source region
   int mesh_ {C_NONE}; //!< Index in openmc::model::meshes array that subdivides
                       //!< this source region
+  SourceRegionKey key_ {0, 0}; //!< The key (base source region + mesh bin)
   int64_t parent_sr_ {C_NONE}; //!< Index of a parent source region
   Position position_ {
     0.0, 0.0, 0.0}; //!< A position somewhere inside the region
@@ -355,6 +349,30 @@ public:
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; //!< The spatial moment matrix
   MomentMatrix mom_matrix_t_ {0.0, 0.0, 0.0, 0.0, 0.0,
     0.0}; //!< The spatial moment matrix accumulated over all iterations
+};
+
+class SourceRegion {
+public:
+  //----------------------------------------------------------------------------
+  // Constructors
+  SourceRegion(int negroups, bool is_linear);
+  SourceRegion(const SourceRegionHandle& handle);
+  SourceRegion() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
+  void merge(SourceRegion& sr_add, bool is_linear);
+
+  //----------------------------------------------------------------------------
+  // Public Data members
+
+  //---------------------------------------
+  // Scalar fields
+
+  OpenMPMutex lock_;
+
+  // Container with all scalar fields of a source region
+  ScalarSourceRegionFields scalars_;
 
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
@@ -473,6 +491,9 @@ public:
   {
     return mom_matrix_t_[sr];
   }
+
+  SourceRegionKey& key(int64_t sr) { return key_[sr]; }
+  const SourceRegionKey key(int64_t sr) const { return key_[sr]; }
 
   MomentArray& source_gradients(int64_t sr, int g)
   {
@@ -662,6 +683,7 @@ private:
   vector<Position> centroid_t_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;
+  vector<SourceRegionKey> key_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.

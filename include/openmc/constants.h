@@ -88,6 +88,15 @@ constexpr double MINIMUM_MACRO_XS {1e-6};
 // window games are unbiased regardless of where the thresholds sit.
 constexpr double WEIGHT_WINDOW_REL_TOL {1e-9};
 
+// Maximum number of DAGMC entity handles to send when exchanging rays
+// between MPI ranks. This caps the RayHistory length to avoid sending
+// variable-length vectors.
+constexpr int MAX_N_HANDLES {5};
+
+// Maximum number of load optimization iterations to perform to balance
+// the load between MPI ranks during random ray transport.
+constexpr int ITER_LOAD_BALANCE {5};
+
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 
@@ -380,6 +389,7 @@ enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
 enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
+enum class RandomRayGeomDim { TWO_DIM, THREE_DIM };
 enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
 enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };
 

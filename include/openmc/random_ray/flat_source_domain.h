@@ -32,6 +32,7 @@ public:
   void compute_k_eff();
   virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
+  bool is_geometry_3D();
 
   int64_t add_source_to_scalar_flux();
   virtual void batch_reset();
@@ -40,6 +41,7 @@ public:
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
   void output_to_vtk() const;
+  void output_to_vtk_decomp() const;
   void convert_external_sources(bool use_adjoint_sources);
   void count_external_source_regions();
   void set_fw_adjoint_sources();

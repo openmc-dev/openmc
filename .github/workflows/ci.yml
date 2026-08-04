@@ -152,9 +152,9 @@ jobs:
           path: |
             ~/nndc_hdf5
             ~/endf-b-vii.1
-          key: ${{ runner.os }}-build-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
+          key: ${{ runner.os }}-build-xs-cache-${{ hashFiles('tools/ci/download-xs.sh') }}
 
-      - name: Get dependency cache keys and mpi-dep versions
+      - name: get cache keys from commits, scripts, and mpi-dep versions
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-cache-keys.sh
 
@@ -164,41 +164,49 @@ jobs:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-py${{ matrix.python-version }}-mpi-${{ matrix.mpi }}-${{ hashFiles(format('tools/ci/requirements-mpi-{0}.txt', matrix.mpi)) }}-${{ hashFiles('tools/ci/mpi-deps.txt') }}
 
-
       - name: Restore NJOY2016
+        id: njoy
         uses: actions/cache@v6
         with:
           path: |
             ~/NJOY2016/metaconfigure
             ~/NJOY2016/build/njoy
             ~/NJOY2016/build/libnjoy.so
-          key: NJOY2016-${{ env.NJOY_HASH }} 
+          key: NJOY2016-${{ env.NJOY_HASH }}-${{ runner.os }}-${{ hashFiles(tools/ci/gha-install-njoy.sh) }}
 
       - name: Restore MOAB
+        id: moab
         if: ${{ matrix.dagmc == 'y' }}
         uses: actions/cache@v6
         with:
           path: |
             ~/MOAB
-          key: MOAB-${{ env.MOAB_HASH }}
+          key: MOAB-${{ env.MOAB_HASH }}-${{ runner.os }}-${{ hashFiles(tools/ci/gha-install-moab.sh) }}
         
       - name: Restore DAGMC
+        id: dagmc
         if: ${{ matrix.dagmc == 'y' }}
         uses: actions/cache@v6
         with:
           path: |
             ~/DAGMC
-          key: DAGMC-${{ env.DAGMC_HASH }}
+          key: DAGMC-${{ env.DAGMC_HASH }}-${{ runner.os }}-${{ hashFiles(tools/ci/gha-install-dagmc.sh) }}
 
       - name: Restore libmesh
+        id: libmesh
         if: ${{ matrix.libmesh == 'y' }} 
         uses: actions/cache@v6
         with:
           path: |
             ~/LIBMESH
-          key: libmesh-mpi-${{matrix.mpi}}-${{ env.LB_HASH }} 
+          key: libmesh-mpi-${{ matrix.mpi }}-${{ env.LB_HASH }}-${{ runner.os }}-${{ hashFiles(tools/ci/gha-install-libmesh.sh) }}
 
       - name: install
+        env: 
+          NJOY_HIT: ${{ steps.njoy.outputs.cache-hit }}
+          MOAB_HIT: ${{ steps.moab.outputs.cache-hit }}
+          DAGMC_HIT: ${{ steps.dagmc.outputs.cache-hit }}
+          LIBMESH_HIT: ${{ steps.libmesh.outputs.cache-hit }}
         shell: bash
         run: |
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH

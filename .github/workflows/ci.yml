@@ -162,7 +162,12 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-py${{ matrix.python-version }}-mpi-${{ matrix.mpi }}-${{ hashFiles(format('tools/ci/requirements-mpi-{0}.txt', matrix.mpi)) }}-${{ hashFiles('tools/ci/mpi-deps.txt') }}
+          key: >-
+            pip-${{ runner.os }}-
+            py${{ matrix.python-version }}-
+            mpi-${{ matrix.mpi }}-
+            ${{ hashFiles(format('tools/ci/requirements-mpi-{0}.txt', matrix.mpi)) }}-
+            ${{ hashFiles('tools/ci/mpi-deps.txt') }}
 
       - name: Restore NJOY2016
         id: njoy
@@ -172,7 +177,10 @@ jobs:
             ~/NJOY2016/metaconfigure
             ~/NJOY2016/build/njoy
             ~/NJOY2016/build/libnjoy.so
-          key: NJOY2016-${{ env.NJOY_HASH }}-${{ runner.os }}-${{ hashFiles(tools/ci/gha-install-njoy.sh) }}
+          key: >-
+            NJOY2016-${{ env.NJOY_HASH }}-
+            ${{ runner.os }}-
+            ${{ hashFiles('tools/ci/gha-install-njoy.sh') }}
 
       - name: Restore MOAB
         id: moab
@@ -181,7 +189,10 @@ jobs:
         with:
           path: |
             ~/MOAB
-          key: MOAB-${{ env.MOAB_HASH }}-${{ runner.os }}-${{ hashFiles(tools/ci/gha-install-moab.sh) }}
+          key: >-
+            MOAB-${{ env.MOAB_HASH }}-
+            ${{ runner.os }}-
+            ${{ hashFiles('tools/ci/gha-install-moab.sh') }}
         
       - name: Restore DAGMC
         id: dagmc
@@ -190,7 +201,10 @@ jobs:
         with:
           path: |
             ~/DAGMC
-          key: DAGMC-${{ env.DAGMC_HASH }}-${{ runner.os }}-${{ hashFiles(tools/ci/gha-install-dagmc.sh) }}
+          key: >-
+            DAGMC-${{ env.DAGMC_HASH }}-
+            ${{ runner.os }}-
+            ${{ hashFiles('tools/ci/gha-install-dagmc.sh') }}
 
       - name: Restore libmesh
         id: libmesh
@@ -199,7 +213,11 @@ jobs:
         with:
           path: |
             ~/LIBMESH
-          key: libmesh-mpi-${{ matrix.mpi }}-${{ env.LB_HASH }}-${{ runner.os }}-${{ hashFiles(tools/ci/gha-install-libmesh.sh) }}
+          key: >-
+            libmesh-mpi-${{ matrix.mpi }}-
+            ${{ env.LB_HASH }}-
+            ${{ runner.os }}-
+            ${{ hashFiles('tools/ci/gha-install-libmesh.sh') }}
 
       - name: install
         env: 

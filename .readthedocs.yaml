@@ -7,8 +7,13 @@ build:
   jobs:
     post_checkout:
       - git fetch --unshallow || true
+      - cd docs/doxygen && doxygen && cd -
+
 sphinx:
   configuration: docs/source/conf.py
+
+formats:
+  - pdf
 
 python:
   install:

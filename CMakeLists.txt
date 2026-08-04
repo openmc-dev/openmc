@@ -20,6 +20,11 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# Generate compile_commands.json for clangd and other tools
+if("${CMAKE_EXPORT_COMPILE_COMMANDS}" STREQUAL "")
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
 # Enable correct usage of CXX_EXTENSIONS
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
   cmake_policy(SET CMP0128 NEW)
@@ -38,6 +43,7 @@ option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tall
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 option(OPENMC_FORCE_VENDORED_LIBS "Explicitly use submodules defined in 'vendor'"    OFF)
+option(OPENMC_ENABLE_STRICT_FP "Enable strict FP flags to improve test portability"  OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
 message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
@@ -48,6 +54,7 @@ message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 message(STATUS "OPENMC_FORCE_VENDORED_LIBS ${OPENMC_FORCE_VENDORED_LIBS}")
+message(STATUS "OPENMC_ENABLE_STRICT_FP ${OPENMC_ENABLE_STRICT_FP}")
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -90,6 +97,19 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 #===============================================================================
+# When STRICT_FP is enabled, remove NDEBUG from RelWithDebInfo flags so that
+# assert() remains active. CMake normally adds -DNDEBUG for both Release and
+# RelWithDebInfo, which disables C/C++ assert() statements.
+#===============================================================================
+
+if(OPENMC_ENABLE_STRICT_FP)
+  foreach(FLAG_VAR CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_RELWITHDEBINFO)
+    string(REPLACE "-DNDEBUG" "" ${FLAG_VAR} "${${FLAG_VAR}}")
+    string(REPLACE "/DNDEBUG" "" ${FLAG_VAR} "${${FLAG_VAR}}")
+  endforeach()
+endif()
+
+#===============================================================================
 # OpenMP for shared-memory parallelism (and GPU support some day!)
 #===============================================================================
 
@@ -103,6 +123,23 @@ endif()
 
 if(OPENMC_USE_MPI)
   find_package(MPI REQUIRED)
+
+  include(CMakePushCheckState)
+  include(CheckCXXSourceCompiles)
+  cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_LIBRARIES MPI::MPI_CXX)
+  check_cxx_source_compiles(
+    "#include <mpi.h>
+    int main()
+    {
+      double value = 0.0;
+      MPI_Count count = 1;
+      return MPI_Reduce_c(
+        &value, &value, count, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    }"
+    OPENMC_HAVE_MPI_REDUCE_C
+  )
+  cmake_pop_check_state()
 endif()
 
 #===============================================================================
@@ -193,6 +230,26 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
+# When OPENMC_ENABLE_STRICT_FP is enabled, disable compiler optimizations that change
+# floating-point results relative to -O0, improving cross-platform and
+# cross-optimization-level reproducibility for regression testing:
+#   -ffp-contract=off    Prevents FMA contraction (fused multiply-add changes rounding)
+#   -fno-builtin         Prevents replacing math function calls (pow, exp, log, etc.)
+#                        with builtin versions that may differ from libm
+# By default (OFF), the compiler is free to use all optimizations for best
+# performance.
+if(OPENMC_ENABLE_STRICT_FP)
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag(-ffp-contract=off SUPPORTS_FP_CONTRACT_OFF)
+  if(SUPPORTS_FP_CONTRACT_OFF)
+    list(APPEND cxxflags -ffp-contract=off)
+  endif()
+  check_cxx_compiler_flag(-fno-builtin SUPPORTS_NO_BUILTIN)
+  if(SUPPORTS_NO_BUILTIN)
+    list(APPEND cxxflags -fno-builtin)
+  endif()
+endif()
+
 # Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
 
@@ -267,23 +324,6 @@ else()
 endif()
 
 #===============================================================================
-# xtensor header-only library
-#===============================================================================
-
-if(OPENMC_FORCE_VENDORED_LIBS)
-  add_subdirectory(vendor/xtl)
-  set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
-  add_subdirectory(vendor/xtensor)
-else()
-  find_package_write_status(xtensor)
-  if (NOT xtensor_FOUND)
-    add_subdirectory(vendor/xtl)
-    set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
-    add_subdirectory(vendor/xtensor)
-  endif()
-endif()
-
-#===============================================================================
 # Catch2 library
 #===============================================================================
 
@@ -332,6 +372,7 @@ endif()
 #===============================================================================
 
 list(APPEND libopenmc_SOURCES
+  src/atomic_mass.cpp
   src/bank.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
@@ -388,6 +429,7 @@ list(APPEND libopenmc_SOURCES
   src/random_ray/linear_source_domain.cpp
   src/random_ray/moment_matrix.cpp
   src/random_ray/source_region.cpp
+  src/ray.cpp
   src/reaction.cpp
   src/reaction_product.cpp
   src/scattdata.cpp
@@ -426,7 +468,9 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_musurface.cpp
   src/tallies/filter_parent_nuclide.cpp
   src/tallies/filter_particle.cpp
+  src/tallies/filter_particle_production.cpp
   src/tallies/filter_polar.cpp
+  src/tallies/filter_reaction.cpp
   src/tallies/filter_sph_harm.cpp
   src/tallies/filter_sptl_legendre.cpp
   src/tallies/filter_surface.cpp
@@ -491,12 +535,15 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
+  if (OPENMC_HAVE_MPI_REDUCE_C)
+    target_compile_definitions(libopenmc PRIVATE -DOPENMC_HAVE_MPI_REDUCE_C)
+  endif()
 endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      xtensor fmt::fmt ${CMAKE_DL_LIBS})
+                      fmt::fmt ${CMAKE_DL_LIBS})
 
 if(TARGET pugixml::pugixml)
   target_link_libraries(libopenmc pugixml::pugixml)
@@ -505,7 +552,7 @@ else()
 endif()
 
 if(OPENMC_USE_DAGMC)
-  target_compile_definitions(libopenmc PRIVATE OPENMC_DAGMC_ENABLED)
+  target_compile_definitions(libopenmc PUBLIC OPENMC_DAGMC_ENABLED)
   target_link_libraries(libopenmc dagmc-shared)
 
   if(OPENMC_USE_UWUW)
@@ -553,6 +600,9 @@ endif()
 if (OPENMC_ENABLE_COVERAGE)
   target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
 endif()
+if (OPENMC_ENABLE_STRICT_FP)
+  target_compile_definitions(libopenmc PRIVATE OPENMC_ENABLE_STRICT_FP)
+endif()
 
 #===============================================================================
 # openmc executable
@@ -581,9 +631,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 #===============================================================================
 # Install executable, scripts, manpage, license
 #===============================================================================
-
-configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" @ONLY)
-configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake" @ONLY)
+include(CMakePackageConfigHelpers)
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 install(TARGETS openmc libopenmc
@@ -597,10 +645,24 @@ install(EXPORT openmc-targets
   NAMESPACE OpenMC::
   DESTINATION ${INSTALL_CONFIGDIR})
 
+configure_package_config_file(
+    "cmake/OpenMCConfig.cmake.in"
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
+    INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+)
+
+write_basic_package_version_file(
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
+    VERSION ${OPENMC_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
 install(FILES
-  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
-  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
-  DESTINATION ${INSTALL_CONFIGDIR})
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
+    DESTINATION "${INSTALL_CONFIGDIR}"
+)
+
 install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

@@ -30,9 +30,9 @@
 
 #include <fmt/core.h>
 
+#include "openmc/tensor.h"
 #include <algorithm> // for max, min, max_element
 #include <cmath>     // for sqrt, exp, log, abs, copysign
-#include <xtensor/xview.hpp>
 
 namespace openmc {
 
@@ -44,6 +44,7 @@ void collision(Particle& p)
 {
   // Add to collision counter for particle
   ++(p.n_collision());
+  p.secondary_bank_index() = p.local_secondary_bank().size();
 
   // Sample reaction for the material the particle is in
   switch (p.type().pdg_number()) {
@@ -63,8 +64,17 @@ void collision(Particle& p)
     fatal_error("Unsupported particle PDG for collision sampling.");
   }
 
-  if (settings::weight_window_checkpoint_collision)
-    apply_weight_windows(p);
+  if (settings::weight_windows_on) {
+    auto [ww_found, ww] = search_weight_window(p);
+    if (!ww_found && p.type() == ParticleType::neutron()) {
+      // if the weight window is not valid, apply russian roulette for neutrons
+      // (regardless of weight window collision checkpoint setting)
+      apply_russian_roulette(p);
+    } else if (settings::weight_window_checkpoint_collision) {
+      // if collision checkpointing is on, apply weight window
+      apply_weight_window(p, ww);
+    }
+  }
 
   // Kill particle if energy falls below cutoff
   int type = p.type().transport_index();
@@ -117,7 +127,8 @@ void sample_neutron_reaction(Particle& p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (p.secondary_bank().size() >= settings::max_secondaries) {
+      if (p.local_secondary_bank().size() >= settings::max_secondaries &&
+          !settings::use_shared_secondary_bank) {
         fatal_error(
           "The secondary particle bank appears to be growing without "
           "bound. You are likely running a subcritical multiplication problem "
@@ -155,18 +166,9 @@ void sample_neutron_reaction(Particle& p)
     advance_prn_seed(data::nuclides.size(), &p.seeds(STREAM_URR_PTABLE));
   }
 
-  // Play russian roulette if survival biasing is turned on
-  if (settings::survival_biasing) {
-    // if survival normalization is on, use normalized weight cutoff and
-    // normalized weight survive
-    if (settings::survival_normalization) {
-      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
-        russian_roulette(p, settings::weight_survive * p.wgt_born());
-      }
-    } else if (p.wgt() < settings::weight_cutoff) {
-      russian_roulette(p, settings::weight_survive);
-    }
-  }
+  // Play russian roulette if there are no weight windows
+  if (!settings::weight_windows_on)
+    apply_russian_roulette(p);
 }
 
 void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
@@ -227,7 +229,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     }
 
     // Set parent and progeny IDs
-    site.parent_id = p.id();
+    site.parent_id = p.current_work();
     site.progeny_id = p.n_progeny()++;
 
     // Store fission site in bank
@@ -252,7 +254,11 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         ifp(p, idx);
       }
     } else {
-      p.secondary_bank().push_back(site);
+      site.wgt_born = p.wgt_born();
+      site.wgt_ww_born = p.wgt_ww_born();
+      site.n_split = p.n_split();
+      p.local_secondary_bank().push_back(site);
+      p.n_secondaries()++;
     }
 
     // Increment the number of neutrons born delayed
@@ -347,13 +353,14 @@ void sample_photon_reaction(Particle& p)
                            std::sqrt(alpha * alpha + alpha_out * alpha_out -
                                      2.0 * alpha * alpha_out * p.mu());
       Direction u = rotate_angle(p.u(), mu_electron, &phi, p.current_seed());
-      p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron());
+      process_charged_secondary(p, u, E_electron, ParticleType::electron());
     }
 
     // Allow electrons to fill orbital and produce Auger electrons and
     // fluorescent photons. Since Compton subshell data does not match atomic
     // relaxation data, use the mapping between the data to find the subshell
-    if (i_shell >= 0 && element.subshell_map_[i_shell] >= 0) {
+    if (settings::atomic_relaxation && element.has_atomic_relaxation_ &&
+        i_shell >= 0 && element.subshell_map_[i_shell] >= 0) {
       element.atomic_relaxation(element.subshell_map_[i_shell], p);
     }
 
@@ -373,8 +380,9 @@ void sample_photon_reaction(Particle& p)
     // cross sections
     int i_grid = micro.index_grid;
     double f = micro.interp_factor;
-    const auto& xs_lower = xt::row(element.cross_sections_, i_grid);
-    const auto& xs_upper = xt::row(element.cross_sections_, i_grid + 1);
+    tensor::View<const double> xs_lower = element.cross_sections_.slice(i_grid);
+    tensor::View<const double> xs_upper =
+      element.cross_sections_.slice(i_grid + 1);
 
     for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
       const auto& shell {element.shells_[i_shell]};
@@ -419,12 +427,14 @@ void sample_photon_reaction(Particle& p)
         u.y = std::sqrt(1.0 - mu * mu) * std::cos(phi);
         u.z = std::sqrt(1.0 - mu * mu) * std::sin(phi);
 
-        // Create secondary electron
-        p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron());
+        // Process secondary electron at the photon collision site.
+        process_charged_secondary(p, u, E_electron, ParticleType::electron());
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
-        element.atomic_relaxation(i_shell, p);
+        if (settings::atomic_relaxation) {
+          element.atomic_relaxation(i_shell, p);
+        }
         p.event() = TallyEvent::ABSORB;
         p.event_mt() = 533 + shell.index_subshell;
         p.wgt() = 0.0;
@@ -443,17 +453,42 @@ void sample_photon_reaction(Particle& p)
     element.pair_production(alpha, &E_electron, &E_positron, &mu_electron,
       &mu_positron, p.current_seed());
 
-    // Create secondary electron
+    // Process secondary electron at the photon collision site.
     Direction u = rotate_angle(p.u(), mu_electron, nullptr, p.current_seed());
-    p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron());
+    process_charged_secondary(p, u, E_electron, ParticleType::electron());
 
-    // Create secondary positron
+    // Process secondary positron at the photon collision site.
     u = rotate_angle(p.u(), mu_positron, nullptr, p.current_seed());
-    p.create_secondary(p.wgt(), u, E_positron, ParticleType::positron());
+    process_charged_secondary(p, u, E_positron, ParticleType::positron());
     p.event() = TallyEvent::ABSORB;
     p.event_mt() = PAIR_PROD;
     p.wgt() = 0.0;
     p.E() = 0.0;
+  }
+}
+
+void process_charged_secondary(
+  Particle& p, Direction u, double E, ParticleType type)
+{
+  int idx = type.transport_index();
+  if (idx == C_NONE || E < settings::energy_cutoff[idx])
+    return;
+
+  if (settings::electron_treatment == ElectronTreatment::TTB) {
+    thick_target_bremsstrahlung(p, type, u, E);
+  }
+
+  if (type == ParticleType::positron()) {
+    Direction photon_u = isotropic_direction(p.current_seed());
+    p.create_secondary(
+      p.wgt(), photon_u, MASS_ELECTRON_EV, ParticleType::photon());
+    p.create_secondary(
+      p.wgt(), -photon_u, MASS_ELECTRON_EV, ParticleType::photon());
+
+    // The annihilation photons are now emitted during the parent photon
+    // collision. Offset the pair-production Q value in the energy balance so
+    // heating matches the prior explicit positron slowing-down sequence.
+    p.bank_second_E() -= 2 * MASS_ELECTRON_EV;
   }
 }
 
@@ -462,8 +497,7 @@ void sample_electron_reaction(Particle& p)
   // TODO: create reaction types
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
-    double E_lost;
-    thick_target_bremsstrahlung(p, &E_lost);
+    thick_target_bremsstrahlung(p);
   }
 
   p.E() = 0.0;
@@ -476,8 +510,7 @@ void sample_positron_reaction(Particle& p)
   // TODO: create reaction types
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
-    double E_lost;
-    thick_target_bremsstrahlung(p, &E_lost);
+    thick_target_bremsstrahlung(p);
   }
 
   // Sample angle isotropically
@@ -1217,9 +1250,20 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     // Create the secondary photon
     bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon());
 
+    // Pre-add photon energy to pht_storage so pht_secondary_particles()
+    // subtraction results in net zero
+    if (created_photon && !model::active_pulse_height_tallies.empty()) {
+      auto it = std::find(model::pulse_height_cells.begin(),
+        model::pulse_height_cells.end(), p.lowest_coord().cell());
+      if (it != model::pulse_height_cells.end()) {
+        int index = std::distance(model::pulse_height_cells.begin(), it);
+        p.pht_storage()[index] += E;
+      }
+    }
+
     // Tag secondary particle with parent nuclide
     if (created_photon && settings::use_decay_photons) {
-      p.secondary_bank().back().parent_nuclide =
+      p.local_secondary_bank().back().parent_nuclide =
         rx->products_[i_product].parent_nuclide_;
     }
   }

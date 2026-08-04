@@ -1042,7 +1042,7 @@ class ThermalScattering(EqualityMixin):
 
         Parameters
         ----------
-        ev_or_filename : openmc.data.endf.Evaluation or str
+        ev_or_filename : openmc.data.endf.Evaluation, endf.Material, or str
             ENDF evaluation to read from. If given as a string, it is assumed to
             be the filename for the ENDF file.
         divide_incoherent_elastic : bool
@@ -1056,10 +1056,7 @@ class ThermalScattering(EqualityMixin):
             Thermal scattering data
 
         """
-        if isinstance(ev_or_filename, endf.Evaluation):
-            ev = ev_or_filename
-        else:
-            ev = endf.Evaluation(ev_or_filename)
+        ev = endf.as_evaluation(ev_or_filename)
 
         # Read incoherent inelastic data
         assert (7, 4) in ev.section, 'No MF=7, MT=4 found in thermal scattering'

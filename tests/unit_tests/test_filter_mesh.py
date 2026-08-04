@@ -285,3 +285,128 @@ def test_mesh_filter_rotation_roundtrip(run_in_tmpdir):
     elem = mesh_filter.to_xml_element()
     mesh_filter_xml = openmc.MeshFilter.from_xml_element(elem, meshes={mesh.id: mesh})
     assert np.allclose(mesh_filter_xml.rotation, mesh_filter.rotation)
+
+
+def test_mesh_filter_dataframe_regular_3d():
+    """Test MeshFilter.get_pandas_dataframe with a 3D RegularMesh."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0, 0, 0]
+    mesh.upper_right = [3, 4, 5]
+    mesh.dimension = [3, 4, 5]
+
+    f = openmc.MeshFilter(mesh)
+    data_size = 3 * 4 * 5
+    df = f.get_pandas_dataframe(data_size, stride=1)
+
+    mesh_key = f'mesh {mesh.id}'
+    assert (mesh_key, 'x') in df.columns
+    assert (mesh_key, 'y') in df.columns
+    assert (mesh_key, 'z') in df.columns
+    assert len(df) == data_size
+    # x varies fastest (stride=1), then y (stride=3), then z (stride=12)
+    assert list(df[(mesh_key, 'x')][:3]) == [1, 2, 3]
+    assert df[(mesh_key, 'y')].iloc[0] == 1
+    assert df[(mesh_key, 'y')].iloc[3] == 2
+
+
+def test_mesh_filter_dataframe_regular_2d():
+    """Test MeshFilter.get_pandas_dataframe with a 2D RegularMesh."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0, 0]
+    mesh.upper_right = [2, 3]
+    mesh.dimension = [2, 3]
+
+    f = openmc.MeshFilter(mesh)
+    data_size = 2 * 3
+    df = f.get_pandas_dataframe(data_size, stride=1)
+
+    mesh_key = f'mesh {mesh.id}'
+    assert (mesh_key, 'x') in df.columns
+    assert (mesh_key, 'y') in df.columns
+    # Should NOT have a z column for a 2D mesh
+    assert (mesh_key, 'z') not in df.columns
+    assert len(df) == data_size
+
+
+def test_mesh_filter_dataframe_regular_1d():
+    """Test MeshFilter.get_pandas_dataframe with a 1D RegularMesh."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0]
+    mesh.upper_right = [5]
+    mesh.dimension = [5]
+
+    f = openmc.MeshFilter(mesh)
+    data_size = 5
+    df = f.get_pandas_dataframe(data_size, stride=1)
+
+    mesh_key = f'mesh {mesh.id}'
+    assert (mesh_key, 'x') in df.columns
+    assert (mesh_key, 'y') not in df.columns
+    assert (mesh_key, 'z') not in df.columns
+    assert len(df) == data_size
+    assert list(df[(mesh_key, 'x')]) == [1, 2, 3, 4, 5]
+
+
+def test_mesh_filter_dataframe_cylindrical():
+    """Test MeshFilter.get_pandas_dataframe with a CylindricalMesh."""
+    mesh = openmc.CylindricalMesh(
+        r_grid=[0.0, 1.0, 2.0],
+        phi_grid=[0.0, math.pi],
+        z_grid=[0.0, 5.0, 10.0]
+    )
+
+    f = openmc.MeshFilter(mesh)
+    nr, nphi, nz = mesh.dimension  # 2, 1, 2
+    data_size = nr * nphi * nz
+    df = f.get_pandas_dataframe(data_size, stride=1)
+
+    mesh_key = f'mesh {mesh.id}'
+    assert (mesh_key, 'r') in df.columns
+    assert (mesh_key, 'phi') in df.columns
+    assert (mesh_key, 'z') in df.columns
+    # Should NOT have x, y columns
+    assert (mesh_key, 'x') not in df.columns
+    assert (mesh_key, 'y') not in df.columns
+    assert len(df) == data_size
+    # r varies fastest
+    assert list(df[(mesh_key, 'r')][:nr]) == [1, 2]
+
+
+def test_mesh_filter_dataframe_spherical():
+    """Test MeshFilter.get_pandas_dataframe with a SphericalMesh."""
+    mesh = openmc.SphericalMesh(
+        r_grid=[0.0, 1.0, 2.0, 3.0],
+        theta_grid=[0, math.pi],
+        phi_grid=[0, 2 * math.pi]
+    )
+
+    f = openmc.MeshFilter(mesh)
+    nr, ntheta, nphi = mesh.dimension  # 3, 1, 1
+    data_size = nr * ntheta * nphi
+    df = f.get_pandas_dataframe(data_size, stride=1)
+
+    mesh_key = f'mesh {mesh.id}'
+    assert (mesh_key, 'r') in df.columns
+    assert (mesh_key, 'theta') in df.columns
+    assert (mesh_key, 'phi') in df.columns
+    assert (mesh_key, 'x') not in df.columns
+    assert len(df) == data_size
+
+
+def test_mesh_filter_dataframe_rectilinear():
+    """Test MeshFilter.get_pandas_dataframe with a RectilinearMesh."""
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = [0.0, 1.0, 2.0]
+    mesh.y_grid = [0.0, 1.0, 2.0, 3.0]
+    mesh.z_grid = [0.0, 5.0]
+
+    f = openmc.MeshFilter(mesh)
+    nx, ny, nz = mesh.dimension  # 2, 3, 1
+    data_size = nx * ny * nz
+    df = f.get_pandas_dataframe(data_size, stride=1)
+
+    mesh_key = f'mesh {mesh.id}'
+    assert (mesh_key, 'x') in df.columns
+    assert (mesh_key, 'y') in df.columns
+    assert (mesh_key, 'z') in df.columns
+    assert len(df) == data_size

@@ -6,10 +6,10 @@ from itertools import repeat, starmap
 from multiprocessing import Pool
 
 import numpy as np
-from scipy.sparse import hstack
+from scipy.sparse import hstack, vstack
 
 from openmc.mpi import comm
-from .._sparse_compat import block_array
+from .._sparse_compat import block_array, csc_array
 
 # Configurable switch that enables / disables the use of
 # multiprocessing routines during depletion
@@ -41,15 +41,39 @@ def _distribute(items):
             return items[j:j + chunk_size]
         j += chunk_size
 
+
+def _add_external_source(
+    matrices, n, chain, external_source_rates, current_timestep
+):
+    """Augment depletion matrices and nuclide vectors with external sources."""
+    sources = map(chain.form_ext_source_term, repeat(external_source_rates),
+                  repeat(current_timestep), external_source_rates.local_mats)
+    matrices = [
+        hstack([matrix, source])
+        for matrix, source in zip(matrices, sources)
+    ]
+    n_solve = [arr.copy() for arr in n]
+
+    # Homogenize the augmented matrices and nuclide vectors
+    for i, matrix in enumerate(matrices):
+        if matrix.shape[0] + 1 == matrix.shape[1]:
+            matrices[i] = vstack(
+                [matrix, csc_array((1, matrix.shape[1]))])
+            n_solve[i] = np.append(n_solve[i], 1.0)
+
+    return matrices, n_solve
+
+
 def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
-            transfer_rates=None, external_source_rates=None, *matrix_args):
+            transfer_rates=None, external_source_rates=None, substeps=1,
+            *matrix_args):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
     ----------
     func : callable
         Function to use to get new compositions. Expected to have the signature
-        ``func(A, n0, t) -> n1``
+        ``func(A, n0, t, substeps=1) -> n1``.
     chain : openmc.deplete.Chain
         Depletion chain
     n : list of numpy.ndarray
@@ -61,7 +85,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         Time in [s] to deplete for
     current_timestep : int
         Current timestep index
-    maxtrix_func : callable, optional
+    matrix_func : callable, optional
         Function to form the depletion matrix after calling ``matrix_func(chain,
         rates, fission_yields)``, where ``fission_yields = {parent: {product:
         yield_frac}}`` Expected to return the depletion matrix required by
@@ -74,6 +98,8 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         External source rates for continuous removal/feed.
 
         .. versionadded:: 0.15.3
+    substeps : int, optional
+        Number of substeps to pass to solvers that support substepping.
     matrix_args: Any, optional
         Additional arguments passed to matrix_func
 
@@ -84,7 +110,6 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         list contains the number of [atom] of each nuclide.
 
     """
-
     fission_yields = chain.fission_yields
     if len(fission_yields) == 1:
         fission_yields = repeat(fission_yields[0])
@@ -100,8 +125,14 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         matrices = map(matrix_func, repeat(chain), rates, fission_yields,
                        *matrix_args)
 
-    if (transfer_rates is not None and
-        current_timestep in transfer_rates.external_timesteps):
+    # Determine if transfer rates or external source rates are active
+    transfer_active = transfer_rates is not None and \
+        current_timestep in transfer_rates.external_timesteps
+    external_active = external_source_rates is not None and \
+        current_timestep in external_source_rates.external_timesteps
+
+    n_solve = n
+    if transfer_active:
         # Calculate transfer rate terms as diagonal matrices
         transfers = map(chain.form_rr_term, repeat(transfer_rates),
                         repeat(current_timestep), transfer_rates.local_mats)
@@ -117,10 +148,16 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                                                 transfer_rates.redox[mat_id][0],
                                                 transfer_rates.redox[mat_id][1])
 
+        # Add external sources if present
+        if external_active:
+            matrices, n_solve = _add_external_source(
+                matrices, n, chain, external_source_rates, current_timestep)
+
+        # Set transfer rate terms with destination material if present
         if current_timestep in transfer_rates.index_transfer:
             # Gather all on comm.rank 0
             matrices = comm.gather(matrices)
-            n = comm.gather(n)
+            n = comm.gather(n_solve)
 
             if comm.rank == 0:
                 # Expand lists
@@ -129,20 +166,27 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
 
                 # Calculate transfer rate terms as diagonal matrices
                 transfer_pair = {}
-                for mat_pair in transfer_rates.index_transfer[current_timestep]:
+                for mat_pair in dict.fromkeys(transfer_rates.index_transfer[current_timestep]):
                     transfer_matrix = chain.form_rr_term(transfer_rates,
                                                          current_timestep,
                                                          mat_pair)
-
                     # check if destination material has a redox control
                     if mat_pair[0] in transfer_rates.redox:
                         transfer_matrix = chain.add_redox_term(transfer_matrix,
                                           transfer_rates.redox[mat_pair[0]][0],
                                           transfer_rates.redox[mat_pair[0]][1])
+                    # Add external source rates if present
+                    if external_active:
+                        if len(external_source_rates.get_components(mat_pair[0], current_timestep)) > 0:
+                            transfer_matrix = vstack([transfer_matrix,
+                                csc_array((1, transfer_matrix.shape[1]))])
+                        if len(external_source_rates.get_components(mat_pair[1], current_timestep)) > 0:
+                            transfer_matrix = hstack([transfer_matrix,
+                                csc_array((transfer_matrix.shape[0], 1))])
                     transfer_pair[mat_pair] = transfer_matrix
 
-                # Combine all matrices together in a single matrix of matrices
-                # to be solved in one go
+                # Combine all matrices together in a single block matrix of matrices
+                # to be solved on one rank
                 n_rows = n_cols = len(transfer_rates.burnable_mats)
                 rows = []
                 for row in range(n_rows):
@@ -164,41 +208,29 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
 
                 # Concatenate vectors of nuclides in one
                 n_multi = np.concatenate(n)
-                n_result = func(matrix, n_multi, dt)
+                n_result = func(matrix, n_multi, dt, substeps)
 
                 # Split back the nuclide vector result into the original form
                 n_result = np.split(n_result, np.cumsum([len(i) for i in n])[:-1])
-
             else:
                 n_result = None
 
-            # Braodcast result to other ranks
+            # Broadcast result to other MPI ranks and then distribute
             n_result = comm.bcast(n_result)
-            # Distribute results across MPI
             n_result = _distribute(n_result)
+
+            # Remove extra values based on the materials local to each rank
+            if external_active:
+                external_source_rates.reformat_nuclide_vectors(n_result)
 
             return n_result
 
-    if (external_source_rates is not None and
-        current_timestep in external_source_rates.external_timesteps):
-        # Calculate external source term vectors
-        sources = map(chain.form_ext_source_term, repeat(external_source_rates),
-                      repeat(current_timestep), external_source_rates.local_mats)
+    # If only external source rates are present
+    elif external_active:
+        matrices, n_solve = _add_external_source(
+            matrices, n, chain, external_source_rates, current_timestep)
 
-        # stack vector column at the end of the matrix
-        matrices = [
-            hstack([matrix, source])
-            for matrix, source in zip(matrices, sources)
-        ]
-
-        # Add a last row of zeroes to the matrices and append 1 to the last row
-        # of the nuclide vectors
-        for i, matrix in enumerate(matrices):
-            if not np.equal(*matrix.shape):
-                matrix.resize(matrix.shape[1], matrix.shape[1])
-                n[i] = np.append(n[i], 1.0)
-
-    inputs = zip(matrices, n, repeat(dt))
+    inputs = zip(matrices, n_solve, repeat(dt), repeat(substeps))
 
     if USE_MULTIPROCESSING:
         with Pool(NUM_PROCESSES) as pool:
@@ -206,10 +238,8 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
     else:
         n_result = list(starmap(func, inputs))
 
-    # Remove extra value at the end of the nuclide vectors
-    if (external_source_rates is not None and
-        current_timestep in external_source_rates.external_timesteps):
-        external_source_rates.reformat_nuclide_vectors(n)
+    # Remove extra value at the end of the nuclide vectors if external source rates are present
+    if external_active:
         external_source_rates.reformat_nuclide_vectors(n_result)
 
     return n_result

@@ -71,8 +71,6 @@ New Features
   (`#3460 <https://github.com/openmc-dev/openmc/pull/3460>`_)
 - Allowed :class:`~openmc.stats.CylindricalIndependent` to use an arbitrary
   symmetry axis (`#3474 <https://github.com/openmc-dev/openmc/pull/3474>`_)
-- Replaced the external ``vectfit`` dependency with an internal vector-fitting
-  implementation (`#3493 <https://github.com/openmc-dev/openmc/pull/3493>`_)
 - Added :class:`SlicePlot` and :class:`VoxelPlot` in place of the legacy
   :class:`Plot` interface
   (`#3528 <https://github.com/openmc-dev/openmc/pull/3528>`_)
@@ -80,21 +78,11 @@ New Features
   (`#3550 <https://github.com/openmc-dev/openmc/pull/3550>`_)
 - Generalized rotational periodic boundary conditions to the x-, y-, and
   z-axes (`#3591 <https://github.com/openmc-dev/openmc/pull/3591>`_)
-- Migrated internal sparse data structures to SciPy sparse arrays
-  (`#3613 <https://github.com/openmc-dev/openmc/pull/3613>`_)
 - Added VTKHDF output support for unstructured meshes with hexahedral elements
   (`#3623 <https://github.com/openmc-dev/openmc/pull/3623>`_)
-- Added Python 3.14 support and raised the minimum supported Python version to
-  3.12 (`#3642 <https://github.com/openmc-dev/openmc/pull/3642>`_)
 - Allowed nuclides, elements, density, temperature, and volume to be specified
   in the :class:`Material` constructor
   (`#3649 <https://github.com/openmc-dev/openmc/pull/3649>`_)
-- Modernized and made relocatable the installed CMake package configuration
-  (`#3653 <https://github.com/openmc-dev/openmc/pull/3653>`_)
-- Updated the documented minimum build environment to GCC 11.4 and CMake 3.22
-  (`#3666 <https://github.com/openmc-dev/openmc/pull/3666>`_)
-- Improved automatic multigroup cross-section generation for random ray models
-  (`#3658 <https://github.com/openmc-dev/openmc/pull/3658>`_)
 - Added overlap IDs to :meth:`Model.id_map`
   (`#3669 <https://github.com/openmc-dev/openmc/pull/3669>`_)
 - Added a command-line option for controlling output verbosity
@@ -113,9 +101,6 @@ New Features
   (`#3717 <https://github.com/openmc-dev/openmc/pull/3717>`_)
 - Added distributed cell-density support to the random ray solver
   (`#3720 <https://github.com/openmc-dev/openmc/pull/3720>`_)
-- Accelerated reaction-rate lookup in
-  :class:`~openmc.deplete.FluxCollapseHelper`
-  (`#3724 <https://github.com/openmc-dev/openmc/pull/3724>`_)
 - Added optional material bounding boxes to
   :meth:`MeshBase.material_volumes`
   (`#3731 <https://github.com/openmc-dev/openmc/pull/3731>`_)
@@ -127,8 +112,6 @@ New Features
   (`#3742 <https://github.com/openmc-dev/openmc/pull/3742>`_)
 - Added ``MeshBase.n_elements`` and common bounding-box properties to the mesh
   protocol (`#3745 <https://github.com/openmc-dev/openmc/pull/3745>`_)
-- Added warnings when undefined attributes are assigned to :class:`Settings`
-  (`#3746 <https://github.com/openmc-dev/openmc/pull/3746>`_)
 - Added C API bindings for random ray execution and configuration
   (`#3749 <https://github.com/openmc-dev/openmc/pull/3749>`_)
 - Generalized :class:`ParticleType` using the PDG Monte Carlo numbering scheme
@@ -137,16 +120,8 @@ New Features
   (`#3760 <https://github.com/openmc-dev/openmc/pull/3760>`_)
 - Added truncated normal distributions
   (`#3761 <https://github.com/openmc-dev/openmc/pull/3761>`_)
-- Added approximate neutron velocities when multigroup inverse-velocity data is
-  unavailable (`#3766 <https://github.com/openmc-dev/openmc/pull/3766>`_)
-- Parallelized scattering-matrix transposition for adjoint random ray solves
-  (`#3768 <https://github.com/openmc-dev/openmc/pull/3768>`_)
 - Enabled tracklength tallies of microscopic cross sections in void materials
   (`#3771 <https://github.com/openmc-dev/openmc/pull/3771>`_)
-- Changed distributed-instance XML data to subelements to support very large
-  instance lists (`#3774 <https://github.com/openmc-dev/openmc/pull/3774>`_)
-- Precomputed random ray source-update offsets for improved performance
-  (`#3775 <https://github.com/openmc-dev/openmc/pull/3775>`_)
 - Allowed tally scores and filters to be supplied to the :class:`Tally`
   constructor (`#3777 <https://github.com/openmc-dev/openmc/pull/3777>`_)
 - Added support for mixture distributions to
@@ -154,12 +129,8 @@ New Features
   (`#3784 <https://github.com/openmc-dev/openmc/pull/3784>`_)
 - Added C API bindings for :class:`~openmc.lib.SolidRayTracePlot`
   (`#3789 <https://github.com/openmc-dev/openmc/pull/3789>`_)
-- Simplified :meth:`Model.convert_to_multigroup` setup for DAGMC models
-  (`#3801 <https://github.com/openmc-dev/openmc/pull/3801>`_)
 - Added upper and lower interpolation bounds to multigroup cross-section data
   (`#3803 <https://github.com/openmc-dev/openmc/pull/3803>`_)
-- Replaced the ``xtensor`` and ``xtl`` dependencies with internal tensor and
-  view classes (`#3805 <https://github.com/openmc-dev/openmc/pull/3805>`_)
 - Added a C API and :func:`openmc.lib.slice_data` interface for raster slice
   plots (`#3806 <https://github.com/openmc-dev/openmc/pull/3806>`_)
 - Added settings for loading property files and controlling surface-grazing
@@ -168,31 +139,22 @@ New Features
   (`#3809 <https://github.com/openmc-dev/openmc/pull/3809>`_)
 - Added S2 directional sampling to the random ray solver
   (`#3811 <https://github.com/openmc-dev/openmc/pull/3811>`_)
-- Extended ray-traced plot data for use by estimators
-  (`#3816 <https://github.com/openmc-dev/openmc/pull/3816>`_)
 - Added :meth:`RegularMesh.get_indices_at_coords`
   (`#3824 <https://github.com/openmc-dev/openmc/pull/3824>`_)
 - Allowed :meth:`MeshBase.from_domain` to accept bounding boxes directly
   (`#3828 <https://github.com/openmc-dev/openmc/pull/3828>`_)
-- Parallelized external-source sampling and made rejection counters thread-safe
-  (`#3830 <https://github.com/openmc-dev/openmc/pull/3830>`_)
 - Added hybrid-domain tallies to
   :func:`~openmc.deplete.get_microxs_and_flux`
   (`#3831 <https://github.com/openmc-dev/openmc/pull/3831>`_)
-- Improved depletion performance for models with transfer rates
-  (`#3839 <https://github.com/openmc-dev/openmc/pull/3839>`_)
 - Added a setting to disable atomic relaxation
   (`#3855 <https://github.com/openmc-dev/openmc/pull/3855>`_)
 - Added :func:`openmc.stats.fusion_neutron_spectrum`
   (`#3862 <https://github.com/openmc-dev/openmc/pull/3862>`_)
-- Added a shared secondary-particle bank for load balancing histories across
-  threads and MPI ranks (`#3863 <https://github.com/openmc-dev/openmc/pull/3863>`_)
 - Added support for multiple meshes in R2S calculations
   (`#3860 <https://github.com/openmc-dev/openmc/pull/3860>`_)
-- Allowed :meth:`openmc.deplete.StepResult.get_material` to accept integer IDs
-  (`#3872 <https://github.com/openmc-dev/openmc/pull/3872>`_)
-- Allowed sequences of group boundaries in :meth:`Model.convert_to_multigroup`
-  (`#3873 <https://github.com/openmc-dev/openmc/pull/3873>`_)
+- Added a shared secondary-particle bank for load balancing histories across
+  threads and MPI ranks (`#3863
+  <https://github.com/openmc-dev/openmc/pull/3863>`_)
 - Added :meth:`RectilinearMesh.get_indices_at_coords`
   (`#3876 <https://github.com/openmc-dev/openmc/pull/3876>`_)
 - Expanded DAGMC cell material, density, and temperature overrides
@@ -201,8 +163,6 @@ New Features
   (`#3903 <https://github.com/openmc-dev/openmc/pull/3903>`_)
 - Added optional substeps to CRAM depletion solves
   (`#3908 <https://github.com/openmc-dev/openmc/pull/3908>`_)
-- Added per-cubic-meter units to material activity and decay-heat methods
-  (`#3912 <https://github.com/openmc-dev/openmc/pull/3912>`_)
 - Extended :attr:`RegularMesh.volumes` to one- and two-dimensional meshes
   (`#3914 <https://github.com/openmc-dev/openmc/pull/3914>`_)
 - Enabled the tracklength estimator for neutron-heating tallies
@@ -211,8 +171,6 @@ New Features
   (`#3919 <https://github.com/openmc-dev/openmc/pull/3919>`_)
 - Added :class:`openmc.stats.DecaySpectrum` and integrated it with R2S
   workflows (`#3930 <https://github.com/openmc-dev/openmc/pull/3930>`_)
-- Allowed ``openmc.data.endf.Material`` objects in nuclear-data ``from_endf``
-  methods (`#3932 <https://github.com/openmc-dev/openmc/pull/3932>`_)
 - Enabled pulse-height tallies in coupled neutron--photon calculations
   (`#3937 <https://github.com/openmc-dev/openmc/pull/3937>`_)
 - Added a description attribute to :class:`Model`
@@ -230,19 +188,12 @@ New Features
   (`#3999 <https://github.com/openmc-dev/openmc/pull/3999>`_)
 - Enabled parent-nuclide tally breakdowns in R2S calculations
   (`#4013 <https://github.com/openmc-dev/openmc/pull/4013>`_)
-- Added partial-current labels for :class:`MeshSurfaceFilter`
-  (`#4021 <https://github.com/openmc-dev/openmc/pull/4021>`_)
 - Added control over NJOY's damage-energy threshold
   (`#4022 <https://github.com/openmc-dev/openmc/pull/4022>`_)
-- Optimized depletion-chain loading and material activity calculations
-  (`#4025 <https://github.com/openmc-dev/openmc/pull/4025>`_)
 - Added a length multiplier to :class:`DAGMCUniverse`
   (`#4033 <https://github.com/openmc-dev/openmc/pull/4033>`_)
 - Added elemental photon mass energy-absorption coefficients
   (`#4039 <https://github.com/openmc-dev/openmc/pull/4039>`_)
-- Processed photon-induced electrons and positrons at their birth location and
-  attributed their heating to the parent photon
-  (`#4040 <https://github.com/openmc-dev/openmc/pull/4040>`_)
 
 ---------------------------
 Bug Fixes and Small Changes
@@ -251,12 +202,24 @@ Bug Fixes and Small Changes
 - Corrected type handling and generalized
   :func:`~openmc.stats.combine_distributions`
   (`#3445 <https://github.com/openmc-dev/openmc/pull/3445>`_)
+- Replaced the external ``vectfit`` dependency with an internal vector-fitting
+  implementation (`#3493 <https://github.com/openmc-dev/openmc/pull/3493>`_)
 - Normalized random ray eigenvalue fluxes consistently with Monte Carlo tallies
   (`#3595 <https://github.com/openmc-dev/openmc/pull/3595>`_)
+- Migrated internal sparse data structures to SciPy sparse arrays
+  (`#3613 <https://github.com/openmc-dev/openmc/pull/3613>`_)
+- Added Python 3.14 support and raised the minimum supported Python version to
+  3.12 (`#3642 <https://github.com/openmc-dev/openmc/pull/3642>`_)
+- Modernized and made relocatable the installed CMake package configuration
+  (`#3653 <https://github.com/openmc-dev/openmc/pull/3653>`_)
 - Restored the DAGMC universe name when exporting XML
   (`#3657 <https://github.com/openmc-dev/openmc/pull/3657>`_)
+- Improved automatic multigroup cross-section generation for random ray models
+  (`#3658 <https://github.com/openmc-dev/openmc/pull/3658>`_)
 - Corrected temperature assignment in :func:`openmc.model.borated_water`
   (`#3662 <https://github.com/openmc-dev/openmc/pull/3662>`_)
+- Updated the documented minimum build environment to GCC 11.4 and CMake 3.22
+  (`#3666 <https://github.com/openmc-dev/openmc/pull/3666>`_)
 - Fixed :class:`DistribcellFilter` when applying tally results to a model
   (`#3667 <https://github.com/openmc-dev/openmc/pull/3667>`_)
 - Corrected source-location scaling in plots with non-centimeter axis units
@@ -279,36 +242,59 @@ Bug Fixes and Small Changes
   (`#3708 <https://github.com/openmc-dev/openmc/pull/3708>`_)
 - Corrected temperature-list handling in multigroup cross-section libraries
   (`#3712 <https://github.com/openmc-dev/openmc/pull/3712>`_)
+- Accelerated reaction-rate lookup in
+  :class:`~openmc.deplete.FluxCollapseHelper`
+  (`#3724 <https://github.com/openmc-dev/openmc/pull/3724>`_)
 - Corrected operator precedence in nested CSG union and intersection
   expressions (`#3730 <https://github.com/openmc-dev/openmc/pull/3730>`_)
 - Preserved material names in depletion results
   (`#3738 <https://github.com/openmc-dev/openmc/pull/3738>`_)
 - Restored compatibility with pandas 3
   (`#3743 <https://github.com/openmc-dev/openmc/pull/3743>`_)
+- Added warnings when undefined attributes are assigned to :class:`Settings`
+  (`#3746 <https://github.com/openmc-dev/openmc/pull/3746>`_)
 - Fixed plotting models that use multigroup cross sections
   (`#3748 <https://github.com/openmc-dev/openmc/pull/3748>`_)
 - Prevented unstable ground-state Ta180 from being added for natural tantalum
   (`#3750 <https://github.com/openmc-dev/openmc/pull/3750>`_)
 - Resolved conflicts between weight windows and global Russian roulette
   (`#3751 <https://github.com/openmc-dev/openmc/pull/3751>`_)
+- Added approximate neutron velocities when multigroup inverse-velocity data is
+  unavailable (`#3766 <https://github.com/openmc-dev/openmc/pull/3766>`_)
+- Parallelized scattering-matrix transposition for adjoint random ray solves
+  (`#3768 <https://github.com/openmc-dev/openmc/pull/3768>`_)
 - Removed a variable-length-array compiler extension
   (`#3769 <https://github.com/openmc-dev/openmc/pull/3769>`_)
 - Rejected nonpositive surface IDs
   (`#3772 <https://github.com/openmc-dev/openmc/pull/3772>`_)
 - Corrected length-multiplier use in libMesh methods
   (`#3773 <https://github.com/openmc-dev/openmc/pull/3773>`_)
+- Changed distributed-instance XML data to subelements to support very large
+  instance lists (`#3774 <https://github.com/openmc-dev/openmc/pull/3774>`_)
+- Precomputed random ray source-update offsets for improved performance
+  (`#3775 <https://github.com/openmc-dev/openmc/pull/3775>`_)
 - Improved radial crossing checks in cylindrical and spherical meshes
   (`#3792 <https://github.com/openmc-dev/openmc/pull/3792>`_)
 - Removed ``setuptools`` from runtime dependencies
   (`#3794 <https://github.com/openmc-dev/openmc/pull/3794>`_)
+- Simplified :meth:`Model.convert_to_multigroup` setup for DAGMC models
+  (`#3801 <https://github.com/openmc-dev/openmc/pull/3801>`_)
 - Prevented ``None`` temperature values in automatically generated multigroup
   data (`#3802 <https://github.com/openmc-dev/openmc/pull/3802>`_)
+- Replaced the ``xtensor`` and ``xtl`` dependencies with internal tensor and
+  view classes (`#3805 <https://github.com/openmc-dev/openmc/pull/3805>`_)
 - Enforced positive mesh radii in the Python API
   (`#3813 <https://github.com/openmc-dev/openmc/pull/3813>`_)
+- Extended ray-traced plot data for use by estimators
+  (`#3816 <https://github.com/openmc-dev/openmc/pull/3816>`_)
 - Corrected :meth:`MeshFilter.get_pandas_dataframe` for non-regular meshes
   (`#3817 <https://github.com/openmc-dev/openmc/pull/3817>`_)
 - Corrected pulse-height scoring when no cell filter is present
   (`#3821 <https://github.com/openmc-dev/openmc/pull/3821>`_)
+- Parallelized external-source sampling and made rejection counters thread-safe
+  (`#3830 <https://github.com/openmc-dev/openmc/pull/3830>`_)
+- Improved depletion performance for models with transfer rates
+  (`#3839 <https://github.com/openmc-dev/openmc/pull/3839>`_)
 - Corrected surface-normal determination in solid ray-traced plots
   (`#3846 <https://github.com/openmc-dev/openmc/pull/3846>`_)
 - Corrected parsing of cell data in the Python API
@@ -317,6 +303,10 @@ Bug Fixes and Small Changes
   at large pitch (`#3853 <https://github.com/openmc-dev/openmc/pull/3853>`_)
 - Closed redirected standard-output file descriptors after use
   (`#3864 <https://github.com/openmc-dev/openmc/pull/3864>`_)
+- Allowed :meth:`openmc.deplete.StepResult.get_material` to accept integer IDs
+  (`#3872 <https://github.com/openmc-dev/openmc/pull/3872>`_)
+- Allowed sequences of group boundaries in :meth:`Model.convert_to_multigroup`
+  (`#3873 <https://github.com/openmc-dev/openmc/pull/3873>`_)
 - Clipped small negative atom densities produced by CRAM
   (`#3879 <https://github.com/openmc-dev/openmc/pull/3879>`_)
 - Corrected surface-source particle counts under MPI
@@ -325,6 +315,10 @@ Bug Fixes and Small Changes
   (`#3907 <https://github.com/openmc-dev/openmc/pull/3907>`_)
 - Fixed an MPI hang during depletion calculations
   (`#3910 <https://github.com/openmc-dev/openmc/pull/3910>`_)
+- Added per-cubic-meter units to material activity and decay-heat methods
+  (`#3912 <https://github.com/openmc-dev/openmc/pull/3912>`_)
+- Allowed ``openmc.data.endf.Material`` objects in nuclear-data ``from_endf``
+  methods (`#3932 <https://github.com/openmc-dev/openmc/pull/3932>`_)
 - Reevaluated geometry after close collisions that follow a surface crossing
   (`#3933 <https://github.com/openmc-dev/openmc/pull/3933>`_)
 - Corrected virtual-surface crossing behavior
@@ -375,10 +369,14 @@ Bug Fixes and Small Changes
   (`#4019 <https://github.com/openmc-dev/openmc/pull/4019>`_)
 - Avoided accessing atomic-relaxation maps when no relaxation data is present
   (`#4020 <https://github.com/openmc-dev/openmc/pull/4020>`_)
+- Added partial-current labels for :class:`MeshSurfaceFilter`
+  (`#4021 <https://github.com/openmc-dev/openmc/pull/4021>`_)
 - Corrected ``M_PI`` availability on affected compilers
   (`#4023 <https://github.com/openmc-dev/openmc/pull/4023>`_)
 - Determined surface-source starting half-spaces from particle direction
   (`#4024 <https://github.com/openmc-dev/openmc/pull/4024>`_)
+- Optimized depletion-chain loading and material activity calculations
+  (`#4025 <https://github.com/openmc-dev/openmc/pull/4025>`_)
 - Corrected sparse storage of multidimensional tally results
   (`#4030 <https://github.com/openmc-dev/openmc/pull/4030>`_)
 - Resolved relative input paths against the XML file that contains them
@@ -389,3 +387,6 @@ Bug Fixes and Small Changes
   (`#4037 <https://github.com/openmc-dev/openmc/pull/4037>`_)
 - Limited unstructured-mesh Exodus output to one MPI rank
   (`#4038 <https://github.com/openmc-dev/openmc/pull/4038>`_)
+- Processed photon-induced electrons and positrons at their birth location and
+  attributed their heating to the parent photon
+  (`#4040 <https://github.com/openmc-dev/openmc/pull/4040>`_)

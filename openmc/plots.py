@@ -357,15 +357,13 @@ def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
     return output
 
 
-def id_map_to_rgb(
+def _id_map_to_rgb(
     id_map: np.ndarray,
     color_by: str = 'cell',
     colors: dict | None = None,
     overlap_color: Sequence[int] | str = (255, 0, 0)
 ) -> np.ndarray:
     """Convert ID map array to RGB image array.
-
-    .. versionadded:: 0.16.0
 
     Parameters
     ----------

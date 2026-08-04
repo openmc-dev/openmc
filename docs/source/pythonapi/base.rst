@@ -186,13 +186,6 @@ Geometry Plotting
    openmc.SolidRayTracePlot
    openmc.Plots
 
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myfunction.rst
-
-   openmc.id_map_to_rgb
-
 Running OpenMC
 --------------
 

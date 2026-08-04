@@ -24,7 +24,7 @@ from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import (check_type, check_value, check_greater_than,
                                check_length, PathLike)
 from openmc.exceptions import InvalidIDError
-from openmc.plots import add_plot_params, _BASIS_INDICES, id_map_to_rgb
+from openmc.plots import add_plot_params, _BASIS_INDICES, _id_map_to_rgb
 from openmc.utility_funcs import change_directory, set_xml_input_path
 
 
@@ -1399,7 +1399,7 @@ class Model:
             colors = plot.colors
 
         # Convert ID map to RGB image
-        img = id_map_to_rgb(
+        img = _id_map_to_rgb(
             id_map=id_map,
             color_by=color_by,
             colors=colors,

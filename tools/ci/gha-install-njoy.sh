@@ -5,4 +5,8 @@ git clone -b 2016.78 https://github.com/njoy/NJOY2016
 cd NJOY2016
 mkdir build && cd build
 cmake -Dstatic=on .. && make 2>/dev/null && sudo make install
-rm -v !( "$HOME/NJOY2016/build/njoy"|"$HOME/NJOY2016/build/libnjoy.so" )
+find "$HOME/NJOY2016/build" -maxdepth 1 \
+  ! -name njoy \
+  ! -name libnjoy.so \
+  -type f \
+  -delete

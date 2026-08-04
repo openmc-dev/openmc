@@ -61,6 +61,10 @@ def get_microxs_and_flux(
     sections that can be used in depletion calculations with the
     :class:`~openmc.deplete.IndependentOperator` class.
 
+    Any tallies already assigned to ``model`` are included in the transport
+    solve alongside the tallies created by this function. The original tally
+    collection is restored before returning.
+
     .. versionadded:: 0.14.0
 
     .. versionchanged:: 0.15.3
@@ -205,7 +209,7 @@ def get_microxs_and_flux(
     # Create one flux tally (and optionally one RR tally) per domain filter.
     flux_tallies = []
     rr_tallies = []
-    model.tallies = []
+    model.tallies = original_tallies
     for i, domain_filter in enumerate(domain_filters):
         flux_tally = openmc.Tally(name=f'MicroXS flux {i}')
         flux_tally.filters = [domain_filter]

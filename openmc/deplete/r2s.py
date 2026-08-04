@@ -111,7 +111,10 @@ class R2SManager:
         Indicates whether the R2S calculation uses mesh elements ('mesh-based')
         as the spatial discretization or a list of cells ('cell-based').
     results : dict
-        A dictionary that stores results from the R2S calculation.
+        A dictionary that stores results from the R2S calculation. In
+        particular, ``results['neutron_tallies']`` contains user-defined
+        neutron tally results from the neutron transport step, while
+        ``results['photon_tallies']`` contains photon tally results.
 
     """
     def __init__(
@@ -286,8 +289,10 @@ class R2SManager:
         mesh-material filters, and retrieves the fluxes and microscopic cross
         sections for each mesh/material combination via a single transport
         solve. This step will populate the 'fluxes' and 'micros' keys in the
-        results dictionary. For a mesh-based calculation, it will also populate
-        the 'mesh_material_volumes' key (a list of
+        results dictionary. Any tallies assigned to ``neutron_model`` are run
+        in the same transport solve and their results are stored under the
+        'neutron_tallies' key. For a mesh-based calculation, this step will
+        also populate the 'mesh_material_volumes' key (a list of
         :class:`~openmc.MeshMaterialVolumes`, one per mesh).
 
         Parameters
@@ -355,12 +360,27 @@ class R2SManager:
             micro_kwargs = {}
         micro_kwargs.setdefault('path_statepoint', output_dir / 'statepoint.h5')
         micro_kwargs.setdefault('path_input', output_dir / 'model.xml')
+        neutron_tally_ids = [tally.id for tally in self.neutron_model.tallies]
+        statepoint_path = Path(micro_kwargs['path_statepoint']).resolve()
+        micro_kwargs['path_statepoint'] = statepoint_path
 
         # Run neutron transport and get fluxes and micros. Run via openmc.lib to
         # maintain a consistent parallelism strategy with the activation step.
         with TemporarySession(output=False):
             self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
                 self.neutron_model, domains, **micro_kwargs)
+
+        with openmc.StatePoint(statepoint_path) as sp:
+            self.results['neutron_tallies'] = [
+                sp.tallies[tally_id] for tally_id in neutron_tally_ids
+            ]
+
+        # Save the IDs separately from the statepoint so that neutron tally
+        # results can be restored by load_results without including internal
+        # MicroXS tallies.
+        if comm.rank == 0:
+            with open(output_dir / 'tally_ids.json', 'w') as f:
+                json.dump(neutron_tally_ids, f)
 
         # Save flux and micros to file
         if comm.rank == 0:
@@ -801,6 +821,17 @@ class R2SManager:
             self.results['micros'] = [
                 micros_dict[f'domain_{i}'] for i in range(len(micros_dict))
             ]
+
+        # Load neutron tally results from the neutron transport statepoint.
+        tally_ids_path = neutron_dir / 'tally_ids.json'
+        statepoint_path = neutron_dir / 'statepoint.h5'
+        if tally_ids_path.exists() and statepoint_path.exists():
+            with tally_ids_path.open('r') as f:
+                tally_ids = json.load(f)
+            with openmc.StatePoint(statepoint_path) as sp:
+                self.results['neutron_tallies'] = [
+                    sp.tallies[tally_id] for tally_id in tally_ids
+                ]
 
         # Load activation results
         activation_dir = path / 'activation'

@@ -143,6 +143,10 @@ def test_hybrid_tally_setup():
     # Define 2-group energy structure for the test
     energies = [0., 0.625, 2.0e7]
 
+    user_tally = openmc.Tally(name='User tally')
+    user_tally.scores = ['flux']
+    model.tallies = [user_tally]
+
     # Function to replace Model.run and capture the tallies that were created
     captured = {}
     def capture_run(**kwargs):
@@ -165,6 +169,7 @@ def test_hybrid_tally_setup():
 
     # Check that both tallies were created with the expected properties
     tally_names = [t.name for t in captured['tallies']]
+    assert 'User tally' in tally_names
     assert 'MicroXS flux 0' in tally_names
     assert 'MicroXS RR 0' in tally_names
 

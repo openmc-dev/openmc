@@ -63,9 +63,10 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
-    if (!starts_with(filename_, "/")) {
+    std::filesystem::path p(filename_);
+    if (p.is_relative()) {
       std::filesystem::path d(dir_name(settings::path_input));
-      filename_ = (d / filename_).string();
+      filename_ = (d / p).string();
     }
   } else {
     fatal_error("Must specify a file for the DAGMC universe");

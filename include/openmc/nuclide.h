@@ -84,6 +84,9 @@ public:
   double collapse_rate(int MT, double temperature, span<const double> energy,
     span<const double> flux) const;
 
+  //! Return a ParticleType object representing this nuclide
+  ParticleType particle_type() const { return {Z_, A_, metastable_}; }
+
   //============================================================================
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"
@@ -96,7 +99,7 @@ public:
   // Temperature dependent cross section data
   vector<double> kTs_;                //!< temperatures in eV (k*T)
   vector<EnergyGrid> grid_;           //!< Energy grid at each temperature
-  vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
+  vector<tensor::Tensor<double>> xs_; //!< Cross sections at each temperature
 
   // Multipole data
   unique_ptr<WindowedMultipole> multipole_;

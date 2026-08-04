@@ -7,7 +7,7 @@ import numpy as np
 
 import openmc
 from openmc.data import decay_photon_energy
-from openmc.deplete import Chain
+from openmc.deplete import Chain, Nuclide
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -76,6 +76,13 @@ def test_add_components():
         m.add_components({1.0: 'H1'}, percent_type = 'wo')
     with pytest.raises(ValueError):
         m.add_components({'H1': 1.0}, percent_type = 'oa')
+
+
+def test_id():
+    openmc.Material(material_id=0)
+    with pytest.raises(ValueError):
+        openmc.Material(material_id=-1)
+
 
 def test_nuclides_to_ignore(run_in_tmpdir):
     """Test nuclides_to_ignore when exporting a material to XML"""
@@ -554,6 +561,10 @@ def test_get_activity():
     m1.add_element("Fe", 0.7)
     m1.add_element("Li", 0.3)
     m1.set_density('g/cm3', 1.5)
+    with pytest.raises(ValueError, match="Volume must be set"):
+        m1.get_activity(units='Bq')
+    with pytest.raises(ValueError, match="Volume must be set"):
+        m1.get_activity(units='Ci')
     # activity in Bq/cc and Bq/g should not require volume setting
     assert m1.get_activity(units='Bq/cm3') == 0
     assert m1.get_activity(units='Bq/g') == 0
@@ -587,6 +598,8 @@ def test_get_activity():
     assert pytest.approx(m4.get_activity(units='Bq/g', by_nuclide=True)["H3"]) == 355978108155965.94  # [Bq/g]
     assert pytest.approx(m4.get_activity(units='Bq/cm3')) == 355978108155965.94*3/2 # [Bq/cc]
     assert pytest.approx(m4.get_activity(units='Bq/cm3', by_nuclide=True)["H3"]) == 355978108155965.94*3/2 # [Bq/cc]
+    assert pytest.approx(m4.get_activity(units='Bq/m3')) == 355978108155965.94*3/2*1e6 # [Bq/m3]
+    assert pytest.approx(m4.get_activity(units='Bq/m3', by_nuclide=True)["H3"]) == 355978108155965.94*3/2*1e6 # [Bq/m3]
     # volume is required to calculate total activity
     m4.volume = 10.
     assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]
@@ -601,6 +614,35 @@ def test_get_activity():
     assert m4.get_activity(units='Ci/m3') == pytest.approx(ci/m3)
 
 
+def test_get_activity_chain_file(tmp_path):
+    m = openmc.Material()
+    m.add_nuclide("H3", 1.0)
+    m.set_density('g/cm3', 1.0)
+
+    chain = Chain()
+    h3 = Nuclide("H3")
+    h3.half_life = 1.0
+    chain.add_nuclide(h3)
+
+    atoms_per_bcm = m.get_nuclide_atom_densities()["H3"]
+    expected = np.log(2.0) * 1e24 * atoms_per_bcm
+
+    assert m.get_activity(chain_file=chain) == pytest.approx(expected)
+
+    chain_path = tmp_path / "chain.xml"
+    chain.export_to_xml(chain_path)
+    assert m.get_activity(chain_file=chain_path) == pytest.approx(expected)
+
+    endf_activity = m.get_activity(chain_file=False)
+    with openmc.config.patch('chain_file', chain_path):
+        assert m.get_activity() == pytest.approx(expected)
+        assert m.get_activity(chain_file=False) == pytest.approx(endf_activity)
+
+    stable_chain = Chain()
+    stable_chain.add_nuclide(Nuclide("H3"))
+    assert m.get_activity(chain_file=stable_chain) == 0.0
+
+
 def test_get_decay_heat():
     # Set chain file for testing
     openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
@@ -610,6 +652,8 @@ def test_get_decay_heat():
     m1.add_nuclide("U235", 0.2)
     m1.add_nuclide("U238", 0.8)
     m1.set_density('g/cm3', 10.5)
+    with pytest.raises(ValueError, match="Volume must be set"):
+        m1.get_decay_heat(units='W')
     # decay heat in W/cc and W/g should not require volume setting
     assert m1.get_decay_heat(units='W/cm3') == 0
     assert m1.get_decay_heat(units='W/g') == 0
@@ -643,6 +687,8 @@ def test_get_decay_heat():
     assert pytest.approx(m4.get_decay_heat(units='W/g', by_nuclide=True)["I135"]) == 40175.15720273193 # [W/g]
     assert pytest.approx(m4.get_decay_heat(units='W/cm3')) == 40175.15720273193*3/2 # [W/cc]
     assert pytest.approx(m4.get_decay_heat(units='W/cm3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2 #[W/cc]
+    assert pytest.approx(m4.get_decay_heat(units='W/m3')) == 40175.15720273193*3/2*1e6 # [W/m3]
+    assert pytest.approx(m4.get_decay_heat(units='W/m3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2*1e6 # [W/m3]
     # volume is required to calculate total decay heat
     m4.volume = 10.
     assert pytest.approx(m4.get_decay_heat(units='W')) == 40175.15720273193*3/2*10 # [W]
@@ -673,6 +719,8 @@ def test_decay_photon_energy():
     src_per_bqg = m.get_decay_photon_energy(units='Bq/g')
     src_per_bqkg = m.get_decay_photon_energy(units='Bq/kg')
     assert pytest.approx(src_per_bqg.integral()) == src_per_bqkg.integral() / 1000.
+    src_per_bqm3 = m.get_decay_photon_energy(units='Bq/m3')
+    assert pytest.approx(src_per_bqm3.integral()) == src_per_cm3.integral() * 1e6
 
     # If we add Xe135 (which has a tabular distribution), the photon source
     # should be a mixture distribution
@@ -819,3 +867,58 @@ def test_material_from_constructor():
     assert mat2.density == 1e-7
     assert mat2.density_units == "g/cm3"
     assert mat2.nuclides == []
+
+
+def test_get_photon_contact_dose_rate():
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    # A purely stable material (Fe) should give zero dose
+    m_stable = openmc.Material()
+    m_stable.add_element('Fe', 1.0)
+    m_stable.set_density('g/cm3', 7.87)
+    assert m_stable.get_photon_contact_dose_rate('absorbed-air') == 0.0
+    assert m_stable.get_photon_contact_dose_rate('effective') == 0.0
+
+    # I135 has a Discrete photon source (lines)
+    m_i135 = openmc.Material()
+    m_i135.add_nuclide('I135', 1.0)
+    m_i135.set_density('atom/b-cm', 1.0)
+
+    cdr_abs = m_i135.get_photon_contact_dose_rate('absorbed-air')
+    cdr_eff = m_i135.get_photon_contact_dose_rate('effective')
+    assert cdr_abs == pytest.approx(6.091547e10, rel=1e-4)   # [Gy/h]
+    assert cdr_eff == pytest.approx(6.102167e10, rel=1e-4)   # [Sv/h]
+
+    # Xe135 has a Tabular photon source (continuous distribution)
+    m_xe135 = openmc.Material()
+    m_xe135.add_nuclide('Xe135', 1.0)
+    m_xe135.set_density('atom/b-cm', 1.0)
+
+    cdr_xe_abs = m_xe135.get_photon_contact_dose_rate('absorbed-air')
+    cdr_xe_eff = m_xe135.get_photon_contact_dose_rate('effective')
+    assert cdr_xe_abs == pytest.approx(7.886967e8, rel=1e-4)  # [Gy/h]
+    assert cdr_xe_eff == pytest.approx(9.488298e8, rel=1e-4)  # [Sv/h]
+
+    # by_nuclide=True should return a dict whose values sum to the total
+    cdr_by_nuc = m_i135.get_photon_contact_dose_rate('absorbed-air', by_nuclide=True)
+    assert isinstance(cdr_by_nuc, dict)
+    assert 'I135' in cdr_by_nuc
+    assert sum(cdr_by_nuc.values()) == pytest.approx(cdr_abs)
+
+    # For a mixed material the sum over nuclides must equal the total
+    m_mix = openmc.Material()
+    m_mix.add_nuclide('I135', 0.5)
+    m_mix.add_nuclide('Xe135', 0.5)
+    m_mix.set_density('atom/b-cm', 1.0)
+    cdr_mix_total = m_mix.get_photon_contact_dose_rate('absorbed-air')
+    cdr_mix_nuc = m_mix.get_photon_contact_dose_rate('absorbed-air', by_nuclide=True)
+    assert sum(cdr_mix_nuc.values()) == pytest.approx(cdr_mix_total)
+
+    # Input validation
+    with pytest.raises(ValueError):
+        m_i135.get_photon_contact_dose_rate('invalid-quantity')
+    with pytest.raises(TypeError):
+        m_i135.get_photon_contact_dose_rate('absorbed-air', build_up='two')
+    with pytest.raises(ValueError):
+        m_i135.get_photon_contact_dose_rate('absorbed-air', build_up=-1.0)

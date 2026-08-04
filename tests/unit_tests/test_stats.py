@@ -1,9 +1,11 @@
 from math import pi
+from pathlib import Path
 
 import numpy as np
 import pytest
 import openmc
 import openmc.stats
+from openmc.stats.univariate import _INTERPOLATION_SCHEMES, DecaySpectrum
 from scipy.integrate import trapezoid
 
 from tests.unit_tests import assert_sample_mean
@@ -273,7 +275,7 @@ def test_watt():
 @pytest.mark.flaky(reruns=1)
 def test_tabular():
     # test linear-linear sampling
-    x = np.array([0.0, 5.0, 7.0, 10.0])
+    x = np.array([0.001, 5.0, 7.0, 10.0])
     p = np.array([10.0, 20.0, 5.0, 6.0])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     n_samples = 100_000
@@ -281,9 +283,12 @@ def test_tabular():
     assert_sample_mean(samples, d.mean())
     assert np.all(weights == 1.0)
 
-    # test linear-linear normalization
-    d.normalize()
-    assert d.integral() == pytest.approx(1.0)
+    for scheme in _INTERPOLATION_SCHEMES:
+        # test sampling
+        d = openmc.stats.Tabular(x, p, scheme)
+        n_samples = 100_000
+        samples = d.sample(n_samples)[0]
+        assert_sample_mean(samples, d.mean())
 
     # test histogram sampling
     d = openmc.stats.Tabular(x, p, interpolation='histogram')
@@ -291,6 +296,12 @@ def test_tabular():
     assert_sample_mean(samples, d.mean())
     assert np.all(weights == 1.0)
 
+    # Multiplying the probabilities should preserve the mean but change the integral
+    d2 = openmc.stats.Tabular(x, p*2, interpolation='histogram')
+    assert d2.mean() == pytest.approx(d.mean())
+    assert d2.integral() == pytest.approx(2.0*d.integral())
+
+    # Normalizing should result in an integral of 1
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
 
@@ -550,6 +561,113 @@ def test_point():
     assert d.xyz == pytest.approx(p)
 
 
+def test_spherical_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    thetas = (0.0, pi/2)
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    sph_indep_function = openmc.stats.spherical_uniform(r_outer,
+                                                        r_inner,
+                                                        thetas,
+                                                        phis,
+                                                        origin)
+
+    assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
+
+
+def test_cylindrical_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    height = 1.0
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    dist = openmc.stats.cylindrical_uniform(r_outer, height, r_inner, phis,
+                                            origin=origin)
+
+    assert isinstance(dist, openmc.stats.CylindricalIndependent)
+
+    # Check r distribution (PowerLaw with exponent 1 for uniform area sampling)
+    assert isinstance(dist.r, openmc.stats.PowerLaw)
+    assert dist.r.a == pytest.approx(r_inner)
+    assert dist.r.b == pytest.approx(r_outer)
+    assert dist.r.n == pytest.approx(1.0)
+
+    # Check phi distribution
+    assert isinstance(dist.phi, openmc.stats.Uniform)
+    assert dist.phi.a == pytest.approx(phis[0])
+    assert dist.phi.b == pytest.approx(phis[1])
+
+    # Check z distribution (centered on origin along z_dir)
+    assert isinstance(dist.z, openmc.stats.Uniform)
+    assert dist.z.a == pytest.approx(-height / 2)
+    assert dist.z.b == pytest.approx(height / 2)
+
+    # Check origin and default directions
+    np.testing.assert_allclose(dist.origin, origin)
+    np.testing.assert_allclose(dist.r_dir, [1., 0., 0.])
+    np.testing.assert_allclose(dist.z_dir, [0., 0., 1.])
+
+    # XML round-trip preserves all parameters
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.origin, origin)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+
+
+def test_cylindrical_uniform_tilted():
+    # Test with non-default axis orientation (y-axis as cylinder axis)
+    dist = openmc.stats.cylindrical_uniform(
+        r_outer=3.0, height=2.0, r_dir=(1., 0., 0.), z_dir=(0., 1., 0.)
+    )
+    np.testing.assert_allclose(dist.z_dir, [0., 1., 0.])
+    np.testing.assert_allclose(dist.r_dir, [1., 0., 0.])
+
+    # XML round-trip preserves tilted directions
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+
+
+def test_cylindrical_uniform_ring():
+    # height=0 should produce a flat ring (delta function at z=0)
+    r_outer = 2.0
+    r_inner = 1.0
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    dist = openmc.stats.cylindrical_uniform(r_outer, 0.0, r_inner, phis,
+                                            origin=origin)
+
+    assert isinstance(dist, openmc.stats.CylindricalIndependent)
+
+    # Check r distribution
+    assert isinstance(dist.r, openmc.stats.PowerLaw)
+    assert dist.r.a == pytest.approx(r_inner)
+    assert dist.r.b == pytest.approx(r_outer)
+    assert dist.r.n == pytest.approx(1.0)
+
+    # Check phi distribution
+    assert isinstance(dist.phi, openmc.stats.Uniform)
+    assert dist.phi.a == pytest.approx(phis[0])
+    assert dist.phi.b == pytest.approx(phis[1])
+
+    # z distribution must be a delta function at 0.0 (local frame)
+    assert isinstance(dist.z, openmc.stats.Discrete)
+    assert dist.z.x[0] == pytest.approx(0.0)
+
+    # XML round-trip
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.origin, origin)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+
+
 @pytest.mark.flaky(reruns=1)
 def test_normal():
     mean = 10.0
@@ -579,6 +697,92 @@ def test_normal():
     weighted_sample = samples * weights
     assert_sample_mean(weighted_sample, mean)
     assert np.all(weights != 1.0)
+
+
+@pytest.mark.flaky(reruns=1)
+def test_normal_truncated():
+    mean = 10.0
+    std_dev = 2.0
+    lower = 6.0
+    upper = 14.0
+
+    d = openmc.stats.Normal(mean, std_dev, lower, upper)
+
+    # Check attributes
+    assert d.mean_value == pytest.approx(mean)
+    assert d.std_dev == pytest.approx(std_dev)
+    assert d.lower == pytest.approx(lower)
+    assert d.upper == pytest.approx(upper)
+    assert len(d) == 4
+    assert d.support == (lower, upper)
+
+    # Test XML round-trip
+    elem = d.to_xml_element('distribution')
+    assert elem.attrib['type'] == 'normal'
+    params = elem.attrib['parameters'].split()
+    assert len(params) == 4
+
+    d2 = openmc.stats.Normal.from_xml_element(elem)
+    assert d2.mean_value == pytest.approx(mean)
+    assert d2.std_dev == pytest.approx(std_dev)
+    assert d2.lower == pytest.approx(lower)
+    assert d2.upper == pytest.approx(upper)
+
+    # Test PDF evaluation
+    # PDF should be zero outside bounds
+    assert d.evaluate(lower - 1.0) == 0.0
+    assert d.evaluate(upper + 1.0) == 0.0
+
+    # PDF should be positive inside bounds
+    assert d.evaluate(mean) > 0.0
+
+    # PDF should be higher than untruncated at the mean (due to renormalization)
+    d_unbounded = openmc.stats.Normal(mean, std_dev)
+    assert d.evaluate(mean) > d_unbounded.evaluate(mean)
+
+    # Verify that PDF integrates to approximately 1
+    x = np.linspace(lower, upper, 1000)
+    integral = trapezoid(d.evaluate(x), x)
+    assert integral == pytest.approx(1.0, rel=0.01)
+
+    # Sample truncated distribution
+    n_samples = 10_000
+    samples, weights = d.sample(n_samples)
+
+    # All samples should be within bounds
+    assert np.all(samples >= lower)
+    assert np.all(samples <= upper)
+
+    # Weights should all be 1 (no biasing)
+    assert np.all(weights == 1.0)
+
+
+def test_normal_truncated_one_sided():
+    # Test lower-bounded only (positive half-normal centered at 0)
+    d_lower = openmc.stats.Normal(0.0, 1.0, lower=0.0)
+    assert d_lower.lower == 0.0
+    assert d_lower.upper == np.inf
+    assert d_lower.evaluate(-1.0) == 0.0
+    assert d_lower.evaluate(1.0) > 0.0
+
+    # PDF at 0 should be approximately 2 * 0.3989 ≈ 0.798 (half-normal)
+    assert d_lower.evaluate(0.0) == pytest.approx(0.798, rel=0.01)
+
+    # Test upper-bounded only
+    d_upper = openmc.stats.Normal(0.0, 1.0, upper=0.0)
+    assert d_upper.lower == -np.inf
+    assert d_upper.upper == 0.0
+    assert d_upper.evaluate(1.0) == 0.0
+    assert d_upper.evaluate(-1.0) > 0.0
+
+
+def test_normal_truncated_errors():
+    # Invalid bounds (lower >= upper)
+    with pytest.raises(ValueError):
+        openmc.stats.Normal(0.0, 1.0, lower=1.0, upper=0.0)
+
+    with pytest.raises(ValueError):
+        openmc.stats.Normal(0.0, 1.0, lower=1.0, upper=1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -632,6 +836,23 @@ def test_combine_distributions():
     assert isinstance(mixed, openmc.stats.Mixture)
     assert len(mixed.distribution) == 2
     assert len(mixed.probability) == 2
+    assert mixed == openmc.stats.combine_distributions([mixed], [1.0])
+
+    # Mixture combined with another distribution: probabilities should be
+    # correctly scaled when the Mixture is flattened
+    d_a = openmc.stats.delta_function(1.0)
+    d_b = openmc.stats.delta_function(2.0)
+    m = openmc.stats.Mixture([0.3, 0.7], [d_a, d_b])
+    extra = openmc.stats.delta_function(3.0)
+    result = openmc.stats.combine_distributions([m, extra], [0.5, 0.5])
+    assert isinstance(result, openmc.stats.Discrete)
+    assert result.x == pytest.approx([1.0, 2.0, 3.0])
+    assert result.p == pytest.approx([0.5*0.3, 0.5*0.7, 0.5])
+
+    # Passing a Mixture with a bias should warn that the bias is dropped
+    biased_m = openmc.stats.Mixture([0.5, 0.5], [d_a, d_b], bias=[0.8, 0.2])
+    with pytest.warns(UserWarning, match='bias'):
+        openmc.stats.combine_distributions([biased_m], [1.0])
 
     # Single tabular returns a tabular distribution with scaled probabilities
     t_single = openmc.stats.Tabular([0.0, 1.0], [2.0, 0.0])
@@ -710,3 +931,218 @@ def test_reference_vwu_normalization():
 
     # reference_v should be unit length
     assert np.isclose(np.linalg.norm(reference_v), 1.0, atol=1e-12)
+
+
+def test_fusion_spectrum_dd():
+    d = openmc.stats.fusion_neutron_spectrum(10e3, 'DD')
+    assert isinstance(d, openmc.stats.Normal)
+
+    # E_0 for D(d,n)3He is ~2.45 MeV; thermal shift at 10 keV should be
+    # several tens of keV, so mean should be noticeably above E_0
+    assert d.mean_value > 2.45e6
+    assert d.mean_value < 2.6e6
+
+    # Standard deviation should be positive and on order of ~50-100 keV
+    assert d.std_dev > 30e3
+    assert d.std_dev < 200e3
+
+
+def test_fusion_spectrum_dt():
+    d = openmc.stats.fusion_neutron_spectrum(10e3, 'DT')
+    assert isinstance(d, openmc.stats.Normal)
+
+    # E_0 for T(d,n)alpha is ~14.02 MeV; with thermal shift mean should be
+    # above E_0 by several tens of keV
+    assert d.mean_value > 14.02e6
+    assert d.mean_value < 14.2e6
+
+    # Standard deviation should be on order of ~200-400 keV
+    assert d.std_dev > 100e3
+    assert d.std_dev < 500e3
+
+
+def test_fusion_spectrum_temp_continuity():
+    # Verify the low-T and high-T formulas produce nearly identical results
+    # at the 40 keV switchover point
+    d_lo = openmc.stats.fusion_neutron_spectrum(39.99e3, 'DT')
+    d_hi = openmc.stats.fusion_neutron_spectrum(40.01e3, 'DT')
+
+    assert d_lo.mean_value == pytest.approx(d_hi.mean_value, rel=1e-3)
+    assert d_lo.std_dev == pytest.approx(d_hi.std_dev, rel=1e-3)
+
+    # Same check for DD
+    d_lo = openmc.stats.fusion_neutron_spectrum(39.99e3, 'DD')
+    d_hi = openmc.stats.fusion_neutron_spectrum(40.01e3, 'DD')
+
+    assert d_lo.mean_value == pytest.approx(d_hi.mean_value, rel=1e-3)
+    assert d_lo.std_dev == pytest.approx(d_hi.std_dev, rel=1e-3)
+
+
+def test_fusion_spectrum_high_temp():
+    # At T_i = 80 keV (high-T regime), ensure the function still produces
+    # reasonable results using Table IV formulas
+    for reactants in ('DD', 'DT'):
+        d = openmc.stats.fusion_neutron_spectrum(80e3, reactants)
+        assert isinstance(d, openmc.stats.Normal)
+        assert d.mean_value > 0
+        assert d.std_dev > 0
+
+    # DT mean at 80 keV should be higher than at 10 keV
+    d_10 = openmc.stats.fusion_neutron_spectrum(10e3, 'DT')
+    d_80 = openmc.stats.fusion_neutron_spectrum(80e3, 'DT')
+    assert d_80.mean_value > d_10.mean_value
+    assert d_80.std_dev > d_10.std_dev
+
+
+def test_fusion_spectrum_zero_temp():
+    # At very low temperature, mean should approach E_0 and width should
+    # approach zero
+    d = openmc.stats.fusion_neutron_spectrum(1.0, 'DT')
+    assert d.mean_value == pytest.approx(14.049e6, rel=1e-3)
+    assert d.std_dev < 5e3  # width approaches zero at low temperature
+
+
+def test_fusion_spectrum_invalid():
+    # Invalid reactant string should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(10e3, '🐔🧇')
+
+    # Negative temperature should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(-10e3, 'DT')
+
+    # Temperature above 100 keV should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(101e3, 'DT')
+
+
+@pytest.fixture(autouse=False)
+def decay_spectrum_chain():
+    """Set chain_file for the duration of a test and clear the _photon_integral
+    cache so results from a different chain don't bleed across tests."""
+    CHAIN_FILE = (Path(__file__).parents[1] / 'chain_simple.xml').resolve()
+    DecaySpectrum._photon_integral.cache_clear()
+    with openmc.config.patch('chain_file', CHAIN_FILE):
+        yield
+    DecaySpectrum._photon_integral.cache_clear()
+
+
+def test_decay_spectrum_construction():
+    nuclides = {'I135': 1.5e-3, 'Xe135': 8.2e-4}
+    d = openmc.stats.DecaySpectrum(nuclides, volume=100.0)
+    assert d.nuclides == nuclides
+    assert d.volume == pytest.approx(100.0)
+    assert len(d) == 2
+
+
+def test_decay_spectrum_validation():
+    # nuclides must be a dict
+    with pytest.raises(TypeError):
+        openmc.stats.DecaySpectrum(['I135'], volume=1.0)
+
+    # densities must be > 0
+    with pytest.raises(ValueError):
+        openmc.stats.DecaySpectrum({'I135': -1.0}, volume=1.0)
+
+    # volume must be > 0
+    with pytest.raises(ValueError):
+        openmc.stats.DecaySpectrum({'I135': 1e-3}, volume=-1.0)
+
+    with pytest.raises(ValueError):
+        openmc.stats.DecaySpectrum({'I135': 1e-3}, volume=0.0)
+
+
+def test_decay_spectrum_xml_roundtrip():
+    nuclides = {'I135': 1.5e-3, 'Xe135': 8.2e-4}
+    d = openmc.stats.DecaySpectrum(nuclides, volume=100.0)
+
+    elem = d.to_xml_element('energy')
+    assert elem.get('type') == 'decay_spectrum'
+    assert float(elem.get('volume')) == pytest.approx(100.0)
+    assert elem.findtext('nuclides').split() == list(nuclides)
+    assert [float(x) for x in elem.findtext('parameters').split()] == pytest.approx(
+        list(nuclides.values()))
+
+    # Round-trip via DecaySpectrum.from_xml_element
+    d2 = openmc.stats.DecaySpectrum.from_xml_element(elem)
+    assert d2.nuclides == nuclides
+    assert d2.volume == pytest.approx(100.0)
+
+    # Round-trip via the Univariate dispatcher
+    d3 = openmc.stats.Univariate.from_xml_element(elem)
+    assert isinstance(d3, openmc.stats.DecaySpectrum)
+    assert d3 == d
+
+
+def test_decay_spectrum_to_distribution(decay_spectrum_chain):
+    # Single emitting nuclide -> concrete distribution, not None
+    d = openmc.stats.DecaySpectrum({'I135': 1e-3}, volume=10.0)
+    dist = d.to_distribution()
+    assert dist is not None
+
+    # Result is cached on second call
+    dist2 = d.to_distribution()
+    assert dist2 is dist
+
+    # Nuclide with no photon source -> None
+    d_stable = openmc.stats.DecaySpectrum({'Xe136': 1e-3}, volume=10.0)
+    assert d_stable.to_distribution() is None
+
+    # Mixture of emitters -> non-None combined distribution
+    d_mix = openmc.stats.DecaySpectrum(
+        {'I135': 1e-3, 'Xe135': 5e-4}, volume=10.0
+    )
+    dist_mix = d_mix.to_distribution()
+    assert dist_mix is not None
+
+
+def test_decay_spectrum_integral(decay_spectrum_chain):
+    # For an emitting nuclide, integral should be > 0
+    d = openmc.stats.DecaySpectrum({'I135': 1e-3}, volume=10.0)
+    assert d.integral() > 0.0
+
+    # Proportional to density: doubling density doubles integral
+    d2 = openmc.stats.DecaySpectrum({'I135': 2e-3}, volume=10.0)
+    assert d2.integral() == pytest.approx(2.0 * d.integral())
+
+    # Proportional to volume
+    d3 = openmc.stats.DecaySpectrum({'I135': 1e-3}, volume=20.0)
+    assert d3.integral() == pytest.approx(2.0 * d.integral())
+
+    # Pure non-emitter -> 0.0
+    d_stable = openmc.stats.DecaySpectrum({'Xe136': 1e-3}, volume=10.0)
+    assert d_stable.integral() == pytest.approx(0.0)
+
+
+def test_decay_spectrum_clip(decay_spectrum_chain):
+    # Stable / non-emitting nuclides are removed unconditionally
+    d = openmc.stats.DecaySpectrum(
+        {'I135': 1e-3, 'Xe135': 5e-4, 'Xe136': 1.0, 'Cs135': 1.0},
+        volume=10.0,
+    )
+    d_clip = d.clip()
+    assert 'Xe136' not in d_clip.nuclides
+    assert 'Cs135' not in d_clip.nuclides
+    assert 'I135' in d_clip.nuclides
+    assert 'Xe135' in d_clip.nuclides
+    # Original is unchanged
+    assert 'Xe136' in d.nuclides
+
+    # inplace=True modifies and returns the same object
+    d_same = d.clip(inplace=True)
+    assert d_same is d
+    assert 'Xe136' not in d.nuclides
+
+    # A nuclide with negligible emission rate is removed by tolerance clipping.
+    # U235 has a very small integral (~4e-17 Bq/atom) compared with I135 (~4e-5)
+    d_tight = openmc.stats.DecaySpectrum(
+        {'I135': 1e-3, 'U235': 1e-3}, volume=10.0
+    )
+    d_tight_clip = d_tight.clip(tolerance=1e-9)
+    assert 'U235' not in d_tight_clip.nuclides
+    assert 'I135' in d_tight_clip.nuclides
+
+    # All non-emitters -> empty nuclides dict
+    d_empty = openmc.stats.DecaySpectrum({'Xe136': 1e-3}, volume=10.0)
+    d_empty.clip(inplace=True)
+    assert d_empty.nuclides == {}

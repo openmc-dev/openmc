@@ -201,7 +201,8 @@ class R2SManager:
         micro_kwargs : dict, optional
             Additional keyword arguments passed to
             :func:`openmc.deplete.get_microxs_and_flux` during the neutron
-            transport step.
+            transport step. Existing neutron model tallies are included by
+            default; pass ``include_model_tallies=False`` to exclude them.
         mat_vol_kwargs : dict, optional
             Additional keyword arguments passed to
             :meth:`openmc.MeshBase.material_volumes`.
@@ -240,6 +241,7 @@ class R2SManager:
         if operator_kwargs is None:
             operator_kwargs = {}
         run_kwargs.setdefault('output', False)
+        micro_kwargs.setdefault('include_model_tallies', True)
         micro_kwargs.setdefault('run_kwargs', run_kwargs)
 
         # DecaySpectrum distributions are resolved in the C++ solver using
@@ -305,6 +307,8 @@ class R2SManager:
         micro_kwargs : dict, optional
             Additional keyword arguments passed to
             :func:`openmc.deplete.get_microxs_and_flux`.
+            Existing neutron model tallies are included by default; pass
+            ``include_model_tallies=False`` to exclude them.
 
         """
 
@@ -358,9 +362,12 @@ class R2SManager:
         # Set default keyword arguments for microxs and flux calculation
         if micro_kwargs is None:
             micro_kwargs = {}
+        micro_kwargs.setdefault('include_model_tallies', True)
         micro_kwargs.setdefault('path_statepoint', output_dir / 'statepoint.h5')
         micro_kwargs.setdefault('path_input', output_dir / 'model.xml')
-        neutron_tally_ids = [tally.id for tally in self.neutron_model.tallies]
+        include_model_tallies = micro_kwargs['include_model_tallies']
+        neutron_tally_ids = [tally.id for tally in self.neutron_model.tallies] \
+            if include_model_tallies else []
         statepoint_path = Path(micro_kwargs['path_statepoint']).resolve()
         micro_kwargs['path_statepoint'] = statepoint_path
 

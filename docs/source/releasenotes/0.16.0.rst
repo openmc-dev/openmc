@@ -196,6 +196,8 @@ New Features
   (`#4033 <https://github.com/openmc-dev/openmc/pull/4033>`_)
 - Added elemental photon mass energy-absorption coefficients
   (`#4039 <https://github.com/openmc-dev/openmc/pull/4039>`_)
+- Allow user tallies during R2S neutron transport step
+  (`#4046 <https://github.com/openmc-dev/openmc/pull/4046>`_)
 
 ---------------------------
 Bug Fixes and Small Changes
@@ -396,3 +398,11 @@ Bug Fixes and Small Changes
   (`#4047 <https://github.com/openmc-dev/openmc/pull/4047>`_)
 - Use ``&&`` instead of the alternative token 'and' in mesh.h
   (`#4048 <https://github.com/openmc-dev/openmc/pull/4048>`_)
+- Don't name class members in OpenMP reduction clauses
+  (`#4049 <https://github.com/openmc-dev/openmc/pull/4049>`_)
+- Give run_mode and rel_max_lost_particles C linkage
+  (`#4050 <https://github.com/openmc-dev/openmc/pull/4050>`_)
+- Resolve input file paths with std::filesystem
+  (`#4051 <https://github.com/openmc-dev/openmc/pull/4051>`_)
+- Add missing include in event.h
+  (`#4052 <https://github.com/openmc-dev/openmc/pull/4052>`_)

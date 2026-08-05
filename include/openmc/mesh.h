@@ -633,7 +633,7 @@ private:
 
   inline int sanitize_angular_index(int idx, bool full, int N) const
   {
-    if ((idx > 0) and (idx <= N)) {
+    if ((idx > 0) && (idx <= N)) {
       return idx;
     } else if (full) {
       return (idx + N - 1) % N + 1;
@@ -698,7 +698,7 @@ private:
 
   inline int sanitize_angular_index(int idx, bool full, int N) const
   {
-    if ((idx > 0) and (idx <= N)) {
+    if ((idx > 0) && (idx <= N)) {
       return idx;
     } else if (full) {
       return (idx + N - 1) % N + 1;

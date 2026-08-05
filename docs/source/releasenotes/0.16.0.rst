@@ -30,7 +30,7 @@ and adds support for Python 3.14. The documented minimum build environment is
 GCC 11.4 and CMake 3.22.
 
 The Python :class:`ParticleType` interface is now a regular class backed by
-Particle Data Group Monte Carlo numbers rather than an ``IntEnum``. Particle
+Particle Data Group (PDG) Monte Carlo numbers rather than an ``IntEnum``. Particle
 types stored in OpenMC output files now use PDG numbers, and the corresponding
 C++ factories use function-call syntax such as ``ParticleType::neutron()``.
 

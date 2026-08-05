@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core", "setuptools-scm>=8"]
+requires = ["scikit-build-core>=0.10", "setuptools-scm>=8"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -71,5 +71,20 @@ build-dir="build"
 wheel.install-dir = "openmc"
 wheel.packages = ["openmc"]
 sdist.include = ["*.h5"]
+
+# project.version is dynamic, so scikit-build-core needs to be told where the
+# version comes from. Without this it refuses to generate metadata at all,
+# before any compilation, with "project.version is not specified, must be
+# statically present or tool.scikit-build metadata.version.provider configured
+# when dynamic". setuptools-scm reads its own configuration from
+# [tool.setuptools_scm] below.
+#
+# This is the top-level spelling; the older tool.scikit-build.metadata.version
+# form still works but scikit-build-core 1.x warns that it is deprecated.
+# [[tool.dynamic-metadata]] needs scikit-build-core 0.10 or newer, hence the
+# pin in [build-system] requires.
+[[tool.dynamic-metadata]]
+field = "version"
+provider = "scikit_build_core.metadata.setuptools_scm"
 
 [tool.setuptools_scm]

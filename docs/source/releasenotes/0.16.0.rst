@@ -390,3 +390,7 @@ Bug Fixes and Small Changes
 - Processed photon-induced electrons and positrons at their birth location and
   attributed their heating to the parent photon
   (`#4040 <https://github.com/openmc-dev/openmc/pull/4040>`_)
+- Fix use of invalidated iterators in Region constructor
+  (`#4047 <https://github.com/openmc-dev/openmc/pull/4047>`_)
+- Use ``&&`` instead of the alternative token 'and' in mesh.h
+  (`#4048 <https://github.com/openmc-dev/openmc/pull/4048>`_)

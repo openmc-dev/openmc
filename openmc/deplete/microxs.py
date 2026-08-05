@@ -140,7 +140,6 @@ def get_microxs_and_flux(
 
     """
     check_value('reaction_rate_mode', reaction_rate_mode, {'direct', 'flux'})
-    check_type('include_model_tallies', include_model_tallies, bool)
 
     # Save any original tallies on the model
     original_tallies = list(model.tallies)
@@ -155,9 +154,9 @@ def get_microxs_and_flux(
         nuclides = [nuc.name for nuc in chain.nuclides
                     if nuc.name in nuclides_with_data]
 
-    # Set up the reaction rate and flux tallies. When energies are omitted,
-    # no energy filter is needed for the transport calculation. A one-group
-    # energy range is still needed later if flux collapse is requested.
+    # Set up the reaction rate and flux tallies. When energies are omitted, no
+    # energy filter is needed for the transport calculation. A one-group energy
+    # range is still needed later if flux collapse is requested.
     collapse_energies = energies
     if energies is None:
         energy_filter = None
@@ -340,10 +339,10 @@ def get_microxs_and_flux(
     else:
         micros = flux_micros
 
+    # Reset tallies
     model.tallies = original_tallies
 
     return fluxes, micros
-
 
 
 class MicroXS:

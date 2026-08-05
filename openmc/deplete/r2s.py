@@ -111,10 +111,7 @@ class R2SManager:
         Indicates whether the R2S calculation uses mesh elements ('mesh-based')
         as the spatial discretization or a list of cells ('cell-based').
     results : dict
-        A dictionary that stores results from the R2S calculation. In
-        particular, ``results['neutron_tallies']`` contains user-defined
-        neutron tally results from the neutron transport step, while
-        ``results['photon_tallies']`` contains photon tally results.
+        A dictionary that stores results from the R2S calculation.
 
     """
     def __init__(
@@ -201,8 +198,7 @@ class R2SManager:
         micro_kwargs : dict, optional
             Additional keyword arguments passed to
             :func:`openmc.deplete.get_microxs_and_flux` during the neutron
-            transport step. Existing neutron model tallies are included by
-            default; pass ``include_model_tallies=False`` to exclude them.
+            transport step.
         mat_vol_kwargs : dict, optional
             Additional keyword arguments passed to
             :meth:`openmc.MeshBase.material_volumes`.
@@ -241,7 +237,6 @@ class R2SManager:
         if operator_kwargs is None:
             operator_kwargs = {}
         run_kwargs.setdefault('output', False)
-        micro_kwargs.setdefault('include_model_tallies', True)
         micro_kwargs.setdefault('run_kwargs', run_kwargs)
 
         # DecaySpectrum distributions are resolved in the C++ solver using
@@ -307,8 +302,6 @@ class R2SManager:
         micro_kwargs : dict, optional
             Additional keyword arguments passed to
             :func:`openmc.deplete.get_microxs_and_flux`.
-            Existing neutron model tallies are included by default; pass
-            ``include_model_tallies=False`` to exclude them.
 
         """
 
@@ -365,11 +358,13 @@ class R2SManager:
         micro_kwargs.setdefault('include_model_tallies', True)
         micro_kwargs.setdefault('path_statepoint', output_dir / 'statepoint.h5')
         micro_kwargs.setdefault('path_input', output_dir / 'model.xml')
+        statepoint_path = Path(micro_kwargs['path_statepoint']).resolve()
+        micro_kwargs['path_statepoint'] = statepoint_path
+
+        # Determine neutron tally IDs based on whether model tallies are included
         include_model_tallies = micro_kwargs['include_model_tallies']
         neutron_tally_ids = [tally.id for tally in self.neutron_model.tallies] \
             if include_model_tallies else []
-        statepoint_path = Path(micro_kwargs['path_statepoint']).resolve()
-        micro_kwargs['path_statepoint'] = statepoint_path
 
         # Run neutron transport and get fluxes and micros. Run via openmc.lib to
         # maintain a consistent parallelism strategy with the activation step.
@@ -383,8 +378,7 @@ class R2SManager:
             ]
 
         # Save the IDs separately from the statepoint so that neutron tally
-        # results can be restored by load_results without including internal
-        # MicroXS tallies.
+        # results can be restored by load_results
         if comm.rank == 0:
             with open(output_dir / 'tally_ids.json', 'w') as f:
                 json.dump(neutron_tally_ids, f)
@@ -829,7 +823,7 @@ class R2SManager:
                 micros_dict[f'domain_{i}'] for i in range(len(micros_dict))
             ]
 
-        # Load neutron tally results from the neutron transport statepoint.
+        # Load neutron tally results from the neutron transport statepoint
         tally_ids_path = neutron_dir / 'tally_ids.json'
         statepoint_path = neutron_dir / 'statepoint.h5'
         if tally_ids_path.exists() and statepoint_path.exists():

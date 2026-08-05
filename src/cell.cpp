@@ -640,8 +640,12 @@ Region::Region(std::string region_spec, int32_t cell_id)
     // Remove complement operators using DeMorgan's laws
     auto it = std::find(expression_.begin(), expression_.end(), OP_COMPLEMENT);
     while (it != expression_.end()) {
-      // Erase complement
-      expression_.erase(it);
+      // Erase complement. Note that erase invalidates the iterator, so we have
+      // to use the iterator it returns, which points to the token that
+      // followed the complement operator.
+      it = expression_.erase(it);
+      if (it == expression_.end())
+        break;
 
       // Define stop given left parenthesis or not
       auto stop = it;
@@ -693,12 +697,12 @@ Region::Region(std::string region_spec, int32_t cell_id)
 
     // If this cell is simple, remove all the superfluous operator tokens.
     if (simple_) {
-      for (auto it = expression_.begin(); it != expression_.end(); it++) {
-        if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
-          expression_.erase(it);
-          it--;
-        }
-      }
+      expression_.erase(std::remove_if(expression_.begin(), expression_.end(),
+                          [](int32_t token) {
+                            return token == OP_INTERSECTION ||
+                                   token > OP_COMPLEMENT;
+                          }),
+        expression_.end());
     }
     expression_.shrink_to_fit();
 

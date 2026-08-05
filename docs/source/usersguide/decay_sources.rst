@@ -131,6 +131,11 @@ can be run::
 
     r2s.run(timesteps, source_rates, bounding_boxes=bounding_boxes)
 
+Neutron tally results from the transport step are available in the
+``r2s.results['neutron_tallies']`` list, in the same order as the tallies on
+``r2s.neutron_model``. Photon tally results remain available through
+``r2s.results['photon_tallies']``.
+
 If not specified otherwise, a photon transport calculation is run at each time
 in the depletion schedule for which a decay photon source exists. Times without
 a decay photon source, such as the initial state of a model containing only

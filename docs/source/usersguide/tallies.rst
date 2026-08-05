@@ -359,6 +359,60 @@ The following tables show all valid scores:
     |                      |probability (IFP) method.                          |
     +----------------------+---------------------------------------------------+
 
+.. _usersguide_virtual_material:
+
+-----------------
+Virtual Materials
+-----------------
+
+Reaction-rate scores normally include the atom densities of the materials in the
+model. Setting :attr:`Tally.multiply_density` to ``False`` instead produces
+microscopic, nuclide-wise results. After a simulation, densities from a *virtual
+material* can be applied to these results with
+:meth:`Tally.apply_virtual_material`. This is useful for determining the
+response of a material that is not actually present in the transport model.
+
+For example, the absorbed dose in silicon can be calculated in a region that
+does not contain silicon as follows. In this example, ``dose_cell`` identifies
+the region of interest that has its volume set in cm³.
+
+::
+
+    silicon = openmc.Material(name='virtual silicon')
+    silicon.add_element('Si', 1.0)
+    silicon.set_density('g/cm3', 2.329)
+
+    tally = openmc.Tally(name='silicon heating')
+    tally.filters = [openmc.CellFilter(dose_cell)]
+    tally.scores = ['heating']
+    tally.nuclides = silicon.get_nuclides()
+    tally.multiply_density = False
+
+    model.tallies = [tally]
+    model.run(apply_tally_results=True)
+
+    # Apply the silicon atom densities without collapsing the nuclide axis
+    tally.apply_virtual_material(silicon)
+
+    # Sum over nuclides and convert deposited energy to dose
+    eV_per_source = tally.mean.sum()
+    J_per_source = eV_per_source * openmc.data.JOULE_PER_EV
+    J_per_cm3_source = J_per_source / dose_cell.volume
+    kg_per_cm3 = silicon.get_mass_density() * 1.0e-3
+    Gy_per_source = J_per_cm3_source / kg_per_cm3
+
+Before the virtual material is applied, the nuclide-wise heating results have
+units of eV-b-cm/(atom-source). Multiplication by atom densities in atom/b-cm
+gives eV/source while retaining the nuclide dimension. The explicit sum above
+combines the nuclide contributions. Finally, dividing the deposited energy in
+joules by the virtual silicon mass in kilograms gives absorbed dose in
+Gy/source.
+
+The tally must contain individual nuclide bins; a ``'total'`` nuclide bin cannot
+be used because a material density cannot be assigned to its constituent
+nuclides. Tally nuclides that do not occur in the virtual material are treated
+as having zero atom density.
+
 .. _usersguide_tally_normalization:
 
 ------------------------------

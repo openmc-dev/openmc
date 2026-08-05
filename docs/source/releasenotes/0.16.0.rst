@@ -190,6 +190,8 @@ New Features
   (`#4013 <https://github.com/openmc-dev/openmc/pull/4013>`_)
 - Added control over NJOY's damage-energy threshold
   (`#4022 <https://github.com/openmc-dev/openmc/pull/4022>`_)
+- Apply virtual material densities to microscopic tally results
+  (`#4029 <https://github.com/openmc-dev/openmc/pull/4029>`_)
 - Added a length multiplier to :class:`DAGMCUniverse`
   (`#4033 <https://github.com/openmc-dev/openmc/pull/4033>`_)
 - Added elemental photon mass energy-absorption coefficients

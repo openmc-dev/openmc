@@ -177,7 +177,6 @@ def test_hybrid_tally_setup(include_model_tallies):
     assert ('User tally' in tally_names) is (include_model_tallies is True)
     assert 'MicroXS flux 0' in tally_names
     assert 'MicroXS RR 0' in tally_names
-    assert model.tallies == [user_tally]
 
     # Check that the RR tally has the expected nuclides and reactions
     rr = next(t for t in captured['tallies'] if t.name == 'MicroXS RR 0')

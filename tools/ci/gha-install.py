@@ -4,8 +4,10 @@ import subprocess
 
 
 def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
-    # List to store the CMake arguments
-    cmake_args = ['-DCMAKE_BUILD_TYPE=Debug']
+    # CMake arguments passed through to scikit-build-core, which manages its
+    # own build directory. Build in RelWithDebInfo mode by default with support
+    # for MCPL.
+    cmake_args = ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DOPENMC_USE_MCPL=on']
 
     # Turn off OpenMP if specified
     if not omp:
@@ -36,6 +38,9 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
 
     # Build in coverage mode for coverage testing
     cmake_args.append('-DOPENMC_ENABLE_COVERAGE=on')
+
+    # Enable strict FP for cross-platform reproducibility in CI
+    cmake_args.append('-DOPENMC_ENABLE_STRICT_FP=on')
 
     # Set environment variable for SKBUILD
     os.environ['SKBUILD_CMAKE_ARGS'] = ';'.join(cmake_args)

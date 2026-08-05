@@ -1,7 +1,17 @@
-find_package(HDF5 REQUIRED COMPONENTS C HL)
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/OpenMCConfigVersion.cmake")
+include(CMakeFindDependencyMacro)
+
+# Explicitly calculate prefix if it was not generated above
+if(NOT DEFINED PACKAGE_PREFIX_DIR)
+  get_filename_component(PACKAGE_PREFIX_DIR "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
+endif()
+
+find_dependency(HDF5 REQUIRED COMPONENTS C HL)
 
 if(@OPENMC_USE_DAGMC@)
-  find_package(DAGMC REQUIRED HINTS @DAGMC_DIR@)
+  find_dependency(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()
 
 if(@OPENMC_USE_LIBMESH@)
@@ -11,17 +21,33 @@ if(@OPENMC_USE_LIBMESH@)
   pkg_check_modules(LIBMESH REQUIRED @LIBMESH_PC_FILE@>=1.7.0 IMPORTED_TARGET)
 endif()
 
-find_package(PNG)
+if("@PNG_FOUND@")
+  find_dependency(PNG)
+endif()
+
+if(@OPENMC_USE_MPI@)
+  find_dependency(MPI REQUIRED)
+endif()
+
+if(@OPENMC_USE_OPENMP@)
+  find_dependency(OpenMP REQUIRED)
+endif()
+
+if(@OPENMC_USE_UWUW@ AND NOT ${DAGMC_BUILD_UWUW})
+  message(FATAL_ERROR "UWUW is enabled in OpenMC but the DAGMC installation discovered was not configured with UWUW.")
+endif()
 
 if(@SKBUILD@)
+  # In a wheel install the vendored dependencies and the targets file live
+  # under the installed openmc package rather than under a CMake prefix, so
+  # they are located by asking the package itself where it put them.
+
   # Find the Python interpreter and ensure it's available.
   find_package(Python COMPONENTS Interpreter REQUIRED)
 
   # TODO: Need to implement ExternalProject_Add for OpenMC
-  find_package(fmt REQUIRED HINTS ${Python_SITELIB}/openmc)
-  find_package(pugixml REQUIRED HINTS ${Python_SITELIB}/openmc)
-  find_package(xtl REQUIRED HINTS ${Python_SITELIB}/openmc)
-  find_package(xtensor REQUIRED HINTS ${Python_SITELIB}/openmc)
+  find_dependency(fmt CONFIG REQUIRED HINTS ${Python_SITELIB}/openmc)
+  find_dependency(pugixml CONFIG REQUIRED HINTS ${Python_SITELIB}/openmc)
 
   # Function to run Python commands and validate their execution.
   function(run_python_command output_var command)
@@ -40,7 +66,7 @@ if(@SKBUILD@)
     endif()
   endfunction()
 
-  # Extract MOAB include paths, library paths, and extra libraries
+  # Extract include paths, library paths, and extra libraries
   run_python_command(OpenMC_INCLUDE_DIRS "import openmc; print(' '.join(openmc.include_path))")
   run_python_command(OpenMC_LIBRARY_DIRS "import openmc; print(' '.join(openmc.lib_path))")
   run_python_command(OpenMC_EXTRA_LIBRARIES "import openmc; print(' '.join(openmc.extra_lib))")
@@ -56,28 +82,16 @@ if(@SKBUILD@)
         "For more information, visit: https://docs.openmc.org/"
     )
   endif()
-  
+
   # Add OpenMC targets
   file(TO_CMAKE_PATH "${OpenMC_LIBRARY_DIRS}/cmake/OpenMC/OpenMCTargets.cmake" OpenMC_TARGETS_FILE)
   include(${OpenMC_TARGETS_FILE})
 else()
-  # Compute the install prefix from this file's location
-  get_filename_component(_OPENMC_PREFIX "${OpenMC_CMAKE_DIR}/../../.." ABSOLUTE)
-  find_package(fmt CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
-  find_package(pugixml CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
-  find_package(xtl CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
-  find_package(xtensor CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
-  include("${OpenMC_CMAKE_DIR}/OpenMCTargets.cmake")
+  find_dependency(fmt CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
+  find_dependency(pugixml CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
+  include("${CMAKE_CURRENT_LIST_DIR}/OpenMCTargets.cmake")
 endif()
 
-if(@OPENMC_USE_MPI@)
-  find_package(MPI REQUIRED)
-endif()
-
-if(@OPENMC_USE_OPENMP@)
-  find_package(OpenMP REQUIRED)
-endif()
-
-if(@OPENMC_USE_UWUW@ AND NOT ${DAGMC_BUILD_UWUW})
-  message(FATAL_ERROR "UWUW is enabled in OpenMC but the DAGMC installation discovered was not configured with UWUW.")
+if(NOT OpenMC_FIND_QUIETLY)
+    message(STATUS "Found OpenMC: ${PACKAGE_VERSION} (found in ${PACKAGE_PREFIX_DIR})")
 endif()

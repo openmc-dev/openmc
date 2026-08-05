@@ -182,6 +182,8 @@ boundary condition.
 
 Periodic boundary conditions can be applied to pairs of planar surfaces.
 If there are only two periodic surfaces they will be matched automatically.
+
+
 Otherwise it is necessary to specify pairs explicitly using the
 :attr:`Surface.periodic_surface` attribute as in the following example::
 
@@ -192,7 +194,7 @@ Otherwise it is necessary to specify pairs explicitly using the
 Both rotational and translational periodic boundary conditions are specified in
 the same fashion. If both planes have the same normal vector, a translational
 periodicity is assumed; rotational periodicity is assumed otherwise. Currently,
-only rotations about the :math:`z`-axis are supported.
+rotations must be about the :math:`x`-, :math:`y`-, or :math:`z`-axis.
 
 For a rotational periodic BC, the normal vectors of each surface must point
 inwards---towards the valid geometry. For example, a :class:`XPlane` and
@@ -245,6 +247,28 @@ will undergo no collisions::
 The classes :class:`Halfspace`, :class:`Intersection`, :class:`Union`, and
 :class:`Complement` and all instances of :class:`openmc.Region` and can be
 assigned to the :attr:`Cell.region` attribute.
+
+Cells also contain :attr:`Cell.temperature` and :attr:`Cell.density`
+attributes which override the temperature and density of the fill. These can
+be quite useful when temperatures and densities are spatially varying, as the
+alternative would be to add a unique :class:`Material` for each permutation of
+temperature, density, and composition. You can set the temperature (K) and
+density (g/cc) of a cell like so::
+
+  fuel.temperature = 800.0
+  fuel.density = 10.0
+
+The real utility of cell temperatures and densities occurs when a cell is
+replicated across the geometry, such as when a cell is the root geometric element
+in a replicated :ref:`universe<usersguide_universes>` or :ref:`lattice
+<usersguide_lattices>`. In those cases, you can provide a list of temperatures
+and densities to apply a temperature/density field to all of the distributed cells::
+
+  fuel.temperature = [800.0, 900.0, 800.0, 900.0]
+  fuel.density = [10.0, 9.0, 10.0, 9.0]
+
+In this example, the fuel cell is distributed four times in the geometry. Each
+distributed instance then receives its own temperature and density.
 
 .. _usersguide_universes:
 
@@ -413,11 +437,11 @@ to help figure out how to place universes::
 
 
 Note that by default, hexagonal lattices are positioned such that each lattice
-element has two faces that are parallel to the :math:`y` axis. As one example,
-to create a three-ring lattice centered at the origin with a pitch of 10 cm
-where all the lattice elements centered along the :math:`y` axis are filled with
-universe ``u`` and the remainder are filled with universe ``q``, the following
-code would work::
+element has two faces that are perpendicular to the :math:`y` axis. As one
+example, to create a three-ring lattice centered at the origin with a pitch of
+10 cm where all the lattice elements centered along the :math:`y` axis are
+filled with universe ``u`` and the remainder are filled with universe ``q``, the
+following code would work::
 
   hexlat = openmc.HexLattice()
   hexlat.center = (0, 0)
@@ -529,6 +553,89 @@ may overlap with those used in the CSG geometry. In this case, overlaps in the
 UWUW and OpenMC material ID space will cause an error. To automatically resolve
 these ID overlaps, ``auto_ids`` can be set to ``True`` to append the UWUW
 material IDs to the OpenMC material ID space.
+
+
+Material overrides and differentiation
+--------------------------------------
+
+Programmatic access to DAGMC cell information for material overrides
+and differentiation requires synchronization of the DAGMC universe
+representation across Python and C-API::
+
+  model.init_lib()
+  model.sync_dagmc_universes()
+  model.finalize_lib()
+
+Upon completion of these steps, the :attr:`DAGMCUniverse.cells` attribute will
+be populated with :class:`DAGMCCell` proxy objects that represent the cells
+defined in the DAGMC model. The :class:`DAGMCCell` objects  will have
+:class:`openmc.Material`'s' applied according to the assignments upon
+initialization of the model. These materials can be replaced in the same manner
+as :class:`openmc.Cell` objects to override material assignments in the DAGMC
+model.
+
+Depletion with DAGMC geometry
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The synchronization of :class:`openmc.DAGMCUniverse`'s is important for
+depletion calculations using DAGMC geometry when materials need to be
+differentiated to perform material burnup independently in each DAGMC cell. See
+:meth:`openmc.model.Model.differentiate_mats`.
+
+Material overrides
+~~~~~~~~~~~~~~~~~~
+
+OpenMC supports overriding material assignments defined inside a DAGMC HDF5
+model so that CAD-assigned materials can be replaced by :class:`openmc.Material`
+objects. This is useful when the CAD geometry provides the shape but OpenMC
+materials (specific nuclide content, densities, or depletion behavior) are
+required.
+
+
+Replacing materials by name
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If a DAGMC file includes material name tags, you can replace all cells that
+reference a particular name with an :class:`openmc.Material` using
+:meth:`~openmc.DAGMCUniverse.replace_material_assignment`::
+
+  import openmc
+
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+  fuel = openmc.Material(name='fuel')
+  fuel.add_nuclide('U235', 0.05)
+  fuel.add_nuclide('U238', 0.95)
+  fuel.set_density('g/cm3', 10.5)
+
+  dag_univ.replace_material_assignment('Fuel', fuel)
+
+This lets you keep CAD geometry while adopting OpenMC material definitions.
+
+Per-cell material overrides
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To assign overrides without initializing :class:`openmc.Model`, the
+:meth:`openmc.DAGMCUniverse.add_material_override` method can be used to assign
+materials to particular DAGMC cells. The method accepts either an integer cell
+ID::
+
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+  enriched = openmc.Material(name='fuel_enriched')
+  enriched.add_nuclide('U235', 0.10)
+  enriched.add_nuclide('U238', 0.90)
+  enriched.set_density('g/cm3', 10.5)
+
+  dag_univ.add_material_override(1, enriched)
+
+In the case that the :class:`openmc.DAGMCUniverse` has already been synchronized,
+a :class:`openmc.DAGMCCell` object can also be provide to assign the material.
+
+Overrides are written to the `<material_overrides>` element of the
+:ref:`<dagmc_universe> <dagmc_element>` XML element so the C++ core can apply
+them on initialization.
+
 
 .. _Direct Accelerated Geometry Monte Carlo: https://svalinn.github.io/DAGMC/
 .. _University of Wisconsin Unified Workflow: https://svalinn.github.io/DAGMC/usersguide/uw2.html

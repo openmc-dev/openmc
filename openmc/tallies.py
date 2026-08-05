@@ -12,13 +12,31 @@ import lxml.etree as ET
 import h5py
 import numpy as np
 import pandas as pd
-import scipy.sparse as sps
 from scipy.stats import chi2, norm
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.filter import (
+    Filter, 
+    DistribcellFilter, 
+    EnergyFunctionFilter, 
+    DelayedGroupFilter, 
+    FilterMeta, 
+    MeshFilter,
+    MeshBornFilter,
+)
+from openmc.arithmetic import (
+    CrossFilter, 
+    AggregateFilter,
+    CrossScore,
+    AggregateScore,
+    CrossNuclide,
+    AggregateNuclide,
+)
+from ._sparse_compat import lil_array
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
+from .utility_funcs import set_xml_input_path
 from .mesh import MeshBase
 
 
@@ -31,9 +49,9 @@ _PRODUCT_TYPES = ['tensor', 'entrywise']
 
 # The following indicate acceptable types when setting Tally.scores,
 # Tally.nuclides, and Tally.filters
-_SCORE_CLASSES = (str, openmc.CrossScore, openmc.AggregateScore)
-_NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
-_FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
+_SCORE_CLASSES = (str, CrossScore, AggregateScore)
+_NUCLIDE_CLASSES = (str, CrossNuclide, AggregateNuclide)
+_FILTER_CLASSES = (Filter, CrossFilter, AggregateFilter)
 
 # Valid types of estimators
 ESTIMATOR_TYPES = {'tracklength', 'collision', 'analog'}
@@ -50,6 +68,18 @@ class Tally(IDManagerMixin):
         will automatically be assigned
     name : str, optional
         Name of the tally. If not specified, the name is the empty string.
+    scores : list of str, optional
+        List of scores, e.g. ['flux', 'fission']
+    filters : list of openmc.Filter, optional
+        List of filters for the tally
+    nuclides : list of str, optional
+        List of nuclides to score results for
+    estimator : {'analog', 'tracklength', 'collision'}, optional
+        Type of estimator for the tally
+    triggers : list of openmc.Trigger, optional
+        List of tally triggers
+    derivative : openmc.TallyDerivative, optional
+        A material perturbation derivative to apply to all scores in the tally
 
     Attributes
     ----------
@@ -124,7 +154,9 @@ class Tally(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, tally_id=None, name=''):
+    def __init__(self, tally_id=None, name='', scores=None, filters=None,
+                 nuclides=None, estimator=None, triggers=None,
+                 derivative=None):
         # Initialize Tally class attributes
         self.id = tally_id
         self.name = name
@@ -154,6 +186,19 @@ class Tally(IDManagerMixin):
 
         self._sp_filename = None
         self._results_read = False
+
+        if filters is not None:
+            self.filters = filters
+        if nuclides is not None:
+            self.nuclides = nuclides
+        if scores is not None:
+            self.scores = scores
+        if estimator is not None:
+            self.estimator = estimator
+        if triggers is not None:
+            self.triggers = triggers
+        if derivative is not None:
+            self.derivative = derivative
 
     def __eq__(self, other):
         if other.id != self.id:
@@ -290,7 +335,7 @@ class Tally(IDManagerMixin):
 
     @property
     def num_nuclides(self):
-        return len(self._nuclides)
+        return max(len(self._nuclides), 1)
 
     @property
     def scores(self):
@@ -393,6 +438,11 @@ class Tally(IDManagerMixin):
             group = f[f'tallies/tally {self.id}']
             self._num_realizations = int(group['n_realizations'][()])
 
+            for filt in self.filters:
+                if isinstance(filt, DistribcellFilter):
+                    filter_group = f[f'tallies/filters/filter {filt.id}']
+                    filt._num_bins = int(filter_group['n_bins'][()])
+
             # Update nuclides
             nuclide_names = group['nuclides'][()]
             self._nuclides = [name.decode().strip() for name in nuclide_names]
@@ -430,10 +480,12 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
-                self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
-                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
-                self._sum_third = sps.lil_matrix(self._sum_third.flatten(), self._sum_third.shape)
-                self._sum_fourth = sps.lil_matrix(self.sum_fourth.flatten(), self._sum_fourth.shape)
+                self._sum = lil_array(self._sum.reshape(1, -1))
+                self._sum_sq = lil_array(self._sum_sq.reshape(1, -1))
+                if self._sum_third is not None:
+                    self._sum_third = lil_array(self._sum_third.reshape(1, -1))
+                if self._sum_fourth is not None:
+                    self._sum_fourth = lil_array(self._sum_fourth.reshape(1, -1))
 
             # Read simulation time (needed for figure of merit)
             self._simulation_time = f["runtime"]["simulation"][()]
@@ -529,8 +581,7 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._mean = sps.lil_matrix(self._mean.flatten(),
-                                            self._mean.shape)
+                self._mean = lil_array(self._mean.reshape(1, -1))
 
         if self.sparse:
             return np.reshape(self._mean.toarray(), self.shape)
@@ -551,8 +602,7 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = sps.lil_matrix(self._std_dev.flatten(),
-                                               self._std_dev.shape)
+                self._std_dev = lil_array(self._std_dev.reshape(1, -1))
 
             self.with_batch_statistics = True
 
@@ -583,7 +633,7 @@ class Tally(IDManagerMixin):
             self._vov[mask] = numerator[mask]/denominator[mask] - 1.0/n
 
             if self.sparse:
-                self._vov = sps.lil_matrix(self._vov.flatten(), self._vov.shape)
+                self._vov = lil_array(self._vov.reshape(1, -1))
 
         if self.sparse:
             return np.reshape(self._vov.toarray(), self.shape)
@@ -958,22 +1008,19 @@ class Tally(IDManagerMixin):
         # Convert NumPy arrays to SciPy sparse LIL matrices
         if sparse and not self.sparse:
             if self._sum is not None:
-                self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
+                self._sum = lil_array(self._sum.reshape(1, -1))
             if self._sum_sq is not None:
-                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
-                                              self._sum_sq.shape)
+                self._sum_sq = lil_array(self._sum_sq.reshape(1, -1))
             if self._sum_third is not None:
-                self._sum_third = sps.lil_matrix(self._sum_third.flatten(),
-                                                 self._sum_third.shape)
+                self._sum_third = lil_array(self._sum_third.reshape(1, -1))
             if self._sum_fourth is not None:
-                self._sum_fourth = sps.lil_matrix(self._sum_fourth.flatten(),
-                                                  self._sum_fourth.shape)
+                self._sum_fourth = lil_array(self._sum_fourth.reshape(1, -1))
             if self._mean is not None:
-                self._mean = sps.lil_matrix(self._mean.flatten(),
-                                            self._mean.shape)
+                self._mean = lil_array(self._mean.reshape(1, -1))
             if self._std_dev is not None:
-                self._std_dev = sps.lil_matrix(self._std_dev.flatten(),
-                                               self._std_dev.shape)
+                self._std_dev = lil_array(self._std_dev.reshape(1, -1))
+            if self._vov is not None:
+                self._vov = lil_array(self._vov.reshape(1, -1))
 
             self._sparse = True
 
@@ -991,6 +1038,8 @@ class Tally(IDManagerMixin):
                 self._mean = np.reshape(self._mean.toarray(), self.shape)
             if self._std_dev is not None:
                 self._std_dev = np.reshape(self._std_dev.toarray(), self.shape)
+            if self._vov is not None:
+                self._vov = np.reshape(self._vov.toarray(), self.shape)
             self._sparse = False
 
     def remove_score(self, score):
@@ -1064,8 +1113,8 @@ class Tally(IDManagerMixin):
             return False
 
         # Return False if only one tally has a delayed group filter
-        tally1_dg = self.contains_filter(openmc.DelayedGroupFilter)
-        tally2_dg = other.contains_filter(openmc.DelayedGroupFilter)
+        tally1_dg = self.contains_filter(DelayedGroupFilter)
+        tally2_dg = other.contains_filter(DelayedGroupFilter)
         if tally1_dg != tally2_dg:
             return False
 
@@ -1577,7 +1626,7 @@ class Tally(IDManagerMixin):
 
             # Also check to see if the desired filter is wrapped up in an
             # aggregate
-            elif isinstance(test_filter, openmc.AggregateFilter):
+            elif isinstance(test_filter, AggregateFilter):
                 if isinstance(test_filter.aggregate_filter, filter_type):
                     return test_filter
 
@@ -1679,7 +1728,7 @@ class Tally(IDManagerMixin):
 
         """
 
-        cv.check_type('filters', filters, Iterable, openmc.FilterMeta)
+        cv.check_type('filters', filters, Iterable, FilterMeta)
         cv.check_type('filter_bins', filter_bins, Iterable, tuple)
 
         # If user did not specify any specific Filters, use them all
@@ -1762,7 +1811,7 @@ class Tally(IDManagerMixin):
         """
 
         for score in scores:
-            if not isinstance(score, (str, openmc.CrossScore)):
+            if not isinstance(score, (str, CrossScore)):
                 msg = f'Unable to get score indices for score "{score}" in ' \
                       f'ID="{self.id}" since it is not a string or CrossScore ' \
                       'Tally'
@@ -1959,9 +2008,9 @@ class Tally(IDManagerMixin):
             column_name = 'score'
 
             for score in self.scores:
-                if isinstance(score, (str, openmc.CrossScore)):
+                if isinstance(score, (str, CrossScore)):
                     scores.append(str(score))
-                elif isinstance(score, openmc.AggregateScore):
+                elif isinstance(score, AggregateScore):
                     scores.append(score.name)
                     column_name = f'{score.aggregate_op}(score)'
 
@@ -1984,7 +2033,7 @@ class Tally(IDManagerMixin):
 
         # Expand the columns into Pandas MultiIndices for readability
         if pd.__version__ >= '0.16':
-            columns = copy.deepcopy(df.columns.values)
+            columns = copy.deepcopy(list(df.columns.values))
 
             # Convert all elements in columns list to tuples
             for i, column in enumerate(columns):
@@ -2061,7 +2110,7 @@ class Tally(IDManagerMixin):
         for i, f in enumerate(self.filters):
             if expand_dims:
                 # Mesh filter indices are backwards so we need to flip them
-                if type(f) in {openmc.MeshFilter, openmc.MeshBornFilter}:
+                if type(f) in {MeshFilter, MeshBornFilter}:
                     fshape = f.shape[::-1]
                     new_shape += fshape
                     idx0, idx1 = i, i + len(fshape) - 1
@@ -2248,7 +2297,7 @@ class Tally(IDManagerMixin):
         else:
             all_filters = [self_copy.filters, other_copy.filters]
             for self_filter, other_filter in product(*all_filters):
-                new_filter = openmc.CrossFilter(self_filter, other_filter,
+                new_filter = CrossFilter(self_filter, other_filter,
                                                 binary_op)
                 new_tally.filters.append(new_filter)
 
@@ -2259,7 +2308,7 @@ class Tally(IDManagerMixin):
         else:
             all_nuclides = [self_copy.nuclides, other_copy.nuclides]
             for self_nuclide, other_nuclide in product(*all_nuclides):
-                new_nuclide = openmc.CrossNuclide(self_nuclide, other_nuclide,
+                new_nuclide = CrossNuclide(self_nuclide, other_nuclide,
                                                   binary_op)
                 new_tally.nuclides.append(new_nuclide)
 
@@ -2270,9 +2319,9 @@ class Tally(IDManagerMixin):
                 if score1 == score2:
                     return score1
                 else:
-                    return openmc.CrossScore(score1, score2, binary_op)
+                    return CrossScore(score1, score2, binary_op)
             else:
-                return openmc.CrossScore(score1, score2, binary_op)
+                return CrossScore(score1, score2, binary_op)
 
         # Add scores to the new tally
         if score_product == 'entrywise':
@@ -2481,16 +2530,16 @@ class Tally(IDManagerMixin):
 
         # Construct lists of tuples for the bins in each of the two filters
         filters = [type(filter1), type(filter2)]
-        if isinstance(filter1, openmc.DistribcellFilter):
+        if isinstance(filter1, DistribcellFilter):
             filter1_bins = [b for b in range(filter1.num_bins)]
-        elif isinstance(filter1, openmc.EnergyFunctionFilter):
+        elif isinstance(filter1, EnergyFunctionFilter):
             filter1_bins = [None]
         else:
             filter1_bins = filter1.bins
 
-        if isinstance(filter2, openmc.DistribcellFilter):
+        if isinstance(filter2, DistribcellFilter):
             filter2_bins = [b for b in range(filter2.num_bins)]
-        elif isinstance(filter2, openmc.EnergyFunctionFilter):
+        elif isinstance(filter2, EnergyFunctionFilter):
             filter2_bins = [None]
         else:
             filter2_bins = filter2.bins
@@ -2623,11 +2672,11 @@ class Tally(IDManagerMixin):
             raise ValueError(msg)
 
         # Check that the scores are valid
-        if not isinstance(score1, (str, openmc.CrossScore)):
+        if not isinstance(score1, (str, CrossScore)):
             msg = 'Unable to swap score1 "{}" in Tally ID="{}" since it is ' \
                   'not a string or CrossScore'.format(score1, self.id)
             raise ValueError(msg)
-        elif not isinstance(score2, (str, openmc.CrossScore)):
+        elif not isinstance(score2, (str, CrossScore)):
             msg = 'Unable to swap score2 "{}" in Tally ID="{}" since it is ' \
                   'not a string or CrossScore'.format(score2, self.id)
             raise ValueError(msg)
@@ -3271,7 +3320,7 @@ class Tally(IDManagerMixin):
                 new_filter.bins = [f.bins[i] for i in bin_indices]
 
                 # Set number of bins manually for mesh/distribcell filters
-                if filter_type is openmc.DistribcellFilter:
+                if filter_type is DistribcellFilter:
                     new_filter._num_bins = f._num_bins
 
                 # Replace existing filter with new one
@@ -3337,16 +3386,16 @@ class Tally(IDManagerMixin):
         std_dev = self.get_reshaped_data(value='std_dev')
 
         # Sum across any filter bins specified by the user
-        if isinstance(filter_type, openmc.FilterMeta):
+        if isinstance(filter_type, FilterMeta):
             find_filter = self.find_filter(filter_type)
 
             # If user did not specify filter bins, sum across all bins
             if len(filter_bins) == 0:
                 bin_indices = np.arange(find_filter.num_bins)
 
-                if isinstance(find_filter, openmc.DistribcellFilter):
+                if isinstance(find_filter, DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
-                elif isinstance(find_filter, openmc.EnergyFunctionFilter):
+                elif isinstance(find_filter, EnergyFunctionFilter):
                     filter_bins = [None]
                 else:
                     filter_bins = find_filter.bins
@@ -3375,7 +3424,7 @@ class Tally(IDManagerMixin):
 
                     # Add AggregateFilter to the tally sum
                     if not remove_filter:
-                        filter_sum = openmc.AggregateFilter(self_filter,
+                        filter_sum = AggregateFilter(self_filter,
                             [tuple(filter_bins)], 'sum')
                         tally_sum.filters.append(filter_sum)
 
@@ -3398,7 +3447,7 @@ class Tally(IDManagerMixin):
             std_dev = np.sqrt(std_dev)
 
             # Add AggregateNuclide to the tally sum
-            nuclide_sum = openmc.AggregateNuclide(nuclides, 'sum')
+            nuclide_sum = AggregateNuclide(nuclides, 'sum')
             tally_sum.nuclides.append(nuclide_sum)
 
         # Add a copy of this tally's nuclides to the tally sum
@@ -3416,7 +3465,7 @@ class Tally(IDManagerMixin):
             std_dev = np.sqrt(std_dev)
 
             # Add AggregateScore to the tally sum
-            score_sum = openmc.AggregateScore(scores, 'sum')
+            score_sum = AggregateScore(scores, 'sum')
             tally_sum.scores.append(score_sum)
 
         # Add a copy of this tally's scores to the tally sum
@@ -3489,16 +3538,16 @@ class Tally(IDManagerMixin):
         std_dev = self.get_reshaped_data(value='std_dev')
 
         # Average across any filter bins specified by the user
-        if isinstance(filter_type, openmc.FilterMeta):
+        if isinstance(filter_type, FilterMeta):
             find_filter = self.find_filter(filter_type)
 
             # If user did not specify filter bins, average across all bins
             if len(filter_bins) == 0:
                 bin_indices = np.arange(find_filter.num_bins)
 
-                if isinstance(find_filter, openmc.DistribcellFilter):
+                if isinstance(find_filter, DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
-                elif isinstance(find_filter, openmc.EnergyFunctionFilter):
+                elif isinstance(find_filter, EnergyFunctionFilter):
                     filter_bins = [None]
                 else:
                     filter_bins = find_filter.bins
@@ -3528,7 +3577,7 @@ class Tally(IDManagerMixin):
 
                     # Add AggregateFilter to the tally avg
                     if not remove_filter:
-                        filter_sum = openmc.AggregateFilter(self_filter,
+                        filter_sum = AggregateFilter(self_filter,
                             [tuple(filter_bins)], 'avg')
                         tally_avg.filters.append(filter_sum)
 
@@ -3552,7 +3601,7 @@ class Tally(IDManagerMixin):
             std_dev = np.sqrt(std_dev)
 
             # Add AggregateNuclide to the tally avg
-            nuclide_avg = openmc.AggregateNuclide(nuclides, 'avg')
+            nuclide_avg = AggregateNuclide(nuclides, 'avg')
             tally_avg.nuclides.append(nuclide_avg)
 
         # Add a copy of this tally's nuclides to the tally avg
@@ -3571,7 +3620,7 @@ class Tally(IDManagerMixin):
             std_dev = np.sqrt(std_dev)
 
             # Add AggregateScore to the tally avg
-            score_sum = openmc.AggregateScore(scores, 'avg')
+            score_sum = AggregateScore(scores, 'avg')
             tally_avg.scores.append(score_sum)
 
         # Add a copy of this tally's scores to the tally avg
@@ -3704,43 +3753,17 @@ class Tallies(cv.CheckedList):
             if possible. Defaults to False.
 
         """
-        if not isinstance(tally, Tally):
-            msg = f'Unable to add a non-Tally "{tally}" to the Tallies instance'
-            raise TypeError(msg)
-
         if merge:
-            merged = False
-
             # Look for a tally to merge with this one
             for i, tally2 in enumerate(self):
-
                 # If a mergeable tally is found
                 if tally2.can_merge(tally):
                     # Replace tally2 with the merged tally
                     merged_tally = tally2.merge(tally)
                     self[i] = merged_tally
-                    merged = True
-                    break
+                    return
 
-            # If no mergeable tally was found, simply add this tally
-            if not merged:
-                super().append(tally)
-
-        else:
-            super().append(tally)
-
-    def insert(self, index, item):
-        """Insert tally before index
-
-        Parameters
-        ----------
-        index : int
-            Index in list
-        item : openmc.Tally
-            Tally to insert
-
-        """
-        super().insert(index, item)
+        super().append(tally)
 
     def merge_tallies(self):
         """Merge any mergeable tallies together. Note that n-way merges are
@@ -3787,7 +3810,7 @@ class Tallies(cv.CheckedList):
         already_written = memo if memo else set()
         for tally in self:
             for f in tally.filters:
-                if isinstance(f, openmc.MeshFilter):
+                if isinstance(f, MeshFilter):
                     if f.mesh.id in already_written:
                         continue
                     if len(f.mesh.name) > 0:
@@ -3882,7 +3905,7 @@ class Tallies(cv.CheckedList):
         # Read filter elements
         filters = {}
         for e in elem.findall('filter'):
-            filter = openmc.Filter.from_xml_element(e, meshes=meshes)
+            filter = Filter.from_xml_element(e, meshes=meshes)
             filters[filter.id] = filter
 
         # Read derivative elements
@@ -3916,7 +3939,8 @@ class Tallies(cv.CheckedList):
             Tallies object
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
-        return cls.from_xml_element(root)
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
+            return cls.from_xml_element(root)

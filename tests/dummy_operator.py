@@ -24,7 +24,7 @@ DepletionSolutionTuple = namedtuple(
 
 predictor_solution = DepletionSolutionTuple(
     PredictorIntegrator, np.array([1.0, 2.46847546272295, 4.11525874568034]),
-    np.array([1.0, 0.986431226850467, -0.0581692232513460]))
+    np.array([1.0, 0.986431226850467, 0.0]))
 
 
 cecm_solution = DepletionSolutionTuple(
@@ -243,4 +243,4 @@ class DummyOperator(TransportOperator):
             Maps cell name to index in global geometry.
 
         """
-        return self.volume, self.nuc_list, self.local_mats, self.burnable_mats
+        return self.volume, self.nuc_list, self.local_mats, self.burnable_mats, {"1": ""}

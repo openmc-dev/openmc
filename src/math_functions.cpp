@@ -1,5 +1,7 @@
 #include "openmc/math_functions.h"
 
+#include <limits> // for numeric_limits
+
 #include "openmc/external/Faddeeva.hh"
 
 #include "openmc/constants.h"
@@ -93,6 +95,13 @@ double t_percentile(double p, int df)
   }
 
   return t;
+}
+
+double standard_normal_cdf(double z)
+{
+  // Use the complementary error function to compute the standard normal CDF
+  // Phi(z) = 0.5 * (1 + erf(z / sqrt(2))) = 0.5 * erfc(-z / sqrt(2))
+  return 0.5 * std::erfc(-z / std::sqrt(2.0));
 }
 
 void calc_pn_c(int n, double x, double pnx[])
@@ -917,6 +926,87 @@ std::complex<double> w_derivative(std::complex<double> z, int order)
     return -2.0 * z * w_derivative(z, order - 1) -
            2.0 * (order - 1) * w_derivative(z, order - 2);
   }
+}
+
+double exprel(double x)
+{
+  if (std::abs(x) < 1e-16)
+    return 1.0;
+  else {
+    return std::expm1(x) / x;
+  }
+}
+
+double log1prel(double x)
+{
+  if (std::abs(x) < 1e-16)
+    return 1.0;
+  else {
+    return std::log1p(x) / x;
+  }
+}
+
+double cyl_bessel_j(int n, double x)
+{
+  // Handle negative arguments via the parity relation
+  // J_n(-x) = (-1)^n J_n(x); std::cyl_bessel_j has a domain error for x < 0.
+  double sign = 1.0;
+  if (x < 0.0) {
+    x = -x;
+    if (n % 2 == 1)
+      sign = -1.0;
+  }
+
+#if defined(__cpp_lib_math_special_functions) &&                               \
+  __cpp_lib_math_special_functions >= 201603L
+  return sign * std::cyl_bessel_j(static_cast<double>(n), x);
+#else
+  // Ascending power series (e.g., Abramowitz & Stegun eq. 9.1.10):
+  //   J_n(x) = sum_{m=0}^inf (-1)^m / (m! (m+n)!) * (x/2)^(2m+n)
+  // The term ratio is -(x/2)^2 / (m*(m+n)), so for |x| <= 2 the series
+  // converges to machine precision within ~20 terms.
+  double half_x = 0.5 * x;
+
+  // First term: (x/2)^n / n!
+  double term = 1.0;
+  for (int k = 1; k <= n; ++k) {
+    term *= half_x / k;
+  }
+
+  double sum = term;
+  double neg_half_x_sq = -half_x * half_x;
+  for (int m = 1; m <= 50; ++m) {
+    term *= neg_half_x_sq / (m * (m + n));
+    sum += term;
+    if (std::abs(term) <=
+        std::numeric_limits<double>::epsilon() * std::abs(sum))
+      break;
+  }
+  return sign * sum;
+#endif
+}
+
+// Helper function to get index and interpolation function on an incident energy
+// grid
+void get_energy_index(
+  const vector<double>& energies, double E, int& i, double& f)
+{
+  // Get index and interpolation factor for linear-linear energy grid
+  i = 0;
+  f = 0.0;
+  if (E >= energies.front()) {
+    i = lower_bound_index(energies.begin(), energies.end(), E);
+    if (i + 1 < energies.size())
+      f = (E - energies[i]) / (energies[i + 1] - energies[i]);
+  }
+}
+
+// Return true if two floating-point values are approximately equal within a
+// combined relative and absolute tolerance.
+bool isclose(double a, double b, double rel_tol, double abs_tol)
+{
+  return std::abs(a - b) <=
+         std::max(rel_tol * std::max(std::abs(a), std::abs(b)), abs_tol);
 }
 
 } // namespace openmc

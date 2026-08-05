@@ -25,12 +25,13 @@ examples/**/*.xml
 
 # Documentation builds
 docs/build
+docs/doxygen/xml
 docs/source/_images/*.pdf
 docs/source/_images/*.aux
 docs/source/pythonapi/generated/
 
 # Source build
-build
+build*/
 
 # build from src/utils/setup.py
 src/utils/build
@@ -100,6 +101,9 @@ CMakeSettings.json
 
 # Visual Studio Code configuration files
 .vscode/
+
+# Claude Code agent tools (cached/generated artifacts)
+.claude/cache/
 
 # Python pickle files
 *.pkl

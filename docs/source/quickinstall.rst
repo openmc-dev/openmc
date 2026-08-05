@@ -119,7 +119,7 @@ packages should be installed, for example in Homebrew via:
 
 .. code-block:: sh
 
-   brew install llvm cmake xtensor hdf5 python libomp libpng
+   brew install llvm cmake hdf5 python libomp libpng
 
 The compiler provided by the above LLVM package should be used in place of the
 one provisioned by XCode, which does not support the multithreading library used

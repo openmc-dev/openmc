@@ -362,9 +362,9 @@ class R2SManager:
         micro_kwargs['path_statepoint'] = statepoint_path
 
         # Determine neutron tally IDs based on whether model tallies are included
-        include_model_tallies = micro_kwargs['include_model_tallies']
-        neutron_tally_ids = [tally.id for tally in self.neutron_model.tallies] \
-            if include_model_tallies else []
+        neutron_tally_ids = []
+        if micro_kwargs['include_model_tallies']:
+            neutron_tally_ids = [tally.id for tally in self.neutron_model.tallies]
 
         # Run neutron transport and get fluxes and micros. Run via openmc.lib to
         # maintain a consistent parallelism strategy with the activation step.

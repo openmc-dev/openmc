@@ -172,6 +172,9 @@ jobs:
       - name: test
         shell: bash
         run: |
+          # scikit-build-core configures the C++ build in $GITHUB_WORKSPACE/build.
+          # --no-tests=error so this fails loudly if the tests ever stop being built.
+          ctest --test-dir $GITHUB_WORKSPACE/build --output-on-failure --no-tests=error
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - name: Setup tmate debug session

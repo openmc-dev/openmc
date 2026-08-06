@@ -1008,11 +1008,8 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: int openmc_temperature_field_set_temperature(int32_t index, double temperature)
+.. doxygenfunction:: openmc_temperature_field_set_temperature
 
-   Set the temperature value of a given cell in the temperature field
+.. doxygenfunction:: openmc_temperature_field_size
 
-   :param int32_t index: Index in the temperature mesh
-   :param double temperature: Temperature in Kelvin
-   :return: Return status (negative if an error occurred)
-   :rtype: int
+.. doxygenfunction:: openmc_temperature_field_get_value

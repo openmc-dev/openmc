@@ -30,7 +30,8 @@ namespace openmc {
 RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::HYBRID};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
-bool FlatSourceDomain::adjoint_ {false};
+bool FlatSourceDomain::adjoint_requested_ {false};
+RandomRaySolve FlatSourceDomain::solve_ {RandomRaySolve::FORWARD};
 bool FlatSourceDomain::fw_cadis_local_ {false};
 double FlatSourceDomain::diagonal_stabilization_rho_ {1.0};
 std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
@@ -556,7 +557,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
   // If we are in adjoint mode of a fixed source problem, the external
   // source is already normalized, such that all resulting fluxes are
   // also normalized.
-  if (adjoint_) {
+  if (solve_ == RandomRaySolve::ADJOINT) {
     return 1.0;
   }
 
@@ -724,7 +725,7 @@ void FlatSourceDomain::random_ray_tally()
     for (int i = 0; i < model::tallies.size(); i++) {
       Tally& tally {*model::tallies[i]};
 #pragma omp parallel for
-      for (int bin = 0; bin < tally.n_filter_bins(); bin++) {
+      for (int64_t bin = 0; bin < tally.n_filter_bins(); bin++) {
         for (int score_idx = 0; score_idx < tally.n_scores(); score_idx++) {
           auto score_type = tally.scores_[score_idx];
           if (score_type == SCORE_FLUX) {
@@ -794,6 +795,12 @@ void FlatSourceDomain::output_to_vtk() const
     double y_delta = width.y / Ny;
     double z_delta = width.z / Nz;
     std::string filename = openmc_plot->path_plot();
+
+    // Tag plots written during the forward solve of an adjoint run
+    if (solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT) {
+      auto dot = filename.find_last_of('.');
+      filename = filename.substr(0, dot) + ".forward" + filename.substr(dot);
+    }
 
     // Perform sanity checks on file size
     uint64_t bytes = Nx * Ny * Nz * (negroups_ + 1 + 1 + 1) * sizeof(float);
@@ -1002,9 +1009,10 @@ void FlatSourceDomain::output_to_vtk() const
 void FlatSourceDomain::apply_external_source_to_source_region(
   int src_idx, SourceRegionHandle& srh)
 {
-  auto s = (adjoint_ && !model::adjoint_sources.empty())
-             ? model::adjoint_sources[src_idx].get()
-             : model::external_sources[src_idx].get();
+  auto s =
+    (solve_ == RandomRaySolve::ADJOINT && !model::adjoint_sources.empty())
+      ? model::adjoint_sources[src_idx].get()
+      : model::external_sources[src_idx].get();
   auto is = dynamic_cast<IndependentSource*>(s);
   auto discrete = dynamic_cast<Discrete*>(is->energy());
   double strength_factor = is->strength();
@@ -1066,13 +1074,16 @@ void FlatSourceDomain::apply_external_source_to_cell_and_children(
 
 void FlatSourceDomain::count_external_source_regions()
 {
-  n_external_source_regions_ = 0;
-#pragma omp parallel for reduction(+ : n_external_source_regions_)
+  // Naming a class member in a reduction clause is allowed as of OpenMP 5.1,
+  // but not every implementation supports it yet; accumulate into a local
+  int64_t n_external = 0;
+#pragma omp parallel for reduction(+ : n_external)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     if (source_regions_.external_source_present(sr)) {
-      n_external_source_regions_++;
+      n_external++;
     }
   }
+  n_external_source_regions_ = n_external;
 }
 
 void FlatSourceDomain::convert_external_sources(bool use_adjoint_sources)

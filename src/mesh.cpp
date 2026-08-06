@@ -1,12 +1,12 @@
 #include "openmc/mesh.h"
 #include <algorithm> // for copy, equal, min, min_element
 #include <cassert>
-#include <cstdint>        // for uint64_t
-#include <cstring>        // for memcpy
-#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
-#include <cmath>          // for ceil
-#include <cstddef>        // for size_t
-#include <numeric>        // for accumulate
+#include <cmath>   // for ceil
+#include <cstddef> // for size_t
+#include <cstdint> // for uint64_t
+#include <cstring> // for memcpy
+#include <limits>
+#include <numeric> // for accumulate
 #include <string>
 
 #ifdef _MSC_VER
@@ -427,6 +427,25 @@ vector<double> Mesh::volumes() const
     volumes[i] = this->volume(i);
   }
   return volumes;
+}
+
+//! Default (Cartesian) axis labels used for surface bin labels.
+std::array<const char*, 3> Mesh::axis_labels() const
+{
+  return {"x", "y", "z"};
+}
+
+//! Build the surface component of a mesh surface tally bin label.
+//! surf_index: 0=out/min, 1=in/min, 2=out/max, 3=in/max
+std::string Mesh::surface_bin_label(int surf_index) const
+{
+  auto labels = this->axis_labels();
+  int dim = surf_index / 4;
+  int code = surf_index % 4;
+  bool incoming = (code == 1) || (code == 3);
+  bool max = (code == 2) || (code == 3);
+  return fmt::format(" {}, {}-{}", incoming ? "Incoming" : "Outgoing",
+    labels[dim], max ? "max" : "min");
 }
 
 void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
@@ -1087,13 +1106,26 @@ int StructuredMesh::get_bin(Position r) const
 
 int StructuredMesh::n_bins() const
 {
-  return std::accumulate(
-    shape_.begin(), shape_.begin() + n_dimension_, 1, std::multiplies<>());
+  // Bin indices are stored as 32-bit ints in the tally system.
+  int64_t n = 1;
+  for (int i = 0; i < n_dimension_; ++i)
+    n *= shape_[i];
+  if (n > std::numeric_limits<int>::max()) {
+    fatal_error(fmt::format(
+      "Mesh {} has too many bins ({}) for 32-bit tally indexing", id_, n));
+  }
+  return static_cast<int>(n);
 }
 
 int StructuredMesh::n_surface_bins() const
 {
-  return 4 * n_dimension_ * n_bins();
+  // Surface bin indices are stored as 32-bit ints in the tally system.
+  int64_t n = static_cast<int64_t>(n_bins()) * 4 * n_dimension_;
+  if (n > std::numeric_limits<int>::max()) {
+    fatal_error(fmt::format(
+      "Mesh {} has too many surface bins ({}) for tally indexing", id_, n));
+  }
+  return static_cast<int>(n);
 }
 
 tensor::Tensor<double> StructuredMesh::count_sites(
@@ -1129,8 +1161,7 @@ tensor::Tensor<double> StructuredMesh::count_sites(
 
 #ifdef OPENMC_MPI
   // collect values from all processors
-  MPI_Reduce(
-    cnt.data(), counts.data(), total, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(cnt.data(), counts.data(), total, MPI_SUM, 0, mpi::intracomm);
 
   // Check if there were sites outside the mesh for any processor
   if (outside) {
@@ -1556,11 +1587,12 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
 
 int RegularMesh::get_index_in_direction(double r, int i) const
 {
-  if (r == lower_left_[i]) {
-    return 1;
-  } else {
-    return std::ceil((r - lower_left_[i]) / width_[i]);
-  }
+  if (r <= lower_left_[i])
+    return r == lower_left_[i] ? 1 : 0;
+  if (r >= upper_right_[i])
+    return r == upper_right_[i] ? shape_[i] : shape_[i] + 1;
+
+  return std::ceil((r - lower_left_[i]) / width_[i]);
 }
 
 const std::string RegularMesh::mesh_type = "regular";
@@ -1711,8 +1743,7 @@ tensor::Tensor<double> RegularMesh::count_sites(
 
 #ifdef OPENMC_MPI
   // collect values from all processors
-  MPI_Reduce(
-    cnt.data(), counts.data(), total, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(cnt.data(), counts.data(), total, MPI_SUM, 0, mpi::intracomm);
 
   // Check if there were sites outside the mesh for any processor
   if (outside) {
@@ -1945,6 +1976,11 @@ std::string CylindricalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+std::array<const char*, 3> CylindricalMesh::axis_labels() const
+{
+  return {"r", "phi", "z"};
+}
+
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
@@ -1959,7 +1995,7 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   } else {
     mapped_r[1] = std::atan2(r.y, r.x);
     if (mapped_r[1] < 0)
-      mapped_r[1] += 2 * M_PI;
+      mapped_r[1] += 2 * PI;
   }
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
@@ -2238,6 +2274,11 @@ std::string SphericalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+std::array<const char*, 3> SphericalMesh::axis_labels() const
+{
+  return {"r", "theta", "phi"};
+}
+
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
@@ -2253,7 +2294,7 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
     mapped_r[1] = std::acos(r.z / mapped_r.x);
     mapped_r[2] = std::atan2(r.y, r.x);
     if (mapped_r[2] < 0)
-      mapped_r[2] += 2 * M_PI;
+      mapped_r[2] += 2 * PI;
   }
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
@@ -3970,6 +4011,14 @@ void LibMesh::set_score_data(const std::string& var_name,
 
 void LibMesh::write(const std::string& filename) const
 {
+  // A serial libMesh communicator considers every OpenMC rank to be its
+  // processor 0. Restrict the non-collective write to the OpenMC master in
+  // that case. With a parallel communicator, all ranks must participate in
+  // libMesh's solution assembly.
+  if (settings::libmesh_comm->size() == 1 && !mpi::master) {
+    return;
+  }
+
   write_message(fmt::format(
     "Writing file: {}.e for unstructured mesh {}", filename, this->id_));
   libMesh::ExodusII_IO exo(*m_);

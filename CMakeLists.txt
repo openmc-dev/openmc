@@ -123,6 +123,23 @@ endif()
 
 if(OPENMC_USE_MPI)
   find_package(MPI REQUIRED)
+
+  include(CMakePushCheckState)
+  include(CheckCXXSourceCompiles)
+  cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_LIBRARIES MPI::MPI_CXX)
+  check_cxx_source_compiles(
+    "#include <mpi.h>
+    int main()
+    {
+      double value = 0.0;
+      MPI_Count count = 1;
+      return MPI_Reduce_c(
+        &value, &value, count, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    }"
+    OPENMC_HAVE_MPI_REDUCE_C
+  )
+  cmake_pop_check_state()
 endif()
 
 #===============================================================================
@@ -519,6 +536,9 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
+  if (OPENMC_HAVE_MPI_REDUCE_C)
+    target_compile_definitions(libopenmc PRIVATE -DOPENMC_HAVE_MPI_REDUCE_C)
+  endif()
 endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
@@ -533,7 +553,7 @@ else()
 endif()
 
 if(OPENMC_USE_DAGMC)
-  target_compile_definitions(libopenmc PRIVATE OPENMC_DAGMC_ENABLED)
+  target_compile_definitions(libopenmc PUBLIC OPENMC_DAGMC_ENABLED)
   target_link_libraries(libopenmc dagmc-shared)
 
   if(OPENMC_USE_UWUW)

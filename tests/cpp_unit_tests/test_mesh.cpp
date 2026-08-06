@@ -257,130 +257,115 @@ TEST_CASE("Test multiple meshes HDF5 roundtrip - spherical")
   REQUIRE(regular_mesh_hdf5->upper_right() == regular_mesh_xml->upper_right());
 }
 
-TEST_CASE("Test distance_to_next_boundary() - regular")
+TEST_CASE("Test get_index_in_direction - regular")
 {
   // The XML data as a string
   std::string xml_string = R"(
         <mesh id="1">
-            <dimension>2 2 2</dimension>
-            <lower_left>-1 -1 -1</lower_left>
-            <upper_right>1 1 1</upper_right>
-      </mesh>
+            <dimension>2 1 1</dimension>
+            <lower_left>-2 -2 -2</lower_left>
+            <upper_right>2 2 2</upper_right>
+       </mesh>
     )";
 
-  // Create the mesh from a file
+  // Create a pugixml document object
   pugi::xml_document doc;
+
+  // Load the XML from the string
   pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
+
   pugi::xml_node root = doc.child("mesh");
+
   auto mesh = RegularMesh(root);
 
-  int current_bin;
-  Position r;
-  Position u;
-  int next_bin;
-  double distance;
+  REQUIRE(mesh.get_index_in_direction(-4.1, 0) == 0);
+  REQUIRE(mesh.get_index_in_direction(-4.0, 0) == 0);
+  REQUIRE(mesh.get_index_in_direction(-3.9, 0) == 0);
 
-  // Test inside the mesh
-  current_bin = 0;
-  r = Position(0.0, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == 1.0);
-  REQUIRE(next_bin == -1);
+  REQUIRE(mesh.get_index_in_direction(-2.1, 0) == 0);
+  REQUIRE(mesh.get_index_in_direction(-2.0, 0) == 1); // lower left
+  REQUIRE(mesh.get_index_in_direction(-1.9, 0) == 1);
 
-  // Test outside the mesh, going toward the mesh
-  current_bin = -1;
-  r = Position(-2.5, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == 1.5);
-  REQUIRE(next_bin == 0);
+  REQUIRE(mesh.get_index_in_direction(-0.1, 0) == 1);
+  REQUIRE(mesh.get_index_in_direction(0.0, 0) == 1);
+  REQUIRE(mesh.get_index_in_direction(0.1, 0) == 2);
 
-  // Test outside the mesh, not going toward the mesh
-  current_bin = -1;
-  r = Position(-2.0, 0.0, 0.0);
-  u = Position(-1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == INFTY);
-  REQUIRE(next_bin == -1);
+  REQUIRE(mesh.get_index_in_direction(1.9, 0) == 2);
+  REQUIRE(mesh.get_index_in_direction(2.0, 0) == 2); // upper right
+  REQUIRE(mesh.get_index_in_direction(2.1, 0) == 3);
 
-  // Test on the mesh boundary, leaving the mesh
-  current_bin = 1;
-  r = Position(1.0, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == INFTY);
-  REQUIRE(next_bin == -1);
-
-  // Test close to the mesh boundary
-  current_bin = 1;
-  r = Position(0.99999999999, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == Catch::Approx(0.00000000001).margin(1.0E-12));
-  REQUIRE(next_bin == -1);
+  REQUIRE(mesh.get_index_in_direction(3.9, 0) == 3);
+  REQUIRE(mesh.get_index_in_direction(4.0, 0) == 3);
+  REQUIRE(mesh.get_index_in_direction(4.1, 0) == 3);
 }
 
-TEST_CASE("Test distance_to_next_boundary() - rectilinear")
+TEST_CASE("Test get_index_in_direction - rectilinear")
 {
   // The XML data as a string
   std::string xml_string = R"(
         <mesh id="1" type="rectilinear">
-            <x_grid>-1.0 0.5 1.0</x_grid>
-            <y_grid>-1.0 0.1 1.0</y_grid>
-            <z_grid>-1.0 0.2 1.0</z_grid>
+            <x_grid>-1.0 0.0 2.0</x_grid>
+            <y_grid>-1.0 1.0</y_grid>
+            <z_grid>-1.0 1.0</z_grid>
         </mesh>
     )";
 
-  // Create the mesh from a file
+  // Create a pugixml document object
   pugi::xml_document doc;
+
+  // Load the XML from the string
   pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
+
   pugi::xml_node root = doc.child("mesh");
+
   auto mesh = RectilinearMesh(root);
 
-  int current_bin;
-  Position r;
-  Position u;
-  int next_bin;
-  double distance;
+  REQUIRE(mesh.get_index_in_direction(-5.0, 0) == 0);
 
-  // Test inside the mesh
-  current_bin = 0;
-  r = Position(0.5, 0.1, 0.2);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == 0.5);
-  REQUIRE(next_bin == -1);
+  REQUIRE(mesh.get_index_in_direction(-1.1, 0) == 0);
+  REQUIRE(mesh.get_index_in_direction(-1.0, 0) == 1); // lower left
+  REQUIRE(mesh.get_index_in_direction(-0.9, 0) == 1);
 
-  // Test outside the mesh, going toward the mesh
-  current_bin = -1;
-  r = Position(-2.5, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == 1.5);
-  REQUIRE(next_bin == 0);
+  REQUIRE(mesh.get_index_in_direction(1.9, 0) == 2);
+  REQUIRE(mesh.get_index_in_direction(2.0, 0) == 2); // upper right
+  REQUIRE(mesh.get_index_in_direction(2.1, 0) == 3);
 
-  // Test outside the mesh, not going toward the mesh
-  current_bin = -1;
-  r = Position(-2.0, 0.0, 0.0);
-  u = Position(-1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == INFTY);
-  REQUIRE(next_bin == -1);
+  REQUIRE(mesh.get_index_in_direction(5.0, 0) == 3);
+}
 
-  // Test on the mesh boundary, leaving the mesh
-  current_bin = 1;
-  r = Position(1.0, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == INFTY);
-  REQUIRE(next_bin == -1);
+TEST_CASE("Test regular mesh ray tracing from outside")
+{
+  std::string xml_string = R"(
+        <mesh id="1">
+            <dimension>2 1 1</dimension>
+            <lower_left>-2 -2 -2</lower_left>
+            <upper_right>2 2 2</upper_right>
+       </mesh>
+    )";
 
-  // Test close to the mesh boundary
-  current_bin = 1;
-  r = Position(0.99999999999, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == Catch::Approx(0.00000000001).margin(1.0E-12));
-  REQUIRE(next_bin == -1);
+  pugi::xml_document doc;
+  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
+  auto mesh = RegularMesh(doc.child("mesh"));
+
+  vector<int> bins;
+  vector<double> lengths;
+
+  mesh.bins_crossed(Position {-6.0, 0.0, 0.0}, Position {6.0, 0.0, 0.0},
+    Direction {1.0, 0.0, 0.0}, bins, lengths);
+
+  REQUIRE(bins == vector<int> {0, 1});
+  REQUIRE(lengths.size() == 2);
+  REQUIRE(lengths[0] == Catch::Approx(1.0 / 6.0));
+  REQUIRE(lengths[1] == Catch::Approx(1.0 / 6.0));
+
+  bins.clear();
+  lengths.clear();
+
+  mesh.bins_crossed(Position {6.0, 0.0, 0.0}, Position {-6.0, 0.0, 0.0},
+    Direction {-1.0, 0.0, 0.0}, bins, lengths);
+
+  REQUIRE(bins == vector<int> {1, 0});
+  REQUIRE(lengths.size() == 2);
+  REQUIRE(lengths[0] == Catch::Approx(1.0 / 6.0));
+  REQUIRE(lengths[1] == Catch::Approx(1.0 / 6.0));
 }

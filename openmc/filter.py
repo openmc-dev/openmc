@@ -1431,6 +1431,12 @@ class ReactionFilter(Filter):
         self.bins = bins
         self.id = filter_id
 
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        else:
+            return np.array_equal(self.bins, other.bins)
+
     @Filter.bins.setter
     def bins(self, bins):
         if isinstance(bins, (str, Integral)):

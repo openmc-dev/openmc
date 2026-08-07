@@ -1437,6 +1437,8 @@ class ReactionFilter(Filter):
         else:
             return np.array_equal(self.bins, other.bins)
 
+    __hash__ = Filter.__hash__
+
     @Filter.bins.setter
     def bins(self, bins):
         if isinstance(bins, (str, Integral)):
@@ -1874,6 +1876,21 @@ class ParticleProductionFilter(Filter):
             string += '{: <16}=\t{}\n'.format('\tEnergies', self.energies)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
+
+    def __eq__(self, other):
+        # Bins are (particle, E_low, E_high) tuples, so the base class's
+        # np.allclose() comparison cannot promote them to a common dtype.
+        if type(self) is not type(other):
+            return False
+        if self.particles != other.particles:
+            return False
+        if (self.energies is None) != (other.energies is None):
+            return False
+        if self.energies is None:
+            return True
+        return np.array_equal(self.energies, other.energies)
+
+    __hash__ = Filter.__hash__
 
     @property
     def particles(self):

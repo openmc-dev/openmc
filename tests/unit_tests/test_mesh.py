@@ -117,6 +117,31 @@ def test_spherical_mesh_bounding_box():
     np.testing.assert_array_equal(bb.upper_right, (4, 6, 8))
 
 
+def test_mesh_to_lib_object(run_in_tmpdir):
+    mesh = openmc.RegularMesh(mesh_id=17, name='runtime mesh')
+    mesh.dimension = (2, 3)
+    mesh.lower_left = (0.0, 1.0)
+    mesh.upper_right = (2.0, 4.0)
+
+    with pytest.raises(RuntimeError, match='must be initialized'):
+        mesh.to_lib_object()
+
+    model = openmc.Model()
+    sphere = openmc.Sphere(boundary_type='vacuum')
+    model.geometry = openmc.Geometry([openmc.Cell(region=-sphere)])
+    model.settings.particles = 1
+    model.settings.batches = 1
+
+    with openmc.lib.TemporarySession(model):
+        lib_mesh = mesh.to_lib_object()
+        assert isinstance(lib_mesh, openmc.lib.RegularMesh)
+        assert lib_mesh.id == mesh.id
+        assert lib_mesh.name == mesh.name
+        assert tuple(lib_mesh.dimension) == mesh.dimension
+        assert np.allclose(lib_mesh.lower_left, mesh.lower_left)
+        assert np.allclose(lib_mesh.upper_right, mesh.upper_right)
+
+
 def test_SphericalMesh_initiation():
     # test defaults
     mesh = openmc.SphericalMesh(r_grid=(0, 10))

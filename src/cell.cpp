@@ -341,6 +341,63 @@ void Cell::to_hdf5(hid_t cell_group) const
 }
 
 //==============================================================================
+// XML parsing helpers for <cell> nodes
+//==============================================================================
+
+vector<int32_t> parse_cell_material_xml(pugi::xml_node node, int32_t cell_id)
+{
+  vector<std::string> mats {
+    get_node_array<std::string>(node, "material", true)};
+  if (mats.empty()) {
+    fatal_error(fmt::format(
+      "An empty material element was specified for cell {}", cell_id));
+  }
+  vector<int32_t> material;
+  material.reserve(mats.size());
+  for (const auto& mat : mats) {
+    if (mat == "void") {
+      material.push_back(MATERIAL_VOID);
+    } else {
+      material.push_back(std::stoi(mat));
+    }
+  }
+  return material;
+}
+
+vector<double> parse_cell_temperature_xml(pugi::xml_node node, int32_t cell_id)
+{
+  auto temperatures = get_node_array<double>(node, "temperature");
+  if (temperatures.empty()) {
+    fatal_error(fmt::format(
+      "An empty temperature element was specified for cell {}", cell_id));
+  }
+  for (auto T : temperatures) {
+    if (T < 0) {
+      fatal_error(fmt::format(
+        "Cell {} was specified with a negative temperature", cell_id));
+    }
+  }
+  return temperatures;
+}
+
+vector<double> parse_cell_density_xml(pugi::xml_node node, int32_t cell_id)
+{
+  auto densities = get_node_array<double>(node, "density");
+  if (densities.empty()) {
+    fatal_error(fmt::format(
+      "An empty density element was specified for cell {}", cell_id));
+  }
+  for (auto rho : densities) {
+    if (rho <= 0) {
+      fatal_error(fmt::format(
+        "Cell {} was specified with a density less than or equal to zero",
+        cell_id));
+    }
+  }
+  return densities;
+}
+
+//==============================================================================
 // CSGCell implementation
 //==============================================================================
 
@@ -390,26 +447,12 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // universe), more than one material (distribmats), and some materials may
   // be "void".
   if (material_present) {
-    vector<std::string> mats {
-      get_node_array<std::string>(cell_node, "material", true)};
-    if (mats.size() > 0) {
-      material_.reserve(mats.size());
-      for (std::string mat : mats) {
-        if (mat.compare("void") == 0) {
-          material_.push_back(MATERIAL_VOID);
-        } else {
-          material_.push_back(std::stoi(mat));
-        }
-      }
-    } else {
-      fatal_error(fmt::format(
-        "An empty material element was specified for cell {}", id_));
-    }
+    material_ = parse_cell_material_xml(cell_node, id_);
   }
 
   // Read the temperature element which may be distributed like materials.
   if (check_for_node(cell_node, "temperature")) {
-    sqrtkT_ = get_node_array<double>(cell_node, "temperature");
+    sqrtkT_ = parse_cell_temperature_xml(cell_node, id_);
     sqrtkT_.shrink_to_fit();
 
     // Make sure this is a material-filled cell.
@@ -418,14 +461,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
         "Cell {} was specified with a temperature but no material. Temperature"
         "specification is only valid for cells filled with a material.",
         id_));
-    }
-
-    // Make sure all temperatures are non-negative.
-    for (auto T : sqrtkT_) {
-      if (T < 0) {
-        fatal_error(fmt::format(
-          "Cell {} was specified with a negative temperature", id_));
-      }
     }
 
     // Convert to sqrt(k*T).
@@ -440,7 +475,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // Note: calculating the actual density multiplier is deferred until materials
   // are finalized. density_mult_ contains the true density in the meantime.
   if (check_for_node(cell_node, "density")) {
-    density_mult_ = get_node_array<double>(cell_node, "density");
+    density_mult_ = parse_cell_density_xml(cell_node, id_);
     density_mult_.shrink_to_fit();
 
     // Make sure this is a material-filled cell.
@@ -458,15 +493,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
           "Cell {} was specified with a density, but contains a void "
           "material. Density specification is only valid for cells "
           "filled with a non-void material.",
-          id_));
-      }
-    }
-
-    // Make sure all densities are non-negative and greater than zero.
-    for (auto rho : density_mult_) {
-      if (rho <= 0) {
-        fatal_error(fmt::format(
-          "Cell {} was specified with a density less than or equal to zero",
           id_));
       }
     }
@@ -614,8 +640,12 @@ Region::Region(std::string region_spec, int32_t cell_id)
     // Remove complement operators using DeMorgan's laws
     auto it = std::find(expression_.begin(), expression_.end(), OP_COMPLEMENT);
     while (it != expression_.end()) {
-      // Erase complement
-      expression_.erase(it);
+      // Erase complement. Note that erase invalidates the iterator, so we have
+      // to use the iterator it returns, which points to the token that
+      // followed the complement operator.
+      it = expression_.erase(it);
+      if (it == expression_.end())
+        break;
 
       // Define stop given left parenthesis or not
       auto stop = it;
@@ -667,12 +697,12 @@ Region::Region(std::string region_spec, int32_t cell_id)
 
     // If this cell is simple, remove all the superfluous operator tokens.
     if (simple_) {
-      for (auto it = expression_.begin(); it != expression_.end(); it++) {
-        if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
-          expression_.erase(it);
-          it--;
-        }
-      }
+      expression_.erase(std::remove_if(expression_.begin(), expression_.end(),
+                          [](int32_t token) {
+                            return token == OP_INTERSECTION ||
+                                   token > OP_COMPLEMENT;
+                          }),
+        expression_.end());
     }
     expression_.shrink_to_fit();
 
@@ -920,6 +950,18 @@ std::string Region::str() const
 std::pair<double, int32_t> Region::distance(
   Position r, Direction u, int32_t on_surface) const
 {
+  if (simple_) {
+    return distance_to_nearest_surface(r, u, on_surface, false);
+  } else {
+    return distance_complex(r, u, on_surface);
+  }
+}
+
+//==============================================================================
+
+std::pair<double, int32_t> Region::distance_to_nearest_surface(Position r,
+  Direction u, int32_t on_surface, bool ignore_coincident_surfaces) const
+{
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
@@ -933,6 +975,13 @@ std::pair<double, int32_t> Region::distance(
     bool coincident {std::abs(token) == std::abs(on_surface)};
     double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
 
+    // Different surface definitions can represent the same geometric surface.
+    // When the ray is already known to be on a surface, ignore intersections
+    // with other surfaces at the same location to avoid repeatedly crossing
+    // between them due to roundoff.
+    if (ignore_coincident_surfaces && d < FP_COINCIDENT)
+      continue;
+
     // Check if this distance is the new minimum.
     if (d < min_dist) {
       if (min_dist - d >= FP_PRECISION * min_dist) {
@@ -943,6 +992,42 @@ std::pair<double, int32_t> Region::distance(
   }
 
   return {min_dist, i_surf};
+}
+
+//==============================================================================
+
+std::pair<double, int32_t> Region::distance_complex(
+  Position r, Direction u, int32_t on_surface) const
+{
+  const bool in_region = contains_complex(r, u, on_surface);
+  double total_distance {0.0};
+
+  while (true) {
+    auto [distance, i_surf] =
+      distance_to_nearest_surface(r, u, on_surface, on_surface != 0);
+    if (distance == INFTY) {
+      return {INFTY, std::numeric_limits<int32_t>::max()};
+    }
+
+    // Move to the candidate surface and determine which side of it the ray is
+    // entering. The surface normal is used instead of evaluating the surface
+    // equation because accumulated roundoff may place the point slightly to
+    // the wrong side of a curved surface.
+    r += distance * u;
+    total_distance += distance;
+    i_surf = std::abs(i_surf);
+    const auto& surf {*model::surfaces[i_surf - 1]};
+    if (u.dot(surf.normal(r)) <= 0.0) {
+      i_surf = -i_surf;
+    }
+
+    // If crossing the candidate changes the region membership, it is a true
+    // boundary. Otherwise, continue the search from the virtual crossing.
+    if (contains_complex(r, u, i_surf) != in_region) {
+      return {total_distance, i_surf};
+    }
+    on_surface = i_surf;
+  }
 }
 
 //==============================================================================

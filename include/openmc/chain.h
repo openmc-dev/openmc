@@ -101,6 +101,8 @@ extern vector<unique_ptr<ChainNuclide>> chain_nuclides;
 
 void read_chain_file_xml();
 
+void free_memory_chain();
+
 } // namespace openmc
 
 #endif // OPENMC_CHAIN_H

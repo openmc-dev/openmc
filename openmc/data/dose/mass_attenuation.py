@@ -52,15 +52,50 @@ _NIST126_AIR = np.array([
     [2.00000e01, 1.311e-02],
 ])
 
+def _clean_coefficient_table(data):
+    """Remove consecutive duplicate points and adjust absorption edges."""
+
+    # Remove consecutive points that duplicate both the energy and coefficient.
+    data = np.array(data)
+    duplicate = np.all(data[:, 1:] == data[:, :-1], axis=0)
+    if np.any(duplicate):
+        keep = np.ones(data.shape[1], dtype=bool)
+        keep[1:] = ~duplicate
+        data = data[:, keep]
+
+    # Preserve shell-edge jumps, but make their repeated energies strictly
+    # increasing for interpolation routines that reject duplicate grid points.
+    edge = np.flatnonzero(np.diff(data[0]) == 0.0)
+    for i in edge[::-1]:
+        data[0, i] = np.nextafter(data[0, i + 1], -np.inf)
+
+    return data
+
+
 # Registry of embedded tables: (data_source, material) -> ndarray
-# Table shape: (N, 2) with columns [Energy (MeV), μen/ρ (cm^2/g)]
+# Table shape: (2, N) with rows [Energy (eV), μ_en/ρ (cm^2/g)]
 _MUEN_TABLES = {
-    ("nist126", "air"): _NIST126_AIR,
+    ("nist126", "air"): _clean_coefficient_table(np.array([
+        _NIST126_AIR[:, 0] * EV_PER_MEV,
+        _NIST126_AIR[:, 1],
+    ])),
 }
 
 
+def _load_elemental_muen(data_source):
+    """Load elemental mass energy-absorption coefficients into the cache."""
+    if (data_source, 1) in _MUEN_TABLES:
+        return
+
+    data_file = Path(__file__).with_name('mass_energy_absorption.h5')
+    with h5py.File(data_file) as f:
+        for key, dataset in f.items():
+            data = _clean_coefficient_table(dataset[()])
+            _MUEN_TABLES[(data_source, int(key))] = data
+
+
 def mass_energy_absorption_coefficient(
-    material: str, data_source: str = "nist126"
+    material: str | int, data_source: str = "nist126"
 ) -> Tabulated1D:
     r"""Return the mass energy-absorption coefficient as a function of energy.
 
@@ -72,8 +107,10 @@ def mass_energy_absorption_coefficient(
 
     Parameters
     ----------
-    material : {'air'}
-        Material compound for which to load coefficients.
+    material : str or int
+        Material or element for which to load coefficients. A material name
+        (currently only ``'air'``), element symbol (e.g., ``'Fe'``), or atomic
+        number (e.g., 26) may be given.
     data_source : {'nist126'}
         Source library.
 
@@ -84,22 +121,31 @@ def mass_energy_absorption_coefficient(
         energy [eV], using log-log interpolation.
 
     """
-    cv.check_value("material", material, {"air"})
     cv.check_value("data_source", data_source, {"nist126"})
 
-    key = (data_source, material)
+    if isinstance(material, str):
+        if material == 'air':
+            key = (data_source, material)
+        elif material in ATOMIC_NUMBER:
+            _load_elemental_muen(data_source)
+            key = (data_source, ATOMIC_NUMBER[material])
+        else:
+            raise ValueError(
+                f"'{material}' is not a recognized material or element symbol"
+            )
+    else:
+        _load_elemental_muen(data_source)
+        key = (data_source, int(material))
+
     if key not in _MUEN_TABLES:
-        available = sorted({m for (ds, m) in _MUEN_TABLES.keys() if ds == data_source})
         raise ValueError(
             f"No mass energy-absorption data for '{material}' in data source "
-            f"'{data_source}'. Available materials: {available}"
+            f"'{data_source}'"
         )
 
     data = _MUEN_TABLES[key]
-    energy = data[:, 0].copy() * EV_PER_MEV  # MeV -> eV
-    mu_en_coeffs = data[:, 1].copy()
-    return Tabulated1D(energy, mu_en_coeffs,
-                       breakpoints=[len(energy)], interpolation=[5])
+    return Tabulated1D(data[0].copy(), data[1].copy(),
+                       breakpoints=[len(data[0])], interpolation=[5])
 
 
 # Used in mass_attenuation_coefficient function as a cache.
@@ -110,9 +156,9 @@ _MASS_ATTENUATION: dict[int, object] = {}
 def mass_attenuation_coefficient(element):
     r"""Return the photon mass attenuation coefficient as a function of energy.
 
-    The mass energy-absorption coefficient, :math:`\mu_\text{en}/\rho`, is
-    defined as the fraction of incident photon energy absorbed in a material per
-    unit mass. Values for each element are obtained from `NIST Standard
+    The mass attenuation coefficient, :math:`\mu/\rho`, characterizes the
+    attenuation of a photon beam due to interactions in a material per unit
+    mass thickness. Values for each element are obtained from `NIST Standard
     Reference Database 8 <https://doi.org/10.18434/T48G6X>`_: XCOM Photon Cross
     Sections Database.
 
@@ -132,7 +178,7 @@ def mass_attenuation_coefficient(element):
         data_file = Path(__file__).with_name('mass_attenuation.h5')
         with h5py.File(data_file, 'r') as f:
             for key, dataset in f.items():
-                energies, mu_rho = dataset[()]  # shape (2, N)
+                energies, mu_rho = _clean_coefficient_table(dataset[()])
                 _MASS_ATTENUATION[int(key)] = Tabulated1D(
                     energies, mu_rho,
                     breakpoints=[len(energies)],

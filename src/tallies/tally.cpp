@@ -512,7 +512,7 @@ void Tally::set_strides()
   // longest stride.
   auto n = filters_.size();
   strides_.resize(n, 0);
-  int stride = 1;
+  int64_t stride = 1;
   for (int i = n - 1; i >= 0; --i) {
     strides_[i] = stride;
     stride *= model::tally_filters[filters_[i]]->n_bins();
@@ -644,8 +644,24 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case HEATING:
-      if (settings::photon_transport)
-        estimator_ = TallyEstimator::COLLISION;
+      if (settings::photon_transport) {
+        // Photon heating requires a collision estimator (analog energy
+        // balance). However, if the tally only scores neutrons, we can keep the
+        // tracklength estimator since neutron heating uses kerma coefficients
+        // that support tracklength scoring.
+        bool neutron_only = false;
+        for (auto i_filt : filters_) {
+          auto pf =
+            dynamic_cast<ParticleFilter*>(model::tally_filters[i_filt].get());
+          if (pf && pf->particles().size() == 1 &&
+              pf->particles()[0].is_neutron()) {
+            neutron_only = true;
+            break;
+          }
+        }
+        if (!neutron_only)
+          estimator_ = TallyEstimator::COLLISION;
+      }
       break;
 
     case SCORE_PULSE_HEIGHT: {
@@ -871,7 +887,7 @@ void Tally::accumulate()
     if (higher_moments_) {
 #pragma omp parallel for
       // filter bins (specific cell, energy bins)
-      for (int i = 0; i < results_.shape(0); ++i) {
+      for (int64_t i = 0; i < results_.shape(0); ++i) {
         // score bins (flux, total reaction rate, fission reaction rate, etc.)
         for (int j = 0; j < results_.shape(1); ++j) {
           double val = results_(i, j, TallyResult::VALUE) * norm;
@@ -886,7 +902,7 @@ void Tally::accumulate()
     } else {
 #pragma omp parallel for
       // filter bins (specific cell, energy bins)
-      for (int i = 0; i < results_.shape(0); ++i) {
+      for (int64_t i = 0; i < results_.shape(0); ++i) {
         // score bins (flux, total reaction rate, fission reaction rate, etc.)
         for (int j = 0; j < results_.shape(1); ++j) {
           double val = results_(i, j, TallyResult::VALUE) * norm;
@@ -1034,8 +1050,8 @@ void reduce_tally_results()
       tensor::Tensor<double> values_reduced(values.shape());
 
       // Reduce contiguous set of tally results
-      MPI_Reduce(values.data(), values_reduced.data(), values.size(),
-        MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+      mpi::reduce(values.data(), values_reduced.data(), values.size(), MPI_SUM,
+        0, mpi::intracomm);
 
       // Transfer values on master and reset on other ranks
       if (mpi::master) {

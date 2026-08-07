@@ -22,6 +22,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle_type.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
@@ -46,9 +47,15 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Determine width for zero padding
     int w = std::to_string(settings::n_max_batches).size();
 
+    // Tag statepoints written during the forward solve of an adjoint run
+    const char* forward =
+      (FlatSourceDomain::solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT)
+        ? "forward."
+        : "";
+
     // Set filename for state point
-    filename_ = fmt::format("{0}statepoint.{1:0{2}}.h5", settings::path_output,
-      simulation::current_batch, w);
+    filename_ = fmt::format("{0}statepoint.{3}{1:0{2}}.h5",
+      settings::path_output, simulation::current_batch, w, forward);
   }
 
   // If a file name was specified, ensure it has .h5 file extension
@@ -592,8 +599,16 @@ void write_source_point(std::string filename, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index, bool use_mcpl)
 {
   std::string ext = use_mcpl ? "mcpl" : "h5";
+
+  int total_surf_particles = source_bank.size();
+#ifdef OPENMC_MPI
+  int num_particles = source_bank.size();
+  MPI_Allreduce(
+    &num_particles, &total_surf_particles, 1, MPI_INT, MPI_SUM, mpi::intracomm);
+#endif
+
   write_message("Creating source file {}.{} with {} particles ...", filename,
-    ext, source_bank.size(), 5);
+    ext, total_surf_particles, 5);
 
   // Dispatch to appropriate function based on file type
   if (use_mcpl) {
@@ -938,8 +953,8 @@ void write_tally_results_nr(hid_t file_id)
       // The MPI_IN_PLACE specifier allows the master to copy values into
       // a receive buffer without having a temporary variable
 #ifdef OPENMC_MPI
-      MPI_Reduce(MPI_IN_PLACE, values.data(), values.size(), MPI_DOUBLE,
-        MPI_SUM, 0, mpi::intracomm);
+      mpi::reduce(
+        MPI_IN_PLACE, values.data(), values.size(), MPI_SUM, 0, mpi::intracomm);
 #endif
 
       // At the end of the simulation, store the reduced results back
@@ -968,8 +983,8 @@ void write_tally_results_nr(hid_t file_id)
     } else {
       // Receive buffer not significant at other processors
 #ifdef OPENMC_MPI
-      MPI_Reduce(values.data(), nullptr, values.size(), MPI_DOUBLE, MPI_SUM, 0,
-        mpi::intracomm);
+      mpi::reduce<double>(
+        values.data(), nullptr, values.size(), MPI_SUM, 0, mpi::intracomm);
 #endif
     }
   }

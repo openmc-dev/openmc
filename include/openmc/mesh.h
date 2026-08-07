@@ -236,6 +236,12 @@ public:
   //! \param[in] bin Mesh bin to generate a label for
   virtual std::string bin_label(int bin) const = 0;
 
+  //! Axis names (per dimension) used when labeling surface tally bins
+  virtual std::array<const char*, 3> axis_labels() const;
+
+  //! Build the surface component of a mesh surface tally bin label
+  std::string surface_bin_label(int surf_index) const;
+
   //! Get the volume of a mesh bin
   //
   //! \param[in] bin Bin to return the volume for
@@ -374,6 +380,9 @@ public:
   //!
   //! \param[in] r Coordinate to get index for
   //! \param[in] i Direction index
+  //! \return Mesh index in [0, shape[i] + 1]. The external boundaries are
+  //! included in the mesh, and interior boundaries belong to the lower-index
+  //! mesh cell.
   virtual int get_index_in_direction(double r, int i) const = 0;
 
   //! Get the coordinate for the mesh grid boundary in the positive direction
@@ -588,6 +597,8 @@ public:
 
   static const std::string mesh_type;
 
+  std::array<const char*, 3> axis_labels() const override;
+
   Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
@@ -622,7 +633,7 @@ private:
 
   inline int sanitize_angular_index(int idx, bool full, int N) const
   {
-    if ((idx > 0) and (idx <= N)) {
+    if ((idx > 0) && (idx <= N)) {
       return idx;
     } else if (full) {
       return (idx + N - 1) % N + 1;
@@ -652,6 +663,8 @@ public:
   virtual std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
+
+  std::array<const char*, 3> axis_labels() const override;
 
   Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
 
@@ -685,7 +698,7 @@ private:
 
   inline int sanitize_angular_index(int idx, bool full, int N) const
   {
-    if ((idx > 0) and (idx <= N)) {
+    if ((idx > 0) && (idx <= N)) {
       return idx;
     } else if (full) {
       return (idx + N - 1) % N + 1;

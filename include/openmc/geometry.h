@@ -3,15 +3,46 @@
 
 #include <cmath>
 #include <cstdint>
+#include <unordered_map>
+#include <vector>
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
+#include "openmc/random_ray/source_region.h" // For hash_combine
 #include "openmc/vector.h"
 
 namespace openmc {
 
 class BoundaryInfo;
 class GeometryState;
+
+//==============================================================================
+//! OverlapKey to store cell and universe data of a single overlap, along with
+//! a functor for hashing an OverlapKey into an unordered_map.
+//==============================================================================
+
+struct OverlapKey {
+  int universe_id;
+  int cell1_id;
+  int cell2_id;
+
+  bool operator==(const OverlapKey& other) const
+  {
+    return universe_id == other.universe_id && cell1_id == other.cell1_id &&
+           cell2_id == other.cell2_id;
+  }
+};
+
+struct OverlapKeyHash {
+  std::size_t operator()(const OverlapKey& k) const
+  {
+    size_t seed = 0;
+    hash_combine(seed, k.universe_id);
+    hash_combine(seed, k.cell1_id);
+    hash_combine(seed, k.cell2_id);
+    return seed;
+  }
+};
 
 //==============================================================================
 // Global variables
@@ -23,6 +54,10 @@ extern int root_universe;      //!< Index of root universe
 extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
 
 extern vector<int64_t> overlap_check_count;
+
+// Overlap data structures get cleared every slice_data run
+extern vector<OverlapKey> overlap_keys;
+extern std::unordered_map<OverlapKey, int, OverlapKeyHash> overlap_key_index;
 
 } // namespace model
 
@@ -38,8 +73,7 @@ inline bool coincident(double d1, double d2)
 //==============================================================================
 //! Check for overlapping cells at a particle's position.
 //==============================================================================
-
-bool check_cell_overlap(GeometryState& p, bool error = true);
+int check_cell_overlap(GeometryState& p, bool error = true);
 
 //==============================================================================
 //! Get the cell instance for a particle at the specified universe level
@@ -61,8 +95,19 @@ int cell_instance_at_level(const GeometryState& p, int level);
 //!   valid geometry coordinate stack.
 //==============================================================================
 bool exhaustive_find_cell(GeometryState& p, bool verbose = false);
-bool neighbor_list_find_cell(
-  GeometryState& p, bool verbose = false); // Only usable on surface crossings
+
+//==============================================================================
+//! Locate a particle starting from its current coordinate level.
+//==============================================================================
+bool neighbor_list_find_cell(GeometryState& p, bool verbose = false);
+
+//==============================================================================
+//! Reconcile the current cell after a direction change near a surface.
+//!
+//! \param p A particle whose coordinate stack may need to be updated.
+//==============================================================================
+
+void reconcile_cell_after_collision(GeometryState& p);
 
 //==============================================================================
 //! Move a particle into a new lattice tile.

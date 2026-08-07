@@ -954,7 +954,7 @@ class LevelInelastic(EnergyDistribution):
     def threshold(self):
         A = self.mass
         Q = self.q_value
-        if particle == 'neutron':
+        if self.particle == 'neutron':
             return (A+1.0)/A*abs(Q)
         else:
             b = NEUTRON_MASS_EV*(A-1)

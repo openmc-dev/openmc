@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 import tempfile
-from typing import Sequence, Dict
+from typing import TYPE_CHECKING, Literal, Sequence, Dict
 import warnings
 
 import lxml.etree as ET
@@ -20,13 +20,16 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
-from .utility_funcs import input_path
+from .utility_funcs import input_path, set_xml_input_path
 from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, JOULE_PER_EV
 from openmc.data.function import Tabulated1D
 from openmc.data import mass_energy_absorption_coefficient, dose_coefficients
+
+if TYPE_CHECKING:
+    from openmc.deplete import Chain
 
 
 # Units for density supported by OpenMC
@@ -296,6 +299,8 @@ class Material(IDManagerMixin):
                 mass += nuc.percent
 
         # Compute and return the molar mass
+        if moles == 0.0:
+            raise ValueError("Material has no nuclides; cannot compute molar mass")
         return mass / moles
 
     @property
@@ -349,7 +354,7 @@ class Material(IDManagerMixin):
         clip_tolerance : float
             Maximum fraction of :math:`\sum_i x_i p_i` for discrete distributions
             that will be discarded.
-        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3'}
             Specifies the units on the integral of the distribution.
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
@@ -367,7 +372,7 @@ class Material(IDManagerMixin):
             the total intensity of the photon source in the requested units.
 
         """
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3'})
 
         if exclude_nuclides is not None and include_nuclides is not None:
             raise ValueError("Cannot specify both exclude_nuclides and include_nuclides")
@@ -378,6 +383,8 @@ class Material(IDManagerMixin):
                 raise ValueError("volume must be specified if units='Bq'")
         elif units == 'Bq/cm3':
             multiplier = 1
+        elif units == 'Bq/m3':
+            multiplier = 1e6
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'Bq/kg':
@@ -1381,18 +1388,23 @@ class Material(IDManagerMixin):
         return densities
 
 
-    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: float | None = None) -> dict[str, float] | float:
-        """Returns the activity of the material or of each nuclide within.
+    def get_activity(
+        self,
+        units: str = 'Bq/cm3',
+        by_nuclide: bool = False,
+        volume: float | None = None,
+        chain_file: Literal[False] | None | PathLike | Chain = None
+    ) -> dict[str, float] | float:
+        """Return the activity of the material or each nuclide within.
 
         .. versionadded:: 0.13.1
 
         Parameters
         ----------
-        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3', 'Ci', 'Ci/m3'}
             Specifies the type of activity to return, options include total
             activity [Bq,Ci], specific [Bq/g, Bq/kg] or volumetric activity
-            [Bq/cm3,Ci/m3]. Default is volumetric activity [Bq/cm3].
+            [Bq/cm3, Bq/m3, Ci/m3]. Default is volumetric activity [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
@@ -1401,25 +1413,39 @@ class Material(IDManagerMixin):
             :attr:`Material.volume` attribute.
 
             .. versionadded:: 0.13.3
+        chain_file : False, None, PathLike, or openmc.deplete.Chain, optional
+            Source of half-life values. If ``False``, only ENDF/B-VIII.0 data is
+            used. If ``None``, the chain specified by
+            ``openmc.config['chain_file']`` is used when available. If a path or
+            :class:`openmc.deplete.Chain` is given, that chain is used. For
+            ``None`` or an explicit chain, nuclides absent from the chain fall
+            back to ENDF/B-VIII.0 data.
+
+            .. versionadded:: 0.15.4
 
         Returns
         -------
         Union[dict, float]
-            If by_nuclide is True then a dictionary whose keys are nuclide
-            names and values are activity is returned. Otherwise the activity
-            of the material is returned as a float.
+            If by_nuclide is True then a dictionary whose keys are nuclide names
+            and values are activity is returned. Otherwise the activity of the
+            material is returned as a float.
         """
 
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3', 'Ci', 'Ci/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if volume is None:
             volume = self.volume
 
+        if units in {'Bq', 'Ci'} and volume is None:
+            raise ValueError(f"Volume must be set in order to compute activity in '{units}'.")
+
         if units == 'Bq':
             multiplier = volume
         elif units == 'Bq/cm3':
             multiplier = 1
+        elif units == 'Bq/m3':
+            multiplier = 1e6
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'Bq/kg':
@@ -1429,25 +1455,30 @@ class Material(IDManagerMixin):
         elif units == 'Ci/m3':
             multiplier = 1e6 / _BECQUEREL_PER_CURIE
 
+        # Resolve chain to avoid repeated lookups for each nuclide
+        from openmc.deplete.chain import _get_chain
+        if chain_file is not False:
+            if chain_file is not None or openmc.config.get('chain_file') is not None:
+                chain_file = _get_chain(chain_file)
+
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            inv_seconds = openmc.data.decay_constant(nuclide)
+            inv_seconds = openmc.data.decay_constant(nuclide, chain_file=chain_file)
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())
 
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
                        volume: float | None = None) -> dict[str, float] | float:
-        """Returns the decay heat of the material or for each nuclide in the
-        material in units of [W], [W/g], [W/kg] or [W/cm3].
+        """Return the decay heat of the material or each nuclide within.
 
         .. versionadded:: 0.13.3
 
         Parameters
         ----------
-        units : {'W', 'W/g', 'W/kg', 'W/cm3'}
+        units : {'W', 'W/g', 'W/kg', 'W/cm3', 'W/m3'}
             Specifies the units of decay heat to return. Options include total
-            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3].
+            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3, W/m3].
             Default is total heat [W].
         by_nuclide : bool
             Specifies if the decay heat should be returned for the material as a
@@ -1466,13 +1497,17 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'W', 'W/g', 'W/kg', 'W/cm3'})
+        cv.check_value('units', units, {'W', 'W/g', 'W/kg', 'W/cm3', 'W/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'W':
             multiplier = volume if volume is not None else self.volume
+            if multiplier is None:
+                raise ValueError("Volume must be set in order to compute total decay heat.")
         elif units == 'W/cm3':
             multiplier = 1
+        elif units == 'W/m3':
+            multiplier = 1e6
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'W/kg':
@@ -2251,11 +2286,12 @@ class Materials(cv.CheckedList):
             Materials collection
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
 
-        return cls.from_xml_element(root)
+            return cls.from_xml_element(root)
 
 
     def deplete(
@@ -2277,7 +2313,7 @@ class Materials(cv.CheckedList):
         multigroup_fluxes: Sequence[Sequence[float]]
             Energy-dependent multigroup flux values, where each sublist corresponds
             to a specific material. Will be normalized so that it sums to 1.
-        energy_group_structures': Sequence[Sequence[float] | str]
+        energy_group_structures: Sequence[Sequence[float] | str]
             Energy group boundaries in [eV] or the name of the group structure.
         timesteps : iterable of float or iterable of tuple
             Array of timesteps. Note that values are not cumulative. The units are
@@ -2312,6 +2348,11 @@ class Materials(cv.CheckedList):
         for mat in self:
             mat.depletable = True
 
+        if len(multigroup_fluxes) != len(self):
+            raise ValueError("multigroup_fluxes length must match number of materials")
+        if len(energy_group_structures) != len(self):
+            raise ValueError("energy_group_structures length must match number of materials")
+
         chain = _get_chain(chain_file)
 
         # Create MicroXS objects for all materials
@@ -2322,6 +2363,10 @@ class Materials(cv.CheckedList):
             for material, flux, energy in zip(
                 self, multigroup_fluxes, energy_group_structures
             ):
+                if material.volume is None:
+                    raise ValueError(
+                        f"Material {material.id} has no volume; cannot deplete"
+                    )
                 temperature = material.temperature or 293.6
                 micro_xs = openmc.deplete.MicroXS.from_multigroup_flux(
                     energies=energy,

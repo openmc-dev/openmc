@@ -30,12 +30,19 @@ _FILTER_TYPES = (
     'weight', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
 )
 
-_CURRENT_NAMES = (
-    'x-min out', 'x-min in', 'x-max out', 'x-max in',
-    'y-min out', 'y-min in', 'y-max out', 'y-max in',
-    'z-min out', 'z-min in', 'z-max out', 'z-max in'
-)
+def _mesh_current_names(mesh):
+    """Return surface-crossing bin names derived from a mesh's axis labels.
 
+    For each axis (in dimension order) the four crossing names are produced as
+    "<axis>-min out", "<axis>-min in", "<axis>-max out", "<axis>-max in". This
+    yields x/y/z names for Cartesian meshes, r/phi/z for cylindrical, and
+    r/theta/phi for spherical.
+    """
+    names = []
+    for axis in mesh.axis_labels:
+        names += [f'{axis}-min out', f'{axis}-min in',
+                  f'{axis}-max out', f'{axis}-max in']
+    return names
 
 
 class FilterMeta(ABCMeta):
@@ -996,7 +1003,7 @@ class MeshFilter(Filter):
         idx_start = 0 if isinstance(self.mesh, openmc.UnstructuredMesh) else 1
 
         # Generate a multi-index sub-column for each axis
-        for label, dim_size in zip(self.mesh._axis_labels, self.mesh.dimension):
+        for label, dim_size in zip(self.mesh.axis_labels, self.mesh.dimension):
             filter_dict[mesh_key, label] = _repeat_and_tile(
                 np.arange(idx_start, idx_start + dim_size), stride, data_size)
             stride *= dim_size
@@ -1273,7 +1280,8 @@ class MeshSurfaceFilter(MeshFilter):
         Unique identifier for the filter
     bins : list of tuple
         A list of mesh indices / surfaces for each filter bin, e.g. [(1, 1,
-        'x-min out'), (1, 1, 'x-min in'), ...]
+        'x-min out'), (1, 1, 'x-min in'), ...]. Surface names use the mesh's
+        axis labels (e.g. r/phi/z for a cylindrical mesh).
     num_bins : Integral
         The number of filter bins
 
@@ -1287,10 +1295,12 @@ class MeshSurfaceFilter(MeshFilter):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
 
-        # Take the product of mesh indices and current names
-        n_dim = mesh.n_dimension
+        # Take the product of mesh indices and surface-crossing names, using
+        # the mesh's own axis labels so cylindrical/spherical meshes get the
+        # correct names.
+        current_names = _mesh_current_names(mesh)
         self.bins = [mesh_tuple + (surf,) for mesh_tuple, surf in
-                     product(mesh.indices, _CURRENT_NAMES[:4*n_dim])]
+                     product(mesh.indices, current_names)]
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1309,9 +1319,11 @@ class MeshSurfaceFilter(MeshFilter):
         Returns
         -------
         pandas.DataFrame
-            A Pandas DataFrame with three columns describing the x,y,z mesh
-            cell indices corresponding to each filter bin.  The number of rows
-            in the DataFrame is the same as the total number of bins in the
+            A Pandas DataFrame with columns describing the mesh cell indices
+            corresponding to each filter bin, plus a surface column. Column
+            names depend on the mesh type (e.g., x/y/z for RegularMesh, r/phi/z
+            for CylindricalMesh, r/theta/phi for SphericalMesh). The number of
+            rows in the DataFrame is the same as the total number of bins in the
             corresponding tally, with the filter bin appropriately tiled to map
             to the corresponding tally bins.
 
@@ -1329,34 +1341,24 @@ class MeshSurfaceFilter(MeshFilter):
         # Append mesh ID as outermost index of multi-index
         mesh_key = f'mesh {self.mesh.id}'
 
-        # Find mesh dimensions - use 3D indices for simplicity
-        n_surfs = 4 * len(self.mesh.dimension)
-        if len(self.mesh.dimension) == 3:
-            nx, ny, nz = self.mesh.dimension
-        elif len(self.mesh.dimension) == 2:
-            nx, ny = self.mesh.dimension
-            nz = 1
-        else:
-            nx = self.mesh.dimension
-            ny = nz = 1
+        # Number of surface-crossing bins per mesh element
+        dims = self.mesh.dimension
+        n_surfs = 4 * len(dims)
 
-        # Generate multi-index sub-column for x-axis
-        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
-            np.arange(1, nx + 1), n_surfs * stride, data_size)
+        # Surface-crossing names derived from the mesh's axis labels
+        current_names = _mesh_current_names(self.mesh)
 
-        # Generate multi-index sub-column for y-axis
-        if len(self.mesh.dimension) > 1:
-            filter_dict[mesh_key, 'y'] = _repeat_and_tile(
-                np.arange(1, ny + 1), n_surfs * nx * stride, data_size)
-
-        # Generate multi-index sub-column for z-axis
-        if len(self.mesh.dimension) > 2:
-            filter_dict[mesh_key, 'z'] = _repeat_and_tile(
-                np.arange(1, nz + 1), n_surfs * nx * ny * stride, data_size)
+        # Generate a multi-index sub-column for each axis, using the mesh's own
+        # axis labels so curvilinear meshes are labeled correctly.
+        axis_stride = n_surfs * stride
+        for label, dim_size in zip(self.mesh.axis_labels, dims):
+            filter_dict[mesh_key, label] = _repeat_and_tile(
+                np.arange(1, dim_size + 1), axis_stride, data_size)
+            axis_stride *= dim_size
 
         # Generate multi-index sub-column for surface
         filter_dict[mesh_key, 'surf'] = _repeat_and_tile(
-            _CURRENT_NAMES[:n_surfs], stride, data_size)
+            current_names[:n_surfs], stride, data_size)
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         return pd.concat([df, pd.DataFrame(filter_dict)])

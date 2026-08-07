@@ -123,6 +123,23 @@ endif()
 
 if(OPENMC_USE_MPI)
   find_package(MPI REQUIRED)
+
+  include(CMakePushCheckState)
+  include(CheckCXXSourceCompiles)
+  cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_LIBRARIES MPI::MPI_CXX)
+  check_cxx_source_compiles(
+    "#include <mpi.h>
+    int main()
+    {
+      double value = 0.0;
+      MPI_Count count = 1;
+      return MPI_Reduce_c(
+        &value, &value, count, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    }"
+    OPENMC_HAVE_MPI_REDUCE_C
+  )
+  cmake_pop_check_state()
 endif()
 
 #===============================================================================
@@ -518,6 +535,9 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
+  if (OPENMC_HAVE_MPI_REDUCE_C)
+    target_compile_definitions(libopenmc PRIVATE -DOPENMC_HAVE_MPI_REDUCE_C)
+  endif()
 endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
@@ -532,7 +552,7 @@ else()
 endif()
 
 if(OPENMC_USE_DAGMC)
-  target_compile_definitions(libopenmc PRIVATE OPENMC_DAGMC_ENABLED)
+  target_compile_definitions(libopenmc PUBLIC OPENMC_DAGMC_ENABLED)
   target_link_libraries(libopenmc dagmc-shared)
 
   if(OPENMC_USE_UWUW)
@@ -611,9 +631,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 #===============================================================================
 # Install executable, scripts, manpage, license
 #===============================================================================
-
-configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" @ONLY)
-configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake" @ONLY)
+include(CMakePackageConfigHelpers)
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 install(TARGETS openmc libopenmc
@@ -627,10 +645,24 @@ install(EXPORT openmc-targets
   NAMESPACE OpenMC::
   DESTINATION ${INSTALL_CONFIGDIR})
 
+configure_package_config_file(
+    "cmake/OpenMCConfig.cmake.in"
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
+    INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+)
+
+write_basic_package_version_file(
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
+    VERSION ${OPENMC_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
 install(FILES
-  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
-  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
-  DESTINATION ${INSTALL_CONFIGDIR})
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
+    DESTINATION "${INSTALL_CONFIGDIR}"
+)
+
 install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

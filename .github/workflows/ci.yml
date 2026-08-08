@@ -37,6 +37,35 @@ jobs:
               - '!docs/**'
               - '!**/*.md'
           predicate-quantifier: 'every'
+
+  cmake-dependencies:
+    needs: filter-changes
+    if: ${{ needs.filter-changes.outputs.source_changed == 'true' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Setup minimum supported CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.22.6'
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        run: |
+          sudo apt -y update
+          sudo apt install -y libhdf5-dev libpng-dev
+
+      - name: Configure with fetched dependencies
+        run: |
+          cmake -S . -B build-dependencies \
+            -DOPENMC_BUILD_TESTS=OFF \
+            -DOPENMC_FORCE_FETCHCONTENT=ON \
+            -DOPENMC_USE_OPENMP=OFF
+
+      - name: Build
+        run: cmake --build build-dependencies --parallel 2
+
   main:
     needs: filter-changes
     if: ${{ needs.filter-changes.outputs.source_changed == 'true' }}
@@ -229,7 +258,7 @@ jobs:
           fail-on-error: false
 
   ci-pass:
-    needs: [filter-changes, main, coverage]
+    needs: [filter-changes, cmake-dependencies, main, coverage]
     name: Check CI status
     if: ${{ always() }}
     runs-on: ubuntu-latest
@@ -240,7 +269,7 @@ jobs:
             echo "Documentation-only change - CI skipped successfully"
             exit 0
           fi
-          if [[ "${{ needs.main.result }}" == "success" && "${{ needs.coverage.result }}" == "success" ]]; then
+          if [[ "${{ needs.cmake-dependencies.result }}" == "success" && "${{ needs.main.result }}" == "success" && "${{ needs.coverage.result }}" == "success" ]]; then
             echo "CI passed"
             exit 0
           fi

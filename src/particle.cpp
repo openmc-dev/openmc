@@ -198,7 +198,27 @@ void Particle::from_source(const SourceSite* src)
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
 
+  // Revive with delta tracking turned on in most scenarios. There are a few
+  // exceptions:
+  // i)  If hybrid-in-cross-section tracking is being used and the threshold is
+  //     0. This ensures the particle tracks and RNG stream fully mimic surface
+  //     tracking.
+  // ii) The birth energy is below the hybrid-in-energy cuttoff for the
+  //     particle.
   if (settings::delta_tracking) {
+    // i)
+    const bool disable_i =
+      settings::hybrid_delta_type == HybridTrackingType::CrossSection &&
+      settings::hybrid_xs_threshold == 0.0;
+
+    // ii)
+    const bool disable_iii =
+      settings::hybrid_delta_type == HybridTrackingType::Energy &&
+      E() < settings::hybrid_energy_threshold[type().transport_index()];
+
+    delta_tracking() = !(disable_i || disable_iii);
+
+    // Need to keep majorant in synch.
     update_majorant();
   }
 }
@@ -385,8 +405,8 @@ void Particle::event_delta_advance()
     }
   }
 
-  // Force re-calculation of material properties at the collision site if running
-  // delta tracking.
+  // Force re-calculation of material properties at the collision site if
+  // running delta tracking.
   if (delta_tracking()) {
     material_last() = C_NONE;
   }
@@ -973,30 +993,29 @@ bool Particle::kill_invalid_maj()
 void Particle::update_tracking_type()
 {
   switch (settings::hybrid_delta_type) {
-    case HybridTrackingType::CrossSection:
-    {
-      // We need to decide if delta tracking or surface tracking should be used.
-      // This is done based on Eq. 9 in the Serpent paper:
-      // http://doi.org/10.1016/j.anucene.2010.01.011
-      const double th = 1.0 - settings::hybrid_xs_threshold;
-      if (alive() && (macro_xs().total / majorant()) > th) {
-        delta_tracking() = true;
-      } else if (alive()) {
-        delta_tracking() = false;
-      }
-      break;
+  case HybridTrackingType::CrossSection: {
+    // We need to decide if delta tracking or surface tracking should be used.
+    // This is done based on Eq. 9 in the Serpent paper:
+    // http://doi.org/10.1016/j.anucene.2010.01.011
+    const double th = 1.0 - settings::hybrid_xs_threshold;
+    if (alive() && (macro_xs().total / majorant()) > th) {
+      delta_tracking() = true;
+    } else if (alive()) {
+      delta_tracking() = false;
     }
-    case HybridTrackingType::Energy:
-    {
-      // Switch between tracking types based on energy. See
-      // Section 3.3 of https://doi.org/10.1080/23324309.2026.2618791
-      if (alive() && E() >= settings::hybrid_energy_threshold) {
-        delta_tracking() = true;
-      } else if (alive()) {
-        delta_tracking() = false;
-      }
-      break;
+    break;
+  }
+  case HybridTrackingType::Energy: {
+    // Switch between tracking types based on energy. See
+    // Section 3.3 of https://doi.org/10.1080/23324309.2026.2618791
+    if (alive() &&
+        E() >= settings::hybrid_energy_threshold[type().transport_index()]) {
+      delta_tracking() = true;
+    } else if (alive()) {
+      delta_tracking() = false;
     }
+    break;
+  }
   }
 }
 

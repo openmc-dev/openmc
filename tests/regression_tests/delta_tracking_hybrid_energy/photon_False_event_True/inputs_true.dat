@@ -39,8 +39,9 @@
     <photon_transport>false</photon_transport>
     <event_based>true</event_based>
     <delta_tracking enable="true">
-      <hybrid_type>cross_section</hybrid_type>
-      <xs_threshold>1.0</xs_threshold>
+      <hybrid_type>energy</hybrid_type>
+      <neutron_energy_threshold>50000.0</neutron_energy_threshold>
+      <photon_energy_threshold>1000000.0</photon_energy_threshold>
     </delta_tracking>
   </settings>
   <tallies>

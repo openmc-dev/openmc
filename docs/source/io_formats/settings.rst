@@ -240,9 +240,45 @@ from MF=1, MT=458 on an ENDF evaluation.
 ``<delta_tracking>``
 ----------------------------
 
-Whether transport should be performed with delta tracking or not.
+The ``<delta_tracking>`` element lists the settings used for hybrid delta
+tracking. It has the following attributes/sub-elements:
 
-  *Default*: false
+  :enable:
+    A boolean which dictates if OpenMC should run the simulation with delta
+    tracking or not. If false, surface tracking is used and the other
+    attributes/sub-elements of ``<delta_tracking>`` are ignored.
+
+  :hybrid_type:
+    The hybrid delta tracking scheme to use. Options are the
+    hybrid-in-cross-section scheme (``cross_section``) or the
+    hybrid-in-energy scheme (``energy``).
+
+    *Default*: ``cross_section``
+
+  :xs_threshold:
+    The hybrid-in-cross-section threshold (:math:`c`) used to determine whether
+    or not a particle should use delta tracking or surface tracking. When
+    :math:`\Sigma_{t} / \Sigma_{maj} > 1 - c`, the particle switches to delta
+    tracking. Otherwise, the particle switches to surface tracking. This parameter
+    is only used when ``hybrid_type`` is set to ``cross_section``.
+
+    *Default*: 0.9
+
+  :neutron_energy_threshold:
+    The energy threshold (eV) for neutrons in the hybrid-in-energy approach. When
+    the neutron energy is larger than ``neutron_energy_threshold``, delta
+    tracking is used. Otherwise, surface tracking is used. This parameter is
+    only valid when ``hybrid_type`` is set to ``energy``.
+
+    *Default*: 10
+
+  :photon_energy_threshold:
+    The energy threshold (eV) for photons in the hybrid-in-energy approach. When
+    the photon energy is larger than ``photon_energy_threshold``, delta
+    tracking is used. Otherwise, surface tracking is used. This parameter is
+    only valid when ``hybrid_type`` is set to ``energy``.
+
+    *Default*: 100000
 
 --------------------------------
 ``<electron_treatment>`` Element

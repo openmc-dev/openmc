@@ -781,7 +781,6 @@ void initialize_particle_track(
 
   // Compute the majorant and set the delta tracking flag.
   if (settings::delta_tracking) {
-    p.delta_tracking() = true;
     p.update_majorant();
   }
 
@@ -991,13 +990,14 @@ void transport_history_based_single_particle(Particle& p)
   p.event_death();
 }
 
-void transport_delta_history_based_single_particle(Particle& p)
+void transport_hybrid_history_based_single_particle(Particle& p)
 {
   while (p.alive()) {
     // Need to keep the majorant up to date regardless of the tracking type.
     p.event_update_majorant();
 
-    // If running surface tracking, cross sections must be computed before advancing.
+    // If running surface tracking, cross sections must be computed before
+    // advancing.
     if (!p.delta_tracking()) {
       p.event_calculate_xs();
     }
@@ -1051,7 +1051,7 @@ void transport_history_based()
     for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       initialize_particle_track(p, i_work, false);
       if (settings::delta_tracking) {
-        transport_delta_history_based_single_particle(p);
+        transport_hybrid_history_based_single_particle(p);
       } else {
         transport_history_based_single_particle(p);
       }
@@ -1096,7 +1096,7 @@ void transport_history_based_shared_secondary()
     for (int64_t i = 1; i <= simulation::work_per_rank; i++) {
       initialize_particle_track(p, i, false);
       if (settings::delta_tracking) {
-        transport_delta_history_based_single_particle(p);
+        transport_hybrid_history_based_single_particle(p);
       } else {
         transport_history_based_single_particle(p);
       }
@@ -1160,7 +1160,7 @@ void transport_history_based_shared_secondary()
         SourceSite& site = simulation::shared_secondary_bank_read[i - 1];
         p.event_revive_from_secondary(site);
         if (settings::delta_tracking) {
-          transport_delta_history_based_single_particle(p);
+          transport_hybrid_history_based_single_particle(p);
         } else {
           transport_history_based_single_particle(p);
         }
@@ -1200,8 +1200,8 @@ void transport_event_based()
 
     // Initialize all particle histories for this subiteration
     if (settings::delta_tracking) {
-      process_delta_init_events(n_particles, source_offset);
-      process_delta_transport_events();
+      process_hybrid_init_events(n_particles, source_offset);
+      process_hybrid_transport_events();
     } else {
       process_init_events(n_particles, source_offset);
       process_transport_events();
@@ -1240,8 +1240,8 @@ void transport_event_based_shared_secondary()
       std::min(remaining_work, settings::max_particles_in_flight);
 
     if (settings::delta_tracking) {
-      process_delta_init_events(n_particles, source_offset);
-      process_delta_transport_events();
+      process_hybrid_init_events(n_particles, source_offset);
+      process_hybrid_transport_events();
     } else {
       process_init_events(n_particles, source_offset);
       process_transport_events();
@@ -1308,9 +1308,9 @@ void transport_event_based_shared_secondary()
         std::min(sec_remaining, settings::max_particles_in_flight);
 
       if (settings::delta_tracking) {
-        process_delta_init_secondary_events(
+        process_hybrid_init_secondary_events(
           n_particles, sec_offset, simulation::shared_secondary_bank_read);
-        process_delta_transport_events();
+        process_hybrid_transport_events();
       } else {
         process_init_secondary_events(
           n_particles, sec_offset, simulation::shared_secondary_bank_read);

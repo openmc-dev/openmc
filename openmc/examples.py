@@ -7,7 +7,7 @@ import openmc
 PINCELL_PITCH = 1.26 # cm
 
 def delta_tracking_lattice(
-    hybrid_threshold: float,
+    delta_tracking_settings: dict,
     run_photon: bool = False,
     boundary_type: str = 'reflective',
     densities: list[float] | None = None) -> openmc.Model:
@@ -15,11 +15,8 @@ def delta_tracking_lattice(
 
     Parameters
     ----------
-    hybrid_threshold: float
-        The threshold to use for hybrid delta tracking. 0 runs surface
-        tracking, 1 runs delta tracking. A value between 0 and 1 runs a
-        combination of both based on the local ratio of the total to
-        majorant cross sections.
+    delta_tracking_settings : dict
+        The delta tracking settings dictionary to apply to this model.
     run_photon : bool, optional
         If coupled neutron-photon transport should be run or not.
     boundary_type : str, optional
@@ -99,8 +96,7 @@ def delta_tracking_lattice(
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 1000
-    model.settings.delta_tracking = True
-    model.settings.delta_tracking_threshold = hybrid_threshold
+    model.settings.delta_tracking = delta_tracking_settings
     model.settings.photon_transport = run_photon
 
     return model

@@ -33,10 +33,7 @@ enum class IFPParameter {
 };
 
 // Type of hybrid delta tracking.
-enum class HybridTrackingType {
-  CrossSection,
-  Energy
-};
+enum class HybridTrackingType { CrossSection, Energy };
 
 struct CollisionTrackConfig {
   bool mcpl_write {false}; //!< Write collision tracks using MCPL?
@@ -142,9 +139,12 @@ extern "C" int32_t
 extern "C" int32_t gen_per_batch; //!< number of generations per batch
 extern "C" int64_t n_particles;   //!< number of particles per generation
 
-extern HybridTrackingType hybrid_delta_type; //!< the type of hybrid delta tracking to use
-extern double hybrid_xs_threshold;           //!< the cross section threshold for standard hybrid tracking
-extern double hybrid_energy_threshold;       //!< the energy threshold for hybrid-in-energy tracking
+extern HybridTrackingType
+  hybrid_delta_type;               //!< the type of hybrid delta tracking to use
+extern double hybrid_xs_threshold; //!< the cross section threshold for standard
+                                   //!< hybrid tracking
+extern array<double, 4> hybrid_energy_threshold; //!< the energy threshold for
+                                                 //!< hybrid-in-energy tracking
 
 extern int64_t
   max_particles_in_flight;      //!< Max num. event-based particles in flight

@@ -40,7 +40,7 @@
     <event_based>true</event_based>
     <delta_tracking enable="true">
       <hybrid_type>cross_section</hybrid_type>
-      <xs_threshold>1.0</xs_threshold>
+      <xs_threshold>0.9</xs_threshold>
     </delta_tracking>
   </settings>
   <tallies>

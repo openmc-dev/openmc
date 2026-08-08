@@ -38,8 +38,10 @@
     <inactive>5</inactive>
     <photon_transport>true</photon_transport>
     <event_based>true</event_based>
-    <delta_tracking>true</delta_tracking>
-    <delta_tracking_threshold>1.0</delta_tracking_threshold>
+    <delta_tracking enable="true">
+      <hybrid_type>cross_section</hybrid_type>
+      <xs_threshold>1.0</xs_threshold>
+    </delta_tracking>
   </settings>
   <tallies>
     <mesh id="1">

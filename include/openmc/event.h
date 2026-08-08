@@ -131,44 +131,46 @@ void process_init_secondary_events(int64_t n_particles, int64_t offset,
   const SharedArray<SourceSite>& shared_secondary_bank);
 
 //==============================================================================
-// Delta tracking
+// Hybrid delta tracking
 //==============================================================================
 
-//! Specialization of process_init_events() for delta tracking.
+//! Specialization of process_init_events() for hybrid delta tracking.
 //
 //! \param n_particles The number of particles in the particle buffer
 //! \param source_offset The offset index in the source bank to use
-void process_delta_init_events(int64_t n_particles, int64_t source_offset);
+void process_hybrid_init_events(int64_t n_particles, int64_t source_offset);
 
-//! Specialization of process_calculate_xs_events() for delta tracking.
+//! Specialization of process_calculate_xs_events() for hybrid delta tracking.
 //
 //! \param queue A reference to the desired XS lookup queue
-void process_delta_calculate_xs_events(SharedArray<EventQueueItem>& queue);
+void process_hybrid_calculate_xs_events(SharedArray<EventQueueItem>& queue);
 
 //! Execute the majorant calculation event for all particles in this advance
 //! buffer
-void process_delta_calculate_majorant_events();
+void process_hybrid_calculate_majorant_events();
 
-//! Execute the delta advance particle event for all particles in this advance
+//! Execute the hybrid advance particle event for all particles in this advance
 //! buffer
-void process_delta_advance_particle_events();
+void process_hybrid_advance_particle_events();
 
-//! Specialization of process_surface_crossing_events() for delta tracking.
-void process_delta_surface_crossing_events();
+//! Specialization of process_surface_crossing_events() for hybrid delta
+//! tracking.
+void process_hybrid_surface_crossing_events();
 
-//! Execute the delta tracking collision event for all particles in this event's
-//! buffer
-void process_delta_collision_events();
+//! Execute the hybrid delta tracking collision event for all particles in
+//! this event's buffer
+void process_hybrid_collision_events();
 
-//! Specialization of process_transport_events() for delta tracking.
-void process_delta_transport_events();
+//! Specialization of process_transport_events() for hybrid delta tracking.
+void process_hybrid_transport_events();
 
-//! Specialization of process_init_secondary_events() for delta tracking.
+//! Specialization of process_init_secondary_events() for hybrid delta
+//! tracking.
 //
 //! \param n_particles The number of particles to initialize
 //! \param offset The offset index in the shared secondary bank
 //! \param shared_secondary_bank The shared secondary bank to read from
-void process_delta_init_secondary_events(int64_t n_particles, int64_t offset,
+void process_hybrid_init_secondary_events(int64_t n_particles, int64_t offset,
   const SharedArray<SourceSite>& shared_secondary_bank);
 
 } // namespace openmc

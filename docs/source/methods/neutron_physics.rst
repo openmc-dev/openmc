@@ -52,7 +52,7 @@ the formula usually used to calculate the distance to next collision is
 
     \ell = -\frac{\ln \xi}{\Sigma_t}
 
-.. _surface_tracking:
+.. _method_surface_tracking:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 Surface Tracking
@@ -82,7 +82,7 @@ number of surface distance calculations per collision. The cost of finding the
 nearest surface is also non-trivial for problems that contain many geometric
 regions at the same cell level (e.g. TRISO-fueled fission reactors).
 
-.. _delta_tracking:
+.. _method_delta_tracking:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 Delta Tracking
@@ -156,6 +156,51 @@ reaction rates) and forces the use of the higher-variance collision
 estimator (discussed in detail in the :ref:`methods_tallies` section). When compared
 with surface tracking, delta tracking often performs better in problems where
 the particle mean free path is larger than the distance between surfaces.
+
+.. _method_hybrid_tracking:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~
+Hybrid Tracking
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The complimentary performance bottlenecks of surface and delta tracking lead to the
+development of hybrid schemes that combined the tracking methodologies. The most
+common method is the approach first implemented in Serpent [Leppänen]_, which is
+referred to as the hybrid-in-cross-section approach. After every collision (real or
+virtual) the following inequality is tested:
+
+.. math::
+    :label: hybrid-cross-section-test
+
+    \frac{\Sigma_t (\mathbf{r}, E)}{\Sigma_{maj} (E)} > 1 - c,
+
+where :math:`c \in [0, 1]` is a user-provided hybrid-in-cross-section threshold.
+If equation :eq:`hybrid-cross-section-test` is true, the particle will use delta
+tracking for the next distance-to-collision calculation. Otherwise, the particle
+will use surface tracking. This ensures delta tracking is not used when the majorant
+cross section is sufficiently large and the efficiency of rejection sampling is
+reduced. The value of :math:`c` necessary to obtain optimal performance depends both
+on the specific model, and how the model is constructed. Problems constructed with
+lattices benefit more from delta tracking as point containment checks are cheap,
+and should use a value of :math:`c` between 0.8 and unity. Problems containing
+many cells per universe benefit more from surface tracking (which can be
+accelerated with cell neighborhood lists), and should use a value close to zero.
+
+An alternative hybrid tracking approach is the hybrid-in-energy scheme [Morgan]_.
+After every collision the particle energy is compared to an energy
+threshold :math:`E_{th}`. If the energy is greater than :math:`E_{th}`, the particle
+will use delta tracking for the next distance-to-collision calculation. If the energy
+is less than or equal to :math:`E_{th}` the particle will use surface tracking for
+the next distance-to-collision calculation. A sufficiently large value of
+:math:`E_{th}` ensures that particles do not use delta tracking in the low
+energy domain, where the majorant cross section is inflated by absorbers.
+Most neutron transport problems should use a value for neutrons greater than
+1 eV to avoid the thermal region where absorbers decrease the efficiency of
+delta tracking. Photons should use a value greater than 100 keV to avoid
+the region where the Compton cross section dominates, resulting in a
+decrease in the efficiency of delta tracking. Otherwise, the specific value
+of :math:`E_{th}` that maximizes performance depends on the problem and
+its construction in a similar manner to the hybrid-in-cross-section method.
 
 ----------------------------------------------------
 :math:`(n,\gamma)` and Other Disappearance Reactions
@@ -1737,7 +1782,7 @@ section is calculated as the sum of the elastic, fission, capture, and inelastic
 cross sections.
 
 Unresolved resonance probability tables pose a challenge when computing a majorant
-cross section for :ref:`delta_tracking`. OpenMC implements a conservative approach:
+cross section for :ref:`method_delta_tracking`. OpenMC implements a conservative approach:
 the maximum total cross section is computed over all bands, which is then
 interpolated to the corresponding energy using either linear or logarithmic
 interpolation. This ensures the majorant bounds the total cross section at the
@@ -1850,6 +1895,10 @@ types.
 .. [Leppänen] J. Leppänen. "Performance of Woodcock Delta-Tracking in Lattice
    Physics Applications using the Serpent Monte Carlo Reactor Physics Burnup
    Calculation Code", *Annals of Nuclear Energy*, 37:715-722, 2010.
+
+.. [Morgan] J. P. Morgan, I. Variansyah, K. B. Clements, T. S. Palmer,
+   and K. E. Niemeyer. "Hybrid Delta Tracking Schemes Using a Track-Length
+   Estimator", *Journal of Computational and Theoretical Transport*, 2026.
 
 .. [Squires] G. L. Squires, *Introduction to the Theory of Thermal Neutron
    Scattering*, Cambridge University Press (1978).

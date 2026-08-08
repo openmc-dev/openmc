@@ -36,11 +36,12 @@
     <particles>1000</particles>
     <batches>10</batches>
     <inactive>5</inactive>
-    <photon_transport>false</photon_transport>
+    <photon_transport>true</photon_transport>
     <event_based>true</event_based>
     <delta_tracking enable="true">
-      <hybrid_type>cross_section</hybrid_type>
-      <xs_threshold>1.0</xs_threshold>
+      <hybrid_type>energy</hybrid_type>
+      <neutron_energy_threshold>50000.0</neutron_energy_threshold>
+      <photon_energy_threshold>1000000.0</photon_energy_threshold>
     </delta_tracking>
   </settings>
   <tallies>
@@ -55,8 +56,16 @@
     <filter id="2" type="mesh">
       <bins>1</bins>
     </filter>
+    <filter id="3" type="particle">
+      <bins>photon</bins>
+    </filter>
     <tally id="1">
       <filters>1 2</filters>
+      <scores>total</scores>
+      <estimator>collision</estimator>
+    </tally>
+    <tally id="2">
+      <filters>3 2</filters>
       <scores>total</scores>
       <estimator>collision</estimator>
     </tally>

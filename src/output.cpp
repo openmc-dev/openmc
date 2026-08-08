@@ -449,7 +449,8 @@ void print_runtime()
     show_time("Particle initialization", time_event_init.elapsed(), 2);
     show_time("XS lookups", time_event_calculate_xs.elapsed(), 2);
     if (settings::delta_tracking) {
-      show_time("Majorant XS lookups", time_event_calculate_majorant_xs.elapsed(), 2);
+      show_time(
+        "Majorant XS lookups", time_event_calculate_majorant_xs.elapsed(), 2);
     }
     show_time("Advancing", time_event_advance_particle.elapsed(), 2);
     show_time("Surface crossings", time_event_surface_crossing.elapsed(), 2);

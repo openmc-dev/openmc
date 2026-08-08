@@ -94,31 +94,35 @@ class Settings:
         release of delayed photons.
 
         .. versionadded:: 0.12
-    delta_tracking : bool
-        Whether transport should be performed with hybrid delta tracking or not.
 
-        .. versionadded:: 0.15.4
-    delta_tracking_hybrid_type : str
-        The hybrid delta tracking scheme to use when running delta tracking.
-        Valid options are 'cross_section' for the approach taken by Serpent,
-        or 'energy' for the hybrid-in-energy approach proposed by J. P. Morgan
-        et al. (see https://doi.org/10.1080/23324309.2026.2618791).
-        .. versionadded:: 0.15.4
-    delta_tracking_xs_threshold : float
-        The threshold to use when running with hybrid-in-cross-section delta tracking.
-        If the ratio of the total cross section to the majorant cross section is
-        greater than 1 - delta_tracking_xs_threshold, delta tracking is used.
-        Otherwise, surface tracking is used. The type of tracking is determined
-        locally after every collision (real or delta scatter). A threshold of 0
-        runs surface tracking, which 1 runs delta tracking. A value of 0.9 is
-        used by default.
+    delta_tracking : dict
+        Options for configuring delta tracking. Acceptable keys are:
 
-        .. versionadded:: 0.15.4
-    delta_tracking_energy_threshold : float
-        The threshold to use when running hybrid-in-energy delta tracking. If
-        the particle energy is greater than delta_tracking_energy_threshold,
-        delta tracking is used. Otherwise surface tracking is used. 30 keV is
-        used by default.
+        :enable:
+            Whether delta tracking should be used or not (bool).
+        :hybrid_type:
+            The hybrid delta tracking scheme to use when running delta tracking
+            (str). Valid options are 'cross_section' for the hybrid-in-cross-section
+            method (approach used by Serpent), or 'energy' for the hybrid-in-energy
+            approach. 'cross_section' is the default.
+        :xs_threshold:
+            The threshold to use when running with hybrid-in-cross-section delta
+            tracking (float). If the ratio of the total cross section to the majorant
+            cross section is greater than 1 - xs_threshold, delta tracking is used.
+            Otherwise, surface tracking is used. The type of tracking is determined
+            locally after every collision is processed. A threshold of 0
+            runs surface tracking, while 1 runs delta tracking. A value of 0.9 is
+            used by default.
+        :neutron_energy_threshold:
+            The neutron energy threshold (in eV) to use when running hybrid-in-energy
+            delta tracking (float). If the neutron energy is greater than
+            neutron_energy_threshold, delta tracking is used. Otherwise surface
+            tracking is used. 10 eV is used by default.
+        :photon_energy_threshold:
+            The photon energy threshold (in eV) to use when running hybrid-in-energy
+            delta tracking (float). If the photon energy is greater than
+            photon_energy_threshold, delta tracking is used. Otherwise surface
+            tracking is used. 100 keV is used by default.
 
         .. versionadded:: 0.16.1
     electron_treatment : {'led', 'ttb'}
@@ -510,9 +514,6 @@ class Settings:
         self._material_cell_offsets = None
         self._log_grid_bins = None
         self._delta_tracking = None
-        self._delta_tracking_hybrid_type = None
-        self._delta_tracking_xs_threshold = None
-        self._delta_tracking_energy_threshold = None
         self._event_based = None
         self._max_particles_in_flight = None
         self._max_particle_events = None
@@ -1271,47 +1272,6 @@ class Settings:
         self._delayed_photon_scaling = value
 
     @property
-    def delta_tracking(self):
-        return self._delta_tracking
-
-    @delta_tracking.setter
-    def delta_tracking(self, value):
-        cv.check_type('delta_tracking', value, bool)
-        self._delta_tracking = value
-
-    @property
-    def delta_tracking_hybrid_type(self):
-        return self._delta_tracking_hybrid_type
-
-    @delta_tracking_hybrid_type.setter
-    def delta_tracking_hybrid_type(self, value):
-        cv.check_type('delta tracking hybrid type', value, str)
-        cv.check_value('delta tracking hybrid type', value,
-                       ['cross_section', 'energy'])
-        self.delta_tracking_hybrid_type = value
-
-    @property
-    def delta_tracking_xs_threshold(self):
-        return self._delta_tracking_xs_threshold
-
-    @delta_tracking_xs_threshold.setter
-    def delta_tracking_xs_threshold(self, value):
-        cv.check_type('delta tracking xs threshold', value, float)
-        cv.check_greater_than('delta tracking xs threshold', value, 0.0, True)
-        cv.check_less_than('delta tracking xs threshold', value, 1.0, True)
-        self._delta_tracking_xs_threshold = value
-
-    @property
-    def delta_tracking_energy_threshold(self):
-        return self._delta_tracking_energy_threshold
-
-    @delta_tracking_energy_threshold.setter
-    def delta_tracking_energy_threshold(self, value):
-        cv.check_type('delta tracking energy threshold', value, float)
-        cv.check_greater_than('delta tracking energy threshold', value, 0.0)
-        self._delta_tracking_energy_threshold = value
-
-    @property
     def material_cell_offsets(self) -> bool:
         return self._material_cell_offsets
 
@@ -1464,6 +1424,36 @@ class Settings:
             wwgs = [wwgs]
         self._weight_window_generators = cv.CheckedList(
             WeightWindowGenerator, 'weight window generators', wwgs)
+
+    @property
+    def delta_tracking(self) -> dict:
+        return self._delta_tracking
+
+    @delta_tracking.setter
+    def delta_tracking(self, delta_tracking: dict):
+        if not isinstance(delta_tracking, Mapping):
+            raise ValueError(f'Unable to set delta_tracking from "{delta_tracking}" '
+                             'which is not a dict.')
+        for key, value in delta_tracking.items():
+            if key == 'enable':
+                cv.check_type('enable', value, bool)
+            elif key == 'hybrid_type':
+                cv.check_value('hybrid type', value, ('cross_section', 'energy'))
+            elif key == 'xs_threshold':
+                cv.check_type('xs threshold', value, float)
+                cv.check_greater_than('xs threshold', value, 0.0, True)
+                cv.check_less_than('xs threshold', value, 1.0, True)
+            elif key == 'neutron_energy_threshold':
+                cv.check_type('neutron energy threshold', value, float)
+                cv.check_greater_than('neutron energy threshold', value, 0.0, False)
+            elif key == 'photon_energy_threshold':
+                cv.check_type('photon energy threshold', value, float)
+                cv.check_greater_than('photon energy threshold', value, 0.0, False)
+            else:
+                raise ValueError(f'Unable to set delta tracking to "{key}" which is '
+                                 'unsupported by OpenMC')
+
+        self._delta_tracking = delta_tracking
 
     @property
     def random_ray(self) -> dict:
@@ -2135,23 +2125,13 @@ class Settings:
 
     def _create_delta_tracking_subelement(self, root):
         if self._delta_tracking:
-            elem = ET.SubElement(root, "delta_tracking")
-            elem.text = str(self._delta_tracking).lower()
-
-    def _create_delta_tracking_hybrid_type_subelement(self, root):
-        if self._delta_tracking_hybrid_type:
-            elem = ET.SubElement(root, "delta_tracking_hybrid_type")
-            elem.text = self._delta_tracking_hybrid_type.lower()
-
-    def _create_delta_tracking_xs_threshold_subelement(self, root):
-        if self._delta_tracking_xs_threshold:
-            elem = ET.SubElement(root, "delta_tracking_xs_threshold")
-            elem.text = str(self._delta_tracking_xs_threshold).lower()
-
-    def _create_delta_tracking_energy_threshold_subelement(self, root):
-        if self._delta_tracking_energy_threshold:
-            elem = ET.SubElement(root, "delta_tracking_energy_threshold")
-            elem.text = str(self._delta_tracking_energy_threshold).lower()
+            element = ET.SubElement(root, "delta_tracking")
+            for key, value in self._delta_tracking.items():
+                if key == 'enable':
+                    element.set("enable", str(value).lower())
+                else:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(value)
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -2652,24 +2632,19 @@ class Settings:
             self.free_gas_threshold = float(text)
 
     def _delta_tracking_from_xml_element(self, root):
-        text = get_text(root, 'delta_tracking')
-        if text is not None:
-            self.delta_tracking = text in ('true', '1')
+        elem = root.find('delta_tracking')
+        if elem is not None:
+            data = {}
+            enable = get_text(elem, 'enable')
+            if enable is not None:
+                data['enable'] = enable in ('true', '1')
 
-    def _delta_tracking_hybrid_type_from_xml_element(self, root):
-        text = get_text(root, 'delta_tracking_hybrid_type')
-        if text is not None:
-            self.delta_tracking_hybrid_type = text
-
-    def _delta_tracking_xs_threshold_from_xml_element(self, root):
-        text = get_text(root, 'delta_tracking_xs_threshold')
-        if text is not None:
-            self.delta_tracking_xs_threshold = float(text)
-
-    def _delta_tracking_energy_threshold_from_xml_element(self, root):
-        text = get_text(root, 'delta_tracking_energy_threshold')
-        if text is not None:
-            self.delta_tracking_energy_threshold = float(text)
+            for child in elem:
+                if child.tag in ('xs_threshold', 'neutron_energy_threshold', 'photon_energy_threshold'):
+                    data[child.tag] = float(child.text)
+                elif child.tag == 'hybrid_type':
+                    data[child.tag] = child.text
+            self.delta_tracking = data
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -2749,9 +2724,6 @@ class Settings:
         self._create_source_rejection_fraction_subelement(element)
         self._create_free_gas_threshold_subelement(element)
         self._create_delta_tracking_subelement(element)
-        self._create_delta_tracking_hybrid_type_subelement(element)
-        self._create_delta_tracking_xs_threshold_subelement(element)
-        self._create_delta_tracking_energy_threshold_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2871,9 +2843,6 @@ class Settings:
         settings._source_rejection_fraction_from_xml_element(elem)
         settings._free_gas_threshold_from_xml_element(elem)
         settings._delta_tracking_from_xml_element(elem)
-        settings._delta_tracking_hybrid_type_from_xml_element(elem)
-        settings._delta_tracking_xs_threshold_from_xml_element(elem)
-        settings._delta_tracking_energy_threshold_from_xml_element(elem)
 
         return settings
 

@@ -97,7 +97,7 @@ class Settings:
     delta_tracking : bool
         Whether transport should be performed with delta tracking or not.
 
-        .. versionadded:: 0.15.5
+        .. versionadded:: 0.16.1
     electron_treatment : {'led', 'ttb'}
         Whether to deposit all energy from electrons locally ('led') or create
         secondary bremsstrahlung photons ('ttb').

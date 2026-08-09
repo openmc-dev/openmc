@@ -71,8 +71,8 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods
-  virtual void update_single_neutron_source(SourceRegionHandle& srh);
-  virtual void update_all_neutron_sources();
+  virtual void update_single_particle_source(SourceRegionHandle& srh);
+  virtual void update_all_particle_sources();
   void compute_k_eff();
   virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);

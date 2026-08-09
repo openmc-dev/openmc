@@ -1106,19 +1106,24 @@ def _steel_water_model():
     return openmc.Model(openmc.Geometry([c1, c2]), openmc.Materials([a, b]))
 
 
-def _capture_generation_settings(monkeypatch, model, **kwargs):
+def _capture_generation_settings(
+        monkeypatch, model, return_particle_type=False, **kwargs):
     """Return the Settings of the MGXS generation run by capturing the
     generation model just before transport would start."""
     captured = {}
 
-    def fake_auto_generate(gen_model, groups, correction, directory):
+    def fake_auto_generate(gen_model, groups, correction, directory,
+                           particle_type=openmc.ParticleType.NEUTRON):
         captured['settings'] = gen_model.settings
+        captured['particle_type'] = particle_type
         raise _GenerationCaptured()
 
     monkeypatch.setattr(openmc.Model, '_auto_generate_mgxs_lib',
                         fake_auto_generate)
     with pytest.raises(_GenerationCaptured):
         model.convert_to_multigroup(**kwargs)
+    if return_particle_type:
+        return captured['settings'], captured['particle_type']
     return captured['settings']
 
 
@@ -1216,6 +1221,55 @@ def test_convert_to_multigroup_validation(run_in_tmpdir):
         model.convert_to_multigroup(
             temperature_settings={'method': 'interpolation'},
             temperature={'method': 'interpolation'})
+
+
+def test_convert_to_multigroup_photon(run_in_tmpdir, monkeypatch):
+    model = _steel_water_model()
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.IndependentSource(
+        particle='photon', energy=openmc.stats.Discrete([1.0e6], [1.0]))
+    model.settings.atomic_relaxation = False
+    model.settings.electron_treatment = 'ttb'
+    model.settings.cutoff = {'energy_photon': 1000.0}
+
+    gen, particle_type = _capture_generation_settings(
+        monkeypatch, model, return_particle_type=True,
+        method='stochastic_slab')
+
+    assert particle_type == openmc.ParticleType.PHOTON
+    assert gen.run_mode == 'fixed source'
+    assert gen.photon_transport is True
+    assert gen.atomic_relaxation is False
+    assert gen.electron_treatment == 'ttb'
+    assert gen.cutoff == {'energy_photon': 1000.0}
+    assert gen.source
+    assert all(src.particle == openmc.ParticleType.PHOTON
+               for src in gen.source)
+
+
+def test_convert_to_multigroup_photon_validation(run_in_tmpdir):
+    model = _steel_water_model()
+    model.settings.source = [
+        openmc.IndependentSource(particle='neutron'),
+        openmc.IndependentSource(particle='photon'),
+    ]
+    with pytest.raises(ValueError, match='mixed'):
+        model.convert_to_multigroup()
+
+    model.settings.source = openmc.IndependentSource(particle='photon')
+    with pytest.raises(ValueError, match='fixed-source'):
+        model.convert_to_multigroup()
+
+    model.settings.run_mode = 'fixed source'
+    with pytest.raises(ValueError, match='transport corrections'):
+        model.convert_to_multigroup(correction='P0')
+
+    neutron_library = openmc.MGXSLibrary(
+        openmc.mgxs.EnergyGroups([1.0, 10.0]), particle_type='neutron')
+    neutron_library.export_to_hdf5('mgxs.h5')
+    with pytest.raises(ValueError, match='not photon data'):
+        model.convert_to_multigroup(
+            particle_type='photon', mgxs_path='mgxs.h5')
 
 
 def test_convert_to_multigroup_deprecated_args(run_in_tmpdir, monkeypatch):

@@ -1952,6 +1952,7 @@ class Model:
         groups: openmc.mgxs.EnergyGroups,
         correction: str | None,
         directory: PathLike,
+        particle_type: openmc.ParticleType = openmc.ParticleType.NEUTRON,
     ) -> openmc.mgxs.Library:
         """
         Automatically generate a multi-group cross section libray from a model
@@ -1968,6 +1969,8 @@ class Model:
             "P0".
         directory : str
             Directory to run the simulation in, so as to contain XML files.
+        particle_type : openmc.ParticleType, optional
+            Particle type for which to generate multigroup cross sections.
 
         Returns
         -------
@@ -1976,7 +1979,8 @@ class Model:
         """
 
         # Initialize MGXS library with a finished OpenMC geometry object
-        mgxs_lib = openmc.mgxs.Library(model.geometry)
+        mgxs_lib = openmc.mgxs.Library(
+            model.geometry, particle_type=particle_type)
 
         # Pick energy group structure
         mgxs_lib.energy_groups = groups
@@ -1985,7 +1989,10 @@ class Model:
         mgxs_lib.correction = correction
 
         # Specify needed cross sections for random ray
-        if correction == 'P0':
+        if particle_type == openmc.ParticleType.PHOTON:
+            mgxs_lib.mgxs_types = [
+                'total', 'absorption', 'nu-scatter matrix']
+        elif correction == 'P0':
             mgxs_lib.mgxs_types = [
                 'nu-transport', 'absorption', 'nu-fission', 'fission',
                 'consistent nu-scatter matrix', 'multiplicity matrix', 'chi',
@@ -2030,6 +2037,7 @@ class Model:
         groups: openmc.mgxs.EnergyGroups,
         spatial_dist: openmc.stats.Spatial,
         source_energy: openmc.stats.Univariate | None = None,
+        particle_type: openmc.ParticleType = openmc.ParticleType.NEUTRON,
     ) -> list[openmc.IndependentSource]:
         """Create a list of independent sources to use with MGXS generation.
 
@@ -2056,6 +2064,8 @@ class Model:
         source_energy : openmc.stats.Univariate, optional
             Energy distribution to use when generating MGXS data, replacing any
             existing sources in the model.
+        particle_type : openmc.ParticleType, optional
+            Particle type emitted by the generated sources.
 
         Returns
         -------
@@ -2071,13 +2081,16 @@ class Model:
             strengths.append(1.0)
 
         uniform_energy = openmc.stats.Discrete(x=midpoints, p=strengths)
-        uniform_distribution = openmc.IndependentSource(spatial_dist, energy=uniform_energy, strength=0.01)
+        uniform_distribution = openmc.IndependentSource(
+            spatial_dist, energy=uniform_energy, strength=0.01,
+            particle=particle_type)
         sources = [uniform_distribution]
 
         # If the user provided an energy distribution, use that
         if source_energy is not None:
             user_energy = openmc.IndependentSource(
-                space=spatial_dist, energy=source_energy, strength=0.99)
+                space=spatial_dist, energy=source_energy, strength=0.99,
+                particle=particle_type)
             sources.append(user_energy)
 
         # If the user did not provide an energy distribution, create sources
@@ -2097,7 +2110,8 @@ class Model:
                         user_source = openmc.IndependentSource(
                             space=spatial_dist,
                             energy=src.energy,
-                            strength=0.99 / n_user_sources
+                            strength=0.99 / n_user_sources,
+                            particle=particle_type,
                         )
                         sources.append(user_source)
             else:
@@ -2105,7 +2119,8 @@ class Model:
                 if self.settings.run_mode == 'eigenvalue':
                     watt_energy = openmc.stats.Watt()
                     watt_source = openmc.IndependentSource(
-                        space=spatial_dist, energy=watt_energy, strength=0.99)
+                        space=spatial_dist, energy=watt_energy, strength=0.99,
+                        particle=particle_type)
                     sources.append(watt_source)
 
         return sources
@@ -2119,6 +2134,7 @@ class Model:
         directory: PathLike,
         source: openmc.IndependentSource,
         temperature: float | None = None,
+        particle_type: openmc.ParticleType = openmc.ParticleType.NEUTRON,
     ) -> openmc.XSdata:
         """Generate a single MGXS set for one material, where the geometry is an
         infinite medium composed of that material at an isothermal temperature value.
@@ -2142,6 +2158,8 @@ class Model:
         temperature : float, optional
             The isothermal temperature value to apply to the material. If not specified,
             defaults to the temperature in the material.
+        particle_type : openmc.ParticleType, optional
+            Particle type for which to generate multigroup cross sections.
 
         Returns
         -------
@@ -2170,7 +2188,7 @@ class Model:
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
+            model, groups, correction, directory, particle_type)
 
         if temperature is not None:
             return mgxs_lib.get_xsdata(domain=material, xsdata_name=name,
@@ -2187,6 +2205,7 @@ class Model:
         directory: PathLike,
         source_energy: openmc.stats.Univariate | None = None,
         temperatures: Sequence[float] | None = None,
+        particle_type: openmc.ParticleType = openmc.ParticleType.NEUTRON,
     ) -> None:
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
@@ -2232,12 +2251,15 @@ class Model:
             A list of temperatures to generate MGXS at. Each infinite material region
             is isothermal at a given temperature data point for cross
             section generation.
+        particle_type : openmc.ParticleType, optional
+            Particle type for which to generate multigroup cross sections.
         """
 
         src = self._create_mgxs_sources(
             groups,
             spatial_dist=openmc.stats.Point(),
-            source_energy=source_energy
+            source_energy=source_energy,
+            particle_type=particle_type,
         )
 
         if temperatures is None:
@@ -2249,12 +2271,14 @@ class Model:
                     settings,
                     correction,
                     directory,
-                    src
+                    src,
+                    particle_type=particle_type,
                 )
                 mgxs_sets.append(xs_data)
 
             # Write the file to disk.
-            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            mgxs_file = openmc.MGXSLibrary(
+                energy_groups=groups, particle_type=particle_type)
             for mgxs_set in mgxs_sets:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
@@ -2271,7 +2295,8 @@ class Model:
                         correction,
                         directory,
                         src,
-                        temperature
+                        temperature,
+                        particle_type,
                     )
                     raw_mgxs_sets[temperature].append(xs_data)
 
@@ -2285,7 +2310,8 @@ class Model:
                     mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][m])
 
             # Write the file to disk.
-            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            mgxs_file = openmc.MGXSLibrary(
+                energy_groups=groups, particle_type=particle_type)
             for mgxs_set in mgxs_sets:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
@@ -2373,6 +2399,7 @@ class Model:
         directory: PathLike,
         source: openmc.IndependentSource,
         temperature: float | None = None,
+        particle_type: openmc.ParticleType = openmc.ParticleType.NEUTRON,
     ) -> dict[str, openmc.XSdata]:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. If a temperature is specified, all materials in the slab have
@@ -2397,6 +2424,8 @@ class Model:
         temperature : float, optional
             The isothermal temperature value to apply to the materials in the
             slab. If not specified, defaults to the temperature in the materials.
+        particle_type : openmc.ParticleType, optional
+            Particle type for which to generate multigroup cross sections.
 
         Returns
         -------
@@ -2418,7 +2447,7 @@ class Model:
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
+            model, groups, correction, directory, particle_type)
 
         # Fetch all of the isothermal results.
         if temperature is not None:
@@ -2442,6 +2471,7 @@ class Model:
         directory: PathLike,
         source_energy: openmc.stats.Univariate | None = None,
         temperatures: Sequence[float] | None = None,
+        particle_type: openmc.ParticleType = openmc.ParticleType.NEUTRON,
     ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
@@ -2490,6 +2520,8 @@ class Model:
             A list of temperatures to generate MGXS at. Each infinite material region
             is isothermal at a given temperature data point for cross
             section generation.
+        particle_type : openmc.ParticleType, optional
+            Particle type for which to generate multigroup cross sections.
         """
 
         # Stochastic slab geometry
@@ -2499,7 +2531,8 @@ class Model:
         src = self._create_mgxs_sources(
             groups,
             spatial_dist=spatial_distribution,
-            source_energy=source_energy
+            source_energy=source_energy,
+            particle_type=particle_type,
         )
 
         if temperatures is None:
@@ -2509,11 +2542,13 @@ class Model:
                 settings,
                 correction,
                 directory,
-                src
+                src,
+                particle_type=particle_type,
             ).values()
 
             # Write the file to disk.
-            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            mgxs_file = openmc.MGXSLibrary(
+                energy_groups=groups, particle_type=particle_type)
             for mgxs_set in mgxs_sets:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
@@ -2528,7 +2563,8 @@ class Model:
                     correction,
                     directory,
                     src,
-                    temperature
+                    temperature,
+                    particle_type,
                 )
 
             # Unpack the isothermal XSData objects and build a single XSData object per material.
@@ -2540,7 +2576,8 @@ class Model:
                     mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
 
             # Write the file to disk.
-            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            mgxs_file = openmc.MGXSLibrary(
+                energy_groups=groups, particle_type=particle_type)
             for mgxs_set in mgxs_sets:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
@@ -2553,6 +2590,7 @@ class Model:
         correction: str | None,
         directory: PathLike,
         temperature: float | None = None,
+        particle_type: openmc.ParticleType = openmc.ParticleType.NEUTRON,
     ) -> dict[str, openmc.XSdata]:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation. If a temperature is
@@ -2579,6 +2617,8 @@ class Model:
             The isothermal temperature value to apply to the materials in the
             input model. If not specified, defaults to the temperatures in the
             materials.
+        particle_type : openmc.ParticleType, optional
+            Particle type for which to generate multigroup cross sections.
 
         Returns
         -------
@@ -2597,7 +2637,7 @@ class Model:
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
+            model, groups, correction, directory, particle_type)
 
         # Fetch all of the isothermal results.
         if temperature is not None:
@@ -2620,6 +2660,7 @@ class Model:
         correction: str | None,
         directory: PathLike,
         temperatures: Sequence[float] | None = None,
+        particle_type: openmc.ParticleType = openmc.ParticleType.NEUTRON,
     ) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
@@ -2648,13 +2689,17 @@ class Model:
             A list of temperatures to generate MGXS at. Each infinite material region
             is isothermal at a given temperature data point for cross
             section generation.
+        particle_type : openmc.ParticleType, optional
+            Particle type for which to generate multigroup cross sections.
         """
         if temperatures is None:
             mgxs_sets = Model._isothermal_materialwise_mgxs(
-                self, groups, settings, correction, directory).values()
+                self, groups, settings, correction, directory,
+                particle_type=particle_type).values()
 
             # Write the file to disk.
-            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            mgxs_file = openmc.MGXSLibrary(
+                energy_groups=groups, particle_type=particle_type)
             for mgxs_set in mgxs_sets:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
@@ -2663,7 +2708,8 @@ class Model:
             raw_mgxs_sets = {}
             for temperature in temperatures:
                 raw_mgxs_sets[temperature] = Model._isothermal_materialwise_mgxs(
-                    self, groups, settings, correction, directory, temperature)
+                    self, groups, settings, correction, directory, temperature,
+                    particle_type)
 
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
@@ -2674,7 +2720,8 @@ class Model:
                     mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
 
             # Write the file to disk.
-            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            mgxs_file = openmc.MGXSLibrary(
+                energy_groups=groups, particle_type=particle_type)
             for mgxs_set in mgxs_sets:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
@@ -2688,6 +2735,7 @@ class Model:
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
         source_energy: openmc.stats.Univariate | None = None,
+        particle_type: str | openmc.ParticleType | None = None,
         temperatures: Sequence[float] | None = None,
         temperature_settings: dict | None = None,
         **kwargs,
@@ -2739,6 +2787,11 @@ class Model:
             'eigenvalue', then a default Watt spectrum source (strength = 0.99)
             is added. Note that this argument is only used when using the
             "stochastic_slab" or "infinite_medium" MGXS generation methods.
+        particle_type : {'neutron', 'photon'}, optional
+            Particle type for which to generate multigroup cross sections. If
+            omitted, the particle type is inferred when all model sources are
+            independent sources with the same particle type; otherwise it
+            defaults to neutron.
         temperatures : Sequence[float], optional
             A list of temperatures to generate MGXS at. Each infinite material region
             is isothermal at a given temperature data point for cross
@@ -2772,6 +2825,50 @@ class Model:
 
         check_value('method', method,
                     ('material_wise', 'stochastic_slab', 'infinite_medium'))
+
+        sources = self.settings.source
+        if particle_type is None:
+            if sources and all(isinstance(src, openmc.IndependentSource)
+                               for src in sources):
+                source_particles = {src.particle for src in sources}
+                if len(source_particles) != 1:
+                    raise ValueError('Cannot infer a particle type from mixed '
+                                     'source particle types.')
+                particle_type = source_particles.pop()
+            else:
+                particle_type = openmc.ParticleType.NEUTRON
+        else:
+            particle_type = openmc.ParticleType(particle_type)
+
+        check_value('particle type', particle_type,
+                    (openmc.ParticleType.NEUTRON,
+                     openmc.ParticleType.PHOTON))
+
+        if sources:
+            if particle_type == openmc.ParticleType.PHOTON and not all(
+                    isinstance(src, openmc.IndependentSource)
+                    for src in sources):
+                raise ValueError('Photon multigroup conversion requires all '
+                                 'model sources to be IndependentSource '
+                                 'objects.')
+            independent_particles = {
+                src.particle for src in sources
+                if isinstance(src, openmc.IndependentSource)}
+            if len(independent_particles) > 1:
+                raise ValueError('Mixed source particle types are not '
+                                 'supported by multigroup conversion.')
+            if independent_particles and independent_particles != {
+                    particle_type}:
+                raise ValueError('The requested particle type does not match '
+                                 'the model source particle type.')
+
+        if particle_type == openmc.ParticleType.PHOTON:
+            if self.settings.run_mode != 'fixed source':
+                raise ValueError('Photon multigroup conversion is only '
+                                 'supported for fixed-source models.')
+            if correction is not None:
+                raise ValueError('Photon multigroup conversion does not '
+                                 'support transport corrections.')
 
         # Keyword arguments are Settings attributes applied as overrides on
         # the generation defaults
@@ -2808,6 +2905,12 @@ class Model:
         else:
             settings = openmc.Settings()
             settings.temperature = copy.deepcopy(self.settings.temperature)
+            if particle_type == openmc.ParticleType.PHOTON:
+                settings.atomic_relaxation = \
+                    self.settings.atomic_relaxation
+                settings.electron_treatment = \
+                    self.settings.electron_treatment
+                settings.cutoff = copy.deepcopy(self.settings.cutoff)
 
         settings.batches = 100 if method == 'infinite_medium' else 200
         if method != 'infinite_medium':
@@ -2844,6 +2947,9 @@ class Model:
             settings.run_mode = 'fixed source'
             settings.create_fission_neutrons = False
 
+        if particle_type == openmc.ParticleType.PHOTON:
+            settings.photon_transport = True
+
         # A weight windows file on the generation settings is loaded and
         # applied (specifying a file turns weight windows on) during the
         # "material_wise" method's continuous energy simulation of the
@@ -2861,6 +2967,24 @@ class Model:
                 f'ignored for the "{method}" method.'
             )
             settings.weight_windows_file = None
+
+        if Path(mgxs_path).is_file() and not overwrite_mgxs_library:
+            mgxs_particle = None
+            if h5py.is_hdf5(mgxs_path):
+                with h5py.File(mgxs_path, 'r') as mgxs_file:
+                    mgxs_particle = mgxs_file.attrs.get('particle_type')
+                if isinstance(mgxs_particle, bytes):
+                    mgxs_particle = mgxs_particle.decode()
+                if mgxs_particle is not None:
+                    mgxs_particle = openmc.ParticleType(mgxs_particle)
+            if mgxs_particle is not None and mgxs_particle != particle_type:
+                raise ValueError(
+                    f'Existing MGXS library contains {mgxs_particle} data, '
+                    f'not {particle_type} data.')
+            if particle_type == openmc.ParticleType.PHOTON and \
+                    mgxs_particle is None:
+                raise ValueError('Existing MGXS library does not identify '
+                                 'itself as photon data.')
 
         # Do all work (including MGXS generation) in a temporary directory
         # to avoid polluting the working directory with residual XML files
@@ -2898,15 +3022,15 @@ class Model:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
                         groups, settings, mgxs_path, correction, tmpdir,
-                        source_energy, temperatures)
+                        source_energy, temperatures, particle_type)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
                         groups, settings, mgxs_path, correction, tmpdir,
-                        temperatures)
+                        temperatures, particle_type)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
                         groups, settings, mgxs_path, correction, tmpdir,
-                        source_energy, temperatures)
+                        source_energy, temperatures, particle_type)
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')
@@ -2922,6 +3046,8 @@ class Model:
                 material.add_macroscopic(material.name)
 
             self.settings.energy_mode = 'multi-group'
+            if particle_type == openmc.ParticleType.PHOTON:
+                self.settings.photon_transport = True
 
             # Restore the user's original material names.
             for material, name in zip(self.materials, original_names):

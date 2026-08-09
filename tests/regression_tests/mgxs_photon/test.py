@@ -2,8 +2,37 @@ import hashlib
 
 import numpy as np
 import openmc
+import pytest
 
 from tests.testing_harness import PyAPITestHarness
+
+
+@pytest.fixture
+def model():
+    model = openmc.Model()
+
+    material = openmc.Material()
+    material.set_density('g/cm3', 11.35)
+    material.add_element('Pb', 1.0)
+    model.materials.append(material)
+
+    sphere = openmc.Sphere(r=1.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=material, region=-sphere)
+    model.geometry = openmc.Geometry([cell])
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 2000
+    model.settings.batches = 2
+    model.settings.photon_transport = True
+    model.settings.atomic_relaxation = True
+    model.settings.electron_treatment = 'ttb'
+    model.settings.cutoff = {'energy_photon': 1000.0}
+    model.settings.source = openmc.IndependentSource(
+        particle='photon',
+        space=openmc.stats.Point((0.0, 0.0, 0.0)),
+        energy=openmc.stats.Discrete([1.0e6], [1.0]))
+
+    return model
 
 
 class PhotonMGXSTestHarness(PyAPITestHarness):
@@ -12,32 +41,13 @@ class PhotonMGXSTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.material = openmc.Material()
-        self.material.set_density('g/cm3', 11.35)
-        self.material.add_element('Pb', 1.0)
-        self._model.materials = openmc.Materials([self.material])
-
-        sphere = openmc.Sphere(r=1.0, boundary_type='vacuum')
-        cell = openmc.Cell(fill=self.material, region=-sphere)
-        self._model.geometry = openmc.Geometry([cell])
-
-        self._model.settings.run_mode = 'fixed source'
-        self._model.settings.particles = 2000
-        self._model.settings.batches = 2
-        self._model.settings.photon_transport = True
-        self._model.settings.atomic_relaxation = True
-        self._model.settings.electron_treatment = 'ttb'
-        self._model.settings.cutoff = {'energy_photon': 1000.0}
-        self._model.settings.source = openmc.IndependentSource(
-            particle='photon',
-            space=openmc.stats.Point((0.0, 0.0, 0.0)),
-            energy=openmc.stats.Discrete([1.0e6], [1.0]))
+        self.material = self._model.materials[0]
 
         groups = openmc.mgxs.EnergyGroups(
             group_edges=[1.0e3, 1.0e5, 5.0e5, 1.1e6])
         self.mgxs_lib = openmc.mgxs.Library(
             self._model.geometry,
-            mgxs_types=['total', 'absorption', 'photon-production matrix'],
+            mgxs_types=['total', 'absorption', 'nu-scatter matrix'],
             particle_type='photon')
         self.mgxs_lib.energy_groups = groups
         self.mgxs_lib.correction = None
@@ -50,7 +60,7 @@ class PhotonMGXSTestHarness(PyAPITestHarness):
             self.mgxs_lib.load_from_statepoint(statepoint)
 
             production = self.mgxs_lib.get_mgxs(
-                self.material, 'photon-production matrix')
+                self.material, 'nu-scatter matrix')
             absorption = self.mgxs_lib.get_mgxs(self.material, 'absorption')
 
             primary = production.tallies[
@@ -96,7 +106,6 @@ class PhotonMGXSTestHarness(PyAPITestHarness):
         return output
 
 
-def test_photon_mgxs():
-    harness = PhotonMGXSTestHarness(
-        'statepoint.2.h5', model=openmc.Model())
+def test_photon_mgxs(model):
+    harness = PhotonMGXSTestHarness('statepoint.2.h5', model)
     harness.main()

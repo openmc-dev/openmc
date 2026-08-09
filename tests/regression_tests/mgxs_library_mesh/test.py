@@ -40,10 +40,7 @@ def model():
     model.mgxs_lib.by_nuclide = False
 
     # Test all MGXS types
-    neutron_mgxs_types = tuple(
-        xs for xs in openmc.mgxs.MGXS_TYPES
-        if xs != 'photon-production matrix')
-    model.mgxs_lib.mgxs_types = neutron_mgxs_types + openmc.mgxs.MDGXS_TYPES
+    model.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES
     model.mgxs_lib.energy_groups = energy_groups
     model.mgxs_lib.num_delayed_groups = 6
     model.mgxs_lib.correction = None  # Avoid warning about P0 correction

@@ -1586,7 +1586,8 @@ class XSdata:
 
         """
 
-        check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
+        check_type('scatter', scatter, (openmc.mgxs.ScatterMatrixXS,
+                                        openmc.mgxs.PhotonProductionMatrixXS))
         check_value('energy_groups', scatter.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', scatter.domain_type,
@@ -1633,49 +1634,6 @@ class XSdata:
             self._scatter_matrix[i] = \
                 scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
                                subdomains=subdomain)
-
-    def set_photon_production_mgxs(
-            self, production, temperature=ROOM_TEMPERATURE_KELVIN,
-            xs_type='macro', subdomain=None):
-        """Set the scattering data from a photon production matrix MGXS.
-
-        The production matrix is written as the zeroth-order scattering
-        matrix. Its multiplicity is already included in the matrix values, so
-        no separate multiplicity matrix is written.
-
-        Parameters
-        ----------
-        production : openmc.mgxs.PhotonProductionMatrixXS
-            Photon production matrix to use
-        temperature : float, optional
-            Temperature of the cross section data in kelvin
-        xs_type : {'macro'}, optional
-            Cross section type. Photon production is only available as a
-            macroscopic cross section.
-        subdomain : iterable of int, optional
-            Mesh subdomain for which data are requested
-        """
-
-        check_type('production', production,
-                   openmc.mgxs.PhotonProductionMatrixXS)
-        check_value('energy_groups', production.energy_groups,
-                    [self.energy_groups])
-        check_value('domain_type', production.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
-        check_value('xs_type', xs_type, ['macro'])
-        self._check_temperature(temperature)
-
-        if self.representation != REPRESENTATION_ISOTROPIC:
-            raise ValueError('Photon production only supports an isotropic '
-                             'representation')
-
-        self.scatter_format = SCATTER_LEGENDRE
-        self.order = 0
-        i = self._temperature_index(temperature)
-        self._scatter_matrix[i] = np.zeros(
-            self.xs_shapes["[G][G'][Order]"])
-        self._scatter_matrix[i][:, :, 0] = production.get_xs(
-            xs_type=xs_type, subdomains=subdomain)
 
     def set_multiplicity_matrix_mgxs(self, nuscatter, scatter=None,
                                      temperature=ROOM_TEMPERATURE_KELVIN, nuclide='total',

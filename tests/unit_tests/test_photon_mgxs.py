@@ -29,13 +29,14 @@ def test_photon_production_matrix_tallies():
 def test_photon_production_matrix_constraints():
     with pytest.raises(ValueError, match='by nuclide'):
         openmc.mgxs.MGXS.get_mgxs(
-            'photon-production matrix', by_nuclide=True)
+            'nu-scatter matrix', by_nuclide=True, particle_type='photon')
     with pytest.raises(ValueError, match='isotropic'):
         openmc.mgxs.MGXS.get_mgxs(
-            'photon-production matrix', num_polar=2)
-    with pytest.raises(ValueError, match='photon tallies'):
-        openmc.mgxs.MGXS.get_mgxs(
-            'photon-production matrix', particle_type='neutron')
+            'nu-scatter matrix', num_polar=2, particle_type='photon')
+
+    neutron_production = openmc.mgxs.MGXS.get_mgxs(
+        'nu-scatter matrix', particle_type='neutron')
+    assert isinstance(neutron_production, openmc.mgxs.ScatterMatrixXS)
 
 
 def test_photon_production_matrix_combines_primary_and_secondary():
@@ -57,7 +58,7 @@ def test_photon_production_matrix_combines_primary_and_secondary():
         production.rxn_rate_tally.mean.ravel(), [2.0, 4.0, 6.0, 8.0])
 
 
-def test_set_photon_production_mgxs(monkeypatch):
+def test_set_photon_nu_scatter_mgxs(monkeypatch):
     material = openmc.Material()
     groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0])
     production = openmc.mgxs.PhotonProductionMatrixXS(
@@ -69,7 +70,7 @@ def test_set_photon_production_mgxs(monkeypatch):
     xsdata.order = 0
     absorption = np.array([0.5, 0.6])
     xsdata.set_absorption(absorption)
-    xsdata.set_photon_production_mgxs(production)
+    xsdata.set_scatter_matrix_mgxs(production)
 
     assert xsdata.scatter_format == 'legendre'
     assert xsdata.order == 0
@@ -84,7 +85,7 @@ def test_photon_mgxs_library(tmp_path):
     groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0])
     library = openmc.mgxs.Library(
         geometry, mgxs_types=[
-            'total', 'absorption', 'photon-production matrix'],
+            'total', 'absorption', 'nu-scatter matrix'],
         particle_type='photon')
     library.domain_type = 'material'
     library.energy_groups = groups
@@ -110,6 +111,5 @@ def test_all_mgxs_types_respects_particle_type():
     photon_library = openmc.mgxs.Library(
         geometry, mgxs_types='all', particle_type='photon')
 
-    assert 'photon-production matrix' not in neutron_library.mgxs_types
     assert photon_library.mgxs_types == (
-        'total', 'absorption', 'photon-production matrix')
+        'total', 'absorption', 'nu-scatter matrix')

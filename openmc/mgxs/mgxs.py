@@ -30,7 +30,6 @@ MGXS_TYPES = (
     'nu-scatter',
     'scatter matrix',
     'nu-scatter matrix',
-    'photon-production matrix',
     'multiplicity matrix',
     'nu-fission matrix',
     'scatter probability matrix',
@@ -819,12 +818,15 @@ class MGXS:
             mgxs = ScatterXS(domain, domain_type, energy_groups, nu=True)
         elif mgxs_type == 'scatter matrix':
             mgxs = ScatterMatrixXS(domain, domain_type, energy_groups)
-        elif mgxs_type == 'nu-scatter matrix':
-            mgxs = ScatterMatrixXS(domain, domain_type, energy_groups, nu=True)
-        elif mgxs_type == 'photon-production matrix':
+        elif mgxs_type == 'nu-scatter matrix' and \
+                particle_type is not None and \
+                openmc.ParticleType(particle_type) == \
+                openmc.ParticleType.PHOTON:
             mgxs = PhotonProductionMatrixXS(
                 domain, domain_type, energy_groups, by_nuclide, name,
                 num_polar, num_azimuthal)
+        elif mgxs_type == 'nu-scatter matrix':
+            mgxs = ScatterMatrixXS(domain, domain_type, energy_groups, nu=True)
         elif mgxs_type == 'multiplicity matrix':
             mgxs = MultiplicityMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'scatter probability matrix':
@@ -4982,8 +4984,8 @@ class PhotonProductionMatrixXS(MatrixMGXS):
             raise ValueError('Photon production only supports an isotropic '
                              'representation')
         super().__init__(domain, domain_type, energy_groups, False, name)
-        self._rxn_type = 'photon-production'
-        self._mgxs_type = 'photon-production matrix'
+        self._rxn_type = 'nu-scatter'
+        self._mgxs_type = 'nu-scatter matrix'
         self._particle_type = openmc.ParticleType.PHOTON
         self._valid_estimators = ['analog']
 
@@ -5029,6 +5031,14 @@ class PhotonProductionMatrixXS(MatrixMGXS):
     @property
     def estimator(self):
         return ['tracklength', 'analog', 'analog']
+
+    @property
+    def scatter_format(self):
+        return SCATTER_LEGENDRE
+
+    @property
+    def legendre_order(self):
+        return 0
 
     @property
     def rxn_rate_tally(self):

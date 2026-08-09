@@ -214,11 +214,9 @@ class Library:
         if mgxs_types == 'all':
             if self.particle_type == openmc.ParticleType.PHOTON:
                 self._mgxs_types = (
-                    'total', 'absorption', 'photon-production matrix')
+                    'total', 'absorption', 'nu-scatter matrix')
             else:
-                self._mgxs_types = tuple(
-                    xs for xs in all_mgxs_types
-                    if xs != 'photon-production matrix')
+                self._mgxs_types = all_mgxs_types
         else:
             cv.check_iterable_type('mgxs_types', mgxs_types, str)
             for mgxs_type in mgxs_types:
@@ -1223,16 +1221,14 @@ class Library:
             xsdata.set_decay_rate_mgxs(mymgxs, temperature=temperature, xs_type=xs_type,
                                        nuclide=[nuclide], subdomain=subdomain)
 
-        # Photon production includes both the surviving primary photon and all
-        # banked secondary photons. Its multiplicity is therefore already
-        # folded into the matrix values.
-        if 'photon-production matrix' in self.mgxs_types:
-            production = self.get_mgxs(
-                domain, 'photon-production matrix')
-            xsdata.set_photon_production_mgxs(
+        # Photon nu-scatter includes both the surviving primary photon and all
+        # banked secondary photons, so its multiplicity is already folded into
+        # the matrix values.
+        if self.particle_type == openmc.ParticleType.PHOTON:
+            production = self.get_mgxs(domain, 'nu-scatter matrix')
+            xsdata.set_scatter_matrix_mgxs(
                 production, temperature=temperature, xs_type=xs_type,
-                subdomain=subdomain)
-            using_photon_production = True
+                nuclide=[nuclide], subdomain=subdomain)
             using_multiplicity = False
 
         # If multiplicity matrix is available, prefer that
@@ -1243,7 +1239,6 @@ class Library:
                                                 nuclide=[nuclide],
                                                 subdomain=subdomain)
             using_multiplicity = True
-            using_photon_production = False
 
         # multiplicity will fall back to using scatter and nu-scatter
         elif 'scatter matrix' in self.mgxs_types and \
@@ -1256,7 +1251,6 @@ class Library:
                                                 nuclide=[nuclide],
                                                 subdomain=subdomain)
             using_multiplicity = True
-            using_photon_production = False
 
         # multiplicity will fall back to using scatter and nu-scatter
         elif 'consistent scatter matrix' in self.mgxs_types and \
@@ -1270,13 +1264,11 @@ class Library:
                                                 nuclide=[nuclide],
                                                 subdomain=subdomain)
             using_multiplicity = True
-            using_photon_production = False
 
         else:
             using_multiplicity = False
-            using_photon_production = False
 
-        if using_photon_production:
+        if self.particle_type == openmc.ParticleType.PHOTON:
             pass
         elif using_multiplicity:
             if 'nu-scatter matrix' in self.mgxs_types:
@@ -1633,17 +1625,13 @@ class Library:
 
         error_flag = False
 
-        if 'photon-production matrix' in self.mgxs_types:
+        if self.particle_type == openmc.ParticleType.PHOTON:
             photon_mgxs_types = {
-                'total', 'absorption', 'photon-production matrix'}
+                'total', 'absorption', 'nu-scatter matrix'}
             unsupported = set(self.mgxs_types) - photon_mgxs_types
             if unsupported:
                 warn('Photon MGXS libraries do not support the following '
                      f'MGXS types: {sorted(unsupported)}.')
-                error_flag = True
-            if self.particle_type != openmc.ParticleType.PHOTON:
-                warn('A photon production matrix requires particle_type to '
-                     'be "photon".')
                 error_flag = True
             if self.by_nuclide:
                 warn('Photon production cannot be tallied by nuclide.')
@@ -1660,7 +1648,7 @@ class Library:
                 warn('Photon MGXS libraries require the default tracklength '
                      'estimator for flux-weighted cross sections.')
                 error_flag = True
-            for mgxs_type in ('total', 'absorption'):
+            for mgxs_type in ('total', 'absorption', 'nu-scatter matrix'):
                 if mgxs_type not in self.mgxs_types:
                     warn(f'A "{mgxs_type}" MGXS type is required for a '
                          'photon MGXS library.')
@@ -1669,11 +1657,6 @@ class Library:
                 raise ValueError('Invalid photon MGXS configuration '
                                  'encountered.')
             return
-
-        if self.particle_type == openmc.ParticleType.PHOTON:
-            warn('A "photon-production matrix" MGXS type is required for a '
-                 'photon MGXS library.')
-            raise ValueError('Invalid photon MGXS configuration encountered.')
 
         # if correction is 'P0', then transport must be provided
         # otherwise total must be provided

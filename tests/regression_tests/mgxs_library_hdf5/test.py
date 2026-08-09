@@ -23,10 +23,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.by_nuclide = False
 
         # Test all MGXS types
-        neutron_mgxs_types = tuple(
-            xs for xs in openmc.mgxs.MGXS_TYPES
-            if xs != 'photon-production matrix')
-        self.mgxs_lib.mgxs_types = neutron_mgxs_types + \
+        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + \
                                    openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.num_delayed_groups = 6

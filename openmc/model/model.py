@@ -3084,6 +3084,16 @@ class Model:
                 "'multi-group'. Use convert_to_multigroup() first."
             )
 
+        particle_type = openmc.ParticleType.NEUTRON
+        sources = self.settings.source
+        if sources and all(isinstance(src, openmc.IndependentSource)
+                           for src in sources):
+            source_particles = {src.particle for src in sources}
+            if len(source_particles) != 1:
+                raise ValueError('Random ray conversion does not support '
+                                 'mixed source particle types.')
+            particle_type = source_particles.pop()
+
         # Helper function for detecting infinity
         def _replace_infinity(value):
             if np.isinf(value):
@@ -3097,7 +3107,8 @@ class Model:
         lower_left = [_replace_infinity(v) for v in bounding_box.lower_left]
         upper_right = [_replace_infinity(v) for v in bounding_box.upper_right]
         uniform_dist_ray = openmc.stats.Box(lower_left, upper_right)
-        rr_source = openmc.IndependentSource(space=uniform_dist_ray)
+        rr_source = openmc.IndependentSource(
+            space=uniform_dist_ray, particle=particle_type)
         self.settings.random_ray['ray_source'] = rr_source
 
         # For the dead zone and active length, a reasonable guess is the larger of either:

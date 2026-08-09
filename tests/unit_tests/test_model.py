@@ -1272,6 +1272,25 @@ def test_convert_to_multigroup_photon_validation(run_in_tmpdir):
             particle_type='photon', mgxs_path='mgxs.h5')
 
 
+def test_convert_to_random_ray_photon():
+    model = _steel_water_model()
+    model.settings.energy_mode = 'multi-group'
+    model.settings.source = openmc.IndependentSource(particle='photon')
+
+    model.convert_to_random_ray()
+
+    ray_source = model.settings.random_ray['ray_source']
+    assert ray_source.particle == openmc.ParticleType.PHOTON
+
+    model.settings.random_ray.clear()
+    model.settings.source = [
+        openmc.IndependentSource(particle='neutron'),
+        openmc.IndependentSource(particle='photon'),
+    ]
+    with pytest.raises(ValueError, match='mixed'):
+        model.convert_to_random_ray()
+
+
 def test_convert_to_multigroup_deprecated_args(run_in_tmpdir, monkeypatch):
     # The deprecated arguments still work, with a FutureWarning
     model = _steel_water_model()

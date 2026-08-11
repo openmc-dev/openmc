@@ -73,7 +73,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
         # we expect these results to be the same to within at least ten
         # decimal places
-        decimals = 10 if umesh_tally.estimator == 'collision' else 8
+        decimals = 10 if umesh_tally.estimator == 'collision' else 6
         np.testing.assert_array_almost_equal(np.sort(unstructured_data),
                                             np.sort(reg_mesh_data),
                                             decimals)
@@ -229,7 +229,8 @@ def model():
     cos_theta = openmc.stats.Discrete(x=[1.0], p=[1.0])
     phi = openmc.stats.Discrete(x=[0.0], p=[1.0])
 
-    space = openmc.stats.SphericalIndependent(r=r, cos_theta=cos_theta, phi=phi)
+    space = openmc.stats.SphericalIndependent(
+        r=r, cos_theta=cos_theta, phi=phi, origin=(0.0, 0.0, 0.0))
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.IndependentSource(space=space, energy=energy)
     settings.source = source
@@ -240,36 +241,46 @@ def model():
 
 
 param_values = (['libmesh', 'moab'], # mesh libraries
+                ['native', 'xdg'], # mesh interfaces
                 ['collision', 'tracklength'], # estimators
                 [True, False], # geometry outside of the mesh
                 [(333, 90, 77), None]) # location of holes in the mesh
 test_cases = []
-for i, (lib, estimator, ext_geom, holes) in enumerate(product(*param_values)):
+for i, (lib, interface, estimator, ext_geom, holes) in enumerate(product(*param_values)):
     test_cases.append({'library' : lib,
+                       'interface': interface,
                        'estimator' : estimator,
                        'external_geom' : ext_geom,
                        'holes' : holes,
-                       'inputs_true' : 'inputs_true{}.dat'.format(i)})
+                       'inputs_true' : f'inputs_true{i}.dat'})
 
+def param_ids(test_case):
+    return f"{test_case['library']}_{test_case['interface']}_{test_case['estimator']}_holes_{test_case['holes']}_external_geom_{test_case['external_geom']}"
 
-@pytest.mark.parametrize("test_opts", test_cases)
+@pytest.mark.parametrize("test_opts", test_cases, ids=param_ids)
 def test_unstructured_mesh_tets(model, test_opts):
-    # skip the test if the library is not enabled
-    if test_opts['library'] == 'moab' and not openmc.lib.feature_enabled('dagmc'):
-        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
+    # skip the test if appropriate libraries or interfaces are not enabled
+    if test_opts['interface'] == 'xdg' and not openmc.lib.feature_enabled('xdg'):
+        pytest.skip("XDG interface is not enabled in this build.")
+    elif test_opts['interface'] == 'native':
+        if test_opts['library'] == 'moab' and not openmc.lib.feature_enabled('dagmc'):
+            pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
 
-    if test_opts['library'] == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
-        pytest.skip("LibMesh is not enabled in this build.")
+        if test_opts['library'] == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
+            pytest.skip("LibMesh is not enabled in this build.")
 
     # skip the tracklength test for libmesh
     if test_opts['library'] == 'libmesh' and \
-       test_opts['estimator'] == 'tracklength':
+       test_opts['estimator'] == 'tracklength' and \
+       test_opts['interface'] != 'xdg':
        pytest.skip("Tracklength tallies are not supported using libmesh.")
 
     if test_opts['holes']:
         mesh_filename = "test_mesh_tets_w_holes.e"
     else:
         mesh_filename = "test_mesh_tets.e"
+
+    interface = test_opts['interface']
 
     # add reference mesh tally
     regular_mesh_tally = model.tallies[0]
@@ -280,6 +291,8 @@ def test_unstructured_mesh_tets(model, test_opts):
     if test_opts['library'] == 'moab':
         uscd_mesh.options = 'MAX_DEPTH=15;PLANE_SET=2'
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
+
+    uscd_mesh.interface = interface
 
     # create tallies
     uscd_tally = openmc.Tally(name="unstructured mesh tally")

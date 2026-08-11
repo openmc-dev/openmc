@@ -305,10 +305,11 @@ class MeshBase(IDManagerMixin, ABC):
             return CylindricalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'spherical':
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
-        elif mesh_type == 'unstructured':
-            return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
-        elif mesh_type == 'xdg':
-            return openmc.XDGMesh.from_hdf5(group, mesh_id, mesh_name)
+        elif mesh_type in ('unstructured', 'xdg'):
+            out = UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
+            if mesh_type == 'xdg':
+                out.interface = 'xdg'
+            return out
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
@@ -2869,17 +2870,8 @@ class UnstructuredMesh(MeshBase):
 
     @library.setter
     def library(self, lib: str):
-        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
+        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh', 'xdg'))
         self._library = lib
-
-    @property
-    def interface(self):
-        return self._interface
-
-    @interface.setter
-    def interface(self, interface: str):
-        cv.check_value('Unstructured mesh interface', interface, ('native', 'xdg'))
-        self._interface = interface
 
     @property
     def options(self) -> str | None:

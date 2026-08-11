@@ -1005,6 +1005,15 @@ public:
   LibMesh(const std::string& filename, double length_multiplier = 1.0);
   LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
+  //! Create a mesh from an externally constructed libMesh mesh, transferring
+  //! ownership of the mesh to OpenMC
+  //
+  //! \param[in] input_mesh Externally built mesh (must be replicated)
+  //! \param[in] length_multiplier Multiplier applied to mesh coordinates
+  //! \param[in] filename Name of the file the mesh was read from, if any
+  LibMesh(unique_ptr<libMesh::MeshBase> input_mesh,
+    double length_multiplier = 1.0, const std::string& filename = "");
+
   static const std::string mesh_lib_type;
 
   // Overridden Methods

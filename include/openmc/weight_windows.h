@@ -248,6 +248,11 @@ void apply_weight_window(Particle& p, WeightWindow weight_window);
 //! Free memory associated with weight windows
 void free_memory_weight_windows();
 
+//! Build a WeightWindows object from multigroup adjoint flux stored as
+//! elemental data in an Exodus II file (requires libMesh support)
+//! \param[in] node XML node for <weight_windows_exodus> in settings.xml
+void read_weight_windows_exodus(pugi::xml_node node);
+
 //! Search weight window that apply to a particle
 //! \param[in]  p  Particle to search weight window for
 std::pair<bool, WeightWindow> search_weight_window(const Particle& p);

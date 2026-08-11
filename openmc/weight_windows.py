@@ -10,13 +10,20 @@ import numpy as np
 import h5py
 
 import openmc
-from openmc.mesh import MeshBase, RectilinearMesh, CylindricalMesh, SphericalMesh, UnstructuredMesh
+from openmc.mesh import (
+    MeshBase,
+    RectilinearMesh,
+    CylindricalMesh,
+    SphericalMesh,
+    UnstructuredMesh,
+)
 from openmc.tallies import Tallies
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from ._xml import get_elem_list, get_text, clean_indentation
 from .mixin import IDManagerMixin
 from .particle_type import ParticleType
+from .utility_funcs import input_path
 
 
 class WeightWindows(IDManagerMixin):
@@ -106,6 +113,7 @@ class WeightWindows(IDManagerMixin):
     openmc.Settings
 
     """
+
     next_id = 1
     used_ids = set()
 
@@ -116,12 +124,12 @@ class WeightWindows(IDManagerMixin):
         upper_ww_bounds: Iterable[float] | None = None,
         upper_bound_ratio: float | None = None,
         energy_bounds: Iterable[Real] | None = None,
-        particle_type: str | int | openmc.ParticleType = 'neutron',
+        particle_type: str | int | openmc.ParticleType = "neutron",
         survival_ratio: float = 3.0,
         max_lower_bound_ratio: float | None = None,
         max_split: int = 10,
-        weight_cutoff: float = 1.e-38,
-        id: int | None = None
+        weight_cutoff: float = 1.0e-38,
+        id: int | None = None,
     ):
         self.mesh = mesh
         self.id = id
@@ -132,12 +140,16 @@ class WeightWindows(IDManagerMixin):
         self.lower_ww_bounds = lower_ww_bounds
 
         if upper_ww_bounds is not None and upper_bound_ratio:
-            raise ValueError("Exactly one of upper_ww_bounds and "
-                             "upper_bound_ratio must be present.")
+            raise ValueError(
+                "Exactly one of upper_ww_bounds and "
+                "upper_bound_ratio must be present."
+            )
 
         if upper_ww_bounds is None and upper_bound_ratio is None:
-            raise ValueError("Exactly one of upper_ww_bounds and "
-                             "upper_bound_ratio must be present.")
+            raise ValueError(
+                "Exactly one of upper_ww_bounds and "
+                "upper_bound_ratio must be present."
+            )
 
         if upper_bound_ratio:
             self.upper_ww_bounds = [
@@ -148,8 +160,9 @@ class WeightWindows(IDManagerMixin):
             self.upper_ww_bounds = upper_ww_bounds
 
         if len(self.lower_ww_bounds) != len(self.upper_ww_bounds):
-            raise ValueError('Size of the lower and upper weight '
-                             'window bounds do not match')
+            raise ValueError(
+                "Size of the lower and upper weight " "window bounds do not match"
+            )
 
         self.survival_ratio = survival_ratio
 
@@ -161,17 +174,19 @@ class WeightWindows(IDManagerMixin):
         self.weight_cutoff = weight_cutoff
 
     def __repr__(self) -> str:
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tID', self._id)
-        string += '{: <16}=\t{}\n'.format('\tMesh', self.mesh)
-        string += '{: <16}=\t{}\n'.format('\tParticle Type', self._particle_type)
-        string += '{: <16}=\t{}\n'.format('\tEnergy Bounds', self._energy_bounds)
-        string += '{: <16}=\t{}\n'.format('\tMax lower bound ratio', self.max_lower_bound_ratio)
-        string += '{: <16}=\t{}\n'.format('\tLower WW Bounds', self._lower_ww_bounds)
-        string += '{: <16}=\t{}\n'.format('\tUpper WW Bounds', self._upper_ww_bounds)
-        string += '{: <16}=\t{}\n'.format('\tSurvival Ratio', self._survival_ratio)
-        string += '{: <16}=\t{}\n'.format('\tMax Split', self._max_split)
-        string += '{: <16}=\t{}\n'.format('\tWeight Cutoff', self._weight_cutoff)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tID", self._id)
+        string += "{: <16}=\t{}\n".format("\tMesh", self.mesh)
+        string += "{: <16}=\t{}\n".format("\tParticle Type", self._particle_type)
+        string += "{: <16}=\t{}\n".format("\tEnergy Bounds", self._energy_bounds)
+        string += "{: <16}=\t{}\n".format(
+            "\tMax lower bound ratio", self.max_lower_bound_ratio
+        )
+        string += "{: <16}=\t{}\n".format("\tLower WW Bounds", self._lower_ww_bounds)
+        string += "{: <16}=\t{}\n".format("\tUpper WW Bounds", self._upper_ww_bounds)
+        string += "{: <16}=\t{}\n".format("\tSurvival Ratio", self._survival_ratio)
+        string += "{: <16}=\t{}\n".format("\tMax Split", self._max_split)
+        string += "{: <16}=\t{}\n".format("\tWeight Cutoff", self._weight_cutoff)
         return string
 
     def __eq__(self, other: WeightWindows) -> bool:
@@ -182,11 +197,13 @@ class WeightWindows(IDManagerMixin):
         # TODO: add ability to check mesh equality
 
         # check several attributes directly
-        attrs = ('particle_type',
-                 'survival_ratio',
-                 'max_lower_bound_ratio',
-                 'max_split',
-                 'weight_cutoff')
+        attrs = (
+            "particle_type",
+            "survival_ratio",
+            "max_lower_bound_ratio",
+            "max_split",
+            "weight_cutoff",
+        )
         for attr in attrs:
             if getattr(self, attr) != getattr(other, attr):
                 return False
@@ -209,7 +226,7 @@ class WeightWindows(IDManagerMixin):
 
     @mesh.setter
     def mesh(self, mesh: MeshBase):
-        cv.check_type('Weight window mesh', mesh, MeshBase)
+        cv.check_type("Weight window mesh", mesh, MeshBase)
         self._mesh = mesh
 
     @property
@@ -220,7 +237,9 @@ class WeightWindows(IDManagerMixin):
     def particle_type(self, pt):
         ptype = ParticleType(pt)
         if ptype not in {ParticleType.NEUTRON, ParticleType.PHOTON}:
-            raise ValueError("Weight windows can only be applied for neutrons or photons")
+            raise ValueError(
+                "Weight windows can only be applied for neutrons or photons"
+            )
         self._particle_type = ptype
 
     @property
@@ -229,7 +248,7 @@ class WeightWindows(IDManagerMixin):
 
     @energy_bounds.setter
     def energy_bounds(self, bounds: Iterable[float]):
-        cv.check_type('Energy bounds', bounds, Iterable, Real)
+        cv.check_type("Energy bounds", bounds, Iterable, Real)
         self._energy_bounds = np.asarray(bounds)
 
     @property
@@ -244,11 +263,9 @@ class WeightWindows(IDManagerMixin):
 
     @lower_ww_bounds.setter
     def lower_ww_bounds(self, bounds: Iterable[float]):
-        cv.check_iterable_type('Lower WW bounds',
-                               bounds,
-                               Real,
-                               min_depth=1,
-                               max_depth=4)
+        cv.check_iterable_type(
+            "Lower WW bounds", bounds, Real, min_depth=1, max_depth=4
+        )
         # reshape data according to mesh and energy bins
         bounds = np.asarray(bounds)
         if isinstance(self.mesh, UnstructuredMesh):
@@ -263,11 +280,9 @@ class WeightWindows(IDManagerMixin):
 
     @upper_ww_bounds.setter
     def upper_ww_bounds(self, bounds: Iterable[float]):
-        cv.check_iterable_type('Upper WW bounds',
-                               bounds,
-                               Real,
-                               min_depth=1,
-                               max_depth=4)
+        cv.check_iterable_type(
+            "Upper WW bounds", bounds, Real, min_depth=1, max_depth=4
+        )
         # reshape data according to mesh and energy bins
         bounds = np.asarray(bounds)
         if isinstance(self.mesh, UnstructuredMesh):
@@ -282,8 +297,8 @@ class WeightWindows(IDManagerMixin):
 
     @survival_ratio.setter
     def survival_ratio(self, val: float):
-        cv.check_type('Survival ratio', val, Real)
-        cv.check_greater_than('Survival ratio', val, 1.0, True)
+        cv.check_type("Survival ratio", val, Real)
+        cv.check_greater_than("Survival ratio", val, 1.0, True)
         self._survival_ratio = val
 
     @property
@@ -292,8 +307,8 @@ class WeightWindows(IDManagerMixin):
 
     @max_lower_bound_ratio.setter
     def max_lower_bound_ratio(self, val: float):
-        cv.check_type('Maximum lower bound ratio', val, Real)
-        cv.check_greater_than('Maximum lower bound ratio', val, 1.0, equality=True)
+        cv.check_type("Maximum lower bound ratio", val, Real)
+        cv.check_greater_than("Maximum lower bound ratio", val, 1.0, equality=True)
         self._max_lower_bound_ratio = val
 
     @property
@@ -302,7 +317,7 @@ class WeightWindows(IDManagerMixin):
 
     @max_split.setter
     def max_split(self, val: int):
-        cv.check_type('Max split', val, Integral)
+        cv.check_type("Max split", val, Integral)
         self._max_split = val
 
     @property
@@ -311,8 +326,8 @@ class WeightWindows(IDManagerMixin):
 
     @weight_cutoff.setter
     def weight_cutoff(self, cutoff: float):
-        cv.check_type('Weight cutoff', cutoff, Real)
-        cv.check_greater_than('Weight cutoff', cutoff, 0.0, True)
+        cv.check_type("Weight cutoff", cutoff, Real)
+        cv.check_greater_than("Weight cutoff", cutoff, 0.0, True)
         self._weight_cutoff = cutoff
 
     def to_xml_element(self) -> ET.Element:
@@ -323,37 +338,37 @@ class WeightWindows(IDManagerMixin):
         element : lxml.etree._Element
             XML element containing the weight window information
         """
-        element = ET.Element('weight_windows')
+        element = ET.Element("weight_windows")
 
-        element.set('id', str(self._id))
+        element.set("id", str(self._id))
 
-        subelement = ET.SubElement(element, 'mesh')
+        subelement = ET.SubElement(element, "mesh")
         subelement.text = str(self.mesh.id)
 
-        subelement = ET.SubElement(element, 'particle_type')
+        subelement = ET.SubElement(element, "particle_type")
         subelement.text = str(self.particle_type)
 
         if self.energy_bounds is not None:
-            subelement = ET.SubElement(element, 'energy_bounds')
-            subelement.text = ' '.join(str(e) for e in self.energy_bounds)
+            subelement = ET.SubElement(element, "energy_bounds")
+            subelement.text = " ".join(str(e) for e in self.energy_bounds)
 
-        subelement = ET.SubElement(element, 'lower_ww_bounds')
-        subelement.text = ' '.join(str(b) for b in self.lower_ww_bounds.ravel('F'))
+        subelement = ET.SubElement(element, "lower_ww_bounds")
+        subelement.text = " ".join(str(b) for b in self.lower_ww_bounds.ravel("F"))
 
-        subelement = ET.SubElement(element, 'upper_ww_bounds')
-        subelement.text = ' '.join(str(b) for b in self.upper_ww_bounds.ravel('F'))
+        subelement = ET.SubElement(element, "upper_ww_bounds")
+        subelement.text = " ".join(str(b) for b in self.upper_ww_bounds.ravel("F"))
 
-        subelement = ET.SubElement(element, 'survival_ratio')
+        subelement = ET.SubElement(element, "survival_ratio")
         subelement.text = str(self.survival_ratio)
 
         if self.max_lower_bound_ratio is not None:
-            subelement = ET.SubElement(element, 'max_lower_bound_ratio')
+            subelement = ET.SubElement(element, "max_lower_bound_ratio")
             subelement.text = str(self.max_lower_bound_ratio)
 
-        subelement = ET.SubElement(element, 'max_split')
+        subelement = ET.SubElement(element, "max_split")
         subelement.text = str(self.max_split)
 
-        subelement = ET.SubElement(element, 'weight_cutoff')
+        subelement = ET.SubElement(element, "weight_cutoff")
         subelement.text = str(self.weight_cutoff)
 
         return element
@@ -375,7 +390,7 @@ class WeightWindows(IDManagerMixin):
             Weight windows object
         """
         # Get mesh for weight windows
-        mesh_id = int(get_text(elem, 'mesh'))
+        mesh_id = int(get_text(elem, "mesh"))
         if mesh_id not in meshes:
             raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
         mesh = meshes[mesh_id]
@@ -384,20 +399,20 @@ class WeightWindows(IDManagerMixin):
         lower_ww_bounds = get_elem_list(elem, "lower_ww_bounds", float)
         upper_ww_bounds = get_elem_list(elem, "upper_ww_bounds", float)
         e_bounds = get_elem_list(elem, "energy_bounds", float)
-        particle_type = get_text(elem, 'particle_type')
-        survival_ratio = float(get_text(elem, 'survival_ratio'))
+        particle_type = get_text(elem, "particle_type")
+        survival_ratio = float(get_text(elem, "survival_ratio"))
 
         ww_shape = (len(e_bounds) - 1,) + mesh.dimension[::-1]
         lower_ww_bounds = np.array(lower_ww_bounds).reshape(ww_shape).T
         upper_ww_bounds = np.array(upper_ww_bounds).reshape(ww_shape).T
 
         max_lower_bound_ratio = None
-        if get_text(elem, 'max_lower_bound_ratio'):
-            max_lower_bound_ratio = float(get_text(elem, 'max_lower_bound_ratio'))
+        if get_text(elem, "max_lower_bound_ratio"):
+            max_lower_bound_ratio = float(get_text(elem, "max_lower_bound_ratio"))
 
-        max_split = int(get_text(elem, 'max_split'))
-        weight_cutoff = float(get_text(elem, 'weight_cutoff'))
-        id = int(get_text(elem, 'id'))
+        max_split = int(get_text(elem, "max_split"))
+        weight_cutoff = float(get_text(elem, "weight_cutoff"))
+        id = int(get_text(elem, "id"))
 
         return cls(
             mesh=mesh,
@@ -409,7 +424,7 @@ class WeightWindows(IDManagerMixin):
             max_lower_bound_ratio=max_lower_bound_ratio,
             max_split=max_split,
             weight_cutoff=weight_cutoff,
-            id=id
+            id=id,
         )
 
     @classmethod
@@ -429,25 +444,25 @@ class WeightWindows(IDManagerMixin):
             A weight window object
         """
 
-        id = int(group.name.split('/')[-1].lstrip('weight_windows'))
-        mesh_id = group['mesh'][()]
+        id = int(group.name.split("/")[-1].lstrip("weight_windows"))
+        mesh_id = group["mesh"][()]
         mesh = meshes[mesh_id]
 
-        ptype = group['particle_type'][()].decode()
-        e_bounds = group['energy_bounds'][()]
+        ptype = group["particle_type"][()].decode()
+        e_bounds = group["energy_bounds"][()]
         # weight window bounds are stored with the shape (e, k, j, i)
         # in C++ and HDF5 -- the opposite of how they are stored here
-        shape = (e_bounds.size - 1,  *mesh.dimension[::-1])
-        lower_ww_bounds = group['lower_ww_bounds'][()].reshape(shape).T
-        upper_ww_bounds = group['upper_ww_bounds'][()].reshape(shape).T
-        survival_ratio = group['survival_ratio'][()]
+        shape = (e_bounds.size - 1, *mesh.dimension[::-1])
+        lower_ww_bounds = group["lower_ww_bounds"][()].reshape(shape).T
+        upper_ww_bounds = group["upper_ww_bounds"][()].reshape(shape).T
+        survival_ratio = group["survival_ratio"][()]
 
         max_lower_bound_ratio = None
-        if group.get('max_lower_bound_ratio') is not None:
-            max_lower_bound_ratio = group['max_lower_bound_ratio'][()]
+        if group.get("max_lower_bound_ratio") is not None:
+            max_lower_bound_ratio = group["max_lower_bound_ratio"][()]
 
-        max_split = group['max_split'][()]
-        weight_cutoff = group['weight_cutoff'][()]
+        max_split = group["max_split"][()]
+        weight_cutoff = group["weight_cutoff"][()]
 
         return cls(
             mesh=mesh,
@@ -459,7 +474,7 @@ class WeightWindows(IDManagerMixin):
             max_lower_bound_ratio=max_lower_bound_ratio,
             max_split=max_split,
             weight_cutoff=weight_cutoff,
-            id=id
+            id=id,
         )
 
 
@@ -479,7 +494,7 @@ def wwinp_to_wws(path: PathLike) -> WeightWindowsList:
     """
     warnings.warn(
         "This function is deprecated in favor of 'WeightWindowsList.from_wwinp'",
-        FutureWarning
+        FutureWarning,
     )
     return WeightWindowsList.from_wwinp(path)
 
@@ -534,18 +549,18 @@ class WeightWindowGenerator:
         Whether or not to apply weight windows on the fly.
     """
 
-    _WWG_PARAMS = {'value': str, 'threshold': float, 'ratio': float}
+    _WWG_PARAMS = {"value": str, "threshold": float, "ratio": float}
 
     def __init__(
         self,
         mesh: openmc.MeshBase,
         energy_bounds: Sequence[float] | None = None,
-        particle_type: str | int | openmc.ParticleType = 'neutron',
-        method: str = 'magic',
+        particle_type: str | int | openmc.ParticleType = "neutron",
+        method: str = "magic",
         targets: openmc.Tallies | Iterable[int] | None = None,
         max_realizations: int = 1,
         update_interval: int = 1,
-        on_the_fly: bool = True
+        on_the_fly: bool = True,
     ):
         self._update_parameters = None
 
@@ -561,7 +576,7 @@ class WeightWindowGenerator:
         self.on_the_fly = on_the_fly
 
     def __repr__(self):
-        string = type(self).__name__ + '\n'
+        string = type(self).__name__ + "\n"
         string += f'\t{"Mesh":<20}=\t{self.mesh.id}\n'
         string += f'\t{"Particle:":<20}=\t{str(self.particle_type)}\n'
         string += f'\t{"Energy Bounds:":<20}=\t{self.energy_bounds}\n'
@@ -581,7 +596,7 @@ class WeightWindowGenerator:
 
     @mesh.setter
     def mesh(self, m: openmc.MeshBase):
-        cv.check_type('mesh', m, openmc.MeshBase)
+        cv.check_type("mesh", m, openmc.MeshBase)
         self._mesh = m
 
     @property
@@ -590,7 +605,7 @@ class WeightWindowGenerator:
 
     @energy_bounds.setter
     def energy_bounds(self, eb: Iterable[float]):
-        cv.check_type('energy bounds', eb, Iterable, Real)
+        cv.check_type("energy bounds", eb, Iterable, Real)
         self._energy_bounds = eb
 
     @property
@@ -601,7 +616,9 @@ class WeightWindowGenerator:
     def particle_type(self, pt):
         ptype = ParticleType(pt)
         if ptype not in {ParticleType.NEUTRON, ParticleType.PHOTON}:
-            raise ValueError("Weight windows can only be applied for neutrons or photons")
+            raise ValueError(
+                "Weight windows can only be applied for neutrons or photons"
+            )
         self._particle_type = ptype
 
     @property
@@ -610,15 +627,15 @@ class WeightWindowGenerator:
 
     @method.setter
     def method(self, m: str):
-        cv.check_type('generation method', m, str)
-        cv.check_value('generation method', m, ('magic', 'fw_cadis'))
+        cv.check_type("generation method", m, str)
+        cv.check_value("generation method", m, ("magic", "fw_cadis"))
         self._method = m
         if self._update_parameters is not None:
             try:
                 self._check_update_parameters()
-            except (TypeError, KeyError):
+            except TypeError, KeyError:
                 warnings.warn(f'Update parameters are invalid for the "{m}" method.')
-    
+
     @property
     def targets(self) -> openmc.Tallies:
         return self._targets
@@ -628,10 +645,10 @@ class WeightWindowGenerator:
         if t is None:
             self._targets = t
         else:
-            cv.check_type('Local FW-CADIS target tallies', t, Iterable)
-            cv.check_greater_than('Local FW-CADIS target tallies', len(t), 0)
+            cv.check_type("Local FW-CADIS target tallies", t, Iterable)
+            cv.check_greater_than("Local FW-CADIS target tallies", len(t), 0)
             if not isinstance(t, openmc.Tallies):
-                cv.check_iterable_type('Local FW-CADIS target tallies', t, int)
+                cv.check_iterable_type("Local FW-CADIS target tallies", t, int)
                 t = np.asarray(list(t), dtype=int)
             self._targets = t
 
@@ -641,8 +658,8 @@ class WeightWindowGenerator:
 
     @max_realizations.setter
     def max_realizations(self, m: int):
-        cv.check_type('max tally realizations', m, Integral)
-        cv.check_greater_than('max tally realizations', m, 0)
+        cv.check_type("max tally realizations", m, Integral)
+        cv.check_greater_than("max tally realizations", m, 0)
         self._max_realizations = m
 
     @property
@@ -651,8 +668,8 @@ class WeightWindowGenerator:
 
     @update_interval.setter
     def update_interval(self, ui: int):
-        cv.check_type('update interval', ui, Integral)
-        cv.check_greater_than('update interval', ui , 0)
+        cv.check_type("update interval", ui, Integral)
+        cv.check_greater_than("update interval", ui, 0)
         self._update_interval = ui
 
     @property
@@ -660,14 +677,18 @@ class WeightWindowGenerator:
         return self._update_parameters
 
     def _check_update_parameters(self, params: dict):
-        if self.method == 'magic' or self.method == 'fw_cadis':
+        if self.method == "magic" or self.method == "fw_cadis":
             check_params = self._WWG_PARAMS
 
         for key, val in params.items():
             if key not in check_params:
-                raise ValueError(f'Invalid param "{key}" for {self.method} '
-                                  'weight window generation')
-            cv.check_type(f'weight window generation param: "{key}"', val, self._WWG_PARAMS[key])
+                raise ValueError(
+                    f'Invalid param "{key}" for {self.method} '
+                    "weight window generation"
+                )
+            cv.check_type(
+                f'weight window generation param: "{key}"', val, self._WWG_PARAMS[key]
+            )
 
     @update_parameters.setter
     def update_parameters(self, params: dict):
@@ -680,13 +701,13 @@ class WeightWindowGenerator:
 
     @on_the_fly.setter
     def on_the_fly(self, otf: bool):
-        cv.check_type('on the fly generation', otf, bool)
+        cv.check_type("on the fly generation", otf, bool)
         self._on_the_fly = otf
 
     def _update_parameters_subelement(self, element: ET.Element):
         if not self.update_parameters:
             return
-        params_element = ET.SubElement(element, 'update_parameters')
+        params_element = ET.SubElement(element, "update_parameters")
         for pname, value in self.update_parameters.items():
             param_element = ET.SubElement(params_element, pname)
             param_element.text = str(value)
@@ -703,7 +724,7 @@ class WeightWindowGenerator:
         update_parameters : dict
             The update parameters as-read from the XML node (keys: str, values: str)
         """
-        if method == 'magic' or method == 'fw_cadis':
+        if method == "magic" or method == "fw_cadis":
             check_params = cls._WWG_PARAMS
 
         for param, param_type in check_params.items():
@@ -711,38 +732,39 @@ class WeightWindowGenerator:
                 update_parameters[param] = param_type(update_parameters[param])
 
     def to_xml_element(self):
-        """Creates a 'weight_window_generator' element to be written to an XML file.
-        """
-        element = ET.Element('weight_windows_generator')
+        """Creates a 'weight_window_generator' element to be written to an XML file."""
+        element = ET.Element("weight_windows_generator")
 
-        mesh_elem = ET.SubElement(element, 'mesh')
+        mesh_elem = ET.SubElement(element, "mesh")
         mesh_elem.text = str(self.mesh.id)
         if self.energy_bounds is not None:
-            subelement = ET.SubElement(element, 'energy_bounds')
-            subelement.text = ' '.join(str(e) for e in self.energy_bounds)
-        particle_elem = ET.SubElement(element, 'particle_type')
+            subelement = ET.SubElement(element, "energy_bounds")
+            subelement.text = " ".join(str(e) for e in self.energy_bounds)
+        particle_elem = ET.SubElement(element, "particle_type")
         particle_elem.text = str(self.particle_type)
-        realizations_elem = ET.SubElement(element, 'max_realizations')
+        realizations_elem = ET.SubElement(element, "max_realizations")
         realizations_elem.text = str(self.max_realizations)
-        update_interval_elem = ET.SubElement(element, 'update_interval')
+        update_interval_elem = ET.SubElement(element, "update_interval")
         update_interval_elem.text = str(self.update_interval)
-        otf_elem = ET.SubElement(element, 'on_the_fly')
+        otf_elem = ET.SubElement(element, "on_the_fly")
         otf_elem.text = str(self.on_the_fly).lower()
-        method_elem = ET.SubElement(element, 'method')
+        method_elem = ET.SubElement(element, "method")
         method_elem.text = self.method
         if self.targets is not None:
-            if self.method != 'fw_cadis':
+            if self.method != "fw_cadis":
                 raise ValueError(
-                    "FW-CADIS update method is required in order to use " \
-                    "target tallies for WeightWindowGenerator.")
+                    "FW-CADIS update method is required in order to use "
+                    "target tallies for WeightWindowGenerator."
+                )
             elif isinstance(self.targets, openmc.Tallies):
                 raise RuntimeError(
-                    "FW-CADIS target tallies must be checked to ensure they are " \
-                    "present on model.tallies. Use model.export_to_xml() or " \
-                    "model.export_to_model_xml() to link FW-CADIS target tallies.")
+                    "FW-CADIS target tallies must be checked to ensure they are "
+                    "present on model.tallies. Use model.export_to_xml() or "
+                    "model.export_to_model_xml() to link FW-CADIS target tallies."
+                )
             else:
-                targets_elem = ET.SubElement(element, 'targets')
-                targets_elem.text = ' '.join(str(tally_id) for tally_id in self.targets)
+                targets_elem = ET.SubElement(element, "targets")
+                targets_elem.text = " ".join(str(tally_id) for tally_id in self.targets)
 
         if self.update_parameters is not None:
             self._update_parameters_subelement(element)
@@ -768,30 +790,31 @@ class WeightWindowGenerator:
         openmc.WeightWindowGenerator
         """
 
-        mesh_id = int(get_text(elem, 'mesh'))
+        mesh_id = int(get_text(elem, "mesh"))
         mesh = meshes[mesh_id]
-        
+
         energy_bounds = get_elem_list(elem, "energy_bounds", float)
-        particle_type = get_text(elem, 'particle_type')
+        particle_type = get_text(elem, "particle_type")
 
         wwg = cls(mesh, energy_bounds, particle_type)
 
-        wwg.max_realizations = int(get_text(elem, 'max_realizations'))
-        wwg.update_interval = int(get_text(elem, 'update_interval'))
-        wwg.on_the_fly = bool(get_text(elem, 'on_the_fly'))
-        wwg.method = get_text(elem, 'method')
-        targets_elem = elem.find('targets')
+        wwg.max_realizations = int(get_text(elem, "max_realizations"))
+        wwg.update_interval = int(get_text(elem, "update_interval"))
+        wwg.on_the_fly = bool(get_text(elem, "on_the_fly"))
+        wwg.method = get_text(elem, "method")
+        targets_elem = elem.find("targets")
         if targets_elem is not None:
-            if wwg.method != 'fw_cadis':
+            if wwg.method != "fw_cadis":
                 raise ValueError(
-                    "FW-CADIS update method is required in order to use " \
-                    "target tallies for WeightWindowGenerator.")
+                    "FW-CADIS update method is required in order to use "
+                    "target tallies for WeightWindowGenerator."
+                )
             else:
                 wwg.targets = get_elem_list(elem, "targets")
 
-        if elem.find('update_parameters') is not None:
+        if elem.find("update_parameters") is not None:
             update_parameters = {}
-            params_elem = elem.find('update_parameters')
+            params_elem = elem.find("update_parameters")
             for entry in params_elem:
                 update_parameters[entry.tag] = entry.text
 
@@ -800,7 +823,323 @@ class WeightWindowGenerator:
 
         return wwg
 
-def hdf5_to_wws(path='weight_windows.h5') -> WeightWindowsList:
+
+class WeightWindowsExodus:
+    """Specification for building weight windows from an Exodus file.
+
+    The Exodus file is expected to contain multigroup adjoint flux stored as
+    CONSTANT MONOMIAL elemental variables (one variable per energy group).
+    At simulation initialization, OpenMC reads the mesh and flux, registers the
+    mesh as an unstructured (libMesh) mesh, applies FW-CADIS-style normalization
+    and creates the corresponding weight windows. An instance of this class can
+    be assigned to the :attr:`openmc.Settings.weight_windows_exodus` attribute.
+
+    Requires OpenMC to be built with libMesh support.
+
+    .. versionadded:: 0.15.4
+
+    Parameters
+    ----------
+    file : path-like
+        Path to the Exodus file containing the mesh and adjoint flux
+    adjoint_flux_variables : iterable of str
+        Names of the elemental variables containing the adjoint flux, one per
+        energy group, ordered consistently with `energy_bounds` (ascending
+        energy). Solvers that write group 0 as the fastest group (e.g.
+        Griffin) require the variables to be listed thermal-first.
+    energy_bounds : iterable of float or openmc.mgxs.EnergyGroups
+        Monotonically increasing energy group boundaries in [eV]. The number
+        of boundaries must be one more than the number of flux variables. An
+        :class:`openmc.mgxs.EnergyGroups` instance may be passed directly.
+    timestep : int, optional
+        Zero-based index of the Exodus time step to read the flux from. If
+        not given, the last time step in the file is used.
+    particle_type : str or int or openmc.ParticleType
+        Particle type the weight windows apply to (default: 'neutron')
+    survival_ratio : float, optional
+        Ratio of the survival weight to the lower weight window bound for
+        rouletting. If not given, the default of the transport code (3.0)
+        applies.
+    upper_bound_ratio : float, optional
+        Ratio of the upper to lower weight window bounds. If not given, the
+        default of the transport code (5.0) applies.
+    max_split : int, optional
+        Maximum allowable number of particles when splitting. If not given,
+        the default of the transport code (10) applies.
+
+    Attributes
+    ----------
+    file : pathlib.Path
+        Path to the Exodus file containing the mesh and adjoint flux
+    adjoint_flux_variables : list of str
+        Names of the elemental variables containing the adjoint flux
+    energy_bounds : numpy.ndarray of float
+        Monotonically increasing energy group boundaries in [eV]
+    timestep : int or None
+        Zero-based index of the Exodus time step to read the flux from
+    particle_type : openmc.ParticleType
+        Particle type the weight windows apply to
+    survival_ratio : float or None
+        Ratio of the survival weight to the lower weight window bound
+    upper_bound_ratio : float or None
+        Ratio of the upper to lower weight window bounds
+    max_split : int or None
+        Maximum allowable number of particles when splitting
+
+    See Also
+    --------
+    openmc.Settings.weight_windows_exodus
+
+    """
+
+    def __init__(
+        self,
+        file: PathLike,
+        adjoint_flux_variables: Iterable[str],
+        energy_bounds,
+        timestep: int | None = None,
+        particle_type: str | int | openmc.ParticleType = "neutron",
+        survival_ratio: float | None = None,
+        upper_bound_ratio: float | None = None,
+        max_split: int | None = None,
+    ):
+        self.file = file
+        self.adjoint_flux_variables = adjoint_flux_variables
+        self.energy_bounds = energy_bounds
+        self.timestep = timestep
+        self.particle_type = particle_type
+        self.survival_ratio = survival_ratio
+        self.upper_bound_ratio = upper_bound_ratio
+        self.max_split = max_split
+        self._check_consistency()
+
+    def _check_consistency(self):
+        """Cross-attribute checks mirroring those performed by the C++ layer"""
+        n_groups = len(self.adjoint_flux_variables)
+        if self.energy_bounds.size != n_groups + 1:
+            raise ValueError(
+                f"Number of energy bounds ({self.energy_bounds.size}) must be "
+                f"one more than the number of adjoint flux variables "
+                f"({n_groups})."
+            )
+        # compare using the transport code defaults when a value is unset
+        survival = 3.0 if self.survival_ratio is None else self.survival_ratio
+        upper = 5.0 if self.upper_bound_ratio is None else self.upper_bound_ratio
+        if upper <= survival:
+            raise ValueError(
+                f"Upper bound ratio ({upper}) must be larger than the "
+                f"survival ratio ({survival})."
+            )
+
+    def __repr__(self) -> str:
+        string = type(self).__name__ + "\n"
+        string += f'\t{"File":<20}=\t{self.file}\n'
+        string += f'\t{"Flux variables":<20}=\t{self.adjoint_flux_variables}\n'
+        string += f'\t{"Energy bounds":<20}=\t{self.energy_bounds}\n'
+        string += f'\t{"Timestep":<20}=\t{self.timestep}\n'
+        string += f'\t{"Particle":<20}=\t{str(self.particle_type)}\n'
+        string += f'\t{"Survival ratio":<20}=\t{self.survival_ratio}\n'
+        string += f'\t{"Upper bound ratio":<20}=\t{self.upper_bound_ratio}\n'
+        string += f'\t{"Max split":<20}=\t{self.max_split}\n'
+        return string
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, WeightWindowsExodus):
+            return False
+        attrs = (
+            "file",
+            "adjoint_flux_variables",
+            "timestep",
+            "particle_type",
+            "survival_ratio",
+            "upper_bound_ratio",
+            "max_split",
+        )
+        for attr in attrs:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+        return np.array_equal(self.energy_bounds, other.energy_bounds)
+
+    @property
+    def file(self) -> Path:
+        return self._file
+
+    @file.setter
+    def file(self, value: PathLike):
+        cv.check_type("Exodus weight windows file", value, PathLike)
+        self._file = input_path(value)
+
+    @property
+    def adjoint_flux_variables(self) -> list[str]:
+        return self._adjoint_flux_variables
+
+    @adjoint_flux_variables.setter
+    def adjoint_flux_variables(self, variables: Iterable[str]):
+        cv.check_type("adjoint flux variables", variables, Iterable, str)
+        variables = list(variables)
+        cv.check_greater_than("number of adjoint flux variables", len(variables), 0)
+        self._adjoint_flux_variables = variables
+
+    @property
+    def energy_bounds(self) -> np.ndarray:
+        return self._energy_bounds
+
+    @energy_bounds.setter
+    def energy_bounds(self, bounds):
+        # accept an openmc.mgxs.EnergyGroups directly; local import avoids a
+        # circular import between openmc.weight_windows and openmc.mgxs
+        from openmc.mgxs import EnergyGroups
+
+        if isinstance(bounds, EnergyGroups):
+            bounds = bounds.group_edges
+        cv.check_type("energy bounds", bounds, Iterable, Real)
+        bounds = np.asarray(bounds, dtype=float)
+        if bounds.ndim != 1 or bounds.size < 2:
+            raise ValueError("At least two energy bounds must be provided.")
+        if np.any(np.diff(bounds) <= 0.0):
+            raise ValueError("Energy bounds must be strictly increasing.")
+        self._energy_bounds = bounds
+
+    @property
+    def timestep(self) -> int | None:
+        return self._timestep
+
+    @timestep.setter
+    def timestep(self, value: int | None):
+        if value is not None:
+            cv.check_type("timestep", value, Integral)
+            cv.check_greater_than("timestep", value, 0, equality=True)
+        self._timestep = value
+
+    @property
+    def particle_type(self) -> ParticleType:
+        return self._particle_type
+
+    @particle_type.setter
+    def particle_type(self, pt):
+        ptype = ParticleType(pt)
+        if ptype not in {ParticleType.NEUTRON, ParticleType.PHOTON}:
+            raise ValueError(
+                "Weight windows can only be applied for neutrons or photons"
+            )
+        self._particle_type = ptype
+
+    @property
+    def survival_ratio(self) -> float | None:
+        return self._survival_ratio
+
+    @survival_ratio.setter
+    def survival_ratio(self, value: float | None):
+        if value is not None:
+            cv.check_type("survival ratio", value, Real)
+            cv.check_greater_than("survival ratio", value, 1.0)
+        self._survival_ratio = value
+
+    @property
+    def upper_bound_ratio(self) -> float | None:
+        return self._upper_bound_ratio
+
+    @upper_bound_ratio.setter
+    def upper_bound_ratio(self, value: float | None):
+        if value is not None:
+            cv.check_type("upper bound ratio", value, Real)
+            cv.check_greater_than("upper bound ratio", value, 1.0)
+        self._upper_bound_ratio = value
+
+    @property
+    def max_split(self) -> int | None:
+        return self._max_split
+
+    @max_split.setter
+    def max_split(self, value: int | None):
+        if value is not None:
+            cv.check_type("max split", value, Integral)
+            cv.check_greater_than("max split", value, 1)
+        self._max_split = value
+
+    def to_xml_element(self) -> ET.Element:
+        """Create a 'weight_windows_exodus' element to be written to an XML file."""
+        self._check_consistency()
+
+        element = ET.Element("weight_windows_exodus")
+
+        subelement = ET.SubElement(element, "file")
+        subelement.text = str(self.file)
+
+        subelement = ET.SubElement(element, "adjoint_flux_variables")
+        subelement.text = " ".join(self.adjoint_flux_variables)
+
+        subelement = ET.SubElement(element, "energy_bounds")
+        subelement.text = " ".join(str(e) for e in self.energy_bounds)
+
+        if self.timestep is not None:
+            subelement = ET.SubElement(element, "timestep")
+            subelement.text = str(self.timestep)
+
+        subelement = ET.SubElement(element, "particle_type")
+        subelement.text = str(self.particle_type)
+
+        # optional values are omitted so that the transport code defaults apply
+        if self.survival_ratio is not None:
+            subelement = ET.SubElement(element, "survival_ratio")
+            subelement.text = str(self.survival_ratio)
+
+        if self.upper_bound_ratio is not None:
+            subelement = ET.SubElement(element, "upper_bound_ratio")
+            subelement.text = str(self.upper_bound_ratio)
+
+        if self.max_split is not None:
+            subelement = ET.SubElement(element, "max_split")
+            subelement.text = str(self.max_split)
+
+        clean_indentation(element)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element) -> Self:
+        """Create a WeightWindowsExodus object from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.WeightWindowsExodus
+        """
+        file = get_text(elem, "file")
+        variables = get_elem_list(elem, "adjoint_flux_variables", str)
+        energy_bounds = get_elem_list(elem, "energy_bounds", float)
+
+        wwe = cls(file, variables, energy_bounds)
+
+        timestep = get_text(elem, "timestep")
+        if timestep is not None:
+            wwe.timestep = int(timestep)
+
+        particle_type = get_text(elem, "particle_type")
+        if particle_type is not None:
+            wwe.particle_type = particle_type
+
+        survival_ratio = get_text(elem, "survival_ratio")
+        if survival_ratio is not None:
+            wwe.survival_ratio = float(survival_ratio)
+
+        upper_bound_ratio = get_text(elem, "upper_bound_ratio")
+        if upper_bound_ratio is not None:
+            wwe.upper_bound_ratio = float(upper_bound_ratio)
+
+        max_split = get_text(elem, "max_split")
+        if max_split is not None:
+            wwe.max_split = int(max_split)
+
+        wwe._check_consistency()
+        return wwe
+
+
+def hdf5_to_wws(path="weight_windows.h5") -> WeightWindowsList:
     """Create a WeightWindowsList from a weight windows HDF5 file
 
     .. versionadded:: 0.14.0
@@ -816,7 +1155,7 @@ def hdf5_to_wws(path='weight_windows.h5') -> WeightWindowsList:
     """
     warnings.warn(
         "This function is deprecated in favor of 'WeightWindowsList.from_hdf5'",
-        FutureWarning
+        FutureWarning,
     )
     return WeightWindowsList.from_hdf5(path)
 
@@ -832,11 +1171,12 @@ class WeightWindowsList(list):
         An iterable of WeightWindows objects to initialize the list with
 
     """
+
     def __init__(self, iterable: Iterable[WeightWindows] = ()):
         super().__init__(iterable)
 
     @classmethod
-    def from_hdf5(cls, path: PathLike = 'weight_windows.h5') -> Self:
+    def from_hdf5(cls, path: PathLike = "weight_windows.h5") -> Self:
         """Create WeightWindowsList from a weight windows HDF5 file.
 
         Parameters
@@ -853,12 +1193,12 @@ class WeightWindowsList(list):
         with h5py.File(path) as h5_file:
             # read in all of the meshes in the mesh node
             meshes = {}
-            for mesh_group in h5_file['meshes']:
-                mesh = MeshBase.from_hdf5(h5_file['meshes'][mesh_group])
+            for mesh_group in h5_file["meshes"]:
+                mesh = MeshBase.from_hdf5(h5_file["meshes"][mesh_group])
                 meshes[mesh.id] = mesh
             wws = [
                 WeightWindows.from_hdf5(ww, meshes)
-                for ww in h5_file['weight_windows'].values()
+                for ww in h5_file["weight_windows"].values()
             ]
 
         return cls(wws)
@@ -887,35 +1227,36 @@ class WeightWindowsList(list):
 
             # header value checks
             if _if != 1:
-                raise ValueError(f'Found incorrect file type, if: {_if}')
+                raise ValueError(f"Found incorrect file type, if: {_if}")
 
             if iv > 1:
                 # read number of time bins for each particle, 'nt(1...ni)'
-                nt = np.fromstring(wwinp.readline(), sep=' ', dtype=int)
+                nt = np.fromstring(wwinp.readline(), sep=" ", dtype=int)
 
                 # raise error if time bins are present for now
-                raise ValueError('Time-dependent weight windows '
-                                'are not yet supported')
+                raise ValueError(
+                    "Time-dependent weight windows " "are not yet supported"
+                )
             else:
                 nt = ni * [1]
 
             # read number of energy bins for each particle, 'ne(1...ni)'
-            ne = np.fromstring(wwinp.readline(), sep=' ', dtype=int)
+            ne = np.fromstring(wwinp.readline(), sep=" ", dtype=int)
 
             # read coarse mesh dimensions and lower left corner
-            mesh_description = np.fromstring(wwinp.readline(), sep=' ')
+            mesh_description = np.fromstring(wwinp.readline(), sep=" ")
             nfx, nfy, nfz = mesh_description[:3].astype(int)
             xyz0 = mesh_description[3:]
 
             # read cylindrical and spherical mesh vectors if present
             if nr == 16:
                 # read number of coarse bins
-                line_arr = np.fromstring(wwinp.readline(), sep=' ')
+                line_arr = np.fromstring(wwinp.readline(), sep=" ")
                 ncx, ncy, ncz = line_arr[:3].astype(int)
                 # read polar vector (x1, y1, z1)
                 xyz1 = line_arr[3:]
                 # read azimuthal vector (x2, y2, z2)
-                line_arr = np.fromstring(wwinp.readline(), sep=' ')
+                line_arr = np.fromstring(wwinp.readline(), sep=" ")
                 xyz2 = line_arr[:3]
 
                 # Get polar and azimuthal axes
@@ -924,13 +1265,17 @@ class WeightWindowsList(list):
 
                 # Check for polar axis other than (0, 0, 1)
                 norm = np.linalg.norm(polar_axis)
-                if not np.isclose(polar_axis[2]/norm, 1.0):
-                    raise NotImplementedError('Polar axis not aligned to z-axis not supported')
+                if not np.isclose(polar_axis[2] / norm, 1.0):
+                    raise NotImplementedError(
+                        "Polar axis not aligned to z-axis not supported"
+                    )
 
                 # Check for azimuthal axis other than (1, 0, 0)
                 norm = np.linalg.norm(azimuthal_axis)
-                if not np.isclose(azimuthal_axis[0]/norm, 1.0):
-                    raise NotImplementedError('Azimuthal axis not aligned to x-axis not supported')
+                if not np.isclose(azimuthal_axis[0] / norm, 1.0):
+                    raise NotImplementedError(
+                        "Azimuthal axis not aligned to x-axis not supported"
+                    )
 
                 # read geometry type
                 nwg = int(line_arr[-1])
@@ -938,13 +1283,14 @@ class WeightWindowsList(list):
             elif nr == 10:
                 # read rectilinear data:
                 # number of coarse mesh bins and mesh type
-                ncx, ncy, ncz, nwg = \
-                    np.fromstring(wwinp.readline(), sep=' ').astype(int)
+                ncx, ncy, ncz, nwg = np.fromstring(wwinp.readline(), sep=" ").astype(
+                    int
+                )
             else:
-                raise RuntimeError(f'Invalid mesh description (nr) found: {nr}')
+                raise RuntimeError(f"Invalid mesh description (nr) found: {nr}")
 
             # read BLOCK 2 and BLOCK 3 data into a single array
-            ww_data = np.fromstring(wwinp.read(), sep=' ')
+            ww_data = np.fromstring(wwinp.read(), sep=" ")
 
         # extract mesh data from the ww_data array
         start_idx = 0
@@ -952,26 +1298,30 @@ class WeightWindowsList(list):
         # first values in the mesh definition arrays are the first
         # coordinate of the grid
         end_idx = start_idx + 1 + 3 * ncx
-        i0, i_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
+        i0, i_vals = ww_data[start_idx], ww_data[start_idx + 1 : end_idx]
         start_idx = end_idx
 
         end_idx = start_idx + 1 + 3 * ncy
-        j0, j_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
+        j0, j_vals = ww_data[start_idx], ww_data[start_idx + 1 : end_idx]
         start_idx = end_idx
 
         end_idx = start_idx + 1 + 3 * ncz
-        k0, k_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
+        k0, k_vals = ww_data[start_idx], ww_data[start_idx + 1 : end_idx]
         start_idx = end_idx
 
         # mesh consistency checks
         if nr == 16 and nwg == 1 or nr == 10 and nwg != 1:
-            raise ValueError(f'Mesh description in header ({nr}) '
-                            f'does not match the mesh type ({nwg})')
+            raise ValueError(
+                f"Mesh description in header ({nr}) "
+                f"does not match the mesh type ({nwg})"
+            )
 
         if nr == 10 and (xyz0 != (i0, j0, k0)).any():
-            raise ValueError(f'Mesh origin in the header ({xyz0}) '
-                            f' does not match the origin in the mesh '
-                            f' description ({i0, j0, k0})')
+            raise ValueError(
+                f"Mesh origin in the header ({xyz0}) "
+                f" does not match the origin in the mesh "
+                f" description ({i0, j0, k0})"
+            )
 
         # create openmc mesh object
         grids = []
@@ -979,13 +1329,16 @@ class WeightWindowsList(list):
         for grid0, grid_vals, n_pnts in mesh_definition:
             # file spec checks for the mesh definition
             if (grid_vals[2::3] != 1.0).any():
-                raise ValueError('One or more mesh ratio value, qx, '
-                                'is not equal to one')
+                raise ValueError(
+                    "One or more mesh ratio value, qx, " "is not equal to one"
+                )
 
             s = int(grid_vals[::3].sum())
             if s != n_pnts:
-                raise ValueError(f'Sum of the fine bin entries, {s}, does '
-                                f'not match the number of fine bins, {n_pnts}')
+                raise ValueError(
+                    f"Sum of the fine bin entries, {s}, does "
+                    f"not match the number of fine bins, {n_pnts}"
+                )
 
             # extend the grid based on the next coarse bin endpoint, px
             # and the number of fine bins in the coarse bin, sx
@@ -1004,19 +1357,16 @@ class WeightWindowsList(list):
                 r_grid=grids[0],
                 z_grid=grids[1],
                 phi_grid=grids[2],
-                origin = xyz0,
+                origin=xyz0,
             )
         elif nwg == 3:
             mesh = SphericalMesh(
-                r_grid=grids[0],
-                theta_grid=grids[1],
-                phi_grid=grids[2],
-                origin = xyz0
+                r_grid=grids[0], theta_grid=grids[1], phi_grid=grids[2], origin=xyz0
             )
 
         # extract weight window values from array
         wws = cls()
-        for ne_i, nt_i, particle_type in zip(ne, nt, ('neutron', 'photon')):
+        for ne_i, nt_i, particle_type in zip(ne, nt, ("neutron", "photon")):
             # no information to read for this particle if
             # either the energy bins or time bins are empty
             if ne_i == 0 or nt_i == 0:
@@ -1050,17 +1400,19 @@ class WeightWindowsList(list):
             start_idx = end_idx
 
             # create a weight window object
-            ww = WeightWindows(id=None,
-                            mesh=mesh,
-                            lower_ww_bounds=ww_values,
-                            upper_bound_ratio=5.0,
-                            energy_bounds=energy_bounds,
-                            particle_type=particle_type)
+            ww = WeightWindows(
+                id=None,
+                mesh=mesh,
+                lower_ww_bounds=ww_values,
+                upper_bound_ratio=5.0,
+                energy_bounds=energy_bounds,
+                particle_type=particle_type,
+            )
             wws.append(ww)
 
         return wws
 
-    def export_to_hdf5(self, path: PathLike = 'weight_windows.h5', **init_kwargs):
+    def export_to_hdf5(self, path: PathLike = "weight_windows.h5", **init_kwargs):
         """Write weight windows to an HDF5 file.
 
         Parameters
@@ -1072,11 +1424,12 @@ class WeightWindowsList(list):
 
         """
         import openmc.lib
-        cv.check_type('path', path, PathLike)
+
+        cv.check_type("path", path, PathLike)
 
         # Create a temporary model with the weight windows
         model = openmc.Model()
-        sph = openmc.Sphere(boundary_type='vacuum')
+        sph = openmc.Sphere(boundary_type="vacuum")
         cell = openmc.Cell(region=-sph)
         model.geometry = openmc.Geometry([cell])
         model.settings.weight_windows = self

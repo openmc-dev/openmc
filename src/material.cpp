@@ -814,9 +814,6 @@ void Material::calculate_xs(Particle& p) const
 {
   // Set all material macroscopic cross sections to zero
   p.macro_xs().total = 0.0;
-  p.macro_xs().absorption = 0.0;
-  p.macro_xs().fission = 0.0;
-  p.macro_xs().nu_fission = 0.0;
 
   if (p.type().is_neutron()) {
     this->calculate_neutron_xs(p);
@@ -827,6 +824,10 @@ void Material::calculate_xs(Particle& p) const
 
 void Material::calculate_neutron_xs(Particle& p) const
 {
+  p.macro_xs().absorption = 0.0;
+  p.macro_xs().fission = 0.0;
+  p.macro_xs().nu_fission = 0.0;
+
   // Find energy index on energy grid
   int neutron = ParticleType::neutron().transport_index();
   int i_grid =

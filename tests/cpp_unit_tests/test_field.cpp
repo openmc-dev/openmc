@@ -144,21 +144,6 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test Field - regular mesh")
 TEST_CASE_METHOD(
   RegularMeshFixture, "Test TemperatureField - regular mesh - cell-based only")
 {
-  // The XML data as a string
-  std::string xml_string = R"(
-        <mesh id="1">
-            <dimension>2 2 2</dimension>
-            <lower_left>-1 -1 -1</lower_left>
-            <upper_right>1 1 1</upper_right>
-      </mesh>
-    )";
-
-  // Create the mesh from a file
-  pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
-  pugi::xml_node root = doc.child("mesh");
-  auto mesh = RegularMesh(root);
-
   // Define some temperature values
   vector<double> values = {10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0};
 
@@ -198,21 +183,6 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test VelocityField - regular mesh")
                   Direction(32.0, 32.0, 32.0), Direction(33.0, 33.0, 33.0),
                   Direction(34.0, 34.0, 34.0), Direction(35.0, 35.0, 35.0),
                   Direction(36.0, 36.0, 36.0)}}}));
-
-  // The XML data as a string
-  std::string xml_string = R"(
-        <mesh id="1">
-            <dimension>2 2 2</dimension>
-            <lower_left>-1 -1 -1</lower_left>
-            <upper_right>1 1 1</upper_right>
-      </mesh>
-    )";
-
-  // Create the mesh from a file
-  pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
-  pugi::xml_node root = doc.child("mesh");
-  auto mesh = RegularMesh(root);
 
   // Add physical group map
   mesh.pg_map() = {{1, {0, 24, 12, 36}}, {2, {7, 31, 19, 43}},

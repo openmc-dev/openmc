@@ -517,6 +517,7 @@ target_link_libraries(libopenmc PUBLIC libopenmc_objects)
 
 if(OPENMC_BUILD_TESTS)
   add_library(libopenmc_test STATIC)
+  set_target_properties(libopenmc_test PROPERTIES OUTPUT_NAME openmc_test)
   target_link_libraries(libopenmc_test PUBLIC libopenmc_objects)
 endif()
 

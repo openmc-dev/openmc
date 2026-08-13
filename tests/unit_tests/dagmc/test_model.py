@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 import openmc
 import openmc.lib
+import h5py
 from openmc.utility_funcs import change_directory
 
 pytestmark = pytest.mark.skipif(
@@ -258,6 +259,86 @@ def test_dagmc_xml_reject_region_override():
         openmc.DAGMCUniverse.from_xml_element(elem, mats)
 
 
+def test_dagmc_length_multiplier_xml_roundtrip():
+    dagmc_u = openmc.DAGMCUniverse(filename="dagmc.h5m", universe_id=100, length_multiplier=0.1)
+    root = ET.Element('geometry')
+    dagmc_u.create_xml_subelement(root)
+    dagmc_elem = root.find('dagmc_universe')
+    assert dagmc_elem.get('length_multiplier') == '0.1'
+    dagmc_u_roundtrip = openmc.DAGMCUniverse.from_xml_element(dagmc_elem)
+    assert dagmc_u_roundtrip.length_multiplier == 0.1
+    default_elem = ET.fromstring('<dagmc_universe id="100" filename="dagmc.h5m"/>')
+    default_univ = openmc.DAGMCUniverse.from_xml_element(default_elem)
+    assert default_univ.length_multiplier == 1.0
+
+
+def test_dagmc_length_multiplier_from_hdf5(run_in_tmpdir):
+    # length_multiplier explicitly defined
+    with h5py.File("test_dagmc.h5", "w") as f:
+        g = f.create_group("geometry/universe 100")
+        g.create_dataset("filename", data=np.bytes_("dagmc.h5m"))
+        g.attrs["auto_geom_ids"] = np.int32(0)
+        g.attrs["auto_mat_ids"] = np.int32(0)
+        g.attrs["length_multiplier"] = 0.1
+
+    with h5py.File("test_dagmc.h5", "r") as f:
+        u = openmc.DAGMCUniverse.from_hdf5(f["geometry/universe 100"])
+
+    assert u.id == 100
+    assert u.filename == Path("dagmc.h5m")
+    assert u.length_multiplier == pytest.approx(0.1)
+
+    # length_multiplier not defined - should default to 1.0
+    with h5py.File("test_dagmc_default.h5", "w") as f:
+        g = f.create_group("geometry/universe 101")
+        g.create_dataset("filename", data=np.bytes_("dagmc.h5m"))
+        g.attrs["auto_geom_ids"] = np.int32(0)
+        g.attrs["auto_mat_ids"] = np.int32(0)
+
+    with h5py.File("test_dagmc_default.h5", "r") as f:
+        u_default = openmc.DAGMCUniverse.from_hdf5(f["geometry/universe 101"])
+
+    assert u_default.id == 101
+    assert u_default.filename == Path("dagmc.h5m")
+    assert u_default.length_multiplier == 1.0
+
+
+def test_dagmc_length_multiplier_hdf5_roundtrip(request):
+    p = Path(request.fspath).parent / "dagmc_sphere_r5.h5m"
+
+    daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True, length_multiplier=0.5)
+    root = daguniv.bounded_universe()
+
+    mat = openmc.Material(name="test_mat")
+    mat.add_nuclide("H1", 1.0)
+    mat.set_density("g/cm3", 1.0)
+
+    settings = openmc.Settings()
+    settings.batches = 100
+    settings.inactive = 10
+    settings.particles = 1000
+    ll, ur = daguniv.bounding_box
+
+    model = openmc.Model()
+    model.geometry = openmc.Geometry(root)
+    model.materials = openmc.Materials([mat])
+    model.settings = settings
+
+    with change_directory(tmpdir=True):
+        try:
+            model.init_lib()
+            model.sync_dagmc_universes()
+            summary = openmc.Summary("summary.h5")
+        finally:
+            model.finalize_lib()
+            openmc.reset_auto_ids()
+
+    all_univs = summary.geometry.get_all_universes()
+    u = all_univs[daguniv.id]
+    assert isinstance(u, openmc.DAGMCUniverse)
+    assert u.length_multiplier == pytest.approx(0.5)
+
+
 def _legacy_xml(cell_overrides):
     """Helper to build a <dagmc_universe> with old-format <material_overrides>."""
     inner = ''.join(
@@ -363,3 +444,51 @@ def test_dagmc_xml_temperature_roundtrip():
     dag_univ_roundtrip = openmc.DAGMCUniverse.from_xml_element(dagmc_elem, mats)
     assert dag_univ_roundtrip.cells[7].fill.id == 1
     assert dag_univ_roundtrip.cells[7].temperature == pytest.approx(825.0)
+
+
+def test_dagmc_length_multiplier_volume_scaling(request):
+    """Stochastic volume of a DAGMC sphere should scale as length_multiplier^3.
+    A DAGMC sphere with radius 5 cm (and no graveyard) is checked against the 
+    analytical volume (4/3 * pi * r^3) for length_multiplier values of 1.0 and 10.0.
+    """
+    p = Path(request.fspath).parent / "dagmc_sphere_r5.h5m"
+    n_samples = 1000000
+
+    def _compute_sphere_volume(length_multiplier):
+        openmc.reset_auto_ids()
+        daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True,
+                                       length_multiplier=length_multiplier)
+        root = daguniv.bounded_universe()
+
+        mat = openmc.Material(name="test_mat")
+        mat.add_nuclide("H1", 1.0)
+        mat.set_density("g/cm3", 1.0)
+
+        settings = openmc.Settings()
+        settings.batches = 100
+        settings.inactive = 10
+        settings.particles = 1000
+        ll, ur = daguniv.bounding_box
+        vol_calc = openmc.VolumeCalculation([mat], n_samples, ll, ur)
+        settings.volume_calculations = [vol_calc]
+        model = openmc.Model()
+        model.geometry = openmc.Geometry(root)
+        model.materials = openmc.Materials([mat])
+        model.settings = settings
+        with change_directory(tmpdir=True):
+            try:
+                model.init_lib()
+                model.sync_dagmc_universes()
+                model.calculate_volumes()
+            finally:
+                model.finalize_lib()
+                openmc.reset_auto_ids()
+        return mat.volume
+
+    v1 = _compute_sphere_volume(length_multiplier=1.0)
+    v10 = _compute_sphere_volume(length_multiplier=10.0)
+    expected_v1 = 4.0 / 3.0 * np.pi * 5.0**3
+    expected_v10 = expected_v1 * 10.0**3
+    assert v1 == pytest.approx(expected_v1, rel=0.02)
+    assert v10 == pytest.approx(expected_v10, rel=0.02)
+    assert v10 / v1 == pytest.approx(10.0**3, rel=0.02)

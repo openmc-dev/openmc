@@ -51,15 +51,11 @@ inline void hash_combine(size_t& seed, const size_t v)
 // every iteration.
 struct TallyTask {
   int tally_idx;
-  int filter_idx;
+  int64_t filter_idx;
   int score_idx;
   int score_type;
-  // Angular quadrature bin index this task applies to. C_NONE (the default)
-  // means the task is angle-independent and scores against the source
-  // region's scalar flux, as normal. A non-negative value means the task
-  // is scoring the angular flux tally for that specific angular bin
-  // (source_regions_.angular_flux_new(sr, g, angle_bin)), and is only ever
-  // created for source regions with an external source present.
+  // Angular quadrature bin index. Defaults to C_NONE for angle-independent, 
+  // scoring via the source region's scalar flux.
   int angle_bin {C_NONE};
   TallyTask(int tally_idx, int64_t filter_idx, int score_idx, int score_type,
     int angle_bin = C_NONE)
@@ -736,7 +732,7 @@ private:
   // Private Methods
 
   // Helper function for indexing
-  inline int index(int64_t sr, int g) const { return sr * negroups_ + g; }
+  inline int64_t index(int64_t sr, int g) const { return sr * negroups_ + g; }
   inline int64_t index_angle(int64_t sr, int g, int a) const
   {
     return (sr * negroups_ + g) * nangles_ + a;

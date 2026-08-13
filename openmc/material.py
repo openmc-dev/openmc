@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 import tempfile
-from typing import Sequence, Dict
+from typing import TYPE_CHECKING, Literal, Sequence, Dict
 import warnings
 
 import lxml.etree as ET
@@ -20,13 +20,16 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
-from .utility_funcs import input_path
+from .utility_funcs import input_path, set_xml_input_path
 from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, JOULE_PER_EV
 from openmc.data.function import Tabulated1D
 from openmc.data import mass_energy_absorption_coefficient, dose_coefficients
+
+if TYPE_CHECKING:
+    from openmc.deplete import Chain
 
 
 # Units for density supported by OpenMC
@@ -1385,8 +1388,13 @@ class Material(IDManagerMixin):
         return densities
 
 
-    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: float | None = None) -> dict[str, float] | float:
+    def get_activity(
+        self,
+        units: str = 'Bq/cm3',
+        by_nuclide: bool = False,
+        volume: float | None = None,
+        chain_file: Literal[False] | None | PathLike | Chain = None
+    ) -> dict[str, float] | float:
         """Return the activity of the material or each nuclide within.
 
         .. versionadded:: 0.13.1
@@ -1405,13 +1413,22 @@ class Material(IDManagerMixin):
             :attr:`Material.volume` attribute.
 
             .. versionadded:: 0.13.3
+        chain_file : False, None, PathLike, or openmc.deplete.Chain, optional
+            Source of half-life values. If ``False``, only ENDF/B-VIII.0 data is
+            used. If ``None``, the chain specified by
+            ``openmc.config['chain_file']`` is used when available. If a path or
+            :class:`openmc.deplete.Chain` is given, that chain is used. For
+            ``None`` or an explicit chain, nuclides absent from the chain fall
+            back to ENDF/B-VIII.0 data.
+
+            .. versionadded:: 0.16.0
 
         Returns
         -------
         Union[dict, float]
-            If by_nuclide is True then a dictionary whose keys are nuclide
-            names and values are activity is returned. Otherwise the activity
-            of the material is returned as a float.
+            If by_nuclide is True then a dictionary whose keys are nuclide names
+            and values are activity is returned. Otherwise the activity of the
+            material is returned as a float.
         """
 
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3', 'Ci', 'Ci/m3'})
@@ -1438,9 +1455,15 @@ class Material(IDManagerMixin):
         elif units == 'Ci/m3':
             multiplier = 1e6 / _BECQUEREL_PER_CURIE
 
+        # Resolve chain to avoid repeated lookups for each nuclide
+        from openmc.deplete.chain import _get_chain
+        if chain_file is not False:
+            if chain_file is not None or openmc.config.get('chain_file') is not None:
+                chain_file = _get_chain(chain_file)
+
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            inv_seconds = openmc.data.decay_constant(nuclide)
+            inv_seconds = openmc.data.decay_constant(nuclide, chain_file=chain_file)
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())
@@ -2263,11 +2286,12 @@ class Materials(cv.CheckedList):
             Materials collection
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
 
-        return cls.from_xml_element(root)
+            return cls.from_xml_element(root)
 
 
     def deplete(

@@ -14,7 +14,6 @@
 #include "openmc/photon.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
-#include "openmc/string_utils.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 #include "openmc/wmp.h"
@@ -71,16 +70,12 @@ Library::Library(pugi::xml_node node, const std::string& directory)
   if (!check_for_node(node, "path")) {
     fatal_error("Missing library path");
   }
-  std::string path = get_node_value(node, "path");
+  std::filesystem::path path(get_node_value(node, "path"));
 
-  if (starts_with(path, "/")) {
-    path_ = path;
-  } else if (ends_with(directory, "/")) {
-    path_ = directory + path;
-  } else if (!directory.empty()) {
-    path_ = directory + "/" + path;
+  if (path.is_absolute() || directory.empty()) {
+    path_ = path.string();
   } else {
-    path_ = path;
+    path_ = (std::filesystem::path(directory) / path).string();
   }
 
   if (!file_exists(path_)) {
@@ -144,11 +139,15 @@ void read_cross_sections_xml(pugi::xml_node root)
   } else {
     settings::path_cross_sections = get_node_value(root, "cross_sections");
 
-    // If no '/' found, the file is probably in the input directory
-    auto pos = settings::path_cross_sections.rfind("/");
-    if (pos == std::string::npos && !settings::path_input.empty()) {
+    // If no directory component is given, the file is probably in the input
+    // directory. Note that this has to be determined with std::filesystem
+    // rather than by searching for a '/' so that Windows paths (which use a
+    // different separator and may be prefixed by a drive letter) work too.
+    std::filesystem::path p(settings::path_cross_sections);
+    if (p.is_relative() && !p.has_parent_path() &&
+        !settings::path_input.empty()) {
       settings::path_cross_sections =
-        settings::path_input + "/" + settings::path_cross_sections;
+        (std::filesystem::path(settings::path_input) / p).string();
     }
   }
 

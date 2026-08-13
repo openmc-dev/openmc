@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Mapping
-from numbers import Integral
+from numbers import Integral, Real
 
 import h5py
 import lxml.etree as ET
@@ -36,6 +36,8 @@ class DAGMCUniverse(openmc.UniverseBase):
     auto_mat_ids : bool
         Set IDs automatically on initialization (True)  or report overlaps in ID
         space between OpenMC and UWUW materials (False)
+    length_multiplier : float
+        Coordinate scaling factor applied when loading a DAGMC geometry model.
     Attributes
     ----------
     id : int
@@ -50,6 +52,8 @@ class DAGMCUniverse(openmc.UniverseBase):
     auto_mat_ids : bool
         Set IDs automatically on initialization (True)  or report overlaps in ID
         space between OpenMC and UWUW materials (False)
+    length_multiplier : float
+        Coordinate scaling factor applied when loading a DAGMC geometry model.
     bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
@@ -79,23 +83,30 @@ class DAGMCUniverse(openmc.UniverseBase):
                  universe_id=None,
                  name='',
                  auto_geom_ids=False,
-                 auto_mat_ids=False):
+                 auto_mat_ids=False,
+                 length_multiplier: float = 1.0):
         super().__init__(universe_id, name)
         # Initialize class attributes
         self.filename = filename
         self.auto_geom_ids = auto_geom_ids
         self.auto_mat_ids = auto_mat_ids
+        self.length_multiplier = length_multiplier
 
     def __repr__(self):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tGeom', 'DAGMC')
         string += '{: <16}=\t{}\n'.format('\tFile', self.filename)
+        if self.length_multiplier != 1.0:
+            string += '{: <16}=\t{}\n'.format(
+                '\tLength multiplier', self.length_multiplier
+            )
         return string
 
     @property
     def bounding_box(self):
         with h5py.File(self.filename) as dagmc_file:
             coords = dagmc_file['tstt']['nodes']['coordinates'][()]
+            coords *= self.length_multiplier
             lower_left_corner = coords.min(axis=0)
             upper_right_corner = coords.max(axis=0)
             return openmc.BoundingBox(lower_left_corner, upper_right_corner)
@@ -176,6 +187,16 @@ class DAGMCUniverse(openmc.UniverseBase):
         self._auto_mat_ids = val
 
     @property
+    def length_multiplier(self):
+        return self._length_multiplier
+
+    @length_multiplier.setter
+    def length_multiplier(self, length_multiplier):
+        cv.check_type('DAGMC universe length multiplier', length_multiplier, Real)
+        cv.check_greater_than('DAGMC universe length multiplier', length_multiplier, 0.0)
+        self._length_multiplier = length_multiplier
+
+    @property
     def material_names(self):
         material_tags_ascii = []
         with h5py.File(self.filename) as dagmc_file_contents:
@@ -254,6 +275,8 @@ class DAGMCUniverse(openmc.UniverseBase):
             dagmc_element.set('auto_geom_ids', 'true')
         if self.auto_mat_ids:
             dagmc_element.set('auto_mat_ids', 'true')
+        if self.length_multiplier != 1.0:
+            dagmc_element.set('length_multiplier', str(self.length_multiplier))
         dagmc_element.set('filename', str(self.filename))
         if self.cells:
             for cell in self.cells.values():
@@ -374,8 +397,9 @@ class DAGMCUniverse(openmc.UniverseBase):
         id = int(group.name.split('/')[-1].lstrip('universe '))
         fname = group['filename'][()].decode()
         name = group['name'][()].decode() if 'name' in group else None
+        length_multiplier = float(group.attrs.get('length_multiplier', 1.0))
 
-        out = cls(fname, universe_id=id, name=name)
+        out = cls(fname, universe_id=id, name=name, length_multiplier=length_multiplier)
 
         out.auto_geom_ids = bool(group.attrs['auto_geom_ids'])
         out.auto_mat_ids = bool(group.attrs['auto_mat_ids'])
@@ -402,8 +426,9 @@ class DAGMCUniverse(openmc.UniverseBase):
         """
         id = int(get_text(elem, 'id'))
         fname = get_text(elem, 'filename')
+        length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
-        out = cls(fname, universe_id=id)
+        out = cls(fname, universe_id=id, length_multiplier=length_multiplier)
 
         name = get_text(elem, 'name')
         if name is not None:
@@ -467,7 +492,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         its cells, as they are copied within the clone function. This should
         only to be used within the openmc.UniverseBase.clone() context.
         """
-        clone = openmc.DAGMCUniverse(name=self.name, filename=self.filename)
+        clone = openmc.DAGMCUniverse(name=self.name, filename=self.filename, length_multiplier=self.length_multiplier)
         clone.volume = self.volume
         clone.auto_geom_ids = self.auto_geom_ids
         clone.auto_mat_ids = self.auto_mat_ids

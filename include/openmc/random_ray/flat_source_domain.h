@@ -76,7 +76,10 @@ public:
   //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
-  static bool adjoint_; // If the user wants outputs based on the adjoint flux
+  // If the user wants outputs based on the adjoint flux
+  static bool adjoint_requested_;
+  // The solve currently being executed
+  static RandomRaySolve solve_;
   static bool fw_cadis_local_;
   static double
     diagonal_stabilization_rho_; // Adjusts strength of diagonal stabilization

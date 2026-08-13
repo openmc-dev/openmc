@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+import openmc
 import openmc.deplete
 
 
@@ -36,6 +37,36 @@ def test_get_activity(res):
 
     np.testing.assert_allclose(t_nuc, t_ref)
     np.testing.assert_allclose(a_xe135, a_xe135_ref)
+
+
+def test_get_activity_chain_file(res, tmp_path):
+    """Tests evaluating activity with chain half-life data"""
+    _, a_endf = res.get_activity("1", by_nuclide=True, chain_file=False)
+    xe135_endf = np.array([a["Xe135"] for a in a_endf])
+
+    chain = openmc.deplete.Chain()
+    xe135 = openmc.deplete.Nuclide("Xe135")
+    xe135.half_life = openmc.data.half_life("Xe135") / 2.0
+    chain.add_nuclide(xe135)
+
+    t_chain, a_chain = res.get_activity("1", by_nuclide=True, chain_file=chain)
+    xe135_chain = np.array([a["Xe135"] for a in a_chain])
+
+    t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
+    np.testing.assert_allclose(t_chain, t_ref)
+    np.testing.assert_allclose(xe135_chain, 2.0 * xe135_endf)
+
+    chain_path = tmp_path / "chain.xml"
+    chain.export_to_xml(chain_path)
+    with openmc.config.patch('chain_file', chain_path):
+        _, a_config = res.get_activity("1", by_nuclide=True)
+    xe135_config = np.array([a["Xe135"] for a in a_config])
+    np.testing.assert_allclose(xe135_config, xe135_chain)
+
+    stable_chain = openmc.deplete.Chain()
+    stable_chain.add_nuclide(openmc.deplete.Nuclide("Xe135"))
+    _, a_stable = res.get_activity("1", by_nuclide=True, chain_file=stable_chain)
+    assert all(a["Xe135"] == 0.0 for a in a_stable)
 
 
 def test_get_atoms(res):

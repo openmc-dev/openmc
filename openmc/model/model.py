@@ -45,7 +45,7 @@ def classify_undefined_regions(cell_ids: np.ndarray) -> np.ndarray:
         from the :meth:`openmc.Model.slice_data` method.
 
     Returns
-    ----------
+    -------
     numpy.ndarray of bool
         Boolean mask of undefined pixels not connected to the boundary of the
         sampled slice, i.e., undefined interior holes in the sampled grid.
@@ -2959,7 +2959,7 @@ class Model:
             Keyword arguments passed to :meth:`Model.init_lib`.
 
         Returns
-        ----------
+        -------
         result : dict
             Dictionary summarizing the sampled geometry.
         """

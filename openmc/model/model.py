@@ -28,25 +28,25 @@ from openmc.exceptions import InvalidIDError
 from openmc.plots import add_plot_params, _BASIS_INDICES, id_map_to_rgb
 from openmc.utility_funcs import change_directory
 
+
 def classify_undefined_regions(cell_ids: np.ndarray) -> np.ndarray:
     """Find internal undefined pixels in a 2D cell-ID slice.
 
-    Undefined pixels are identified by the `_NOT_FOUND` sentinel. Internal
-    undefined pixels are those enclosed by defined pixels (i.e. holes in the
-    defined-pixel mask), as opposed to undefined pixels connected to the
-    slice boundary, which represent the void outside the model. The
-    classification is based only on connectivity within the sampled pixel
-    grid, so it does not guarantee true geometric interior classification.
+    Internal undefined pixels are those enclosed by defined pixels (i.e., holes
+    in the defined-pixel mask), as opposed to undefined pixels connected to the
+    slice boundary, which may represent void outside the model. The
+    classification is based only on connectivity within the sampled pixel grid,
+    so it does not guarantee true geometric interior classification.
 
     Parameters
     ----------
     cell_ids : numpy.ndarray
-        Two-dimensional array of cell IDs for a slice, intended to be
-        gotten from the slice_data function.
+        Two-dimensional array of cell IDs for a slice, which can be obtained
+        from the :meth:`openmc.Model.slice_data` method.
 
     Returns
     ----------
-    internal : numpy.ndarray of bool
+    numpy.ndarray of bool
         Boolean mask of undefined pixels not connected to the boundary of the
         sampled slice, i.e., undefined interior holes in the sampled grid.
     """
@@ -1177,7 +1177,6 @@ class Model:
             pixels=pixels,
             basis=basis,
             show_overlaps=color_overlaps,
-            level=-1,
             include_properties=False,
             **init_kwargs,
         )
@@ -2928,22 +2927,22 @@ class Model:
 
     def geometry_debug(
         self,
-        lower_left,
-        upper_right,
-        n_samples,
-        print_summary=False,
+        lower_left: Sequence[float],
+        upper_right: Sequence[float],
+        n_samples: int | Sequence[int],
+        print_summary: bool = False,
         **init_kwargs,
-    ):
+    ) -> dict[str, Any]:
         """Sample a 3D region to identify overlap and undefined locations.
 
-        The region between `lower_left` and `upper_right` is sampled on a regular
-        3D grid by taking a sequence of 2D slices in z. Overlap and undefined
-        locations are identified from cells marked with the overlap and undefined
-        sentinels, respectively. A 3D bounding box is returned for each unique
-        overlap pair and for each distinct internal undefined region (found via
-        3D connected-component labeling), in a summary dictionary. This function
-        is meant to be called from an input file on a 3D box encapsulating the
-        entire model.
+        The region between `lower_left` and `upper_right` is sampled on a
+        regular 3D grid by taking a sequence of 2D slices in z. Overlap and
+        undefined locations are identified from cells marked with the overlap
+        and undefined sentinels, respectively. A 3D bounding box is returned for
+        each unique overlap pair and for each distinct internal undefined region
+        (found via 3D connected-component labeling), in a summary dictionary.
+        This function is meant to be called from an input file on a 3D box
+        encapsulating the entire model.
 
         Parameters
         ----------
@@ -2990,7 +2989,7 @@ class Model:
         else:
             if len(n_samples) != 3:
                 raise ValueError("n_samples must be an int or a length-3 iterable")
-            nx, ny, nz = (int(n_samples[0]), int(n_samples[1]), int(n_samples[2]))
+            nx, ny, nz = n_samples
 
         nx, ny, nz = int(nx), int(ny), int(nz)
 
@@ -3027,7 +3026,6 @@ class Model:
                     v_span=v_span,
                     pixels=(nx, ny),
                     show_overlaps=True,
-                    level=-1,
                     include_properties=False,
                 )
 
@@ -3065,8 +3063,8 @@ class Model:
         # which cells collide is determined by the (universe, cell1, cell2) key
 
         # Label spatially-connected undefined regions in 3D and build a
-        # world-coordinate bounding box for each connected component. A feature 
-        # thinner than the sample spacing can rasterize with breaks and split 
+        # world-coordinate bounding box for each connected component. A feature
+        # thinner than the sample spacing can rasterize with breaks and split
         # into several regions, so give a suggestion to the user to increase n_samples.
 
         undefined_boxes = []

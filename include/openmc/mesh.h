@@ -432,10 +432,7 @@ public:
 
   int n_surface_bins() const override;
 
-  int n_vertices() const override
-  {
-    fatal_error("Not implemented!");
-  };
+  int n_vertices() const override { fatal_error("Not implemented!"); };
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;

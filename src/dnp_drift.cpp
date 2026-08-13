@@ -39,8 +39,7 @@ void _adjust_time(double& t, double ta, const Position& pa, const Position& pb,
   const Position& pc)
 {
   if (t <= ta) {
-    fatal_error(
-      "Time t at point B must be greater than tine ta at point A.");
+    fatal_error("Time t at point B must be greater than tine ta at point A.");
   }
 
   double ab = (pb - pa).norm();
@@ -48,8 +47,7 @@ void _adjust_time(double& t, double ta, const Position& pa, const Position& pb,
   double cb = (pb - pc).norm();
 
   if (ab - (ac + cb) > DNP_DRIFT_DISTANCE_MIN) {
-    fatal_error(
-      "Point C must be located between point A and point B.");
+    fatal_error("Point C must be located between point A and point B.");
   }
 
   t -= (t - ta) * cb / ab;

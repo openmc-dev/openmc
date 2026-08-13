@@ -106,6 +106,10 @@ public:
   void cross_periodic_bc(
     const Surface& surf, Position new_r, Direction new_u, int new_surface);
 
+  //! Reset angular flux tally bin if in RandomRay mode
+  //! (does nothing for MC particles)
+  virtual void direction_changed() {}
+
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display
   virtual void mark_as_lost(const char* message) override;

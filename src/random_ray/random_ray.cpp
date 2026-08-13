@@ -457,8 +457,22 @@ void RandomRay::attenuate_flux_flat_source(
   if (is_active) {
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
-    for (int g = 0; g < negroups_; g++) {
-      srh.scalar_flux_new(g) += delta_psi_[g];
+    if (srh.external_source_present()) {
+      // Accumulate angular flux data in regions with external source
+      // for later source biasing.
+      //
+      // TODO: replace the above condition with a different
+      // SourceRegionHandle flag to enable angular flux tallying more
+      // generally.
+      int a = angular_bin();
+      for (int g = 0; g < negroups_; g++) {
+        srh.scalar_flux_new(g) += delta_psi_[g];
+        srh.angular_flux_new(g, a) += delta_psi_[g];
+      }
+    } else {
+      for (int g = 0; g < negroups_; g++) {
+        srh.scalar_flux_new(g) += delta_psi_[g];
+      }
     }
 
     // Accomulate volume (ray distance) into this iteration's estimate
@@ -498,8 +512,22 @@ void RandomRay::attenuate_flux_flat_source_void(
 
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
-    for (int g = 0; g < negroups_; g++) {
-      srh.scalar_flux_new(g) += angular_flux_[g] * distance;
+    if (srh.external_source_present()) {
+      // Accumulate angular flux data in regions with external source
+      // for later source biasing.
+      //
+      // TODO: replace the above condition with a different
+      // SourceRegionHandle flag to enable angular flux tallying more
+      // generally.
+      int a = angular_bin();
+      for (int g = 0; g < negroups_; g++) {
+        srh.scalar_flux_new(g) += angular_flux_[g] * distance;
+        srh.angular_flux_new(g, a) += angular_flux_[g] * distance;
+      }
+    } else {
+      for (int g = 0; g < negroups_; g++) {
+        srh.scalar_flux_new(g) += angular_flux_[g] * distance;
+      }
     }
 
     // Accomulate volume (ray distance) into this iteration's estimate
@@ -628,9 +656,24 @@ void RandomRay::attenuate_flux_linear_source(
   if (is_active) {
     // Accumulate deltas into the new estimate of source region flux for this
     // iteration
-    for (int g = 0; g < negroups_; g++) {
-      srh.scalar_flux_new(g) += delta_psi_[g];
-      srh.flux_moments_new(g) += delta_moments_[g];
+    if (srh.external_source_present()) {
+      // Accumulate angular flux data in regions with external source
+      // for later source biasing.
+      //
+      // TODO: replace the above condition with a different
+      // SourceRegionHandle flag to enable angular flux tallying more
+      // generally.
+      int a = angular_bin();
+      for (int g = 0; g < negroups_; g++) {
+        srh.scalar_flux_new(g) += delta_psi_[g];
+        srh.flux_moments_new(g) += delta_moments_[g];
+        srh.angular_flux_new(g, a) += delta_psi_[g];
+      }
+    } else {
+      for (int g = 0; g < negroups_; g++) {
+        srh.scalar_flux_new(g) += delta_psi_[g];
+        srh.flux_moments_new(g) += delta_moments_[g];
+      }
     }
 
     // Accumulate the volume (ray segment distance), centroid, and spatial
@@ -732,9 +775,24 @@ void RandomRay::attenuate_flux_linear_source_void(
 
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration, and update flux momements
-    for (int g = 0; g < negroups_; g++) {
-      srh.scalar_flux_new(g) += angular_flux_[g] * distance;
-      srh.flux_moments_new(g) += delta_moments_[g];
+    if (srh.external_source_present()) {
+      // Accumulate angular flux data in regions with external source
+      // for later source biasing.
+      //
+      // TODO: replace the above condition with a different
+      // SourceRegionHandle flag to enable angular flux tallying more
+      // generally.
+      int a = angular_bin();
+      for (int g = 0; g < negroups_; g++) {
+        srh.scalar_flux_new(g) += angular_flux_[g] * distance;
+        srh.flux_moments_new(g) += delta_moments_[g];
+        srh.angular_flux_new(g, a) += angular_flux_[g] * distance;
+      }
+    } else {
+      for (int g = 0; g < negroups_; g++) {
+        srh.scalar_flux_new(g) += angular_flux_[g] * distance;
+        srh.flux_moments_new(g) += delta_moments_[g];
+      }
     }
 
     // Accumulate the volume (ray segment distance), centroid, and spatial
@@ -898,6 +956,14 @@ SourceSite RandomRay::sample_s2()
   site.u = {prn(current_seed()) < 0.5 ? -1.0 : 1.0, 0.0, 0.0};
 
   return site;
+}
+
+int RandomRay::angular_bin()
+{
+  if (angular_bin_ == C_NONE) {
+    angular_bin_ = domain_->get_angular_bin(u());
+  }
+  return angular_bin_;
 }
 
 } // namespace openmc

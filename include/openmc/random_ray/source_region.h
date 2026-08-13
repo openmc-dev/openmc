@@ -54,9 +54,17 @@ struct TallyTask {
   int filter_idx;
   int score_idx;
   int score_type;
-  TallyTask(int tally_idx, int filter_idx, int score_idx, int score_type)
+  // Angular quadrature bin index this task applies to. C_NONE (the default)
+  // means the task is angle-independent and scores against the source
+  // region's scalar flux, as normal. A non-negative value means the task
+  // is scoring the angular flux tally for that specific angular bin
+  // (source_regions_.angular_flux_new(sr, g, angle_bin)), and is only ever
+  // created for source regions with an external source present.
+  int angle_bin {C_NONE};
+  TallyTask(int tally_idx, int64_t filter_idx, int score_idx, int score_type,
+    int angle_bin = C_NONE)
     : tally_idx(tally_idx), filter_idx(filter_idx), score_idx(score_idx),
-      score_type(score_type)
+      score_type(score_type), angle_bin(angle_bin)
   {}
   TallyTask() = default;
 
@@ -65,7 +73,8 @@ struct TallyTask {
   bool operator==(const TallyTask& other) const
   {
     return tally_idx == other.tally_idx && filter_idx == other.filter_idx &&
-           score_idx == other.score_idx && score_type == other.score_type;
+           score_idx == other.score_idx && score_type == other.score_type &&
+           angle_bin == other.angle_bin;
   }
 
   struct HashFunctor {
@@ -76,6 +85,7 @@ struct TallyTask {
       hash_combine(seed, task.filter_idx);
       hash_combine(seed, task.score_idx);
       hash_combine(seed, task.score_type);
+      hash_combine(seed, task.angle_bin);
       return seed;
     }
   };
@@ -141,6 +151,7 @@ public:
   //----------------------------------------------------------------------------
   // Public Data members
   int negroups_;
+  int nangles_ {1}; //!< Number of angular bins for angular flux binning
   bool is_numerical_fp_artifact_ {false};
   bool is_linear_ {false};
 
@@ -180,7 +191,7 @@ public:
   float* source_;
   float* external_source_;
   double* scalar_flux_final_;
-  vector<double>* angular_flux_new_;
+  double* angular_flux_new_; //!< only accumulated for ext. source biasing
 
   MomentArray* source_gradients_;
   MomentArray* flux_moments_old_;
@@ -280,8 +291,14 @@ public:
   double& scalar_flux_final(int g) { return scalar_flux_final_[g]; }
   const double scalar_flux_final(int g) const { return scalar_flux_final_[g]; }
 
-  double& angular_flux_new(int g, int angle) { return angular_flux_new_[g]; }
-  const double angular_flux_new(int g) const { return angular_flux_new_[g]; }
+  double& angular_flux_new(int g, int a)
+  {
+    return angular_flux_new_[g * nangles_ + a];
+  }
+  const double angular_flux_new(int g, int a) const
+  {
+    return angular_flux_new_[g * nangles_ + a];
+  }
 
   float& source(int g) { return source_[g]; }
   const float source(int g) const { return source_[g]; }
@@ -319,7 +336,7 @@ class SourceRegion {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegion(int negroups, bool is_linear);
+  SourceRegion(int negroups, bool is_linear, int nangles = 1);
   SourceRegion() = default;
 
   //----------------------------------------------------------------------------
@@ -402,8 +419,8 @@ class SourceRegionContainer {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegionContainer(int negroups, bool is_linear)
-    : negroups_(negroups), is_linear_(is_linear)
+  SourceRegionContainer(int negroups, bool is_linear, int nangles = 1)
+    : negroups_(negroups), is_linear_(is_linear), nangles_(nangles)
   {}
   SourceRegionContainer() = default;
 
@@ -579,18 +596,18 @@ public:
     return scalar_flux_final_[se];
   }
 
-  double& angular_flux_new(int64_t sr, int g)
+  double& angular_flux_new(int64_t sr, int g, int a)
   {
-    return angular_flux_new_[index(sr, g)];
+    return angular_flux_new_[index_angle(sr, g, a)];
   }
-  const double angular_flux_new(int64_t sr, int g) const
+  const double angular_flux_new(int64_t sr, int g, int a) const
   {
-    return angular_flux_new_[index(sr, g)];
+    return angular_flux_new_[index_angle(sr, g, a)];
   }
-  double& angular_flux_new(int64_t se) { return angular_flux_new_[se]; }
-  const double angular_flux_new(int64_t se) const
+  double& angular_flux_new(int64_t sea) { return angular_flux_new_[sea]; }
+  const double angular_flux_new(int64_t sea) const
   {
-    return angular_flux_new_[se];
+    return angular_flux_new_[sea];
   }
 
   float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
@@ -647,8 +664,14 @@ public:
   void flux_swap();
   int64_t n_source_regions() const { return n_source_regions_; }
   int64_t n_source_elements() const { return n_source_regions_ * negroups_; }
+  int64_t n_source_angular_elements() const
+  {
+    return n_source_regions_ * negroups_ * nangles_;
+  }
   int& negroups() { return negroups_; }
   const int negroups() const { return negroups_; }
+  int& nangles() { return nangles_; }
+  const int nangles() const { return nangles_; }
   bool& is_linear() { return is_linear_; }
   const bool is_linear() const { return is_linear_; }
   SourceRegionHandle get_source_region_handle(int64_t sr);
@@ -659,6 +682,7 @@ private:
   // Private Data Members
   int64_t n_source_regions_ {0};
   int negroups_ {0};
+  int nangles_ {1};
   bool is_linear_ {false};
 
   // SoA storage for scalar fields (one item per source region)
@@ -713,6 +737,10 @@ private:
 
   // Helper function for indexing
   inline int index(int64_t sr, int g) const { return sr * negroups_ + g; }
+  inline int64_t index_angle(int64_t sr, int g, int a) const
+  {
+    return (sr * negroups_ + g) * nangles_ + a;
+  }
 };
 
 } // namespace openmc

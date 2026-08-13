@@ -19,9 +19,7 @@ def mesh():
 
 
 def test_xml_serialization(mesh, run_in_tmpdir):
-    """Test XMl serialization for a temperature field declaration.
-
-    """
+    """Test XMl serialization for a temperature field declaration."""
     # Define values
     values = [0., 1., 2., 3., 4., 5., 6., 7.]
 
@@ -38,3 +36,28 @@ def test_xml_serialization(mesh, run_in_tmpdir):
     
     # Check consistency
     assert read_settings.temperature_field == temperature_field
+
+
+def test_invalid_mesh_type():
+    """Check one non-implemented mesh type."""
+    mesh = openmc.SphericalMesh(r_grid=[0., 1.0])
+    values = []
+
+    with pytest.raises(NotImplementedError):
+        temperature_field = openmc.TemperatureField(mesh, values)
+
+
+def test_inconsistent_values_and_cells_sizes(mesh):
+    """Check inconsistency in number of values / mesh cells."""
+    values = [0.0] * 7
+
+    with pytest.raises(ValueError):
+        temperature_field = openmc.TemperatureField(mesh, values)
+
+
+def test_invalid_values(mesh):
+    """Check negative values."""
+    values = [-1.0] * 8
+
+    with pytest.raises(ValueError):
+        temperature_field = openmc.TemperatureField(mesh, values)

@@ -70,9 +70,8 @@ extern bool
 extern bool dnp_drift_on;   //!< Transport delayed neutron precursors?
 extern "C" bool entropy_on; //!< calculate Shannon entropy?
 extern "C" bool
-  event_based; //!< use event-based mode (instead of history-based)
-extern bool temperature_field_on; //!< Is there a temperature field defined?
-extern bool ifp_on;               //!< Use IFP for kinetics parameters?
+  event_based;      //!< use event-based mode (instead of history-based)
+extern bool ifp_on; //!< Use IFP for kinetics parameters?
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets;   //!< create material cells offsets?
 extern "C" bool output_summary;      //!< write summary.h5?
@@ -93,6 +92,7 @@ extern bool surf_mcpl_write;         //!< write surface mcpl file?
 extern bool surf_source_read;        //!< read surface source file?
 extern bool survival_biasing;        //!< use survival biasing?
 extern bool survival_normalization;  //!< use survival normalization?
+extern bool temperature_field_on;    //!< Is there a temperature field defined?
 extern bool temperature_multipole;   //!< use multipole data?
 extern "C" bool trigger_on;          //!< tally triggers enabled?
 extern bool trigger_predict;         //!< predict batches for triggers?
@@ -100,7 +100,8 @@ extern bool uniform_source_sampling; //!< sample sources uniformly?
 extern bool ufs_on;                  //!< uniform fission site method on?
 extern bool urr_ptables_on;          //!< use unresolved resonance prob. tables?
 extern bool use_decay_photons;       //!< use decay photons for D1S
-extern "C" bool weight_windows_on;   //!< are weight windows are enabled?
+extern bool use_shared_secondary_bank; //!< Use shared bank for secondaries
+extern "C" bool weight_windows_on;     //!< are weight windows are enabled?
 extern bool weight_window_checkpoint_surface;   //!< enable weight window check
                                                 //!< upon surface crossing?
 extern bool weight_window_checkpoint_collision; //!< enable weight window check
@@ -127,7 +128,7 @@ extern "C" const char* path_statepoint_c; //!< C pointer to statepoint file name
 
 extern "C" int32_t n_inactive;         //!< number of inactive batches
 extern "C" int32_t max_lost_particles; //!< maximum number of lost particles
-extern double
+extern "C" double
   rel_max_lost_particles; //!< maximum number of lost particles, relative to the
                           //!< total number of particles
 extern "C" int32_t
@@ -161,7 +162,7 @@ extern double res_scat_energy_min; //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max; //!< Max energy in [eV] for res. upscattering
 extern vector<std::string>
   res_scat_nuclides;           //!< Nuclides using res. upscattering treatment
-extern RunMode run_mode;       //!< Run mode (eigenvalue, fixed src, etc.)
+extern "C" RunMode run_mode;   //!< Run mode (eigenvalue, fixed src, etc.)
 extern SolverType solver_type; //!< Solver Type (Monte Carlo or Random Ray)
 extern std::unordered_set<int>
   sourcepoint_batch; //!< Batches when source should be written

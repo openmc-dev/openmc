@@ -192,25 +192,26 @@ attribute, e.g.,
              attributes, respectively.
 
 Alternatively, temperatures can be specified using a temperature field composed
-of a geometric mesh and a map that associates a temperature value to each mesh
-cell. During the simulation, temperatures associated with particles are also
-updated every time a temperature field cell surface is crossed. While a particle
-is contained inside the temperature mesh, temperatures from the temperature field
-take precedence over temperature declared for a cell, a material or globally.
+of a mesh and a map that associates a temperature value to each mesh element.
+During the simulation, temperatures associated with particles are also updated
+every time a temperature field mesh surface is crossed. While a particle is
+contained inside the temperature mesh, temperatures from the temperature field
+take precedence over any temperature declared for a cell, a material, or
+globally.
 
-The following example shows how to specify temperatures using a temperarature
+The following example shows how to specify temperatures using a temperature
 field based on a regular mesh:
 
 .. code-block:: python
 
-   # Define a mesh (regular mesh)
+   # Define a mesh
    dim = 5
    mesh = openmc.RegularMesh()
    mesh.lower_left = (0., 0., 0.)
    mesh.upper_right = (10.0, 10.0, 10.0)
    mesh.dimension = (dim, dim, dim)
 
-   # Define temperature values for each cell
+   # Define temperature values for each mesh element
    temperature_values = [273.0 + i * 10 for i in range(dim**3)]
 
    # Create a temperature field

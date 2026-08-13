@@ -30,10 +30,13 @@ namespace openmc {
 RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::HYBRID};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
-bool FlatSourceDomain::adjoint_ {false};
+bool FlatSourceDomain::adjoint_requested_ {false};
+RandomRaySolve FlatSourceDomain::solve_ {RandomRaySolve::FORWARD};
+bool FlatSourceDomain::fw_cadis_local_ {false};
 double FlatSourceDomain::diagonal_stabilization_rho_ {1.0};
 std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
   FlatSourceDomain::mesh_domain_map_;
+std::vector<size_t> FlatSourceDomain::fw_cadis_local_targets_;
 
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {
@@ -554,7 +557,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
   // If we are in adjoint mode of a fixed source problem, the external
   // source is already normalized, such that all resulting fluxes are
   // also normalized.
-  if (adjoint_) {
+  if (solve_ == RandomRaySolve::ADJOINT) {
     return 1.0;
   }
 
@@ -722,7 +725,7 @@ void FlatSourceDomain::random_ray_tally()
     for (int i = 0; i < model::tallies.size(); i++) {
       Tally& tally {*model::tallies[i]};
 #pragma omp parallel for
-      for (int bin = 0; bin < tally.n_filter_bins(); bin++) {
+      for (int64_t bin = 0; bin < tally.n_filter_bins(); bin++) {
         for (int score_idx = 0; score_idx < tally.n_scores(); score_idx++) {
           auto score_type = tally.scores_[score_idx];
           if (score_type == SCORE_FLUX) {
@@ -792,6 +795,12 @@ void FlatSourceDomain::output_to_vtk() const
     double y_delta = width.y / Ny;
     double z_delta = width.z / Nz;
     std::string filename = openmc_plot->path_plot();
+
+    // Tag plots written during the forward solve of an adjoint run
+    if (solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT) {
+      auto dot = filename.find_last_of('.');
+      filename = filename.substr(0, dot) + ".forward" + filename.substr(dot);
+    }
 
     // Perform sanity checks on file size
     uint64_t bytes = Nx * Ny * Nz * (negroups_ + 1 + 1 + 1) * sizeof(float);
@@ -1000,7 +1009,10 @@ void FlatSourceDomain::output_to_vtk() const
 void FlatSourceDomain::apply_external_source_to_source_region(
   int src_idx, SourceRegionHandle& srh)
 {
-  auto s = model::external_sources[src_idx].get();
+  auto s =
+    (solve_ == RandomRaySolve::ADJOINT && !model::adjoint_sources.empty())
+      ? model::adjoint_sources[src_idx].get()
+      : model::external_sources[src_idx].get();
   auto is = dynamic_cast<IndependentSource*>(s);
   auto discrete = dynamic_cast<Discrete*>(is->energy());
   double strength_factor = is->strength();
@@ -1062,22 +1074,29 @@ void FlatSourceDomain::apply_external_source_to_cell_and_children(
 
 void FlatSourceDomain::count_external_source_regions()
 {
-  n_external_source_regions_ = 0;
-#pragma omp parallel for reduction(+ : n_external_source_regions_)
+  // Naming a class member in a reduction clause is allowed as of OpenMP 5.1,
+  // but not every implementation supports it yet; accumulate into a local
+  int64_t n_external = 0;
+#pragma omp parallel for reduction(+ : n_external)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     if (source_regions_.external_source_present(sr)) {
-      n_external_source_regions_++;
+      n_external++;
     }
   }
+  n_external_source_regions_ = n_external;
 }
 
-void FlatSourceDomain::convert_external_sources()
+void FlatSourceDomain::convert_external_sources(bool use_adjoint_sources)
 {
+  // Determine whether forward or (local) adjoint sources are desired
+  const auto& sources =
+    use_adjoint_sources ? model::adjoint_sources : model::external_sources;
+
   // Loop over external sources
-  for (int es = 0; es < model::external_sources.size(); es++) {
+  for (int es = 0; es < sources.size(); es++) {
 
     // Extract source information
-    Source* s = model::external_sources[es].get();
+    Source* s = sources[es].get();
     IndependentSource* is = dynamic_cast<IndependentSource*>(s);
     Discrete* energy = dynamic_cast<Discrete*>(is->energy());
     const std::unordered_set<int32_t>& domain_ids = is->domain_ids();
@@ -1223,7 +1242,7 @@ void FlatSourceDomain::flatten_xs()
   }
 }
 
-void FlatSourceDomain::set_adjoint_sources()
+void FlatSourceDomain::set_fw_adjoint_sources()
 {
   // Set the adjoint external source to 1/forward_flux. If the forward flux is
   // negative, zero, or extremely close to zero, set the adjoint source to zero,
@@ -1252,6 +1271,10 @@ void FlatSourceDomain::set_adjoint_sources()
         source_regions_.external_source(sr, g) = 0.0;
       } else {
         source_regions_.external_source(sr, g) = 1.0 / flux;
+        if (!std::isfinite(source_regions_.external_source(sr, g))) {
+          // If the flux is NaN or Inf, set the adjoint source to zero
+          source_regions_.external_source(sr, g) = 0.0;
+        }
       }
       if (flux > 0.0) {
         source_regions_.external_source_present(sr) = 1;
@@ -1283,6 +1306,7 @@ void FlatSourceDomain::set_adjoint_sources()
       source_regions_.external_source_present(sr) = 0;
     }
   }
+
   // Divide the fixed source term by sigma t (to save time when applying each
   // iteration)
 #pragma omp parallel for
@@ -1297,8 +1321,86 @@ void FlatSourceDomain::set_adjoint_sources()
         sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
         source_regions_.density_mult(sr);
       source_regions_.external_source(sr, g) /= sigma_t;
+      if (!std::isfinite(source_regions_.external_source(sr, g))) {
+        // If the flux is NaN or Inf, set the adjoint source to zero
+        source_regions_.external_source(sr, g) = 0.0;
+      }
     }
   }
+
+  if (fw_cadis_local_) {
+// Only external sources that have a non-mesh type tally task should remain
+// non-zero. Everything else gets zero'd out.
+#pragma omp parallel for
+    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+
+      // If there is already no external source, don't need to do anything
+      if (source_regions_.external_source_present(sr) == 0) {
+        continue;
+      }
+
+      // If there is an adjoint source term here, then we need to check it.
+
+      // We will track if ANY group has a valid local FW-CADIS source term
+      bool has_any_sources = false;
+
+      // Now, loop over groups
+      for (int g = 0; g < negroups_; g++) {
+
+        // If there are no tally tasks associated with this source element
+        // then it is not a local FW-CADIS source, so we continue to the next
+        // group
+        if (source_regions_.tally_task(sr, g).empty()) {
+          source_regions_.external_source(sr, g) = 0.0;
+          continue;
+        }
+
+        // If there are tally tasks, we can through them and check if
+        // any of them are local FW-CADIS targets.
+
+        // We track if ANY of the tasks are local FW-CADIS target tallies
+        bool local_fw_cadis_target_region = false;
+
+        // Now we loop through
+        for (const auto& task : source_regions_.tally_task(sr, g)) {
+          Tally& tally {*model::tallies[task.tally_idx]};
+          const auto t_id = tally.id();
+
+          // Search for target tallies
+          if (std::find(fw_cadis_local_targets_.begin(),
+                fw_cadis_local_targets_.end(),
+                t_id) != fw_cadis_local_targets_.end()) {
+            local_fw_cadis_target_region = true;
+            break;
+          }
+        }
+
+        // If ANY of the tasks is a local FW-CADIS target,
+        // Then we keep the source term and set that this
+        // source region has a valid FW-CADIS source term.
+        // Otherwise, we zero out the source term.
+        if (local_fw_cadis_target_region) {
+          has_any_sources = true;
+        } else {
+          source_regions_.external_source(sr, g) = 0.0;
+        }
+      } // End loop over groups
+
+      // If there were any valid FW-CADIS source terms for any
+      // of the groups, then the SR as a whole counts as a source
+      if (has_any_sources) {
+        source_regions_.external_source_present(sr) = 1;
+      } else {
+        source_regions_.external_source_present(sr) = 0;
+      }
+    } // End loop over source regions
+  } // End local FW-CADIS logic
+}
+
+void FlatSourceDomain::set_local_adjoint_sources()
+{
+  // Set the external source to user-specified adjoint sources.
+  convert_external_sources(true);
 }
 
 void FlatSourceDomain::transpose_scattering_matrix()

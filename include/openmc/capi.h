@@ -9,14 +9,41 @@
 extern "C" {
 #endif
 
+//! Run a stochastic volume calculation
+//
+//! \return Status (negative if an error occurred)
 int openmc_calculate_volumes();
+
 int openmc_cell_filter_get_bins(
   int32_t index, const int32_t** cells, int32_t* n);
+
+//! Get the fill for a cell
+//
+//! \param index Index in the cells array
+//! \param type Type of the fill
+//! \param indices Array of material indices for cell
+//! \param n Length of indices array
+//! \return Status (negative if an error occurred)
 int openmc_cell_get_fill(
   int32_t index, int* type, int32_t** indices, int32_t* n);
+
+//! Get the ID of a cell
+//
+//! \param index Index in the cells array
+//! \param id ID of the cell
+//! \return Status (negative if an error occurred)
 int openmc_cell_get_id(int32_t index, int32_t* id);
+
+//! Get the temperature of a cell
+//
+//! \param index Index in the cells array
+//! \param instance Which instance of the cell. If a null pointer is
+//!                 passed, the temperature of the first instance is returned.
+//! \param T temperature of the cell
+//!\return Status (negative if an error occurred)
 int openmc_cell_get_temperature(
   int32_t index, const int32_t* instance, double* T);
+
 int openmc_cell_get_density(
   int32_t index, const int32_t* instance, double* rho);
 int openmc_cell_get_translation(int32_t index, double xyz[]);
@@ -123,8 +150,13 @@ int openmc_new_filter(const char* type, int32_t* index);
 int openmc_next_batch(int* status);
 int openmc_nuclide_name(int index, const char** name);
 int openmc_plot_geometry();
+// Deprecated; use openmc_slice_data.
 int openmc_id_map(const void* slice, int32_t* data_out);
+// Deprecated; use openmc_slice_data.
 int openmc_property_map(const void* slice, double* data_out);
+int openmc_slice_data(const double origin[3], const double u_span[3],
+  const double v_span[3], const size_t pixels[2], bool show_overlaps, int level,
+  int32_t filter_index, int32_t* geom_data, double* property_data);
 int openmc_get_plot_index(int32_t id, int32_t* index);
 int openmc_plot_get_id(int32_t index, int32_t* id);
 int openmc_plot_set_id(int32_t index, int32_t id);
@@ -224,6 +256,26 @@ int openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides);
 int openmc_tally_set_scores(int32_t index, int n, const char** scores);
 int openmc_tally_set_type(int32_t index, const char* type);
 int openmc_tally_set_writable(int32_t index, bool writable);
+
+//! Set a value at a given index in the temperature field
+//
+//! \param[in] index Index in the field
+//! \param[in] temperature Temperature value to apply
+//! \return Status (negative if an error occurred)
+int openmc_temperature_field_set_temperature(int32_t index, double temperature);
+
+//! Return the temperature field size (number of cells)
+//
+//! \return Number of cell in the temperature field
+size_t openmc_temperature_field_size();
+
+//! Get the value at a given index in the temperature field
+//
+//! \param[in] index Index in the field
+//! \param[out] temperature Temperature value at the given index
+//! \return Status (negative if an error occurred)
+int openmc_temperature_field_get_value(int32_t index, double* temperature);
+
 int openmc_get_weight_windows_index(int32_t id, int32_t* idx);
 int openmc_weight_windows_get_id(int32_t index, int32_t* id);
 int openmc_weight_windows_set_id(int32_t index, int32_t id);
@@ -275,7 +327,7 @@ int openmc_zernike_filter_set_params(
 int openmc_particle_filter_get_bins(int32_t idx, int32_t bins[]);
 
 //! Sets the mesh and energy grid for CMFD reweight
-//! \param[in] meshtyally_id id of CMFD Mesh Tally
+//! \param[in] meshtally_id id of CMFD Mesh Tally
 //! \param[in] cmfd_indices indices storing spatial and energy dimensions of
 //! CMFD problem \param[in] norm CMFD normalization factor
 void openmc_initialize_mesh_egrid(

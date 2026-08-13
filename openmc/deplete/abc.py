@@ -31,6 +31,7 @@ from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
 from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates, ExternalSourceRates
+from .keff_search_control import _KeffSearchControl
 
 
 __all__ = [
@@ -159,7 +160,7 @@ class TransportOperator(ABC):
             self.prev_res = prev_results
 
     @abstractmethod
-    def __call__(self, vec, source_rate):
+    def __call__(self, vec, source_rate) -> OperatorResult:
         """Runs a simulation.
 
         Parameters
@@ -201,7 +202,7 @@ class TransportOperator(ABC):
         Returns
         -------
         volume : dict of str to float
-            Volumes corresponding to materials in burn_list
+            Volumes corresponding to materials in full_burn_list
         nuc_list : list of str
             A list of all nuclide names. Used for sorting the simulation.
         burn_list : list of int
@@ -210,7 +211,7 @@ class TransportOperator(ABC):
         full_burn_list : list of int
             All burnable materials in the geometry.
         name_list : list of str
-            Material names corresponding to materials in burn_list
+            Material names corresponding to materials in full_burn_list
         """
 
     def finalize(self):
@@ -540,17 +541,15 @@ class Integrator(ABC):
         iterable of float. Alternatively, units can be specified for each step
         by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power``, ``power_density``, or
+        Power of the reactor in [W]. A single value indicates that the power is
+        constant over all timesteps. An iterable indicates potentially different
+        power levels for each timestep. For a 2D problem, the power can be given
+        in [W/cm] as long as the "volume" assigned to a depletion material is
+        actually an area in [cm^2]. Either ``power``, ``power_density``, or
         ``source_rates`` must be specified.
     power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not specified.
+        Power density of the reactor in [W/gHM]. It is multiplied by initial
+        heavy metal inventory to get total power if ``power`` is not specified.
     source_rates : float or iterable of float, optional
         Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
         each interval in :attr:`timesteps`
@@ -562,8 +561,8 @@ class Integrator(ABC):
         and 'MWd/kg' indicates that the values are given in burnup (MW-d of
         energy deposited per kilogram of initial heavy metal).
     solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
+        If a string, must be the name of the solver responsible for solving the
+        Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
             * ``cram48`` - 48th order IPF CRAM [default]
@@ -572,15 +571,22 @@ class Integrator(ABC):
         :attr:`solver`.
 
         .. versionadded:: 0.12
+    substeps : int, optional
+        Number of substeps per depletion interval. When greater than 1, each
+        interval is subdivided into `substeps` identical sub-intervals and LU
+        factorizations may be reused across them, improving accuracy for
+        nuclides with large decay-constant × timestep products.
+
+        .. versionadded:: 0.16.0
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
         previous simulation. Defaults to `False`. When `False`, the depletion
         steps provided are appended to any previous steps. If `True`, the
-        timesteps provided to the `Integrator` must exacly match any that
-        exist in the `prev_results` passed to the `Operator`. The `power`,
-        `power_density`, or `source_rates` must match as well. The
-        method of specifying `power`, `power_density`, or
-        `source_rates` should be the same as the initial run.
+        timesteps provided to the `Integrator` must exacly match any that exist
+        in the `prev_results` passed to the `Operator`. The `power`,
+        `power_density`, or `source_rates` must match as well. The method of
+        specifying `power`, `power_density`, or `source_rates` should be the
+        same as the initial run.
 
         .. versionadded:: 0.15.1
 
@@ -600,15 +606,19 @@ class Integrator(ABC):
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
         size :math:`t_i`. Can be configured using the ``solver`` argument.
         User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
+        ``solver(A, n0, t, substeps=1) -> n1``, where
 
-            * ``A`` is a :class:`scipy.sparse.csc_array` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
+            * ``A`` is a :class:`scipy.sparse.csc_array` making up the depletion
+              matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions for
+              a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds
+            * ``substeps`` is an optional integer number of substeps, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the next
+              time step. Expected to be of the same shape as ``n0``
+
+        Solvers that do not support multiple substeps should raise an exception
+        when ``substeps > 1``.
 
     transfer_rates : openmc.deplete.TransferRates
         Transfer rates for the depletion system used to model continuous
@@ -631,6 +641,7 @@ class Integrator(ABC):
             source_rates: Optional[Union[float, Sequence[float]]] = None,
             timestep_units: str = 's',
             solver: str = "cram48",
+            substeps: int = 1,
             continue_timesteps: bool = False,
         ):
         if continue_timesteps and operator.prev_res is None:
@@ -652,6 +663,8 @@ class Integrator(ABC):
         # Normalize timesteps and source rates
         seconds, source_rates = _normalize_timesteps(
             timesteps, source_rates, timestep_units, operator)
+        check_type("substeps", substeps, Integral)
+        check_greater_than("substeps", substeps, 0)
 
         if continue_timesteps:
             # Get timesteps and source rates from previous results
@@ -683,9 +696,11 @@ class Integrator(ABC):
 
         self.timesteps = np.asarray(seconds)
         self.source_rates = np.asarray(source_rates)
+        self.substeps = substeps
 
         self.transfer_rates = None
         self.external_source_rates = None
+        self._keff_search_control = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -719,15 +734,24 @@ class Integrator(ABC):
             self._solver = func
             return
 
-        # Inspect arguments
-        if len(sig.parameters) != 3:
-            raise ValueError("Function {} does not support three arguments: "
-                             "{!s}".format(func, sig))
+        params = list(sig.parameters.values())
 
-        for ix, param in enumerate(sig.parameters.values()):
-            if param.kind in {param.KEYWORD_ONLY, param.VAR_KEYWORD}:
+        # Inspect arguments
+        if len(params) != 4:
+            raise ValueError(
+                "Function {} must support four arguments "
+                "(A, n0, t, substeps=1): {!s}"
+                .format(func, sig))
+
+        for ix, param in enumerate(params):
+            if param.kind in {param.KEYWORD_ONLY, param.VAR_KEYWORD,
+                              param.VAR_POSITIONAL}:
                 raise ValueError(
                     f"Keyword arguments like {ix} at position {param} are not allowed")
+
+        if len(params) == 4 and params[3].default != 1:
+            raise ValueError(
+                f"Fourth solver argument must default to 1, not {params[3].default}")
 
         self._solver = func
 
@@ -735,7 +759,12 @@ class Integrator(ABC):
         start = time.time()
         results = deplete(
             self._solver, self.chain, n, rates, dt, i, matrix_func,
-            self.transfer_rates, self.external_source_rates)
+            self.transfer_rates, self.external_source_rates, self.substeps)
+
+        # Clip unphysical negative number densities
+        for r in results:
+            r.clip(min=0.0, out=r)
+
         return time.time() - start, results
 
     @abstractmethod
@@ -839,6 +868,37 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[0],
                 len(self.operator.prev_res) - 1)
 
+    def _restore_keff_search_control(self, res: StepResult):
+        """Restore keff search control from restart results."""
+        keff_search_root = res.keff_search_root
+        if keff_search_root is None:
+            raise ValueError(
+                "Cannot restore keff search control from restart "
+                "results because no stored keff_search_root is "
+                "available."
+            )
+        self._keff_search_control.function(keff_search_root)
+        return keff_search_root
+
+    def _get_bos_data(self, step_index, source_rate, bos_conc):
+        """Get beginning-of-step concentrations, rates, and control state."""
+        if step_index > 0 or self.operator.prev_res is None:
+            if self._keff_search_control is not None and source_rate != 0.0:
+                keff_search_root = self._keff_search_control.run(bos_conc)
+            else:
+                keff_search_root = None
+            bos_conc, res = self._get_bos_data_from_operator(
+                step_index, source_rate, bos_conc)
+        else:
+            bos_conc, res = self._get_bos_data_from_restart(
+                source_rate, bos_conc)
+            if self._keff_search_control is not None and source_rate != 0.0:
+                keff_search_root = self._restore_keff_search_control(self.operator.prev_res[-1])
+            else:
+                keff_search_root = None
+
+        return bos_conc, res, keff_search_root
+
     def integrate(
             self,
             final_step: bool = True,
@@ -877,11 +937,8 @@ class Integrator(ABC):
                 if output and comm.rank == 0:
                     print(f"[openmc.deplete] t={t} s, dt={dt} s, source={source_rate}")
 
-                # Solve transport equation (or obtain result from restart)
-                if i > 0 or self.operator.prev_res is None:
-                    n, res = self._get_bos_data_from_operator(i, source_rate, n)
-                else:
-                    n, res = self._get_bos_data_from_restart(source_rate, n)
+                # Get beginning-of-step data from operator or restart results
+                n, res, keff_search_root = self._get_bos_data(i, source_rate, n)
 
                 # Solve Bateman equations over time interval
                 proc_time, n_end = self(n, res.rates, dt, source_rate, i)
@@ -895,6 +952,7 @@ class Integrator(ABC):
                     self._i_res + i,
                     proc_time,
                     write_rates=write_rates,
+                    keff_search_root=keff_search_root,
                     path=path
                 )
 
@@ -908,6 +966,10 @@ class Integrator(ABC):
             # solve)
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
+            if self._keff_search_control is not None and source_rate != 0.0:
+                keff_search_root = self._keff_search_control.run(n)
+            else:
+                keff_search_root = None
             res_final = self.operator(n, source_rate if final_step else 0.0)
             StepResult.save(
                 self.operator,
@@ -918,6 +980,7 @@ class Integrator(ABC):
                 self._i_res + len(self),
                 proc_time,
                 write_rates=write_rates,
+                keff_search_root=keff_search_root,
                 path=path
             )
             self.operator.write_bos_data(len(self) + self._i_res)
@@ -965,11 +1028,6 @@ class Integrator(ABC):
             self.transfer_rates = TransferRates(
                 self.operator, materials, len(self.timesteps))
 
-        if self.external_source_rates is not None and destination_material:
-            raise ValueError('Currently is not possible to set a transfer rate '
-                             'with destination matrial in combination with '
-                             'external source rates.')
-
         self.transfer_rates.set_transfer_rate(
             material, components, transfer_rate, transfer_rate_units,
             timesteps, destination_material)
@@ -1011,11 +1069,6 @@ class Integrator(ABC):
             self.external_source_rates = ExternalSourceRates(
                 self.operator, materials, len(self.timesteps))
 
-        if self.transfer_rates is not None and self.transfer_rates.index_transfer:
-            raise ValueError('Currently is not possible to set an external '
-                             'source rate in combination with transfer rates '
-                             'with destination matrial.')
-
         self.external_source_rates.set_external_source_rate(
             material, composition, rate, rate_units, timesteps)
 
@@ -1050,6 +1103,101 @@ class Integrator(ABC):
 
         self.transfer_rates.set_redox(material, buffer, oxidation_states, timesteps)
 
+    def add_keff_search_control(
+        self,
+        function: Callable,
+        x0: float,
+        x1: float,
+        bracket: Sequence[float],
+        **search_kwargs
+    ):
+        """Add keff search to the integrator scheme.
+
+        This method causes OpenMC to perform a keff search during depletion to
+        maintain a target keff by adjusting a model parameter through the
+        provided function.
+
+        .. important::
+            The function **must** modify the model through ``openmc.lib`` (e.g.,
+            ``openmc.lib.cells``, ``openmc.lib.materials``) and **NOT** through
+            ``openmc.Model``. The function is called within a
+            :class:`openmc.lib.TemporarySession` context where only the C API
+            (``openmc.lib``) is available for modifications.
+
+        Parameters
+        ----------
+        function : Callable
+            Function that takes a single float argument and modifies the model
+            through :mod:`openmc.lib`.
+        x0 : float
+            Initial lower bound for the keff search.
+        x1 : float
+            Initial upper bound for the keff search.
+        bracket : sequence of float
+            Bracket interval [x_min, x_max] that constrains the allowed parameter
+            values during the keff search. This is a required parameter
+            that defines the absolute bounds for the search. The bracket must contain
+            exactly 2 elements with bracket[0] < bracket[1]. These values are passed
+            directly to the ``x_min`` and ``x_max`` optional arguments in
+            :meth:`openmc.Model.keff_search`, which enforce hard limits on the
+            parameter range. If the keff search converges to a value outside this
+            bracket, it will be clamped to the nearest bracket bound with a warning.
+        **search_kwargs
+            Additional keyword arguments passed to
+            :meth:`openmc.Model.keff_search`. Common options include:
+
+            * ``target`` : float, optional
+              Target keff value to search for. Defaults to 1.0.
+            * ``k_tol`` : float, optional
+              Stopping criterion on the function value. Defaults to 1e-4.
+            * ``sigma_final`` : float, optional
+              Maximum accepted k-effective uncertainty. Defaults to 3e-4.
+            * ``maxiter`` : int, optional
+              Maximum number of iterations. Defaults to 50.
+
+            See :meth:`openmc.Model.keff_search` for a complete list of
+            available options.
+
+        Examples
+        --------
+        Add keff search that adjusts a control rod position:
+
+        >>> def adjust_rod_position(position):
+        ...     openmc.lib.cells[rod_cell.id].translation = [0, 0, position]
+        >>> integrator.add_keff_search_control(
+        ...     adjust_rod_position,
+        ...     x0=0.0,
+        ...     x1=5.0,
+        ...     bracket=[-10,10],
+        ...     target=1.0,
+        ...     k_tol=1e-4
+        ... )
+
+        Add keff search that adjusts the U235 density:
+
+        >>> def set_u235_density(u235_density):
+        ...     # Get the material from openmc.lib
+        ...     lib_mat = openmc.lib.materials[material_id]
+        ...     # Get current nuclides and densities
+        ...     nuclides = lib_mat.nuclides
+        ...     densities = lib_mat.densities
+        ...     u235_idx = nuclides.index('U235')
+        ...     densities[u235_idx] = u235_density
+        ...     lib_mat.set_densities(nuclides, densities)
+        >>> integrator.add_keff_search_control(
+        ...     set_u235_density,
+        ...     x0=5.0e-4,
+        ...     x1=1.0e-3,
+        ...     bracket=[1.0e-4, 2.0e-3],
+        ...     target=1.0
+        ... )
+
+        .. versionadded:: 0.16.0
+
+        """
+        self._keff_search_control = _KeffSearchControl(
+            self.operator, function, x0, x1, bracket, **search_kwargs)
+
 @add_params
 class SIIntegrator(Integrator):
     r"""Abstract class for the Stochastic Implicit Euler integrators
@@ -1069,17 +1217,15 @@ class SIIntegrator(Integrator):
         iterable of float. Alternatively, units can be specified for each step
         by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power``, ``power_density``, or
+        Power of the reactor in [W]. A single value indicates that the power is
+        constant over all timesteps. An iterable indicates potentially different
+        power levels for each timestep. For a 2D problem, the power can be given
+        in [W/cm] as long as the "volume" assigned to a depletion material is
+        actually an area in [cm^2]. Either ``power``, ``power_density``, or
         ``source_rates`` must be specified.
     power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not specified.
+        Power density of the reactor in [W/gHM]. It is multiplied by initial
+        heavy metal inventory to get total power if ``power`` is not specified.
     source_rates : float or iterable of float, optional
         Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
         each interval in :attr:`timesteps`
@@ -1091,11 +1237,11 @@ class SIIntegrator(Integrator):
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
     n_steps : int, optional
-        Number of stochastic iterations per depletion interval.
-        Must be greater than zero. Default : 10
+        Number of stochastic iterations per depletion interval. Must be greater
+        than zero. Default : 10
     solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
+        If a string, must be the name of the solver responsible for solving the
+        Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
             * ``cram48`` - 48th order IPF CRAM [default]
@@ -1104,16 +1250,23 @@ class SIIntegrator(Integrator):
         :attr:`solver`.
 
         .. versionadded:: 0.12
+    substeps : int, optional
+        Number of substeps per depletion interval. When greater than 1, each
+        interval is subdivided into `substeps` identical sub-intervals and LU
+        factorizations may be reused across them, improving accuracy for
+        nuclides with large decay-constant × timestep products.
+
+        .. versionadded:: 0.16.0
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
-        previous simulation. Defaults to `False`. If `False`, all time
-        steps and source rates will be run in an append fashion and will run
-        after whatever time steps exist, if any. If `True`, the timesteps
-        provided to the `Integrator` must match exactly those that exist
-        in the `prev_results` passed to the `Opereator`. The `power`,
-        `power_density`, or `source_rates` must match as well. The
-        method of specifying `power`, `power_density`, or
-        `source_rates` should be the same as the initial run.
+        previous simulation. Defaults to `False`. If `False`, all time steps and
+        source rates will be run in an append fashion and will run after
+        whatever time steps exist, if any. If `True`, the timesteps provided to
+        the `Integrator` must match exactly those that exist in the
+        `prev_results` passed to the `Opereator`. The `power`, `power_density`,
+        or `source_rates` must match as well. The method of specifying `power`,
+        `power_density`, or `source_rates` should be the same as the initial
+        run.
 
         .. versionadded:: 0.15.1
 
@@ -1134,15 +1287,19 @@ class SIIntegrator(Integrator):
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
         size :math:`t_i`. Can be configured using the ``solver`` argument.
         User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
+        ``solver(A, n0, t, substeps=1) -> n1``, where
 
-            * ``A`` is a :class:`scipy.sparse.csc_array` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
+            * ``A`` is a :class:`scipy.sparse.csc_array` making up the depletion
+              matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions for
+              a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds
+            * ``substeps`` is an optional integer number of substeps, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the next
+              time step. Expected to be of the same shape as ``n0``
+
+        Solvers that do not support multiple substeps should raise an exception
+        when ``substeps > 1``.
 
         .. versionadded:: 0.12
 
@@ -1158,13 +1315,16 @@ class SIIntegrator(Integrator):
             timestep_units: str = 's',
             n_steps: int = 10,
             solver: str = "cram48",
+            substeps: int = 1,
             continue_timesteps: bool = False,
         ):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
         super().__init__(
             operator, timesteps, power, power_density, source_rates,
-            timestep_units=timestep_units, solver=solver, continue_timesteps=continue_timesteps)
+            timestep_units=timestep_units, solver=solver,
+            substeps=substeps,
+            continue_timesteps=continue_timesteps)
         self.n_steps = n_steps
 
     def _get_bos_data_from_operator(self, step_index, step_power, n_bos):
@@ -1294,7 +1454,7 @@ class DepSystemSolver(ABC):
     """
 
     @abstractmethod
-    def __call__(self, A, n0, dt):
+    def __call__(self, A, n0, dt, substeps=1):
         """Solve the linear system of equations for depletion
 
         Parameters
@@ -1307,6 +1467,8 @@ class DepSystemSolver(ABC):
             material or an atom density
         dt : float
             Time [s] of the specific interval to be solved
+        substeps : int, optional
+            Number of substeps to use when the solver supports substepping.
 
         Returns
         -------

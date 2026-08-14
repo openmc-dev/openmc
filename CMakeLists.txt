@@ -409,6 +409,7 @@ list(APPEND libopenmc_SOURCES
   src/ncrystal_interface.cpp
   src/ncrystal_load.cpp
   src/nuclide.cpp
+  src/openmc.cpp
   src/output.cpp
   src/particle.cpp
   src/particle_data.cpp

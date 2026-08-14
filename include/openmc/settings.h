@@ -64,24 +64,23 @@ extern bool confidence_intervals; //!< use confidence intervals for results?
 extern bool
   create_fission_neutrons; //!< create fission neutrons (fixed source)?
 extern bool create_delayed_neutrons; //!< create delayed fission neutrons?
-extern "C" bool cmfd_run;            //!< is a CMFD run?
+extern bool cmfd_run;                //!< is a CMFD run?
 extern bool
-  delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
-extern "C" bool entropy_on; //!< calculate Shannon entropy?
-extern "C" bool
-  event_based;      //!< use event-based mode (instead of history-based)
-extern bool ifp_on; //!< Use IFP for kinetics parameters?
+  delayed_photon_scaling; //!< Scale fission photon yield to include delayed
+extern bool entropy_on;   //!< calculate Shannon entropy?
+extern bool event_based;  //!< use event-based mode (instead of history-based)
+extern bool ifp_on;       //!< Use IFP for kinetics parameters?
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets;   //!< create material cells offsets?
-extern "C" bool output_summary;      //!< write summary.h5?
+extern bool output_summary;          //!< write summary.h5?
 extern bool output_tallies;          //!< write tallies.out?
 extern bool particle_restart_run;    //!< particle restart run?
-extern "C" bool photon_transport;    //!< photon transport turned on?
+extern bool photon_transport;        //!< photon transport turned on?
 extern bool atomic_relaxation;       //!< atomic relaxation enabled?
-extern "C" bool reduce_tallies;      //!< reduce tallies at end of batch?
+extern bool reduce_tallies;          //!< reduce tallies at end of batch?
 extern bool res_scat_on;             //!< use resonance upscattering method?
-extern "C" bool restart_run;         //!< restart run?
-extern "C" bool run_CE;              //!< run with continuous-energy data?
+extern bool restart_run;             //!< restart run?
+extern bool run_CE;                  //!< run with continuous-energy data?
 extern bool source_latest;           //!< write latest source at each batch?
 extern bool source_separate;         //!< write source to separate file?
 extern bool source_write;            //!< write source in HDF5 files?
@@ -92,14 +91,14 @@ extern bool surf_source_read;        //!< read surface source file?
 extern bool survival_biasing;        //!< use survival biasing?
 extern bool survival_normalization;  //!< use survival normalization?
 extern bool temperature_multipole;   //!< use multipole data?
-extern "C" bool trigger_on;          //!< tally triggers enabled?
+extern bool trigger_on;              //!< tally triggers enabled?
 extern bool trigger_predict;         //!< predict batches for triggers?
 extern bool uniform_source_sampling; //!< sample sources uniformly?
 extern bool ufs_on;                  //!< uniform fission site method on?
 extern bool urr_ptables_on;          //!< use unresolved resonance prob. tables?
 extern bool use_decay_photons;       //!< use decay photons for D1S
 extern bool use_shared_secondary_bank; //!< Use shared bank for secondaries
-extern "C" bool weight_windows_on;     //!< are weight windows are enabled?
+extern bool weight_windows_on;         //!< are weight windows are enabled?
 extern bool weight_window_checkpoint_surface;   //!< enable weight window check
                                                 //!< upon surface crossing?
 extern bool weight_window_checkpoint_collision; //!< enable weight window check
@@ -119,21 +118,15 @@ extern std::string weight_windows_file;   //!< Location of weight window file to
 extern std::string properties_file;       //!< Location of properties file to
                                           //!< load on simulation initialization
 
-// This is required because the c_str() may not be the first thing in
-// std::string. Sometimes it is, but it seems libc++ may not be like that
-// on some computers, like the intel Mac.
-extern "C" const char* path_statepoint_c; //!< C pointer to statepoint file name
-
-extern "C" int32_t n_inactive;         //!< number of inactive batches
-extern "C" int32_t max_lost_particles; //!< maximum number of lost particles
-extern "C" double
+extern int32_t n_inactive;         //!< number of inactive batches
+extern int32_t max_lost_particles; //!< maximum number of lost particles
+extern double
   rel_max_lost_particles; //!< maximum number of lost particles, relative to the
                           //!< total number of particles
-extern "C" int32_t
-  max_write_lost_particles;       //!< maximum number of lost particles
-                                  //!< to be written to files
-extern "C" int32_t gen_per_batch; //!< number of generations per batch
-extern "C" int64_t n_particles;   //!< number of particles per generation
+extern int32_t max_write_lost_particles; //!< maximum number of lost particles
+                                         //!< to be written to files
+extern int32_t gen_per_batch;            //!< number of generations per batch
+extern int64_t n_particles;              //!< number of particles per generation
 
 extern int64_t
   max_particles_in_flight;      //!< Max num. event-based particles in flight
@@ -160,7 +153,7 @@ extern double res_scat_energy_min; //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max; //!< Max energy in [eV] for res. upscattering
 extern vector<std::string>
   res_scat_nuclides;           //!< Nuclides using res. upscattering treatment
-extern "C" RunMode run_mode;   //!< Run mode (eigenvalue, fixed src, etc.)
+extern RunMode run_mode;       //!< Run mode (eigenvalue, fixed src, etc.)
 extern SolverType solver_type; //!< Solver Type (Monte Carlo or Random Ray)
 extern std::unordered_set<int>
   sourcepoint_batch; //!< Batches when source should be written
@@ -200,7 +193,7 @@ extern int64_t trace_particle; //!< Particle ID to enable trace on
 extern vector<array<int, 3>>
   track_identifiers;               //!< Particle numbers for writing tracks
 extern int trigger_batch_interval; //!< Batch interval for triggers
-extern "C" int verbosity;          //!< How verbose to make output
+extern int verbosity;              //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
 

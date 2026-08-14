@@ -1,8 +1,9 @@
 #include "openmc/settings.h"
 #include "openmc/random_ray/flat_source_domain.h"
 
-#include <cmath>  // for ceil, pow
-#include <limits> // for numeric_limits
+#include <cmath>   // for ceil, pow
+#include <cstring> // for strcmp
+#include <limits>  // for numeric_limits
 #include <string>
 
 #include <fmt/core.h>
@@ -96,7 +97,6 @@ std::string path_output;
 std::string path_particle_restart;
 std::string path_sourcepoint;
 std::string path_statepoint;
-const char* path_statepoint_c {path_statepoint.c_str()};
 std::string weight_windows_file;
 std::string properties_file;
 
@@ -1356,6 +1356,199 @@ void free_memory_settings()
 //==============================================================================
 // C API functions
 //==============================================================================
+
+namespace {
+
+int invalid_setting(const char* type, const char* name)
+{
+  set_errmsg(fmt::format("Unknown {} setting '{}'.", type, name));
+  return OPENMC_E_INVALID_ARGUMENT;
+}
+
+bool* bool_setting(const char* name)
+{
+  if (std::strcmp(name, "cmfd_run") == 0) {
+    return &settings::cmfd_run;
+  } else if (std::strcmp(name, "entropy_on") == 0) {
+    return &settings::entropy_on;
+  } else if (std::strcmp(name, "event_based") == 0) {
+    return &settings::event_based;
+  } else if (std::strcmp(name, "need_depletion_rx") == 0) {
+    return &simulation::need_depletion_rx;
+  } else if (std::strcmp(name, "photon_transport") == 0) {
+    return &settings::photon_transport;
+  } else if (std::strcmp(name, "output_summary") == 0) {
+    return &settings::output_summary;
+  } else if (std::strcmp(name, "reduce_tallies") == 0) {
+    return &settings::reduce_tallies;
+  } else if (std::strcmp(name, "restart_run") == 0) {
+    return &settings::restart_run;
+  } else if (std::strcmp(name, "run_ce") == 0) {
+    return &settings::run_CE;
+  } else if (std::strcmp(name, "trigger_on") == 0) {
+    return &settings::trigger_on;
+  } else if (std::strcmp(name, "weight_windows_on") == 0) {
+    return &settings::weight_windows_on;
+  }
+  return nullptr;
+}
+
+} // namespace
+
+extern "C" int openmc_setting_get_bool(const char* name, bool* value)
+{
+  if (!name || !value) {
+    set_errmsg("Setting name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  bool* setting = bool_setting(name);
+  if (!setting)
+    return invalid_setting("boolean", name);
+
+  *value = *setting;
+  return 0;
+}
+
+extern "C" int openmc_setting_set_bool(const char* name, bool value)
+{
+  if (!name) {
+    set_errmsg("Setting name must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  bool* setting = bool_setting(name);
+  if (!setting)
+    return invalid_setting("boolean", name);
+
+  *setting = value;
+  return 0;
+}
+
+extern "C" int openmc_setting_get_int32(const char* name, int32_t* value)
+{
+  if (!name || !value) {
+    set_errmsg("Setting name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "gen_per_batch") == 0) {
+    *value = settings::gen_per_batch;
+  } else if (std::strcmp(name, "max_lost_particles") == 0) {
+    *value = settings::max_lost_particles;
+  } else if (std::strcmp(name, "max_write_lost_particles") == 0) {
+    *value = settings::max_write_lost_particles;
+  } else if (std::strcmp(name, "n_inactive") == 0) {
+    *value = settings::n_inactive;
+  } else if (std::strcmp(name, "run_mode") == 0) {
+    *value = static_cast<int32_t>(settings::run_mode);
+  } else if (std::strcmp(name, "verbosity") == 0) {
+    *value = settings::verbosity;
+  } else {
+    return invalid_setting("int32", name);
+  }
+  return 0;
+}
+
+extern "C" int openmc_setting_set_int32(const char* name, int32_t value)
+{
+  if (!name) {
+    set_errmsg("Setting name must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "gen_per_batch") == 0) {
+    settings::gen_per_batch = value;
+  } else if (std::strcmp(name, "max_lost_particles") == 0) {
+    settings::max_lost_particles = value;
+  } else if (std::strcmp(name, "max_write_lost_particles") == 0) {
+    settings::max_write_lost_particles = value;
+  } else if (std::strcmp(name, "n_inactive") == 0) {
+    settings::n_inactive = value;
+  } else if (std::strcmp(name, "run_mode") == 0) {
+    if (value < static_cast<int32_t>(RunMode::UNSET) ||
+        value > static_cast<int32_t>(RunMode::VOLUME)) {
+      set_errmsg(fmt::format("Invalid run mode: {}.", value));
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+    settings::run_mode = static_cast<RunMode>(value);
+  } else if (std::strcmp(name, "verbosity") == 0) {
+    settings::verbosity = value;
+  } else {
+    return invalid_setting("int32", name);
+  }
+  return 0;
+}
+
+extern "C" int openmc_setting_get_int64(const char* name, int64_t* value)
+{
+  if (!name || !value) {
+    set_errmsg("Setting name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "n_particles") != 0)
+    return invalid_setting("int64", name);
+
+  *value = settings::n_particles;
+  return 0;
+}
+
+extern "C" int openmc_setting_set_int64(const char* name, int64_t value)
+{
+  if (!name) {
+    set_errmsg("Setting name must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "n_particles") != 0)
+    return invalid_setting("int64", name);
+
+  settings::n_particles = value;
+  return 0;
+}
+
+extern "C" int openmc_setting_get_double(const char* name, double* value)
+{
+  if (!name || !value) {
+    set_errmsg("Setting name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "rel_max_lost_particles") != 0)
+    return invalid_setting("double", name);
+
+  *value = settings::rel_max_lost_particles;
+  return 0;
+}
+
+extern "C" int openmc_setting_set_double(const char* name, double value)
+{
+  if (!name) {
+    set_errmsg("Setting name must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "rel_max_lost_particles") != 0)
+    return invalid_setting("double", name);
+
+  settings::rel_max_lost_particles = value;
+  return 0;
+}
+
+extern "C" int openmc_setting_get_string(const char* name, const char** value)
+{
+  if (!name || !value) {
+    set_errmsg("Setting name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "path_statepoint") != 0)
+    return invalid_setting("string", name);
+
+  *value = settings::path_statepoint.c_str();
+  return 0;
+}
 
 extern "C" int openmc_set_n_batches(
   int32_t n_batches, bool set_max_batches, bool add_statepoint_batch)

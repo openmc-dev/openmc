@@ -12,7 +12,7 @@ functions or objects in :mod:`openmc.lib`, for example:
 
 """
 
-from ctypes import CDLL, c_bool, c_int
+from ctypes import CDLL, byref, c_bool, c_char_p, c_int, POINTER
 import importlib.resources
 import os
 import sys
@@ -36,21 +36,32 @@ else:
     from unittest.mock import Mock
     _dll = Mock()
 
+from .error import _error_handler
+
+_dll.openmc_get_feature_enabled.argtypes = [c_char_p, POINTER(c_bool)]
+_dll.openmc_get_feature_enabled.restype = c_int
+_dll.openmc_get_feature_enabled.errcheck = _error_handler
+
+def _enabled(feature):
+    enabled = c_bool()
+    _dll.openmc_get_feature_enabled(feature.encode(), byref(enabled))
+    return enabled.value
+
 
 def _dagmc_enabled():
-    return c_bool.in_dll(_dll, "DAGMC_ENABLED").value
+    return _enabled('dagmc')
 
 def _coord_levels():
     return c_int.in_dll(_dll, "n_coord_levels").value
 
 def _libmesh_enabled():
-    return c_bool.in_dll(_dll, "LIBMESH_ENABLED").value
+    return _enabled('libmesh')
 
 def _uwuw_enabled():
-    return c_bool.in_dll(_dll, "UWUW_ENABLED").value
+    return _enabled('uwuw')
 
 def _strict_fp_enabled():
-    return c_bool.in_dll(_dll, "STRICT_FP_ENABLED").value
+    return _enabled('strict_fp')
 
 
 from .error import *

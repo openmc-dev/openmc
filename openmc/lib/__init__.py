@@ -42,26 +42,32 @@ _dll.openmc_get_feature_enabled.argtypes = [c_char_p, POINTER(c_bool)]
 _dll.openmc_get_feature_enabled.restype = c_int
 _dll.openmc_get_feature_enabled.errcheck = _error_handler
 
-def _enabled(feature):
+def feature_enabled(feature: str) -> bool:
+    """Return whether OpenMC was built with an optional feature.
+
+    Parameters
+    ----------
+    feature : {'dagmc', 'libmesh', 'strict_fp', 'uwuw'}
+        Feature to query.
+
+    Returns
+    -------
+    bool
+        Whether the feature is enabled.
+
+    Raises
+    ------
+    InvalidArgumentError
+        If *feature* is not recognized.
+
+    """
     enabled = c_bool()
     _dll.openmc_get_feature_enabled(feature.encode(), byref(enabled))
     return enabled.value
 
 
-def _dagmc_enabled():
-    return _enabled('dagmc')
-
 def _coord_levels():
     return c_int.in_dll(_dll, "n_coord_levels").value
-
-def _libmesh_enabled():
-    return _enabled('libmesh')
-
-def _uwuw_enabled():
-    return _enabled('uwuw')
-
-def _strict_fp_enabled():
-    return _enabled('strict_fp')
 
 
 from .error import *

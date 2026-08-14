@@ -16,7 +16,7 @@ from tests.regression_tests import config
 from tests.testing_harness import PyAPITestHarness
 
 pytestmark = pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(),
+    not openmc.lib.feature_enabled('dagmc'),
     reason="DAGMC is not enabled.")
 
 TETS_PER_VOXEL = 12

@@ -361,21 +361,24 @@ int openmc_properties_import(const char* filename);
 //! \return Error code
 int openmc_get_feature_enabled(const char* feature, bool* enabled);
 
-// Error codes
-extern int OPENMC_E_UNASSIGNED;
-extern int OPENMC_E_ALLOCATE;
-extern int OPENMC_E_OUT_OF_BOUNDS;
-extern int OPENMC_E_INVALID_SIZE;
-extern int OPENMC_E_INVALID_ARGUMENT;
-extern int OPENMC_E_INVALID_TYPE;
-extern int OPENMC_E_INVALID_ID;
-extern int OPENMC_E_GEOMETRY;
-extern int OPENMC_E_DATA;
-extern int OPENMC_E_PHYSICS;
-extern int OPENMC_E_WARNING;
+//! Return the message associated with the most recent C API error.
+//!
+//! The returned pointer is valid until the next error message is set.
+const char* openmc_get_err_msg();
 
-// Global variables
-extern char openmc_err_msg[256];
+typedef enum OpenmcErrorCode {
+  OPENMC_E_WARNING = 1,
+  OPENMC_E_UNASSIGNED = -1,
+  OPENMC_E_ALLOCATE = -2,
+  OPENMC_E_OUT_OF_BOUNDS = -3,
+  OPENMC_E_INVALID_SIZE = -4,
+  OPENMC_E_INVALID_ARGUMENT = -5,
+  OPENMC_E_INVALID_TYPE = -6,
+  OPENMC_E_INVALID_ID = -7,
+  OPENMC_E_GEOMETRY = -8,
+  OPENMC_E_DATA = -9,
+  OPENMC_E_PHYSICS = -10
+} OpenmcErrorCode;
 
 #ifdef __cplusplus
 }

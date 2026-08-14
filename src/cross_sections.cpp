@@ -210,7 +210,7 @@ void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
       const auto& temps = nuc_temps[i_nuc];
       int err = openmc_load_nuclide(name.c_str(), temps.data(), temps.size());
       if (err < 0)
-        throw std::runtime_error {openmc_err_msg};
+        throw std::runtime_error {get_errmsg()};
 
       already_read.insert(name);
     }

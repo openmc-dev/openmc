@@ -756,7 +756,7 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       if (search == data::nuclide_map.end()) {
         int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
         if (err < 0)
-          throw std::runtime_error {openmc_err_msg};
+          throw std::runtime_error {get_errmsg()};
       }
       nuclides_.push_back(data::nuclide_map.at(nuc));
     }
@@ -1510,7 +1510,6 @@ extern "C" int openmc_tally_set_nuclides(
       if (search == data::nuclide_map.end()) {
         int err = openmc_load_nuclide(word.c_str(), nullptr, 0);
         if (err < 0) {
-          set_errmsg(openmc_err_msg);
           return OPENMC_E_DATA;
         }
       }

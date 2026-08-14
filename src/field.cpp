@@ -20,7 +20,7 @@ ScalarField::ScalarField(
 
   if (this->mesh_ptr_->n_bins() != values.size()) {
     fatal_error(
-      fmt::format("The number of bins in the mesh is not consistent with the "
+      fmt::format("The number of elements in the mesh is not consistent with the "
                   "number of values declared in {}!",
         field_type));
   }

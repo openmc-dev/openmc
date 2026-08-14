@@ -1,7 +1,7 @@
 import openmc
 
 
-class ScalarField():
+class ScalarField:
     """Scalar field defined on a geometric mesh.
 
     Attributes
@@ -14,13 +14,8 @@ class ScalarField():
     """
     def __init__(self, mesh, values):
         # Check mesh compatibility
-        compatible_mesh_types = (openmc.RegularMesh, openmc.RectilinearMesh)
-        compatible = False
-        for t in compatible_mesh_types:
-            if isinstance(mesh, t):
-                compatible = True
-        if not compatible:
-            raise NotImplementedError(
+        if not isinstance(mesh, (openmc.RegularMesh, openmc.RectilinearMesh)):
+            raise TypeError(
                 f"{type(self)} only implemented for regular and rectilinear meshes.")
 
         # Check values/mesh size consistency

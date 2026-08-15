@@ -16,6 +16,7 @@ Functions
    current_batch
    export_properties
    export_weight_windows
+   feature_enabled
    finalize
    find_cell
    find_material

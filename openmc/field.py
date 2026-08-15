@@ -31,7 +31,7 @@ class ScalarField:
 
     def __eq__(self, other):
         if not isinstance(other, ScalarField):
-            return NotImplementedError()
+            return NotImplemented
         return self.mesh.id == other.mesh.id and self.values == other.values
 
 

@@ -439,17 +439,6 @@ public:
   virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const = 0;
 
-  //! Find the closest distance from a point to the mesh boundaries that are
-  //! aligned with the k direction. The point has to be located outside the
-  //! mesh.
-  //!
-  //! \param[in] k direction index of grid surface
-  //! \param[in] r position, from where to calculate the distance
-  //! \param[in] u direction of flight
-  //! \return distance to the mesh boundary
-  virtual double distance_to_mesh_boundary_from_outside(
-    int k, const Position& r, const Direction& u) const = 0;
-
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
@@ -488,6 +477,22 @@ public:
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
 
 protected:
+  struct MeshTraversal {
+    MeshIndex ijk;
+    std::array<MeshDistance, 3> distances;
+    Position local_r;
+    double distance {0.0};
+    double previous_distance {0.0};
+    int surface_dimension {-1};
+    bool max_surface {false};
+    bool in_mesh {false};
+  };
+
+  MeshTraversal initialize_traversal(
+    const Position& r, const Direction& u) const;
+
+  void advance_traversal(
+    const Position& r, const Direction& u, MeshTraversal& traversal) const;
 };
 
 class PeriodicStructuredMesh : public StructuredMesh {
@@ -501,13 +506,6 @@ public:
   {
     return r - origin_;
   };
-
-  double distance_to_mesh_boundary_from_outside(
-    int k, const Position& r, const Direction& u) const override
-  {
-    fatal_error("Not implemented");
-    return -1.0;
-  }
 
   // Data members
   Position origin_ {0.0, 0.0, 0.0}; //!< Origin of the mesh
@@ -533,9 +531,6 @@ public:
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
-
-  double distance_to_mesh_boundary_from_outside(
-    int k, const Position& r, const Direction& u) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -589,9 +584,6 @@ public:
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
-
-  double distance_to_mesh_boundary_from_outside(
-    int k, const Position& r, const Direction& u) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;

@@ -53,6 +53,44 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   REQUIRE(temp_field.get_bin(Position(-0.5, -0.5, 0.5)) == 4);
   REQUIRE(temp_field.get_bin(Position(0.0, 0.0, 0.0)) == 0);
   REQUIRE(temp_field.get_bin(Position(2.0, 2.0, 2.0)) == -1);
+
+  SECTION("Distance to temperature mesh boundaries")
+  {
+    int next_bin;
+
+    auto distance = temp_field.distance_to_next_boundary(
+      0, Position {-0.5, -0.5, -0.5}, Direction {1.0, 0.0, 0.0}, next_bin);
+    REQUIRE(distance == Catch::Approx(0.5));
+    REQUIRE(next_bin == 1);
+
+    distance = temp_field.distance_to_next_boundary(
+      -1, Position {-2.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0}, next_bin);
+    REQUIRE(distance == Catch::Approx(1.0));
+    REQUIRE(next_bin == 0);
+
+    distance = temp_field.distance_to_next_boundary(
+      -1, Position {-1.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0}, next_bin);
+    REQUIRE(distance == 0.0);
+    REQUIRE(next_bin == 0);
+
+    distance = temp_field.distance_to_next_boundary(
+      1, Position {0.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0}, next_bin);
+    REQUIRE(distance == Catch::Approx(1.0));
+    REQUIRE(next_bin == C_NONE);
+
+    constexpr double inverse_sqrt_three = 0.5773502691896258;
+    distance =
+      temp_field.distance_to_next_boundary(0, Position {-0.5, -0.5, -0.5},
+        Direction {inverse_sqrt_three, inverse_sqrt_three, inverse_sqrt_three},
+        next_bin);
+    REQUIRE(distance == Catch::Approx(0.5 / inverse_sqrt_three));
+    REQUIRE(next_bin == 7);
+
+    distance = temp_field.distance_to_next_boundary(
+      -1, Position {-2.0, 2.0, 0.0}, Direction {1.0, 0.0, 0.0}, next_bin);
+    REQUIRE(distance == INFTY);
+    REQUIRE(next_bin == C_NONE);
+  }
 }
 
 TEST_CASE("Test settings declaration exceptions for a temperature field",

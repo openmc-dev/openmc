@@ -1170,6 +1170,67 @@ tensor::Tensor<double> StructuredMesh::count_sites(
   return counts;
 }
 
+StructuredMesh::MeshTraversal StructuredMesh::initialize_traversal(
+  const Position& r, const Direction& u) const
+{
+  MeshTraversal traversal;
+  traversal.local_r = local_coords(r);
+  traversal.ijk = get_indices(r + TINY_BIT * u, traversal.in_mesh);
+  for (int k = 0; k < n_dimension_; ++k) {
+    traversal.distances[k] =
+      distance_to_grid_boundary(traversal.ijk, k, traversal.local_r, u, 0.0);
+  }
+  return traversal;
+}
+
+void StructuredMesh::advance_traversal(
+  const Position& r, const Direction& u, MeshTraversal& traversal) const
+{
+  traversal.previous_distance = traversal.distance;
+  traversal.surface_dimension = -1;
+
+  if (traversal.in_mesh) {
+    const auto k = std::min_element(traversal.distances.begin(),
+                     traversal.distances.begin() + n_dimension_) -
+                   traversal.distances.begin();
+    const auto crossing = traversal.distances[k];
+
+    traversal.surface_dimension = k;
+    traversal.max_surface = crossing.max_surface;
+    traversal.distance = crossing.distance;
+    traversal.ijk[k] = crossing.next_index;
+    traversal.distances[k] = distance_to_grid_boundary(
+      traversal.ijk, k, traversal.local_r, u, traversal.distance);
+    traversal.in_mesh = traversal.ijk[k] >= 1 && traversal.ijk[k] <= shape_[k];
+    return;
+  }
+
+  // A point outside a structured mesh may be outside in multiple coordinate
+  // directions. The largest crossing distance is the first point at which it
+  // can be inside all of them.
+  for (int k = 0; k < n_dimension_; ++k) {
+    if ((traversal.ijk[k] < 1 || traversal.ijk[k] > shape_[k]) &&
+        traversal.distances[k].distance > traversal.distance) {
+      traversal.distance = traversal.distances[k].distance;
+      traversal.surface_dimension = k;
+    }
+  }
+
+  if (traversal.surface_dimension < 0) {
+    traversal.distance += TINY_BIT;
+  }
+  if (traversal.distance >= INFTY) {
+    return;
+  }
+
+  traversal.ijk =
+    get_indices(r + (traversal.distance + TINY_BIT) * u, traversal.in_mesh);
+  for (int k = 0; k < n_dimension_; ++k) {
+    traversal.distances[k] = distance_to_grid_boundary(
+      traversal.ijk, k, traversal.local_r, u, traversal.distance);
+  }
+}
+
 // raytrace through the mesh. The template class T will do the tallying.
 // A modern optimizing compiler can recognize the noop method of T and
 // eliminate that call entirely.
@@ -1188,108 +1249,56 @@ void StructuredMesh::raytrace_mesh(
   if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
     return;
 
-  // keep a copy of the original global position to pass to get_indices,
-  // which performs its own transformation to local coordinates
-  Position global_r = r0;
-  Position local_r = local_coords(r0);
-
-  const int n = n_dimension_;
-
-  // Flag if position is inside the mesh
-  bool in_mesh;
-
-  // Position is r = r0 + u * traveled_distance, start at r0
-  double traveled_distance {0.0};
-
-  // Calculate index of current cell. Offset the position a tiny bit in
-  // direction of flight
-  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
+  auto traversal = initialize_traversal(r0, u);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
   if (total_distance < 2 * TINY_BIT) {
-    if (in_mesh) {
-      tally.track(ijk, 1.0);
+    if (traversal.in_mesh) {
+      tally.track(traversal.ijk, 1.0);
     }
     return;
   }
 
-  // Calculate initial distances to next surfaces in all three dimensions
-  std::array<MeshDistance, 3> distances;
-  for (int k = 0; k < n; ++k) {
-    distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
-  }
-
   // Loop until r = r1 is eventually reached
   while (true) {
-
-    if (in_mesh) {
-
-      // find surface with minimal distance to current position
-      const auto k = std::min_element(distances.begin(), distances.end()) -
-                     distances.begin();
+    if (traversal.in_mesh) {
+      const auto ijk = traversal.ijk;
+      advance_traversal(r0, u, traversal);
 
       // Tally track length delta since last step
-      tally.track(ijk,
-        (std::min(distances[k].distance, total_distance) - traveled_distance) /
-          total_distance);
+      tally.track(ijk, (std::min(traversal.distance, total_distance) -
+                         traversal.previous_distance) /
+                         total_distance);
 
       // update position and leave, if we have reached end position
-      traveled_distance = distances[k].distance;
-      if (traveled_distance >= total_distance)
+      if (traversal.distance >= total_distance)
         return;
 
       // If we have not reached r1, we have hit a surface. Tally outward
       // current
-      tally.surface(ijk, k, distances[k].max_surface, false);
-
-      // Update cell and calculate distance to next surface in k-direction.
-      // The two other directions are still valid!
-      ijk[k] = distances[k].next_index;
-      distances[k] =
-        distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
-
-      // Check if we have left the interior of the mesh
-      in_mesh = ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
+      const int k = traversal.surface_dimension;
+      tally.surface(ijk, k, traversal.max_surface, false);
 
       // If we are still inside the mesh, tally inward current for the next
       // cell
-      if (in_mesh)
-        tally.surface(ijk, k, !distances[k].max_surface, true);
+      if (traversal.in_mesh)
+        tally.surface(
+          traversal.ijk, k, !traversal.distances[k].max_surface, true);
 
     } else { // not inside mesh
-
-      // For all directions outside the mesh, find the distance that we need
-      // to travel to reach the next surface. Use the largest distance, as
-      // only this will cross all outer surfaces.
-      int k_max {-1};
-      for (int k = 0; k < n; ++k) {
-        if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
-            (distances[k].distance > traveled_distance)) {
-          traveled_distance = distances[k].distance;
-          k_max = k;
-        }
-      }
-      // Assure some distance is traveled
-      if (k_max == -1) {
-        traveled_distance += TINY_BIT;
-      }
+      advance_traversal(r0, u, traversal);
 
       // If r1 is not inside the mesh, exit here
-      if (traveled_distance >= total_distance)
+      if (traversal.distance >= total_distance)
         return;
 
-      // Calculate the new cell index and update all distances to next
-      // surfaces.
-      ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, in_mesh);
-      for (int k = 0; k < n; ++k) {
-        distances[k] =
-          distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
-      }
-
       // If inside the mesh, Tally inward current
-      if (in_mesh && k_max >= 0)
-        tally.surface(ijk, k_max, !distances[k_max].max_surface, true);
+      if (traversal.in_mesh && traversal.surface_dimension >= 0) {
+        const int k = traversal.surface_dimension;
+        tally.surface(
+          traversal.ijk, k, !traversal.distances[k].max_surface, true);
+      }
     }
   }
 }
@@ -1356,78 +1365,35 @@ void StructuredMesh::surface_bins_crossed(
 double StructuredMesh::distance_to_next_boundary(
   int current_bin, Position r, Direction u, int& bin_next) const
 {
-  Position global_r = r;
-  Position local_r = local_coords(r);
-
-  double distance;
-  bool in_mesh;
-
-  // Find the cell indices
-  StructuredMesh::MeshIndex ijk;
+  auto traversal = initialize_traversal(r, u);
   if (current_bin >= 0) {
-
-    ijk = get_indices_from_bin(current_bin);
-
-    // Calculate initial distances to next surfaces in all three dimensions
-    std::array<StructuredMesh::MeshDistance, 3> distances;
-    for (int k = 0; k < n_dimension_; ++k) {
-      distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
-    }
-
-    // Find next ijk
-    auto k_min =
-      std::min_element(distances.begin(), distances.end()) - distances.begin();
-    distance = distances[k_min].distance;
-    ijk[k_min] = distances[k_min].next_index;
-
-    // If the particle is on a surface, test using the next index
-    if (distance <= FP_COINCIDENT) {
-
-      // Update distances
-      for (int k = 0; k < n_dimension_; ++k) {
-        distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
-      }
-
-      k_min = std::min_element(distances.begin(), distances.end()) -
-              distances.begin();
-      distance = distances[k_min].distance;
-      ijk[k_min] = distances[k_min].next_index;
-    }
-
-    // Determine next bin
-    in_mesh = true;
-    for (int k = 0; k < n_dimension_; ++k) {
-      if ((ijk[k] < 1) || (ijk[k] > shape_[k])) {
-        in_mesh = false;
-      }
-    }
-    if (in_mesh) {
-      bin_next = get_bin_from_indices(ijk);
-    } else {
+    if (!traversal.in_mesh) {
       bin_next = C_NONE;
+      return 0.0;
     }
 
-  } else { // Outside mesh
-
-    // Calculate distance to mesh from outside
-    distance = INFTY;
-    for (int k = 0; k < n_dimension_; k++) {
-      double d = distance_to_mesh_boundary_from_outside(k, r, u);
-      if (d < INFTY) {
-        distance = d;
-      }
-    }
-
-    // Determine next bin
-    if (distance < INFTY) {
-      ijk = get_indices(global_r + (distance + TINY_BIT) * u, in_mesh);
-      bin_next = get_bin_from_indices(ijk);
-    } else {
-      bin_next = C_NONE;
-    }
+    advance_traversal(r, u, traversal);
+    bool in_mesh;
+    auto ijk = get_indices(r + (traversal.distance + TINY_BIT) * u, in_mesh);
+    bin_next = in_mesh ? get_bin_from_indices(ijk) : C_NONE;
+    return traversal.distance;
   }
 
-  return distance;
+  if (traversal.in_mesh) {
+    bin_next = get_bin_from_indices(traversal.ijk);
+    return 0.0;
+  }
+
+  while (!traversal.in_mesh && traversal.distance < INFTY) {
+    advance_traversal(r, u, traversal);
+  }
+
+  if (traversal.in_mesh) {
+    bin_next = get_bin_from_indices(traversal.ijk);
+  } else {
+    bin_next = C_NONE;
+  }
+  return traversal.distance;
 }
 
 //==============================================================================
@@ -1627,34 +1593,6 @@ StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
   return d;
 }
 
-double RegularMesh::distance_to_mesh_boundary_from_outside(
-  int k, const Position& r, const Direction& u) const
-{
-  double t;
-  double distance = INFTY;
-
-  if (u[k] > 0.0) {
-    t = (lower_left_[k] - r[k]) / u[k];
-  } else {
-    t = (upper_right_[k] - r[k]) / u[k];
-  }
-
-  if (t > FP_COINCIDENT) {
-    bool reenter = true;
-    for (int i = 0; i < n_dimension_; i++) {
-      if (i != k) {
-        double a = r[i] + u[i] * t;
-        reenter &= (a >= lower_left_[i]);
-        reenter &= (a <= upper_right_[i]);
-      }
-    }
-    if (reenter) {
-      distance = t;
-    }
-  }
-  return distance;
-}
-
 std::pair<vector<double>, vector<double>> RegularMesh::plot(
   Position plot_ll, Position plot_ur) const
 {
@@ -1824,34 +1762,6 @@ StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(
     d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
   }
   return d;
-}
-
-double RectilinearMesh::distance_to_mesh_boundary_from_outside(
-  int k, const Position& r, const Direction& u) const
-{
-  double t;
-  double distance = INFTY;
-
-  if (u[k] > 0.0) {
-    t = (lower_left_[k] - r[k]) / u[k];
-  } else {
-    t = (upper_right_[k] - r[k]) / u[k];
-  }
-
-  if (t > FP_COINCIDENT) {
-    bool reenter = true;
-    for (int i = 0; i < n_dimension_; i++) {
-      if (i != k) {
-        double a = r[i] + u[i] * t;
-        reenter &= (a >= lower_left_[i]);
-        reenter &= (a <= upper_right_[i]);
-      }
-    }
-    if (reenter) {
-      distance = t;
-    }
-  }
-  return distance;
 }
 
 int RectilinearMesh::set_grid()

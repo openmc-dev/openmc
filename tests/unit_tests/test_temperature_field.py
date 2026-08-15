@@ -34,7 +34,7 @@ def test_xml_serialization(mesh, run_in_tmpdir):
 
     # Read settings from xml file
     read_settings = openmc.Settings.from_xml()
-    
+
     # Check consistency
     assert read_settings.temperature_field == temperature_field
 

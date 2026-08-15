@@ -798,7 +798,7 @@ class Settings:
     def entropy_mesh(self, entropy: RegularMesh):
         cv.check_type('entropy mesh', entropy, RegularMesh)
         self._entropy_mesh = entropy
-    
+
     @property
     def temperature_field(self) -> TemperatureField:
         return self._temperature_field

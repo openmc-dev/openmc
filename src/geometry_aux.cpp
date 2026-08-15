@@ -273,7 +273,8 @@ void get_temperatures(
   // temperature field in advance. If we had access to this information, we
   // could limit the declarations of temperature from the temperature field to
   // impacted nuclides only.
-  if (settings::temperature_field_on) {
+  if (settings::temperature_field_on &&
+      settings::solver_type != SolverType::RANDOM_RAY) {
     for (auto t : simulation::temperature_field.values()) {
       // Nuclide temperatures
       for (size_t i = 0; i < nuc_temps.size(); i++) {

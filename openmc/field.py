@@ -1,4 +1,8 @@
+from collections.abc import Iterable
+from numbers import Real
+
 import openmc
+import openmc.checkvalue as cv
 
 
 class ScalarField:
@@ -13,6 +17,10 @@ class ScalarField:
 
     """
     def __init__(self, mesh, values):
+        cv.check_type('values', values, Iterable)
+        values = list(values)
+        cv.check_type('values', values, Iterable, Real)
+
         # Check mesh compatibility
         if not isinstance(mesh, (openmc.RegularMesh, openmc.RectilinearMesh)):
             raise TypeError(

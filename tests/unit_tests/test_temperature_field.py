@@ -61,3 +61,11 @@ def test_invalid_values(mesh):
 
     with pytest.raises(ValueError):
         temperature_field = openmc.TemperatureField(mesh, values)
+
+
+def test_non_numeric_values(mesh):
+    """Check that field values are numeric."""
+    values = ['not a temperature'] * 8
+
+    with pytest.raises(TypeError):
+        openmc.TemperatureField(mesh, values)

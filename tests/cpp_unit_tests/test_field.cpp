@@ -168,6 +168,26 @@ TEST_CASE("Test settings declaration exceptions for a temperature field",
       </settings>
       )",
       "Temperature values should be given for the temperature field."},
+    {// Unsupported mesh type -> error
+      R"(
+      <settings>
+        <run_mode>eigenvalue</run_mode>
+        <particles>200</particles>
+        <batches>20</batches>
+        <temperature_field>
+          <mesh>1</mesh>
+          <values>294.0</values>
+        </temperature_field>
+        <mesh id="1" type="spherical">
+          <r_grid>0.0 1.0</r_grid>
+          <theta_grid>0.0 3.141592653589793</theta_grid>
+          <phi_grid>0.0 6.283185307179586</phi_grid>
+          <origin>0.0 0.0 0.0</origin>
+        </mesh>
+      </settings>
+      )",
+      "Temperature fields are only supported on regular and rectilinear "
+      "meshes."},
   }));
 
   free_memory_mesh();

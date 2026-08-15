@@ -850,6 +850,12 @@ void read_settings_xml(pugi::xml_node root)
           "Mesh {} specified for the temperature field does not exist.", temp));
       }
       tf_mesh_ptr = model::meshes[model::mesh_map.at(temp)].get();
+      if (!dynamic_cast<RegularMesh*>(tf_mesh_ptr) &&
+          !dynamic_cast<RectilinearMesh*>(tf_mesh_ptr)) {
+        throw std::runtime_error(
+          "Temperature fields are only supported on regular and rectilinear "
+          "meshes.");
+      }
     } else {
       throw std::runtime_error(
         "A mesh should be given for the temperature field.");

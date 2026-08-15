@@ -2,6 +2,8 @@
 
 import openmc
 import pytest
+import openmc.lib
+from openmc.examples import pwr_pin_cell
 import numpy as np
 
 
@@ -69,3 +71,21 @@ def test_non_numeric_values(mesh):
 
     with pytest.raises(TypeError):
         openmc.TemperatureField(mesh, values)
+
+
+def test_lib_temperature_field():
+    """Check the Python bindings for the temperature-field C API."""
+    model = pwr_pin_cell()
+    mesh = openmc.RegularMesh()
+    mesh.dimension = (1, 1, 1)
+    mesh.lower_left = (-1.0, -1.0, -1.0)
+    mesh.upper_right = (1.0, 1.0, 1.0)
+    model.settings.temperature_field = openmc.TemperatureField(mesh, [294.0])
+
+    with openmc.lib.TemporarySession(model, output=False, args=['-c']):
+        field = openmc.lib.temperature_field
+        assert field.size == 1
+        assert len(field) == 1
+        assert field[0] == 294.0
+        field[0] = 294.0
+        assert field[0] == 294.0

@@ -79,6 +79,7 @@ from .mesh import *
 from .filter import *
 from .tally import *
 from .settings import settings
+from .field import temperature_field
 from .math import *
 from .plot import *
 from .weight_windows import *

@@ -4,7 +4,6 @@ import openmc
 import pytest
 import openmc.lib
 from openmc.examples import pwr_pin_cell
-import numpy as np
 
 
 @pytest.fixture(scope="module")
@@ -46,7 +45,7 @@ def test_invalid_mesh_type():
     values = []
 
     with pytest.raises(TypeError):
-        temperature_field = openmc.TemperatureField(mesh, values)
+        openmc.TemperatureField(mesh, values)
 
 
 def test_inconsistent_values_and_cells_sizes(mesh):
@@ -54,7 +53,7 @@ def test_inconsistent_values_and_cells_sizes(mesh):
     values = [0.0] * 7
 
     with pytest.raises(ValueError):
-        temperature_field = openmc.TemperatureField(mesh, values)
+        openmc.TemperatureField(mesh, values)
 
 
 def test_invalid_values(mesh):
@@ -62,7 +61,7 @@ def test_invalid_values(mesh):
     values = [-1.0] * 8
 
     with pytest.raises(ValueError):
-        temperature_field = openmc.TemperatureField(mesh, values)
+        openmc.TemperatureField(mesh, values)
 
 
 def test_non_numeric_values(mesh):

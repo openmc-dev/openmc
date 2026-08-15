@@ -61,12 +61,6 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-#ifdef OPENMC_LIBMESH_ENABLED
-const bool LIBMESH_ENABLED = true;
-#else
-const bool LIBMESH_ENABLED = false;
-#endif
-
 // Value used to indicate an empty slot in the hash table. We use -2 because
 // the value -1 is used to indicate a void material.
 constexpr int32_t EMPTY = -2;

@@ -352,6 +352,15 @@ int openmc_properties_export(const char* filename);
 // \return Error code
 int openmc_properties_import(const char* filename);
 
+//! Get whether an optional build feature is enabled.
+//!
+//! Supported feature names are ``dagmc``, ``libmesh``, ``strict_fp``, and
+//! ``uwuw``.
+//! \param feature Name of the feature to query
+//! \param enabled Whether the feature is enabled
+//! \return Error code
+int openmc_get_feature_enabled(const char* feature, bool* enabled);
+
 // Error codes
 extern int OPENMC_E_UNASSIGNED;
 extern int OPENMC_E_ALLOCATE;

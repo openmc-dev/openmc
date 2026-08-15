@@ -25,22 +25,6 @@
 #include <sstream>
 #include <string>
 
-namespace openmc {
-
-#ifdef OPENMC_DAGMC_ENABLED
-const bool DAGMC_ENABLED = true;
-#else
-const bool DAGMC_ENABLED = false;
-#endif
-
-#ifdef OPENMC_UWUW_ENABLED
-const bool UWUW_ENABLED = true;
-#else
-const bool UWUW_ENABLED = false;
-#endif
-
-} // namespace openmc
-
 #ifdef OPENMC_DAGMC_ENABLED
 
 namespace openmc {

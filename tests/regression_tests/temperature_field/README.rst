@@ -19,11 +19,6 @@ For DAGMC geometries, the boundary conditions and temperature values are
 directly stored in the DAGMC files created with a modified version of
 stellarmesh.
 
-Verifications scripts are made available in **_verification**. They are designed
-to compare the results of the regression tests to a strictly equivalent model
-where the tracks of particles are expected to be identical. These scripts
-should be run using similar settings than what is used with the regression tests.
-
-.. warning:: The nested cubes verification scripts for dagmc are currently missing
-    because there are errors with the geometry. These errors are currently under
-    investigation and the scripts will be made available once the problem is fixed.
+The regression tests compare against reference input and result files generated
+from equivalent temperature-field models. Use the standard regression-test
+workflow to regenerate the reference files when the expected results change.

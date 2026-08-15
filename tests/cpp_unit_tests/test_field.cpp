@@ -6,9 +6,12 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <pugixml.hpp>
 
+#include "openmc/capi.h"
 #include "openmc/field.h"
 #include "openmc/geometry.h"
 #include "openmc/mesh.h"
+#include "openmc/nuclide.h"
+#include "openmc/simulation.h"
 
 using namespace openmc;
 
@@ -53,6 +56,24 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   REQUIRE(temp_field.get_bin(Position(-0.5, -0.5, 0.5)) == 4);
   REQUIRE(temp_field.get_bin(Position(0.0, 0.0, 0.0)) == 0);
   REQUIRE(temp_field.get_bin(Position(2.0, 2.0, 2.0)) == -1);
+
+  const double temperature_min = data::temperature_min;
+  const double temperature_max = data::temperature_max;
+  data::temperature_min = 300.0;
+  data::temperature_max = 600.0;
+  simulation::temperature_field = temp_field;
+
+  REQUIRE(openmc_temperature_field_set_temperature(0, 400.0) == 0);
+  REQUIRE(openmc_temperature_field_get_value(0, &values[0]) == 0);
+  REQUIRE(values[0] == 400.0);
+  REQUIRE(openmc_temperature_field_set_temperature(0, 100.0) ==
+          OPENMC_E_INVALID_ARGUMENT);
+  REQUIRE(openmc_temperature_field_set_temperature(0, -1.0) ==
+          OPENMC_E_INVALID_ARGUMENT);
+
+  simulation::temperature_field = TemperatureField();
+  data::temperature_min = temperature_min;
+  data::temperature_max = temperature_max;
 
   SECTION("Distance to temperature mesh boundaries")
   {

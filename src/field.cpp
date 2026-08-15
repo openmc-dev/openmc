@@ -1,9 +1,14 @@
 #include "openmc/field.h"
+#include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/mesh.h"
+#include "openmc/nuclide.h"
+#include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/vector.h"
+
+#include <cmath>
 
 namespace openmc {
 
@@ -74,6 +79,20 @@ extern "C" int openmc_temperature_field_set_temperature(
   if (index < 0 || index >= simulation::temperature_field.values().size()) {
     set_errmsg("Index in temperature field is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  if (!std::isfinite(temperature) || temperature < 0.0) {
+    set_errmsg("Temperature must be a finite, non-negative value.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (data::temperature_min <= data::temperature_max &&
+      (temperature < data::temperature_min - settings::temperature_tolerance ||
+        temperature >
+          data::temperature_max + settings::temperature_tolerance)) {
+    set_errmsg("Temperature is outside the range supported by the loaded "
+               "cross sections.");
+    return OPENMC_E_INVALID_ARGUMENT;
   }
 
   simulation::temperature_field.value(index) = temperature;

@@ -24,13 +24,9 @@ def model():
     model.settings.particles = 2000
     model.settings.batches = 2
     model.settings.photon_transport = True
-    model.settings.atomic_relaxation = True
-    model.settings.electron_treatment = 'ttb'
-    model.settings.cutoff = {'energy_photon': 1000.0}
     model.settings.source = openmc.IndependentSource(
         particle='photon',
-        space=openmc.stats.Point((0.0, 0.0, 0.0)),
-        energy=openmc.stats.Discrete([1.0e6], [1.0]))
+        energy=openmc.stats.delta_function(1.0e6))
 
     return model
 

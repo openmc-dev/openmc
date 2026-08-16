@@ -18,19 +18,11 @@
     <particles>2000</particles>
     <batches>2</batches>
     <source type="independent" strength="1.0" particle="photon">
-      <space type="point">
-        <parameters>0.0 0.0 0.0</parameters>
-      </space>
       <energy type="discrete">
         <parameters>1000000.0 1.0</parameters>
       </energy>
     </source>
-    <electron_treatment>ttb</electron_treatment>
-    <atomic_relaxation>true</atomic_relaxation>
     <photon_transport>true</photon_transport>
-    <cutoff>
-      <energy_photon>1000.0</energy_photon>
-    </cutoff>
   </settings>
   <tallies>
     <filter id="1" type="material">

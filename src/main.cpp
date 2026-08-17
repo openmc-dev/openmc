@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
     // This happens for the -h and -v flags
     return 0;
   } else if (err) {
-    fatal_error(openmc_err_msg);
+    fatal_error(openmc_get_err_msg());
   }
 
   // start problem based on mode
@@ -57,12 +57,12 @@ int main(int argc, char* argv[])
     break;
   }
   if (err)
-    fatal_error(openmc_err_msg);
+    fatal_error(openmc_get_err_msg());
 
   // Finalize and free up memory
   err = openmc_finalize();
   if (err)
-    fatal_error(openmc_err_msg);
+    fatal_error(openmc_get_err_msg());
 
     // If MPI is in use and enabled, terminate it
 #ifdef OPENMC_MPI

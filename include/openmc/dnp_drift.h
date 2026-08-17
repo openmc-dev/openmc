@@ -50,6 +50,8 @@ void _adjust_time(double& t, double ta, const Position& pa, const Position& pb,
 //! \param[inout] site Fission site corresponding to the DNP
 //! \param[in] decay_time Sampled decay time (in seconds)
 //! \param[in] seed Random number generator seed
+//! \return True if the site is considered inside the explicitly modeled part of
+//!         the system. False otherwise.
 bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed);
 
 } // namespace openmc

@@ -71,10 +71,10 @@ def ids(params):
 @pytest.mark.parametrize("test_cases", test_cases, ids=ids)
 def test_unstructured_mesh_sampling(model, request, test_cases):
     # skip the test if the library is not enabled
-    if test_cases['library'] == 'moab' and not openmc.lib._dagmc_enabled():
+    if test_cases['library'] == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
 
-    if test_cases['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if test_cases['library'] == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh is not enabled in this build.")
 
     # setup mesh source ###
@@ -162,8 +162,8 @@ def test_strengths_size_failure(request, model):
     model.settings.source = source
 
     # skip the test if unstructured mesh is not available
-    if not openmc.lib._libmesh_enabled():
-        if openmc.lib._dagmc_enabled():
+    if not openmc.lib.feature_enabled('libmesh'):
+        if openmc.lib.feature_enabled('dagmc'):
             source.space.mesh.library = 'moab'
         else:
             pytest.skip("Unstructured mesh support unavailable.")
@@ -179,13 +179,16 @@ def test_strengths_size_failure(request, model):
 
 
 def test_roundtrip(run_in_tmpdir, model, request):
-    if not openmc.lib._libmesh_enabled() and not openmc.lib._dagmc_enabled():
+    if (
+        not openmc.lib.feature_enabled('libmesh')
+        and not openmc.lib.feature_enabled('dagmc')
+    ):
         pytest.skip("Unstructured mesh is not enabled in this build.")
 
     mesh_filename = Path(request.fspath).parent / 'test_mesh_tets.e'
     ucd_mesh = openmc.UnstructuredMesh(mesh_filename, library='libmesh')
 
-    if not openmc.lib._libmesh_enabled():
+    if not openmc.lib.feature_enabled('libmesh'):
         ucd_mesh.library = 'moab'
 
     n_cells = len(model.geometry.get_all_cells())
@@ -322,10 +325,10 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
 def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
     import openmc.lib
     # skip the test if the library is not enabled
-    if library == 'moab' and not openmc.lib._dagmc_enabled():
+    if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
 
-    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh is not enabled in this build.")
 
     model = void_model

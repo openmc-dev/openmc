@@ -26,15 +26,21 @@ int n_coord_levels;
 
 vector<int64_t> overlap_check_count;
 
+vector<OverlapKey> overlap_keys;
+std::unordered_map<OverlapKey, int, OverlapKeyHash> overlap_key_index;
+
 } // namespace model
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-bool check_cell_overlap(GeometryState& p, bool error)
+int check_cell_overlap(GeometryState& p, bool error)
 {
   int n_coord = p.n_coord();
+
+  // If no overlap found, return a nonphysical index
+  int overlap_index = -1;
 
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
@@ -44,21 +50,40 @@ bool check_cell_overlap(GeometryState& p, bool error)
     for (auto index_cell : univ.cells_) {
       Cell& c = *model::cells[index_cell];
       if (c.contains(p.coord(j).r(), p.coord(j).u(), p.surface())) {
+#pragma omp atomic
+        ++model::overlap_check_count[index_cell];
         if (index_cell != p.coord(j).cell()) {
           if (error) {
             fatal_error(
               fmt::format("Overlapping cells detected: {}, {} on universe {}",
                 c.id_, model::cells[p.coord(j).cell()]->id_, univ.id_));
           }
-          return true;
+
+          // With no fatal error (plotter is calling), now adds overlaps and
+          // ensures order does not matter when making overlap key
+          int cell_a = model::cells[index_cell]->id_;
+          int cell_b = model::cells[p.coord(j).cell()]->id_;
+          int a = std::min(cell_a, cell_b);
+          int b = std::max(cell_a, cell_b);
+          OverlapKey key {univ.id_, a, b};
+#pragma omp critical(overlap_key_update)
+          {
+            auto it = model::overlap_key_index.find(key);
+            if (it != model::overlap_key_index.end()) {
+              overlap_index = it->second; // already exists, reuse index
+            } else {
+              int idx = int(model::overlap_keys.size());
+              model::overlap_keys.push_back(key);
+              model::overlap_key_index[key] = idx;
+              overlap_index = idx;
+            }
+          }
+          break;
         }
-#pragma omp atomic
-        ++model::overlap_check_count[index_cell];
       }
     }
   }
-
-  return false;
+  return overlap_index;
 }
 
 //==============================================================================
@@ -279,6 +304,39 @@ bool neighbor_list_find_cell(GeometryState& p, bool verbose)
   if (found)
     c.neighbors_.push_back(p.coord(coord_lvl).cell());
   return found;
+}
+
+void reconcile_cell_after_collision(GeometryState& p)
+{
+  // Find the first coordinate level whose current cell is inconsistent with
+  // the particle's post-collision direction.
+  int invalid_level = C_NONE;
+  for (int level = 0; level < p.n_coord(); ++level) {
+    const auto& coord {p.coord(level)};
+    if (coord.cell() == C_NONE || !model::cells[coord.cell()]->contains(
+                                    coord.r(), coord.u(), SURFACE_NONE)) {
+      invalid_level = level;
+      break;
+    }
+  }
+
+  if (invalid_level == C_NONE)
+    return;
+
+  // Search from the first inconsistent level so that parent cells and
+  // transformed lower universes are both handled correctly.
+  if (p.coord(invalid_level).cell() != C_NONE) {
+    p.n_coord() = invalid_level + 1;
+    if (neighbor_list_find_cell(p))
+      return;
+  }
+
+  // The current cell may not have a complete neighbor list yet. Fall back to
+  // the normal exhaustive search used after a failed surface crossing.
+  p.n_coord() = 1;
+  if (!exhaustive_find_cell(p)) {
+    p.mark_as_lost("Could not find particle after a collision near a surface.");
+  }
 }
 
 bool exhaustive_find_cell(GeometryState& p, bool verbose)

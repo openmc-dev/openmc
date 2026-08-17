@@ -406,6 +406,11 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
     *Default*: None
 
+  :length_multiplier:
+    Coordinate scaling factor applied when loading a DAGMC geometry model.
+
+    *Default*: 1.0
+
   :cell:
     Zero or more ``<cell>`` sub-elements may appear to override properties of
     individual DAGMC volumes. Each ``<cell>`` element supports the following
@@ -425,13 +430,13 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
       material) assignment. Required.
 
     :temperature:
-      Temperature(s) in [K] to assign to the cell. Must be ≥ 0. Multiple
-      space-separated values may be given.
+      Temperature(s) in [K] to assign to the cell. Must be greater than or equal
+      to 0. Multiple space-separated values may be given.
 
       *Default*: None
 
     :density:
-      Density in [g/cm³] to assign to the cell. Must be > 0. Requires a non-void
+      Density in [g/cm³] to assign to the cell. Must be greater than 0. Requires a non-void
       material fill. Multiple space-separated values may be given.
 
       *Default*: None

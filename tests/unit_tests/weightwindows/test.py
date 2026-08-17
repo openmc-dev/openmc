@@ -249,7 +249,7 @@ def test_photon_heating(run_in_tmpdir, shared_secondary):
 
     model.settings.run_mode = 'fixed source'
     model.settings.batches = 5
-    model.settings.particles = 101
+    model.settings.particles = 100
     model.settings.shared_secondary_bank = shared_secondary
 
     tally = openmc.Tally()
@@ -354,9 +354,9 @@ def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
     they aren't part of a tally or weight window generator
     """
 
-    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip('LibMesh not enabled in this build.')
-    if library == 'moab' and not openmc.lib._dagmc_enabled():
+    if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip('DAGMC (and MOAB) mesh not enabled in this build.')
 
     water = openmc.Material(name='water')

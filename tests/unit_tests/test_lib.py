@@ -315,6 +315,15 @@ def test_settings(lib_init):
     settings.seed = 11
 
 
+def test_feature_enabled():
+    assert isinstance(openmc.lib.feature_enabled('dagmc'), bool)
+    assert isinstance(openmc.lib.feature_enabled('libmesh'), bool)
+    assert isinstance(openmc.lib.feature_enabled('strict_fp'), bool)
+    assert isinstance(openmc.lib.feature_enabled('uwuw'), bool)
+    with pytest.raises(exc.InvalidArgumentError, match="Unknown build feature"):
+        openmc.lib.feature_enabled('not-a-feature')
+
+
 def test_tally_mapping(lib_init):
     tallies = openmc.lib.tallies
     assert isinstance(tallies, Mapping)
@@ -923,6 +932,22 @@ def test_property_map(lib_init):
 
     with pytest.warns(FutureWarning, match="deprecated"):
         properties = openmc.lib.property_map(LegacySlicePlot())
+    assert np.allclose(expected_properties, properties, atol=1e-04)
+
+
+def test_slice_data(lib_init):
+    expected_properties = np.array(
+        [[(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)],
+         [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
+         [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
+    origin = (0.0, 0.0, 0.0)
+    _, properties = openmc.lib.slice_data(
+        origin,
+        width=(1.26, 1.26),
+        basis='xy',
+        pixels=(3, 3),
+        include_properties=True
+    )
     assert np.allclose(expected_properties, properties, atol=1e-04)
 
 

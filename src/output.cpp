@@ -44,11 +44,44 @@
 
 namespace openmc {
 
-#ifdef OPENMC_ENABLE_STRICT_FP
-const bool STRICT_FP_ENABLED = true;
+extern "C" int openmc_get_feature_enabled(const char* feature, bool* enabled)
+{
+  if (!feature || !enabled) {
+    set_errmsg("Feature name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (strcmp(feature, "dagmc") == 0) {
+#ifdef OPENMC_DAGMC_ENABLED
+    *enabled = true;
 #else
-const bool STRICT_FP_ENABLED = false;
+    *enabled = false;
 #endif
+  } else if (strcmp(feature, "libmesh") == 0) {
+#ifdef OPENMC_LIBMESH_ENABLED
+    *enabled = true;
+#else
+    *enabled = false;
+#endif
+  } else if (strcmp(feature, "strict_fp") == 0) {
+#ifdef OPENMC_ENABLE_STRICT_FP
+    *enabled = true;
+#else
+    *enabled = false;
+#endif
+  } else if (strcmp(feature, "uwuw") == 0) {
+#ifdef OPENMC_UWUW_ENABLED
+    *enabled = true;
+#else
+    *enabled = false;
+#endif
+  } else {
+    set_errmsg(fmt::format("Unknown build feature '{}'.", feature));
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  return 0;
+}
 
 //==============================================================================
 
@@ -243,8 +276,8 @@ void print_overlap_check()
 {
 #ifdef OPENMC_MPI
   vector<int64_t> temp(model::overlap_check_count);
-  MPI_Reduce(temp.data(), model::overlap_check_count.data(),
-    model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(temp.data(), model::overlap_check_count.data(),
+    model::overlap_check_count.size(), MPI_SUM, 0, mpi::intracomm);
 #endif
 
   if (mpi::master) {
@@ -621,8 +654,15 @@ void write_tallies()
   if (model::tallies.empty())
     return;
 
+  // Tag tallies.out written during the forward solve of an adjoint run
+  const char* forward =
+    (FlatSourceDomain::solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT)
+      ? "forward."
+      : "";
+
   // Set filename for tallies_out
-  std::string filename = fmt::format("{}tallies.out", settings::path_output);
+  std::string filename =
+    fmt::format("{}tallies.{}out", settings::path_output, forward);
 
   // Open the tallies.out file.
   std::ofstream tallies_out;

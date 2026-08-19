@@ -315,25 +315,48 @@ def test_unstructured_mesh_tets(model, test_opts):
     harness.main()
 
 
-@pytest.mark.skipif(not openmc.lib.feature_enabled('libmesh'),
-                    reason='LibMesh is not enabled in this build.')
-def test_unstructured_mesh_hexes(model):
+param_values = (['libmesh', 'moab'], # mesh libraries
+                ['native', 'xdg'], # mesh interfaces
+                ['collision', 'tracklength']) # estimators
+test_cases = []
+for i, (lib, interface, estimator) in enumerate(product(*param_values)):
+    if lib == 'moab' and interface != 'xdg':
+        continue
+    if lib == 'libmesh' and estimator == 'tracklength':
+        continue
+    test_cases.append((lib, interface, estimator, f'inputs_true{i}.dat'))
+
+@pytest.mark.parametrize("test_opts", test_cases, ids=lambda x: f"{x[0]}_{x[1]}_{x[2]}")
+def test_unstructured_mesh_hexes(model, test_opts):
+
+    library, interface, estimator, inputs_true = test_opts
+
+    if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
+        pytest.skip("LibMesh is not enabled in this build.")
+    if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
+        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
+    if interface == 'xdg' and not openmc.lib.feature_enabled('xdg'):
+        pytest.skip("XDG interface is not enabled in this build.")
+
     regular_mesh_tally = model.tallies[0]
-    regular_mesh_tally.estimator = 'collision'
+    regular_mesh_tally.estimator = estimator
 
     # add analagous unstructured mesh tally
-    uscd_mesh = openmc.UnstructuredMesh('test_mesh_hexes.e', 'libmesh')
+    filename = "test_mesh_hexes.e" if library == 'libmesh' else "test_mesh_hexes.exo"
+    uscd_mesh = openmc.UnstructuredMesh(filename, library)
+    uscd_mesh.interface = interface
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies
     uscd_tally = openmc.Tally(name="unstructured mesh tally")
     uscd_tally.filters = [uscd_filter]
     uscd_tally.scores = ['flux']
-    uscd_tally.estimator = 'collision'
+    uscd_tally.estimator = estimator
     model.tallies.append(uscd_tally)
 
     harness = UnstructuredMeshTest('statepoint.10.h5',
-                                   model)
+                                   model,
+                                   inputs_true)
     harness.ELEM_PER_VOXEL = 1
 
     harness.main()

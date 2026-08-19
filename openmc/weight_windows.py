@@ -633,7 +633,7 @@ class WeightWindowGenerator:
         if self._update_parameters is not None:
             try:
                 self._check_update_parameters()
-            except TypeError, KeyError:
+            except (TypeError, KeyError):
                 warnings.warn(f'Update parameters are invalid for the "{m}" method.')
 
     @property
@@ -836,7 +836,7 @@ class WeightWindowsExodus:
 
     Requires OpenMC to be built with libMesh support.
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.1
 
     Parameters
     ----------

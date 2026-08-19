@@ -268,6 +268,7 @@ Variance Reduction
    openmc.WeightWindows
    openmc.WeightWindowsList
    openmc.WeightWindowGenerator
+   openmc.WeightWindowsExodus
 
 .. autosummary::
    :toctree: generated
@@ -276,6 +277,7 @@ Variance Reduction
 
    openmc.hdf5_to_wws
    openmc.wwinp_to_wws
+
 
 
 Coarse Mesh Finite Difference Acceleration

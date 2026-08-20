@@ -43,7 +43,7 @@ def test_invalid_mesh_type():
     mesh = openmc.SphericalMesh(r_grid=[0., 1.0])
     values = []
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(TypeError):
         temperature_field = openmc.TemperatureField(mesh, values)
 
 

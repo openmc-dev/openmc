@@ -273,5 +273,6 @@ relevant tallies. This can be done with the aid of the
     with openmc.StatePoint(output_path) as sp:
         dose_tally = sp.get_tally(name='dose tally')
 
-    # Apply time correction factors
-    tally = d1s.apply_time_correction(dose_tally, factors, time_index)
+    # Apply time correction factors at one or more time indices. A list of
+    # derived tallies is returned, one per index.
+    tally, = d1s.apply_time_correction(dose_tally, factors, [time_index])

@@ -51,8 +51,6 @@ enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 // Global variables
 //==============================================================================
 
-extern "C" const bool LIBMESH_ENABLED;
-
 class Mesh;
 
 namespace model {

@@ -61,12 +61,6 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-#ifdef OPENMC_LIBMESH_ENABLED
-const bool LIBMESH_ENABLED = true;
-#else
-const bool LIBMESH_ENABLED = false;
-#endif
-
 // Value used to indicate an empty slot in the hash table. We use -2 because
 // the value -1 is used to indicate a void material.
 constexpr int32_t EMPTY = -2;
@@ -1545,7 +1539,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
   }
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -1581,7 +1575,7 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
   }
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -1776,7 +1770,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[2] = get_node_array<double>(node, "z_grid");
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -1789,7 +1783,7 @@ RectilinearMesh::RectilinearMesh(hid_t group) : StructuredMesh {group}
   read_dataset(group, "z_grid", grid_[2]);
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -1952,7 +1946,7 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node)
   origin_ = get_node_position(node, "origin");
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -1965,7 +1959,7 @@ CylindricalMesh::CylindricalMesh(hid_t group) : PeriodicStructuredMesh {group}
   read_dataset(group, "origin", origin_);
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -2249,7 +2243,7 @@ SphericalMesh::SphericalMesh(pugi::xml_node node)
   origin_ = get_node_position(node, "origin");
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -2263,7 +2257,7 @@ SphericalMesh::SphericalMesh(hid_t group) : PeriodicStructuredMesh {group}
   read_dataset(group, "origin", origin_);
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 

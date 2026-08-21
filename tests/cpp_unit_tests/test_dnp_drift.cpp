@@ -139,8 +139,7 @@ TEST_CASE_METHOD(DNPTransportModelFixture,
 {
   bool is_inside = transport_dnp(site, 2.5, &seed);
 
-  // TODO: should be outside
-  // REQUIRE(!is_inside);  // TODO: after implementing fix, enable this test
+  REQUIRE(!is_inside);
   REQUIRE(site.r == Position(1.0, 0.0, 0.0));
 }
 

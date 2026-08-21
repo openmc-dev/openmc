@@ -53,7 +53,26 @@ int VelocityField::get_next_bin(const Position& r0, const Position& r1,
     r0, r1, outward_surface_ids, inward_surface_ids, bins, segment_lengths);
 
   if (segment_lengths.size() == 0) {
-    fatal_error("Inconsistency in raytrace results.");
+
+    // Try to move the DNP back a little in case it is right on a mesh boundary
+    Direction u = r1 - r0;
+    Position r0_nudged = r0 - (u / u.norm() * TINY_BIT);
+
+    // Reset vectors
+    outward_surface_ids.clear();
+    inward_surface_ids.clear();
+    bins.clear();
+    segment_lengths.clear();
+
+    mesh_ptr()->bins_and_surface_bins_crossed(r0_nudged, r1,
+      outward_surface_ids, inward_surface_ids, bins, segment_lengths);
+
+    if (segment_lengths.size() == 0) {
+      fatal_error("Inconsistency in raytrace results.");
+    }
+
+    // Adjust total length
+    total_length -= TINY_BIT;
   }
 
   // If next point outside the mesh

@@ -167,11 +167,12 @@ TEST_CASE_METHOD(DNPTransportModelFixture, "Test DNP transport - cross inlet")
 TEST_CASE_METHOD(DNPTransportModelFixture,
   "Test DNP transport - stop exactly on mesh boundary")
 {
-  // For the moment, if we are inside and then we leave by being exactly on
-  // the mesh boundary, it fails because we assume that we were inside and the
-  // next distance is not found.
+  settings::dnp_drift_external_travel_time = 1.0;
+  settings::dnp_drift_recycling_on = true;
+  set_integrator(1.0);
 
-  // set_integrator(1.0);  // TODO: after implementing fix, enable this test
+  bool is_inside = transport_dnp(site, 3.0, &seed);
 
-  bool is_inside = transport_dnp(site, 10.0, &seed);
+  REQUIRE(is_inside);
+  REQUIRE(site.r.x == Catch::Approx(0.0).margin(1.0E-10));
 }

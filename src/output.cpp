@@ -63,6 +63,12 @@ extern "C" int openmc_get_feature_enabled(const char* feature, bool* enabled)
 #else
     *enabled = false;
 #endif
+  } else if (strcmp(feature, "xdg") == 0) {
+#ifdef OPENMC_XDG_ENABLED
+    *enabled = true;
+#else
+    *enabled = false;
+#endif
   } else if (strcmp(feature, "strict_fp") == 0) {
 #ifdef OPENMC_ENABLE_STRICT_FP
     *enabled = true;

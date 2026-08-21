@@ -138,6 +138,10 @@ void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 {
   xdg::Position p0 {r0.x, r0.y, r0.z};
   xdg::Position p1 {r1.x, r1.y, r1.z};
+  if (length_multiplier_ > 0.0) {
+    p0 /= length_multiplier_;
+    p1 /= length_multiplier_;
+  }
   double inv_length = 1 / (p1 - p0).length();
   auto track_segments = xdg_->segments(p0, p1);
   // remove elements with lengths of zero

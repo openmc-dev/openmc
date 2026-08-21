@@ -132,16 +132,20 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
       switch (crossed_boundary) {
       case BCType::OUTLET:
         if (settings::dnp_drift_recycling_on) {
-          action = Actions::PLACE_AT_INLET;
+          if (decay_time > t_n + settings::dnp_drift_external_travel_time) {
+            action = Actions::REENTER;
+          } else {
+            action = Actions::ESCAPE;
+          }
         } else {
-          action = Actions::BLOCK_AT_OUTLET;
+          action = Actions::ESCAPE;
         }
         break;
       case BCType::INLET:
-        action = Actions::PLACE_AT_INLET;
+        action = Actions::REENTER;
         break;
       case BCType::WALL:
-        action = Actions::BLOCK_AT_LOCATION;
+        action = Actions::DECAY_IN_PLACE;
         break;
       default:
         fatal_error("Not implemented for this boundary type!");
@@ -150,24 +154,17 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
 
       // Perform action
       switch (action) {
-      case Actions::PLACE_AT_INLET:
-        if (decay_time > t_n + settings::dnp_drift_external_travel_time) {
-          // The DNP has time to reenter the modeled part of the system
-          simulation::velocity_field.randomly_place_on_inlet(y_n, cell_n, seed);
-          t_n += settings::dnp_drift_external_travel_time;
-          cell_n_minus_1 = -1;
-          y_n_minus_1 = Position();
-        } else {
-          // The DNP decays outside the modeled part of the system
-          t_before_decay = 0.;
-          return false;
-        }
+      case Actions::REENTER:
+        simulation::velocity_field.randomly_place_on_inlet(y_n, cell_n, seed);
+        t_n += settings::dnp_drift_external_travel_time;
+        cell_n_minus_1 = -1;
+        y_n_minus_1 = Position();
         break;
-      case Actions::BLOCK_AT_OUTLET:
+      case Actions::ESCAPE:
         t_before_decay = 0.;
-        return false; // TODO - return true normally
+        return false;
         break;
-      case Actions::BLOCK_AT_LOCATION:
+      case Actions::DECAY_IN_PLACE:
         t_before_decay = decay_time - t_n;
         return false; // TODO - return true normally
         break;

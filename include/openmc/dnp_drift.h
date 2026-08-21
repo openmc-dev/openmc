@@ -12,7 +12,7 @@ const double DNP_DRIFT_DISTANCE_MIN =
   1.0E-13; //! Minimum distance between two integration steps before stopping
            //! the DNP transport loop.
 
-enum class Actions { PLACE_AT_INLET, BLOCK_AT_OUTLET, BLOCK_AT_LOCATION };
+enum class Actions { REENTER, ESCAPE, DECAY_IN_PLACE };
 
 //! Adjust position linearly.
 //!

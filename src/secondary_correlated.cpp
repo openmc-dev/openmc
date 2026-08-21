@@ -219,6 +219,12 @@ Distribution& CorrelatedAngleEnergy::sample_dist(
       E_out = E_l_k;
     }
 
+  } else if (k < n_discrete) {
+    // A sampled discrete line is returned exactly (the lin-lin inversion
+    // below applies only to the continuous portion; with (r1 - c_k)
+    // negative it would shift the sampled energy off the line)
+    E_out = E_l_k;
+
   } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
     // Linear-linear interpolation
     double E_l_k1 = distribution_[l].e_out[k + 1];

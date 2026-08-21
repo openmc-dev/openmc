@@ -220,20 +220,26 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
     }
 
   } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
-    // Linear-linear interpolation
-    double E_l_k1 = distribution_[l].e_out[k + 1];
-    double p_l_k1 = distribution_[l].p[k + 1];
+    // Linear-linear interpolation. The inversion applies only to the
+    // continuous portion of the distribution; a sampled discrete line
+    // (k < n_discrete) is returned exactly, as in the histogram branch —
+    // otherwise (r1 - c_k) is negative and the sampled energy is shifted
+    // off the line.
+    if (k >= n_discrete) {
+      double E_l_k1 = distribution_[l].e_out[k + 1];
+      double p_l_k1 = distribution_[l].p[k + 1];
 
-    if (E_l_k != E_l_k1) {
-      double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
-      if (frac == 0.0) {
-        E_out = E_l_k + (r1 - c_k) / p_l_k;
-      } else {
-        E_out =
-          E_l_k +
-          (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
-            p_l_k) /
-            frac;
+      if (E_l_k != E_l_k1) {
+        double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
+        if (frac == 0.0) {
+          E_out = E_l_k + (r1 - c_k) / p_l_k;
+        } else {
+          E_out =
+            E_l_k +
+            (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
+              p_l_k) /
+              frac;
+        }
       }
     }
   } else {

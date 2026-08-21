@@ -182,6 +182,14 @@ void KalbachMann::sample_params(
     km_r = distribution_[l].r[k];
     km_a = distribution_[l].a[k];
 
+  } else if (k < n_discrete) {
+    // A sampled discrete line is returned exactly (the lin-lin inversion
+    // below applies only to the continuous portion; with (r1 - c_k)
+    // negative it would shift the sampled energy off the line)
+    E_out = E_l_k;
+    km_r = distribution_[l].r[k];
+    km_a = distribution_[l].a[k];
+
   } else {
     // Linear-linear interpolation
     double E_l_k1 = distribution_[l].e_out[k + 1];

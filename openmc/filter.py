@@ -27,7 +27,7 @@ _FILTER_TYPES = (
     'delayedgroup', 'energyfunction', 'cellfrom', 'materialfrom', 'legendre',
     'spatiallegendre', 'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
     'particleproduction', 'cellinstance', 'collision', 'time', 'parentnuclide',
-    'weight', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
+    'weight', 'meshangular', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
 )
 
 def _mesh_current_names(mesh):
@@ -1348,6 +1348,14 @@ class MeshSurfaceFilter(MeshFilter):
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         return pd.concat([df, pd.DataFrame(filter_dict)])
+
+class MeshAngularFilter(Filter):
+    """Bins tally events based on incident particle's direction, using 
+    an angular mesh.
+    
+    """
+    def __init__(self):
+        pass
 
 
 class CollisionFilter(Filter):

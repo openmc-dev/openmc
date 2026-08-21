@@ -259,7 +259,8 @@ extern "C" int openmc_mesh_filter_get_rotation(
 
   // Check the filter type
   const auto& filter = model::tally_filters[index];
-  if (filter->type() != FilterType::MESH) {
+  if (filter->type() != FilterType::MESH &&
+      filter->type() != FilterType::MESH_ANGULAR) {
     set_errmsg("Tried to get a rotation from a non-mesh filter.");
     return OPENMC_E_INVALID_TYPE;
   }
@@ -281,7 +282,8 @@ extern "C" int openmc_mesh_filter_set_rotation(
 
   const auto& filter = model::tally_filters[index];
   // Check the filter type
-  if (filter->type() != FilterType::MESH) {
+  if (filter->type() != FilterType::MESH &&
+      filter->type() != FilterType::MESH_ANGULAR) {
     set_errmsg("Tried to set a rotation from a non-mesh filter.");
     return OPENMC_E_INVALID_TYPE;
   }

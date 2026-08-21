@@ -36,7 +36,7 @@ public:
     SourceRegionHandle& srh, double distance, bool is_active, Position r);
   void attenuate_flux_linear_source_void(
     SourceRegionHandle& srh, double distance, bool is_active, Position r);
-  void direction_changed() override { angular_bin_ = C_NONE; };
+  void direction_changed() override { angular_bin_ = C_NONE; }
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
   uint64_t transport_history_based_single_ray();

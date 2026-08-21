@@ -730,13 +730,16 @@ class SphericalMesh(Mesh):
 class UnstructuredMesh(Mesh):
     pass
 
+class UnitSpherePointset(Mesh):
+    pass
 
 _MESH_TYPE_MAP = {
     'regular': RegularMesh,
     'rectilinear': RectilinearMesh,
     'cylindrical': CylindricalMesh,
     'spherical': SphericalMesh,
-    'unstructured': UnstructuredMesh
+    'unstructured': UnstructuredMesh,
+    'unitsphere_pointset': UnitSpherePointset
 }
 
 

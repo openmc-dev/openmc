@@ -961,7 +961,7 @@ SourceSite RandomRay::sample_s2()
 int RandomRay::angular_bin()
 {
   if (angular_bin_ == C_NONE) {
-    angular_bin_ = domain_->get_angular_bin(u());
+    angular_bin_ = domain_->lookup_angular_bin(u());
   }
   return angular_bin_;
 }

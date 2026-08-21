@@ -54,9 +54,13 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
     }
   }
 
+  // Count the number of angular bins if performing angular flux tallying
+  // and store the angle set.
+  nangles = 
+
   // Initialize source regions.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
-  source_regions_ = SourceRegionContainer(negroups_, is_linear);
+  source_regions_ = SourceRegionContainer(negroups_, is_linear, nangles_);
 
   // Initialize tally volumes
   if (volume_normalized_flux_tallies_) {
@@ -91,6 +95,11 @@ void FlatSourceDomain::batch_reset()
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.scalar_flux_new(se) = 0.0;
+  }
+
+#pragma omp parallel for
+  for (int64_t sea = 0; sea < n_source_angular_elements(); sea++) {
+    source_regions_.angular_flux_new(sea) = 0.0;
   }
 }
 
@@ -165,7 +174,7 @@ void FlatSourceDomain::update_all_neutron_sources()
 }
 
 // Normalizes flux and updates simulation-averaged volume estimate
-void FlatSourceDomain::normalize_scalar_flux_and_volumes(
+void FlatSourceDomain::normalize_flux_and_volumes(
   double total_active_distance_per_iteration)
 {
   double normalization_factor = 1.0 / total_active_distance_per_iteration;
@@ -177,6 +186,12 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.scalar_flux_new(se) *= normalization_factor;
+  }
+
+// Normalize angular flux in the same way
+#pragma omp parallel for
+  for (int64_t sea = 0; sea < n_source_angular_elements(); sea++) {
+    source_regions_.angular_flux_new(sea) *= normalization_factor;
   }
 
 // Accumulate cell-wise ray length tallies collected this iteration, then
@@ -1850,6 +1865,31 @@ int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
     mesh_bin = model::meshes[mesh_idx]->get_bin(r);
   }
   return mesh_bin;
+}
+
+// If tallying angular flux, this function is used to determine which angular
+// bin the current ray contributes to. Rays are assigned to bins based on the
+// unit-sphere Voronoi diagram generated from the "quadrature" angle set.
+int FlatSourceDomain::lookup_angular_bin(Direction u) const
+{
+  const double x = u.x;
+  const double y = u.y;
+  const double z = u.z;
+
+  double max_dot = -INFTY;
+  std::size_t best_bin = 0;
+  for (std::size_t j = 0; j < nangles_; ++j) {
+    const std::size_t k = 3 * j;
+    const double dot = x * angular_bin_angles_[k] +
+                       y * angular_bin_angles_[k + 1] +
+                       z * angular_bin_angles_[k + 2];
+    if (dot > max_dot) {
+      max_dot = dot;
+      best_bin = j;
+    }
+  }
+
+  return static_cast<int>(best_bin);
 }
 
 } // namespace openmc

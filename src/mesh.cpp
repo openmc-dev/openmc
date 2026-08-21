@@ -2430,6 +2430,86 @@ double SphericalMesh::volume(const MeshIndex& ijk) const
 }
 
 //==============================================================================
+// Angular mesh implementations
+//==============================================================================
+
+const std::string UnitSpherePointset::mesh_type = "angular_pointset";
+
+UnitSpherePointset::UnitSpherePointset(vector<Direction> points)
+  : points_(std::move(points))
+{}
+
+UnitSpherePointset::UnitSpherePointset(pugi::xml_node node) : AngularMesh(node)
+{
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != mesh_type)
+      fatal_error(fmt::format("Invalid mesh type: {}", temp));
+  }
+
+  vector<double> flat = get_node_array<double>(node, "points");
+  if (flat.size() % 3 != 0) {
+    fatal_error(fmt::format("Point array for unit sphere pointset mesh {} "
+                            "does not contain a whole number of points.",
+      id_));
+  }
+  int n = static_cast<int>(flat.size() / 3);
+  points_.reserve(n);
+  for (int i = 0; i < n; ++i)
+    points_.push_back({flat[3 * i], flat[3 * i + 1], flat[3 * i + 2]});
+}
+
+UnitSpherePointset::UnitSpherePointset(hid_t group) : AngularMesh(group)
+{
+  if (object_exists(group, "type")) {
+    std::string temp;
+    read_dataset(group, "type", temp);
+    if (temp != mesh_type)
+      fatal_error(fmt::format("Invalid mesh type: {}", temp));
+  }
+
+  vector<double> flat;
+  read_dataset(group, "points", flat);
+  int n = static_cast<int>(flat.size() / 3);
+  points_.reserve(n);
+  for (int i = 0; i < n; ++i)
+    points_.push_back({flat[3 * i], flat[3 * i + 1], flat[3 * i + 2]});
+
+  if (object_exists(group, "data"))
+    read_dataset(group, "data", data_);
+}
+
+void UnitSpherePointset::to_hdf5_inner(hid_t mesh_group) const
+{
+  int n = this->n_bins();
+  vector<double> flat(3 * n);
+  for (int i = 0; i < n; ++i) {
+    flat[3 * i + 0] = points_[i].x;
+    flat[3 * i + 1] = points_[i].y;
+    flat[3 * i + 2] = points_[i].z;
+  }
+  write_dataset(mesh_group, "points", flat);
+
+  if (!data_.empty())
+    write_dataset(mesh_group, "data", data_);
+}
+
+int UnitSpherePointset::get_bin(Direction u) const
+{
+  int best = -1;
+  double best_dot = -2.0;
+  for (int i = 0; i < this->n_bins(); ++i) {
+    double d = points_[i].dot(u);
+    if (d > best_dot) {
+      best_dot = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
+
+//==============================================================================
 // Helper functions for the C API
 //==============================================================================
 

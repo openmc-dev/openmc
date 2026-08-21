@@ -30,7 +30,7 @@ public:
   virtual void update_single_neutron_source(SourceRegionHandle& srh);
   virtual void update_all_neutron_sources();
   void compute_k_eff();
-  virtual void normalize_scalar_flux_and_volumes(
+  virtual void normalize_flux_and_volumes(
     double total_active_distance_per_iteration);
 
   int64_t add_source_to_scalar_flux();
@@ -68,10 +68,16 @@ public:
   {
     return source_regions_.n_source_regions() * negroups_;
   }
+  int64_t n_source_angular_elements() const
+  {
+    return source_regions_.n_source_angular_elements();
+  }
   int64_t lookup_base_source_region_idx(const GeometryState& p) const;
   SourceRegionKey lookup_source_region_key(const GeometryState& p) const;
   int64_t lookup_mesh_bin(int64_t sr, Position r) const;
   int lookup_mesh_idx(int64_t sr) const;
+  int lookup_angular_bin(Direction u) const;
+  Direction angular_mesh_direction(int a) { return angular_bin_angles_[a]; }
 
   //----------------------------------------------------------------------------
   // Static Data members
@@ -174,6 +180,12 @@ protected:
   //----------------------------------------------------------------------------
   // Private data members
   int negroups_; // Number of energy groups in simulation
+  int nangles_;  // Number of bins for any angular flux tallies
+
+  vector<double> angular_bin_angles_; // Directions corresponding to each
+                                         // bin midpoint in the angular flux
+                                         // tallying scheme, flattened to 1D: 
+                                         // [x0, y0, z0, x1, y1, z1,...]
 
   double
     simulation_volume_; // Total physical volume of the simulation domain, as

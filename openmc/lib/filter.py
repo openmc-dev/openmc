@@ -20,12 +20,12 @@ __all__ = [
     'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
     'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter',
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
-    'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
-    'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter',
-    'ParentNuclideFilter', 'ParticleFilter', 'ParticleProductionFilter', 'PolarFilter',
-    'ReactionFilter', 'SphericalHarmonicsFilter', 'SpatialLegendreFilter',
-    'SurfaceFilter', 'TimeFilter', 'UniverseFilter', 'WeightFilter', 'ZernikeFilter',
-    'ZernikeRadialFilter', 'filters'
+    'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshAngularFilter', 
+    'MeshBornFilter', 'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 
+    'MuSurfaceFilter', 'ParentNuclideFilter', 'ParticleFilter', 
+    'ParticleProductionFilter', 'PolarFilter', 'ReactionFilter', 
+    'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter', 'TimeFilter', 
+    'UniverseFilter', 'WeightFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
 ]
 
 # Tally functions
@@ -106,6 +106,12 @@ _dll.openmc_mesh_filter_set_rotation.argtypes = [
     c_int32, POINTER(c_double), c_size_t]
 _dll.openmc_mesh_filter_set_rotation.restype = c_int
 _dll.openmc_mesh_filter_set_rotation.errcheck = _error_handler
+_dll.openmc_meshangular_filter_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_meshangular_filter_get_mesh.restype = c_int
+_dll.openmc_meshangular_filter_get_mesh.errcheck = _error_handler
+_dll.openmc_meshangular_filter_set_mesh.argtypes = [c_int32, c_int32]
+_dll.openmc_meshangular_filter_set_mesh.restype = c_int
+_dll.openmc_meshangular_filter_set_mesh.errcheck = _error_handler
 _dll.openmc_meshborn_filter_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_meshborn_filter_get_mesh.restype = c_int
 _dll.openmc_meshborn_filter_get_mesh.errcheck = _error_handler
@@ -466,6 +472,29 @@ class MeshFilter(Filter):
         _dll.openmc_mesh_filter_set_rotation(
             self._index, flat_rotation.ctypes.data_as(POINTER(c_double)),
             c_size_t(len(flat_rotation)))
+        
+class MeshAngularFilter(MeshFilter):
+    """Angular mesh filter stored internally.
+    
+    """
+    filter_type = 'meshangular'
+
+    def __init__(self, mesh=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if mesh is not None:
+            self.mesh = mesh
+
+    @mesh.setter
+    def mesh(self, mesh):
+        _dll.openmc_meshangular_filter_set_mesh(self._index, mesh._index)
+
+    @property
+    def translation(self):
+        raise AttributeError("Angular mesh filters do not permit translation.")
+
+    @translation.setter
+    def translation(self, translation):
+        raise AttributeError("Angular mesh filters do not permit translation.")
 
 class MeshBornFilter(Filter):
     """MeshBorn filter stored internally.
@@ -725,6 +754,7 @@ _FILTER_TYPE_MAP = {
     'material': MaterialFilter,
     'materialfrom': MaterialFromFilter,
     'mesh': MeshFilter,
+    'meshangular': MeshAngularFilter, 
     'meshborn': MeshBornFilter,
     'meshmaterial': MeshMaterialFilter,
     'meshsurface': MeshSurfaceFilter,

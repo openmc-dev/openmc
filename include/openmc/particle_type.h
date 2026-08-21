@@ -79,8 +79,10 @@ public:
   // Check if this represents a nucleus (vs elementary particle)
   constexpr bool is_nucleus() const
   {
-    // PDG nuclear codes are >= 1000000000 (100ZZZAAAI format)
-    return pdg_number_ >= 1000000000;
+    // PDG nuclear codes are >= 1000000000 (100ZZZAAAI format). The proton has
+    // its own code rather than the H-1 nuclear one, but it is a bare nucleus
+    // and reaction-product bookkeeping needs to treat it as one.
+    return pdg_number_ >= 1000000000 || pdg_number_ == PDG_PROTON;
   }
 
   // Get transport index (0-3 for transportable particles, C_NONE otherwise)

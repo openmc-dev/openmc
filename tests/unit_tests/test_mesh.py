@@ -453,7 +453,9 @@ def simple_umesh(request):
             return sp.meshes[1]
 
 
-@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
+@pytest.mark.skipif(
+    not openmc.lib.feature_enabled('dagmc'), reason="DAGMC not enabled."
+)
 @pytest.mark.parametrize('export_type', ('.vtk', '.vtu'))
 def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
@@ -507,9 +509,9 @@ def test_write_vtkhdf(mesh_file, mesh_library, request, run_in_tmpdir):
     necessary to read in the unstructured mesh from a statepoint file to ensure
     it has all the required attributes
     """
-    if mesh_library == 'moab' and not openmc.lib._dagmc_enabled():
+    if mesh_library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip("DAGMC not enabled.")
-    if mesh_library == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if mesh_library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh not enabled.")
 
     model = openmc.Model()

@@ -161,11 +161,11 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
         y_n_minus_1 = Position();
         break;
       case Actions::ESCAPE:
-        t_before_decay = 0.;
+        t_before_decay = decay_time - t_n;
         return false;
         break;
       case Actions::DECAY_IN_PLACE:
-        t_before_decay = decay_time - t_n;
+        t_before_decay = 0.;
         return false; // TODO - return true normally
         break;
       default:

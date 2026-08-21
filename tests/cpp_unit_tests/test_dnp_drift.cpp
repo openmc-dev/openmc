@@ -108,9 +108,9 @@ public:
   }
 };
 
-TEST_CASE_METHOD(
-  DNPTransportModelFixture, "Test DNP transport - cross outlet with recycling "
-                            "on - decay inside the system")
+TEST_CASE_METHOD(DNPTransportModelFixture,
+  "Test DNP transport - cross outlet with recycling "
+  "on - decay inside the system")
 {
   settings::dnp_drift_external_travel_time = 1.0;
   settings::dnp_drift_recycling_on = true;
@@ -121,9 +121,9 @@ TEST_CASE_METHOD(
   REQUIRE(site.r.x == Catch::Approx(-0.5).margin(1.0E-10));
 }
 
-TEST_CASE_METHOD(
-  DNPTransportModelFixture, "Test DNP transport - cross outlet with recycling "
-                            "on - decay outside the system")
+TEST_CASE_METHOD(DNPTransportModelFixture,
+  "Test DNP transport - cross outlet with recycling "
+  "on - decay outside the system")
 {
   settings::dnp_drift_external_travel_time = 100.0;
   settings::dnp_drift_recycling_on = true;

@@ -330,6 +330,7 @@ namespace simulation {
 int ct_current_file;
 int current_batch;
 int current_gen;
+bool forced_collision {false};
 bool initialized {false};
 double keff {1.0};
 double keff_std;

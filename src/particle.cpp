@@ -23,6 +23,7 @@
 #include "openmc/photon.h"
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -274,6 +275,13 @@ void Particle::event_advance()
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
 
+  bool forced_collision = false;
+
+  double speed = this->speed();
+  double time_cutoff = settings::time_cutoff[type().transport_index()];
+  double distance_cutoff =
+    (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+
   // Sample a distance to collision
   if (type() == ParticleType::electron() ||
       type() == ParticleType::positron()) {
@@ -281,21 +289,74 @@ void Particle::event_advance()
   } else if (macro_xs().total == 0.0) {
     collision_distance() = INFINITY;
   } else {
-    collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
+    if (simulation::forced_collision &&
+        boundary().distance() <= distance_cutoff &&
+        boundary().distance() > TINY_BIT) {
+      auto c_id = coord(n_coord() - 1).cell();
+      auto& c = model::cells[c_id];
+      if (c->forced_collision(cell_instance())) {
+        if (cell_last(n_coord_last() - 1) != c_id)
+          forced_collision = true;
+      }
+    }
+    double U;
+    if (forced_collision) {
+      U = uniform_distribution(
+        std::exp(-boundary().distance() * macro_xs().total), 1, current_seed());
+    } else {
+      U = prn(current_seed());
+    }
+    collision_distance() = -std::log(U) / macro_xs().total;
   }
 
-  double speed = this->speed();
-  double time_cutoff = settings::time_cutoff[type().transport_index()];
-  double distance_cutoff =
-    (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+  double distance;
+  double dt;
+
+  if (forced_collision) {
+    distance = boundary().distance() - TINY_BIT;
+    double uncollided_wgt = wgt() * std::exp(-distance * macro_xs().total);
+    double collided_wgt = wgt() * -expm1(-distance * macro_xs().total);
+    wgt() = uncollided_wgt;
+    dt = distance / speed;
+    this->move_distance(distance);
+    this->time() += dt;
+    this->lifetime() += dt;
+
+    // Score timed track-length tallies
+    if (!model::active_timed_tracklength_tallies.empty()) {
+      score_timed_tracklength_tally(*this, distance);
+    }
+
+    // Score track-length tallies
+    if (!model::active_tracklength_tallies.empty()) {
+      score_tracklength_tally(*this, distance);
+    }
+
+    // Score track-length estimate of k-eff
+    if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
+      keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
+    }
+
+    // Score flux derivative accumulators for differential tallies.
+    if (!model::active_tallies.empty()) {
+      score_track_derivative(*this, distance);
+    }
+
+    split(uncollided_wgt);
+
+    this->move_distance(-distance);
+    this->time() -= dt;
+    this->lifetime() -= dt;
+    wgt() = collided_wgt;
+  }
 
   // Select smaller of the three distances
-  double distance =
+  distance =
     std::min({boundary().distance(), collision_distance(), distance_cutoff});
 
   // Advance particle in space and time
   this->move_distance(distance);
-  double dt = distance / speed;
+  dt = distance / speed;
   this->time() += dt;
   this->lifetime() += dt;
 

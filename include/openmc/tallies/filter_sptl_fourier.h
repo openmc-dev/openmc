@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLIES_FILTER_SPTL_LEGENDRE_H
-#define OPENMC_TALLIES_FILTER_SPTL_LEGENDRE_H
+#ifndef OPENMC_TALLIES_FILTER_SPTL_FOURIER_H
+#define OPENMC_TALLIES_FILTER_SPTL_FOURIER_H
 
 #include <string>
 
@@ -8,21 +8,21 @@
 namespace openmc {
 
 //==============================================================================
-//! Gives Legendre moments of the particle's normalized position along an axis
+//! Gives Fourier moments of the particle's normalized position along an axis
 //==============================================================================
 
-class SpatialLegendreFilter : public SpatialExpansionFilter {
+class SpatialFourierFilter : public SpatialExpansionFilter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
 
-  ~SpatialLegendreFilter() = default;
+  ~SpatialFourierFilter() = default;
 
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type_str() const override { return "spatiallegendre"; }
-  FilterType type() const override { return FilterType::SPATIAL_LEGENDRE; }
+  std::string type_str() const override { return "spatialfourier"; }
+  FilterType type() const override { return FilterType::SPATIAL_FOURIER; }
 
   void get_all_bins(const Particle& p, TallyEstimator estimator,
     FilterMatch& match) const override;
@@ -36,4 +36,4 @@ public:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLIES_FILTER_SPTL_LEGENDRE_H
+#endif // OPENMC_TALLIES_FILTER_SPTL_FOURIER_H

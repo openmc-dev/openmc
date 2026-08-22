@@ -105,6 +105,20 @@ def test_tallies():
     legendre_tally.scores = ['scatter', 'nu-scatter']
     legendre_tally.estimator = 'analog'
 
+    spatial_legendre_filter = SpatialLegendreFilter(
+        order=4, axis='x', minimum=-182.07, maximum=182.07)
+    spatial_legendre_tally = Tally()
+    spatial_legendre_tally.filters = [spatial_legendre_filter]
+    spatial_legendre_tally.scores = ['flux']
+    spatial_legendre_tally.estimator = 'analog'
+
+    spatial_fourier_filter = SpatialFourierFilter(
+        order=5, axis='x', minimum=-182.07, maximum=182.07)
+    spatial_fourier_tally = Tally()
+    spatial_fourier_tally.filters = [spatial_fourier_filter]
+    spatial_fourier_tally.scores = ['flux']
+    spatial_fourier_tally.estimator = 'analog'
+
     harmonics_filter = SphericalHarmonicsFilter(order=4)
     harmonics_tally = Tally()
     harmonics_tally.filters = [harmonics_filter]
@@ -168,7 +182,8 @@ def test_tallies():
         azimuthal_tally1, azimuthal_tally2, azimuthal_tally3,
         cellborn_tally, dg_tally, energy_tally, energyout_tally,
         transfer_tally, material_tally, mu_tally1, mu_tally2,
-        polar_tally1, polar_tally2, polar_tally3, legendre_tally,
+        polar_tally1, polar_tally2, polar_tally3,
+        legendre_tally, spatial_legendre_tally, spatial_fourier_tally,
         harmonics_tally, harmonics_tally2, harmonics_tally3,
         universe_tally, collision_tally]
     model.tallies += score_tallies

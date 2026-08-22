@@ -166,7 +166,8 @@ Tally::Tally(pugi::xml_node node)
       if (sf->cosine() == SphericalHarmonicsCosine::scatter) {
         estimator_ = TallyEstimator::ANALOG;
       }
-    } else if (filt_type == FilterType::SPATIAL_LEGENDRE ||
+    } else if (filt_type == FilterType::SPATIAL_FOURIER ||
+               filt_type == FilterType::SPATIAL_LEGENDRE ||
                filt_type == FilterType::ZERNIKE ||
                filt_type == FilterType::ZERNIKE_RADIAL) {
       estimator_ = TallyEstimator::COLLISION;

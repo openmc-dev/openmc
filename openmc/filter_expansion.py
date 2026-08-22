@@ -137,17 +137,18 @@ class LegendreFilter(ExpansionFilter):
         return out
 
 
-class SpatialLegendreFilter(ExpansionFilter):
-    r"""Score Legendre expansion moments in space up to specified order.
+class SpatialExpansionFilter(ExpansionFilter):
+    """Abstract base class for spatial functional expansion filters.
 
-    This filter allows scores to be multiplied by Legendre polynomials of the
-    the particle's position along a particular axis, normalized to a given
-    range, up to a user-specified order.
+    This class provides common functionality for filters that expand
+    tally data along a spatial axis (x, y, or z) within a bounded region.
+    Subclasses must implement the order setter to define their specific
+    bin structure.
 
     Parameters
     ----------
     order : int
-        Maximum Legendre polynomial order
+        Maximum expansion order
     axis : {'x', 'y', 'z'}
         Axis along which to take the expansion
     minimum : float
@@ -160,7 +161,7 @@ class SpatialLegendreFilter(ExpansionFilter):
     Attributes
     ----------
     order : int
-        Maximum Legendre polynomial order
+        Maximum expansion order
     axis : {'x', 'y', 'z'}
         Axis along which to take the expansion
     minimum : float
@@ -197,11 +198,6 @@ class SpatialLegendreFilter(ExpansionFilter):
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 
-    @ExpansionFilter.order.setter
-    def order(self, order):
-        ExpansionFilter.order.__set__(self, order)
-        self.bins = [f'P{i}' for i in range(order + 1)]
-
     @property
     def axis(self):
         return self._axis
@@ -229,6 +225,33 @@ class SpatialLegendreFilter(ExpansionFilter):
         cv.check_type('maximum', maximum, Real)
         self._maximum = maximum
 
+    def to_xml_element(self):
+        """Return XML Element representing the filter.
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing spatial expansion filter data
+
+        """
+        element = super().to_xml_element()
+        subelement = ET.SubElement(element, 'axis')
+        subelement.text = self.axis
+        subelement = ET.SubElement(element, 'min')
+        subelement.text = str(self.minimum)
+        subelement = ET.SubElement(element, 'max')
+        subelement.text = str(self.maximum)
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(get_text(elem, "id"))
+        order = int(get_text(elem, "order"))
+        axis = get_text(elem, "axis")
+        minimum = float(get_text(elem, "min"))
+        maximum = float(get_text(elem, "max"))
+        return cls(order, axis, minimum, maximum, filter_id=filter_id)
+
     @classmethod
     def from_hdf5(cls, group, **kwargs):
         if group['type'][()].decode() != cls.short_name.lower():
@@ -243,33 +266,96 @@ class SpatialLegendreFilter(ExpansionFilter):
 
         return cls(order, axis, min_, max_, filter_id)
 
-    def to_xml_element(self):
-        """Return XML Element representing the filter.
 
-        Returns
-        -------
-        element : lxml.etree._Element
-            XML element containing Legendre filter data
+class SpatialFourierFilter(SpatialExpansionFilter):
+    r"""Score Fourier expansion moments in space up to specified order.
 
-        """
-        element = super().to_xml_element()
-        subelement = ET.SubElement(element, 'axis')
-        subelement.text = self.axis
-        subelement = ET.SubElement(element, 'min')
-        subelement.text = str(self.minimum)
-        subelement = ET.SubElement(element, 'max')
-        subelement.text = str(self.maximum)
+    This filter allows scores to be multiplied by Fourier basis functions of
+    the particle's position along a particular axis, normalized to a given
+    range, up to a user-specified order.
 
-        return element
+    Parameters
+    ----------
+    order : int
+        Maximum Fourier expansion order
+    axis : {'x', 'y', 'z'}
+        Axis along which to take the expansion
+    minimum : float
+        Minimum value along selected axis
+    maximum : float
+        Maximum value along selected axis
+    filter_id : int or None
+        Unique identifier for the filter
 
-    @classmethod
-    def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(get_text(elem, "id"))
-        order = int(get_text(elem, "order"))
-        axis = get_text(elem, "axis")
-        minimum = float(get_text(elem, "min"))
-        maximum = float(get_text(elem, "max"))
-        return cls(order, axis, minimum, maximum, filter_id=filter_id)
+    Attributes
+    ----------
+    order : int
+        Maximum Fourier expansion order
+    axis : {'x', 'y', 'z'}
+        Axis along which to take the expansion
+    minimum : float
+        Minimum value along selected axis
+    maximum : float
+        Maximum value along selected axis
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins (2*order + 1)
+
+    """
+
+    @ExpansionFilter.order.setter
+    def order(self, order):
+        ExpansionFilter.order.__set__(self, order)
+        self.bins = ['a0 (constant)'] + [None]*2*order
+        for i in range(1, order + 1):
+            a = 2*i - 1
+            b = 2*i
+            self.bins[a] = f'a{i} (cos)'
+            self.bins[b] = f'b{i} (sin)'
+
+
+class SpatialLegendreFilter(SpatialExpansionFilter):
+    r"""Score Legendre expansion moments in space up to specified order.
+
+    This filter allows scores to be multiplied by Legendre polynomials of the
+    the particle's position along a particular axis, normalized to a given
+    range, up to a user-specified order.
+
+    Parameters
+    ----------
+    order : int
+        Maximum Legendre polynomial order
+    axis : {'x', 'y', 'z'}
+        Axis along which to take the expansion
+    minimum : float
+        Minimum value along selected axis
+    maximum : float
+        Maximum value along selected axis
+    filter_id : int or None
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    order : int
+        Maximum Legendre polynomial order
+    axis : {'x', 'y', 'z'}
+        Axis along which to take the expansion
+    minimum : float
+        Minimum value along selected axis
+    maximum : float
+        Maximum value along selected axis
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins
+
+    """
+
+    @ExpansionFilter.order.setter
+    def order(self, order):
+        ExpansionFilter.order.__set__(self, order)
+        self.bins = [f'P{i}' for i in range(order + 1)]
 
 
 class SphericalHarmonicsFilter(ExpansionFilter):

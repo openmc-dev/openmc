@@ -23,7 +23,7 @@ __all__ = [
     'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
     'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter',
     'ParentNuclideFilter', 'ParticleFilter', 'ParticleProductionFilter', 'PolarFilter',
-    'ReactionFilter', 'SphericalHarmonicsFilter', 'SpatialLegendreFilter',
+    'ReactionFilter', 'SphericalHarmonicsFilter', 'SpatialFourierFilter', 'SpatialLegendreFilter',
     'SurfaceFilter', 'TimeFilter', 'UniverseFilter', 'WeightFilter', 'ZernikeFilter',
     'ZernikeRadialFilter', 'filters'
 ]
@@ -136,6 +136,12 @@ _dll.openmc_new_filter.errcheck = _error_handler
 _dll.openmc_particle_filter_get_bins.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_particle_filter_get_bins.restype = c_int
 _dll.openmc_particle_filter_get_bins.errcheck = _error_handler
+_dll.openmc_spatial_fourier_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_spatial_fourier_filter_get_order.restype = c_int
+_dll.openmc_spatial_fourier_filter_get_order.errcheck = _error_handler
+_dll.openmc_spatial_fourier_filter_set_order.argtypes = [c_int32, c_int]
+_dll.openmc_spatial_fourier_filter_set_order.restype = c_int
+_dll.openmc_spatial_fourier_filter_set_order.errcheck = _error_handler
 _dll.openmc_spatial_legendre_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
 _dll.openmc_spatial_legendre_filter_get_order.restype = c_int
 _dll.openmc_spatial_legendre_filter_get_order.errcheck = _error_handler
@@ -651,6 +657,25 @@ class SphericalHarmonicsFilter(Filter):
         _dll.openmc_sphharm_filter_set_order(self._index, order)
 
 
+class SpatialFourierFilter(Filter):
+    filter_type = 'spatialfourier'
+
+    def __init__(self, order=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if order is not None:
+            self.order = order
+
+    @property
+    def order(self):
+        temp_order = c_int()
+        _dll.openmc_spatial_fourier_filter_get_order(self._index, temp_order)
+        return temp_order.value
+
+    @order.setter
+    def order(self, order):
+        _dll.openmc_spatial_fourier_filter_set_order(self._index, order)
+
+
 class SpatialLegendreFilter(Filter):
     filter_type = 'spatiallegendre'
 
@@ -736,6 +761,7 @@ _FILTER_TYPE_MAP = {
     'polar': PolarFilter,
     'reaction': ReactionFilter,
     'sphericalharmonics': SphericalHarmonicsFilter,
+    'spatialfourier': SpatialFourierFilter,
     'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,
     'time': TimeFilter,

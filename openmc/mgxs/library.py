@@ -168,6 +168,7 @@ class Library:
             clone._sp_filename = self._sp_filename
             clone._keff = self._keff
             clone._sparse = self.sparse
+            clone._estimator = self.estimator
 
             clone._all_mgxs = {}
             for domain in self.domains:
@@ -248,6 +249,8 @@ class Library:
                        (openmc.ParticleType.NEUTRON,
                         openmc.ParticleType.PHOTON))
         self._particle_type = particle_type
+        if particle_type == openmc.ParticleType.PHOTON:
+            self._correction = None
 
     @property
     def domain_type(self):

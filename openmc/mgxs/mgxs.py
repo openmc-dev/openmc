@@ -5040,6 +5040,62 @@ class PhotonProductionMatrixXS(MatrixMGXS):
     def legendre_order(self):
         return 0
 
+    def _with_energyout_filter(self):
+        """Return a copy using an outgoing-energy production filter."""
+        production = copy.deepcopy(self)
+        secondary = production.tallies['secondary photon production']
+        if not secondary.contains_filter(openmc.ParticleProductionFilter):
+            return production
+        particle_production = secondary.find_filter(
+            openmc.ParticleProductionFilter)
+        energyout = openmc.EnergyoutFilter(particle_production.energies)
+        secondary.filters = [
+            energyout
+            if isinstance(f, openmc.ParticleProductionFilter) else f
+            for f in secondary.filters
+        ]
+        return production
+
+    def get_condensed_xs(self, coarse_groups):
+        """Construct an energy-condensed photon production matrix.
+
+        Parameters
+        ----------
+        coarse_groups : openmc.mgxs.EnergyGroups
+            Coarse energy group structure
+
+        Returns
+        -------
+        openmc.mgxs.PhotonProductionMatrixXS
+            Photon production matrix condensed to the coarse group structure
+
+        """
+        production = self._with_energyout_filter()
+        return MGXS.get_condensed_xs(production, coarse_groups)
+
+    def get_slice(self, nuclides=[], in_groups=[], out_groups=[]):
+        """Build a sliced photon production matrix.
+
+        Parameters
+        ----------
+        nuclides : list of str
+            Nuclides to include; photon production only supports macroscopic
+            data
+        in_groups : list of int
+            Incoming energy groups to include
+        out_groups : list of int
+            Outgoing energy groups to include
+
+        Returns
+        -------
+        openmc.mgxs.PhotonProductionMatrixXS
+            Sliced photon production matrix
+
+        """
+        production = self._with_energyout_filter()
+        return MatrixMGXS.get_slice(
+            production, nuclides, in_groups, out_groups)
+
     @property
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:

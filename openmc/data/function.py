@@ -46,8 +46,18 @@ def sum_functions(funcs):
         # Take the union of all energies (sorted)
         x = reduce(np.union1d, xs)
 
-        # Evaluate each function and add together
-        y = sum(f(x) for f in funcs)
+        # Evaluate each function and add together.  Tabulated functions are
+        # only evaluated where they are defined; values beyond a function's
+        # tabulated range do not contribute to the sum.
+        y = np.zeros_like(x)
+        for f in funcs:
+            if isinstance(f, Tabulated1D):
+                within = ((x >= f.x[0]) & (x <= f.x[-1])) | \
+                    np.isclose(x, f.x[0], atol=1e-14) | \
+                    np.isclose(x, f.x[-1], atol=1e-14)
+                y[within] += f(x[within])
+            else:
+                y += f(x)
         return Tabulated1D(x, y)
     else:
         # If no tabulated functions are present, we need to combine the
@@ -110,6 +120,10 @@ class Tabulated1D(Function1D):
     >>> f = Tabulated1D([0, 10], [4, 5])
     >>> [f(xi) for xi in numpy.linspace(0, 10, 5)]
     [4.0, 4.25, 4.5, 4.75, 5.0]
+
+    When evaluated outside the tabulated range, the value at the nearest
+    tabulated endpoint is returned.  This holds whether the argument is a
+    scalar or an array of values.
 
     Parameters
     ----------
@@ -201,6 +215,12 @@ class Tabulated1D(Function1D):
                 # Log-log
                 y[contained] = (yi*np.exp(np.log(xk/xi)/np.log(xi1/xi)
                                 *np.log(yi1/yi)))
+
+        # Assign boundary values to points that lie outside the tabulated
+        # range so that array evaluation is consistent with the scalar
+        # interpolation path, which returns the value at the nearest endpoint.
+        y[idx < 0] = self.y[0]
+        y[idx > len(self.x) - 2] = self.y[-1]
 
         # In some cases, x values might be outside the tabulated region due only
         # to precision, so we check if they're close and set them equal if so.

@@ -236,10 +236,10 @@ void KalbachMann::sample(
   // Sampled correlated angle from Kalbach-Mann parameters
   if (is_photon_) {
     if (prn(seed) > km_r) {
+      mu = uniform_distribution(-1., 1., seed);
+    } else {
       double T = uniform_distribution(-1., 1., seed);
       mu = std::log(std::cosh(km_a) + T * std::sinh(km_a)) / km_a;
-    } else {
-      mu = uniform_distribution(-1., 1., seed);
     }
   } else {
     if (prn(seed) > km_r) {

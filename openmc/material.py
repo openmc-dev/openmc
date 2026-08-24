@@ -1421,7 +1421,7 @@ class Material(IDManagerMixin):
             ``None`` or an explicit chain, nuclides absent from the chain fall
             back to ENDF/B-VIII.0 data.
 
-            .. versionadded:: 0.15.4
+            .. versionadded:: 0.16.0
 
         Returns
         -------

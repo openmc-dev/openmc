@@ -129,7 +129,8 @@ def test_microxs_zero_flux():
     assert np.all(microxs.data == 0.0)
 
 
-def test_hybrid_tally_setup():
+@pytest.mark.parametrize('include_model_tallies', [None, False, True])
+def test_hybrid_tally_setup(include_model_tallies):
     """In hybrid mode a 1-group RR tally is added alongside the flux tally."""
     # Create a simple model with one material and a few nuclides for testing
     model = openmc.Model()
@@ -143,6 +144,10 @@ def test_hybrid_tally_setup():
     # Define 2-group energy structure for the test
     energies = [0., 0.625, 2.0e7]
 
+    user_tally = openmc.Tally(name='User tally')
+    user_tally.scores = ['flux']
+    model.tallies = [user_tally]
+
     # Function to replace Model.run and capture the tallies that were created
     captured = {}
     def capture_run(**kwargs):
@@ -151,20 +156,25 @@ def test_hybrid_tally_setup():
 
     # Call get_microxs_and_flux but replace Model.run with a function that
     # captures the tallies and raises StopIteration to exit early
+    kwargs = {
+        'nuclides': ['U235', 'O16'],
+        'reactions': ['fission', '(n,gamma)'],
+        'energies': energies,
+        'reaction_rate_mode': 'flux',
+        'reaction_rate_opts': {
+            'nuclides': ['U235'], 'reactions': ['fission']
+        },
+        'chain_file': CHAIN_FILE,
+    }
+    if include_model_tallies is not None:
+        kwargs['include_model_tallies'] = include_model_tallies
     with patch.object(model, 'run', side_effect=capture_run):
         with pytest.raises(StopIteration):
-            get_microxs_and_flux(
-                model, [mat],
-                nuclides=['U235', 'O16'],
-                reactions=['fission', '(n,gamma)'],
-                energies=energies,
-                reaction_rate_mode='flux',
-                reaction_rate_opts={'nuclides': ['U235'], 'reactions': ['fission']},
-                chain_file=CHAIN_FILE,
-            )
+            get_microxs_and_flux(model, [mat], **kwargs)
 
     # Check that both tallies were created with the expected properties
     tally_names = [t.name for t in captured['tallies']]
+    assert ('User tally' in tally_names) is (include_model_tallies is True)
     assert 'MicroXS flux 0' in tally_names
     assert 'MicroXS RR 0' in tally_names
 

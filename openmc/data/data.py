@@ -321,7 +321,7 @@ def half_life(
 
     .. versionadded:: 0.13.1
 
-    .. versionchanged:: 0.15.4
+    .. versionchanged:: 0.16.0
         Added the ``chain_file`` argument.
 
     Parameters
@@ -371,7 +371,7 @@ def decay_constant(
 
     .. versionadded:: 0.13.1
 
-    .. versionchanged:: 0.15.4
+    .. versionchanged:: 0.16.0
         Added the ``chain_file`` argument.
 
     Parameters

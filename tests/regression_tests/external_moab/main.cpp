@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
     // This happens for the -h and -v flags
     return EXIT_SUCCESS;
   } else if (openmc_err) {
-    fatal_error(openmc_err_msg);
+    fatal_error(openmc_get_err_msg());
   }
 
   // Create MOAB interface
@@ -87,12 +87,12 @@ int main(int argc, char* argv[])
   // Run OpenMC
   openmc_err = openmc_run();
   if (openmc_err)
-    fatal_error(openmc_err_msg);
+    fatal_error(openmc_get_err_msg());
 
   // Deallocate memory
   openmc_err = openmc_finalize();
   if (openmc_err)
-    fatal_error(openmc_err_msg);
+    fatal_error(openmc_get_err_msg());
 
   return EXIT_SUCCESS;
 }

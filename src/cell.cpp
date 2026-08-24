@@ -640,8 +640,12 @@ Region::Region(std::string region_spec, int32_t cell_id)
     // Remove complement operators using DeMorgan's laws
     auto it = std::find(expression_.begin(), expression_.end(), OP_COMPLEMENT);
     while (it != expression_.end()) {
-      // Erase complement
-      expression_.erase(it);
+      // Erase complement. Note that erase invalidates the iterator, so we have
+      // to use the iterator it returns, which points to the token that
+      // followed the complement operator.
+      it = expression_.erase(it);
+      if (it == expression_.end())
+        break;
 
       // Define stop given left parenthesis or not
       auto stop = it;
@@ -693,12 +697,12 @@ Region::Region(std::string region_spec, int32_t cell_id)
 
     // If this cell is simple, remove all the superfluous operator tokens.
     if (simple_) {
-      for (auto it = expression_.begin(); it != expression_.end(); it++) {
-        if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
-          expression_.erase(it);
-          it--;
-        }
-      }
+      expression_.erase(std::remove_if(expression_.begin(), expression_.end(),
+                          [](int32_t token) {
+                            return token == OP_INTERSECTION ||
+                                   token > OP_COMPLEMENT;
+                          }),
+        expression_.end());
     }
     expression_.shrink_to_fit();
 
@@ -1334,7 +1338,7 @@ extern "C" int openmc_cell_set_temperature(
   int32_t index, double T, const int32_t* instance, bool set_contained)
 {
   if (index < 0 || index >= model::cells.size()) {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
@@ -1352,7 +1356,7 @@ extern "C" int openmc_cell_set_density(
   int32_t index, double density, const int32_t* instance, bool set_contained)
 {
   if (index < 0 || index >= model::cells.size()) {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
@@ -1370,7 +1374,7 @@ extern "C" int openmc_cell_get_temperature(
   int32_t index, const int32_t* instance, double* T)
 {
   if (index < 0 || index >= model::cells.size()) {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
@@ -1388,7 +1392,7 @@ extern "C" int openmc_cell_get_density(
   int32_t index, const int32_t* instance, double* density)
 {
   if (index < 0 || index >= model::cells.size()) {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 

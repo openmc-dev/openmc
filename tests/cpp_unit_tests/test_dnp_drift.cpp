@@ -149,7 +149,7 @@ TEST_CASE_METHOD(DNPTransportModelFixture, "Test DNP transport - cross wall")
 
   bool is_inside = transport_dnp(site, 10.0, &seed);
 
-  // REQUIRE(is_inside);  // TODO: after implementing fix, enable this test
+  REQUIRE(is_inside);
   REQUIRE(site.r == Position(0.0, 1.0, 0.0));
 }
 

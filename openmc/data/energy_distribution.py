@@ -957,7 +957,7 @@ class LevelInelastic(EnergyDistribution):
         if self.particle == 'neutron':
             return (A+1.0)/A*abs(Q)
         else:
-            b = NEUTRON_MASS_EV*(A-1)
+            b = NEUTRON_MASS_EV*A
             return sqrt(b)*(sqrt(b)-sqrt(b-2*abs(Q)))
 
     def to_hdf5(self, group):

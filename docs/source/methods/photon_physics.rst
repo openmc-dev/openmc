@@ -694,14 +694,14 @@ their data libraries must be specific to each isotope.
 Inelastic Level Scattering
 --------------------------
 
-It can be shown (see Wattenberg_) that in inelastic level scattering, the outgoing
+It can be shown (see Petit_) that in inelastic level scattering, the outgoing
 energy of the neutron :math:`E'` can be related to the Q-value of the reaction
 and the incoming energy of the photon:
 
 .. math::
     :label: photonuclear-level-scattering
 
-    E' = \left ( \frac{A-1}{A} \right ) \left ( E - |Q| - \frac{E^2}{2 m_n \left (A-1 \right )} \right )
+    E' = \left ( \frac{A-1}{A} \right ) \left ( E - |Q| - \frac{E^2}{2 m_n A} \right )
 
 where :math:`A` is the mass of the target nucleus measured in neutron masses, math:`m_n` is the neutron mass in eV.
 
@@ -842,4 +842,4 @@ emitted photon.
 
 .. _Salvat: https://doi.org/10.1787/32da5043-en
 
-.. _Wattenberg: https://doi.org/10.1103/PhysRev.71.497
+.. _Petit: https://doi.org/10.15669/pnst.2.798

@@ -1,9 +1,13 @@
 #include "openmc/dnp_drift.h"
+#include "openmc/cell.h"
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/field.h"
+#include "openmc/geometry.h"
 #include "openmc/particle_data.h"
 #include "openmc/position.h"
 #include "openmc/simulation.h"
+#include "openmc/surface.h"
 
 namespace openmc {
 
@@ -166,7 +170,7 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
         break;
       case Actions::DECAY_IN_PLACE:
         t_before_decay = 0.;
-        return false; // TODO - return true normally
+        return true;
         break;
       default:
         fatal_error("Unrecognized action in DNP transport!");
@@ -184,6 +188,70 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
 
   t_before_decay = 0;
   return true;
+}
+
+bool reconcile_precursor_drift(SourceSite& site)
+{
+  Particle p;
+  p.r() = site.r;
+  p.u() = site.u;
+
+  // Is the DNP inside the model?
+  bool found = exhaustive_find_cell(p);
+
+  // If outside, it might be because we are on a boundary with an outward
+  // direction
+  if (!found) {
+
+    // Nudge the particle backward
+    p.r() = p.r() - p.u() * TINY_BIT;
+    found = exhaustive_find_cell(p);
+
+    // If not found here, it is certainly lost
+    if (!found)
+      fatal_error("DNP is certainly lost");
+
+    // Go back to the previous position
+    p.r() = site.r;
+  }
+
+  // Apply boundary condition if the site is on a surface
+  for (auto& surf_id : model::cells[p.lowest_coord().cell()]->surfaces()) {
+    const Surface& surf = *model::surfaces[std::abs(surf_id) - 1].get();
+    double eval = surf.evaluate(p.r());
+    if (std::abs(eval) < FP_COINCIDENT) {
+
+      Direction normal = surf.normal(p.r());
+      double dot = site.u.dot(normal);
+      bool going_outward = dot > 0.0;
+
+      // TODO: manage albedo coefficient
+      // TODO: add more boundary types
+
+      // Transmission
+      if (surf.bc_->type() == "transmission")
+        return true;
+
+      // Vacuum
+      if (surf.bc_->type() == "vacuum")
+        return (!going_outward);
+
+      // Reflective
+      if (surf.bc_->type() == "reflective") {
+        if (going_outward) {
+          // Apply reflection
+          site.u = surf.reflect(p.r(), p.u(), &p);
+          site.u /= site.u.norm();
+        }
+        return true;
+      }
+
+      // Other
+      fatal_error("Not implemented!");
+    }
+  }
+
+  return found;
 }
 
 } // namespace openmc

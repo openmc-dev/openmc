@@ -224,13 +224,17 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     // If a delayed neutron is sampled
     if (site.delayed_group > 0) {
 
-      // Explicit transport of Delayed Neutron Precursor (DNP)
+      // Explicit transport of delayed neutron precursor (DNP)
       if (settings::dnp_drift_on) {
         double dnp_decay_time = site.time - p.time();
-        if (!transport_dnp(site, dnp_decay_time, p.current_seed())) {
+
+        // Reject site if it is longer inside the model
+        if (!transport_dnp(site, dnp_decay_time, p.current_seed()))
           continue;
-        }
-        // TODO: update site.time accordingly
+
+        // Reject site if it is not usable for the next generation
+        if (!reconcile_precursor_drift(site))
+          continue;
       }
 
       // Reject site if it exceeds time cutoff

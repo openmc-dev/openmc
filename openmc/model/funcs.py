@@ -295,7 +295,7 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
 
 # Pointset generators for discrete-ordinate angular meshes
 
-def generate_levelsymmetric_sn(N: int, mu1_sq: float = None):
+def levelsymmetric_sn(N: int, mu1_sq: float = None):
     """
     Generates the direction vectors of an order-N level-symmetric 
     quadrature set. Does not provide the corresponding weights.
@@ -388,7 +388,7 @@ def generate_levelsymmetric_sn(N: int, mu1_sq: float = None):
 
     return all_points
 
-def generate_tcl_sn(N: int):
+def tcl_sn(N: int):
     """
     Generate the direction vectors of an order-N triangular 
     Chebyshev-Legendre (TCL) quadrature set. Supports even N >= 4.
@@ -554,7 +554,7 @@ def _subdivide_icosahedron_faces(vertices, faces, nu):
 
     return subvertices, subfaces
 
-def generate_icosphere_sn(nu: int = 1, point_type: str = "centroids"):
+def icosphere_sn(nu: int = 1, point_type: str = "centroids"):
     """
     Generates direction vectors from the vertices or centroids of a 
     unit spherical icosahedron with principal faces subdivided at the nu-th 

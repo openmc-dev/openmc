@@ -2474,9 +2474,6 @@ UnitSpherePointset::UnitSpherePointset(hid_t group) : AngularMesh(group)
   points_.reserve(n);
   for (int i = 0; i < n; ++i)
     points_.push_back({flat[3 * i], flat[3 * i + 1], flat[3 * i + 2]});
-
-  if (object_exists(group, "data"))
-    read_dataset(group, "data", data_);
 }
 
 void UnitSpherePointset::to_hdf5_inner(hid_t mesh_group) const
@@ -2489,9 +2486,6 @@ void UnitSpherePointset::to_hdf5_inner(hid_t mesh_group) const
     flat[3 * i + 2] = points_[i].z;
   }
   write_dataset(mesh_group, "points", flat);
-
-  if (!data_.empty())
-    write_dataset(mesh_group, "data", data_);
 }
 
 int UnitSpherePointset::get_bin(Direction u) const

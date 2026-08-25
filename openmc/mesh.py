@@ -3401,8 +3401,6 @@ class UnitSpherePointset(AngularMesh):
         Unit-vector endpoints constituting the mesh. Must be either a numpy 
         array or a nested list and have shape (N,3), where each row provides 
         the [x, y, z] components of one such vector.
-    data : iterable of float
-        Scalar data (e.g. flux) assigned to each point in the mesh
     mesh_id : int
         Unique identifier for the mesh
     name : str
@@ -3415,20 +3413,16 @@ class UnitSpherePointset(AngularMesh):
     name : str
         Name of the mesh
     points : numpy array of float
-        Array storing the 
-    data : numpy array of float
-        Scalar data assigned to each point in the mesh
+        Array storing the direction vectors constituting the mesh.
     """
     def __init__(
             self, 
             points, 
-            data: float | None = None, 
             mesh_id: int | None = None,
             name: str = '',
         ):
         super().__init__(mesh_id, name)
         self.points = points
-        self.data = data
 
     @property
     def points(self):
@@ -3442,20 +3436,6 @@ class UnitSpherePointset(AngularMesh):
             raise ValueError(
                 "Unit vector array for UnitSpherePointset must have shape (N,3).")
         self._points = pts
-    
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self, d):
-        if d is not None:
-            cv.check_type("AngularMesh data", d, Iterable, Real)
-            d = np.asarray(d).flatten()
-            if len(d) != len(self.points):
-                raise ValueError(
-                    "Data for UnitSpherePointset does not match number of mesh elements.")
-        self._data = d
 
     @property
     def n_elements(self):
@@ -3491,9 +3471,7 @@ class UnitSpherePointset(AngularMesh):
         n = points.size // 3
         points = points.reshape(n, 3)
 
-        data = group['data'][()] if 'data' in group else None
-
-        return cls(points, data=data, mesh_id=mesh_id, name=name)
+        return cls(points, mesh_id=mesh_id, name=name)
 
     def to_xml_element(self):
         """Return XML representation of the mesh
@@ -3512,10 +3490,6 @@ class UnitSpherePointset(AngularMesh):
 
         subelement = ET.SubElement(element, "points")
         subelement.text = ' '.join(map(str, pts))
-
-        if self.data is not None:
-            subelement = ET.SubElement(element, "data")
-            subelement.text = ' '.join(map(str, self.data))
 
         return element
 
@@ -3540,13 +3514,7 @@ class UnitSpherePointset(AngularMesh):
         n = points.size // 3
         points = points.reshape(n, 3)
 
-        data_elem = elem.find("data")
-        if data_elem is not None:
-            data = get_elem_list(elem, "data", float)
-        else:
-            data = None
-
-        return cls(points, data, mesh_id=mesh_id)
+        return cls(points, mesh_id=mesh_id)
 
 
 def _read_meshes(elem):

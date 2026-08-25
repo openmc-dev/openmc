@@ -891,7 +891,7 @@ public:
   void material_volumes(int nx, int ny, int nz, int max_materials,
     int32_t* materials, double* volumes, double* bboxes) const override
   {
-    fatal_error("material_volumes() is not supported for UnitSpherePointset")
+    fatal_error("material_volumes() is not supported for UnitSpherePointset");
   }
 
   std::string get_mesh_type() const override { return mesh_type; }
@@ -900,7 +900,6 @@ public:
   void to_hdf5_inner(hid_t group) const override;
 
   vector<Position> points_;
-  vector<double> data_;
 };
 
 #ifdef OPENMC_DAGMC_ENABLED

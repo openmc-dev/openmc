@@ -283,6 +283,17 @@ public:
     pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
     pugi::xml_node root = doc.child("mesh");
     mesh = RegularMesh(root);
+
+    // Add physical groups
+    PGMap pg_map;
+    vector<int> face_ids = {0, 24, 12, 36, 7, 31, 19, 43, 15, 39, 21, 45, 2, 26,
+      8, 32, 4, 16, 10, 22, 29, 41, 35, 47};
+    vector<int> physical_groups = {
+      1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+    for (size_t i = 0; i < face_ids.size(); i++) {
+      pg_map[physical_groups[i]].push_back(face_ids[i]);
+    }
+    mesh.pg_map() = pg_map;
   }
 };
 
@@ -710,5 +721,46 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test get_bin_clamped()")
     Position r1 {1.5, 1.5, 1.5};
     int bin0 = -1;
     REQUIRE(mesh.get_bin_clamped(r0, r1, bin0) == 7);
+  }
+}
+
+TEST_CASE_METHOD(RegularMeshFixture, "Test sample_on_physical_groups()")
+{
+  SECTION(
+    "Using multiple seeds, verify that physical group 1 corresponds to x=-1")
+  {
+    const double tol = 1.0e-12;
+    std::set<int> expected_bins = {0, 2, 4, 6};
+    vector<int> physical_groups = {1};
+
+    for (int i = 0; i < 1000; ++i) {
+      uint64_t seed = static_cast<uint64_t>(i + 1);
+
+      Position p;
+      int bin;
+      mesh.sample_on_physical_groups(p, bin, &seed, physical_groups);
+
+      REQUIRE_THAT(p.x, Catch::Matchers::WithinAbs(-1.0, tol));
+      REQUIRE(expected_bins.count(bin) == 1);
+      REQUIRE(p.y >= -1.0);
+      REQUIRE(p.y <= 1.0);
+      REQUIRE(p.z >= -1.0);
+      REQUIRE(p.z <= 1.0);
+    }
+  }
+
+  SECTION("Accept multiple physical groups")
+  {
+    // TODO
+  }
+
+  SECTION("Statistical test - normal configuration")
+  {
+    // TODO
+  }
+
+  SECTION("Statistical test - with duplicates")
+  {
+    // TODO
   }
 }

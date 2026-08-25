@@ -9,6 +9,10 @@
 
 using namespace openmc;
 
+// ----------------------------------------------------------------------------
+// _adjust_position
+// ----------------------------------------------------------------------------
+
 TEST_CASE("Test linear position adjustment")
 {
   // Typical use case
@@ -17,6 +21,10 @@ TEST_CASE("Test linear position adjustment")
   _adjust_position(a, b, 3.0, 1.0, 2.5);
   REQUIRE(a == Position(0.0, 0.0, 0.0));
 }
+
+// ----------------------------------------------------------------------------
+// _adjust_time
+// ----------------------------------------------------------------------------
 
 TEST_CASE("Test linear time adjustment")
 {
@@ -28,6 +36,10 @@ TEST_CASE("Test linear time adjustment")
   _adjust_time(t, 2.0, a, b, c);
   REQUIRE(t == 2.5);
 }
+
+// ----------------------------------------------------------------------------
+// transport_dnp
+// ----------------------------------------------------------------------------
 
 class DNPTransportModelFixture {
 protected:
@@ -176,3 +188,9 @@ TEST_CASE_METHOD(DNPTransportModelFixture,
   REQUIRE(is_inside);
   REQUIRE(site.r.x == Catch::Approx(0.0).margin(1.0E-10));
 }
+
+// ----------------------------------------------------------------------------
+// reconcile_precursor_drift
+// ----------------------------------------------------------------------------
+
+// TODO: prepare model for exhaustive_find_cell() to work

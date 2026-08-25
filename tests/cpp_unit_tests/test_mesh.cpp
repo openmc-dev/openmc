@@ -658,3 +658,57 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test connectivity()")
   // mesh.connectivity(-1); // should fail
   // mesh.connectivity(8); // should fail
 }
+
+// TODO: test more mesh types
+TEST_CASE_METHOD(RegularMeshFixture, "Test get_bin_clamped()")
+{
+  SECTION("r0 and r1 inside mesh - returns bin containing r1")
+  {
+    Position r0 {-0.5, -0.5, -0.5};
+    Position r1 {0.5, 0.5, -0.5};
+    int bin0 = 0;
+    REQUIRE(mesh.get_bin_clamped(r0, r1, bin0) == 3);
+  }
+
+  SECTION(
+    "r0 inside mesh and r1 outside mesh - returns last bin before leaving")
+  {
+    Position r0 {-0.5, -0.5, -0.5};
+    Position r1 {1.5, 1.5, 1.5};
+    int bin0 = 0;
+    REQUIRE(mesh.get_bin_clamped(r0, r1, bin0) == 7);
+  }
+
+  SECTION(
+    "r0 inside mesh and r1 on internal boundary - returns bin containing r1")
+  {
+    Position r0 {-0.5, -0.5, -0.5};
+    Position r1 {1.0, 1.0, 1.0};
+    int bin0 = 0;
+    REQUIRE(mesh.get_bin_clamped(r0, r1, bin0) == 7);
+  }
+
+  SECTION("r1 == r0 - returns bin0 (no movement)")
+  {
+    Position r0 {-0.5, -0.5, -0.5};
+    Position r1 {-0.5, -0.5, -0.5};
+    int bin0 = 0;
+    REQUIRE(mesh.get_bin_clamped(r0, r1, bin0) == bin0);
+  }
+
+  SECTION("r0 and r1 outside mesh with no traversal - returns bin0")
+  {
+    Position r0 {-1.5, -1.5, -1.5};
+    Position r1 {-1.2, -1.2, -1.2};
+    int bin0 = -1;
+    REQUIRE(mesh.get_bin_clamped(r0, r1, bin0) == bin0);
+  }
+
+  SECTION("r0 and r1 outside mesh with traversal - last bin before leaving")
+  {
+    Position r0 {-1.5, -1.5, -1.5};
+    Position r1 {1.5, 1.5, 1.5};
+    int bin0 = -1;
+    REQUIRE(mesh.get_bin_clamped(r0, r1, bin0) == 7);
+  }
+}

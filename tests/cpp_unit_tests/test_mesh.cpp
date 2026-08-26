@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <iostream>
+#include <map>
 #include <string>
 
 #include <catch2/catch_approx.hpp>
@@ -733,16 +734,17 @@ TEST_CASE_METHOD(RectilinearMeshFixture, "Test get_bin_clamped()") {
 
 TEST_CASE_METHOD(RegularMeshFixture, "Test sample_on_physical_groups()")
 {
-  SECTION(
-    "Using multiple seeds, verify that physical group 1 corresponds to x=-1")
+  const double tol = 1.0e-12;
+  uint64_t seed = 1;
+
+  SECTION("Accept a single physical group")
   {
-    const double tol = 1.0e-12;
+    // Using multiple calls of sample_on_physical_groups(), we verify that each
+    // sample is on x=-1 (group 1)
     std::set<int> expected_bins = {0, 2, 4, 6};
     vector<int> physical_groups = {1};
 
     for (int i = 0; i < 1000; ++i) {
-      uint64_t seed = static_cast<uint64_t>(i + 1);
-
       Position p;
       int bin;
       mesh.sample_on_physical_groups(p, bin, &seed, physical_groups);
@@ -758,16 +760,58 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test sample_on_physical_groups()")
 
   SECTION("Accept multiple physical groups")
   {
-    // TODO
+    // Using multiple calls of sample_on_physical_groups(), we verify that each
+    // sample is either on x=-1 (group 1) or x=1 (group 2)
+    vector<int> physical_groups = {1, 2};
+
+    bool sampled_x_min = false;
+    bool sampled_x_max = false;
+
+    for (int i = 0; i < 1000; ++i) {
+      Position p;
+      int bin;
+      mesh.sample_on_physical_groups(p, bin, &seed, physical_groups);
+
+      bool on_x_min = std::abs(p.x - (-1.0)) < tol;
+      bool on_x_max = std::abs(p.x - 1.0) < tol;
+      REQUIRE((on_x_min || on_x_max));
+
+      if (on_x_min) sampled_x_min = true;
+      if (on_x_max) sampled_x_max = true;
+
+      REQUIRE(p.y >= -1.0);
+      REQUIRE(p.y <= 1.0);
+      REQUIRE(p.z >= -1.0);
+      REQUIRE(p.z <= 1.0);
+    }
+
+    // Both faces should have been sampled at least once
+    REQUIRE(sampled_x_min);
+    REQUIRE(sampled_x_max);
   }
 
-  SECTION("Statistical test - normal configuration")
+  SECTION("Statistical test")
   {
-    // TODO
-  }
+    // Using multiple calls of sample_on_physical_groups(), we verify that each
+    // of the 4 bins of physical group 1 gets ~25% of the samples, using a loose
+    // tolerance (between 24% and 26%)
+    vector<int> physical_groups = {1};
 
-  SECTION("Statistical test - with duplicates")
-  {
-    // TODO
+    std::map<int, int> bin_counts;
+    const int n_samples = 10000;
+
+    for (int i = 0; i < n_samples; ++i) {
+      Position p;
+      int bin;
+      mesh.sample_on_physical_groups(p, bin, &seed, physical_groups);
+      bin_counts[bin]++;
+    }
+
+    REQUIRE(bin_counts.size() == 4);
+    for (auto& [bin, count] : bin_counts) {
+      double fraction = static_cast<double>(count) / n_samples;
+      REQUIRE(fraction > 0.24);
+      REQUIRE(fraction < 0.26);
+    }
   }
 }

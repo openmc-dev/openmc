@@ -22,6 +22,7 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     volume_naive_(&sr.volume_naive_),
     position_recorded_(&sr.position_recorded_),
     external_source_present_(&sr.external_source_present_),
+    needs_angular_flux_(&sr.needs_angular_flux_),
     position_(&sr.position_), centroid_(&sr.centroid_),
     centroid_iteration_(&sr.centroid_iteration_), centroid_t_(&sr.centroid_t_),
     mom_matrix_(&sr.mom_matrix_), mom_matrix_t_(&sr.mom_matrix_t_),
@@ -41,7 +42,8 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
 //==============================================================================
 // SourceRegion implementation
 //==============================================================================
-SourceRegion::SourceRegion(int negroups, bool is_linear, int nangles)
+SourceRegion::SourceRegion(int negroups, bool is_linear, int nangles, 
+  bool needs_angular_flux)
 {
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // If in eigenvalue mode, set starting flux to guess of 1
@@ -56,7 +58,11 @@ SourceRegion::SourceRegion(int negroups, bool is_linear, int nangles)
   scalar_flux_new_.assign(negroups, 0.0);
   source_.assign(negroups, 0.0);
   scalar_flux_final_.assign(negroups, 0.0);
-  angular_flux_new_.assign(negroups * nangles, 0.0f);
+  // Only allocate angular flux storage for regions that need it
+  needs_angular_flux_= needs_angular_flux;
+  if (needs_angular_flux_) {
+    angular_flux_new_.assign(negroups * nangles, 0.0f);
+  }
 
   tally_task_.resize(negroups);
   if (is_linear) {
@@ -89,6 +95,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   volume_naive_.push_back(sr.volume_naive_);
   position_recorded_.push_back(sr.position_recorded_);
   external_source_present_.push_back(sr.external_source_present_);
+  needs_angular_flux_.push_back(sr.needs_angular_flux_);
   position_.push_back(sr.position_);
   volume_task_.push_back(sr.volume_task_);
   mesh_.push_back(sr.mesh_);
@@ -126,8 +133,13 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   }
 
   // Angle- and energy-dependent flux
-  for (int ga = 0; ga < negroups_ * nangles_; ++ga) {
-    angular_flux_new_.push_back(sr.angular_flux_new_[ga]);
+  if (!sr.angular_flux_new_.empty()) {
+    angular_flux_offset_.push_back(angular_flux_new_.size());
+    for (int ga = 0; ga < negroups_ * nangles_; ++ga) {
+      angular_flux_new_.push_back(sr.angular_flux_new_[ga]);
+    }
+  } else {
+    angular_flux_offset_.push_back(C_NONE);
   }
 }
 
@@ -149,6 +161,7 @@ void SourceRegionContainer::assign(
   volume_naive_.clear();
   position_recorded_.clear();
   external_source_present_.clear();
+  needs_angular_flux_.clear();
   position_.clear();
   mesh_.clear();
   parent_sr_.clear();
@@ -165,6 +178,7 @@ void SourceRegionContainer::assign(
   scalar_flux_new_.clear();
   scalar_flux_final_.clear();
   angular_flux_new_.clear();
+  angular_flux_offset_.clear();
   source_.clear();
   external_source_.clear();
 
@@ -211,6 +225,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.volume_naive_ = &volume_naive(sr);
   handle.position_recorded_ = &position_recorded(sr);
   handle.external_source_present_ = &external_source_present(sr);
+  handle.needs_angular_flux_ = &needs_angular_flux(sr);
   handle.position_ = &position(sr);
   handle.volume_task_ = &volume_task(sr);
   handle.mesh_ = &mesh(sr);
@@ -224,7 +239,11 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
     handle.external_source_ = nullptr;
   }
   handle.scalar_flux_final_ = &scalar_flux_final(sr, 0);
-  handle.angular_flux_new_ = &angular_flux_new(sr, 0, 0);
+  if (angular_flux_offset_[sr] != C_NONE) {
+    handle.angular_flux_new_ = &angular_flux_new(sr, 0, 0);
+  } else {
+    handle.angular_flux_new_ = nullptr;
+  }
   handle.tally_task_ = &tally_task(sr, 0);
 
   if (handle.is_linear_) {
@@ -267,7 +286,7 @@ void SourceRegionContainer::adjoint_reset()
     std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 1.0);
   }
   std::fill(scalar_flux_new_.begin(), scalar_flux_new_.end(), 0.0);
-  std::fill(angular_flux_new_.begin(), angular_flux_new_.end(), 0.0f);
+  std::fill(angular_flux_new_.begin(), angular_flux_new_.end(), 0.0);
   std::fill(source_.begin(), source_.end(), 0.0f);
   std::fill(external_source_.begin(), external_source_.end(), 0.0f);
   std::fill(source_gradients_.begin(), source_gradients_.end(),

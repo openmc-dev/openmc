@@ -166,6 +166,7 @@ public:
   double* volume_naive_;
   int* position_recorded_;
   int* external_source_present_;
+  int* needs_angular_flux_;
   Position* position_;
   Position* centroid_;
   Position* centroid_iteration_;
@@ -242,6 +243,12 @@ public:
   const int external_source_present() const
   {
     return *external_source_present_;
+  }
+
+  int& needs_angular_flux() { return *needs_angular_flux_; }
+  const int needs_angular_flux() const
+  {
+    return *needs_angular_flux_;
   }
 
   Position& position() { return *position_; }
@@ -332,7 +339,8 @@ class SourceRegion {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegion(int negroups, bool is_linear, int nangles = 1);
+  SourceRegion(int negroups, bool is_linear, int nangles = 1, 
+    bool needs_angular_flux = false);
   SourceRegion() = default;
 
   //----------------------------------------------------------------------------
@@ -355,6 +363,8 @@ public:
   int position_recorded_ {0}; //!< Has the position been recorded yet?
   int external_source_present_ {
     0};               //!< Is an external source present in this region?
+  int needs_angular_flux_ {
+    0}; //!< Is angular flux tallying active in this region?
   int is_small_ {0};  //!< Is it "small", receiving < 1.5 hits per iteration?
   int n_hits_ {0};    //!< Number of total hits (ray crossings)
                       // Mesh that subdivides this source region
@@ -468,6 +478,15 @@ public:
   const int external_source_present(int64_t sr) const
   {
     return external_source_present_[sr];
+  }
+
+  int& needs_angular_flux(int64_t sr)
+  {
+    return needs_angular_flux_[sr];
+  }
+  const int needs_angular_flux(int64_t sr) const
+  {
+    return needs_angular_flux_[sr];
   }
 
   Position& position(int64_t sr) { return position_[sr]; }
@@ -594,11 +613,11 @@ public:
 
   double& angular_flux_new(int64_t sr, int g, int a)
   {
-    return angular_flux_new_[index_angle(sr, g, a)];
+    return angular_flux_new_[angular_flux_offset_[sr] + g * nangles_ + a];
   }
   const double angular_flux_new(int64_t sr, int g, int a) const
   {
-    return angular_flux_new_[index_angle(sr, g, a)];
+    return angular_flux_new_[angular_flux_offset_[sr] + g * nangles_ + a];
   }
   double& angular_flux_new(int64_t sea) { return angular_flux_new_[sea]; }
   const double angular_flux_new(int64_t sea) const
@@ -660,10 +679,7 @@ public:
   void flux_swap();
   int64_t n_source_regions() const { return n_source_regions_; }
   int64_t n_source_elements() const { return n_source_regions_ * negroups_; }
-  int64_t n_source_angular_elements() const
-  {
-    return n_source_regions_ * negroups_ * nangles_;
-  }
+  int64_t n_source_angular_elements() const { return angular_flux_new_.size(); }
   int& negroups() { return negroups_; }
   const int negroups() const { return negroups_; }
   int& nangles() { return nangles_; }
@@ -697,6 +713,7 @@ private:
   vector<double> volume_naive_;
   vector<int> position_recorded_;
   vector<int> external_source_present_;
+  vector<int> needs_angular_flux_;
   vector<Position> position_;
   vector<Position> centroid_;
   vector<Position> centroid_iteration_;
@@ -713,6 +730,7 @@ private:
   vector<double> scalar_flux_new_;
   vector<double> scalar_flux_final_;
   vector<double> angular_flux_new_;
+  vector<int64_t> angular_flux_offset_;
   vector<float> source_;
   vector<float> external_source_;
 
@@ -733,10 +751,6 @@ private:
 
   // Helper function for indexing
   inline int64_t index(int64_t sr, int g) const { return sr * negroups_ + g; }
-  inline int64_t index_angle(int64_t sr, int g, int a) const
-  {
-    return (sr * negroups_ + g) * nangles_ + a;
-  }
 };
 
 } // namespace openmc

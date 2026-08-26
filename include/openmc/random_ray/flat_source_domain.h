@@ -7,6 +7,7 @@
 #include "openmc/random_ray/parallel_map.h"
 #include "openmc/random_ray/source_region.h"
 #include "openmc/source.h"
+#include "openmc/mesh.h"
 #include <unordered_map>
 #include <unordered_set>
 
@@ -36,6 +37,7 @@ public:
   int64_t add_source_to_scalar_flux();
   virtual void batch_reset();
   void convert_source_regions_to_tallies(int64_t start_sr_id);
+  void initialize_angular_quadrature();
   void reset_tally_volumes();
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
@@ -68,16 +70,14 @@ public:
   {
     return source_regions_.n_source_regions() * negroups_;
   }
-  int64_t n_source_angular_elements() const
-  {
-    return source_regions_.n_source_angular_elements();
-  }
   int64_t lookup_base_source_region_idx(const GeometryState& p) const;
   SourceRegionKey lookup_source_region_key(const GeometryState& p) const;
   int64_t lookup_mesh_bin(int64_t sr, Position r) const;
   int lookup_mesh_idx(int64_t sr) const;
-  int lookup_angular_bin(Direction u) const;
-  Direction angular_mesh_direction(int a) { return angular_bin_angles_[a]; }
+  int get_angular_bin(Direction u) const;
+  Direction angular_quadrature_direction(int a) const;
+  bool tally_angular_flux_applies(
+    int cell_idx, int material, int mesh_idx) const;
 
   //----------------------------------------------------------------------------
   // Static Data members
@@ -180,12 +180,14 @@ protected:
   //----------------------------------------------------------------------------
   // Private data members
   int negroups_; // Number of energy groups in simulation
-  int nangles_;  // Number of bins for any angular flux tallies
+  int nangles_ {1};  // Number of bins for any angular flux tallies
+  const UnitSpherePointset* angular_mesh_ {nullptr};
 
-  vector<double> angular_bin_angles_; // Directions corresponding to each
-                                         // bin midpoint in the angular flux
-                                         // tallying scheme, flattened to 1D: 
-                                         // [x0, y0, z0, x1, y1, z1,...]
+  vector<bool> tally_is_angular_;
+  std::unordered_set<int32_t> angular_target_cells_;
+  std::unordered_set<int32_t> angular_target_materials_;
+  std::unordered_set<int32_t> angular_target_meshes_;
+  bool tally_angular_flux_everywhere_ {false};
 
   double
     simulation_volume_; // Total physical volume of the simulation domain, as

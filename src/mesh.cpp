@@ -1901,7 +1901,9 @@ void RegularMesh::sample_on_physical_groups(
     face_ids.insert(face_ids.end(), temp.begin(), temp.end());
   }
 
-  // TODO: remove any duplicates to avoid sampling bias
+  // Remove any duplicates to avoid sampling bias
+  std::sort(face_ids.begin(), face_ids.end());
+  face_ids.erase(std::unique(face_ids.begin(), face_ids.end()), face_ids.end());
 
   // Retrieve the face area of each face and calculate the total
   double total_area = 0.;

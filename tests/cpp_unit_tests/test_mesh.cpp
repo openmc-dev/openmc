@@ -720,4 +720,28 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test sample_on_physical_groups()")
       REQUIRE(fraction < 0.26);
     }
   }
+
+  SECTION("Statistical test - with duplicated faces")
+  {
+    // Same test as above but with a duplicate in the physical groups map
+    vector<int> physical_groups = {1};
+    mesh.pg_map()[1].push_back(0);
+
+    std::map<int, int> bin_counts;
+    const int n_samples = 10000;
+
+    for (int i = 0; i < n_samples; ++i) {
+      Position p;
+      int bin;
+      mesh.sample_on_physical_groups(p, bin, &seed, physical_groups);
+      bin_counts[bin]++;
+    }
+
+    REQUIRE(bin_counts.size() == 4);
+    for (auto& [bin, count] : bin_counts) {
+      double fraction = static_cast<double>(count) / n_samples;
+      CHECK(fraction > 0.24);
+      CHECK(fraction < 0.26);
+    }
+  }
 }

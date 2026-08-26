@@ -1386,6 +1386,12 @@ void read_settings_xml(pugi::xml_node root)
       fatal_error("Surface IDs must be declared.");
     }
 
+    // Check for duplicate face IDs
+    std::set<int> unique_face_ids(face_ids.begin(), face_ids.end());
+    if (unique_face_ids.size() != face_ids.size()) {
+      fatal_error("Duplicate face IDs found in physical groups definition!");
+    }
+
     // Physical groups
     vector<int> physical_groups;
     if (check_for_node(node_physical_group, "physical_groups")) {

@@ -716,8 +716,8 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test sample_on_physical_groups()")
     REQUIRE(bin_counts.size() == 4);
     for (auto& [bin, count] : bin_counts) {
       double fraction = static_cast<double>(count) / n_samples;
-      REQUIRE(fraction > 0.24);
-      REQUIRE(fraction < 0.26);
+      CHECK(fraction > 0.24);
+      CHECK(fraction < 0.26);
     }
   }
 

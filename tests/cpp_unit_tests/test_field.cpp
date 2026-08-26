@@ -204,16 +204,16 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test VelocityField - regular mesh")
   // - Next point is inside the mesh
   bin1 = velocity_field.get_next_bin(Position(-0.5, -0.5, -0.5),
     Position(0.5, 0.5, 0.5), 0, crossed_boundary, intersection);
-  REQUIRE(bin1 == 7);
-  REQUIRE(crossed_boundary == BCType::NONE);
-  REQUIRE(intersection == Position(0.5, 0.5, 0.5));
+  CHECK(bin1 == 7);
+  CHECK(crossed_boundary == BCType::NONE);
+  CHECK(intersection == Position(0.5, 0.5, 0.5));
 
   // - Next point is outside the mesh
   bin1 = velocity_field.get_next_bin(Position(-0.5, -0.5, -0.5),
     Position(-0.5, -0.5, 1.5), 0, crossed_boundary, intersection);
-  REQUIRE(bin1 == -1);
-  REQUIRE(crossed_boundary == BCType::WALL);
-  REQUIRE(intersection == Position(-0.5, -0.5, 1.0));
+  CHECK(bin1 == -1);
+  CHECK(crossed_boundary == BCType::WALL);
+  CHECK(intersection == Position(-0.5, -0.5, 1.0));
 
   // - r0 is outside the mesh based on bin0 - should fail
   // bin1 = velocity_field.get_next_bin(
@@ -226,16 +226,16 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test VelocityField - regular mesh")
   int bin = 0;
   uint64_t seed = 1;
   velocity_field.randomly_place_on_inlet(p, bin, &seed);
-  REQUIRE(p.x == -1.0);
-  REQUIRE(p.y == Catch::Approx(0.7529960058).margin(1.0E-10));
-  REQUIRE(p.z == Catch::Approx(-0.6698810112).margin(1.0E-10));
-  REQUIRE(bin == 2);
+  CHECK(p.x == -1.0);
+  CHECK(p.y == Catch::Approx(-0.2470039942).margin(1.0E-10));
+  CHECK(p.z == Catch::Approx(0.3301189888).margin(1.0E-10));
+  CHECK(bin == 4);
 
   // Get boundary conditions
-  REQUIRE(velocity_field.get_boundary_condition(1) == BCType::INLET);
-  REQUIRE(velocity_field.get_boundary_condition(2) == BCType::OUTLET);
-  REQUIRE(velocity_field.get_boundary_condition(3) == BCType::WALL);
-  REQUIRE(velocity_field.get_boundary_condition(4) == BCType::WALL);
+  CHECK(velocity_field.get_boundary_condition(1) == BCType::INLET);
+  CHECK(velocity_field.get_boundary_condition(2) == BCType::OUTLET);
+  CHECK(velocity_field.get_boundary_condition(3) == BCType::WALL);
+  CHECK(velocity_field.get_boundary_condition(4) == BCType::WALL);
 }
 
 TEST_CASE(

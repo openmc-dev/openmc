@@ -170,6 +170,7 @@ int openmc_finalize()
 
   simulation::temperature_field = TemperatureField();
   simulation::velocity_field = VelocityField();
+  simulation::streamline_integrator.reset();
 
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};

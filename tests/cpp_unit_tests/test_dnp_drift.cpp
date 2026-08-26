@@ -63,8 +63,8 @@ protected:
 
   void set_integrator(double step_size)
   {
-    delete simulation::streamline_integrator;
-    simulation::streamline_integrator = new RK4StreamlineIntegrator(step_size);
+    simulation::streamline_integrator =
+      std::make_unique<RK4StreamlineIntegrator>(step_size);
   }
 
 public:
@@ -102,7 +102,7 @@ public:
     bc_map[BCType::WALL] = {3, 4};
 
     // Default simulation setup
-    simulation::streamline_integrator = new RK4StreamlineIntegrator(0.8);
+    simulation::streamline_integrator = std::make_unique<RK4StreamlineIntegrator>(0.8);
     set_velocity_field(Direction(1.0, 0.0, 0.0));
 
     // Default site
@@ -112,8 +112,7 @@ public:
   ~DNPTransportModelFixture()
   {
     // Reset all openmc global variables
-    delete simulation::streamline_integrator;
-    simulation::streamline_integrator = nullptr;
+    simulation::streamline_integrator.reset();
     simulation::velocity_field = VelocityField();
     settings::dnp_drift_external_travel_time = 0.0;
     settings::dnp_drift_recycling_on = false;

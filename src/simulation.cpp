@@ -354,7 +354,7 @@ const RegularMesh* ufs_mesh {nullptr};
 
 TemperatureField temperature_field;
 VelocityField velocity_field;
-StreamlineIntegrator* streamline_integrator;
+std::unique_ptr<StreamlineIntegrator> streamline_integrator;
 
 vector<double> k_generation;
 vector<int64_t> work_index;

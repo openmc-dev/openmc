@@ -1333,7 +1333,8 @@ void read_settings_xml(pugi::xml_node root)
         }
 
         // Instantiate integrator
-        simulation::streamline_integrator = new RK4StreamlineIntegrator(dt);
+        simulation::streamline_integrator =
+          std::make_unique<RK4StreamlineIntegrator>(dt);
 
         // Undefined integration method
       } else {

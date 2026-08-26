@@ -11,6 +11,8 @@ namespace openmc {
 //! Streamline integrator
 class StreamlineIntegrator {
 public:
+  virtual ~StreamlineIntegrator() = default;
+
   //! Advance to the next integration step.
   //!
   //! \param [inout] dt Time step
@@ -31,8 +33,9 @@ private:
 //! Runge Kutta 4 integrator
 class RK4StreamlineIntegrator : public StreamlineIntegrator {
 public:
-  //! Constructor
   RK4StreamlineIntegrator(double time_step) { dt() = time_step; }
+
+  ~RK4StreamlineIntegrator() override = default;
 
   void next_step(
     double& t_n, Position& y_n, int cell_n, VelocityField& field) override;

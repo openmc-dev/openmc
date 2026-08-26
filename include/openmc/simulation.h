@@ -50,7 +50,7 @@ extern const RegularMesh* ufs_mesh;
 
 extern TemperatureField temperature_field;
 extern VelocityField velocity_field;
-extern StreamlineIntegrator* streamline_integrator;
+extern std::unique_ptr<StreamlineIntegrator> streamline_integrator;
 
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;

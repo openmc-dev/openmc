@@ -270,7 +270,6 @@ protected:
 public:
   RegularMeshFixture()
   {
-    // The XML data as a string
     std::string xml_string = R"(
           <mesh id="1">
               <dimension>2 2 2</dimension>
@@ -279,7 +278,6 @@ public:
         </mesh>
       )";
 
-    // Create the mesh from a file
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
     pugi::xml_node root = doc.child("mesh");
@@ -305,7 +303,6 @@ protected:
 public:
   RectilinearMeshFixture()
   {
-    // The XML data as a string
     std::string xml_string = R"(
           <mesh id="1" type="rectilinear">
               <x_grid>-1.0 0.0 1.0</x_grid>
@@ -314,7 +311,6 @@ public:
           </mesh>
       )";
 
-    // Create the mesh from a file
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
     pugi::xml_node root = doc.child("mesh");
@@ -387,81 +383,26 @@ TEST_CASE_METHOD(RectilinearMeshFixture, "Test distance_to_next_boundary()") {
 
 #undef GET_DISTANCE_TO_NEXT_BOUNDARY_TESTS
 
-TEST_CASE("Test get_index_in_direction - regular")
-{
-  // The XML data as a string
-  std::string xml_string = R"(
-        <mesh id="1">
-            <dimension>2 1 1</dimension>
-            <lower_left>-2 -2 -2</lower_left>
-            <upper_right>2 2 2</upper_right>
-       </mesh>
-    )";
-
-  // Create a pugixml document object
-  pugi::xml_document doc;
-
-  // Load the XML from the string
-  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
-
-  pugi::xml_node root = doc.child("mesh");
-
-  auto mesh = RegularMesh(root);
-
-  REQUIRE(mesh.get_index_in_direction(-4.1, 0) == 0);
-  REQUIRE(mesh.get_index_in_direction(-4.0, 0) == 0);
-  REQUIRE(mesh.get_index_in_direction(-3.9, 0) == 0);
-
-  REQUIRE(mesh.get_index_in_direction(-2.1, 0) == 0);
-  REQUIRE(mesh.get_index_in_direction(-2.0, 0) == 1); // lower left
-  REQUIRE(mesh.get_index_in_direction(-1.9, 0) == 1);
-
-  REQUIRE(mesh.get_index_in_direction(-0.1, 0) == 1);
-  REQUIRE(mesh.get_index_in_direction(0.0, 0) == 1);
-  REQUIRE(mesh.get_index_in_direction(0.1, 0) == 2);
-
-  REQUIRE(mesh.get_index_in_direction(1.9, 0) == 2);
-  REQUIRE(mesh.get_index_in_direction(2.0, 0) == 2); // upper right
-  REQUIRE(mesh.get_index_in_direction(2.1, 0) == 3);
-
-  REQUIRE(mesh.get_index_in_direction(3.9, 0) == 3);
-  REQUIRE(mesh.get_index_in_direction(4.0, 0) == 3);
-  REQUIRE(mesh.get_index_in_direction(4.1, 0) == 3);
-}
-
-TEST_CASE("Test get_index_in_direction - rectilinear")
-{
-  // The XML data as a string
-  std::string xml_string = R"(
-        <mesh id="1" type="rectilinear">
-            <x_grid>-1.0 0.0 2.0</x_grid>
-            <y_grid>-1.0 1.0</y_grid>
-            <z_grid>-1.0 1.0</z_grid>
-        </mesh>
-    )";
-
-  // Create a pugixml document object
-  pugi::xml_document doc;
-
-  // Load the XML from the string
-  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
-
-  pugi::xml_node root = doc.child("mesh");
-
-  auto mesh = RectilinearMesh(root);
-
-  REQUIRE(mesh.get_index_in_direction(-5.0, 0) == 0);
-
-  REQUIRE(mesh.get_index_in_direction(-1.1, 0) == 0);
-  REQUIRE(mesh.get_index_in_direction(-1.0, 0) == 1); // lower left
-  REQUIRE(mesh.get_index_in_direction(-0.9, 0) == 1);
-
-  REQUIRE(mesh.get_index_in_direction(1.9, 0) == 2);
-  REQUIRE(mesh.get_index_in_direction(2.0, 0) == 2); // upper right
-  REQUIRE(mesh.get_index_in_direction(2.1, 0) == 3);
-
+#define GET_GET_INDEX_IN_DIRECTION_TESTS                                       \
+  REQUIRE(mesh.get_index_in_direction(-5.0, 0) == 0);                          \
+                                                                               \
+  REQUIRE(mesh.get_index_in_direction(-1.1, 0) == 0);                          \
+  REQUIRE(mesh.get_index_in_direction(-1.0, 0) == 1);                          \
+  REQUIRE(mesh.get_index_in_direction(-0.9, 0) == 1);                          \
+                                                                               \
+  REQUIRE(mesh.get_index_in_direction(0.9, 0) == 2);                           \
+  REQUIRE(mesh.get_index_in_direction(1.0, 0) == 2);                           \
+  REQUIRE(mesh.get_index_in_direction(1.1, 0) == 3);                           \
+                                                                               \
   REQUIRE(mesh.get_index_in_direction(5.0, 0) == 3);
-}
+
+TEST_CASE_METHOD(RegularMeshFixture, "Test get_index_in_direction()") {
+  GET_GET_INDEX_IN_DIRECTION_TESTS}
+
+TEST_CASE_METHOD(RectilinearMeshFixture, "Test get_index_in_direction()") {
+  GET_GET_INDEX_IN_DIRECTION_TESTS}
+
+#undef GET_GET_INDEX_IN_DIRECTION_TESTS
 
 TEST_CASE("Test regular mesh ray tracing from outside")
 {

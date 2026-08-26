@@ -298,56 +298,6 @@ public:
   }
 };
 
-TEST_CASE_METHOD(RegularMeshFixture, "Test distance_to_next_boundary()")
-{
-  // Test distance_to_next_boundary()
-  int current_bin;
-  Position r;
-  Position u;
-  int next_bin;
-  double distance;
-
-  // - Test inside the mesh
-  current_bin = 0;
-  r = Position(0.0, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == 1.0);
-  REQUIRE(next_bin == -1);
-
-  // - Test outside the mesh, going toward the mesh
-  current_bin = -1;
-  r = Position(-2.5, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == 1.5);
-  REQUIRE(next_bin == 0);
-
-  // - Test outside the mesh, not going toward the mesh
-  current_bin = -1;
-  r = Position(-2.0, 0.0, 0.0);
-  u = Position(-1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == INFTY);
-  REQUIRE(next_bin == -1);
-
-  // - Test on the mesh boundary, leaving the mesh
-  current_bin = 1;
-  r = Position(1.0, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == INFTY);
-  REQUIRE(next_bin == -1);
-
-  // - Test close to the mesh boundary
-  current_bin = 1;
-  r = Position(0.99999999999, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == Catch::Approx(0.00000000001).margin(1.0E-12));
-  REQUIRE(next_bin == -1);
-}
-
 class RectilinearMeshFixture {
 protected:
   RectilinearMesh mesh;
@@ -372,55 +322,70 @@ public:
   }
 };
 
-TEST_CASE_METHOD(RectilinearMeshFixture, "Test distance_to_next_boundary()")
-{
-  // Test distance_to_next_boundary()
-  int current_bin;
-  Position r;
-  Position u;
-  int next_bin;
-  double distance;
+#define GET_DISTANCE_TO_NEXT_BOUNDARY_TESTS                                    \
+  int current_bin;                                                             \
+  Position r;                                                                  \
+  Position u;                                                                  \
+  int next_bin;                                                                \
+  double distance;                                                             \
+                                                                               \
+  SECTION("Test inside the mesh")                                              \
+  {                                                                            \
+    current_bin = 0;                                                           \
+    r = Position(0.0, 0.0, 0.0);                                               \
+    u = Position(1.0, 0.0, 0.0);                                               \
+    distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);    \
+    REQUIRE(distance == 1.0);                                                  \
+    REQUIRE(next_bin == -1);                                                   \
+  }                                                                            \
+                                                                               \
+  SECTION("Test outside the mesh, going toward the mesh")                      \
+  {                                                                            \
+    current_bin = -1;                                                          \
+    r = Position(-2.5, 0.0, 0.0);                                              \
+    u = Position(1.0, 0.0, 0.0);                                               \
+    distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);    \
+    REQUIRE(distance == 1.5);                                                  \
+    REQUIRE(next_bin == 0);                                                    \
+  }                                                                            \
+                                                                               \
+  SECTION("Test outside the mesh, not going toward the mesh")                  \
+  {                                                                            \
+    current_bin = -1;                                                          \
+    r = Position(-2.0, 0.0, 0.0);                                              \
+    u = Position(-1.0, 0.0, 0.0);                                              \
+    distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);    \
+    REQUIRE(distance == INFTY);                                                \
+    REQUIRE(next_bin == -1);                                                   \
+  }                                                                            \
+                                                                               \
+  SECTION("Test on the mesh boundary, leaving the mesh")                       \
+  {                                                                            \
+    current_bin = 1;                                                           \
+    r = Position(1.0, 0.0, 0.0);                                               \
+    u = Position(1.0, 0.0, 0.0);                                               \
+    distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);    \
+    REQUIRE(distance == INFTY);                                                \
+    REQUIRE(next_bin == -1);                                                   \
+  }                                                                            \
+                                                                               \
+  SECTION("Test close to the mesh boundary")                                   \
+  {                                                                            \
+    current_bin = 1;                                                           \
+    r = Position(0.99999999999, 0.0, 0.0);                                     \
+    u = Position(1.0, 0.0, 0.0);                                               \
+    distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);    \
+    REQUIRE(distance == Catch::Approx(0.00000000001).margin(1.0E-12));         \
+    REQUIRE(next_bin == -1);                                                   \
+  }
 
-  // - Test inside the mesh
-  current_bin = 0;
-  r = Position(0.5, 0.1, 0.2);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == 0.5);
-  REQUIRE(next_bin == -1);
+TEST_CASE_METHOD(RegularMeshFixture, "Test distance_to_next_boundary()") {
+  GET_DISTANCE_TO_NEXT_BOUNDARY_TESTS}
 
-  // - Test outside the mesh, going toward the mesh
-  current_bin = -1;
-  r = Position(-2.5, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == 1.5);
-  REQUIRE(next_bin == 0);
+TEST_CASE_METHOD(RectilinearMeshFixture, "Test distance_to_next_boundary()") {
+  GET_DISTANCE_TO_NEXT_BOUNDARY_TESTS}
 
-  // - Test outside the mesh, not going toward the mesh
-  current_bin = -1;
-  r = Position(-2.0, 0.0, 0.0);
-  u = Position(-1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == INFTY);
-  REQUIRE(next_bin == -1);
-
-  // - Test on the mesh boundary, leaving the mesh
-  current_bin = 1;
-  r = Position(1.0, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == INFTY);
-  REQUIRE(next_bin == -1);
-
-  // - Test close to the mesh boundary
-  current_bin = 1;
-  r = Position(0.99999999999, 0.0, 0.0);
-  u = Position(1.0, 0.0, 0.0);
-  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
-  REQUIRE(distance == Catch::Approx(0.00000000001).margin(1.0E-12));
-  REQUIRE(next_bin == -1);
-}
+#undef GET_DISTANCE_TO_NEXT_BOUNDARY_TESTS
 
 TEST_CASE("Test get_index_in_direction - regular")
 {

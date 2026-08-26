@@ -631,8 +631,10 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test connectivity()")
 TEST_CASE_METHOD(RegularMeshFixture, "Test get_bin_clamped()") {
   GET_BIN_CLAMPED_TESTS}
 
-TEST_CASE_METHOD(RectilinearMeshFixture, "Test get_bin_clamped()") {
-  GET_BIN_CLAMPED_TESTS}
+TEST_CASE_METHOD(RectilinearMeshFixture, "Test get_bin_clamped()")
+{
+  GET_BIN_CLAMPED_TESTS
+}
 
 #undef GET_BIN_CLAMPED_TESTS
 
@@ -682,8 +684,10 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test sample_on_physical_groups()")
       bool on_x_max = std::abs(p.x - 1.0) < tol;
       REQUIRE((on_x_min || on_x_max));
 
-      if (on_x_min) sampled_x_min = true;
-      if (on_x_max) sampled_x_max = true;
+      if (on_x_min)
+        sampled_x_min = true;
+      if (on_x_max)
+        sampled_x_max = true;
 
       REQUIRE(p.y >= -1.0);
       REQUIRE(p.y <= 1.0);

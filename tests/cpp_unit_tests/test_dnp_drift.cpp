@@ -102,7 +102,8 @@ public:
     bc_map[BCType::WALL] = {3, 4};
 
     // Default simulation setup
-    simulation::streamline_integrator = std::make_unique<RK4StreamlineIntegrator>(0.8);
+    simulation::streamline_integrator =
+      std::make_unique<RK4StreamlineIntegrator>(0.8);
     set_velocity_field(Direction(1.0, 0.0, 0.0));
 
     // Default site

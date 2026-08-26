@@ -22,12 +22,12 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     volume_naive_(&sr.volume_naive_),
     position_recorded_(&sr.position_recorded_),
     external_source_present_(&sr.external_source_present_),
-    needs_angular_flux_(&sr.needs_angular_flux_),
-    position_(&sr.position_), centroid_(&sr.centroid_),
-    centroid_iteration_(&sr.centroid_iteration_), centroid_t_(&sr.centroid_t_),
-    mom_matrix_(&sr.mom_matrix_), mom_matrix_t_(&sr.mom_matrix_t_),
-    volume_task_(&sr.volume_task_), mesh_(&sr.mesh_),
-    parent_sr_(&sr.parent_sr_), scalar_flux_old_(sr.scalar_flux_old_.data()),
+    needs_angular_flux_(&sr.needs_angular_flux_), position_(&sr.position_),
+    centroid_(&sr.centroid_), centroid_iteration_(&sr.centroid_iteration_),
+    centroid_t_(&sr.centroid_t_), mom_matrix_(&sr.mom_matrix_),
+    mom_matrix_t_(&sr.mom_matrix_t_), volume_task_(&sr.volume_task_),
+    mesh_(&sr.mesh_), parent_sr_(&sr.parent_sr_),
+    scalar_flux_old_(sr.scalar_flux_old_.data()),
     scalar_flux_new_(sr.scalar_flux_new_.data()), source_(sr.source_.data()),
     external_source_(sr.external_source_.data()),
     scalar_flux_final_(sr.scalar_flux_final_.data()),
@@ -42,8 +42,8 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
 //==============================================================================
 // SourceRegion implementation
 //==============================================================================
-SourceRegion::SourceRegion(int negroups, bool is_linear, int nangles, 
-  bool needs_angular_flux)
+SourceRegion::SourceRegion(
+  int negroups, bool is_linear, int nangles, bool needs_angular_flux)
 {
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // If in eigenvalue mode, set starting flux to guess of 1
@@ -59,7 +59,7 @@ SourceRegion::SourceRegion(int negroups, bool is_linear, int nangles,
   source_.assign(negroups, 0.0);
   scalar_flux_final_.assign(negroups, 0.0);
   // Only allocate angular flux storage for regions that need it
-  needs_angular_flux_= needs_angular_flux;
+  needs_angular_flux_ = needs_angular_flux;
   if (needs_angular_flux_) {
     angular_flux_new_.assign(negroups * nangles, 0.0f);
   }

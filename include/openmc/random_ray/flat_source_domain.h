@@ -2,12 +2,12 @@
 #define OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H
 
 #include "openmc/constants.h"
+#include "openmc/mesh.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 #include "openmc/random_ray/parallel_map.h"
 #include "openmc/random_ray/source_region.h"
 #include "openmc/source.h"
-#include "openmc/mesh.h"
 #include <unordered_map>
 #include <unordered_set>
 
@@ -179,8 +179,8 @@ protected:
 
   //----------------------------------------------------------------------------
   // Private data members
-  int negroups_; // Number of energy groups in simulation
-  int nangles_ {1};  // Number of bins for any angular flux tallies
+  int negroups_;    // Number of energy groups in simulation
+  int nangles_ {1}; // Number of bins for any angular flux tallies
   const UnitSpherePointset* angular_mesh_ {nullptr};
 
   vector<bool> tally_is_angular_;

@@ -826,7 +826,7 @@ private:
   virtual void initialize() = 0;
 };
 
-// Abstract class for meshes over directions (points on the unit sphere), 
+// Abstract class for meshes over directions (points on the unit sphere),
 // as opposed to meshes over volumes.
 class AngularMesh : public Mesh {
 public:
@@ -873,7 +873,7 @@ public:
   UnitSpherePointset(hid_t group);
 
   //! TODO: add sampling from within a spherical Voronoi cell
-  Position sample_element(int32_t bin, uint64_t* seed) const override 
+  Position sample_element(int32_t bin, uint64_t* seed) const override
   {
     fatal_error(
       "Sampling over a UnitSpherePointset angular mesh is not supported");

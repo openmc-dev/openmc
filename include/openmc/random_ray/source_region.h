@@ -54,7 +54,7 @@ struct TallyTask {
   int64_t filter_idx;
   int score_idx;
   int score_type;
-  // Angular quadrature bin index. Defaults to C_NONE for angle-independent, 
+  // Angular quadrature bin index. Defaults to C_NONE for angle-independent,
   // scoring via the source region's scalar flux.
   int angle_bin {C_NONE};
   TallyTask(int tally_idx, int64_t filter_idx, int score_idx, int score_type,
@@ -246,10 +246,7 @@ public:
   }
 
   int& needs_angular_flux() { return *needs_angular_flux_; }
-  const int needs_angular_flux() const
-  {
-    return *needs_angular_flux_;
-  }
+  const int needs_angular_flux() const { return *needs_angular_flux_; }
 
   Position& position() { return *position_; }
   const Position position() const { return *position_; }
@@ -339,7 +336,7 @@ class SourceRegion {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegion(int negroups, bool is_linear, int nangles = 1, 
+  SourceRegion(int negroups, bool is_linear, int nangles = 1,
     bool needs_angular_flux = false);
   SourceRegion() = default;
 
@@ -362,9 +359,9 @@ public:
   double volume_naive_ {0.0}; //!< Volume as integrated from this iteration only
   int position_recorded_ {0}; //!< Has the position been recorded yet?
   int external_source_present_ {
-    0};               //!< Is an external source present in this region?
+    0}; //!< Is an external source present in this region?
   int needs_angular_flux_ {
-    0}; //!< Is angular flux tallying active in this region?
+    0};               //!< Is angular flux tallying active in this region?
   int is_small_ {0};  //!< Is it "small", receiving < 1.5 hits per iteration?
   int n_hits_ {0};    //!< Number of total hits (ray crossings)
                       // Mesh that subdivides this source region
@@ -480,10 +477,7 @@ public:
     return external_source_present_[sr];
   }
 
-  int& needs_angular_flux(int64_t sr)
-  {
-    return needs_angular_flux_[sr];
-  }
+  int& needs_angular_flux(int64_t sr) { return needs_angular_flux_[sr]; }
   const int needs_angular_flux(int64_t sr) const
   {
     return needs_angular_flux_[sr];

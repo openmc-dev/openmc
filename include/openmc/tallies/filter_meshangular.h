@@ -6,7 +6,7 @@
 namespace openmc {
 
 //==============================================================================
-//! Indexes the direction of particle events to a mesh. 
+//! Indexes the direction of particle events to a mesh.
 //==============================================================================
 
 class MeshAngularFilter : public MeshFilter {
@@ -21,7 +21,6 @@ public:
     FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
-
 
   //----------------------------------------------------------------------------
   // Accessors

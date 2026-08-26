@@ -59,7 +59,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
     }
   }
 
-  // Count the number of angular bins for each SourceRegion if performing 
+  // Count the number of angular bins for each SourceRegion if performing
   // angular flux tallying and store the angle set.
   initialize_angular_quadrature();
 
@@ -412,7 +412,7 @@ void FlatSourceDomain::compute_k_eff()
   k_eff_ = k_eff_new;
 }
 
-// Scan all tallies for a MeshAngularFilter and determine where angular flux 
+// Scan all tallies for a MeshAngularFilter and determine where angular flux
 // tallying will occur and on how many angles
 void FlatSourceDomain::initialize_angular_quadrature()
 {
@@ -445,7 +445,7 @@ void FlatSourceDomain::initialize_angular_quadrature()
           fatal_error("MeshAngularFilter must reference a UnitSpherePointset "
                       "mesh for tallying in Random Ray.");
         }
-        // if we've already found an angular tally that uses a different mesh, 
+        // if we've already found an angular tally that uses a different mesh,
         // throw error
         if (angular_mesh_ && angular_mesh_ != this_mesh) {
           fatal_error(
@@ -498,7 +498,7 @@ void FlatSourceDomain::initialize_angular_quadrature()
   nangles_ = angular_mesh_ ? angular_mesh_->points_.size() : 1;
 }
 
-// Determines whether a source region with the given cell/material/mesh 
+// Determines whether a source region with the given cell/material/mesh
 // should have angular flux tallied.
 bool FlatSourceDomain::tally_angular_flux_applies(
   int cell_idx, int material, int mesh_idx) const
@@ -509,12 +509,11 @@ bool FlatSourceDomain::tally_angular_flux_applies(
   if (angular_target_cells_.count(cell_idx)) {
     return true;
   }
-  if (material != MATERIAL_VOID &&
-      angular_target_materials_.count(material)) {
+  if (material != MATERIAL_VOID && angular_target_materials_.count(material)) {
     return true;
   }
   if (mesh_idx != C_NONE && angular_target_meshes_.count(mesh_idx)) {
-    // will flag every source region this mesh applies to, whether or 
+    // will flag every source region this mesh applies to, whether or
     // not the region actually falls in a bin
     return true;
   }
@@ -647,7 +646,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
       // Reset all the filter matches for the next tally event.
       for (auto& match : p.filter_matches())
         match.bins_present_ = false;
-      
+
       // Now loop over angle-dependent tallies
       if (source_regions_.needs_angular_flux(sr)) {
         for (int a = 0; a < source_regions_.nangles(); a++) {
@@ -814,12 +813,13 @@ void FlatSourceDomain::random_ray_tally()
 
       // Determine numerical score value
       for (auto& task : source_regions_.tally_task(sr, g)) {
-        // If the current task belongs to an angle-dependent tally, replace 
+        // If the current task belongs to an angle-dependent tally, replace
         // scalar flux with angular flux at the task's angle.
-        double task_flux = (task.angle_bin == C_NONE)
-          ? flux
-          : source_regions_.angular_flux_new(sr, g, task.angle_bin) *
-              source_normalization_factor;
+        double task_flux =
+          (task.angle_bin == C_NONE)
+            ? flux
+            : source_regions_.angular_flux_new(sr, g, task.angle_bin) *
+                source_normalization_factor;
 
         double score = 0.0;
         switch (task.score_type) {
@@ -2037,15 +2037,15 @@ int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
 
 // If tallying angular flux, this function is used to determine which angular
 // bin the current ray contributes to. Rays are assigned to bins based on the
-// unit-sphere Voronoi diagram generated from the "quadrature" angle set, 
+// unit-sphere Voronoi diagram generated from the "quadrature" angle set,
 // stored in the referenced angular mesh.
 int FlatSourceDomain::get_angular_bin(Direction u) const
 {
   return angular_mesh_->get_bin(u);
 }
 
-// Returns the representative direction of angular quadrature bin a. Used in 
-// convert_source_regions_to_tallies() to link angular filter bins to specific 
+// Returns the representative direction of angular quadrature bin a. Used in
+// convert_source_regions_to_tallies() to link angular filter bins to specific
 // quadrature angles.
 Direction FlatSourceDomain::angular_quadrature_direction(int a) const
 {

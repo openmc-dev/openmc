@@ -631,10 +631,8 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test connectivity()")
 TEST_CASE_METHOD(RegularMeshFixture, "Test get_bin_clamped()") {
   GET_BIN_CLAMPED_TESTS}
 
-TEST_CASE_METHOD(RectilinearMeshFixture, "Test get_bin_clamped()")
-{
-  GET_BIN_CLAMPED_TESTS
-}
+TEST_CASE_METHOD(RectilinearMeshFixture, "Test get_bin_clamped()") {
+  GET_BIN_CLAMPED_TESTS}
 
 #undef GET_BIN_CLAMPED_TESTS
 

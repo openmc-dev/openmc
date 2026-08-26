@@ -2962,7 +2962,27 @@ class Model:
         Returns
         ----------
         result : dict
-            Dictionary summarizing the sampled geometry.
+            Dictionary with the following key-value pairs:
+
+            ``"overlap_boxes"`` : list of dict
+                Detected overlap regions. Each dictionary contains ``"key"``,
+                identifying the overlapping cells, and ``"bbox"``, containing
+                the region's world-coordinate bounding box.
+
+            ``"undefined_boxes"`` : list of dict
+                Detected internal undefined regions. Each dictionary contains
+                ``"bbox"``, containing the region's world-coordinate bounding
+                box, and ``"under_resolved"``, indicating whether the region
+                may be too thin for the sampling resolution.
+
+            ``"n_overlaps"`` : int
+                Number of detected overlap regions.
+
+            ``"n_undefined_regions"`` : int
+                Number of detected internal undefined regions.
+
+            ``"under_resolved"`` : bool
+                Whether any undefined region may be under-resolved.
         """
         import openmc.lib
 
@@ -3104,19 +3124,11 @@ class Model:
                     "under_resolved": bool(under_resolved),
                 })
 
-        # Round coordinates to keep the reported boxes readable.
-        for box in overlap_boxes + undefined_boxes:
-            bbox = box["bbox"]
-            bbox.lower_left = np.round(bbox.lower_left, 4)
-            bbox.upper_right = np.round(bbox.upper_right, 4)
-
         under_resolved = any(b["under_resolved"] for b in undefined_boxes)
 
         result = {
             "overlap_boxes": overlap_boxes,
             "undefined_boxes": undefined_boxes,
-            "n_overlaps": len(overlap_boxes),
-            "n_undefined_regions": len(undefined_boxes),
             "under_resolved": under_resolved,
         }
 

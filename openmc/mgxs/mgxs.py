@@ -822,7 +822,7 @@ class MGXS:
                 particle_type is not None and \
                 openmc.ParticleType(particle_type) == \
                 openmc.ParticleType.PHOTON:
-            mgxs = PhotonProductionMatrixXS(
+            mgxs = PhotonTransferMatrixXS(
                 domain, domain_type, energy_groups, by_nuclide, name,
                 num_polar, num_azimuthal)
         elif mgxs_type == 'nu-scatter matrix':
@@ -4961,8 +4961,8 @@ class ScatterMatrixXS(MatrixMGXS):
 
 
 @add_params
-class PhotonProductionMatrixXS(MatrixMGXS):
-    r"""A photon production matrix multigroup cross section.
+class PhotonTransferMatrixXS(MatrixMGXS):
+    r"""A photon transfer matrix multigroup cross section.
 
     This matrix includes both the photon that survives a coherent or incoherent
     scattering event and secondary photons banked during photon interactions.
@@ -5066,8 +5066,8 @@ class PhotonProductionMatrixXS(MatrixMGXS):
 
         Returns
         -------
-        openmc.mgxs.PhotonProductionMatrixXS
-            Photon production matrix condensed to the coarse group structure
+        openmc.mgxs.PhotonTransferMatrixXS
+            Photon transfer matrix condensed to the coarse group structure
 
         """
         production = self._with_energyout_filter()
@@ -5088,8 +5088,8 @@ class PhotonProductionMatrixXS(MatrixMGXS):
 
         Returns
         -------
-        openmc.mgxs.PhotonProductionMatrixXS
-            Sliced photon production matrix
+        openmc.mgxs.PhotonTransferMatrixXS
+            Sliced photon transfer matrix
 
         """
         production = self._with_energyout_filter()

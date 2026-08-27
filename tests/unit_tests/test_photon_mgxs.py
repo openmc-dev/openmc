@@ -14,7 +14,7 @@ def _add_tally_data(mgxs):
 def test_photon_production_matrix_tallies():
     material = openmc.Material()
     groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0])
-    production = openmc.mgxs.PhotonProductionMatrixXS(
+    production = openmc.mgxs.PhotonTransferMatrixXS(
         material, 'material', groups)
 
     assert production.particle_type == openmc.ParticleType.PHOTON
@@ -80,7 +80,7 @@ def test_all_mgxs_types_respects_particle_type():
 def test_photon_production_matrix_group_transformations():
     material = openmc.Material()
     groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0, 1000.0])
-    production = openmc.mgxs.PhotonProductionMatrixXS(
+    production = openmc.mgxs.PhotonTransferMatrixXS(
         material, 'material', groups)
     _add_tally_data(production)
 

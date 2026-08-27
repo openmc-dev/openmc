@@ -64,6 +64,9 @@ public:
   //! Return if this BC has an albedo.
   bool has_albedo() const { return (albedo_ > 0.0); }
 
+  //! Return albedo value.
+  double albedo() const { return albedo_; }
+
 private:
   double albedo_ = -1.0;
 };

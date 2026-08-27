@@ -225,7 +225,6 @@ bool reconcile_precursor_drift(SourceSite& site)
       double dot = site.u.dot(normal);
       bool going_outward = dot > 0.0;
 
-      // TODO: manage albedo coefficient
       // TODO: add more boundary types
 
       // Internal surface
@@ -246,6 +245,9 @@ bool reconcile_precursor_drift(SourceSite& site)
           // Apply reflection
           site.u = surf.reflect(p.r(), p.u(), &p);
           site.u /= site.u.norm();
+          // Apply albedo
+          if (surf.bc_->has_albedo())
+            site.wgt *= surf.bc_->albedo();
         }
         return true;
       }

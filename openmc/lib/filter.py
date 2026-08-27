@@ -475,6 +475,49 @@ class MeshFilter(Filter):
         
 class MeshAngularFilter(MeshFilter):
     """Angular mesh filter stored internally.
+
+    This class exposes a MeshSurface filter that is stored internally in the
+    OpenMC library. To obtain a view of a MeshSurface filter with a given ID,
+    use the :data:`openmc.lib.filters` mapping.
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    rotation : Iterable of float
+        This array specifies the angles in degrees about the x, y, and z axes
+        that the mesh should be rotated. The rotation applied is an intrinsic
+        rotation with specified Tait-Bryan angles. That is to say, if the angles
+        are :math:`(\phi, \theta, \psi)`, then the rotation matrix applied is
+        :math:`R_z(\psi) R_y(\theta) R_x(\phi)` or
+
+        .. math::
+
+           \left [ \begin{array}{ccc} \cos\theta \cos\psi & -\cos\phi \sin\psi
+           + \sin\phi \sin\theta \cos\psi & \sin\phi \sin\psi + \cos\phi
+           \sin\theta \cos\psi \\ \cos\theta \sin\psi & \cos\phi \cos\psi +
+           \sin\phi \sin\theta \sin\psi & -\sin\phi \cos\psi + \cos\phi
+           \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
+           \cos\theta \end{array} \right ]
+
+        A rotation matrix can also be specified directly by setting this
+        attribute to a nested list (or 2D numpy array) that specifies each
+        element of the matrix.
+    id : int
+        Unique identifier for the filter
+    bins : list of tuple
+        A list of mesh indices / surfaces for each filter bin, e.g. [(1, 1,
+        'x-min out'), (1, 1, 'x-min in'), ...]. Surface names use the mesh's
+        axis labels (e.g. r/phi/z for a cylindrical mesh).
+    num_bins : Integral
+        The number of filter bins
     
     """
     filter_type = 'meshangular'
@@ -483,6 +526,12 @@ class MeshAngularFilter(MeshFilter):
         super().__init__(uid, new, index)
         if mesh is not None:
             self.mesh = mesh
+    
+    @property
+    def mesh(self):
+        index_mesh = c_int32()
+        _dll.openmc_meshangular_filter_get_mesh(self._index, index_mesh)
+        return _get_mesh(index_mesh.value)
 
     @mesh.setter
     def mesh(self, mesh):

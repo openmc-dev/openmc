@@ -457,13 +457,8 @@ void RandomRay::attenuate_flux_flat_source(
   if (is_active) {
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
-    if (srh.external_source_present()) {
-      // Accumulate angular flux data in regions with external source
-      // for later source biasing.
-      //
-      // TODO: replace the above condition with a different
-      // SourceRegionHandle flag to enable angular flux tallying more
-      // generally.
+    if (srh.needs_angular_flux()) {
+      // Accumulate angular flux data in regions where it is tallied
       int a = angular_bin();
       for (int g = 0; g < negroups_; g++) {
         srh.scalar_flux_new(g) += delta_psi_[g];
@@ -512,13 +507,8 @@ void RandomRay::attenuate_flux_flat_source_void(
 
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
-    if (srh.external_source_present()) {
-      // Accumulate angular flux data in regions with external source
-      // for later source biasing.
-      //
-      // TODO: replace the above condition with a different
-      // SourceRegionHandle flag to enable angular flux tallying more
-      // generally.
+    if (srh.needs_angular_flux()) {
+      // Accumulate angular flux data in regions where it is tallied
       int a = angular_bin();
       for (int g = 0; g < negroups_; g++) {
         srh.scalar_flux_new(g) += angular_flux_[g] * distance;
@@ -656,13 +646,8 @@ void RandomRay::attenuate_flux_linear_source(
   if (is_active) {
     // Accumulate deltas into the new estimate of source region flux for this
     // iteration
-    if (srh.external_source_present()) {
-      // Accumulate angular flux data in regions with external source
-      // for later source biasing.
-      //
-      // TODO: replace the above condition with a different
-      // SourceRegionHandle flag to enable angular flux tallying more
-      // generally.
+    if (srh.needs_angular_flux()) {
+      // Accumulate angular flux data in regions where it is tallied
       int a = angular_bin();
       for (int g = 0; g < negroups_; g++) {
         srh.scalar_flux_new(g) += delta_psi_[g];
@@ -775,13 +760,8 @@ void RandomRay::attenuate_flux_linear_source_void(
 
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration, and update flux momements
-    if (srh.external_source_present()) {
-      // Accumulate angular flux data in regions with external source
-      // for later source biasing.
-      //
-      // TODO: replace the above condition with a different
-      // SourceRegionHandle flag to enable angular flux tallying more
-      // generally.
+    if (srh.needs_angular_flux()) {
+      // Accumulate angular flux data in regions where it is tallied
       int a = angular_bin();
       for (int g = 0; g < negroups_; g++) {
         srh.scalar_flux_new(g) += angular_flux_[g] * distance;

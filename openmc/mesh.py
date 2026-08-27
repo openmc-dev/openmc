@@ -3357,7 +3357,34 @@ class UnstructuredMesh(MeshBase):
         return cls(filename, library, mesh_id, '', length_multiplier, options)
 
 class AngularMesh(MeshBase):
-    """Base class for angular meshes of the unit sphere."""
+    """Base class for angular meshes of the unit sphere.
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    lower_left : Iterable of float
+        The lower-left coordinates ([-1.0, -1.0, -1.0] for the unit sphere)
+    upper_right : Iterable of float
+        The upper-right coordinates ([1.0, 1.0, 1.0] for the unit sphere)
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1, 1), ...]
+    n_elements : int
+        Number of elements in the mesh
+
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

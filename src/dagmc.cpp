@@ -25,22 +25,6 @@
 #include <sstream>
 #include <string>
 
-namespace openmc {
-
-#ifdef OPENMC_DAGMC_ENABLED
-const bool DAGMC_ENABLED = true;
-#else
-const bool DAGMC_ENABLED = false;
-#endif
-
-#ifdef OPENMC_UWUW_ENABLED
-const bool UWUW_ENABLED = true;
-#else
-const bool UWUW_ENABLED = false;
-#endif
-
-} // namespace openmc
-
 #ifdef OPENMC_DAGMC_ENABLED
 
 namespace openmc {
@@ -63,9 +47,10 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
-    if (!starts_with(filename_, "/")) {
+    std::filesystem::path p(filename_);
+    if (p.is_relative()) {
       std::filesystem::path d(dir_name(settings::path_input));
-      filename_ = (d / filename_).string();
+      filename_ = (d / p).string();
     }
   } else {
     fatal_error("Must specify a file for the DAGMC universe");

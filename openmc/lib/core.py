@@ -486,6 +486,8 @@ def run(output=True):
 def run_random_ray(output=True):
     """Run a random ray simulation
 
+    .. versionadded:: 0.16.0
+
     Parameters
     ----------
     output : bool, optional

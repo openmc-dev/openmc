@@ -53,6 +53,7 @@ def get_microxs_and_flux(
     path_input: PathLike | None = None,
     run_kwargs=None,
     reaction_rate_opts: dict | None = None,
+    include_model_tallies: bool = False,
 ) -> tuple[list[np.ndarray], list[MicroXS]]:
     """Generate microscopic cross sections and fluxes for multiple domains.
 
@@ -65,6 +66,9 @@ def get_microxs_and_flux(
 
     .. versionchanged:: 0.15.3
         Added `reaction_rate_mode`, `path_statepoint`, `path_input` arguments.
+
+    .. versionchanged:: 0.16.0
+        Added the `include_model_tallies` argument.
 
     Parameters
     ----------
@@ -118,6 +122,10 @@ def get_microxs_and_flux(
         over one energy bin spanning the full `energies` range. Supported keys:
         "nuclides", "reactions". If "reactions" are specified without
         "nuclides", all selected nuclides are used.
+    include_model_tallies : bool, optional
+        Whether to include tallies already assigned to ``model`` in the
+        transport solve. The original tally collection is restored after the
+        solve, including if an exception is raised. Defaults to False.
 
     Returns
     -------
@@ -205,7 +213,7 @@ def get_microxs_and_flux(
     # Create one flux tally (and optionally one RR tally) per domain filter.
     flux_tallies = []
     rr_tallies = []
-    model.tallies = []
+    model.tallies = original_tallies if include_model_tallies else []
     for i, domain_filter in enumerate(domain_filters):
         flux_tally = openmc.Tally(name=f'MicroXS flux {i}')
         flux_tally.filters = [domain_filter]

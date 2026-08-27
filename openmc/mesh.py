@@ -1514,7 +1514,7 @@ class RegularMesh(StructuredMesh):
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
         """Finds the index of the mesh element at the specified coordinates.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
 
         Parameters
         ----------
@@ -1768,7 +1768,7 @@ class RectilinearMesh(StructuredMesh):
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple[int, int, int]:
         """Find the mesh cell indices containing the specified coordinates.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
 
         Parameters
         ----------
@@ -2665,7 +2665,7 @@ class SphericalMesh(StructuredMesh):
     ) -> tuple[int, int, int]:
         """Find the mesh cell indices containing the specified coordinates.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
 
         Parameters
         ----------

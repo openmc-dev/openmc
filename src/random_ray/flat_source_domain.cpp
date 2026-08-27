@@ -28,7 +28,8 @@ namespace openmc {
 
 // Static Variable Declarations
 RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
-  RandomRayVolumeEstimator::ADAPTIVE};
+  RandomRayVolumeEstimator::AUTO};
+bool FlatSourceDomain::volume_estimator_is_auto_ {true};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 bool FlatSourceDomain::adjoint_requested_ {false};
 RandomRaySolve FlatSourceDomain::solve_ {RandomRaySolve::FORWARD};
@@ -56,7 +57,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 
   // Initialize source regions.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
-  bool is_adaptive = volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE;
+  bool is_adaptive = is_adaptive_family(volume_estimator_);
   source_regions_ = SourceRegionContainer(negroups_, is_linear, is_adaptive);
 
   // Initialize tally volumes
@@ -155,7 +156,7 @@ void FlatSourceDomain::accumulate_iteration_flux()
 // add_source_to_scalar_flux and by the linear-source gradient fallback.
 void FlatSourceDomain::demotion_step()
 {
-  if (volume_estimator_ != RandomRayVolumeEstimator::ADAPTIVE)
+  if (!is_adaptive_family(volume_estimator_))
     return;
 
 #pragma omp parallel for
@@ -420,11 +421,18 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   // demote-to-naive volume switch, and the previous-flux miss treatment, with
   // demote-only decisions made from the running accumulated flux (recorded
   // as a flag in converged_negative by demotion_step).
-  const bool is_adaptive =
-    volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE;
+  const bool is_adaptive = is_adaptive_family(volume_estimator_);
+  // The strict adaptive estimator additionally enforces non-negativity on
+  // the flux iterates each batch (see the enforcement step below).
+  const bool is_strict =
+    volume_estimator_ == RandomRayVolumeEstimator::STRICT_ADAPTIVE;
+  int64_t n_rescued = 0;
+  int64_t n_floored = 0;
+  int64_t n_chronic = 0;
 
 #pragma omp parallel for reduction(                                           \
-  + : n_hits, n_naive, n_latch, n_strong, n_sign, n_small)
+  + : n_hits, n_naive, n_latch, n_strong, n_sign, n_small, n_rescued,         \
+    n_floored, n_chronic)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
     double volume_simulation_avg = source_regions_.volume(sr);
@@ -526,6 +534,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       use_naive_volume = external || small;
       break;
     case RandomRayVolumeEstimator::ADAPTIVE:
+    case RandomRayVolumeEstimator::STRICT_ADAPTIVE:
       use_naive_volume = small || strong_source || converged_neg;
       use_old_flux_on_miss = use_naive_volume;
       break;
@@ -546,6 +555,8 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         n_latch++;
       } else if (conv_flag == 1) {
         n_sign++;
+      } else if (conv_flag == 3) {
+        n_chronic++;
       } else if (strong_source) {
         n_strong++;
       } else if (small) {
@@ -553,12 +564,43 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       }
     }
 
+    bool region_rescued = false;
+    bool region_floored = false;
     for (int g = 0; g < negroups_; g++) {
       if (volume_iteration > 0.0) {
         // Hit this iteration: the flat source from the previous iteration plus
         // this iteration's transport contribution, normalized by the chosen
         // volume.
         set_flux_to_flux_plus_source(sr, volume, g);
+        // The strict adaptive estimator enforces non-negativity on the flux
+        // iterates: a group whose batch flux comes out negative is first
+        // rescued -- its transport term rescaled from the volume used to the
+        // batch's own volume, algebraically reproducing the naive-volume
+        // update, whose noise the near-cancellation regions require -- and,
+        // if still negative (or if the region already used the batch
+        // volume), floored at the previous iterate, which is non-negative by
+        // induction. This is what upgrades the family's demotion machinery
+        // into a guarantee: demotion alone cannot prevent a region from
+        // inheriting negativity through in-scatter from not-yet-demoted
+        // neighbors. The price is a small conservative (positivity-clip)
+        // bias, which is why the strict estimator is not the standard-solve
+        // default. Linear-source flux moments are left untouched; demoted
+        // and hit-starved regions already fall back to flat shapes.
+        if (is_strict && source_regions_.scalar_flux_new(sr, g) < 0.0) {
+          if (volume != volume_iteration) {
+            double src = source_regions_.source(sr, g);
+            source_regions_.scalar_flux_new(sr, g) =
+              (source_regions_.scalar_flux_new(sr, g) - src) *
+                (volume / volume_iteration) +
+              src;
+            region_rescued = true;
+          }
+          if (source_regions_.scalar_flux_new(sr, g) < 0.0) {
+            source_regions_.scalar_flux_new(sr, g) =
+              source_regions_.scalar_flux_old(sr, g);
+            region_floored = true;
+          }
+        }
       } else if (volume_simulation_avg > 0.0) {
         // Missed this iteration but hit previously: substitute per the miss
         // policy decided above (the previous iterate, or the reduced source).
@@ -576,17 +618,41 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
                     "the source region mesh.");
       }
     }
+    // Chronic-negativity demotion (strict adaptive only): the
+    // non-negativity floor prevents a chronically noisy region's
+    // accumulated flux from ever going negative, masking the very signal
+    // the accumulated sign demotion detects -- so left alone, such a
+    // region would be clipped every batch, a one-sided ratchet that
+    // biases its flux upward. Counting pre-enforcement negative batches
+    // restores the escape: after a few events the region is demoted to
+    // the naive volume and previous-flux miss treatment, where clipping
+    // is no longer needed.
+    if (is_strict && (region_rescued || region_floored)) {
+      int n = ++source_regions_.n_negative_batches(sr);
+      double threshold =
+        std::max(static_cast<double>(NEGATIVE_FLUX_DEMOTION_MIN_COUNT),
+          NEGATIVE_FLUX_DEMOTION_RATE * simulation::current_batch);
+      if (n >= threshold && source_regions_.converged_negative(sr) == 0) {
+        source_regions_.converged_negative(sr) = 3;
+      }
+    }
+    if (final_iteration) {
+      n_rescued += region_rescued;
+      n_floored += region_floored;
+    }
   }
 
   // Store the final-iteration treatment snapshot for reporting (adaptive only;
   // the other estimators do not produce a by-cause naive-treatment breakdown)
-  if (final_iteration &&
-      volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE) {
+  if (final_iteration && is_adaptive) {
     n_final_naive_ = n_naive;
     n_final_latch_ = n_latch;
     n_final_strong_ = n_strong;
     n_final_sign_ = n_sign;
     n_final_small_ = n_small;
+    n_final_chronic_ = n_chronic;
+    n_final_rescued_ = n_rescued;
+    n_final_floored_ = n_floored;
     final_stats_valid_ = true;
   }
 

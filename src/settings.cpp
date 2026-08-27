@@ -303,9 +303,16 @@ void get_run_parameters(pugi::xml_node node_base)
       } else if (temp_str == "adaptive") {
         FlatSourceDomain::volume_estimator_ =
           RandomRayVolumeEstimator::ADAPTIVE;
+      } else if (temp_str == "strict_adaptive") {
+        FlatSourceDomain::volume_estimator_ =
+          RandomRayVolumeEstimator::STRICT_ADAPTIVE;
+      } else if (temp_str == "auto") {
+        FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::AUTO;
       } else {
         fatal_error("Unrecognized volume estimator: " + temp_str);
       }
+      FlatSourceDomain::volume_estimator_is_auto_ =
+        FlatSourceDomain::volume_estimator_ == RandomRayVolumeEstimator::AUTO;
     }
     if (check_for_node(random_ray_node, "source_shape")) {
       std::string temp_str =

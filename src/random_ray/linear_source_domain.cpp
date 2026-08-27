@@ -125,8 +125,7 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   // negative accumulated flux means the fitted gradients carry no meaningful
   // shape information, and a latched strong feed is the gradient-scale noise
   // hazard the strong-source fallback above exists for.
-  if (volume_estimator_ == RandomRayVolumeEstimator::ADAPTIVE &&
-      material != MATERIAL_VOID &&
+  if (is_adaptive_family(volume_estimator_) && material != MATERIAL_VOID &&
       (srh.converged_negative() > 0 ||
         region_has_strong_source(&srh.source(0), &srh.scalar_flux_old(0),
           simulation::current_batch <= settings::n_inactive))) {

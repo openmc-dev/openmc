@@ -12,7 +12,9 @@ namespace openmc {
 SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
   : negroups_(sr.scalar_flux_old_.size()), material_(&sr.material_),
     temperature_idx_(&sr.temperature_idx_), density_mult_(&sr.density_mult_),
-    is_small_(&sr.is_small_), converged_negative_(&sr.converged_negative_),
+    is_small_(&sr.is_small_),
+    n_negative_batches_(&sr.n_negative_batches_),
+    converged_negative_(&sr.converged_negative_),
     n_hits_(&sr.n_hits_),
     is_linear_(sr.source_gradients_.size() > 0), lock_(&sr.lock_),
     volume_(&sr.volume_), volume_t_(&sr.volume_t_), volume_sq_(&sr.volume_sq_),
@@ -75,6 +77,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   temperature_idx_.push_back(sr.temperature_idx_);
   density_mult_.push_back(sr.density_mult_);
   is_small_.push_back(sr.is_small_);
+  n_negative_batches_.push_back(sr.n_negative_batches_);
   converged_negative_.push_back(sr.converged_negative_);
   n_hits_.push_back(sr.n_hits_);
   lock_.push_back(sr.lock_);
@@ -135,6 +138,7 @@ void SourceRegionContainer::assign(
   temperature_idx_.clear();
   density_mult_.clear();
   is_small_.clear();
+  n_negative_batches_.clear();
   converged_negative_.clear();
   n_hits_.clear();
   lock_.clear();
@@ -196,6 +200,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.temperature_idx_ = &temperature_idx(sr);
   handle.density_mult_ = &density_mult(sr);
   handle.is_small_ = &is_small(sr);
+  handle.n_negative_batches_ = &n_negative_batches(sr);
   handle.converged_negative_ = &converged_negative(sr);
   handle.n_hits_ = &n_hits(sr);
   handle.is_linear_ = is_linear();
@@ -241,6 +246,7 @@ void SourceRegionContainer::adjoint_reset()
 {
   std::fill(n_hits_.begin(), n_hits_.end(), 0);
   std::fill(converged_negative_.begin(), converged_negative_.end(), 0);
+  std::fill(n_negative_batches_.begin(), n_negative_batches_.end(), 0);
   std::fill(volume_.begin(), volume_.end(), 0.0);
   std::fill(volume_t_.begin(), volume_t_.end(), 0.0);
   std::fill(volume_sq_.begin(), volume_sq_.end(), 0.0);

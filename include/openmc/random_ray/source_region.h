@@ -149,6 +149,7 @@ public:
   int* temperature_idx_;
   double* density_mult_;
   int* is_small_;
+  int* n_negative_batches_;
   int* converged_negative_;
   int* n_hits_;
   int* birthday_;
@@ -205,6 +206,7 @@ public:
   const int temperature_idx() const { return *temperature_idx_; }
 
   int& is_small() { return *is_small_; }
+  int& n_negative_batches() { return *n_negative_batches_; }
   const int is_small() const { return *is_small_; }
   int& converged_negative() { return *converged_negative_; }
   const int converged_negative() const { return *converged_negative_; }
@@ -342,6 +344,10 @@ public:
   int external_source_present_ {
     0};              //!< Is an external source present in this region?
   int is_small_ {0}; //!< Is it "small", receiving < 1.5 hits per iteration?
+  int n_negative_batches_ {
+    0}; //!< Number of batches in which this region's flux went negative
+        //!< before the strict adaptive estimator's non-negativity
+        //!< enforcement (drives the chronic-negativity demotion)
   int converged_negative_ {
     0}; //!< Demote-only flag (adaptive estimator only), evaluated from the
         //!< running accumulated flux at the inactive->active transition and
@@ -422,6 +428,7 @@ public:
   const double density_mult(int64_t sr) const { return density_mult_[sr]; }
 
   int& is_small(int64_t sr) { return is_small_[sr]; }
+  int& n_negative_batches(int64_t sr) { return n_negative_batches_[sr]; }
   const int is_small(int64_t sr) const { return is_small_[sr]; }
   int& converged_negative(int64_t sr) { return converged_negative_[sr]; }
   const int converged_negative(int64_t sr) const
@@ -669,6 +676,7 @@ private:
   vector<int> temperature_idx_;
   vector<double> density_mult_;
   vector<int> is_small_;
+  vector<int> n_negative_batches_;
   vector<int> converged_negative_;
   vector<int> n_hits_;
   vector<int> mesh_;

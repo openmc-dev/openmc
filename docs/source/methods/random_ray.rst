@@ -602,9 +602,43 @@ the gradient terms attenuate segments against the local rather than the flat
 source, re-injecting per-iteration noise at the scale of the reduced source
 that the volume choice cannot cancel, while in a converged-negative region
 the fitted gradients carry no meaningful shape information. The adaptive
-estimator is the
-default in OpenMC, and is particularly beneficial for fixed source and
-shielding problems that exhibit such instability.
+estimator is particularly beneficial for fixed source and shielding problems
+that exhibit such instability.
+
+The adaptive estimator's demotion machinery selects estimators; it never
+modifies a computed flux value, which is what preserves its unbiasedness --
+and also why it cannot guarantee non-negativity: in near-zero-flux regions
+the simulation averaged noise is sign-indefinite at stationarity, and a
+region can also inherit negativity through in-scatter from neighbors that
+have not (yet) been demoted, so no demotion criterion alone closes the gap.
+The "strict adaptive" estimator therefore runs the same machinery and adds a
+per-batch enforcement on the flux iterates. A group whose batch flux comes
+out negative is first *rescued*: its transport term is rescaled from the
+volume used to the batch's own volume, algebraically reproducing the naive
+(iteration) volume update, whose consistency removes the volume-mismatch
+noise that produced most negative excursions. If the flux remains negative
+(or the region already used the batch volume), it is *floored* at the
+previous iterate, which is non-negative by induction from a non-negative
+initial condition -- so strict adaptive fluxes are guaranteed non-negative.
+Because the floor prevents a chronically noisy region's accumulated flux
+from ever going negative -- masking the very signal the accumulated sign
+demotion detects -- a region whose flux goes negative (before enforcement)
+in more than a few batches is demoted outright to the naive volume and
+previous-flux miss treatment, where clipping is no longer needed; without
+this chronic-negativity channel, repeated one-sided clipping would bias the
+affected regions upward. The residual cost of the enforcement is a small
+conservative bias (several hundred pcm on typical eigenvalue problems),
+which is why the strict estimator is reserved for solves that require
+positivity rather than used as the standard default.
+
+By default OpenMC selects the volume estimator automatically ("auto"):
+solves whose results feed variance reduction -- weight window generation,
+and any adjoint workflow, including the forward solve an adjoint source is
+derived from -- receive the strict adaptive estimator, since a small
+population of negative fluxes would otherwise contaminate the adjoint
+source and degrade the generated weight windows, while all other solves
+receive the adaptive estimator, preserving unbiased results where accuracy
+is the priority.
 
 A table that summarizes the pros and cons, as well as recommendations for
 different use cases, is given in the :ref:`volume

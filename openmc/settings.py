@@ -202,15 +202,19 @@ class Settings:
             specified by a :class:`openmc.SourceBase` object.
         :volume_estimator:
             Choice of volume estimator for the random ray solver. Options are
-            'naive', 'simulation_averaged', 'hybrid', or 'adaptive'. The default
-            is 'adaptive'. The 'adaptive' estimator generalizes 'hybrid': it uses
-            the simulation-averaged volume by default but falls back to the
-            naive (iteration) volume in regions with a strong inhomogeneous
-            source (kappa test), in hit-starved regions, and in regions whose
-            accumulated flux is negative at the end of the inactive phase (a
-            one-shot demotion for the active batches), which removes the
-            negative-flux instabilities 'hybrid' can exhibit in optically
-            thin, in-scatter-fed regions.
+            'naive', 'simulation_averaged', 'hybrid', 'adaptive',
+            'strict_adaptive', or 'auto'. The default is 'auto', which selects
+            'adaptive' for standard solves and 'strict_adaptive' for solves
+            whose results feed variance reduction (weight window generation
+            and any adjoint workflow). The 'adaptive' estimator generalizes
+            'hybrid': it uses the simulation-averaged volume by default but
+            falls back to the naive (iteration) volume in individual regions
+            where that estimator is unsafe, removing the negative-flux
+            instabilities 'hybrid' can exhibit in optically thin,
+            in-scatter-fed regions. The 'strict_adaptive' estimator runs the
+            same machinery and additionally enforces non-negativity on the
+            flux iterates every batch, guaranteeing non-negative fluxes at
+            the cost of a small conservative bias.
         :source_shape:
             Assumed shape of the source distribution within each source region.
             Options are 'flat' (default), 'linear', or 'linear_xy'.
@@ -1423,7 +1427,8 @@ class Settings:
             elif key == 'volume_estimator':
                 cv.check_value('volume estimator', value,
                                ('naive', 'simulation_averaged',
-                                'hybrid', 'adaptive'))
+                                'hybrid', 'adaptive', 'strict_adaptive',
+                                'auto'))
             elif key == 'source_shape':
                 cv.check_value('source shape', value,
                                ('flat', 'linear', 'linear_xy'))

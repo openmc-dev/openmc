@@ -1058,7 +1058,7 @@ following methods are currently available in OpenMC:
        * Stability of the naive estimator in cells with fixed sources
      - * Can lead to slightly negative fluxes in cells where the simulation
          averaged estimator is used
-   * - ``adaptive`` (default)
+   * - ``adaptive``
      - Generalizes the hybrid estimator. Uses the simulation averaged estimator
        by default, but falls back to the naive estimator (and the
        previous-iteration miss treatment) wherever it is needed for stability:
@@ -1090,6 +1090,32 @@ following methods are currently available in OpenMC:
          discarded downstream by the weight-window generator)
        * Benefits from inactive batches to season the accumulated-flux
          decisions before tallies begin
+   * - ``strict_adaptive``
+     - As ``adaptive``, but additionally enforces non-negativity on the flux
+       iterates every batch: a cell whose batch flux comes out negative is
+       first recomputed with the batch's own volume, floored at the previous
+       iterate if still negative, and demoted outright to the naive
+       treatment if its flux goes negative chronically. Because the previous
+       iterate is non-negative by induction from a non-negative start, the
+       resulting fluxes are guaranteed non-negative everywhere.
+     - * Guarantees non-negative fluxes -- the property required by weight
+         window generation and adjoint workflows, where a small population
+         of noise-driven negative fluxes would otherwise contaminate the
+         adjoint source and degrade weight window quality
+       * Matches ``adaptive``'s accuracy in stable fixed source problems and
+         degrades far more gracefully than ``naive`` at coarse ray densities
+     - * The one-sided enforcement introduces a small conservative bias
+         (several hundred pcm on eigenvalue problems), so it should not be
+         used where unbiased results are the priority
+
+By default, the ``volume_estimator`` field is set to ``auto``, which selects
+the appropriate estimator for the type of simulation being performed:
+``strict_adaptive`` for solves whose results feed variance reduction --
+weight window generation, and any adjoint workflow, including the forward
+solve an adjoint source is derived from -- and ``adaptive`` for all other
+solves. The end-of-simulation output reports which estimator ``auto``
+resolved to. Explicitly setting any other value overrides the automatic
+selection.
 
 These estimators can be selected by setting the ``volume_estimator`` field in the
 :attr:`openmc.Settings.random_ray` dictionary. For example, to use the naive
@@ -1099,7 +1125,7 @@ estimator, the following code would be used:
 
     settings.random_ray['volume_estimator'] = 'naive'
 
-The ``adaptive`` estimator is the default, as it gives reliable behavior out of
+The ``auto`` setting is the default, as it gives reliable behavior out of
 the box across problem types. It is especially valuable for fixed source and
 shielding problems, where the ``hybrid`` and ``simulation_averaged`` estimators
 can otherwise produce negative fluxes or numerical instability. This commonly occurs in optically thin,
@@ -1117,9 +1143,16 @@ demotion can introduce in cells that are noisy but not genuinely negative,
 while still removing -- via the strong-feed latch -- the strongly fed cell
 class whose phase-averaged flux could otherwise straddle zero, and still
 catching cells whose instability only becomes visible after the inactive
-phase ends (as on large problems run with short inactive phases). Non-negativity is still not strictly enforced on individual
-active iterations; any residual non-positive tally values are filtered out by
-the weight-window generator, which discards non-positive fluxes.
+phase ends (as on large problems run with short inactive phases). The
+adaptive estimator does not strictly enforce non-negativity, however: in
+near-zero-flux regions its sampling noise is sign-indefinite, so over a
+finite number of active batches a small population of tally bins can land
+negative. That residue is harmless for standard tallies but contaminates
+variance reduction workflows, where the adjoint source is built from the
+forward flux and amplifies it -- which is why ``auto`` routes weight window
+generation and adjoint solves to ``strict_adaptive`` instead, whose
+per-batch enforcement guarantees non-negative fluxes at the cost of a small
+conservative bias.
 
 -----------------
 Adjoint Flux Mode

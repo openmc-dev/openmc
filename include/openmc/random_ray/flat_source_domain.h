@@ -12,6 +12,16 @@
 
 namespace openmc {
 
+// True for the members of the adaptive volume estimator family: the
+// adaptive estimator, and the strict adaptive estimator, which runs the
+// same machinery plus a per-batch non-negativity enforcement on the flux
+// iterates.
+inline bool is_adaptive_family(RandomRayVolumeEstimator e)
+{
+  return e == RandomRayVolumeEstimator::ADAPTIVE ||
+         e == RandomRayVolumeEstimator::STRICT_ADAPTIVE;
+}
+
 /*
  * The FlatSourceDomain class encompasses data and methods for storing
  * scalar flux and source region for all flat source regions in a
@@ -95,6 +105,10 @@ public:
   //----------------------------------------------------------------------------
   // Static data members
   static RandomRayVolumeEstimator volume_estimator_;
+  // True when the user selected (or defaulted to) the "auto" volume
+  // estimator, which is resolved to a concrete estimator at the start of the
+  // random ray solve based on the type of simulation being performed.
+  static bool volume_estimator_is_auto_;
 
   //----------------------------------------------------------------------------
   // Public Data members
@@ -105,7 +119,7 @@ public:
                                           // non-zero external source terms
 
   // Final-batch snapshot of the naive volume treatment, partitioned by
-  // mutually exclusive cause (the four counts sum to n_final_naive_), for
+  // mutually exclusive cause (the cause counts sum to n_final_naive_), for
   // end-of-simulation reporting. The two demote-only decisions made from the
   // running accumulated flux -- a strong accumulated feed and a negative
   // accumulated flux -- are counted with first priority, so their counts
@@ -116,6 +130,13 @@ public:
   int64_t n_final_strong_ {0}; // strong source, from the per-batch test
   int64_t n_final_sign_ {0};   // negative accumulated flux
   int64_t n_final_small_ {0};  // hit-starved
+  int64_t n_final_chronic_ {0}; // chronic negativity (strict adaptive)
+  // Final-batch counts of the strict adaptive estimator's non-negativity
+  // enforcement: regions whose negative batch flux was recomputed with the
+  // batch volume (rescued), and regions floored at the previous iterate
+  // after the rescue was insufficient or unavailable.
+  int64_t n_final_rescued_ {0};
+  int64_t n_final_floored_ {0};
   bool final_stats_valid_ {false};
 
   // 1D array representing source region starting offset for each OpenMC Cell

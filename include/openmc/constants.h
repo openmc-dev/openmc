@@ -75,6 +75,18 @@ constexpr double MIN_HITS_PER_BATCH {1.5};
 // caught.
 constexpr double ADAPTIVE_VOLUME_KAPPA {4.0};
 
+// Chronic-negativity demotion thresholds for the strict adaptive volume
+// estimator: a region whose flux has gone negative (before enforcement) in
+// at least max(MIN_COUNT, RATE * current_batch) batches is demoted to the
+// naive volume and previous-flux miss treatment. Without this channel the
+// non-negativity floor would mask the accumulated-flux sign signal the
+// adaptive demotion relies on, leaving noisy regions to be clipped every
+// batch -- a one-sided ratchet that biases their fluxes upward. The chronic
+// channel converts "clip forever" into "clip a few times, then switch
+// estimator".
+constexpr int NEGATIVE_FLUX_DEMOTION_MIN_COUNT {3};
+constexpr double NEGATIVE_FLUX_DEMOTION_RATE {0.005};
+
 // The minimum flux value to be considered non-zero when computing adjoint
 // sources. Positive values below this cutoff will be treated as zero, so as to
 // prevent extremely large adjoint source terms from being generated.
@@ -379,7 +391,9 @@ enum class RandomRayVolumeEstimator {
   NAIVE,
   SIMULATION_AVERAGED,
   HYBRID,
-  ADAPTIVE
+  ADAPTIVE,
+  STRICT_ADAPTIVE,
+  AUTO
 };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 enum class RandomRaySampleMethod { PRNG, HALTON, S2 };

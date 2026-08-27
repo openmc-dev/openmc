@@ -287,7 +287,8 @@ void validate_random_ray_inputs()
 
 void openmc_finalize_random_ray()
 {
-  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::ADAPTIVE;
+  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::AUTO;
+  FlatSourceDomain::volume_estimator_is_auto_ = true;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   FlatSourceDomain::adjoint_requested_ = false;
   FlatSourceDomain::solve_ = RandomRaySolve::FORWARD;
@@ -617,8 +618,14 @@ void RandomRaySimulation::print_results_random_ray(
     case RandomRayVolumeEstimator::ADAPTIVE:
       estimator = "Adaptive";
       break;
+    case RandomRayVolumeEstimator::STRICT_ADAPTIVE:
+      estimator = "Strict Adaptive";
+      break;
     default:
       fatal_error("Invalid volume estimator type");
+    }
+    if (FlatSourceDomain::volume_estimator_is_auto_) {
+      estimator += " (auto)";
     }
     fmt::print(" Volume Estimator Type             = {}\n", estimator);
     if (domain_->final_stats_valid_) {
@@ -645,6 +652,19 @@ void RandomRaySimulation::print_results_random_ray(
           domain_->n_final_sign_, domain_->n_final_sign_ * inv);
         fmt::print("   Hit-starved (per batch)         = {} SRs ({:.4f}%)\n",
           domain_->n_final_small_, domain_->n_final_small_ * inv);
+        // The strict adaptive estimator's per-batch non-negativity
+        // enforcement, reported for the final batch. These overlap the
+        // partition above rather than extending it: a rescued or floored
+        // region may or may not also carry the naive treatment.
+        if (FlatSourceDomain::volume_estimator_ ==
+            RandomRayVolumeEstimator::STRICT_ADAPTIVE) {
+          fmt::print("   Chronic negative (per batch)    = {} SRs ({:.4f}%)\n",
+            domain_->n_final_chronic_, domain_->n_final_chronic_ * inv);
+          fmt::print("   Rescued (batch volume)          = {} SRs ({:.4f}%)\n",
+            domain_->n_final_rescued_, domain_->n_final_rescued_ * inv);
+          fmt::print("   Floored (previous flux)         = {} SRs ({:.4f}%)\n",
+            domain_->n_final_floored_, domain_->n_final_floored_ * inv);
+        }
       }
     }
 
@@ -722,6 +742,23 @@ void RandomRaySimulation::print_results_random_ray(
 void openmc_run_random_ray()
 {
   using namespace openmc;
+
+  // Resolve the "auto" volume estimator (the default) to a concrete
+  // estimator based on the type of simulation being performed. Solves whose
+  // results feed variance reduction -- weight window generation, and any
+  // adjoint workflow, including the forward solve an adjoint source is
+  // derived from -- receive the strict adaptive estimator, whose guaranteed
+  // non-negative fluxes those workflows require. All other solves receive
+  // the adaptive estimator, which preserves unbiasedness at the cost of
+  // allowing rare noise-driven negative tallies in near-zero-flux regions.
+  if (FlatSourceDomain::volume_estimator_ == RandomRayVolumeEstimator::AUTO) {
+    bool positivity_needed =
+      FlatSourceDomain::adjoint_requested_ ||
+      !variance_reduction::weight_windows_generators.empty();
+    FlatSourceDomain::volume_estimator_ =
+      positivity_needed ? RandomRayVolumeEstimator::STRICT_ADAPTIVE
+                        : RandomRayVolumeEstimator::ADAPTIVE;
+  }
 
   // Determine which solves to run. If adjoint results are requested and no
   // user-defined adjoint source is present, an initial forward solve is needed

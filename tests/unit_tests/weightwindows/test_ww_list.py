@@ -81,9 +81,9 @@ def test_export_periodic_mesh_metadata(run_in_tmpdir):
 
 @pytest.mark.parametrize('library', ('libmesh', 'moab'))
 def test_export_hdf5_unstructured_mesh(request, run_in_tmpdir, library):
-    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip('LibMesh not enabled in this build.')
-    if library == 'moab' and not openmc.lib._dagmc_enabled():
+    if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip('DAGMC (and MOAB) not enabled in this build.')
 
     mesh = openmc.UnstructuredMesh(

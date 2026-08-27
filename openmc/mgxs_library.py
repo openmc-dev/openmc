@@ -1587,7 +1587,7 @@ class XSdata:
         """
 
         check_type('scatter', scatter, (openmc.mgxs.ScatterMatrixXS,
-                                        openmc.mgxs.PhotonProductionMatrixXS))
+                                        openmc.mgxs.PhotonTransferMatrixXS))
         check_value('energy_groups', scatter.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', scatter.domain_type,

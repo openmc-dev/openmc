@@ -130,6 +130,16 @@ def pincell_model_w_univ():
         yield
 
 
+def test_mesh_from_python_requires_init():
+    mesh = openmc.RegularMesh(mesh_id=100)
+    mesh.dimension = (1, 1)
+    mesh.lower_left = (0.0, 0.0)
+    mesh.upper_right = (1.0, 1.0)
+
+    with pytest.raises(RuntimeError, match='must be initialized'):
+        openmc.lib.Mesh.from_python(mesh)
+
+
 def test_cell_mapping(lib_init):
     cells = openmc.lib.cells
     assert isinstance(cells, Mapping)
@@ -588,6 +598,8 @@ def test_find_material(lib_init):
 
 def test_regular_mesh(lib_init):
     mesh = openmc.lib.RegularMesh()
+    mesh.name = 'runtime mesh'
+    assert mesh.name == 'runtime mesh'
     mesh.dimension = (2, 3, 4)
     assert mesh.dimension == (2, 3, 4)
     with pytest.raises(exc.AllocationError):
@@ -751,6 +763,11 @@ def test_cylindrical_mesh(lib_init):
             for k, _ in enumerate(np.diff(z_grid)):
                 assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), 10))
 
+    mesh.origin = (1.0, 2.0, 3.0)
+    np.testing.assert_allclose(mesh.origin, (1.0, 2.0, 3.0))
+    assert np.all(mesh.dimension == (2, 2, 2))
+    mesh.origin = (0.0, 0.0, 0.0)
+
     np.testing.assert_allclose(mesh.volumes[::2], 10/360 * pi * 5**2 * 10)
     np.testing.assert_allclose(mesh.volumes[1::2], 10/360 * pi * (10**2 - 5**2) * 10)
 
@@ -805,6 +822,11 @@ def test_spherical_mesh(lib_init):
             for k, _ in enumerate(np.diff(phi_grid)):
                 assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), deg2rad(10)))
 
+    mesh.origin = (-1.0, -2.0, -3.0)
+    np.testing.assert_allclose(mesh.origin, (-1.0, -2.0, -3.0))
+    assert np.all(mesh.dimension == (2, 2, 2))
+    mesh.origin = (0.0, 0.0, 0.0)
+
     dtheta = lambda d1, d2: np.cos(deg2rad(d1)) - np.cos(deg2rad(d2))
     f = 1/3 * deg2rad(10.)
     np.testing.assert_allclose(mesh.volumes[::4],  f * 5**3 * dtheta(0., 10.))
@@ -850,6 +872,87 @@ def test_spherical_mesh(lib_init):
     for i in range(1, 12, 2):
         assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(
             (0.5**3 - 0.25**3) / 3 * d_theta * d_phi * 2/pi)
+
+
+def test_mesh_from_python(lib_init):
+    regular = openmc.RegularMesh(mesh_id=101, name='regular')
+    regular.dimension = (2, 3)
+    regular.lower_left = (0.0, 1.0)
+    regular.upper_right = (2.0, 4.0)
+    lib_regular = openmc.lib.Mesh.from_python(regular)
+    assert isinstance(lib_regular, openmc.lib.RegularMesh)
+    assert lib_regular.id == regular.id
+    assert lib_regular.name == regular.name
+    assert lib_regular.dimension == regular.dimension
+    np.testing.assert_allclose(lib_regular.lower_left, regular.lower_left)
+    np.testing.assert_allclose(lib_regular.upper_right, regular.upper_right)
+
+    rectilinear = openmc.RectilinearMesh(mesh_id=102, name='rectilinear')
+    rectilinear.x_grid = (-2.0, 0.0, 3.0)
+    rectilinear.y_grid = (1.0, 4.0)
+    rectilinear.z_grid = (-5.0, 0.0, 5.0)
+    lib_rectilinear = openmc.lib.Mesh.from_python(rectilinear)
+    assert isinstance(lib_rectilinear, openmc.lib.RectilinearMesh)
+    assert lib_rectilinear.id == rectilinear.id
+    assert lib_rectilinear.name == rectilinear.name
+    assert tuple(lib_rectilinear.dimension) == rectilinear.dimension
+    np.testing.assert_allclose(
+        lib_rectilinear.lower_left, rectilinear.lower_left)
+    np.testing.assert_allclose(
+        lib_rectilinear.upper_right, rectilinear.upper_right)
+
+    cylindrical = openmc.CylindricalMesh(
+        r_grid=(0.0, 1.0, 2.0), phi_grid=(0.0, np.pi),
+        z_grid=(-1.0, 1.0), origin=(1.0, 2.0, 3.0), mesh_id=103,
+        name='cylindrical')
+    lib_cylindrical = openmc.lib.Mesh.from_python(cylindrical)
+    assert isinstance(lib_cylindrical, openmc.lib.CylindricalMesh)
+    assert lib_cylindrical.id == cylindrical.id
+    assert lib_cylindrical.name == cylindrical.name
+    assert tuple(lib_cylindrical.dimension) == cylindrical.dimension
+    np.testing.assert_allclose(lib_cylindrical.origin, cylindrical.origin)
+
+    spherical = openmc.SphericalMesh(
+        r_grid=(0.0, 1.0), theta_grid=(0.0, np.pi),
+        phi_grid=(0.0, 2.0 * np.pi), origin=(-1.0, -2.0, -3.0),
+        mesh_id=104, name='spherical')
+    lib_spherical = openmc.lib.Mesh.from_python(spherical)
+    assert isinstance(lib_spherical, openmc.lib.SphericalMesh)
+    assert lib_spherical.id == spherical.id
+    assert lib_spherical.name == spherical.name
+    assert tuple(lib_spherical.dimension) == spherical.dimension
+    np.testing.assert_allclose(lib_spherical.origin, spherical.origin)
+
+    with pytest.raises(TypeError, match='cannot convert'):
+        openmc.lib.RegularMesh.from_python(rectilinear)
+
+
+def test_weight_windows_from_python(lib_init):
+    mesh = openmc.RegularMesh(mesh_id=105, name='weight windows mesh')
+    mesh.dimension = (2, 2)
+    mesh.lower_left = (-1.0, -1.0)
+    mesh.upper_right = (1.0, 1.0)
+    lower = np.arange(1.0, 9.0)
+    ww = openmc.WeightWindows(
+        mesh, lower, upper_bound_ratio=5.0,
+        energy_bounds=(0.0, 1.0, 10.0), particle_type='photon',
+        survival_ratio=4.0, max_lower_bound_ratio=2.0, max_split=12,
+        weight_cutoff=1.0e-20, id=201)
+
+    lib_ww = openmc.lib.WeightWindows.from_python(ww)
+
+    assert lib_ww.id == ww.id
+    assert lib_ww.mesh.id == mesh.id
+    assert lib_ww.particle == openmc.ParticleType.PHOTON
+    np.testing.assert_allclose(lib_ww.energy_bounds, ww.energy_bounds)
+    np.testing.assert_allclose(
+        lib_ww.bounds[0], ww.lower_ww_bounds.ravel(order='F'))
+    np.testing.assert_allclose(
+        lib_ww.bounds[1], ww.upper_ww_bounds.ravel(order='F'))
+    assert lib_ww.survival_ratio == ww.survival_ratio
+    assert lib_ww.max_lower_bound_ratio == ww.max_lower_bound_ratio
+    assert lib_ww.max_split == ww.max_split
+    assert lib_ww.weight_cutoff == ww.weight_cutoff
 
 
 def test_restart(lib_init, mpi_intracomm):

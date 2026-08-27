@@ -2,6 +2,7 @@ from collections.abc import Mapping, Sequence
 from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, c_void_p,
                     create_string_buffer, c_size_t)
 from math import sqrt
+from pathlib import Path
 import sys
 from weakref import WeakValueDictionary
 
@@ -14,7 +15,14 @@ from .core import _FortranObjectWithID, quiet_dll
 from .error import _error_handler
 from .plot import _Position
 from ..bounding_box import BoundingBox
-from ..mesh import MeshMaterialVolumes
+from ..mesh import (
+    CylindricalMesh as PythonCylindricalMesh,
+    MeshMaterialVolumes,
+    RectilinearMesh as PythonRectilinearMesh,
+    RegularMesh as PythonRegularMesh,
+    SphericalMesh as PythonSphericalMesh,
+    UnstructuredMesh as PythonUnstructuredMesh,
+)
 
 __all__ = [
     'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
@@ -137,6 +145,7 @@ class Mesh(_FortranObjectWithID):
 
     """
     __instances = WeakValueDictionary()
+    _python_type = None
 
     def __new__(cls, uid=None, new=True, index=None):
         mapping = meshes
@@ -167,6 +176,59 @@ class Mesh(_FortranObjectWithID):
             cls.__instances[index] = instance
 
         return cls.__instances[index]
+
+    @classmethod
+    def from_python(cls, mesh, uid=None, base_dir=None):
+        """Create a shared-library mesh from a Python API mesh.
+
+        The OpenMC shared library must be initialized before calling this
+        method. The returned object is tied to the active library session and
+        becomes invalid when that session is finalized.
+
+        Parameters
+        ----------
+        mesh : openmc.MeshBase
+            Python API mesh to convert.
+        uid : int, optional
+            ID to assign to the library mesh. If omitted, the ID of *mesh* is
+            used.
+        base_dir : path-like, optional
+            Directory used to resolve relative filenames for unstructured
+            meshes. If omitted, the current working directory is used.
+
+        Returns
+        -------
+        openmc.lib.Mesh
+            Corresponding mesh in the active library session.
+
+        """
+        import openmc.lib
+
+        if not openmc.lib.is_initialized:
+            raise RuntimeError(
+                'The OpenMC shared library must be initialized before '
+                'creating a library mesh.')
+
+        if cls is Mesh:
+            for mesh_cls in _MESH_TYPE_MAP.values():
+                if isinstance(mesh, mesh_cls._python_type):
+                    cls = mesh_cls
+                    break
+            else:
+                raise TypeError(f'Unsupported mesh type: {type(mesh)}')
+        elif not isinstance(mesh, cls._python_type):
+            raise TypeError(
+                f'{cls.__name__}.from_python cannot convert {type(mesh)}')
+
+        uid = mesh.id if uid is None else uid
+        base_dir = Path.cwd() if base_dir is None else Path(base_dir)
+        lib_mesh = cls._from_python(mesh, uid, base_dir)
+        lib_mesh.name = mesh.name
+        return lib_mesh
+
+    @classmethod
+    def _from_python(cls, mesh, uid, base_dir):
+        raise NotImplementedError
 
     @property
     def id(self):
@@ -390,9 +452,18 @@ class RegularMesh(Mesh):
 
     """
     mesh_type = 'regular'
+    _python_type = PythonRegularMesh
 
     def __init__(self, uid=None, new=True, index=None):
         super().__init__(uid, new, index)
+
+    @classmethod
+    def _from_python(cls, mesh, uid, base_dir):
+        lib_mesh = cls(uid=uid)
+        lib_mesh.dimension = mesh.dimension
+        lib_mesh.set_parameters(
+            lower_left=mesh.lower_left, upper_right=mesh.upper_right)
+        return lib_mesh
 
     @property
     def dimension(self):
@@ -478,9 +549,16 @@ class RectilinearMesh(Mesh):
 
     """
     mesh_type = 'rectilinear'
+    _python_type = PythonRectilinearMesh
 
     def __init__(self, uid=None, new=True, index=None):
         super().__init__(uid, new, index)
+
+    @classmethod
+    def _from_python(cls, mesh, uid, base_dir):
+        lib_mesh = cls(uid=uid)
+        lib_mesh.set_grid(mesh.x_grid, mesh.y_grid, mesh.z_grid)
+        return lib_mesh
 
     @property
     def lower_left(self):
@@ -583,9 +661,17 @@ class CylindricalMesh(Mesh):
 
     """
     mesh_type = 'cylindrical'
+    _python_type = PythonCylindricalMesh
 
     def __init__(self, uid=None, new=True, index=None):
         super().__init__(uid, new, index)
+
+    @classmethod
+    def _from_python(cls, mesh, uid, base_dir):
+        lib_mesh = cls(uid=uid)
+        lib_mesh.set_grid(mesh.r_grid, mesh.phi_grid, mesh.z_grid)
+        lib_mesh.origin = mesh.origin
+        return lib_mesh
 
     @property
     def lower_left(self):
@@ -703,9 +789,17 @@ class SphericalMesh(Mesh):
 
     """
     mesh_type = 'spherical'
+    _python_type = PythonSphericalMesh
 
     def __init__(self, uid=None, new=True, index=None):
         super().__init__(uid, new, index)
+
+    @classmethod
+    def _from_python(cls, mesh, uid, base_dir):
+        lib_mesh = cls(uid=uid)
+        lib_mesh.set_grid(mesh.r_grid, mesh.theta_grid, mesh.phi_grid)
+        lib_mesh.origin = mesh.origin
+        return lib_mesh
 
     @property
     def lower_left(self):
@@ -791,6 +885,17 @@ class SphericalMesh(Mesh):
 
 
 class UnstructuredMesh(Mesh):
+    _python_type = PythonUnstructuredMesh
+
+    @classmethod
+    def _from_python(cls, mesh, uid, base_dir):
+        filename = Path(mesh.filename)
+        if not filename.is_absolute():
+            filename = base_dir / filename
+        return cls.from_file(
+            filename.resolve(), mesh.library, uid=uid,
+            length_multiplier=mesh.length_multiplier, options=mesh.options)
+
     @classmethod
     def from_file(cls, filename, library, uid=None, length_multiplier=1.0,
                   options=None):

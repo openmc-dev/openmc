@@ -1082,24 +1082,10 @@ class WeightWindowsList(list):
             for ww in self:
                 mesh = ww.mesh
                 if mesh.id not in lib_meshes:
-                    lib_meshes[mesh.id] = mesh.to_lib_object(
-                        base_dir=original_dir)
+                    lib_meshes[mesh.id] = openmc.lib.Mesh.from_python(
+                        mesh, base_dir=original_dir)
 
-                lib_ww = openmc.lib.WeightWindows(ww.id)
-                lib_ww.particle = ww.particle_type
-                lib_ww.mesh = lib_meshes[mesh.id]
-                lib_ww.energy_bounds = ww.energy_bounds
-
-                lower = np.ascontiguousarray(
-                    ww.lower_ww_bounds.ravel(order='F'), dtype=np.float64)
-                upper = np.ascontiguousarray(
-                    ww.upper_ww_bounds.ravel(order='F'), dtype=np.float64)
-                lib_ww.bounds = lower, upper
-
-                lib_ww.survival_ratio = ww.survival_ratio
-                if ww.max_lower_bound_ratio is not None:
-                    lib_ww.max_lower_bound_ratio = ww.max_lower_bound_ratio
-                lib_ww.max_split = ww.max_split
-                lib_ww.weight_cutoff = ww.weight_cutoff
+                openmc.lib.WeightWindows.from_python(
+                    ww, mesh=lib_meshes[mesh.id])
 
             openmc.lib.export_weight_windows(path)

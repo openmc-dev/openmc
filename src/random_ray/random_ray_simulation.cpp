@@ -61,13 +61,14 @@ void validate_random_ray_inputs()
       case FilterType::ENERGY:
       case FilterType::MATERIAL:
       case FilterType::MESH:
+      case FilterType::MESH_ANGULAR:
       case FilterType::UNIVERSE:
       case FilterType::PARTICLE:
         break;
       default:
         fatal_error("Invalid filter specified. Only cell, cell_instance, "
-                    "distribcell, energy, material, mesh, and universe filters "
-                    "are supported in random ray mode.");
+                    "distribcell, energy, material, mesh, mesh_angular, and "
+                    "universe filters are supported in random ray mode.");
       }
     }
   }

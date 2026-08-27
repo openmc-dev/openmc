@@ -573,8 +573,8 @@ def icosphere_sn(nu: int = 1, point_type: str = "centroids"):
         Subdivision frequency
     point_type: str
         Keyword specifying whether to return the vertices ("vertices", 
-        "vertex", or "vert") or centroids ("centroids", "centroid", or 
-        "cent") of the subtriangles on the icosphere
+        "vertex", "vert" or "verts") or centroids ("centroids", "centroid", 
+        "cent" or "cents") of the subtriangles on the icosphere
 
     Returns
     -------
@@ -585,9 +585,9 @@ def icosphere_sn(nu: int = 1, point_type: str = "centroids"):
     """
     # check pointset type
     match point_type:
-        case "vertices" | "vertex" | "vert" :
+        case "vertices" | "vertex" | "vert" | "verts":
             return_type = "vert"
-        case "centroids" | "centroid" | "cent":
+        case "centroids" | "centroid" | "cent" | "cents":
             return_type = "cent"
         case _:
             return ValueError(f"Unknown pointset type specified (got {point_type})")

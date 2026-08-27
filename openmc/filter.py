@@ -912,6 +912,11 @@ class MeshFilter(Filter):
     @mesh.setter
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        if isinstance(mesh, openmc.AngularMesh):
+            raise TypeError(
+                "Angular mesh classes cannot be used with spatial MeshFilter classes."
+            )
+        
         self._mesh = mesh
         if isinstance(mesh, openmc.UnstructuredMesh):
             if mesh.has_statepoint_data:
@@ -1137,6 +1142,10 @@ class MeshMaterialFilter(MeshFilter):
     @mesh.setter
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        if isinstance(mesh, openmc.AngularMesh):
+            raise TypeError(
+                "Angular mesh classes cannot be used with spatial MeshFilter classes."
+            )
         self._mesh = mesh
 
     @Filter.bins.setter
@@ -1279,6 +1288,10 @@ class MeshSurfaceFilter(MeshFilter):
     @MeshFilter.mesh.setter
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        if isinstance(mesh, openmc.AngularMesh):
+            raise TypeError(
+                "Angular mesh classes cannot be used with spatial MeshFilter classes."
+            )
         self._mesh = mesh
 
         # Take the product of mesh indices and surface-crossing names, using
@@ -1380,7 +1393,7 @@ class MeshAngularFilter(MeshFilter):
         The number of filter bins
 
     """
-    def __init__(self,  mesh, filter_id=None):
+    def __init__(self, mesh, filter_id=None):
         self.mesh = mesh
         self.id = filter_id
         self._rotation = None

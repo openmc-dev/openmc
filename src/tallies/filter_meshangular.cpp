@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_meshsurface.h"
+#include "openmc/tallies/filter_meshangular.h"
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -14,7 +14,7 @@ void MeshAngularFilter::get_all_bins(
   if (!rotation_.empty()) {
     u = u.rotate(rotation_);
   }
-  auto bin = model::meshes[mesh_]->get_bin(r);
+  auto bin = model::meshes[mesh_]->get_bin(u);
   if (bin >= 0) {
     match.bins_.push_back(bin);
     match.weights_.push_back(1.0);

@@ -74,7 +74,7 @@ public:
   SourceRegionKey lookup_source_region_key(const GeometryState& p) const;
   int64_t lookup_mesh_bin(int64_t sr, Position r) const;
   int lookup_mesh_idx(int64_t sr) const;
-  int get_angular_bin(Direction u) const;
+  int lookup_angular_bin(Direction u) const;
   Direction angular_quadrature_direction(int a) const;
   bool tally_angular_flux_applies(
     int cell_idx, int material, int mesh_idx) const;

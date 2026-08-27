@@ -1366,23 +1366,10 @@ class MeshAngularFilter(MeshFilter):
         The mesh object that events will be tallied onto
     rotation : Iterable of float
         This array specifies the angles in degrees about the x, y, and z axes
-        that the mesh should be rotated. The rotation applied is an intrinsic
-        rotation with specified Tait-Bryan angles. That is to say, if the angles
-        are :math:`(\phi, \theta, \psi)`, then the rotation matrix applied is
-        :math:`R_z(\psi) R_y(\theta) R_x(\phi)` or
-
-        .. math::
-
-           \left [ \begin{array}{ccc} \cos\theta \cos\psi & -\cos\phi \sin\psi
-           + \sin\phi \sin\theta \cos\psi & \sin\phi \sin\psi + \cos\phi
-           \sin\theta \cos\psi \\ \cos\theta \sin\psi & \cos\phi \cos\psi +
-           \sin\phi \sin\theta \sin\psi & -\sin\phi \cos\psi + \cos\phi
-           \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
-           \cos\theta \end{array} \right ]
-
-        A rotation matrix can also be specified directly by setting this
-        attribute to a nested list (or 2D numpy array) that specifies each
-        element of the matrix.
+        that the mesh should be rotated. A rotation matrix can also be 
+        specified directly by setting this attribute to a nested list 
+        (or 2D numpy array) that specifies each element of the matrix. See 
+        also: MeshFilter.rotation.
     id : int
         Unique identifier for the filter
     bins : list of tuple
@@ -1404,6 +1391,10 @@ class MeshAngularFilter(MeshFilter):
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         string += '{: <16}=\t{}\n'.format('\tRotation', self.rotation)
         return string
+    
+    @property
+    def mesh(self):
+        return self._mesh
 
     @mesh.setter
     def mesh(self, mesh):

@@ -16,7 +16,7 @@
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_material.h"
 #include "openmc/tallies/filter_mesh.h"
-#include "openmc/tallies/filter_mesh_angular.h"
+#include "openmc/tallies/filter_meshangular.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
@@ -2039,7 +2039,7 @@ int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
 // bin the current ray contributes to. Rays are assigned to bins based on the
 // unit-sphere Voronoi diagram generated from the "quadrature" angle set,
 // stored in the referenced angular mesh.
-int FlatSourceDomain::get_angular_bin(Direction u) const
+int FlatSourceDomain::lookup_angular_bin(Direction u) const
 {
   return angular_mesh_->get_bin(u);
 }

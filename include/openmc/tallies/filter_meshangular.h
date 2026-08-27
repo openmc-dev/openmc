@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLIES_FILTER_MESHSURFACE_H
-#define OPENMC_TALLIES_FILTER_MESHSURFACE_H
+#ifndef OPENMC_TALLIES_FILTER_MESHANGULAR_H
+#define OPENMC_TALLIES_FILTER_MESHANGULAR_H
 
 #include "openmc/tallies/filter_mesh.h"
 
@@ -25,16 +25,16 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  void set_translation(const Position& translation) const override
+  void set_translation(const Position& translation) override
   {
     fatal_error("Angular mesh filters do not permit translation.");
   }
 
-  void set_translation(const double translation[3]) const override
+  void set_translation(const double translation[3]) override
   {
     fatal_error("Angular mesh filters do not permit translation.");
   }
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLIES_FILTER_MESHSURFACE_H
+#endif // OPENMC_TALLIES_FILTER_MESHANGULAR_H

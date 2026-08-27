@@ -262,7 +262,7 @@ public:
   //!                          element
   //! \param[inout] materials Array storing material indices
   //! \param[inout] volumes Array storing volumes
-  void material_volumes(int nx, int ny, int nz, int max_materials,
+  virtual void material_volumes(int nx, int ny, int nz, int max_materials,
     int32_t* materials, double* volumes) const;
 
   //! Determine volume and bounding boxes of materials within each mesh element
@@ -275,7 +275,7 @@ public:
   //! \param[inout] materials Array storing material indices
   //! \param[inout] volumes Array storing volumes
   //! \param[inout] bboxes Array storing bounding boxes (n_elems, table_size, 6)
-  void material_volumes(int nx, int ny, int nz, int max_materials,
+  virtual void material_volumes(int nx, int ny, int nz, int max_materials,
     int32_t* materials, double* volumes, double* bboxes) const;
 
   //! Determine bounding box of mesh
@@ -856,6 +856,18 @@ public:
     return {{}, {}};
   }
 
+  void material_volumes(int nx, int ny, int nz, int max_materials,
+    int32_t* materials, double* volumes) const override
+  {
+    fatal_error("material_volumes() is not supported for angular meshes");
+  }
+
+  void material_volumes(int nx, int ny, int nz, int max_materials,
+    int32_t* materials, double* volumes, double* bboxes) const override
+  {
+    fatal_error("material_volumes() is not supported for angular meshes");
+  }
+
   std::string bin_label(int bin) const override
   {
     return fmt::format("Element Index ({})", bin);
@@ -886,12 +898,6 @@ public:
   double volume(int bin) const override
   {
     fatal_error("Volume calculation over UnitSpherePointset is not supported");
-  }
-
-  void material_volumes(int nx, int ny, int nz, int max_materials,
-    int32_t* materials, double* volumes, double* bboxes) const override
-  {
-    fatal_error("material_volumes() is not supported for UnitSpherePointset");
   }
 
   std::string get_mesh_type() const override { return mesh_type; }

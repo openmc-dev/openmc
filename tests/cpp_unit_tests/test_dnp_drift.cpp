@@ -1,3 +1,6 @@
+#include <fstream>
+#include <string>
+
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
@@ -193,4 +196,125 @@ TEST_CASE_METHOD(DNPTransportModelFixture,
 // reconcile_precursor_drift
 // ----------------------------------------------------------------------------
 
-// TODO: prepare model for exhaustive_find_cell() to work
+const std::string RECONCILE_MODEL_XML = R"xml(
+<?xml version="1.0"?>
+<model>
+  <materials>
+    <material id="1" depletable="true">
+      <density value="5.0" units="g/cm3"/>
+      <nuclide name="U235" ao="0.2"/>
+      <nuclide name="U238" ao="0.8"/>
+      <nuclide name="O16" ao="3.0"/>
+      <nuclide name="H1" ao="2.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <surface id="1" type="x-plane" coeffs="-5.0" boundary="vacuum"/>
+    <surface id="2" type="x-plane" coeffs="5.0"  boundary="vacuum"/>
+    <surface id="3" type="y-plane" coeffs="-5.0" boundary="reflective"/>
+    <surface id="4" type="y-plane" coeffs="5.0"  boundary="reflective"/>
+    <surface id="5" type="z-plane" coeffs="-5.0" boundary="periodic" periodic_surface_id="7"/>
+    <surface id="6" type="z-plane" coeffs="0.0"  boundary="transmission"/>
+    <surface id="7" type="z-plane" coeffs="5.0"  boundary="periodic" periodic_surface_id="5"/>
+    <cell id="1" universe="0" material="1" region="1 -2 3 -4 5 -6"/>
+    <cell id="2" universe="0" material="1" region="1 -2 3 -4 6 -7"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <batches>1</batches>
+    <particles>100</particles>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-5.0 -5.0 -5.0 5.0 5.0 5.0</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+  </settings>
+</model>
+)xml";
+
+TEST_CASE("Test reconcile_precursor_drift")
+{
+  // Write model file
+  {
+    std::ofstream f("model.xml");
+    REQUIRE(f.is_open());
+    f << RECONCILE_MODEL_XML;
+  }
+
+  // Init OpenMC
+  int err = openmc_init(0, nullptr, nullptr);
+  REQUIRE(err == 0);
+
+  // Inside cell -> true
+  {
+    SourceSite site;
+    site.r = {0.0, 0.0, -2.0};
+    site.u = {1.0, 0.0, 0.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+  }
+
+  // Outside model -> should fail (fatal error)
+  //{
+  //  SourceSite site;
+  //  site.r = {10.0, 0.0, 0.0};
+  //  site.u = {1.0, 0.0, 0.0};
+  //  REQUIRE_THROWS(reconcile_precursor_drift(site));
+  //}
+
+  // Vacuum surface, going outward -> false
+  {
+    SourceSite site;
+    site.r = {5.0, 0.0, 0.0};
+    site.u = {1.0, 0.0, 0.0};
+    CHECK(reconcile_precursor_drift(site) == false);
+  }
+
+  // Vacuum surface, going inward -> true
+  {
+    SourceSite site;
+    site.r = {5.0, 0.0, 0.0};
+    site.u = {-1.0, 0.0, 0.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+  }
+
+  // Reflective surface, going outward -> reflect and return true
+  {
+    SourceSite site;
+    site.r = {0.0, 5.0, 0.0};
+    site.u = {0.0, 1.0, 0.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.u.y < 0.0);
+  }
+
+  // Reflective surface, going inward -> no reflection, return true
+  {
+    SourceSite site;
+    site.r = {0.0, 5.0, 0.0};
+    site.u = {0.0, -1.0, 0.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.u.y < 0.0);
+  }
+
+  // Internal/transmission surface at z=0 (shared face), going upward -> true
+  {
+    SourceSite site;
+    site.r = {0.0, 0.0, 0.0};
+    site.u = {0.0, 0.0, 1.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+  }
+
+  // Internal/transmission at z=0 (shared face), going downward -> true
+  {
+    SourceSite site;
+    site.r = {0.0, 0.0, 0.0};
+    site.u = {0.0, 0.0, -1.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+  }
+
+  // Clean
+  openmc_finalize();
+  std::remove("model.xml");
+}

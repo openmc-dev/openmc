@@ -228,9 +228,13 @@ bool reconcile_precursor_drift(SourceSite& site)
       // TODO: manage albedo coefficient
       // TODO: add more boundary types
 
+      // Internal surface
+      if (!surf.bc_)
+        continue;
+
       // Transmission
       if (surf.bc_->type() == "transmission")
-        return true;
+        continue;
 
       // Vacuum
       if (surf.bc_->type() == "vacuum")

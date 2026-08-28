@@ -239,21 +239,14 @@ bool reconcile_precursor_drift(SourceSite& site)
       if (surf.bc_->type() == "vacuum")
         return (!going_outward);
 
-      // Reflective
-      if (surf.bc_->type() == "reflective") {
-        if (going_outward) {
-          // Apply reflection
-          site.u = surf.reflect(p.r(), p.u(), &p);
-          site.u /= site.u.norm();
-          // Apply albedo
-          if (surf.bc_->has_albedo())
-            site.wgt *= surf.bc_->albedo();
-        }
-        return true;
+      // Remaining conditions: reflective, white, or periodic
+      if (going_outward) {
+        // Apply transformation and albedo
+        surf.bc_->transform(p, surf, site.r, site.u, site.surf_id);
+        if (surf.bc_->has_albedo())
+          site.wgt *= surf.bc_->albedo();
       }
-
-      // Other
-      fatal_error("Not implemented!");
+      return true;
     }
   }
 

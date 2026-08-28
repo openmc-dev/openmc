@@ -199,9 +199,20 @@ public:
   //! Find the next crossing of a mesh boundary.
   //! If the initial position is outside the mesh, the distance
   //! will be from the initial position to the external boundary
-  //! of the mesh if hit.
+  //! of the mesh if hit. If the mesh is never reached, the distance is
+  //! INFTY and the next bin is C_NONE.
   //
-  //! \param[in] current_bin Current bin number
+  //! Only the sign of current_bin is used, to tell whether the caller
+  //! believes the particle to be inside the mesh; the element the particle is
+  //! in is determined from r and u. When the two disagree, a crossing at zero
+  //! distance is reported carrying the bin implied by the position, so that
+  //! the caller resynchronizes before advancing. This happens for a particle
+  //! sitting exactly on the outer boundary of the mesh, which get_bin() places
+  //! in the boundary element while this function resolves it in the direction
+  //! of travel.
+  //
+  //! \param[in] current_bin Bin the particle is believed to be in, or a
+  //!   negative value if it is believed to be outside the mesh
   //! \param[in] r Position of the particle
   //! \param[in] u Direction of the particle
   //! \return Distance to the crossing and the next bin number

@@ -1368,6 +1368,12 @@ MeshCrossing StructuredMesh::next_mesh_crossing(
   MeshTraversal traversal(*this, r, u);
 
   if (current_bin >= 0) {
+    // The caller believes the particle is in the mesh but the traversal, which
+    // resolves the position in the direction of travel, puts it outside. The
+    // particle is on the outer boundary about to leave, so report the crossing
+    // as happening now. Advancing zero distance costs an event but leaves the
+    // caller with a bin that matches the position; reporting no crossing at
+    // all would leave it applying a field value from outside the field.
     if (!traversal.in_mesh()) {
       return {0.0, C_NONE};
     }
@@ -1387,6 +1393,9 @@ MeshCrossing StructuredMesh::next_mesh_crossing(
     return {step.end, in_mesh ? get_bin_from_indices(ijk) : C_NONE};
   }
 
+  // The mirror image of the case above: the caller believes the particle is
+  // outside the mesh but it is already inside. Hand back the bin it is in at
+  // zero distance so the caller picks up the field value it should be using.
   if (traversal.in_mesh()) {
     return {0.0, get_bin_from_indices(traversal.indices())};
   }

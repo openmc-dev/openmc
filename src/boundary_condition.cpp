@@ -35,36 +35,38 @@ void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 // ReflectiveBC implementation
 //==============================================================================
 
-void ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
+void ReflectiveBC::transform(Particle& p, const Surface& surf, Position& new_r,
+  Direction& new_u, int& new_surface) const
 {
-  Direction u = surf.reflect(p.r(), p.u(), &p);
+  new_r = p.r();
+  new_u = surf.reflect(p.r(), p.u(), &p);
+  new_u /= new_u.norm();
+  new_surface = p.surface();
+}
 
-  // normalize reflected u to ensure no floating point error leads to
-  // unnormalized directions
-  u /= u.norm();
-
-  // Handle the effects of the surface albedo on the particle's weight.
-  BoundaryCondition::handle_albedo(p, surf);
-
-  p.cross_reflective_bc(surf, u);
+void ReflectiveBC::cross_bc(Particle& p, const Surface& surf,
+  const Position& new_r, const Direction& new_u, int new_surface) const
+{
+  p.cross_reflective_bc(surf, new_u);
 }
 
 //==============================================================================
 // WhiteBC implementation
 //==============================================================================
 
-void WhiteBC::handle_particle(Particle& p, const Surface& surf) const
+void WhiteBC::transform(Particle& p, const Surface& surf, Position& new_r,
+  Direction& new_u, int& new_surface) const
 {
-  Direction u = surf.diffuse_reflect(p.r(), p.u(), p.current_seed());
+  new_r = p.r();
+  new_u = surf.diffuse_reflect(p.r(), p.u(), p.current_seed());
+  new_u /= new_u.norm();
+  new_surface = p.surface();
+}
 
-  // normalize outgoing u to ensure no floating point error leads to
-  // unnormalized directions
-  u /= u.norm();
-
-  // Handle the effects of the surface albedo on the particle's weight.
-  BoundaryCondition::handle_albedo(p, surf);
-
-  p.cross_reflective_bc(surf, u);
+void WhiteBC::cross_bc(Particle& p, const Surface& surf, const Position& new_r,
+  const Direction& new_u, int new_surface) const
+{
+  p.cross_reflective_bc(surf, new_u);
 }
 
 //==============================================================================
@@ -132,17 +134,18 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
   translation_ = u * (d2 - d1);
 }
 
-void TranslationalPeriodicBC::handle_particle(
-  Particle& p, const Surface& surf) const
+void TranslationalPeriodicBC::transform(Particle& p, const Surface& surf,
+  Position& new_r, Direction& new_u, int& new_surface) const
 {
-  auto new_r = p.r() + translation_;
-  int new_surface = p.surface() > 0 ? j_surf_ + 1 : -(j_surf_ + 1);
+  new_r = p.r() + translation_;
+  new_u = p.u();
+  new_surface = p.surface() > 0 ? j_surf_ + 1 : -(j_surf_ + 1);
+}
 
-  // Handle the effects of the surface albedo on the particle's weight.
-  BoundaryCondition::handle_albedo(p, surf);
-
-  // Pass the new location and surface to the particle.
-  p.cross_periodic_bc(surf, new_r, p.u(), new_surface);
+void TranslationalPeriodicBC::cross_bc(Particle& p, const Surface& surf,
+  const Position& new_r, const Direction& new_u, int new_surface) const
+{
+  p.cross_periodic_bc(surf, new_r, new_u, new_surface);
 }
 
 //==============================================================================
@@ -224,10 +227,10 @@ RotationalPeriodicBC::RotationalPeriodicBC(
   }
 }
 
-void RotationalPeriodicBC::handle_particle(
-  Particle& p, const Surface& surf) const
+void RotationalPeriodicBC::transform(Particle& p, const Surface& surf,
+  Position& new_r, Direction& new_u, int& new_surface) const
 {
-  int new_surface = p.surface() > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
+  new_surface = p.surface() > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
   if (flip_sense_)
     new_surface = -new_surface;
 
@@ -237,12 +240,10 @@ void RotationalPeriodicBC::handle_particle(
   double cos_theta = std::cos(angle_);
   double sin_theta = std::sin(angle_);
 
-  Position new_r;
   new_r[zero_axis_idx_] = r[zero_axis_idx_];
   new_r[axis_1_idx_] = cos_theta * r[axis_1_idx_] - sin_theta * r[axis_2_idx_];
   new_r[axis_2_idx_] = sin_theta * r[axis_1_idx_] + cos_theta * r[axis_2_idx_];
 
-  Direction new_u;
   new_u[zero_axis_idx_] = u[zero_axis_idx_];
   new_u[axis_1_idx_] = cos_theta * u[axis_1_idx_] - sin_theta * u[axis_2_idx_];
   new_u[axis_2_idx_] = sin_theta * u[axis_1_idx_] + cos_theta * u[axis_2_idx_];
@@ -250,11 +251,11 @@ void RotationalPeriodicBC::handle_particle(
   // normalize new_u to ensure no floating point error leads to unnormalized
   // directions
   new_u /= new_u.norm();
+}
 
-  // Handle the effects of the surface albedo on the particle's weight.
-  BoundaryCondition::handle_albedo(p, surf);
-
-  // Pass the new location, direction, and surface to the particle.
+void RotationalPeriodicBC::cross_bc(Particle& p, const Surface& surf,
+  const Position& new_r, const Direction& new_u, int new_surface) const
+{
   p.cross_periodic_bc(surf, new_r, new_u, new_surface);
 }
 

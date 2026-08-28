@@ -249,7 +249,8 @@ TEST_CASE("Test reconcile_precursor_drift")
   }
 
   // Init OpenMC
-  int err = openmc_init(0, nullptr, nullptr);
+  const char* argv[] = {"test", nullptr};
+  int err = openmc_init(1, const_cast<char**>(argv), nullptr);
   REQUIRE(err == 0);
 
   // Inside cell -> true

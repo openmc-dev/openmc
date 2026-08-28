@@ -836,7 +836,17 @@ void read_settings_xml(pugi::xml_node root)
 
   // Temperature field
   if (check_for_node(root, "temperature_field")) {
-    temperature_field_on = true;
+    // The random ray solver does not apply temperature fields. Leave the flag
+    // off here so that every consumer of the field -- cross section loading,
+    // transport, plotting -- agrees that it is not in use, rather than each
+    // one having to exclude the solver on its own. The field is still parsed
+    // so that malformed input is still reported.
+    if (solver_type == SolverType::RANDOM_RAY) {
+      warning("Temperature fields are not supported with the random ray "
+              "solver. It will be ignored during this simulation.");
+    } else {
+      temperature_field_on = true;
+    }
 
     // Get pointer to temperature_field node
     auto node_tf = root.child("temperature_field");

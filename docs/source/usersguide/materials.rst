@@ -225,6 +225,20 @@ field based on a regular mesh:
           :class:`~openmc.RegularMesh` and
           :class:`~openmc.RectilinearMesh`.
 
+Temperatures in the field can also be changed while the library is in
+memory -- for example between batches of a coupled calculation -- through
+:data:`openmc.lib.temperature_field`, which behaves as a mutable sequence
+indexed by mesh element::
+
+   import openmc.lib
+
+   with openmc.lib.run_in_memory():
+       openmc.lib.temperature_field[0] = 900.0
+
+Because cross sections are loaded once at initialization for the
+temperatures declared in the input file, a temperature assigned this way
+must fall within the temperature range covered by the loaded data.
+
 -----------------
 Material Mixtures
 -----------------

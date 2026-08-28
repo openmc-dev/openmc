@@ -44,15 +44,18 @@ namespace openmc {
 // Particle implementation
 //==============================================================================
 
+double Particle::speed(double E) const
+{
+  // Determine mass in eV/c^2
+  double mass = this->mass();
+  // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
+  return C_LIGHT * std::sqrt(E * (E + 2 * mass)) / (E + mass);
+}
+
 double Particle::speed() const
 {
   if (settings::run_CE) {
-    // Determine mass in eV/c^2
-    double mass = this->mass();
-
-    // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
-    return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
-           (this->E() + mass);
+    return speed(this->E());
   } else {
     auto mat = this->material();
     if (mat == MATERIAL_VOID)

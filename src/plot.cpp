@@ -46,10 +46,16 @@ constexpr int32_t OVERLAP {-3};
 
 namespace {
 
+//! Temperature in [K] to report for a plot pixel
+//
+//! Where a temperature field covers the position, the field takes precedence
+//! over the cell/material temperature carried by the particle, matching how
+//! temperatures are resolved during transport. Positions outside the field
+//! mesh fall back to the particle's own temperature.
 double plot_temperature(const Particle& p)
 {
   double sqrtkT = p.sqrtkT();
-  if (!simulation::temperature_field.values().empty()) {
+  if (settings::temperature_field_on) {
     int bin = simulation::temperature_field.get_bin(p.r());
     if (bin != C_NONE)
       sqrtkT = simulation::temperature_field.get_sqrtkT(bin);

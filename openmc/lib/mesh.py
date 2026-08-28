@@ -739,7 +739,7 @@ _MESH_TYPE_MAP = {
     'cylindrical': CylindricalMesh,
     'spherical': SphericalMesh,
     'unstructured': UnstructuredMesh,
-    'unitsphere_pointset': UnitSpherePointset
+    'angular_pointset': UnitSpherePointset
 }
 
 

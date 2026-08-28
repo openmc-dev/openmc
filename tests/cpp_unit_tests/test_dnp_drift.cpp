@@ -243,12 +243,10 @@ TEST_CASE("Test reconcile_precursor_drift")
     std::ofstream f("model.xml");
     REQUIRE(f.is_open());
     f << RECONCILE_MODEL_XML;
+    f.flush();
+    f.close();
+    REQUIRE(f.good());
   }
-
-  // Temporary debug
-  INFO("CWD: " << std::filesystem::current_path().string());
-  INFO("model.xml exists: " << std::filesystem::exists("model.xml"));
-  REQUIRE(std::filesystem::exists("model.xml"));
 
   // Init OpenMC
   int err = openmc_init(0, nullptr, nullptr);

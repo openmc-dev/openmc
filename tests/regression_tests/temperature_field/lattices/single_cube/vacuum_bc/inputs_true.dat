@@ -22,10 +22,10 @@
       <dimension>2 2 2</dimension>
       <lower_left>0.0 0.0 0.0</lower_left>
       <universes>
-1 1
-1 1
+1 1 
+1 1 
 
-1 1
+1 1 
 1 1 </universes>
     </lattice>
     <surface id="1" type="x-plane" coeffs="-1.75"/>

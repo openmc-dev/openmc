@@ -221,7 +221,9 @@ field based on a regular mesh:
    settings = openmc.Settings()
    settings.temperature_field = temperature_field
 
-.. note:: Temperature fields are currently limited to structured meshes only.
+.. note:: Temperature fields are currently limited to
+          :class:`~openmc.RegularMesh` and
+          :class:`~openmc.RectilinearMesh`.
 
 -----------------
 Material Mixtures

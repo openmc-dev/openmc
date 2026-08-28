@@ -297,8 +297,10 @@ void Particle::event_advance()
   // Find the distance to the nearest temperature mesh cell surface
   double distance_tmesh = INFTY;
   if (settings::temperature_field_on) {
-    distance_tmesh = simulation::temperature_field.distance_to_next_boundary(
-      tf_bin(), r(), u(), tf_bin_next());
+    auto crossing =
+      simulation::temperature_field.next_mesh_crossing(tf_bin(), r(), u());
+    distance_tmesh = crossing.distance;
+    tf_bin_next() = crossing.next_bin;
   }
 
   // Calculate the distance corresponding to the time cutoff

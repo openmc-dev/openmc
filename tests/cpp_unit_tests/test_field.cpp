@@ -77,40 +77,36 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
 
   SECTION("Distance to temperature mesh boundaries")
   {
-    int next_bin;
+    auto crossing = temp_field.next_mesh_crossing(
+      0, Position {-0.5, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
+    REQUIRE(crossing.distance == Catch::Approx(0.5));
+    REQUIRE(crossing.next_bin == 1);
 
-    auto distance = temp_field.distance_to_next_boundary(
-      0, Position {-0.5, -0.5, -0.5}, Direction {1.0, 0.0, 0.0}, next_bin);
-    REQUIRE(distance == Catch::Approx(0.5));
-    REQUIRE(next_bin == 1);
+    crossing = temp_field.next_mesh_crossing(
+      -1, Position {-2.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
+    REQUIRE(crossing.distance == Catch::Approx(1.0));
+    REQUIRE(crossing.next_bin == 0);
 
-    distance = temp_field.distance_to_next_boundary(
-      -1, Position {-2.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0}, next_bin);
-    REQUIRE(distance == Catch::Approx(1.0));
-    REQUIRE(next_bin == 0);
+    crossing = temp_field.next_mesh_crossing(
+      -1, Position {-1.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
+    REQUIRE(crossing.distance == 0.0);
+    REQUIRE(crossing.next_bin == 0);
 
-    distance = temp_field.distance_to_next_boundary(
-      -1, Position {-1.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0}, next_bin);
-    REQUIRE(distance == 0.0);
-    REQUIRE(next_bin == 0);
-
-    distance = temp_field.distance_to_next_boundary(
-      1, Position {0.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0}, next_bin);
-    REQUIRE(distance == Catch::Approx(1.0));
-    REQUIRE(next_bin == C_NONE);
+    crossing = temp_field.next_mesh_crossing(
+      1, Position {0.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
+    REQUIRE(crossing.distance == Catch::Approx(1.0));
+    REQUIRE(crossing.next_bin == C_NONE);
 
     constexpr double inverse_sqrt_three = 0.5773502691896258;
-    distance =
-      temp_field.distance_to_next_boundary(0, Position {-0.5, -0.5, -0.5},
-        Direction {inverse_sqrt_three, inverse_sqrt_three, inverse_sqrt_three},
-        next_bin);
-    REQUIRE(distance == Catch::Approx(0.5 / inverse_sqrt_three));
-    REQUIRE(next_bin == 7);
+    crossing = temp_field.next_mesh_crossing(0, Position {-0.5, -0.5, -0.5},
+      Direction {inverse_sqrt_three, inverse_sqrt_three, inverse_sqrt_three});
+    REQUIRE(crossing.distance == Catch::Approx(0.5 / inverse_sqrt_three));
+    REQUIRE(crossing.next_bin == 7);
 
-    distance = temp_field.distance_to_next_boundary(
-      -1, Position {-2.0, 2.0, 0.0}, Direction {1.0, 0.0, 0.0}, next_bin);
-    REQUIRE(distance == INFTY);
-    REQUIRE(next_bin == C_NONE);
+    crossing = temp_field.next_mesh_crossing(
+      -1, Position {-2.0, 2.0, 0.0}, Direction {1.0, 0.0, 0.0});
+    REQUIRE(crossing.distance == INFTY);
+    REQUIRE(crossing.next_bin == C_NONE);
   }
 }
 

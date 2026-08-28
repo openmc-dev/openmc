@@ -145,6 +145,11 @@ private:
 //! Base mesh class
 //==============================================================================
 
+struct MeshCrossing {
+  double distance {INFTY}; //!< Distance to the crossing in cm
+  int next_bin {C_NONE};   //!< Bin entered after the crossing
+};
+
 class Mesh {
 public:
   // Constructors and destructor
@@ -191,7 +196,7 @@ public:
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
-  //! Distance to the next boundary.
+  //! Find the next crossing of a mesh boundary.
   //! If the initial position is outside the mesh, the distance
   //! will be from the initial position to the external boundary
   //! of the mesh if hit.
@@ -199,10 +204,9 @@ public:
   //! \param[in] current_bin Current bin number
   //! \param[in] r Position of the particle
   //! \param[in] u Direction of the particle
-  //! \param[out] bin_next Next bin number
-  //! \return Distance to the next boundary
-  virtual double distance_to_next_boundary(
-    int current_bin, Position r, Direction u, int& bin_next) const = 0;
+  //! \return Distance to the crossing and the next bin number
+  virtual MeshCrossing next_mesh_crossing(
+    int current_bin, Position r, Direction u) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -350,8 +354,8 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-  double distance_to_next_boundary(
-    int current_bin, Position r, Direction u, int& bin_next) const override;
+  MeshCrossing next_mesh_crossing(
+    int current_bin, Position r, Direction u) const override;
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -758,8 +762,8 @@ public:
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(hid_t group);
 
-  double distance_to_next_boundary(
-    int current_bin, Position r, Direction u, int& bin_next) const override;
+  MeshCrossing next_mesh_crossing(
+    int current_bin, Position r, Direction u) const override;
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;

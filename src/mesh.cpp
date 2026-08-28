@@ -885,11 +885,11 @@ UnstructuredMesh::UnstructuredMesh(hid_t group) : Mesh(group)
   }
 }
 
-double UnstructuredMesh::distance_to_next_boundary(
-  int current_bin, Position r, Direction u, int& bin_next) const
+MeshCrossing UnstructuredMesh::next_mesh_crossing(
+  int current_bin, Position r, Direction u) const
 {
   fatal_error("Not implemented");
-  return -1.0;
+  return {INFTY, C_NONE};
 }
 
 void UnstructuredMesh::determine_bounds()
@@ -1362,38 +1362,33 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
-double StructuredMesh::distance_to_next_boundary(
-  int current_bin, Position r, Direction u, int& bin_next) const
+MeshCrossing StructuredMesh::next_mesh_crossing(
+  int current_bin, Position r, Direction u) const
 {
   auto traversal = initialize_traversal(r, u);
   if (current_bin >= 0) {
     if (!traversal.in_mesh) {
-      bin_next = C_NONE;
-      return 0.0;
+      return {0.0, C_NONE};
     }
 
     advance_traversal(r, u, traversal);
     bool in_mesh;
     auto ijk = get_indices(r + (traversal.distance + TINY_BIT) * u, in_mesh);
-    bin_next = in_mesh ? get_bin_from_indices(ijk) : C_NONE;
-    return traversal.distance;
+    int next_bin = in_mesh ? get_bin_from_indices(ijk) : C_NONE;
+    return {traversal.distance, next_bin};
   }
 
   if (traversal.in_mesh) {
-    bin_next = get_bin_from_indices(traversal.ijk);
-    return 0.0;
+    return {0.0, get_bin_from_indices(traversal.ijk)};
   }
 
   while (!traversal.in_mesh && traversal.distance < INFTY) {
     advance_traversal(r, u, traversal);
   }
 
-  if (traversal.in_mesh) {
-    bin_next = get_bin_from_indices(traversal.ijk);
-  } else {
-    bin_next = C_NONE;
-  }
-  return traversal.distance;
+  int next_bin =
+    traversal.in_mesh ? get_bin_from_indices(traversal.ijk) : C_NONE;
+  return {traversal.distance, next_bin};
 }
 
 //==============================================================================

@@ -19,17 +19,16 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  //! Returns the distance to the next mesh boundary given a particle position
-  //! and direction. If the particle is initially outside, the distance will
-  //! correspond to the nearest distance to the outer boundaries of the mesh.
+  //! Find the next mesh crossing given a particle position and direction. If
+  //! the particle is initially outside, the crossing will be at the nearest
+  //! outer boundary of the mesh along its direction of travel.
   //
   //! \param[in] current_bin Current bin number
   //! \param[in] r Position of the particle
   //! \param[in] u Direction of the particle
-  //! \param[out] bin_next Next bin number
-  //! \return The distance in cm to the next mesh boundary
-  double distance_to_next_boundary(
-    int current_bin, const Position& r, const Direction& d, int& bin_next);
+  //! \return Distance to the crossing and the next bin number
+  MeshCrossing next_mesh_crossing(
+    int current_bin, const Position& r, const Direction& u);
 
   //----------------------------------------------------------------------------
   // Accessors

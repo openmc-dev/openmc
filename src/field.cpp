@@ -35,11 +35,10 @@ ScalarField::ScalarField(
   }
 }
 
-double ScalarField::distance_to_next_boundary(
-  int current_bin, const Position& r, const Direction& u, int& bin_next)
+MeshCrossing ScalarField::next_mesh_crossing(
+  int current_bin, const Position& r, const Direction& u)
 {
-  return this->mesh_ptr()->distance_to_next_boundary(
-    current_bin, r, u, bin_next);
+  return this->mesh_ptr()->next_mesh_crossing(current_bin, r, u);
 }
 
 double TemperatureField::get_temperature(int bin)

@@ -968,9 +968,6 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
                   const DelayedGroupFilter& filt {
                     *dynamic_cast<DelayedGroupFilter*>(
                       model::tally_filters[i_dg_filt].get())};
-                  // The bin index is the group's position in the filter's
-                  // list of groups, which equals group - 1 only when the
-                  // filter selects all groups in ascending order.
                   for (int d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                     if (filt.groups()[d_bin] == delayed_groups[0]) {
                       score_fission_delayed_dg(

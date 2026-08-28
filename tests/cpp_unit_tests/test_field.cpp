@@ -57,23 +57,47 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   REQUIRE(temp_field.get_bin(Position(0.0, 0.0, 0.0)) == 0);
   REQUIRE(temp_field.get_bin(Position(2.0, 2.0, 2.0)) == -1);
 
-  const double temperature_min = data::temperature_min;
-  const double temperature_max = data::temperature_max;
-  data::temperature_min = 300.0;
-  data::temperature_max = 600.0;
-  simulation::temperature_field = temp_field;
+  SECTION("Runtime temperature assignment through the C API")
+  {
+    // openmc_temperature_field_* act on the global field and consult the
+    // global cross section temperature range, both of which have to be put
+    // back however this section exits.
+    struct GlobalStateGuard {
+      double min {data::temperature_min};
+      double max {data::temperature_max};
+      ~GlobalStateGuard()
+      {
+        simulation::temperature_field = TemperatureField();
+        data::temperature_min = min;
+        data::temperature_max = max;
+      }
+    } guard;
 
-  REQUIRE(openmc_temperature_field_set_temperature(0, 400.0) == 0);
-  REQUIRE(openmc_temperature_field_get_value(0, &values[0]) == 0);
-  REQUIRE(values[0] == 400.0);
-  REQUIRE(openmc_temperature_field_set_temperature(0, 100.0) ==
-          OPENMC_E_INVALID_ARGUMENT);
-  REQUIRE(openmc_temperature_field_set_temperature(0, -1.0) ==
-          OPENMC_E_INVALID_ARGUMENT);
+    data::temperature_min = 300.0;
+    data::temperature_max = 600.0;
+    simulation::temperature_field = temp_field;
 
-  simulation::temperature_field = TemperatureField();
-  data::temperature_min = temperature_min;
-  data::temperature_max = temperature_max;
+    double temperature;
+    REQUIRE(openmc_temperature_field_set_temperature(0, 400.0) == 0);
+    REQUIRE(openmc_temperature_field_get_value(0, &temperature) == 0);
+    REQUIRE(temperature == 400.0);
+
+    // Below the range covered by the loaded cross sections
+    REQUIRE(openmc_temperature_field_set_temperature(0, 100.0) ==
+            OPENMC_E_INVALID_ARGUMENT);
+
+    // Above the range covered by the loaded cross sections
+    REQUIRE(openmc_temperature_field_set_temperature(0, 1000.0) ==
+            OPENMC_E_INVALID_ARGUMENT);
+
+    // Not a finite, non-negative value
+    REQUIRE(openmc_temperature_field_set_temperature(0, -1.0) ==
+            OPENMC_E_INVALID_ARGUMENT);
+
+    // Out of bounds index
+    REQUIRE(openmc_temperature_field_set_temperature(8, 400.0) ==
+            OPENMC_E_OUT_OF_BOUNDS);
+  }
 
   SECTION("Distance to temperature mesh boundaries")
   {

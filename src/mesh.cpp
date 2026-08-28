@@ -1170,65 +1170,80 @@ tensor::Tensor<double> StructuredMesh::count_sites(
   return counts;
 }
 
-StructuredMesh::MeshTraversal StructuredMesh::initialize_traversal(
-  const Position& r, const Direction& u) const
+StructuredMesh::MeshTraversal::MeshTraversal(
+  const StructuredMesh& mesh, const Position& r, const Direction& u)
+  : mesh_(mesh), r_(r), local_r_(mesh.local_coords(r)), u_(u)
 {
-  MeshTraversal traversal;
-  traversal.local_r = local_coords(r);
-  traversal.ijk = get_indices(r + TINY_BIT * u, traversal.in_mesh);
-  for (int k = 0; k < n_dimension_; ++k) {
-    traversal.distances[k] =
-      distance_to_grid_boundary(traversal.ijk, k, traversal.local_r, u, 0.0);
-  }
-  return traversal;
+  // Offset the position a tiny bit in the direction of flight so that a ray
+  // starting exactly on a grid surface is placed in the element it is
+  // entering rather than the one it is leaving
+  ijk_ = mesh_.get_indices(r_ + TINY_BIT * u_, in_mesh_);
+  update_distances();
 }
 
-void StructuredMesh::advance_traversal(
-  const Position& r, const Direction& u, MeshTraversal& traversal) const
+void StructuredMesh::MeshTraversal::update_distances()
 {
-  traversal.previous_distance = traversal.distance;
-  traversal.surface_dimension = -1;
+  for (int k = 0; k < mesh_.n_dimension_; ++k) {
+    distances_[k] =
+      mesh_.distance_to_grid_boundary(ijk_, k, local_r_, u_, distance_);
+  }
+}
 
-  if (traversal.in_mesh) {
-    const auto k = std::min_element(traversal.distances.begin(),
-                     traversal.distances.begin() + n_dimension_) -
-                   traversal.distances.begin();
-    const auto crossing = traversal.distances[k];
+StructuredMesh::MeshStep StructuredMesh::MeshTraversal::advance()
+{
+  MeshStep step;
+  step.begin = distance_;
 
-    traversal.surface_dimension = k;
-    traversal.max_surface = crossing.max_surface;
-    traversal.distance = crossing.distance;
-    traversal.ijk[k] = crossing.next_index;
-    traversal.distances[k] = distance_to_grid_boundary(
-      traversal.ijk, k, traversal.local_r, u, traversal.distance);
-    traversal.in_mesh = traversal.ijk[k] >= 1 && traversal.ijk[k] <= shape_[k];
-    return;
+  if (in_mesh_) {
+    // Move to the nearest grid surface. Only the direction that surface lies
+    // in changes; the distances in the other directions are still valid.
+    const auto k = std::min_element(distances_.begin(),
+                     distances_.begin() + mesh_.n_dimension_) -
+                   distances_.begin();
+    const auto crossing = distances_[k];
+
+    distance_ = crossing.distance;
+    ijk_[k] = crossing.next_index;
+    distances_[k] =
+      mesh_.distance_to_grid_boundary(ijk_, k, local_r_, u_, distance_);
+    in_mesh_ = ijk_[k] >= 1 && ijk_[k] <= mesh_.shape_[k];
+
+    step.end = distance_;
+    step.dimension = k;
+    step.max_surface = crossing.max_surface;
+    step.in_mesh = in_mesh_;
+    if (in_mesh_)
+      step.inward_max_surface = !distances_[k].max_surface;
+    return step;
   }
 
   // A point outside a structured mesh may be outside in multiple coordinate
   // directions. The largest crossing distance is the first point at which it
   // can be inside all of them.
-  for (int k = 0; k < n_dimension_; ++k) {
-    if ((traversal.ijk[k] < 1 || traversal.ijk[k] > shape_[k]) &&
-        traversal.distances[k].distance > traversal.distance) {
-      traversal.distance = traversal.distances[k].distance;
-      traversal.surface_dimension = k;
+  for (int k = 0; k < mesh_.n_dimension_; ++k) {
+    if ((ijk_[k] < 1 || ijk_[k] > mesh_.shape_[k]) &&
+        distances_[k].distance > distance_) {
+      distance_ = distances_[k].distance;
+      step.dimension = k;
     }
   }
 
-  if (traversal.surface_dimension < 0) {
-    traversal.distance += TINY_BIT;
-  }
-  if (traversal.distance >= INFTY) {
-    return;
-  }
+  // No direction offered a crossing ahead of where we already are. Nudge
+  // forward so that the walk cannot stall.
+  if (step.dimension < 0)
+    distance_ += TINY_BIT;
 
-  traversal.ijk =
-    get_indices(r + (traversal.distance + TINY_BIT) * u, traversal.in_mesh);
-  for (int k = 0; k < n_dimension_; ++k) {
-    traversal.distances[k] = distance_to_grid_boundary(
-      traversal.ijk, k, traversal.local_r, u, traversal.distance);
-  }
+  step.end = distance_;
+  if (distance_ >= INFTY)
+    return step;
+
+  ijk_ = mesh_.get_indices(r_ + (distance_ + TINY_BIT) * u_, in_mesh_);
+  update_distances();
+
+  step.in_mesh = in_mesh_;
+  if (in_mesh_ && step.dimension >= 0)
+    step.inward_max_surface = !distances_[step.dimension].max_surface;
+  return step;
 }
 
 // raytrace through the mesh. The template class T will do the tallying.
@@ -1249,57 +1264,42 @@ void StructuredMesh::raytrace_mesh(
   if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
     return;
 
-  auto traversal = initialize_traversal(r0, u);
+  MeshTraversal traversal(*this, r0, u);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
   if (total_distance < 2 * TINY_BIT) {
-    if (traversal.in_mesh) {
-      tally.track(traversal.ijk, 1.0);
+    if (traversal.in_mesh()) {
+      tally.track(traversal.indices(), 1.0);
     }
     return;
   }
 
   // Loop until r = r1 is eventually reached
   while (true) {
-    if (traversal.in_mesh) {
-      const auto ijk = traversal.ijk;
-      advance_traversal(r0, u, traversal);
+    const bool was_in_mesh = traversal.in_mesh();
+    const MeshIndex ijk = traversal.indices();
+    const MeshStep step = traversal.advance();
 
-      // Tally track length delta since last step
-      tally.track(ijk, (std::min(traversal.distance, total_distance) -
-                         traversal.previous_distance) /
-                         total_distance);
-
-      // update position and leave, if we have reached end position
-      if (traversal.distance >= total_distance)
-        return;
-
-      // If we have not reached r1, we have hit a surface. Tally outward
-      // current
-      const int k = traversal.surface_dimension;
-      tally.surface(ijk, k, traversal.max_surface, false);
-
-      // If we are still inside the mesh, tally inward current for the next
-      // cell
-      if (traversal.in_mesh)
-        tally.surface(
-          traversal.ijk, k, !traversal.distances[k].max_surface, true);
-
-    } else { // not inside mesh
-      advance_traversal(r0, u, traversal);
-
-      // If r1 is not inside the mesh, exit here
-      if (traversal.distance >= total_distance)
-        return;
-
-      // If inside the mesh, Tally inward current
-      if (traversal.in_mesh && traversal.surface_dimension >= 0) {
-        const int k = traversal.surface_dimension;
-        tally.surface(
-          traversal.ijk, k, !traversal.distances[k].max_surface, true);
-      }
+    // Tally track length delta since last step
+    if (was_in_mesh) {
+      tally.track(ijk,
+        (std::min(step.end, total_distance) - step.begin) / total_distance);
     }
+
+    // Leave if we have reached the end position
+    if (step.end >= total_distance)
+      return;
+
+    // We have not reached r1, so we have hit a surface. Tally outward current
+    // on the cell we just left
+    if (was_in_mesh)
+      tally.surface(ijk, step.dimension, step.max_surface, false);
+
+    // If we are inside the mesh, tally inward current on the cell we entered
+    if (step.in_mesh && step.dimension >= 0)
+      tally.surface(
+        traversal.indices(), step.dimension, step.inward_max_surface, true);
   }
 }
 
@@ -1365,39 +1365,42 @@ void StructuredMesh::surface_bins_crossed(
 MeshCrossing StructuredMesh::next_mesh_crossing(
   int current_bin, Position r, Direction u) const
 {
-  auto traversal = initialize_traversal(r, u);
+  MeshTraversal traversal(*this, r, u);
+
   if (current_bin >= 0) {
-    if (!traversal.in_mesh) {
+    if (!traversal.in_mesh()) {
       return {0.0, C_NONE};
     }
 
-    advance_traversal(r, u, traversal);
+    const MeshStep step = traversal.advance();
 
     // The bin entered is looked up from the position rather than taken from
-    // traversal.ijk. A traversal step resolves one coordinate direction at a
-    // time, so when a ray leaves a cell through an edge or a corner it
+    // traversal.indices(). A traversal step resolves one coordinate direction
+    // at a time, so when a ray leaves a cell through an edge or a corner it
     // reports the neighbor across only the first of the tied directions,
     // which the ray passes through with zero track length. raytrace_mesh
     // wants that -- it has to score a crossing on each of those surfaces --
     // but here the caller needs the element the ray is actually in once it
     // has moved past the crossing.
     bool in_mesh;
-    auto ijk = get_indices(r + (traversal.distance + TINY_BIT) * u, in_mesh);
-    int next_bin = in_mesh ? get_bin_from_indices(ijk) : C_NONE;
-    return {traversal.distance, next_bin};
+    auto ijk = get_indices(r + (step.end + TINY_BIT) * u, in_mesh);
+    return {step.end, in_mesh ? get_bin_from_indices(ijk) : C_NONE};
   }
 
-  if (traversal.in_mesh) {
-    return {0.0, get_bin_from_indices(traversal.ijk)};
+  if (traversal.in_mesh()) {
+    return {0.0, get_bin_from_indices(traversal.indices())};
   }
 
-  while (!traversal.in_mesh && traversal.distance < INFTY) {
-    advance_traversal(r, u, traversal);
+  // Walk forward until the ray is inside the mesh, or until it is clear that
+  // it never will be. Here the indices produced by the step already come from
+  // a position lookup, so an edge or corner entry needs no special handling.
+  while (true) {
+    const MeshStep step = traversal.advance();
+    if (step.in_mesh)
+      return {step.end, get_bin_from_indices(traversal.indices())};
+    if (step.end >= INFTY)
+      return {INFTY, C_NONE};
   }
-
-  int next_bin =
-    traversal.in_mesh ? get_bin_from_indices(traversal.ijk) : C_NONE;
-  return {traversal.distance, next_bin};
 }
 
 //==============================================================================

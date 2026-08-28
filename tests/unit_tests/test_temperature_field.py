@@ -78,7 +78,7 @@ def test_non_numeric_values(mesh):
         openmc.TemperatureField(mesh, values)
 
 
-def test_lib_temperature_field():
+def test_lib_temperature_field(run_in_tmpdir):
     """Check the Python bindings for the temperature-field C API."""
     model = pwr_pin_cell()
     mesh = openmc.RegularMesh()

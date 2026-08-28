@@ -9,6 +9,7 @@
 #include "openmc/vector.h"
 
 #include <cmath>
+#include <stdexcept>
 
 namespace openmc {
 
@@ -39,6 +40,46 @@ MeshCrossing ScalarField::next_mesh_crossing(
   int current_bin, const Position& r, const Direction& u)
 {
   return this->mesh_ptr()->next_mesh_crossing(current_bin, r, u);
+}
+
+void TemperatureField::validate_temperature(double temperature)
+{
+  if (!std::isfinite(temperature) || temperature < 0.0) {
+    throw std::runtime_error {fmt::format(
+      "Temperature of {} K is not a finite, non-negative value.", temperature)};
+  }
+
+  // data::temperature_min/max only bound anything once cross sections have
+  // been read. Until then they hold their sentinel values of INFTY and 0.0,
+  // and there is no range to check against.
+  if (data::temperature_min > data::temperature_max)
+    return;
+
+  if (temperature < data::temperature_min - settings::temperature_tolerance) {
+    throw std::runtime_error {
+      fmt::format("Temperature of {} K is below minimum temperature at "
+                  "which data is available of {} K.",
+        temperature, data::temperature_min)};
+  }
+  if (temperature > data::temperature_max + settings::temperature_tolerance) {
+    throw std::runtime_error {
+      fmt::format("Temperature of {} K is above maximum temperature at "
+                  "which data is available of {} K.",
+        temperature, data::temperature_max)};
+  }
+}
+
+TemperatureField::TemperatureField(Mesh* mesh_ptr, vector<double> values)
+  : ScalarField(mesh_ptr, values, "TemperatureField")
+{
+  for (int i = 0; i < this->values().size(); ++i) {
+    try {
+      validate_temperature(this->value(i));
+    } catch (const std::runtime_error& e) {
+      throw std::runtime_error {
+        fmt::format("Element {} of the temperature field: {}", i, e.what())};
+    }
+  }
 }
 
 double TemperatureField::get_temperature(int bin)
@@ -80,17 +121,10 @@ extern "C" int openmc_temperature_field_set_temperature(
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  if (!std::isfinite(temperature) || temperature < 0.0) {
-    set_errmsg("Temperature must be a finite, non-negative value.");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
-  if (data::temperature_min <= data::temperature_max &&
-      (temperature < data::temperature_min - settings::temperature_tolerance ||
-        temperature >
-          data::temperature_max + settings::temperature_tolerance)) {
-    set_errmsg("Temperature is outside the range supported by the loaded "
-               "cross sections.");
+  try {
+    TemperatureField::validate_temperature(temperature);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
     return OPENMC_E_INVALID_ARGUMENT;
   }
 

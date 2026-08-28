@@ -205,6 +205,25 @@ TEST_CASE("Test settings declaration exceptions for a temperature field",
       )",
       "Temperature fields are only supported on regular and rectilinear "
       "meshes."},
+    {// Negative temperature value -> error
+      R"(
+      <settings>
+        <run_mode>eigenvalue</run_mode>
+        <particles>200</particles>
+        <batches>20</batches>
+        <temperature_field>
+          <mesh>1</mesh>
+          <values>294.0 394.0 -1.0 594.0 694.0 794.0 894.0 994.0</values>
+        </temperature_field>
+        <mesh id="1">
+          <dimension>2 2 2</dimension>
+          <lower_left>0.0 0.0 0.0</lower_left>
+          <upper_right>5.0 5.0 5.0</upper_right>
+        </mesh>
+      </settings>
+      )",
+      "Element 2 of the temperature field: Temperature of -1 K is not a "
+      "finite, non-negative value."},
   }));
 
   free_memory_mesh();

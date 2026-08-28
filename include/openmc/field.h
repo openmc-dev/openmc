@@ -64,11 +64,21 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
   TemperatureField() = default;
-  TemperatureField(Mesh* mesh_ptr, vector<double> values)
-    : ScalarField(mesh_ptr, values, "TemperatureField") {};
+  TemperatureField(Mesh* mesh_ptr, vector<double> values);
 
   //----------------------------------------------------------------------------
   // Methods
+
+  //! Check that a temperature can be used with the currently loaded data
+  //
+  //! Rejects values that are not finite or that are negative. Once cross
+  //! section data have been read, also rejects values outside the temperature
+  //! range those data cover. Before that point no range is known and only the
+  //! finiteness and sign of the value are checked.
+  //
+  //! \param[in] temperature Temperature in Kelvin
+  //! \throws std::runtime_error if the temperature cannot be used
+  static void validate_temperature(double temperature);
 
   //! Returns the temperature in Kelvin corresponding to a given bin number
   //! relative to the mesh.

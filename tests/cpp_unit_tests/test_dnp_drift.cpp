@@ -250,7 +250,7 @@ TEST_CASE("Test reconcile_precursor_drift")
 
   // Inside cell -> true
   {
-    SourceSite site{};
+    SourceSite site {};
     site.r = {0.0, 0.0, -2.0};
     site.u = {1.0, 0.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == true);
@@ -258,7 +258,7 @@ TEST_CASE("Test reconcile_precursor_drift")
 
   // Outside model -> should fail (fatal error)
   //{
-  //  SourceSite site{};
+  //  SourceSite site {};
   //  site.r = {10.0, 0.0, 0.0};
   //  site.u = {1.0, 0.0, 0.0};
   //  REQUIRE_THROWS(reconcile_precursor_drift(site));
@@ -266,7 +266,7 @@ TEST_CASE("Test reconcile_precursor_drift")
 
   // Vacuum surface, going outward -> false
   {
-    SourceSite site{};
+    SourceSite site {};
     site.r = {5.0, 0.0, 0.0};
     site.u = {1.0, 0.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == false);
@@ -274,7 +274,7 @@ TEST_CASE("Test reconcile_precursor_drift")
 
   // Vacuum surface, going inward -> true
   {
-    SourceSite site{};
+    SourceSite site {};
     site.r = {5.0, 0.0, 0.0};
     site.u = {-1.0, 0.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == true);
@@ -283,7 +283,7 @@ TEST_CASE("Test reconcile_precursor_drift")
 
   // Reflective surface, going outward -> reflect and return true
   {
-    SourceSite site{};
+    SourceSite site {};
     site.r = {0.0, 5.0, 0.0};
     site.u = {0.0, 1.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == true);
@@ -293,7 +293,7 @@ TEST_CASE("Test reconcile_precursor_drift")
 
   // Reflective surface, going inward -> no reflection, return true
   {
-    SourceSite site{};
+    SourceSite site {};
     site.r = {0.0, 5.0, 0.0};
     site.u = {0.0, -1.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == true);
@@ -303,7 +303,7 @@ TEST_CASE("Test reconcile_precursor_drift")
 
   // Internal/transmission surface at z=0 (shared face), going upward -> true
   {
-    SourceSite site{};
+    SourceSite site {};
     site.r = {0.0, 0.0, 0.0};
     site.u = {0.0, 0.0, 1.0};
     CHECK(reconcile_precursor_drift(site) == true);
@@ -312,7 +312,7 @@ TEST_CASE("Test reconcile_precursor_drift")
 
   // Internal/transmission at z=0 (shared face), going downward -> true
   {
-    SourceSite site{};
+    SourceSite site {};
     site.r = {0.0, 0.0, 0.0};
     site.u = {0.0, 0.0, -1.0};
     CHECK(reconcile_precursor_drift(site) == true);

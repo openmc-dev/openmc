@@ -1,5 +1,6 @@
 #include <fstream>
 #include <string>
+#include <filesystem>
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -243,6 +244,11 @@ TEST_CASE("Test reconcile_precursor_drift")
     REQUIRE(f.is_open());
     f << RECONCILE_MODEL_XML;
   }
+
+  // Temporary debug
+  INFO("CWD: " << std::filesystem::current_path().string());
+  INFO("model.xml exists: " << std::filesystem::exists("model.xml"));
+  REQUIRE(std::filesystem::exists("model.xml"));
 
   // Init OpenMC
   int err = openmc_init(0, nullptr, nullptr);

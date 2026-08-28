@@ -1372,6 +1372,15 @@ MeshCrossing StructuredMesh::next_mesh_crossing(
     }
 
     advance_traversal(r, u, traversal);
+
+    // The bin entered is looked up from the position rather than taken from
+    // traversal.ijk. A traversal step resolves one coordinate direction at a
+    // time, so when a ray leaves a cell through an edge or a corner it
+    // reports the neighbor across only the first of the tied directions,
+    // which the ray passes through with zero track length. raytrace_mesh
+    // wants that -- it has to score a crossing on each of those surfaces --
+    // but here the caller needs the element the ray is actually in once it
+    // has moved past the crossing.
     bool in_mesh;
     auto ijk = get_indices(r + (traversal.distance + TINY_BIT) * u, in_mesh);
     int next_bin = in_mesh ? get_bin_from_indices(ijk) : C_NONE;

@@ -1403,13 +1403,23 @@ MeshCrossing StructuredMesh::next_mesh_crossing(
   // Walk forward until the ray is inside the mesh, or until it is clear that
   // it never will be. Here the indices produced by the step already come from
   // a position lookup, so an edge or corner entry needs no special handling.
-  while (true) {
+  //
+  // Each step resolves at least one coordinate direction in which the ray is
+  // out of range, so a handful of them suffices for the meshes this is used
+  // with. If distance_to_grid_boundary ever reports a crossing that is not
+  // ahead of where the traversal already is, MeshTraversal::advance() falls
+  // back to a TINY_BIT nudge, and unlike raytrace_mesh there is no track
+  // length here to bound the walk. Cap the number of steps so that such a
+  // mesh degrades to "no crossing" rather than stalling the transport loop.
+  constexpr int MAX_STEPS = 64;
+  for (int i = 0; i < MAX_STEPS; ++i) {
     const MeshStep step = traversal.advance();
     if (step.in_mesh)
       return {step.end, get_bin_from_indices(traversal.indices())};
     if (step.end >= INFTY)
-      return {INFTY, C_NONE};
+      break;
   }
+  return {INFTY, C_NONE};
 }
 
 //==============================================================================

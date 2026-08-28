@@ -64,6 +64,12 @@ def test_invalid_values(mesh):
         openmc.TemperatureField(mesh, values)
 
 
+def test_invalid_values_from_iterator(mesh):
+    """Check negative values supplied as a one-shot iterable."""
+    with pytest.raises(ValueError):
+        openmc.TemperatureField(mesh, (-1.0 for _ in range(8)))
+
+
 def test_non_numeric_values(mesh):
     """Check that field values are numeric."""
     values = ['not a temperature'] * 8

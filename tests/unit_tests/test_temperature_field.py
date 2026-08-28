@@ -82,15 +82,35 @@ def test_lib_temperature_field(run_in_tmpdir):
     """Check the Python bindings for the temperature-field C API."""
     model = pwr_pin_cell()
     mesh = openmc.RegularMesh()
-    mesh.dimension = (1, 1, 1)
+    mesh.dimension = (2, 1, 1)
     mesh.lower_left = (-1.0, -1.0, -1.0)
     mesh.upper_right = (1.0, 1.0, 1.0)
-    model.settings.temperature_field = openmc.TemperatureField(mesh, [294.0])
+    model.settings.temperature_field = openmc.TemperatureField(
+        mesh, [294.0, 300.0])
 
     with openmc.lib.TemporarySession(model, output=False, args=['-c']):
         field = openmc.lib.temperature_field
-        assert field.size == 1
-        assert len(field) == 1
+        assert field.size == 2
+        assert len(field) == 2
         assert field[0] == 294.0
-        field[0] = 294.0
-        assert field[0] == 294.0
+        assert field[1] == 300.0
+
+        # Negative indices count from the end
+        assert field[-1] == 300.0
+        assert field[-2] == 294.0
+
+        # The sequence protocol works
+        assert list(field) == [294.0, 300.0]
+        assert [t for t in field] == [294.0, 300.0]
+        assert 294.0 in field
+
+        # Out-of-range indices raise IndexError
+        with pytest.raises(IndexError):
+            field[2]
+        with pytest.raises(IndexError):
+            field[-3]
+        with pytest.raises(IndexError):
+            field[2] = 294.0
+
+        field[-1] = 294.0
+        assert field[1] == 294.0

@@ -24,14 +24,15 @@ class ScalarField:
         # Check mesh compatibility
         if not isinstance(mesh, (openmc.RegularMesh, openmc.RectilinearMesh)):
             raise TypeError(
-                f"{type(self)} only implemented for regular and rectilinear meshes.")
+                f"{type(self)} only implemented for regular and "
+                "rectilinear meshes.")
 
         # Check values/mesh size consistency
         if mesh.n_elements != len(values):
             raise ValueError(
-                f"Inconsistent number of values '{len(values)}' compared to the number "
-                f"of mesh cells '{mesh.n_elements}' declared in an instance of "
-                f"{type(self)}.")
+                f"Inconsistent number of values '{len(values)}' compared to "
+                f"the number of mesh cells '{mesh.n_elements}' declared in "
+                f"an instance of {type(self)}.")
 
         # Assign
         self.mesh = mesh

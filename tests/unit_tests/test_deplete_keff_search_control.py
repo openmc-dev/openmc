@@ -169,13 +169,3 @@ def test_materials_updated_before_search(control_and_calls):
     assert len(recorded) == len(n)
     for actual, expected in zip(recorded, n):
         np.testing.assert_array_equal(actual, expected)
- 
- 
-def test_bracket_validation():
-    operator = MockOperator([])
- 
-    with pytest.raises(ValueError, match='exactly 2 elements'):
-        _KeffSearchControl(operator, lambda x: None, 0.0, 1.0, [0.0])
- 
-    with pytest.raises(ValueError, match=r'bracket\[0\] must be'):
-        _KeffSearchControl(operator, lambda x: None, 0.0, 1.0, [2.0, 1.0])

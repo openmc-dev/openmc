@@ -1,5 +1,6 @@
 #include "openmc/dagmc.h"
 
+#include <array>
 #include <cassert>
 
 #include "openmc/constants.h"
@@ -24,22 +25,6 @@
 #include <sstream>
 #include <string>
 
-namespace openmc {
-
-#ifdef OPENMC_DAGMC_ENABLED
-const bool DAGMC_ENABLED = true;
-#else
-const bool DAGMC_ENABLED = false;
-#endif
-
-#ifdef OPENMC_UWUW_ENABLED
-const bool UWUW_ENABLED = true;
-#else
-const bool UWUW_ENABLED = false;
-#endif
-
-} // namespace openmc
-
 #ifdef OPENMC_DAGMC_ENABLED
 
 namespace openmc {
@@ -62,9 +47,10 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
-    if (!starts_with(filename_, "/")) {
+    std::filesystem::path p(filename_);
+    if (p.is_relative()) {
       std::filesystem::path d(dir_name(settings::path_input));
-      filename_ = (d / filename_).string();
+      filename_ = (d / p).string();
     }
   } else {
     fatal_error("Must specify a file for the DAGMC universe");
@@ -78,6 +64,10 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
   adjust_material_ids_ = false;
   if (check_for_node(node, "auto_mat_ids")) {
     adjust_material_ids_ = get_node_value_bool(node, "auto_mat_ids");
+  }
+
+  if (check_for_node(node, "length_multiplier")) {
+    length_multiplier_ = std::stod(get_node_value(node, "length_multiplier"));
   }
 
   // Get material assignment overrides from nested DAGMC cell elements.
@@ -153,19 +143,21 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
   initialize(material_overrides, temperature_overrides, density_overrides);
 }
 
-DAGUniverse::DAGUniverse(
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
+DAGUniverse::DAGUniverse(const std::string& filename, bool auto_geom_ids,
+  bool auto_mat_ids, double length_multiplier)
   : filename_(filename), adjust_geometry_ids_(auto_geom_ids),
-    adjust_material_ids_(auto_mat_ids)
+    adjust_material_ids_(auto_mat_ids), length_multiplier_(length_multiplier)
 {
   set_id();
   initialize();
 }
 
 DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
+  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids,
+  double length_multiplier)
   : dagmc_instance_(dagmc_ptr), filename_(filename),
-    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
+    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids),
+    length_multiplier_(length_multiplier)
 {
   MaterialOverrides material_overrides;
   TemperatureOverrides temperature_overrides;
@@ -224,6 +216,28 @@ void DAGUniverse::init_dagmc()
   }
   moab::ErrorCode rval = dagmc_instance_->load_file(filename_.c_str());
   MB_CHK_ERR_CONT(rval);
+
+  if (length_multiplier_ != 1.0) {
+    moab::Range verts;
+    rval =
+      dagmc_instance_->moab_instance()->get_entities_by_dimension(0, 0, verts);
+    MB_CHK_ERR_CONT(rval);
+
+    for (auto vert : verts) {
+      std::array<double, 3> coord;
+      rval =
+        dagmc_instance_->moab_instance()->get_coords(&vert, 1, coord.data());
+      MB_CHK_ERR_CONT(rval);
+
+      for (auto& c : coord) {
+        c *= length_multiplier_;
+      }
+
+      rval =
+        dagmc_instance_->moab_instance()->set_coords(&vert, 1, coord.data());
+      MB_CHK_ERR_CONT(rval);
+    }
+  }
 
   // initialize acceleration data structures
   rval = dagmc_instance_->init_OBBTree();
@@ -579,6 +593,7 @@ void DAGUniverse::to_hdf5(hid_t universes_group) const
     group, "auto_geom_ids", static_cast<int>(adjust_geometry_ids_));
   write_attribute(
     group, "auto_mat_ids", static_cast<int>(adjust_material_ids_));
+  write_attribute(group, "length_multiplier", length_multiplier_);
 
   close_group(group);
 }

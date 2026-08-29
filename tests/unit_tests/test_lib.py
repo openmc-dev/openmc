@@ -315,6 +315,15 @@ def test_settings(lib_init):
     settings.seed = 11
 
 
+def test_feature_enabled():
+    assert isinstance(openmc.lib.feature_enabled('dagmc'), bool)
+    assert isinstance(openmc.lib.feature_enabled('libmesh'), bool)
+    assert isinstance(openmc.lib.feature_enabled('strict_fp'), bool)
+    assert isinstance(openmc.lib.feature_enabled('uwuw'), bool)
+    with pytest.raises(exc.InvalidArgumentError, match="Unknown build feature"):
+        openmc.lib.feature_enabled('not-a-feature')
+
+
 def test_tally_mapping(lib_init):
     tallies = openmc.lib.tallies
     assert isinstance(tallies, Mapping)

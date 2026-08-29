@@ -746,6 +746,43 @@ def test_material_volumes_outside_geometry():
     assert found_material
 
 
+@pytest.mark.skipif(not openmc.lib.feature_enabled('dagmc'), reason="DAGMC not enabled.")
+def test_material_volumes_outside_dagmc_geometry():
+    """Test a mesh extending outside a root DAGMC universe."""
+    openmc.reset_auto_ids()
+
+    dagmc_path = (Path(__file__).parents[1] /
+                  'regression_tests/dagmc/legacy/dagmc.h5m')
+    dagmc_universe = openmc.DAGMCUniverse(dagmc_path)
+
+    fuel = openmc.Material(name='no-void fuel')
+    fuel.add_nuclide('U235', 0.03)
+    fuel.add_nuclide('U238', 0.97)
+    fuel.add_nuclide('O16', 2.0)
+    water = openmc.Material(name='41')
+    water.add_nuclide('H1', 2.0)
+    water.add_element('O', 1.0)
+
+    model = openmc.Model(
+        geometry=openmc.Geometry(dagmc_universe),
+        materials=[fuel, water],
+    )
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = dagmc_universe.bounding_box.lower_left - 5.0
+    mesh.upper_right = dagmc_universe.bounding_box.upper_right + 5.0
+    mesh.dimension = (3, 3, 3)
+
+    volumes = mesh.material_volumes(
+        model, n_samples=(4, 4, 4), output=False)
+
+    assert any(None in dict(volumes.by_element(i))
+               for i in range(volumes.num_elements))
+    for i, element_volume in enumerate(mesh.volumes.ravel()):
+        assert sum(dict(volumes.by_element(i)).values()) == pytest.approx(
+            element_volume)
+
+
 def test_material_volumes_cylindrical_mesh(sphere_model):
     """Test the material_volumes method on a cylindrical mesh"""
     cyl_mesh = openmc.CylindricalMesh(

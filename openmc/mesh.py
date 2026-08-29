@@ -453,7 +453,8 @@ class MeshBase(IDManagerMixin, ABC):
         rays are used: one set parallel to the x-axis, one parallel to the
         y-axis, and one parallel to the z-axis. Regions of the mesh that are
         outside the model geometry are treated as void, equivalent to a cell
-        with no material.
+        with no material. Universe fills within the model must still define all
+        enclosed space.
 
         .. versionadded:: 0.15.1
 

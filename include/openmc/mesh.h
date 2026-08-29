@@ -256,6 +256,7 @@ public:
   //! Determine volume of materials within each mesh element
   //!
   //! Portions of mesh elements outside the model geometry are treated as void.
+  //! Universe fills within the model must still define all enclosed space.
   //
   //! \param[in] nx Number of samples in x direction
   //! \param[in] ny Number of samples in y direction
@@ -270,6 +271,7 @@ public:
   //! Determine volume and bounding boxes of materials within each mesh element
   //!
   //! Portions of mesh elements outside the model geometry are treated as void.
+  //! Universe fills within the model must still define all enclosed space.
   //
   //! \param[in] nx Number of samples in x direction
   //! \param[in] ny Number of samples in y direction

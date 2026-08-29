@@ -522,6 +522,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
       Position r = p.r();
       Direction u = p.u();
       p.init_from_r_u(r, u);
+      p.coord(0).universe() = model::root_universe;
     };
 
     for (int axis = 0; axis < 3; ++axis) {
@@ -612,8 +613,13 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           // Determine particle's location
           bool inside_model = exhaustive_find_cell(p, verbose);
 
-          if (inside_model)
+          if (inside_model) {
             initialize_cell_state();
+          } else {
+            // Clear any partial descent into nested universes before searching
+            // for the first root-universe boundary from undefined space.
+            reset_geometry_state();
+          }
 
           // Physical position through which volume has been accumulated. This
           // differs by TINY_BIT from p.r() after crossing a surface.

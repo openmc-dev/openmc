@@ -260,7 +260,7 @@ public:
   //!                          element
   //! \param[inout] materials Array storing material indices
   //! \param[inout] volumes Array storing volumes
-  void material_volumes(int nx, int ny, int nz, int max_materials,
+  virtual void material_volumes(int nx, int ny, int nz, int max_materials,
     int32_t* materials, double* volumes) const;
 
   //! Determine volume and bounding boxes of materials within each mesh element
@@ -273,7 +273,7 @@ public:
   //! \param[inout] materials Array storing material indices
   //! \param[inout] volumes Array storing volumes
   //! \param[inout] bboxes Array storing bounding boxes (n_elems, table_size, 6)
-  void material_volumes(int nx, int ny, int nz, int max_materials,
+  virtual void material_volumes(int nx, int ny, int nz, int max_materials,
     int32_t* materials, double* volumes, double* bboxes) const;
 
   //! Determine bounding box of mesh
@@ -822,6 +822,88 @@ private:
   //! Setup method for the mesh. Builds data structures,
   //! sets up element mapping, creates bounding boxes, etc.
   virtual void initialize() = 0;
+};
+
+// Abstract class for meshes over directions (points on the unit sphere),
+// as opposed to meshes over volumes.
+class AngularMesh : public Mesh {
+public:
+  AngularMesh() { n_dimension_ = 2; }
+  AngularMesh(pugi::xml_node node) : Mesh(node) { n_dimension_ = 2; }
+  AngularMesh(hid_t group) : Mesh(group) { n_dimension_ = 2; }
+
+  // Angular meshes partition direction space, not a volume.
+  // Therefore, "bin crossing" methods are not used; only the "get_bin" method.
+  void bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const override
+  {
+    fatal_error("Angular meshes do not support spatial tracklength tallies.");
+  }
+
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override
+  {
+    fatal_error("Angular meshes do not support surface-crossing tallies.");
+  }
+
+  int n_surface_bins() const override { return 0; }
+
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override
+  {
+    return {{}, {}};
+  }
+
+  void material_volumes(int nx, int ny, int nz, int max_materials,
+    int32_t* materials, double* volumes) const override
+  {
+    fatal_error("material_volumes() is not supported for angular meshes");
+  }
+
+  void material_volumes(int nx, int ny, int nz, int max_materials,
+    int32_t* materials, double* volumes, double* bboxes) const override
+  {
+    fatal_error("material_volumes() is not supported for angular meshes");
+  }
+
+  std::string bin_label(int bin) const override
+  {
+    return fmt::format("Element Index ({})", bin);
+  }
+
+  Position lower_left() const override { return {-1., -1., -1.}; }
+  Position upper_right() const override { return {1., 1., 1.}; }
+};
+
+class UnitSpherePointset : public AngularMesh {
+public:
+  UnitSpherePointset() = default;
+  explicit UnitSpherePointset(vector<Direction> points);
+  UnitSpherePointset(pugi::xml_node node);
+  UnitSpherePointset(hid_t group);
+
+  //! TODO: add sampling from within a spherical Voronoi cell
+  Position sample_element(int32_t bin, uint64_t* seed) const override
+  {
+    fatal_error(
+      "Sampling over a UnitSpherePointset angular mesh is not supported");
+  }
+
+  int get_bin(Direction u) const override;
+
+  int n_bins() const override { return static_cast<int>(points_.size()); }
+
+  double volume(int bin) const override
+  {
+    fatal_error("Volume calculation over UnitSpherePointset is not supported");
+  }
+
+  std::string get_mesh_type() const override { return mesh_type; }
+  static const std::string mesh_type;
+
+  void to_hdf5_inner(hid_t group) const override;
+
+  vector<Position> points_;
 };
 
 #ifdef OPENMC_DAGMC_ENABLED

@@ -307,6 +307,8 @@ class MeshBase(IDManagerMixin, ABC):
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'unstructured':
             return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
+        elif mesh_type == 'angular_pointset':
+            return UnitSpherePointset.from_hdf5(group, mesh_id, mesh_name)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
@@ -354,6 +356,8 @@ class MeshBase(IDManagerMixin, ABC):
             mesh = SphericalMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
             mesh = UnstructuredMesh.from_xml_element(elem)
+        elif mesh_type == 'angular_pointset':
+            mesh = UnitSpherePointset.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
 
@@ -3351,6 +3355,193 @@ class UnstructuredMesh(MeshBase):
         options = get_text(elem, "options")
 
         return cls(filename, library, mesh_id, '', length_multiplier, options)
+
+class AngularMesh(MeshBase):
+    """Base class for angular meshes of the unit sphere.
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    lower_left : Iterable of float
+        The lower-left coordinates ([-1.0, -1.0, -1.0] for the unit sphere)
+    upper_right : Iterable of float
+        The upper-right coordinates ([1.0, 1.0, 1.0] for the unit sphere)
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1, 1), ...]
+    n_elements : int
+        Number of elements in the mesh
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @property
+    @abstractmethod
+    def dimension(self):
+        pass
+
+    @property
+    @abstractmethod
+    def n_dimension(self):
+        pass
+
+    @property
+    @abstractmethod
+    def axis_labels(self):
+        """tuple of str : Names of the mesh axes, one per dimension."""
+        pass
+
+    @property
+    def n_elements(self):
+        pass
+    
+    # override non-applicable methods of MeshBase
+    def get_homogenized_materials(self, *args, **kwargs):
+        raise NotImplementedError(
+            "Material attributes are not available for angular meshes.")
+
+    def material_volumes(self, *args, **kwargs):
+        raise NotImplementedError(
+            "Material attributes are not available for angular meshes.")
+
+class UnitSpherePointset(AngularMesh):
+    """Set of points on the unit sphere. Used for mesh-based angular flux 
+    tallying based on a Voronoi diagram generated from the pointset.
+
+    Parameters
+    ----------
+    points : iterable of float
+        Unit-vector endpoints constituting the mesh. Must be either a numpy 
+        array or a nested list and have shape (N,3), where each row provides 
+        the [x, y, z] components of one such vector.
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    points : numpy array of float
+        Array storing the direction vectors constituting the mesh.
+    """
+    def __init__(
+            self, 
+            points, 
+            mesh_id: int | None = None,
+            name: str = '',
+        ):
+        super().__init__(mesh_id, name)
+        self.points = points
+
+    @property
+    def points(self):
+        return self._points
+    
+    @points.setter
+    def points(self, pts):
+        cv.check_type("unit vector pointset", pts, Iterable, Real)
+        pts = np.asarray(pts)
+        if pts.shape != (len(pts),3):
+            raise ValueError(
+                "Unit vector array for UnitSpherePointset must have shape (N,3).")
+        self._points = pts
+
+    @property
+    def n_elements(self):
+        return len(self.points)
+    
+    @property
+    def dimension(self):
+        return (self.n_elements,)
+
+    @property
+    def n_dimension(self):
+        return 2
+    
+    @property
+    def lower_left(self):
+        return np.array((-1., -1., -1.))
+    
+    @property
+    def upper_right(self):
+        return np.array((1., 1., 1.))
+    
+    @property
+    def axis_labels(self):
+        return ('element_index',)
+    
+    @property
+    def indices(self):
+        return [(i,) for i in range(self.n_elements)]
+    
+    @classmethod
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
+        points = np.asarray(group['points'][()])
+        n = points.size // 3
+        points = points.reshape(n, 3)
+
+        return cls(points, mesh_id=mesh_id, name=name)
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing mesh data
+
+        """
+        element = super().to_xml_element()
+        element.set("type", "angular_pointset")
+
+        # flatten to a (3*N,) array
+        pts = self.points.flatten()
+
+        subelement = ET.SubElement(element, "points")
+        subelement.text = ' '.join(map(str, pts))
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate a unit sphere pointset from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.UnitSpherePointset
+            Unit-sphere pointset object
+
+        """
+        mesh_id = int(get_text(elem, 'id'))
+
+        points = np.array(get_elem_list(elem, "points", float))
+        n = points.size // 3
+        points = points.reshape(n, 3)
+
+        return cls(points, mesh_id=mesh_id)
 
 
 def _read_meshes(elem):

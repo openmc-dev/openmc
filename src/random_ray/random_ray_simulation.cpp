@@ -61,13 +61,14 @@ void validate_random_ray_inputs()
       case FilterType::ENERGY:
       case FilterType::MATERIAL:
       case FilterType::MESH:
+      case FilterType::MESH_ANGULAR:
       case FilterType::UNIVERSE:
       case FilterType::PARTICLE:
         break;
       default:
         fatal_error("Invalid filter specified. Only cell, cell_instance, "
-                    "distribcell, energy, material, mesh, and universe filters "
-                    "are supported in random ray mode.");
+                    "distribcell, energy, material, mesh, mesh_angular, and "
+                    "universe filters are supported in random ray mode.");
       }
     }
   }
@@ -445,7 +446,7 @@ void RandomRaySimulation::simulate()
       domain_->finalize_discovered_source_regions();
 
       // Normalize scalar flux and update volumes
-      domain_->normalize_scalar_flux_and_volumes(
+      domain_->normalize_flux_and_volumes(
         settings::n_particles * RandomRay::distance_active_);
 
       // Add source to scalar flux, compute number of FSR hits

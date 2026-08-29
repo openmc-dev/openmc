@@ -113,7 +113,7 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   }
 }
 
-void LinearSourceDomain::normalize_scalar_flux_and_volumes(
+void LinearSourceDomain::normalize_flux_and_volumes(
   double total_active_distance_per_iteration)
 {
   double normalization_factor = 1.0 / total_active_distance_per_iteration;

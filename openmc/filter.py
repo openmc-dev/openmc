@@ -27,7 +27,7 @@ _FILTER_TYPES = (
     'delayedgroup', 'energyfunction', 'cellfrom', 'materialfrom', 'legendre',
     'spatiallegendre', 'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
     'particleproduction', 'cellinstance', 'collision', 'time', 'parentnuclide',
-    'weight', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
+    'weight', 'meshangular', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
 )
 
 def _mesh_current_names(mesh):
@@ -912,6 +912,11 @@ class MeshFilter(Filter):
     @mesh.setter
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        if isinstance(mesh, openmc.AngularMesh):
+            raise TypeError(
+                "Angular mesh classes cannot be used with spatial MeshFilter classes."
+            )
+        
         self._mesh = mesh
         if isinstance(mesh, openmc.UnstructuredMesh):
             if mesh.has_statepoint_data:
@@ -1137,6 +1142,10 @@ class MeshMaterialFilter(MeshFilter):
     @mesh.setter
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        if isinstance(mesh, openmc.AngularMesh):
+            raise TypeError(
+                "Angular mesh classes cannot be used with spatial MeshFilter classes."
+            )
         self._mesh = mesh
 
     @Filter.bins.setter
@@ -1279,6 +1288,10 @@ class MeshSurfaceFilter(MeshFilter):
     @MeshFilter.mesh.setter
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        if isinstance(mesh, openmc.AngularMesh):
+            raise TypeError(
+                "Angular mesh classes cannot be used with spatial MeshFilter classes."
+            )
         self._mesh = mesh
 
         # Take the product of mesh indices and surface-crossing names, using
@@ -1348,6 +1361,165 @@ class MeshSurfaceFilter(MeshFilter):
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         return pd.concat([df, pd.DataFrame(filter_dict)])
+
+class MeshAngularFilter(MeshFilter):
+    """Bins tally events based on incident particle's direction, using 
+    an angular mesh.
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    rotation : Iterable of float
+        This array specifies the angles in degrees about the x, y, and z axes
+        that the mesh should be rotated. A rotation matrix can also be 
+        specified directly by setting this attribute to a nested list 
+        (or 2D numpy array) that specifies each element of the matrix. See 
+        also: MeshFilter.rotation.
+    id : int
+        Unique identifier for the filter
+    bins : list of tuple
+        A list of mesh indices / surfaces for each filter bin, e.g. [(1, 1,
+        'x-min out'), (1, 1, 'x-min in'), ...]. Surface names use the mesh's
+        axis labels (e.g. r/phi/z for a cylindrical mesh).
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    def __init__(self, mesh, filter_id=None):
+        self.mesh = mesh
+        self.id = filter_id
+        self._rotation = None
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string += '{: <16}=\t{}\n'.format('\tRotation', self.rotation)
+        return string
+    
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, mesh):
+        cv.check_type('filter mesh', mesh, openmc.UnitSpherePointset)
+        self._mesh = mesh
+        self.bins = list(mesh.indices)
+
+    def translation(self):
+        raise AttributeError(
+            "MeshAngularFilter instances do not permit translation.")
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        if 'meshes' not in kwargs:
+            raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
+                             "argument.")
+
+        mesh_id = group['bins'][()]
+        mesh_obj = kwargs['meshes'][mesh_id]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+
+        out = cls(mesh_obj, filter_id=filter_id)
+
+        rotation = group.get('rotation')
+        if rotation:
+            out.rotation = rotation[()]
+
+        return out
+    
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for MeshAngularFilter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with columns describing the mesh cell indices
+            corresponding to each filter bin. Column names are element index for
+            AngularMesh). The number of rows in the DataFrame is the same
+            as the total number of bins in the corresponding tally, with the
+            filter bin appropriately tiled to map to the corresponding tally
+            bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+        # Initialize dictionary to build Pandas Multi-index column
+        filter_dict = {}
+
+        # Append mesh ID as outermost index of multi-index
+        mesh_key = f'mesh {self.mesh.id}'
+
+        # Determine index base (0-based for angular meshes)
+        idx_start = 0
+
+        # Generate a multi-index sub-column for each axis
+        for label, dim_size in zip(self.mesh.axis_labels, self.mesh.dimension):
+            filter_dict[mesh_key, label] = _repeat_and_tile(
+                np.arange(idx_start, idx_start + dim_size), stride, data_size)
+            stride *= dim_size
+
+        return pd.DataFrame(filter_dict)
+    
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing filter data
+
+        """
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+        subelement = ET.SubElement(element, 'bins')
+        subelement.text = str(self.mesh.id)
+        if self.rotation is not None:
+            element.set('rotation', ' '.join(map(str, self.rotation.ravel())))
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshFilter:
+        mesh_id = int(get_text(elem, 'bins'))
+        mesh_obj = kwargs['meshes'][mesh_id]
+        filter_id = int(get_text(elem, "id"))
+        out = cls(mesh_obj, filter_id=filter_id)
+
+        rotation = get_elem_list(elem, 'rotation', float) or []
+        if rotation:
+            if len(rotation) == 3:
+                out.rotation = rotation
+            elif len(rotation) == 9:
+                out.rotation = np.array(rotation).reshape(3, 3)
+        return out
 
 
 class CollisionFilter(Filter):

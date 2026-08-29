@@ -2,6 +2,7 @@
 #define OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H
 
 #include "openmc/constants.h"
+#include "openmc/mesh.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 #include "openmc/random_ray/parallel_map.h"
@@ -30,12 +31,13 @@ public:
   virtual void update_single_neutron_source(SourceRegionHandle& srh);
   virtual void update_all_neutron_sources();
   void compute_k_eff();
-  virtual void normalize_scalar_flux_and_volumes(
+  virtual void normalize_flux_and_volumes(
     double total_active_distance_per_iteration);
 
   int64_t add_source_to_scalar_flux();
   virtual void batch_reset();
   void convert_source_regions_to_tallies(int64_t start_sr_id);
+  void initialize_angular_quadrature();
   void reset_tally_volumes();
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
@@ -72,6 +74,10 @@ public:
   SourceRegionKey lookup_source_region_key(const GeometryState& p) const;
   int64_t lookup_mesh_bin(int64_t sr, Position r) const;
   int lookup_mesh_idx(int64_t sr) const;
+  int lookup_angular_bin(Direction u) const;
+  Direction angular_quadrature_direction(int a) const;
+  bool tally_angular_flux_applies(
+    int cell_idx, int material, int mesh_idx) const;
 
   //----------------------------------------------------------------------------
   // Static Data members
@@ -173,7 +179,15 @@ protected:
 
   //----------------------------------------------------------------------------
   // Private data members
-  int negroups_; // Number of energy groups in simulation
+  int negroups_;    // Number of energy groups in simulation
+  int nangles_ {1}; // Number of bins for any angular flux tallies
+  const UnitSpherePointset* angular_mesh_ {nullptr};
+
+  vector<bool> tally_is_angular_;
+  std::unordered_set<int32_t> angular_target_cells_;
+  std::unordered_set<int32_t> angular_target_materials_;
+  std::unordered_set<int32_t> angular_target_meshes_;
+  bool tally_angular_flux_everywhere_ {false};
 
   double
     simulation_volume_; // Total physical volume of the simulation domain, as

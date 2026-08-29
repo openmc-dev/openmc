@@ -64,52 +64,34 @@ def means_by_group(statepoint, name):
 
 
 @pytest.mark.parametrize("score", SCORES)
-def test_bin_order(run_in_tmpdir, geometry, score):
-    """Listing the groups out of order must not move the results.
+def test_delayed_group_bins(run_in_tmpdir, geometry, score):
+    """Delayed group labels determine values independently of bin order.
 
     All tallies come from a single run, so they see the same histories and the
-    same scoring events. Corresponding groups must therefore agree exactly,
-    not merely within statistics.
+    same scoring events. Corresponding groups must therefore agree within
+    statistics, and all selected groups must sum to the unfiltered result.
     """
     model = build_model(geometry, score)
     sp_file = model.run()
     with openmc.StatePoint(sp_file) as sp:
         ascending = means_by_group(sp, "ascending")
         shuffled = means_by_group(sp, "shuffled")
+        subset = means_by_group(sp, "subset")
+        unfiltered = sp.get_tally(name="unfiltered").mean.ravel()[0]
 
-    # Guard against a vacuous pass if the run were too short to populate bins
+    # Guard against a vacuous pass if the run were too short to populate bins.
     assert all(value > 0.0 for value in ascending.values())
 
+    # Listing groups out of order must not move the corresponding results.
     assert sorted(shuffled) == sorted(ascending)
     for group in GROUPS_ASCENDING:
         assert shuffled[group] == pytest.approx(ascending[group], rel=1e-6)
 
-
-@pytest.mark.parametrize("score", SCORES)
-def test_bin_subset(run_in_tmpdir, geometry, score):
-    """A partial selection must reproduce those groups from the full list.
-
-    A bin index computed as ``group - 1`` also writes out of bounds here,
-    since group 4 is bin 3 of a two bin filter.
-    """
-    model = build_model(geometry, score)
-    sp_file = model.run()
-    with openmc.StatePoint(sp_file) as sp:
-        ascending = means_by_group(sp, "ascending")
-        subset = means_by_group(sp, "subset")
-
+    # A partial selection must reproduce those groups from the full list. A
+    # group-to-bin index assumption would write out of bounds for group 4.
     assert sorted(subset) == sorted(GROUPS_SUBSET)
     for group in GROUPS_SUBSET:
         assert subset[group] == pytest.approx(ascending[group], rel=1e-6)
 
-
-@pytest.mark.parametrize("score", SCORES)
-def test_bins_sum_to_unfiltered(run_in_tmpdir, geometry, score):
-    """Every delayed neutron lands in exactly one bin and none are lost."""
-    model = build_model(geometry, score)
-    sp_file = model.run()
-    with openmc.StatePoint(sp_file) as sp:
-        ascending = means_by_group(sp, "ascending")
-        unfiltered = sp.get_tally(name="unfiltered").mean.ravel()[0]
-
+    # Every delayed neutron lands in exactly one bin and none are lost.
     assert sum(ascending.values()) == pytest.approx(unfiltered, rel=1e-6)

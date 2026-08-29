@@ -478,6 +478,13 @@ not installed. For offline builds, install the dependencies ahead of time or
 provide unpacked sources through ``FETCHCONTENT_SOURCE_DIR_FMT``,
 ``FETCHCONTENT_SOURCE_DIR_PUGIXML``, and ``FETCHCONTENT_SOURCE_DIR_CATCH2``.
 
+Two further ``FetchContent`` variables are useful when packaging OpenMC.
+Setting ``FETCHCONTENT_FULLY_DISCONNECTED=ON`` makes configuration fail rather
+than silently download anything, which is typically what is wanted in a
+sandboxed build that must rely only on installed packages. Setting
+``FETCHCONTENT_BASE_DIR`` to a shared location allows downloads to be reused
+across multiple build directories.
+
 To set any of these options (e.g., turning on profiling), the following form
 should be used:
 

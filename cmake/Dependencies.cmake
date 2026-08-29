@@ -6,25 +6,29 @@ if(POLICY CMP0135)
   cmake_policy(SET CMP0135 NEW)
 endif()
 
-# Declare all dependencies before making any of them available. Parent projects
-# can then override these declarations according to FetchContent's
-# first-to-declare behavior.
+# Declare every dependency before making any of them available. FetchContent
+# honors the first declaration for a given name, so a project that pulls OpenMC
+# in as a subproject can override any of these by declaring them beforehand.
 FetchContent_Declare(
   pugixml
-  URL https://github.com/zeux/pugixml/archive/ee86beb30e4973f5feffe3ce63bfa4fbadf72f38.tar.gz
-  URL_HASH SHA256=51c102d4187fac99daa38af281b0772c5e6c586f65004cdc63f8f2e011a21492
+  URL https://github.com/zeux/pugixml/archive/refs/tags/v1.15.tar.gz
+  URL_HASH SHA256=b39647064d9e28297a34278bfb897092bf33b7c487906ddfc094c9e8868bddcb
 )
 FetchContent_Declare(
   fmt
-  URL https://github.com/fmtlib/fmt/archive/0c9fce2ffefecfdce794e1859584e25877b7b592.tar.gz
-  URL_HASH SHA256=f94052c10b611fd374194ca6e0dc4d159459c0b370abfe9002c13058863b7039
+  URL https://github.com/fmtlib/fmt/archive/refs/tags/11.0.2.tar.gz
+  URL_HASH SHA256=6cb1e6d37bdcb756dbbe59be438790db409cdb4868c66e888d5df9f13f7c027f
 )
 FetchContent_Declare(
   Catch2
-  URL https://github.com/catchorg/Catch2/archive/5a40b2275caa05cf809bf04df848764a9d7df2e2.tar.gz
-  URL_HASH SHA256=be038aac877893ea0fa02cdb5f24a46db03085b7f053c8b78ef7bd437c8c6c22
+  URL https://github.com/catchorg/Catch2/archive/refs/tags/v3.16.0.tar.gz
+  URL_HASH SHA256=0957cae5821b17ce07f0833aaa52b5137643a8382203221f363a8303c109af34
 )
 
+# Make a dependency available as ${target}, preferring an installed package and
+# falling back to the pinned sources declared above. LEGACY_TARGET names an
+# unnamespaced target exported by older releases of a dependency, which is
+# aliased to ${target} so that callers only ever refer to the namespaced name.
 function(openmc_find_or_fetch name target)
   set(one_value_args LEGACY_TARGET VERSION)
   cmake_parse_arguments(DEPENDENCY "" "${one_value_args}" "" ${ARGN})
@@ -41,32 +45,26 @@ function(openmc_find_or_fetch name target)
     else()
       find_package(${name} CONFIG QUIET NO_SYSTEM_ENVIRONMENT_PATH)
     endif()
-  endif()
 
-  if(DEPENDENCY_LEGACY_TARGET
-     AND TARGET "${DEPENDENCY_LEGACY_TARGET}"
-     AND NOT TARGET "${target}")
-    add_library("${target}" ALIAS "${DEPENDENCY_LEGACY_TARGET}")
-  endif()
-
-  if(TARGET "${target}")
-    set(version_variable "${name}_VERSION")
-    if(DEFINED ${version_variable})
-      message(STATUS "Found ${name} ${${version_variable}}")
-    else()
-      message(STATUS "Found ${name}")
+    if(DEPENDENCY_LEGACY_TARGET
+       AND TARGET "${DEPENDENCY_LEGACY_TARGET}"
+       AND NOT TARGET "${target}")
+      add_library("${target}" ALIAS "${DEPENDENCY_LEGACY_TARGET}")
     endif()
-    return()
+
+    if(TARGET "${target}")
+      set(version_variable "${name}_VERSION")
+      if(DEFINED ${version_variable})
+        message(STATUS "Found ${name} ${${version_variable}}")
+      else()
+        message(STATUS "Found ${name}")
+      endif()
+      return()
+    endif()
   endif()
 
   message(STATUS "Fetching ${name}")
   FetchContent_MakeAvailable(${name})
-
-  if(DEPENDENCY_LEGACY_TARGET
-     AND TARGET "${DEPENDENCY_LEGACY_TARGET}"
-     AND NOT TARGET "${target}")
-    add_library("${target}" ALIAS "${DEPENDENCY_LEGACY_TARGET}")
-  endif()
 
   if(NOT TARGET "${target}")
     message(FATAL_ERROR "${name} did not provide expected target ${target}")

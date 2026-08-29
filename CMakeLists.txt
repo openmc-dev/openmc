@@ -51,6 +51,24 @@ message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 message(STATUS "OPENMC_FORCE_FETCHCONTENT ${OPENMC_FORCE_FETCHCONTENT}")
 message(STATUS "OPENMC_ENABLE_STRICT_FP ${OPENMC_ENABLE_STRICT_FP}")
 
+# Warnings for options removed along with the vendored git submodules
+if(DEFINED OPENMC_FORCE_VENDORED_LIBS)
+  message(WARNING "The OpenMC CMake option 'OPENMC_FORCE_VENDORED_LIBS' has "
+    "been deprecated. Its value will be ignored. Dependencies are no longer "
+    "vendored as git submodules. "
+    "Please use '-DOPENMC_FORCE_FETCHCONTENT=${OPENMC_FORCE_VENDORED_LIBS}' "
+    "instead.")
+  unset(OPENMC_FORCE_VENDORED_LIBS CACHE)
+endif()
+
+if(DEFINED GIT_SUBMODULE)
+  message(WARNING "The OpenMC CMake option 'GIT_SUBMODULE' has been "
+    "deprecated. Its value (${GIT_SUBMODULE}) will be ignored. OpenMC no "
+    "longer uses git submodules for its dependencies, so they are never "
+    "checked out during configuration.")
+  unset(GIT_SUBMODULE CACHE)
+endif()
+
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
   if(DEFINED ${OLD_OPT})

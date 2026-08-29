@@ -29,11 +29,6 @@ Python 3.11 is no longer supported; OpenMC now requires Python 3.12 or newer
 and adds support for Python 3.14. The documented minimum build environment is
 GCC 11.4 and CMake 3.22.
 
-Git submodules are no longer used for fmt, pugixml, and Catch2. CMake now uses
-installed packages when available and downloads pinned sources otherwise. The
-``OPENMC_FORCE_VENDORED_LIBS`` CMake option has been replaced by
-``OPENMC_FORCE_FETCHCONTENT``.
-
 The Python :class:`ParticleType` interface is now a regular class backed by
 Particle Data Group (PDG) Monte Carlo numbers rather than an ``IntEnum``. Particle
 types stored in OpenMC output files now use PDG numbers, and the corresponding

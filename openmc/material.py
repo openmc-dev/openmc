@@ -538,7 +538,8 @@ class Material(IDManagerMixin):
                     f'{", ".join(sorted(missing_data))} in material '
                     f'ID={self.id}. These nuclides make up a mass fraction of '
                     f'{missing_frac:.3e} and are neglected in the material '
-                    'attenuation coefficient.'
+                    'attenuation coefficient.',
+                    stacklevel=2,
                 )
 
         # Build union energy grid across all nuclides

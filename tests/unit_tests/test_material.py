@@ -1,5 +1,6 @@
 from collections import defaultdict
 from pathlib import Path
+import warnings
 
 import pytest
 
@@ -943,7 +944,10 @@ def test_get_photon_contact_dose_rate_missing_attenuation():
         m_trace.add_nuclide(nuclide, percent)
     m_trace.set_density('atom/b-cm', 1.0)
 
-    cdr = m_trace.get_photon_contact_dose_rate('absorbed-air')
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        cdr = m_trace.get_photon_contact_dose_rate('absorbed-air')
+    assert not caught
     assert cdr == pytest.approx(reference, rel=1e-10)
 
     # A non-trace amount of such nuclides is worth telling the user about

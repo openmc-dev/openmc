@@ -26,7 +26,7 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr array<int, 2> VERSION_STATEPOINT {18, 2};
+constexpr array<int, 2> VERSION_STATEPOINT {18, 3};
 constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 1};
 constexpr array<int, 2> VERSION_TRACK {3, 1};
 constexpr array<int, 2> VERSION_SUMMARY {6, 1};

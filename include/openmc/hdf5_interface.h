@@ -1,13 +1,14 @@
 #ifndef OPENMC_HDF5_INTERFACE_H
 #define OPENMC_HDF5_INTERFACE_H
 
-#include <algorithm> // for min
+#include <algorithm> // for min, max, find
 #include <complex>
 #include <cstddef>
 #include <cstring> // for strlen
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
@@ -185,12 +186,14 @@ inline void read_attribute(hid_t obj_id, const char* name, std::string& str)
 {
   // Create buffer to read data into
   auto n = attribute_typesize(obj_id, name);
-  char* buffer = new char[n];
+  std::vector<char> buffer(n, '\0');
 
   // Read attribute and set string
-  read_attr_string(obj_id, name, n, buffer);
-  str = std::string {buffer, n};
-  delete[] buffer;
+  read_attr_string(obj_id, name, n, buffer.data());
+
+  // As in read_dataset, the string ends at the first null character
+  auto end = std::find(buffer.begin(), buffer.end(), '\0');
+  str = std::string {buffer.begin(), end};
 }
 
 // overload for vector<std::string>
@@ -247,7 +250,11 @@ inline void read_dataset(
 
   // Read attribute and set string
   read_string(obj_id, name, n, buffer.data(), indep);
-  str = std::string {buffer.begin(), buffer.end()};
+
+  // Fixed-length strings are null-padded, and an empty string is stored as a
+  // single null byte, so the string ends at the first null character
+  auto end = std::find(buffer.begin(), buffer.end(), '\0');
+  str = std::string {buffer.begin(), end};
 }
 
 // array version

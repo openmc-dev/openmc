@@ -1,6 +1,7 @@
 set(TEST_NAMES
   test_distribution
   test_file_utils
+  test_hdf5_interface  
   test_tally
   test_interpolate
   test_math

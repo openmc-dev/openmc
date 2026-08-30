@@ -1,5 +1,6 @@
 #include "openmc/hdf5_interface.h"
 
+#include <algorithm> // for max
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -587,17 +588,18 @@ void write_attr_int(hid_t obj_id, int ndim, const hsize_t* dims,
 
 void write_attr_string(hid_t obj_id, const char* name, const char* buffer)
 {
-  size_t n = strlen(buffer);
-  if (n > 0) {
-    // Set up appropriate datatype for a fixed-length string
-    hid_t datatype = H5Tcopy(H5T_C_S1);
-    H5Tset_size(datatype, n);
+  // As in write_string, an empty string is stored as a single null byte so that
+  // the attribute is always present in the file
+  size_t n = std::max(strlen(buffer), static_cast<size_t>(1));
 
-    write_attr(obj_id, 0, nullptr, name, datatype, buffer);
+  // Set up appropriate datatype for a fixed-length string
+  hid_t datatype = H5Tcopy(H5T_C_S1);
+  H5Tset_size(datatype, n);
 
-    // Free resources
-    H5Tclose(datatype);
-  }
+  write_attr(obj_id, 0, nullptr, name, datatype, buffer);
+
+  // Free resources
+  H5Tclose(datatype);
 }
 
 void write_dataset_lowlevel(hid_t group_id, int ndim, const hsize_t* dims,
@@ -662,17 +664,23 @@ void write_llong(hid_t group_id, int ndim, const hsize_t* dims,
 void write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
   const char* name, const char* buffer, bool indep)
 {
-  if (slen > 0) {
-    // Set up appropriate datatype for a fixed-length string
-    hid_t datatype = H5Tcopy(H5T_C_S1);
-    H5Tset_size(datatype, slen);
+  // HDF5 has no zero-size string datatype, so an empty string is stored as a
+  // single null byte and stripped back off when read. Skipping the write
+  // entirely would leave the dataset absent from the file, which every reader
+  // that expects it then has to guard against.
+  const char null_char = '\0';
+  const char* data = (slen > 0) ? buffer : &null_char;
+  size_t size = std::max(slen, static_cast<size_t>(1));
 
-    write_dataset_lowlevel(
-      group_id, ndim, dims, name, datatype, H5S_ALL, indep, buffer);
+  // Set up appropriate datatype for a fixed-length string
+  hid_t datatype = H5Tcopy(H5T_C_S1);
+  H5Tset_size(datatype, size);
 
-    // Free resources
-    H5Tclose(datatype);
-  }
+  write_dataset_lowlevel(
+    group_id, ndim, dims, name, datatype, H5S_ALL, indep, data);
+
+  // Free resources
+  H5Tclose(datatype);
 }
 
 void write_string(

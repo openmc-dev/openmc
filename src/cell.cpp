@@ -285,9 +285,7 @@ void Cell::to_hdf5(hid_t cell_group) const
   // Create a group for this cell.
   auto group = create_group(cell_group, fmt::format("cell {}", id_));
 
-  if (!name_.empty()) {
-    write_string(group, "name", name_, false);
-  }
+  write_string(group, "name", name_, false);
 
   write_dataset(group, "universe", model::universes[universe_]->id_);
 

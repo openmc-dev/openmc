@@ -48,8 +48,11 @@ def sum_functions(funcs):
 
         # Evaluate each function and add together.  Tabulated functions are
         # only evaluated where they are defined; values beyond a function's
-        # tabulated range do not contribute to the sum.
-        y = np.zeros_like(x)
+        # tabulated range do not contribute to the sum.  The accumulator uses
+        # a floating-point dtype since the combined functions (e.g.,
+        # polynomials) may return values that cannot be represented
+        # losslessly in the dtype of an integer-valued grid.
+        y = np.zeros_like(x, dtype=float)
         for f in funcs:
             if isinstance(f, Tabulated1D):
                 within = ((x >= f.x[0]) & (x <= f.x[-1])) | \

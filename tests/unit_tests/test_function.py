@@ -110,3 +110,20 @@ def test_sum_functions_polynomial():
     assert np.array_equal(s.x, np.array([2.0, 4.0]))
     assert s.y[0] == pytest.approx(10.0)
     assert s.y[1] == pytest.approx(19.0)
+
+
+def test_sum_functions_integer_grid():
+    """Integer-valued union grids combine with floating-point functions.
+
+    When the tabulated grid is integer-valued, the resulting union grid has an
+    integer dtype.  Combining such a function with a polynomial must not raise
+    a casting error and should return a floating-point result.
+    """
+    p = openmc.data.Polynomial((1.0, -0.5))
+    f = openmc.data.Tabulated1D([2, 4], [10, 20])
+
+    s = openmc.data.sum_functions([f, p])
+    assert np.array_equal(s.x, np.array([2, 4]))
+    assert s.y.dtype == np.float64
+    assert s.y[0] == pytest.approx(10.0)
+    assert s.y[1] == pytest.approx(19.0)

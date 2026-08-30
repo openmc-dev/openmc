@@ -58,6 +58,11 @@ constexpr double FP_COINCIDENT {1e-12};
 constexpr double TORUS_TOL {1e-10};
 constexpr double RADIAL_MESH_TOL {1e-10};
 
+// Tolerance on the normalized normal of a general plane for treating that
+// plane as axis-aligned when computing a bounding box. Matches the value of
+// Surface._atol used by PlaneMixin.bounding_box in openmc/surface.py.
+constexpr double PLANE_ALIGNMENT_TOL {1e-12};
+
 // Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
 

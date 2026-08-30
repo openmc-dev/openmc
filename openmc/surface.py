@@ -561,22 +561,18 @@ class PlaneMixin:
         nhat = self._get_normal()
         ll = np.array([-np.inf, -np.inf, -np.inf])
         ur = np.array([np.inf, np.inf, np.inf])
-        # If the plane is axis aligned, find the proper bounding box
-        if np.any(np.isclose(np.abs(nhat), 1., rtol=0., atol=self._atol)):
+        # A plane only bounds a half-space when its normal is parallel to a
+        # coordinate axis, in which case it bounds it along that axis alone.
+        aligned = np.isclose(np.abs(nhat), 1., rtol=0., atol=self._atol)
+        if aligned.any():
+            axis = int(np.argmax(aligned))
             sign = nhat.sum()
-            a, b, c, d = self._get_base_coeffs()
-            vals = [d/val if not np.isclose(val, 0., rtol=0., atol=self._atol)
-                    else np.nan for val in (a, b, c)]
-            if side == '-':
-                if sign > 0:
-                    ur = np.array([v if not np.isnan(v) else np.inf for v in vals])
-                else:
-                    ll = np.array([v if not np.isnan(v) else -np.inf for v in vals])
-            elif side == '+':
-                if sign > 0:
-                    ll = np.array([v if not np.isnan(v) else -np.inf for v in vals])
-                else:
-                    ur = np.array([v if not np.isnan(v) else np.inf for v in vals])
+            coeffs = self._get_base_coeffs()
+            intercept = coeffs[3]/coeffs[axis]
+            if (side == '+') == (sign > 0):
+                ll[axis] = intercept
+            else:
+                ur[axis] = intercept
 
         return BoundingBox(ll, ur)
 

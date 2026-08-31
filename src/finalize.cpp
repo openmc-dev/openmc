@@ -169,8 +169,8 @@ int openmc_finalize()
 
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};
-  data::temperature_min = 0.0;
-  data::temperature_max = INFTY;
+  data::temperature_min = INFTY;
+  data::temperature_max = 0.0;
   data::mg = {};
   model::root_universe = -1;
   model::plotter_seed = 1;

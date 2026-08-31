@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" depletable="true">
+      <density value="16.0" units="g/cm3"/>
+      <nuclide name="U235" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-7 -8" universe="1"/>
+    <cell id="2" material="void" region="7 -8" universe="1"/>
+    <cell id="3" material="void" region="1 -2 3 -4 5 -6 8" universe="1"/>
+    <surface id="1" type="x-plane" boundary="vacuum" coeffs="-16.0"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="16.0"/>
+    <surface id="3" type="y-plane" boundary="vacuum" coeffs="-16.0"/>
+    <surface id="4" type="y-plane" boundary="vacuum" coeffs="16.0"/>
+    <surface id="5" type="z-plane" boundary="vacuum" coeffs="-16.0"/>
+    <surface id="6" type="z-plane" boundary="vacuum" coeffs="16.0"/>
+    <surface id="7" type="implicit" coeffs="0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" isovalue="0.0">
+      <function>
+        <add>
+          <add>
+            <cos>
+              <div>
+                <mul>
+                  <scale value="6.283185307179586">
+                    <to_cache id="0">
+                      <scale value="0.125">
+                        <x/>
+                      </scale>
+                    </to_cache>
+                  </scale>
+                  <to_cache id="1">
+                    <sqrt>
+                      <add>
+                        <add>
+                          <add>
+                            <constant value="1.0"/>
+                            <pow value="2">
+                              <from_cache id="0"/>
+                            </pow>
+                          </add>
+                          <pow value="2">
+                            <to_cache id="2">
+                              <scale value="0.125">
+                                <y/>
+                              </scale>
+                            </to_cache>
+                          </pow>
+                        </add>
+                        <pow value="2">
+                          <to_cache id="3">
+                            <scale value="0.125">
+                              <z/>
+                            </scale>
+                          </to_cache>
+                        </pow>
+                      </add>
+                    </sqrt>
+                  </to_cache>
+                </mul>
+                <to_cache id="4">
+                  <add>
+                    <constant value="1.0"/>
+                    <max>
+                      <max>
+                        <abs>
+                          <from_cache id="0"/>
+                        </abs>
+                        <abs>
+                          <from_cache id="2"/>
+                        </abs>
+                      </max>
+                      <abs>
+                        <from_cache id="3"/>
+                      </abs>
+                    </max>
+                  </add>
+                </to_cache>
+              </div>
+            </cos>
+            <cos>
+              <div>
+                <mul>
+                  <scale value="6.283185307179586">
+                    <from_cache id="2"/>
+                  </scale>
+                  <from_cache id="1"/>
+                </mul>
+                <from_cache id="4"/>
+              </div>
+            </cos>
+          </add>
+          <cos>
+            <div>
+              <mul>
+                <scale value="6.283185307179586">
+                  <from_cache id="3"/>
+                </scale>
+                <from_cache id="1"/>
+              </mul>
+              <from_cache id="4"/>
+            </div>
+          </cos>
+        </add>
+      </function>
+    </surface>
+    <surface id="8" type="sphere" coeffs="0.0 0.0 0.0 16.0"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>20</batches>
+    <inactive>5</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>0.0 0.0 0.0</parameters>
+      </space>
+    </source>
+  </settings>
+  </model>

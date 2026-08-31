@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <implicit>
+    <maxiter>0</maxiter>
+  </implicit>
+</settings>

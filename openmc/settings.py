@@ -500,6 +500,7 @@ class Settings:
         self._use_decay_photons = None
 
         self._random_ray = {}
+        self._implicit = {}
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -1491,6 +1492,37 @@ class Settings:
             cv.check_greater_than('free gas threshold', free_gas_threshold, 0.0)
         self._free_gas_threshold = free_gas_threshold
 
+    @property
+    def implicit(self) -> dict:
+        return self._implicit
+
+    @implicit.setter
+    def implicit(self, implicit: dict):
+        if not isinstance(implicit, Mapping):
+            raise ValueError(f'Unable to set implicit from "{implicit}" '
+                             'which is not a dict.')
+        for key, value in implicit.items():
+            if key == 'maxiter':
+                cv.check_type('maxiter', value, Integral)
+                cv.check_greater_than('maxiter', value, 0)
+            elif key == 'atol':
+                cv.check_type('atol', value, Real)
+                cv.check_greater_than('atol', value, 0.0)
+            elif key == 'ftol':
+                cv.check_type('ftol', value, Real)
+                cv.check_greater_than('ftol', value, 0.0)
+            elif key == 'name':
+                cv.check_type('name', value, str)
+                cv.check_value('name', value, ['fast', 'naive'])
+            elif key == 'margin':
+                cv.check_type('margin', value, Real)
+                cv.check_greater_than('margin', value, 0.0, True)
+            else:
+                raise ValueError(f'Unable to set implicit to "{key}" which is '
+                                 'unsupported by OpenMC')
+        
+        self._implicit = implicit
+
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
@@ -2062,6 +2094,13 @@ class Settings:
             element = ET.SubElement(root, "free_gas_threshold")
             element.text = str(self._free_gas_threshold)
 
+    def _create_implicit_solvers_subelement(self, root):
+        if self._implicit:
+            element = ET.SubElement(root, "implicit")
+            for key, value in self._implicit.items():
+                subelement = ET.SubElement(element, key)
+                subelement.text = str(value)
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -2560,6 +2599,18 @@ class Settings:
         if text is not None:
             self.free_gas_threshold = float(text)
 
+    def _implicit_solvers_from_xml_element(self, root):
+        elem = root.find('implicit')
+        if elem is not None:
+            self.implicit = {}
+            for child in elem:
+                if child.tag in ('atol', 'ftol', 'margin'):
+                    self.implicit[child.tag] = float(child.text)
+                elif child.tag == 'maxiter':
+                    self.implicit[child.tag] = int(child.text)
+                elif child.tag == 'name':
+                    self.implicit[child.tag] = str(child.text)
+
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
 
@@ -2637,6 +2688,7 @@ class Settings:
         self._create_use_decay_photons_subelement(element)
         self._create_source_rejection_fraction_subelement(element)
         self._create_free_gas_threshold_subelement(element)
+        self._create_implicit_solvers_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2755,6 +2807,7 @@ class Settings:
         settings._use_decay_photons_from_xml_element(elem)
         settings._source_rejection_fraction_from_xml_element(elem)
         settings._free_gas_threshold_from_xml_element(elem)
+        settings._implicit_solvers_from_xml_element(elem)
 
         return settings
 

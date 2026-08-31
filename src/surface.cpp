@@ -167,8 +167,10 @@ void Surface::to_hdf5(hid_t group_id) const
 
   if (geom_type() == GeometryType::DAG) {
     write_string(surf_group, "geom_type", "dagmc", false);
-  } else if (geom_type() == GeometryType::CSG) {
-    write_string(surf_group, "geom_type", "csg", false);
+  } else if (geom_type() == GeometryType::CSG ||
+             geom_type() == GeometryType::IMP) {
+    write_string(surf_group, "geom_type",
+      geom_type() == GeometryType::IMP ? "imp" : "csg", false);
 
     if (bc_) {
       write_string(surf_group, "boundary_type", bc_->type(), false);
@@ -1169,6 +1171,75 @@ Direction SurfaceZTorus::normal(Position r) const
 }
 
 //==============================================================================
+// SurfaceImplicit implementation
+//==============================================================================
+
+SurfaceImplicit::SurfaceImplicit(pugi::xml_node surf_node) : Surface(surf_node)
+{
+  read_coeffs(surf_node, id_,
+    {&x0_, &y0_, &z0_, &A_, &B_, &C_, &D_, &E_, &F_, &G_, &H_, &I_});
+  isovalue_ = surf_node.attribute("isovalue").as_double();
+  auto func_node = surf_node.child("function");
+  if (!func_node)
+    fatal_error(fmt::format("Surface {} missing <function> element.", id_));
+  function_ = Implicit::from_xml_element(func_node.first_child());
+  solver_ = ImplicitSolver::create(settings::implicit_solver,
+    settings::implicit_maxiter, settings::implicit_atol,
+    settings::implicit_ftol);
+}
+void SurfaceImplicit::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "implicit", false);
+  std::array<double, 12> coeffs {
+    {x0_, y0_, z0_, A_, B_, C_, D_, E_, F_, G_, H_, I_}};
+  write_dataset(group_id, "coefficients", coeffs);
+  write_dataset(group_id, "isovalue", isovalue_);
+  write_string(group_id, "function_xml", function_->to_xml_string(), false);
+}
+Position SurfaceImplicit::transform(Position r) const
+{
+  double dx = r.x - x0_, dy = r.y - y0_, dz = r.z - z0_;
+  return Position(A_ * dx + B_ * dy + C_ * dz, D_ * dx + E_ * dy + F_ * dz,
+    G_ * dx + H_ * dy + I_ * dz);
+}
+Direction SurfaceImplicit::transform_dir(Direction u) const
+{
+  // Rotation only — no translation for directions
+  return Direction(A_ * u.x + B_ * u.y + C_ * u.z,
+    D_ * u.x + E_ * u.y + F_ * u.z, G_ * u.x + H_ * u.y + I_ * u.z);
+}
+double SurfaceImplicit::evaluate(Position r) const
+{
+  return function_->evaluate(transform(r)) - isovalue_;
+}
+double SurfaceImplicit::distance_finite(
+  Position r, Direction u, bool coincident, double distance_max) const
+{
+  double f0 = function_->evaluate(r);
+  double t0 = (std::abs(f0) <= settings::implicit_ftol || coincident)
+                ? settings::implicit_margin
+                : 0.0;
+  Position r_tr = transform(r);
+  Direction u_tr = transform_dir(u);
+  return solver_->solve(*function_, r_tr, u_tr, t0, distance_max, isovalue_) +
+         settings::implicit_margin;
+}
+double SurfaceImplicit::distance(Position r, Direction u, bool coincident) const
+{
+  fatal_error("SurfaceImplicit::distance: shouldn't be called.");
+}
+Direction SurfaceImplicit::normal(Position r) const
+{
+  Position r_tr = transform(r);
+  Gradient g = function_->gradient(r_tr);
+  double nx = A_ * g.x + D_ * g.y + G_ * g.z;
+  double ny = B_ * g.x + E_ * g.y + H_ * g.z;
+  double nz = C_ * g.x + F_ * g.y + I_ * g.z;
+  double len = std::sqrt(nx * nx + ny * ny + nz * nz);
+  return {nx / len, ny / len, nz / len};
+}
+
+//==============================================================================
 
 void read_surfaces(pugi::xml_node node,
   std::set<std::pair<int, int>>& periodic_pairs,
@@ -1237,6 +1308,9 @@ void read_surfaces(pugi::xml_node node,
 
       } else if (surf_type == "z-torus") {
         model::surfaces.push_back(std::make_unique<SurfaceZTorus>(surf_node));
+
+      } else if (surf_type == "implicit") {
+        model::surfaces.push_back(std::make_unique<SurfaceImplicit>(surf_node));
 
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));

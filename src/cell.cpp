@@ -22,6 +22,7 @@
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
+#include "openmc/surface.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -965,6 +966,9 @@ std::pair<double, int32_t> Region::distance_to_nearest_surface(Position r,
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
+  // Implicit surfaces are deferred until we know min_dist from the
+  // analytical surfaces, which bounds the solver interval.
+  std::vector<int32_t> implicit_tokens;
   for (int32_t token : expression_) {
     // Ignore this token if it corresponds to an operator rather than a region.
     if (token >= OP_UNION)
@@ -972,8 +976,16 @@ std::pair<double, int32_t> Region::distance_to_nearest_surface(Position r,
 
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
+    Surface* surf = model::surfaces[std::abs(token) - 1].get();
+
+    // Defer implicit surfaces to pass 2.
+    if (surf->geom_type() == GeometryType::IMP) {
+      implicit_tokens.push_back(token);
+      continue;
+    }
+
     bool coincident {std::abs(token) == std::abs(on_surface)};
-    double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+    double d {surf->distance(r, u, coincident)};
 
     // Different surface definitions can represent the same geometric surface.
     // When the ray is already known to be on a surface, ignore intersections
@@ -983,6 +995,59 @@ std::pair<double, int32_t> Region::distance_to_nearest_surface(Position r,
       continue;
 
     // Check if this distance is the new minimum.
+    if (d < min_dist) {
+      if (min_dist - d >= FP_PRECISION * min_dist) {
+        min_dist = d;
+        i_surf = -token;
+      }
+    }
+  }
+
+  // Finite region check
+  if (!implicit_tokens.empty() && min_dist == INFTY) {
+    // Ensure we are actually in the region: False errors sometimes comes with
+    // SolidRayTracing
+    bool isInCell = true;
+    for (int32_t token : expression_) {
+      if (token >= OP_UNION)
+        continue;
+      Surface* surf = model::surfaces[std::abs(token) - 1].get();
+      if (surf->geom_type() != GeometryType::CSG)
+        continue;
+
+      double f = surf->evaluate(r);
+      bool in_halfspace = (token < 0) ? (f < 0.) : (f > 0.);
+      if (!in_halfspace) {
+        isInCell = false;
+        break;
+      }
+    }
+    // If we are actually in the region: throw error, if not, return min dist.
+    if (isInCell) {
+      fatal_error(
+        "An implicit surface belongs to a region with no finite analytical "
+        "boundary. Implicit surfaces must be enclosed in a finite region "
+        "defined by standard surfaces (planes, spheres, cylinders, etc.)."
+        "r=(" +
+        std::to_string(r.x) + ", " + std::to_string(r.y) + ", " +
+        std::to_string(r.z) +
+        ")"
+        "u=(" +
+        std::to_string(u.x) + ", " + std::to_string(u.y) + ", " +
+        std::to_string(u.z) + ")");
+    } else {
+      return {min_dist, i_surf};
+    }
+  }
+
+  // Implicit surfaces treatment
+  for (int32_t token : implicit_tokens) {
+    auto* surf =
+      static_cast<SurfaceImplicit*>(model::surfaces[std::abs(token) - 1].get());
+
+    bool coincident {std::abs(token) == std::abs(on_surface)};
+    double d {surf->distance_finite(r, u, coincident, min_dist)};
+
     if (d < min_dist) {
       if (min_dist - d >= FP_PRECISION * min_dist) {
         min_dist = d;

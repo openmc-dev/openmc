@@ -13,6 +13,8 @@ from .checkvalue import check_type, check_value, check_length, check_greater_tha
 from .mixin import IDManagerMixin, IDWarning
 from .region import Region, Intersection, Union
 from .bounding_box import BoundingBox
+from . import implicit
+from .implicit import ImplicitFunction
 from ._xml import get_elem_list, get_text
 
 
@@ -470,6 +472,10 @@ class Surface(IDManagerMixin, ABC):
         coeffs = get_elem_list(elem, "coeffs", float)
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
 
+        if surf_type == "implicit":
+            kwargs['function'] = ImplicitFunction.from_xml_element(elem.find("function")[0])
+            kwargs['isovalue'] = float(elem.get("isovalue"))
+
         return cls(**kwargs)
 
     @staticmethod
@@ -507,6 +513,16 @@ class Surface(IDManagerMixin, ABC):
 
         surf_type = group['type'][()].decode()
         cls = _SURFACE_CLASSES[surf_type]
+
+        if surf_type == 'implicit':
+            xml_str   = group['function_xml'][()].decode()
+            func_elem = ET.fromstring(xml_str)
+            func = ImplicitFunction.from_xml_element(func_elem[0])
+            isovalue = float(group['isovalue'][()])
+            kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
+            kwargs['function'] = func
+            kwargs['isovalue'] = isovalue
+            return cls(**kwargs)
 
         return cls(*coeffs, **kwargs)
 
@@ -2582,6 +2598,355 @@ class ZTorus(TorusMixin, Surface):
         elif side == '+':
             return BoundingBox.infinite()
 
+class ImplicitSurface(Surface):
+
+    _type = 'implicit'
+    _coeff_keys = ('x0', 'y0', 'z0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i')
+
+    def __init__(self, function:ImplicitFunction, isovalue:float=0., x0=0., y0=0., z0=0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., **kwargs):
+        # Create the surface
+        super().__init__(**kwargs)
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, a, b, c, d, e, f, g, h, i)):
+            setattr(self, key, val)
+        self.function = function
+        self.isovalue = float(isovalue)
+        # Check the implicit surface
+        if not self.boundary_type ==  "transmission":
+            raise ValueError(f"ImplicitSurface boundary type must be 'transmission' but is '{self.boundary_type}'.")
+        if not self._is_valid_rotation():
+            raise ValueError(f"Coefficients a,...,i must form a valid rotation matrix.")
+        if not isinstance(self.function, ImplicitFunction):
+            raise TypeError(f"func expected type is an ImplicitFunction, but a '{type(function)}' type was given.")
+
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    a = SurfaceCoefficient('a')
+    b = SurfaceCoefficient('b')
+    c = SurfaceCoefficient('c')
+    d = SurfaceCoefficient('d')
+    e = SurfaceCoefficient('e')
+    f = SurfaceCoefficient('f')
+    g = SurfaceCoefficient('g')
+    h = SurfaceCoefficient('h')
+    i = SurfaceCoefficient('i')
+
+    def __repr__(self):
+        stringlines = super().__repr__().split('\n')
+        fline = '\n{0: <20}{1}{2}\n'.format('\tFunction', '=\t', self.function)
+        isoline = '{0: <20}{1}{2}\n'.format('\tIsovalue', '=\t', self.isovalue)
+        string = "\n".join(stringlines[:4]) + fline + isoline + "\n".join(stringlines[4:])
+        return string
+
+    def _is_valid_rotation(self):
+        Rmat = self.get_rotation_matrix()
+        if not np.allclose(Rmat @ Rmat.T, np.identity(3), rtol=0., atol=self._atol): return False
+        if not np.isclose(np.linalg.det(Rmat), 1.0, rtol=0., atol=self._atol): return False
+        return True
+
+    def get_rotation_matrix(self):
+        return np.array([[self.a,self.b,self.c],[self.d,self.e,self.f],[self.g,self.h,self.i]])
+
+    def bounding_box(self, side):
+        return BoundingBox.infinite()
+
+    def clone(self, memo=None):
+        if memo is None:
+            memo = {}
+        # If no memoize'd clone exists, instantiate one
+        if self not in memo:
+            clone = deepcopy(self)
+            clone.function = self.function
+            clone.id = None
+            # Memoize the clone
+            memo[self] = clone
+        return memo[self]
+
+    def normalize(self, coeffs=None):
+        if coeffs is None:
+            coeffs = self._get_base_coeffs()
+        coeffs = np.asarray(coeffs)
+        return tuple([c for c in coeffs])
+
+    def is_equal(self, other: ImplicitSurface):
+        coeffs1 = self._get_base_coeffs()
+        coeffs2 = other._get_base_coeffs()
+        if not np.allclose(coeffs1, coeffs2, rtol=0., atol=self._atol): return False
+        if not np.isclose(self.isovalue, other.isovalue, rtol=0., atol=self._atol): return False
+        if not self.function is other.function: return False
+        return True
+
+    def _get_base_coeffs(self):
+        return self.x0, self.y0, self.z0, self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h, self.i
+
+    def evaluate(self, point):
+        Rmat = self.get_rotation_matrix()
+        point = np.asarray(point)                                          # handles tuple or array
+        translated = np.array([point[0] - self.x0,
+                                point[1] - self.y0,
+                                point[2] - self.z0])                      # (3, ...) for any batch shape
+        newpoint = np.einsum('ij,j...->i...', Rmat, translated)           # rotate, preserving batch dims
+        return self.function.evaluate(newpoint) - self.isovalue
+
+    def translate(self, vector, inplace=False):
+        if np.allclose(vector, 0., rtol=0., atol=self._atol):
+            return self if inplace else self.clone()
+
+        x0, y0, z0 = self._get_base_coeffs()[:3]
+        x0 += vector[0]
+        y0 += vector[1]
+        z0 += vector[2]
+
+        surf = self if inplace else self.clone()
+
+        setattr(surf, surf._coeff_keys[0], x0)
+        setattr(surf, surf._coeff_keys[1], y0)
+        setattr(surf, surf._coeff_keys[2], z0)
+
+        return surf
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        pivot = np.asarray(pivot)
+        rotation = np.asarray(rotation, dtype=float)
+
+        # Allow rotation matrix to be passed in directly, otherwise build it
+        if rotation.ndim == 2:
+            check_length('surface rotation', rotation.ravel(), 9)
+            Rmat = rotation
+        else:
+            Rmat = get_rotation_matrix(rotation, order=order)
+
+        # Translate surface to pivot
+        surf = self.translate(-pivot, inplace=inplace)
+        x0, y0, z0, a, b, c, d, e, f, g, h, i = surf._get_base_coeffs()
+
+        # Compute new rotated coefficients a, b, c
+        newR = surf.get_rotation_matrix() @ Rmat.T
+        x0, y0, z0 = Rmat @ np.array([x0, y0, z0])
+        a, b, c = newR[0,:]
+        d, e, f = newR[1,:]
+        g, h, i = newR[2,:]
+
+        kwargs = {'boundary_type': surf.boundary_type,
+                  'albedo': surf.albedo,
+                  'name': surf.name}
+        if inplace:
+            kwargs['surface_id'] = surf.id
+        
+        surf = ImplicitSurface(surf.function, surf.isovalue, x0, y0, z0, a, b, c, d, e, f, g, h, i, **kwargs)
+
+        return surf.translate(pivot, inplace=inplace)
+
+    def to_xml_element(self):
+        root = super().to_xml_element()
+        root.set("isovalue", str(self.isovalue))
+        fnode = ET.Element("function")
+        cached_list = []
+        fnode.append(self.function.to_xml_element(cached_list))
+        # Check cached nodes
+        from_cache_ids = {int(e.get("id")) for e in fnode.iter("from_cache")}
+        for i in range(len(cached_list)):
+            if i not in from_cache_ids:
+                warn(f"Cached node id={i} has no <from_cache> reference and is only used once. Did you forget to reuse it?", UserWarning)
+        root.append(fnode)
+        return root
+    
+    @staticmethod
+    def from_xml_element(elem):
+        return Surface.from_xml_element(elem)
+
+    @staticmethod
+    def from_hdf5(group):
+        return Surface.from_hdf5(group)
+"""An implicit surface defined by a user-specified function f(x, y, z) = c.
+
+    The surface is the set of points where ``function(R @ (r - r0)) = isovalue``,
+    where ``r0 = (x0, y0, z0)`` is the translation vector and ``R`` is the
+    3x3 rotation matrix encoded by coefficients ``a`` through ``i``.
+
+    Unlike algebraic surfaces (planes, spheres, quadrics), the function is an
+    arbitrary smooth expression built from :mod:`openmc.implicit` nodes and
+    evaluated at runtime by the C++ NaiveLipschitz or FastLipschitz solver.
+    This makes ImplicitSurface suitable for TPMS geometries (gyroid, Schwartz-P,
+    diamond) and any other smooth level-set surface.
+
+    Parameters
+    ----------
+    function : ImplicitFunction
+        Expression tree representing f(x, y, z).  Built from nodes in
+        :mod:`openmc.implicit` (``X()``, ``Sin``, ``Cos``, etc.).
+    isovalue : float, optional
+        Level-set value c such that the surface is f = c.  Defaults to 0.
+    x0, y0, z0 : float, optional
+        Translation of the surface origin in world coordinates.  Defaults to 0.
+    a, b, c, d, e, f, g, h, i : float, optional
+        Coefficients of the 3x3 rotation matrix R, stored row-major::
+
+            R = [[a, b, c],
+                 [d, e, f],
+                 [g, h, i]]
+
+        Must form a valid rotation matrix (orthogonal, det = +1).
+        Defaults to the identity matrix.
+    boundary_type : str, optional
+        Must be ``'transmission'`` (the only supported boundary condition).
+    surface_id : int, optional
+        Unique identifier.  Assigned automatically if not specified.
+    name : str, optional
+        Human-readable label.
+
+    Raises
+    ------
+    ValueError
+        If ``boundary_type`` is not ``'transmission'``.
+    ValueError
+        If the a-i coefficients do not form a valid rotation matrix.
+    TypeError
+        If ``function`` is not an :class:`~openmc.implicit.ImplicitFunction`.
+
+    Notes
+    -----
+    **Finite region requirement.** The C++ solver computes the distance to the
+    implicit surface using the distance to surrounding analytical surfaces as an
+    upper bound.  Every cell containing an ImplicitSurface must therefore also
+    reference at least one finite analytical surface (plane, sphere, cylinder,
+    etc.) so that ``Region::distance`` can establish a bound for the solver.
+    A fatal error is raised at runtime if this condition is not met.
+
+    **Caching.** Sub-expressions that appear more than once should be wrapped
+    in :class:`~openmc.implicit.Cached` to avoid redundant evaluations in the
+    C++ solver.  See the :class:`~openmc.implicit.Cached` docstring for the
+    correct usage pattern.
+
+    **Transform convention.** The surface evaluates the function in local
+    coordinates ``r_local = R @ (r - r0)``.  Translating by ``v`` adds ``v``
+    to ``r0``.  Rotating by ``Rmat`` updates ``R ← R @ Rmat^T`` and
+    ``r0 ← Rmat @ r0``.
+
+    Examples
+    --------
+    A sphere of radius 5 defined implicitly:
+
+    >>> from openmc.implicit import X, Y, Z
+    >>> func = X()**2 + Y()**2 + Z()**2
+    >>> sphere = ImplicitSurface(function=func, isovalue=25.)
+
+    A Schwartz-P TPMS with pitch 1 cm:
+
+    >>> from openmc.surface import TPMS
+    >>> tpms = TPMS.from_pitch_isovalue('primitive', pitch=1.0, isovalue=0.)
+    """
+
+class TPMS(ImplicitSurface):
+    """A Triply Periodic Minimal Surface (TPMS) implicit surface.
+
+    Convenience subclass of :class:`ImplicitSurface` that constructs the
+    expression tree for common TPMS families from a pitch length and isovalue.
+    The resulting surface is periodic in all three Cartesian directions with
+    the given pitch.
+
+    Do not instantiate directly — use the factory method
+    :meth:`from_pitch_isovalue`.
+
+    Notes
+    -----
+    TPMS geometries are widely used in nuclear fuel design for their high
+    surface-area-to-volume ratio, mechanical isotropy, and tuneable porosity.
+    The isovalue controls the volume fraction: at isovalue = 0 the surface
+    divides space into two equal-volume phases; positive values shift the
+    balance toward the positive half-space.
+
+    The gyroid and diamond expressions use :class:`~openmc.implicit.Cached`
+    nodes for the scaled coordinates ``2π x / pitch``, ``2π y / pitch``,
+    ``2π z / pitch``, since each appears in two trigonometric sub-expressions.
+
+    Examples
+    --------
+    >>> gyroid  = TPMS.from_pitch_isovalue('gyroid',    pitch=1.0, isovalue=0.)
+    >>> prim    = TPMS.from_pitch_isovalue('primitive', pitch=0.5, isovalue=0.3)
+    >>> diamond = TPMS.from_pitch_isovalue('diamond',   pitch=1.0, isovalue=0.,
+    ...                                    surface_id=5)
+    """
+
+    @classmethod
+    def from_pitch_isovalue(cls, tpms:str, pitch:float, isovalue:float, **kwargs) -> 'TPMS':
+        """Construct a TPMS surface from a pitch length and isovalue.
+
+        Parameters
+        ----------
+        tpms : str
+            Name of the TPMS family.  Case-insensitive.  Supported values:
+
+            +-----------------------+------------------------------------------+
+            | Name                  | Equation                                 |
+            +=======================+==========================================+
+            | ``'primitive'``,      | cos(x') + cos(y') + cos(z') = c         |
+            | ``'schwarz_p'``       |                                          |
+            +-----------------------+------------------------------------------+
+            | ``'gyroid'``,         | sin(x')cos(z') + sin(y')cos(x')         |
+            | ``'schoen-g'``        | + sin(z')cos(y') = c                     |
+            +-----------------------+------------------------------------------+
+            | ``'diamond'``,        | sin(x')cos(y'-z')                        |
+            | ``'schwarz_d'``       | + sin(y'+z')cos(x') = c                  |
+            +-----------------------+------------------------------------------+
+
+            where ``x' = 2π x / pitch``, and similarly for y' and z'.
+
+        pitch : float
+            Spatial period of the surface in [cm].  All three Cartesian
+            directions share the same pitch.
+        isovalue : float
+            Level-set value c.  At ``isovalue = 0`` the surface is a true
+            minimal surface dividing space into two equal-volume phases.
+            Increasing the isovalue increases the volume fraction of the
+            negative half-space (the ``-surf`` region).
+        **kwargs
+            Additional keyword arguments passed to :class:`ImplicitSurface`
+            (e.g. ``surface_id``, ``name``, transform coefficients).
+
+        Returns
+        -------
+        TPMS
+            Constructed TPMS surface ready for use in cell definitions.
+
+        Raises
+        ------
+        NotImplementedError
+            If ``tpms`` is not one of the supported names.
+
+        Examples
+        --------
+        >>> surf = TPMS.from_pitch_isovalue('gyroid', pitch=1.0, isovalue=0.)
+        >>> surf.evaluate((0., 0., 0.))   # gyroid passes through the origin
+        0.0
+        """
+        # Shortcuts
+        X, Y, Z = implicit.X, implicit.Y, implicit.Z
+        Cos, Sin = implicit.Cos, implicit.Sin
+        Cached = implicit.Cached
+        # Get cached or uncached variables, for performance improvement
+        def _get_xyz(cached=False):
+            x = 2 * np.pi * X() / pitch
+            y = 2 * np.pi * Y() / pitch
+            z = 2 * np.pi * Z() / pitch
+            if cached:
+                return Cached(x), Cached(y), Cached(z)
+            else:
+                return x, y, z
+        # Choice of TPMS
+        if tpms.lower() in ["primitive", "schwarz_p"]:
+            x, y, z = _get_xyz(False)
+            func = Cos(x) + Cos(y) + Cos(z)
+        elif tpms.lower() in ["gyroid", "schoen-g"]:
+            x, y, z = _get_xyz(True)
+            func = Sin(x)*Cos(z) + Sin(y)*Cos(x) + Sin(z)*Cos(y)
+        elif tpms.lower() in ["diamond", "schwarz_d"]:
+            x, y, z = _get_xyz(True)
+            func = Sin(x)*Cos(y - z) + Sin(y + z)*Cos(x)
+        else:
+            raise NotImplementedError(f"The TPMS named '{tpms.lower()}' is not implemented.")
+        return cls(func, isovalue, **kwargs)
+
 
 class Halfspace(Region):
     """A positive or negative half-space region.
@@ -2840,3 +3205,5 @@ YCone._virtual_base = Cone
 ZCone._virtual_base = Cone
 Sphere._virtual_base = Sphere
 Quadric._virtual_base = Quadric
+ImplicitSurface._virtual_base = ImplicitSurface
+TPMS._virtual_base = TPMS

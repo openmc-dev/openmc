@@ -85,6 +85,8 @@ Building geometry
    openmc.XTorus
    openmc.YTorus
    openmc.ZTorus
+   openmc.ImplicitSurface
+   openmc.TPMS
    openmc.Halfspace
    openmc.Intersection
    openmc.Union
@@ -107,6 +109,15 @@ Many of the above classes are derived from several abstract classes:
    openmc.Surface
    openmc.Region
    openmc.Lattice
+
+Implicit surfaces are defined with a
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.ImplicitFunction
 
 .. _pythonapi_tallies:
 

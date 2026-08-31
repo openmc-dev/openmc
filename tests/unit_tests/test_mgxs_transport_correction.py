@@ -1,4 +1,9 @@
-"""Tests for user-supplied transport correction ratios in openmc.mgxs.Library."""
+"""Tests for transport correction ratios in openmc.mgxs.Library.
+
+These cover both user-supplied ratios and the ratios that
+:meth:`openmc.mgxs.Library.load_from_statepoint` computes automatically from
+tallied transport data.
+"""
 
 import numpy as np
 import pytest
@@ -155,25 +160,32 @@ def test_apply_noop_without_entry(library, simple_geometry):
     np.testing.assert_allclose(xsdata._total[0], sigma_t)
 
 
-def test_apply_requires_correction_none(library, simple_geometry):
+def test_apply_skips_when_p0_correction(library, simple_geometry):
     _, mat = simple_geometry
     library.correction = 'P0'
     library.transport_correction_ratios = {'material': {1: [0.9, 0.8]}}
 
     sigma_t = np.array([2.0, 3.0])
     scatter = np.array([[[0.5], [0.3]], [[0.1], [1.2]]])
+    scatter_orig = scatter.copy()
     xsdata = _make_xsdata(library.energy_groups, sigma_t, scatter)
-    with pytest.raises(ValueError, match='correction'):
-        library._apply_transport_correction_ratios(xsdata, mat, 294.0)
+    library._apply_transport_correction_ratios(xsdata, mat, 294.0)
+
+    # With correction='P0' the tally-based correction is already applied, so
+    # the stored ratios are recorded but leave the dataset unchanged.
+    np.testing.assert_allclose(xsdata._total[0], sigma_t)
+    np.testing.assert_allclose(xsdata._scatter_matrix[0][:, :, 0],
+                               scatter_orig[:, :, 0])
 
 
-def test_check_library_rejects_p0(library):
-    library.mgxs_types = ['total', 'absorption', 'nu-scatter matrix',
+def test_check_library_allows_ratios_with_p0(library):
+    # With correction='P0', stored ratios are recorded but not applied, so a
+    # valid P0 configuration must still pass validation without error.
+    library.mgxs_types = ['transport', 'absorption', 'nu-scatter matrix',
                           'scatter matrix']
     library.correction = 'P0'
     library.transport_correction_ratios = {'material': {1: [0.9, 0.8]}}
-    with pytest.raises(ValueError, match='Invalid MGXS configuration'):
-        library.check_library_for_openmc_mgxs()
+    library.check_library_for_openmc_mgxs()
 
 
 def test_check_library_warns_missing_domain_type(library):
@@ -183,3 +195,34 @@ def test_check_library_warns_missing_domain_type(library):
     library.transport_correction_ratios = {'cell': {1: [0.9, 0.8]}}
     with pytest.warns(UserWarning, match='do not contain any entries'):
         library.check_library_for_openmc_mgxs()
+
+
+def test_store_ratios_noop_without_transport(library):
+    # Without a 'transport' or 'nu-transport' MGXS type there is nothing to
+    # compute, so no ratios are stored (keeping the standard total-based
+    # workflow unaffected).
+    library.mgxs_types = ['total', 'absorption', 'scatter matrix']
+    library._store_computed_transport_correction_ratios()
+    assert library.transport_correction_ratios is None
+
+
+def test_store_ratios_skips_angle(library):
+    # Angle-dependent data does not yield a single ratio per group, so the
+    # helper returns before touching any tallies.
+    library.mgxs_types = ['transport', 'absorption', 'scatter matrix']
+    library.num_polar = 2
+    library.num_azimuthal = 2
+    library._store_computed_transport_correction_ratios()
+    assert library.transport_correction_ratios is None
+
+
+def test_store_ratios_preserves_user_entries(library):
+    # A user-provided entry must never be overwritten by the automatic
+    # computation, even when a transport MGXS type is present.
+    library.mgxs_types = ['transport', 'absorption', 'scatter matrix']
+    library.num_polar = 2  # skip the tally-based computation for this test
+    library.num_azimuthal = 2
+    library.transport_correction_ratios = {'material': {1: [0.9, 0.8]}}
+    library._store_computed_transport_correction_ratios()
+    np.testing.assert_allclose(
+        library.transport_correction_ratios['material'][1], [0.9, 0.8])

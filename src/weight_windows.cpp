@@ -52,7 +52,6 @@ WeightWindows::WeightWindows(int32_t id)
 {
   index_ = variance_reduction::weight_windows.size();
   set_id(id);
-  set_defaults();
 }
 
 WeightWindows::WeightWindows(pugi::xml_node node)
@@ -70,9 +69,12 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   int32_t id = std::stoi(get_node_value(node, "id"));
   this->set_id(id);
 
-  // get the particle type
+  // get the particle type. Going through the setter applies the same
+  // neutron/photon validation as the C API path and derives the
+  // particle-dependent energy defaults, which an explicit <energy_bounds>
+  // below then replaces.
   auto particle_type_str = std::string(get_node_value(node, "particle_type"));
-  particle_type_ = ParticleType {particle_type_str};
+  set_particle_type(ParticleType {particle_type_str});
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
@@ -117,8 +119,6 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   // read the lower/upper weight bounds
   this->set_bounds(get_node_array<double>(node, "lower_ww_bounds"),
     get_node_array<double>(node, "upper_ww_bounds"));
-
-  set_defaults();
 }
 
 WeightWindows::~WeightWindows()
@@ -251,6 +251,11 @@ void WeightWindows::set_particle_type(ParticleType p_type)
     fatal_error(fmt::format(
       "Particle type '{}' cannot be applied to weight windows.", p_type.str()));
   particle_type_ = p_type;
+
+  // The default energy grid is particle dependent, so derive it now that the
+  // particle type is known. This is a no-op when an explicit grid has already
+  // been supplied, since set_defaults() only fills an empty grid.
+  set_defaults();
 }
 
 void WeightWindows::set_mesh(int32_t mesh_idx)
@@ -847,7 +852,6 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   if (e_bounds.size() > 0)
     wws->set_energy_bounds(e_bounds);
   wws->set_particle_type(particle_type);
-  wws->set_defaults();
 }
 
 void WeightWindowsGenerator::create_tally()
@@ -1341,6 +1345,10 @@ extern "C" int openmc_weight_windows_export(const char* filename)
   std::vector<int32_t> mesh_ids;
   std::vector<int32_t> ww_ids;
   for (const auto& ww : variance_reduction::weight_windows) {
+
+    // Backstop for objects built through the C API whose particle type was
+    // never set explicitly, so an empty energy grid is never written out
+    ww->set_defaults();
 
     ww->to_hdf5(weight_windows_group);
     ww_ids.push_back(ww->id());

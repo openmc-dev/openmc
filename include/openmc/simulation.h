@@ -49,10 +49,6 @@ extern const RegularMesh* ufs_mesh;
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;
 
-//! Snapshot of work_index taken during phase 1 of shared-secondary transport,
-//! i.e. the partition of *primary* particles across MPI ranks. work_index
-//! itself is overwritten by calculate_work() on every secondary generation, so
-//! it cannot be used afterwards to map a root index back to its owning rank.
 extern vector<int64_t> phase1_work_index;
 
 extern int64_t

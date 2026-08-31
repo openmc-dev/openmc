@@ -52,11 +52,6 @@ struct SourceSite {
   int parent_nuclide {-1};
   int64_t parent_id {0};
   int64_t progeny_id {0};
-  // Dense global index, in [0, n_particles), of the primary at the root of
-  // this particle's tree. Propagated unchanged through every secondary
-  // generation so that per-history quantities (currently pulse height) can be
-  // reassembled after the tree has been transported across separate Particle
-  // objects and, under MPI, across ranks.
   int64_t root_index {-1};
   double wgt_born {1.0};
   double wgt_ww_born {-1.0};

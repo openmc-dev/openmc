@@ -747,10 +747,10 @@ void initialize_particle_track(
   // bank site. Only meaningful in shared-secondary mode, where a history is
   // spread over several Particle objects; harmless otherwise.
   if (!is_secondary) {
-    p.root_index() = simulation::phase1_work_index.empty()
-                       ? index_source - 1
-                       : simulation::phase1_work_index[mpi::rank] +
-                           index_source - 1;
+    p.root_index() =
+      simulation::phase1_work_index.empty()
+        ? index_source - 1
+        : simulation::phase1_work_index[mpi::rank] + index_source - 1;
   }
 
   // set random number seed

@@ -478,6 +478,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_universe.cpp
   src/tallies/filter_weight.cpp
   src/tallies/filter_zernike.cpp
+  src/tallies/pulse_height.cpp
   src/tallies/tally.cpp
   src/tallies/tally_scoring.cpp
   src/tallies/trigger.cpp

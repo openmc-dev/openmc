@@ -160,32 +160,93 @@ def test_apply_noop_without_entry(library, simple_geometry):
     np.testing.assert_allclose(xsdata._total[0], sigma_t)
 
 
-def test_apply_skips_when_p0_correction(library, simple_geometry):
+def test_apply_uses_stored_ratio_with_p0(library, simple_geometry, monkeypatch):
+    # With correction='P0' the dataset arrives with the tally-based transport
+    # total, and the plain total is recovered from the transport MGXS. The
+    # stored ratio (as if edited by the user) then determines the correction.
     _, mat = simple_geometry
     library.correction = 'P0'
+    library.mgxs_types = ['transport', 'nu-scatter matrix', 'scatter matrix']
     library.transport_correction_ratios = {'material': {1: [0.9, 0.8]}}
 
+    # sigma_t recovered from the transport MGXS
     sigma_t = np.array([2.0, 3.0])
+    monkeypatch.setattr(library, 'get_mgxs',
+                        lambda domain, mgxs_type: object())
+    monkeypatch.setattr(
+        library, '_uncorrected_total_xs',
+        lambda tm, nuclides, xs_type, subdomains: sigma_t)
+
+    # The tally-based transport total in the dataset differs from
+    # ratios * sigma_t, so the stored ratio must visibly take effect.
+    corrected_total = np.array([1.5, 2.0])
     scatter = np.array([[[0.5], [0.3]], [[0.1], [1.2]]])
     scatter_orig = scatter.copy()
-    xsdata = _make_xsdata(library.energy_groups, sigma_t, scatter)
+    xsdata = _make_xsdata(library.energy_groups, corrected_total, scatter)
+
     library._apply_transport_correction_ratios(xsdata, mat, 294.0)
 
-    # With correction='P0' the tally-based correction is already applied, so
-    # the stored ratios are recorded but leave the dataset unchanged.
-    np.testing.assert_allclose(xsdata._total[0], sigma_t)
+    ratios = np.array([0.9, 0.8])
+    target_total = ratios * sigma_t
+    delta = target_total - corrected_total
+
+    np.testing.assert_allclose(xsdata._total[0], target_total)
+    sm = xsdata._scatter_matrix[0]
+    np.testing.assert_allclose(sm[0, 0, 0], scatter_orig[0, 0, 0] + delta[0])
+    np.testing.assert_allclose(sm[1, 1, 0], scatter_orig[1, 1, 0] + delta[1])
+    np.testing.assert_allclose(sm[0, 1, 0], scatter_orig[0, 1, 0])
+    np.testing.assert_allclose(sm[1, 0, 0], scatter_orig[1, 0, 0])
+
+
+def test_apply_p0_ratio_matches_tally_is_noop(library, simple_geometry,
+                                              monkeypatch):
+    # When the stored ratio equals the tally-derived sigma_tr / sigma_t (as it
+    # is after automatic population), re-applying it reproduces the tally-based
+    # total and leaves the scattering matrix unchanged (no double correction).
+    _, mat = simple_geometry
+    library.correction = 'P0'
+    library.mgxs_types = ['transport', 'nu-scatter matrix', 'scatter matrix']
+
+    sigma_t = np.array([2.0, 3.0])
+    corrected_total = np.array([1.8, 2.4])  # sigma_tr from the tallies
+    ratios = corrected_total / sigma_t
+    library.transport_correction_ratios = {'material': {1: list(ratios)}}
+
+    monkeypatch.setattr(library, 'get_mgxs',
+                        lambda domain, mgxs_type: object())
+    monkeypatch.setattr(
+        library, '_uncorrected_total_xs',
+        lambda tm, nuclides, xs_type, subdomains: sigma_t)
+
+    scatter = np.array([[[0.5], [0.3]], [[0.1], [1.2]]])
+    scatter_orig = scatter.copy()
+    xsdata = _make_xsdata(library.energy_groups, corrected_total, scatter)
+    library._apply_transport_correction_ratios(xsdata, mat, 294.0)
+
+    np.testing.assert_allclose(xsdata._total[0], corrected_total)
     np.testing.assert_allclose(xsdata._scatter_matrix[0][:, :, 0],
                                scatter_orig[:, :, 0])
 
 
 def test_check_library_allows_ratios_with_p0(library):
-    # With correction='P0', stored ratios are recorded but not applied, so a
-    # valid P0 configuration must still pass validation without error.
+    # With correction='P0' the stored ratios are applied by recovering the
+    # plain total from the transport MGXS, so a valid P0 configuration with a
+    # 'transport' type must pass validation without error.
     library.mgxs_types = ['transport', 'absorption', 'nu-scatter matrix',
                           'scatter matrix']
     library.correction = 'P0'
     library.transport_correction_ratios = {'material': {1: [0.9, 0.8]}}
     library.check_library_for_openmc_mgxs()
+
+
+def test_check_library_p0_requires_transport(library):
+    # With correction='P0' and no 'transport'/'nu-transport' type there is no
+    # way to recover the plain total, so validation must fail.
+    library.mgxs_types = ['absorption', 'nu-scatter matrix', 'scatter matrix']
+    library.correction = 'P0'
+    library.transport_correction_ratios = {'material': {1: [0.9, 0.8]}}
+    with pytest.raises(ValueError, match='Invalid MGXS configuration'):
+        library.check_library_for_openmc_mgxs()
 
 
 def test_check_library_warns_missing_domain_type(library):

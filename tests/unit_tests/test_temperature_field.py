@@ -103,6 +103,8 @@ def test_lib_temperature_field(run_in_tmpdir):
         assert list(field) == [294.0, 300.0]
         assert [t for t in field] == [294.0, 300.0]
         assert 294.0 in field
+        assert field[:] == [294.0, 300.0]
+        assert field[::-1] == [300.0, 294.0]
 
         # Out-of-range indices raise IndexError
         with pytest.raises(IndexError):
@@ -111,6 +113,12 @@ def test_lib_temperature_field(run_in_tmpdir):
             field[-3]
         with pytest.raises(IndexError):
             field[2] = 294.0
+
+        # Non-integer indices raise TypeError
+        with pytest.raises(TypeError):
+            field[1.0]
+        with pytest.raises(TypeError):
+            field[1.0] = 294.0
 
         field[-1] = 294.0
         assert field[1] == 294.0

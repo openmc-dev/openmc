@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from ctypes import c_double, c_int32, c_size_t, POINTER
+import operator
 
 from . import _dll
 from .error import _error_handler
@@ -38,7 +39,7 @@ class TemperatureField(Sequence):
 
     def _index(self, index):
         """Normalize an index, converting Python conventions to C ones."""
-        index = index.__index__()
+        index = operator.index(index)
         if index < 0:
             index += self.size
         if index < 0 or index >= self.size:
@@ -46,6 +47,9 @@ class TemperatureField(Sequence):
         return index
 
     def __getitem__(self, index):
+        if isinstance(index, slice):
+            return [self[i] for i in range(*index.indices(self.size))]
+
         temperature = c_double()
         _dll.openmc_temperature_field_get_value(
             self._index(index), temperature)

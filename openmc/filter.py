@@ -982,10 +982,7 @@ class MeshFilter(Filter):
         # Append mesh ID as outermost index of multi-index
         mesh_key = f'mesh {self.mesh.id}'
 
-        # Take the element indices from the mesh itself. Every mesh class
-        # already reports them in bin order with the correct base -- 1-based
-        # for structured meshes, 0-based for unstructured -- so there is no
-        # need to reconstruct them per axis here.
+        # Take the element indices from the mesh itself.
         columns = [(mesh_key, label) for label in self.mesh.axis_labels]
         indices = _repeat_and_tile(list(self.mesh.indices), stride, data_size)
         return pd.DataFrame(indices, columns=columns)

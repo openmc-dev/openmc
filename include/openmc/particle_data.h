@@ -298,6 +298,7 @@ public:
       cell = C_NONE;
     }
     n_coord_last_ = 1;
+    cell_instance_last_ = 0;
   }
 
   //! moves the particle by the specified distance to its next location
@@ -343,11 +344,31 @@ public:
   LocalCoord& lowest_coord() { return coord_[n_coord_ - 1]; }
   const LocalCoord& lowest_coord() const { return coord_[n_coord_ - 1]; }
 
-  // Last coordinates on all nesting levels, before crossing a surface
+  //! Cells occupied at each nesting level before the last cell change.
+  //
+  //! These record where the particle came from, not where it is. They are
+  //! written when the particle enters a new cell -- at birth, and on each
+  //! surface or lattice crossing -- and are deliberately NOT updated on
+  //! collision, so that they stay meaningful for a particle that collides
+  //! repeatedly without leaving the cell it is in. This is what lets
+  //! CellFromFilter decompose a volumetric score by the cell the scoring
+  //! particle arrived from. At birth they are set to the particle's own cells,
+  //! so a particle that has not yet crossed anything counts as coming from
+  //! where it started.
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }
   int& cell_last(int i) { return cell_last_[i]; }
   const int& cell_last(int i) const { return cell_last_[i]; }
+
+  //! Distribcell instance the particle occupied in cell_last() at the lowest
+  //! coordinate level.
+  //
+  //! Maintained alongside cell_last() and on the same cadence. Needed because
+  //! a cell with distributed materials or temperatures resolves those per
+  //! instance, so the cell index alone does not determine which material the
+  //! particle came from.
+  int& cell_instance_last() { return cell_instance_last_; }
+  int cell_instance_last() const { return cell_instance_last_; }
 
   // Coordinates at birth
   Position& r_born() { return r_born_; }
@@ -403,8 +424,16 @@ public:
   // material of current and last cell
   int& material() { return material_; }
   const int& material() const { return material_; }
-  int& material_last() { return material_last_; }
-  const int& material_last() const { return material_last_; }
+  //! Material for which the cross section cache is currently valid.
+  //
+  //! This is bookkeeping for event_calculate_xs() and nothing else. It is
+  //! reset to C_NONE after every collision to force cross sections to be
+  //! re-evaluated at the particle's new energy, so it must never be used as a
+  //! tally attribute. For the material the particle was in before its last
+  //! cell change, take the material of cell_last() at the lowest coordinate
+  //! level, which is what MaterialFromFilter does.
+  int& material_xs_cache() { return material_xs_cache_; }
+  int material_xs_cache() const { return material_xs_cache_; }
 
   // temperature of current and last cell
   double& sqrtkT() { return sqrtkT_; }
@@ -423,8 +452,9 @@ private:
   int cell_instance_;        //!< offset for distributed properties
   vector<LocalCoord> coord_; //!< coordinates for all levels
 
-  int n_coord_last_ {1};  //!< number of current coordinates
-  vector<int> cell_last_; //!< coordinates for all levels
+  int n_coord_last_ {1};       //!< number of current coordinates
+  vector<int> cell_last_;      //!< coordinates for all levels
+  int cell_instance_last_ {0}; //!< distribcell instance in cell_last_
 
   Position r_born_;         //!< coordinates at birth
   Position r_last_current_; //!< coordinates of the last collision or
@@ -438,8 +468,8 @@ private:
 
   BoundaryInfo boundary_; //!< Info about the next intersection
 
-  int material_ {-1};      //!< index for current material
-  int material_last_ {-1}; //!< index for last material
+  int material_ {-1};          //!< index for current material
+  int material_xs_cache_ {-1}; //!< material the xs cache is valid for
 
   double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
   double sqrtkT_last_ {0.0}; //!< last temperature

@@ -1208,7 +1208,7 @@ void StructuredMesh::raytrace_mesh(
   }
 
   // Calculate initial distances to next surfaces in all three dimensions
-  std::array<MeshDistance, 3> distances;
+  std::array<MeshDistance, MESH_MAX_AXES> distances;
   for (int k = 0; k < n; ++k) {
     distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
   }
@@ -1238,7 +1238,9 @@ void StructuredMesh::raytrace_mesh(
 
       // Update cell and calculate distance to next surface in k-direction.
       // The two other directions are still valid!
-      ijk[k] = distances[k].next_index;
+      for (int j = 0; j < MESH_MAX_AXES; ++j)
+        ijk[j] += distances[k].offset[j];
+      sanitize_index(ijk);
       distances[k] =
         distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
 
@@ -1251,22 +1253,9 @@ void StructuredMesh::raytrace_mesh(
         tally.surface(ijk, k, !distances[k].max_surface, true);
 
     } else { // not inside mesh
-
-      // For all directions outside the mesh, find the distance that we need
-      // to travel to reach the next surface. Use the largest distance, as
-      // only this will cross all outer surfaces.
-      int k_max {-1};
-      for (int k = 0; k < n; ++k) {
-        if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
-            (distances[k].distance > traveled_distance)) {
-          traveled_distance = distances[k].distance;
-          k_max = k;
-        }
-      }
-      // Assure some distance is traveled
-      if (k_max == -1) {
-        traveled_distance += TINY_BIT;
-      }
+      int k_max;
+      traveled_distance =
+        distance_to_mesh(ijk, distances, traveled_distance, k_max);
 
       // If r1 is not inside the mesh, exit here
       if (traveled_distance >= total_distance)
@@ -1285,6 +1274,29 @@ void StructuredMesh::raytrace_mesh(
         tally.surface(ijk, k_max, !distances[k_max].max_surface, true);
     }
   }
+}
+
+double StructuredMesh::distance_to_mesh(const MeshIndex& ijk,
+  const std::array<MeshDistance, MESH_MAX_AXES>& distances,
+  double traveled_distance, int& k_max) const
+{
+  // For all directions outside the mesh, find the distance that we need
+  // to travel to reach the next surface. Use the largest distance, as
+  // only this will cross all outer surfaces.
+  const int n = n_dimension_;
+  k_max = -1;
+  for (int k = 0; k < n; ++k) {
+    if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
+        (distances[k].distance > traveled_distance)) {
+      traveled_distance = distances[k].distance;
+      k_max = k;
+    }
+  }
+  // Assure some distance is traveled
+  if (k_max == -1) {
+    traveled_distance += TINY_BIT;
+  }
+  return traveled_distance;
 }
 
 void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
@@ -1527,16 +1539,15 @@ StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
   double l) const
 {
   MeshDistance d;
-  d.next_index = ijk[i];
   if (std::abs(u[i]) < FP_PRECISION)
     return d;
 
   d.max_surface = (u[i] > 0);
   if (d.max_surface && (ijk[i] <= shape_[i])) {
-    d.next_index++;
+    ++d.offset[i];
     d.distance = (positive_grid_boundary(ijk, i) - r0[i]) / u[i];
   } else if (!d.max_surface && (ijk[i] >= 1)) {
-    d.next_index--;
+    --d.offset[i];
     d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
   }
 
@@ -1699,16 +1710,15 @@ StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(
   double l) const
 {
   MeshDistance d;
-  d.next_index = ijk[i];
   if (std::abs(u[i]) < FP_PRECISION)
     return d;
 
   d.max_surface = (u[i] > 0);
   if (d.max_surface && (ijk[i] <= shape_[i])) {
-    d.next_index++;
+    ++d.offset[i];
     d.distance = (positive_grid_boundary(ijk, i) - r0[i]) / u[i];
   } else if (!d.max_surface && (ijk[i] > 0)) {
-    d.next_index--;
+    --d.offset[i];
     d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
   }
   return d;
@@ -1966,18 +1976,16 @@ StructuredMesh::MeshDistance CylindricalMesh::find_z_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
   MeshDistance d;
-  d.next_index = shell;
-
   // Direction of flight is within xy-plane. Will never intersect z.
   if (std::abs(u.z) < FP_PRECISION)
     return d;
 
   d.max_surface = (u.z > 0.0);
   if (d.max_surface && (shell <= shape_[2])) {
-    d.next_index += 1;
+    ++d.offset[2];
     d.distance = (grid_[2][shell] - r.z) / u.z;
   } else if (!d.max_surface && (shell > 0)) {
-    d.next_index -= 1;
+    --d.offset[2];
     d.distance = (grid_[2][shell - 1] - r.z) / u.z;
   }
   return d;
@@ -1990,15 +1998,14 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
   if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
+      MeshDistance({1, 0, 0}, true, find_r_crossing(r0, u, l, ijk[i])),
+      MeshDistance({-1, 0, 0}, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
-    return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
-      MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
+    return std::min(
+      MeshDistance({0, 1, 0}, true, find_phi_crossing(r0, u, l, ijk[i])),
+      MeshDistance({0, -1, 0}, false, find_phi_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
     return find_z_crossing(r0, u, l, ijk[i]);
@@ -2322,20 +2329,19 @@ StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
 
   if (i == 0) {
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
+      MeshDistance({1, 0, 0}, true, find_r_crossing(r0, u, l, ijk[i])),
+      MeshDistance({-1, 0, 0}, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
-    return std::min(MeshDistance(sanitize_theta(ijk[i] + 1), true,
-                      find_theta_crossing(r0, u, l, ijk[i])),
-      MeshDistance(sanitize_theta(ijk[i] - 1), false,
-        find_theta_crossing(r0, u, l, ijk[i] - 1)));
+    return std::min(
+      MeshDistance({0, 1, 0}, true, find_theta_crossing(r0, u, l, ijk[i])),
+      MeshDistance(
+        {0, -1, 0}, false, find_theta_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
-    return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
-      MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
+    return std::min(
+      MeshDistance({0, 0, 1}, true, find_phi_crossing(r0, u, l, ijk[i])),
+      MeshDistance({0, 0, -1}, false, find_phi_crossing(r0, u, l, ijk[i] - 1)));
   }
 }
 

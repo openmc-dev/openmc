@@ -58,9 +58,7 @@ class TemperatureField(ScalarField):
     def __init__(self, mesh, values):
         super().__init__(mesh, values)
 
-        # Check that values are non-negative. Note that self.values is used
-        # rather than the 'values' argument, which may be a one-shot iterable
-        # that ScalarField.__init__ has already consumed.
+        # Check that values are non-negative
         for v in self.values:
             if v < 0:
                 raise ValueError(

@@ -113,7 +113,7 @@ void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
     sorted_bank = bank.data() + bank.size();
   }
 
-  if (settings::ifp_on && is_fission_bank) {
+  if (settings::ifp_on() && is_fission_bank) {
     allocate_temporary_vector_ifp(
       sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
   }
@@ -135,7 +135,7 @@ void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
                   "bank size during sorting.");
     }
     sorted_bank[idx] = site;
-    if (settings::ifp_on && is_fission_bank) {
+    if (settings::ifp_on() && is_fission_bank) {
       copy_ifp_data_from_fission_banks(
         i, sorted_ifp_delayed_group_bank[idx], sorted_ifp_lifetime_bank[idx]);
     }
@@ -143,7 +143,7 @@ void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
 
   // Copy sorted bank into the fission bank
   std::copy(sorted_bank, sorted_bank + bank.size(), bank.data());
-  if (settings::ifp_on && is_fission_bank) {
+  if (settings::ifp_on() && is_fission_bank) {
     copy_ifp_data_to_fission_banks(
       sorted_ifp_delayed_group_bank.data(), sorted_ifp_lifetime_bank.data());
   }

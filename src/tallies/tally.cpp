@@ -193,20 +193,30 @@ Tally::Tally(pugi::xml_node node)
     fatal_error(fmt::format("No scores specified on tally {}.", id_));
   }
 
-  // Set IFP if needed
-  if (!settings::ifp_on) {
-    // Determine if this tally has an IFP score
-    bool has_ifp_score = false;
-    for (int score : scores_) {
-      if (score == SCORE_IFP_TIME_NUM || score == SCORE_IFP_BETA_NUM ||
-          score == SCORE_IFP_DENOM) {
-        has_ifp_score = true;
-        break;
-      }
+  // Determine which kinds of IFP data this tally requires. The two flags are
+  // independent, so a score simply turns on the data it needs.
+  bool wants_lifetime = false;
+  bool wants_delayed = false;
+  for (int score : scores_) {
+    switch (score) {
+    case SCORE_IFP_TIME_NUM:
+      wants_lifetime = true;
+      break;
+    case SCORE_IFP_BETA_NUM:
+    case SCORE_IFP_DENOM:
+      wants_delayed = true;
+      break;
     }
+  }
 
-    // Check for errors
-    if (has_ifp_score) {
+  if (wants_lifetime || wants_delayed) {
+    // Validate once, when the first IFP tally is encountered
+    if (!settings::ifp_on()) {
+      if (settings::run_mode == RunMode::FIXED_SOURCE) {
+        fatal_error(
+          "Iterated Fission Probability can only be used in an eigenvalue "
+          "calculation.");
+      }
       if (settings::run_mode == RunMode::EIGENVALUE) {
         if (settings::ifp_n_generation < 0) {
           settings::ifp_n_generation = DEFAULT_IFP_N_GENERATION;
@@ -219,35 +229,13 @@ Tally::Tally(pugi::xml_node node)
           fatal_error("'ifp_n_generation' must be lower than or equal to the "
                       "number of inactive cycles.");
         }
-        settings::ifp_on = true;
-      } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
-        fatal_error(
-          "Iterated Fission Probability can only be used in an eigenvalue "
-          "calculation.");
       }
     }
-  }
 
-  // Set IFP parameters if needed
-  if (settings::ifp_on) {
-    for (int score : scores_) {
-      switch (score) {
-      case SCORE_IFP_TIME_NUM:
-        if (settings::ifp_parameter == IFPParameter::None) {
-          settings::ifp_parameter = IFPParameter::GenerationTime;
-        } else if (settings::ifp_parameter == IFPParameter::BetaEffective) {
-          settings::ifp_parameter = IFPParameter::Both;
-        }
-        break;
-      case SCORE_IFP_BETA_NUM:
-      case SCORE_IFP_DENOM:
-        if (settings::ifp_parameter == IFPParameter::None) {
-          settings::ifp_parameter = IFPParameter::BetaEffective;
-        } else if (settings::ifp_parameter == IFPParameter::GenerationTime) {
-          settings::ifp_parameter = IFPParameter::Both;
-        }
-        break;
-      }
+    // Only enable in eigenvalue mode; fixed source has already errored above
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      settings::ifp_lifetime_on |= wants_lifetime;
+      settings::ifp_delayed_on |= wants_delayed;
     }
   }
 

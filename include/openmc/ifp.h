@@ -10,16 +10,6 @@
 
 namespace openmc {
 
-//! Check the value of the IFP parameter for beta effective or both.
-//!
-//! \return true if "BetaEffective" or "Both", false otherwise.
-bool is_beta_effective_or_both();
-
-//! Check the value of the IFP parameter for generation time or both.
-//!
-//! \return true if "GenerationTime" or "Both", false otherwise.
-bool is_generation_time_or_both();
-
 //! Resize IFP vectors
 //!
 //! \param[in,out] delayed_groups List of delayed group numbers
@@ -28,10 +18,10 @@ bool is_generation_time_or_both();
 template<typename T, typename U>
 void resize_ifp_data(vector<T>& delayed_groups, vector<U>& lifetimes, int64_t n)
 {
-  if (is_beta_effective_or_both()) {
+  if (settings::ifp_delayed_on) {
     delayed_groups.resize(n);
   }
-  if (is_generation_time_or_both()) {
+  if (settings::ifp_lifetime_on) {
     lifetimes.resize(n);
   }
 }

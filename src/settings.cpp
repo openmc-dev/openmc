@@ -53,6 +53,7 @@ bool confidence_intervals {false};
 bool create_delayed_neutrons {true};
 bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
+bool delta_tracking {false};
 bool entropy_on {false};
 bool event_based {false};
 bool ifp_on {false};
@@ -106,6 +107,16 @@ double rel_max_lost_particles {1.0e-6};
 int32_t max_write_lost_particles {-1};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
+
+// Default to hybrid-in-cross-section as it is the standard
+// approach implemented in Serpent.
+HybridTrackingType hybrid_delta_type {HybridTrackingType::CrossSection};
+// Based on the default in Serpent. See Section 4.1 in
+// http://doi.org/10.1016/j.anucene.2010.01.011
+double hybrid_xs_threshold {0.9};
+// The defaults are based on parameter studies performed different
+// whole-core fission reactor problems
+array<double, 4> hybrid_energy_threshold {1e1, 1e5, 0.0, 0.0};
 
 int64_t max_particles_in_flight {100000};
 int max_particle_events {1000000};
@@ -1227,6 +1238,84 @@ void read_settings_xml(pugi::xml_node root)
   // Check whether to use event-based parallelism
   if (check_for_node(root, "event_based")) {
     event_based = get_node_value_bool(root, "event_based");
+  }
+
+  // Check to see if we have a delta tracking node.
+  if (check_for_node(root, "delta_tracking")) {
+    xml_node delta_tracking_node = root.child("delta_tracking");
+
+    // Check to see if we should enable delta tracking or not.
+    if (check_for_node(delta_tracking_node, "enable")) {
+      delta_tracking = get_node_value_bool(delta_tracking_node, "enable");
+    }
+
+    // If delta tracking is enabled...
+    if (delta_tracking) {
+      // Parse the hybrid tracking type.
+      if (check_for_node(delta_tracking_node, "hybrid_type")) {
+        auto hybrid_type =
+          get_node_value(delta_tracking_node, "hybrid_type", true, true);
+        if (hybrid_type == "cross_section") {
+          hybrid_delta_type = HybridTrackingType::CrossSection;
+        } else if (hybrid_type == "energy") {
+          hybrid_delta_type = HybridTrackingType::Energy;
+        } else {
+          fatal_error("Unknown hybrid delta tracking method: " + hybrid_type);
+        }
+      }
+
+      // If running the hybrid in-cross-section scheme, check for a threshold.
+      if (hybrid_delta_type == HybridTrackingType::CrossSection &&
+          check_for_node(delta_tracking_node, "xs_threshold")) {
+        hybrid_xs_threshold =
+          std::stod(get_node_value(delta_tracking_node, "xs_threshold"));
+
+        if (hybrid_xs_threshold < 0.0 || hybrid_xs_threshold > 1.0) {
+          fatal_error(
+            "'xs_threshold' must be between 0 and 1 (inclusive). Value is: " +
+            std::to_string(hybrid_xs_threshold));
+        }
+      }
+
+      // If running the hybrid in-energy scheme, check for photon/neutron energy
+      // thresholds.
+      constexpr int i_neutron = ParticleType::neutron().transport_index();
+      constexpr int i_photon = ParticleType::photon().transport_index();
+      if (hybrid_delta_type == HybridTrackingType::Energy) {
+        if (check_for_node(delta_tracking_node, "neutron_energy_threshold")) {
+          hybrid_energy_threshold[i_neutron] = std::stod(
+            get_node_value(delta_tracking_node, "neutron_energy_threshold"));
+
+          if (hybrid_energy_threshold[i_neutron] <= 0.0) {
+            fatal_error(
+              "'neutron_energy_threshold' must be greater than 0. Value is: " +
+              std::to_string(hybrid_energy_threshold[i_neutron]));
+          }
+        }
+
+        if (check_for_node(delta_tracking_node, "photon_energy_threshold")) {
+          hybrid_energy_threshold[i_photon] = std::stod(
+            get_node_value(delta_tracking_node, "photon_energy_threshold"));
+
+          if (hybrid_energy_threshold[i_photon] <= 0.0) {
+            fatal_error(
+              "'photon_energy_threshold' must be greater than 0. Value is: " +
+              std::to_string(hybrid_energy_threshold[i_photon]));
+          }
+        }
+      }
+
+      if (temperature_multipole && delta_tracking) {
+        fatal_error(
+          "At present, delta tracking cannot be used with a windowed multipole "
+          "temperature treatment.");
+      }
+
+      if (!run_CE && delta_tracking) {
+        fatal_error("At present, delta tracking can only be used in continuous "
+                    "energy simulations.");
+      }
+    }
   }
 
   // Check whether material cell offsets should be generated

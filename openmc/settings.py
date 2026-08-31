@@ -94,6 +94,37 @@ class Settings:
         release of delayed photons.
 
         .. versionadded:: 0.12
+
+    delta_tracking : dict
+        Options for configuring delta tracking. Acceptable keys are:
+
+        :enable:
+            Whether delta tracking should be used or not (bool).
+        :hybrid_type:
+            The hybrid delta tracking scheme to use when running delta tracking
+            (str). Valid options are 'cross_section' for the hybrid-in-cross-section
+            method (approach used by Serpent), or 'energy' for the hybrid-in-energy
+            approach. 'cross_section' is the default.
+        :xs_threshold:
+            The threshold to use when running with hybrid-in-cross-section delta
+            tracking (float). If the ratio of the total cross section to the majorant
+            cross section is greater than 1 - xs_threshold, delta tracking is used.
+            Otherwise, surface tracking is used. The type of tracking is determined
+            locally after every collision is processed. A threshold of 0
+            runs surface tracking, while 1 runs delta tracking. A value of 0.9 is
+            used by default.
+        :neutron_energy_threshold:
+            The neutron energy threshold (in eV) to use when running hybrid-in-energy
+            delta tracking (float). If the neutron energy is greater than
+            neutron_energy_threshold, delta tracking is used. Otherwise surface
+            tracking is used. 10 eV is used by default.
+        :photon_energy_threshold:
+            The photon energy threshold (in eV) to use when running hybrid-in-energy
+            delta tracking (float). If the photon energy is greater than
+            photon_energy_threshold, delta tracking is used. Otherwise surface
+            tracking is used. 100 keV is used by default.
+
+        .. versionadded:: 0.16.1
     electron_treatment : {'led', 'ttb'}
         Whether to deposit all energy from electrons locally ('led') or create
         secondary bremsstrahlung photons ('ttb').
@@ -482,7 +513,7 @@ class Settings:
         self._delayed_photon_scaling = None
         self._material_cell_offsets = None
         self._log_grid_bins = None
-
+        self._delta_tracking = None
         self._event_based = None
         self._max_particles_in_flight = None
         self._max_particle_events = None
@@ -1395,6 +1426,36 @@ class Settings:
             WeightWindowGenerator, 'weight window generators', wwgs)
 
     @property
+    def delta_tracking(self) -> dict:
+        return self._delta_tracking
+
+    @delta_tracking.setter
+    def delta_tracking(self, delta_tracking: dict):
+        if not isinstance(delta_tracking, Mapping):
+            raise ValueError(f'Unable to set delta_tracking from "{delta_tracking}" '
+                             'which is not a dict.')
+        for key, value in delta_tracking.items():
+            if key == 'enable':
+                cv.check_type('enable', value, bool)
+            elif key == 'hybrid_type':
+                cv.check_value('hybrid type', value, ('cross_section', 'energy'))
+            elif key == 'xs_threshold':
+                cv.check_type('xs threshold', value, float)
+                cv.check_greater_than('xs threshold', value, 0.0, True)
+                cv.check_less_than('xs threshold', value, 1.0, True)
+            elif key == 'neutron_energy_threshold':
+                cv.check_type('neutron energy threshold', value, float)
+                cv.check_greater_than('neutron energy threshold', value, 0.0, False)
+            elif key == 'photon_energy_threshold':
+                cv.check_type('photon energy threshold', value, float)
+                cv.check_greater_than('photon energy threshold', value, 0.0, False)
+            else:
+                raise ValueError(f'Unable to set delta tracking to "{key}" which is '
+                                 'unsupported by OpenMC')
+
+        self._delta_tracking = delta_tracking
+
+    @property
     def random_ray(self) -> dict:
         return self._random_ray
 
@@ -2062,6 +2123,16 @@ class Settings:
             element = ET.SubElement(root, "free_gas_threshold")
             element.text = str(self._free_gas_threshold)
 
+    def _create_delta_tracking_subelement(self, root):
+        if self._delta_tracking:
+            element = ET.SubElement(root, "delta_tracking")
+            for key, value in self._delta_tracking.items():
+                if key == 'enable':
+                    element.set("enable", str(value).lower())
+                else:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(value)
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -2560,6 +2631,21 @@ class Settings:
         if text is not None:
             self.free_gas_threshold = float(text)
 
+    def _delta_tracking_from_xml_element(self, root):
+        elem = root.find('delta_tracking')
+        if elem is not None:
+            data = {}
+            enable = get_text(elem, 'enable')
+            if enable is not None:
+                data['enable'] = enable in ('true', '1')
+
+            for child in elem:
+                if child.tag in ('xs_threshold', 'neutron_energy_threshold', 'photon_energy_threshold'):
+                    data[child.tag] = float(child.text)
+                elif child.tag == 'hybrid_type':
+                    data[child.tag] = child.text
+            self.delta_tracking = data
+
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
 
@@ -2637,6 +2723,7 @@ class Settings:
         self._create_use_decay_photons_subelement(element)
         self._create_source_rejection_fraction_subelement(element)
         self._create_free_gas_threshold_subelement(element)
+        self._create_delta_tracking_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2755,6 +2842,7 @@ class Settings:
         settings._use_decay_photons_from_xml_element(elem)
         settings._source_rejection_fraction_from_xml_element(elem)
         settings._free_gas_threshold_from_xml_element(elem)
+        settings._delta_tracking_from_xml_element(elem)
 
         return settings
 

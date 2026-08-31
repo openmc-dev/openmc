@@ -6,6 +6,101 @@ import openmc
 
 PINCELL_PITCH = 1.26 # cm
 
+def delta_tracking_lattice(
+    delta_tracking_settings: dict,
+    run_photon: bool = False,
+    boundary_type: str = 'reflective',
+    densities: list[float] | None = None) -> openmc.Model:
+    """Create a simple PWR-style lattice for testing delta tracking.
+
+    Parameters
+    ----------
+    delta_tracking_settings : dict
+        The delta tracking settings dictionary to apply to this model.
+    run_photon : bool, optional
+        If coupled neutron-photon transport should be run or not.
+    boundary_type : str, optional
+        The boundary to apply to the outer surface of the infinite lattice.
+    densities : list of float, optional
+        The distributed cell densities to apply to cell 1 (the fuel) in the
+        infinite lattice.
+
+    Returns
+    -------
+    model : openmc.Model
+        A PWR-style 2x2 infinite assembly model
+
+    """
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+
+    DELTA_PIN_RADIUS = 0.4
+
+    # Create some simple materials. UO2 fuel for the inner cylinder in the pin,
+    # and water for the remainder of the domain.
+    uo2 = openmc.Material(name='UO2')
+    uo2.set_density('g/cm3', 10.0)
+    uo2.add_nuclide('U235', 1.0)
+    uo2.add_nuclide('O16', 2.0)
+    water = openmc.Material(name='light water')
+    water.add_nuclide('H1', 2.0)
+    water.add_nuclide('O16', 1.0)
+    water.set_density('g/cm3', 1.0)
+    water.add_s_alpha_beta('c_H_in_H2O')
+    model.materials.extend([uo2, water])
+
+    # Create the geometry, starting with the fuel pincell.
+    cyl = openmc.ZCylinder(r=DELTA_PIN_RADIUS)
+    pin = openmc.model.pin([cyl], [uo2, water])
+
+    # Create a 2x2 lattice to allow for distributed properties.
+    lattice = openmc.RectLattice()
+    lattice.lower_left = (-PINCELL_PITCH, -PINCELL_PITCH)
+    lattice.pitch = (PINCELL_PITCH, PINCELL_PITCH)
+    lattice.universes = [[pin, pin],
+                         [pin, pin]]
+    box = openmc.model.RectangularPrism(
+        2.0 * PINCELL_PITCH, 2.0 * PINCELL_PITCH,
+        origin=(0.0, 0.0),
+        boundary_type=boundary_type
+    )
+
+    # Set distributed densities if required.
+    if densities != None:
+        pin.cells[1].density = densities
+
+    # Finally, save the geometry.
+    model.geometry = openmc.Geometry([openmc.Cell(fill=lattice, region=-box)])
+    model.geometry.merge_surfaces = True
+
+    # Add a mesh tally for the neutron total reaction rate.
+    msh = openmc.RegularMesh()
+    msh.lower_left = (-PINCELL_PITCH, -PINCELL_PITCH)
+    msh.upper_right = (PINCELL_PITCH, PINCELL_PITCH)
+    msh.dimension = (2, 2)
+    t = openmc.Tally()
+    t.filters = [openmc.ParticleFilter(bins='neutron'), openmc.MeshFilter(mesh=msh)]
+    t.scores = ['total']
+    t.estimator = 'collision'
+    model.tallies.append(t)
+
+    # If photon transport is required, add a mesh tally for the photon total reaction rate.
+    if run_photon:
+        t = openmc.Tally()
+        t.filters = [openmc.ParticleFilter(bins='photon'), openmc.MeshFilter(mesh=msh)]
+        t.scores = ['total']
+        t.estimator = 'collision'
+        model.tallies.append(t)
+
+    # Set some simulation settings.
+    model.settings.batches = 10
+    model.settings.inactive = 5
+    model.settings.particles = 1000
+    model.settings.delta_tracking = delta_tracking_settings
+    model.settings.photon_transport = run_photon
+
+    return model
+
 def pwr_pin_cell() -> openmc.Model:
     """Create a PWR pin-cell model.
 
@@ -970,7 +1065,7 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
         Whether or not the cross sections should contain two temperature datapoints.
         The first data point is the C5G7 cross sections, which corresponds to a temperature
         of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
-        which corresponds to a temperature of 3934 K. This temperature dependence is
+        which corresponds to a temperature of 394 K. This temperature dependence is
         fictitious; it is used for testing temperature feedback in the random ray solver.
 
     Returns

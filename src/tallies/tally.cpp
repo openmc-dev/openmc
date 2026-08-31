@@ -177,6 +177,13 @@ Tally::Tally(pugi::xml_node node)
         estimator_ = TallyEstimator::COLLISION;
       }
     }
+
+    // Check to make sure the user isn't adding a filter unsupported by delta
+    // tracking.
+    if (settings::delta_tracking && (filt_type == FilterType::SURFACE ||
+                                      filt_type == FilterType::MUSURFACE)) {
+      fatal_error("Surface filters cannot be used with delta tracking.");
+    }
   }
 
   // =======================================================================
@@ -348,6 +355,12 @@ Tally::Tally(pugi::xml_node node)
   // If settings.xml trigger is turned on, create tally triggers
   if (settings::trigger_on) {
     this->init_triggers(node);
+  }
+
+  // If we're running with delta tracking, the default estimator must be set to
+  // collision or analog.
+  if (settings::delta_tracking && estimator_ == TallyEstimator::TRACKLENGTH) {
+    estimator_ = TallyEstimator::COLLISION;
   }
 
   // =======================================================================

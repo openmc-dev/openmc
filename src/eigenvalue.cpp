@@ -49,9 +49,15 @@ void calculate_generation_keff()
   const auto& gt = simulation::global_tallies;
 
   // Get keff for this generation by subtracting off the starting value
-  simulation::keff_generation =
-    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
-    simulation::keff_generation;
+  if (settings::delta_tracking) {
+    simulation::keff_generation =
+      gt(GlobalTally::K_COLLISION, TallyResult::VALUE) -
+      simulation::keff_generation;
+  } else {
+    simulation::keff_generation =
+      gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
+      simulation::keff_generation;
+  }
 
   double keff_reduced;
 #ifdef OPENMC_MPI
@@ -478,30 +484,39 @@ int openmc_get_keff(double* k_combined)
   // exceptions and an expression specifically derived for the combination of
   // two estimators (vice three) should be used instead.
 
-  // First we will identify if there are any matching estimators
+  // If delta tracking is enabled, use the collision and absorption estimators
+  // only. Otherwise, we will identify if there are any matching estimators. If
+  // none match, all three estimates are used.
   int i, j;
   bool use_three = false;
-  if ((std::abs(kv[0] - kv[1]) / kv[0] < FP_REL_PRECISION) &&
-      (std::abs(cov(0, 0) - cov(1, 1)) / cov(0, 0) < FP_REL_PRECISION)) {
-    // 0 and 1 match, so only use 0 and 2 in our comparisons
-    i = 0;
-    j = 2;
-
-  } else if ((std::abs(kv[0] - kv[2]) / kv[0] < FP_REL_PRECISION) &&
-             (std::abs(cov(0, 0) - cov(2, 2)) / cov(0, 0) < FP_REL_PRECISION)) {
-    // 0 and 2 match, so only use 0 and 1 in our comparisons
+  if (settings::delta_tracking) {
     i = 0;
     j = 1;
-
-  } else if ((std::abs(kv[1] - kv[2]) / kv[1] < FP_REL_PRECISION) &&
-             (std::abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) < FP_REL_PRECISION)) {
-    // 1 and 2 match, so only use 0 and 1 in our comparisons
-    i = 0;
-    j = 1;
-
   } else {
-    // No two estimators match, so set boolean to use all three estimators.
-    use_three = true;
+    if ((std::abs(kv[0] - kv[1]) / kv[0] < FP_REL_PRECISION) &&
+        (std::abs(cov(0, 0) - cov(1, 1)) / cov(0, 0) < FP_REL_PRECISION)) {
+      // 0 and 1 match, so only use 0 and 2 in our comparisons
+      i = 0;
+      j = 2;
+
+    } else if ((std::abs(kv[0] - kv[2]) / kv[0] < FP_REL_PRECISION) &&
+               (std::abs(cov(0, 0) - cov(2, 2)) / cov(0, 0) <
+                 FP_REL_PRECISION)) {
+      // 0 and 2 match, so only use 0 and 1 in our comparisons
+      i = 0;
+      j = 1;
+
+    } else if ((std::abs(kv[1] - kv[2]) / kv[1] < FP_REL_PRECISION) &&
+               (std::abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) <
+                 FP_REL_PRECISION)) {
+      // 1 and 2 match, so only use 0 and 1 in our comparisons
+      i = 0;
+      j = 1;
+
+    } else {
+      // No two estimators match, so set boolean to use all three estimators.
+      use_three = true;
+    }
   }
 
   if (use_three) {
@@ -569,16 +584,17 @@ int openmc_get_keff(double* k_combined)
     // Urbatsch, but are simpler than for the three estimators case since the
     // block matrices of the three estimator equations reduces to scalars here
 
-    // Store the commonly used term
-    double f = kv[i] - kv[j];
-    double g = cov(i, i) + cov(j, j) - 2.0 * cov(i, j);
+    // Store common terms.
+    const double f = cov(i, i) + cov(j, j) - 2.0 * cov(i, j);
+    const double g = cov(i, i) - cov(i, j);
+    const double h = kv[i] - kv[j];
 
-    // Calculate combined estimate of k-effective
-    k_combined[0] = kv[i] - (cov(i, i) - cov(i, j)) / g * f;
+    // Eq. 36 in LA-12658-MS
+    k_combined[0] = kv[i] - g * h / f;
 
-    // Calculate standard deviation of combined estimate
-    k_combined[1] = (cov(i, i) * cov(j, j) - cov(i, j) * cov(i, j)) *
-                    (g + n * f * f) / (n * (n - 2) * g * g);
+    // This is re-derived from the \Sigma matrix based on Eq. 40 in LA-12658-MS
+    k_combined[1] =
+      (cov(i, i) - g * g / f) * ((n - 1.0) / n + h * h / f) / (n - 2.0);
     k_combined[1] = std::sqrt(k_combined[1]);
   }
   return 0;

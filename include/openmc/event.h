@@ -63,6 +63,7 @@ namespace simulation {
 // is provided which controls the append operations using atomics.
 extern SharedArray<EventQueueItem> calculate_fuel_xs_queue;
 extern SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
+extern SharedArray<EventQueueItem> calculate_majorant_xs_queue;
 extern SharedArray<EventQueueItem> advance_particle_queue;
 extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
@@ -89,6 +90,15 @@ void free_event_queues(void);
 //! \param buffer_idx The particle's actual index in the particle buffer
 void dispatch_xs_event(int64_t buffer_idx);
 
+//! Execute the death event for all particles
+//
+//! \param n_particles The number of particles in the particle buffer
+void process_death_events(int64_t n_particles);
+
+//==============================================================================
+// Surface tracking
+//==============================================================================
+
 //! Execute the initialization event for all particles
 //
 //! \param n_particles The number of particles in the particle buffer
@@ -109,11 +119,6 @@ void process_surface_crossing_events();
 //! Execute the collision event for all particles in this event's buffer
 void process_collision_events();
 
-//! Execute the death event for all particles
-//
-//! \param n_particles The number of particles in the particle buffer
-void process_death_events(int64_t n_particles);
-
 //! Process event queues until all are empty. Each iteration processes the
 //! longest queue first to maximize vectorization efficiency.
 void process_transport_events();
@@ -125,6 +130,49 @@ void process_transport_events();
 //! \param offset The offset index in the shared secondary bank
 //! \param shared_secondary_bank The shared secondary bank to read from
 void process_init_secondary_events(int64_t n_particles, int64_t offset,
+  const SharedArray<SourceSite>& shared_secondary_bank);
+
+//==============================================================================
+// Hybrid delta tracking
+//==============================================================================
+
+//! Specialization of process_init_events() for hybrid delta tracking.
+//
+//! \param n_particles The number of particles in the particle buffer
+//! \param source_offset The offset index in the source bank to use
+void process_hybrid_init_events(int64_t n_particles, int64_t source_offset);
+
+//! Specialization of process_calculate_xs_events() for hybrid delta tracking.
+//
+//! \param queue A reference to the desired XS lookup queue
+void process_hybrid_calculate_xs_events(SharedArray<EventQueueItem>& queue);
+
+//! Execute the majorant calculation event for all particles in this advance
+//! buffer
+void process_hybrid_calculate_majorant_events();
+
+//! Execute the hybrid advance particle event for all particles in this advance
+//! buffer
+void process_hybrid_advance_particle_events();
+
+//! Specialization of process_surface_crossing_events() for hybrid delta
+//! tracking.
+void process_hybrid_surface_crossing_events();
+
+//! Execute the hybrid delta tracking collision event for all particles in
+//! this event's buffer
+void process_hybrid_collision_events();
+
+//! Specialization of process_transport_events() for hybrid delta tracking.
+void process_hybrid_transport_events();
+
+//! Specialization of process_init_secondary_events() for hybrid delta
+//! tracking.
+//
+//! \param n_particles The number of particles to initialize
+//! \param offset The offset index in the shared secondary bank
+//! \param shared_secondary_bank The shared secondary bank to read from
+void process_hybrid_init_secondary_events(int64_t n_particles, int64_t offset,
   const SharedArray<SourceSite>& shared_secondary_bank);
 
 } // namespace openmc

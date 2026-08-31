@@ -17,6 +17,7 @@ namespace simulation {
 
 SharedArray<EventQueueItem> calculate_fuel_xs_queue;
 SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
+SharedArray<EventQueueItem> calculate_majorant_xs_queue;
 SharedArray<EventQueueItem> advance_particle_queue;
 SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
@@ -33,6 +34,9 @@ void init_event_queues(int64_t n_particles)
 {
   simulation::calculate_fuel_xs_queue.reserve(n_particles);
   simulation::calculate_nonfuel_xs_queue.reserve(n_particles);
+  if (settings::delta_tracking) {
+    simulation::calculate_majorant_xs_queue.reserve(n_particles);
+  }
   simulation::advance_particle_queue.reserve(n_particles);
   simulation::surface_crossing_queue.reserve(n_particles);
   simulation::collision_queue.reserve(n_particles);
@@ -44,6 +48,9 @@ void free_event_queues(void)
 {
   simulation::calculate_fuel_xs_queue.clear();
   simulation::calculate_nonfuel_xs_queue.clear();
+  if (settings::delta_tracking) {
+    simulation::calculate_majorant_xs_queue.clear();
+  }
   simulation::advance_particle_queue.clear();
   simulation::surface_crossing_queue.clear();
   simulation::collision_queue.clear();
@@ -61,6 +68,21 @@ void dispatch_xs_event(int64_t buffer_idx)
     simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});
   }
 }
+
+void process_death_events(int64_t n_particles)
+{
+  simulation::time_event_death.start();
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < n_particles; i++) {
+    Particle& p = simulation::particles[i];
+    p.event_death();
+  }
+  simulation::time_event_death.stop();
+}
+
+//==============================================================================
+// Functions for surface tracking
+//==============================================================================
 
 void process_init_events(int64_t n_particles, int64_t source_offset)
 {
@@ -169,17 +191,6 @@ void process_collision_events()
   simulation::time_event_collision.stop();
 }
 
-void process_death_events(int64_t n_particles)
-{
-  simulation::time_event_death.start();
-#pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < n_particles; i++) {
-    Particle& p = simulation::particles[i];
-    p.event_death();
-  }
-  simulation::time_event_death.stop();
-}
-
 void process_transport_events()
 {
   while (true) {
@@ -216,6 +227,225 @@ void process_init_secondary_events(int64_t n_particles, int64_t offset,
     simulation::particles[i].event_revive_from_secondary(site);
     if (simulation::particles[i].alive()) {
       dispatch_xs_event(i);
+    }
+  }
+  simulation::time_event_init.stop();
+}
+
+//==============================================================================
+// Functions for hybrid delta tracking
+//==============================================================================
+
+void process_hybrid_init_events(int64_t n_particles, int64_t source_offset)
+{
+  simulation::time_event_init.start();
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < n_particles; i++) {
+    initialize_particle_track(
+      simulation::particles[i], source_offset + i + 1, false);
+
+    simulation::calculate_majorant_xs_queue[i] = {simulation::particles[i], i};
+  }
+  simulation::calculate_majorant_xs_queue.resize(n_particles);
+  simulation::time_event_init.stop();
+}
+
+void process_hybrid_calculate_xs_events(SharedArray<EventQueueItem>& queue)
+{
+  simulation::time_event_calculate_xs.start();
+
+  // TODO: If using C++17, we could perform a parallel sort of the queue by
+  // particle type, material type, and then energy, in order to improve cache
+  // locality and reduce thread divergence on GPU. However, the parallel
+  // algorithms typically require linking against an additional library (Intel
+  // TBB). Prior to C++17, std::sort is a serial only operation, which in this
+  // case makes it too slow to be practical for most test problems.
+  //
+  // std::sort(std::execution::par_unseq, queue.data(), queue.data() +
+  // queue.size());
+
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < queue.size(); i++) {
+    int64_t buffer_idx = queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+    p.event_calculate_xs();
+    if (!p.alive()) {
+      continue;
+    }
+
+    // Particles always require a delta collision event after cross sections
+    // are computed if running delta tracking. Otherwise, an advance event is
+    // required for surface tracking.
+    if (p.delta_tracking()) {
+      simulation::collision_queue.thread_safe_append({p, buffer_idx});
+    } else {
+      simulation::advance_particle_queue.thread_safe_append({p, buffer_idx});
+    }
+  }
+
+  queue.resize(0);
+
+  simulation::time_event_calculate_xs.stop();
+}
+
+void process_hybrid_calculate_majorant_events()
+{
+  simulation::time_event_calculate_majorant_xs.start();
+
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < simulation::calculate_majorant_xs_queue.size(); i++) {
+    int64_t buffer_idx = simulation::calculate_majorant_xs_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+
+    p.event_update_majorant();
+
+    // Need to compute cross sections before advancing when running surface
+    // tracking. Otherwise, we can go right to advancing with delta tracking.
+    if (!p.delta_tracking()) {
+      dispatch_xs_event(buffer_idx);
+    } else {
+      simulation::advance_particle_queue.thread_safe_append({p, buffer_idx});
+    }
+  }
+
+  simulation::calculate_majorant_xs_queue.resize(0);
+
+  simulation::time_event_calculate_majorant_xs.stop();
+}
+
+void process_hybrid_advance_particle_events()
+{
+  simulation::time_event_advance_particle.start();
+
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
+    int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+    p.event_delta_advance();
+    if (!p.alive()) {
+      continue;
+    }
+
+    if (p.collision_distance() < p.boundary().distance()) {
+      // We need to compute cross sections prior to processing a collision when
+      // running delta tracking. Otherwise, we can go right to a collision when
+      // running surface tracking.
+      if (p.delta_tracking()) {
+        dispatch_xs_event(buffer_idx);
+      } else {
+        simulation::collision_queue.thread_safe_append({p, buffer_idx});
+      }
+    } else {
+      simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
+    }
+  }
+
+  simulation::advance_particle_queue.resize(0);
+
+  simulation::time_event_advance_particle.stop();
+}
+
+void process_hybrid_surface_crossing_events()
+{
+  simulation::time_event_surface_crossing.start();
+
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
+    int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+    p.event_cross_surface();
+    p.event_check_limit_and_revive();
+    if (p.alive())
+      simulation::calculate_majorant_xs_queue.thread_safe_append(
+        {p, buffer_idx});
+  }
+
+  simulation::surface_crossing_queue.resize(0);
+
+  simulation::time_event_surface_crossing.stop();
+}
+
+void process_hybrid_collision_events()
+{
+  simulation::time_event_collision.start();
+
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {
+    int64_t buffer_idx = simulation::collision_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+
+    if (p.delta_tracking()) {
+      // Check to ensure the majorant is valid.
+      if (p.kill_invalid_maj()) {
+        continue;
+      }
+
+      // Perform rejection sampling. If this is true, a real collision is
+      // processed prior to going back to majorant calculations.
+      if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
+        p.event_collide();
+      }
+    } else {
+      p.event_collide();
+    }
+
+    // Update the tracking type based on the chosen hybrid scheme.
+    p.update_tracking_type();
+
+    p.event_check_limit_and_revive();
+    if (p.alive()) {
+      simulation::calculate_majorant_xs_queue.thread_safe_append(
+        {p, buffer_idx});
+    }
+  }
+
+  simulation::collision_queue.resize(0);
+
+  simulation::time_event_collision.stop();
+}
+
+void process_hybrid_transport_events()
+{
+  while (true) {
+    int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
+      simulation::calculate_nonfuel_xs_queue.size(),
+      simulation::calculate_majorant_xs_queue.size(),
+      simulation::advance_particle_queue.size(),
+      simulation::surface_crossing_queue.size(),
+      simulation::collision_queue.size()});
+
+    if (max == 0) {
+      break;
+    } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+      process_hybrid_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+    } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+      process_hybrid_calculate_xs_events(
+        simulation::calculate_nonfuel_xs_queue);
+    } else if (max == simulation::calculate_majorant_xs_queue.size()) {
+      process_hybrid_calculate_majorant_events();
+    } else if (max == simulation::advance_particle_queue.size()) {
+      process_hybrid_advance_particle_events();
+    } else if (max == simulation::surface_crossing_queue.size()) {
+      process_hybrid_surface_crossing_events();
+    } else if (max == simulation::collision_queue.size()) {
+      process_hybrid_collision_events();
+    }
+  }
+}
+
+void process_hybrid_init_secondary_events(int64_t n_particles, int64_t offset,
+  const SharedArray<SourceSite>& shared_secondary_bank)
+{
+  simulation::time_event_init.start();
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < n_particles; i++) {
+    Particle& p = simulation::particles[i];
+    initialize_particle_track(p, offset + i + 1, true);
+    const SourceSite& site = shared_secondary_bank[offset + i];
+    p.event_revive_from_secondary(site);
+
+    if (p.alive()) {
+      simulation::calculate_majorant_xs_queue.thread_safe_append({p, i});
     }
   }
   simulation::time_event_init.stop();

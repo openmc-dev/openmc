@@ -52,6 +52,79 @@ would need to instantiate a :class:`openmc.Settings` object and assign the
 
 If you don't specify a run mode, the default run mode is 'eigenvalue'.
 
+.. _usersguide_tracking:
+
+-------------------
+Tracking Algorithms
+-------------------
+
+By default, OpenMC and many other Monte Carlo transport solvers use
+:ref:`surface tracking <method_surface_tracking>` to sample distances
+between collisions as it allows for the use of the low-variance tracklength
+estimator. Surface tracking often performs poorly in problems that contain
+many repeated unit cells, as particles must determine the distance to the
+nearest surface many times between collisions. Examples of problems which
+often see this performance degradation are fission reactors, namely fast
+reactors (where neutron mean free paths are long) and reactors with very small
+dispersed heterogeneities (such as TRISO-fueled reactors).
+
+To remedy the performance penalty of using surface tracking in these systems,
+OpenMC includes an implementation of
+:ref:`hybrid tracking <method_hybrid_tracking>`. This family of techniques
+is based on :ref:`delta tracking <method_delta_tracking>`, which replaces
+distance to nearest surface calculations with "where am I" lookups that
+are extremely fast in lattice geometries. The performance of delta tracking
+degrades when problems contain small localized absorbers, and so hybrid
+tracking mixes surface tracking and delta tracking to maximize performance.
+The two approaches implemented in OpenMC are the hybrid-in-cross-section
+method (identical to the approach used by Serpent) and the hybrid-in-energy
+method. To use hybrid-in-cross-section tracking, you need to set
+:attr:`Settings.delta_tracking` to the following::
+
+    settings.delta_tracking = {
+      'enable' : True,
+      'hybrid_type' : 'cross_section'
+    }
+
+The efficiency of this hybrid scheme is determined by how often delta tracking
+is run relalative to surface tracking, which is controlled by the unitless
+hybrid tracking threshold :math:`0 \leq c \leq 1`. This parameter is roughly
+equivalent to the probability that a collision is *rejected* by delta tracking
+at a given point in space. When that probability is high, the cost of delta
+tracking becomes large and surface tracking is comparatively more efficient.
+Accordingly, a value of :math:`c = 0` will run pure surface tracking,
+:math:`c = 1` will run pure delta tracking, and a value between 0 and 1 will
+run a combination of the two to bound the rejection probability. A value of
+:math:`c` between 0.8 and 0.95 is often recommended for the vast majority
+of fission reactor problems based on parameter studies. OpenMC uses a default
+of :math:`c = 0.9`; this can be changed by setting::
+
+    settings.delta_tracking['xs_threshold'] = 0.95
+
+The hybrid-in-energy-approach choses when surface tracking or delta tracking
+should be used based on a particle-specific energy threshold :math:`E_{th}`
+(in units of eV). If the energy of a particle is greater than :math:`E_{th}`
+delta tracking is used, otherwise surface tracking is used. The use of
+particle energy as a hybrid parameter is based on the observation that
+neutrons collide less often at energies at high energies (passing through
+several lattice cells), and so delta tracking will be more efficient in
+those regimes. The hybrid-in-energy method has been found to be up to
+1.5x faster than the hybrid-in-cross-section method in OpenMC at the
+cost of requiring a particle-dependent threshold. To use hybrid-in-energy
+tracking, set :attr:`Settings.delta_tracking` to the following::
+
+    settings.delta_tracking = {
+      'enable' : True,
+      'hybrid_type' : 'energy'
+    }
+
+The default value of :math:`E_{th}` in OpenMC are 10 eV for neutrons and
+100 keV for photons, which were determined based on fission reactor
+parameter studies. These thresholds can be adjusted, in units of eV, as::
+
+    settings.delta_tracking['neutron_energy_threshold'] = 15
+    settings.delta_tracking['photon_energy_threshold'] = 1e6
+
 .. _usersguide_particles:
 
 ------------

@@ -118,6 +118,10 @@ void transport_history_based();
 //! secondary bank
 void transport_history_based_shared_secondary();
 
+//! Simulate a single particle history from birth to death using hybrid
+//! delta tracking
+void transport_hybrid_history_based_single_particle(Particle& p);
+
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();
 

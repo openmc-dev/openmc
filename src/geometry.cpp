@@ -24,6 +24,8 @@ namespace model {
 int root_universe {-1};
 int n_coord_levels;
 
+vector<int> boundary_surfaces;
+
 vector<int64_t> overlap_check_count;
 
 vector<OverlapKey> overlap_keys;
@@ -280,7 +282,6 @@ bool find_cell_inner(
 
 bool neighbor_list_find_cell(GeometryState& p, bool verbose)
 {
-
   // Reset all the deeper coordinate levels.
   for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
     p.coord(i).reset();
@@ -507,6 +508,30 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
       }
     }
   }
+  return info;
+}
+
+//==============================================================================
+
+BoundaryInfo distance_to_external_boundary(GeometryState& p)
+{
+  BoundaryInfo info;
+
+  info.distance() = INFTY;
+  info.surface() = 0;
+  info.coord_level() = 1;
+  for (auto s_idx : model::boundary_surfaces) {
+    const auto& s = model::surfaces[s_idx];
+    double surf_dist = s->distance(p.r(), p.u(), false);
+    if (surf_dist < info.distance()) {
+      info.distance() = surf_dist;
+      info.surface() = s_idx + 1;
+      if (s->sense(p.r(), p.u())) {
+        info.surface() *= -1;
+      }
+    }
+  }
+
   return info;
 }
 

@@ -15,6 +15,7 @@
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
+#include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -156,6 +157,7 @@ void Particle::from_source(const SourceSite* src)
   material() = C_NONE;
   n_collision() = src->n_collision;
   fission() = false;
+  majorant() = 0.0;
   zero_flux_derivs();
   lifetime() = 0.0;
 #ifdef OPENMC_DAGMC_ENABLED
@@ -198,6 +200,30 @@ void Particle::from_source(const SourceSite* src)
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
+
+  // Revive with delta tracking turned on in most scenarios. There are a few
+  // exceptions:
+  // i)  If hybrid-in-cross-section tracking is being used and the threshold is
+  //     0. This ensures the particle tracks and RNG stream fully mimic surface
+  //     tracking.
+  // ii) The birth energy is below the hybrid-in-energy cuttoff for the
+  //     particle.
+  if (settings::delta_tracking) {
+    // i)
+    const bool disable_i =
+      settings::hybrid_delta_type == HybridTrackingType::CrossSection &&
+      settings::hybrid_xs_threshold == 0.0;
+
+    // ii)
+    const bool disable_iii =
+      settings::hybrid_delta_type == HybridTrackingType::Energy &&
+      E() < settings::hybrid_energy_threshold[type().transport_index()];
+
+    delta_tracking() = !(disable_i || disable_iii);
+
+    // Need to keep majorant in synch.
+    update_majorant();
+  }
 }
 
 void Particle::event_calculate_xs()
@@ -313,7 +339,8 @@ void Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
+  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron() &&
+      !delta_tracking()) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
   }
 
@@ -330,6 +357,71 @@ void Particle::event_advance()
   // Clear surface component if distance is long enough
   if (distance > TINY_BIT)
     surface() = SURFACE_NONE;
+}
+
+void Particle::event_update_majorant()
+{
+  if (E() != E_last()) {
+    update_majorant();
+  }
+}
+
+void Particle::event_delta_advance()
+{
+  // Compute the distance to the next collision with the hybrid approach.
+  collision_distance() = hybrid_distance_to_coll();
+
+  // Update distance to problem boundary if we've flagged that this particle
+  // should run with delta tracking. Otherwise, we need the distance to the
+  // nearest surface.
+  if (delta_tracking()) {
+    boundary() = distance_to_external_boundary(*this);
+    boundary().distance() -= FP_REL_PRECISION;
+  } else {
+    boundary() = distance_to_boundary(*this);
+  }
+
+  double speed = this->speed();
+  double time_cutoff = settings::time_cutoff[type().transport_index()];
+  double distance_cutoff =
+    (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+
+  // Move to the external boundary, collision site (real or virtual), or time
+  // cutoff distance.
+  double distance =
+    std::min({collision_distance(), boundary().distance(), distance_cutoff});
+  move_distance(distance);
+
+  // Advance particle in time.
+  double dt = distance / speed;
+  time() += dt;
+  lifetime() += dt;
+
+  // Need to locate the particle at the collision site or boundary if flagged
+  // for delta tracking.
+  if (delta_tracking()) {
+    for (int j = 0; j < n_coord(); ++j) {
+      coord(j).reset();
+    }
+    if (!exhaustive_find_cell(*this)) {
+      // We've lost this particle.
+      mark_as_lost(fmt::format(
+        "Particle {} could not be located while running delta tracking!",
+        id()));
+      return;
+    }
+  }
+
+  // Force re-calculation of material properties at the collision site if
+  // running delta tracking.
+  if (delta_tracking()) {
+    material_last() = C_NONE;
+  }
+
+  // Set particle weight to zero if it hit the time boundary
+  if (distance == distance_cutoff) {
+    wgt() = 0.0;
+  }
 }
 
 void Particle::event_cross_surface()
@@ -396,7 +488,6 @@ void Particle::event_cross_surface()
 
 void Particle::event_collide()
 {
-
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
@@ -554,6 +645,9 @@ void Particle::event_check_limit_and_revive()
   // In non-shared-secondary mode, revive from local secondary bank
   if (!alive() && !settings::use_shared_secondary_bank &&
       !local_secondary_bank().empty()) {
+    // Revive with delta tracking turned on.
+    delta_tracking() = settings::delta_tracking;
+
     SourceSite& site = local_secondary_bank().back();
     event_revive_from_secondary(site);
     local_secondary_bank().pop_back();
@@ -587,7 +681,7 @@ void Particle::event_death()
 #pragma omp atomic
       global_tally_collision += k_collision;
     }
-    if (k_tracklength != 0.0) {
+    if (k_tracklength != 0.0 && !settings::delta_tracking) {
 #pragma omp atomic
       global_tally_tracklength += k_tracklength;
     }
@@ -618,6 +712,23 @@ void Particle::event_death()
   if (settings::run_mode == RunMode::EIGENVALUE ||
       settings::use_shared_secondary_bank) {
     simulation::progeny_per_particle[current_work()] = n_progeny();
+  }
+}
+
+double Particle::hybrid_distance_to_coll()
+{
+  if (delta_tracking()) {
+    if (majorant() == 0.0) {
+      return INFINITY;
+    } else {
+      return -std::log(prn(current_seed())) / majorant();
+    }
+  } else {
+    if (macro_xs().total == 0.0) {
+      return INFINITY;
+    } else {
+      return -std::log(prn(current_seed())) / macro_xs().total;
+    }
   }
 }
 
@@ -866,6 +977,59 @@ void Particle::cross_periodic_bc(
   // Diagnostic message
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Hit periodic boundary on surface {}", surf.id_);
+  }
+}
+
+void Particle::update_majorant()
+{
+  if (type().is_neutron()) {
+    majorant() = NeutronMajorant::safety_factor_ *
+                 data::n_majorant->calculate_neutron_xs(E());
+  } else if (type().is_photon()) {
+    majorant() = PhotonMajorant::safety_factor_ *
+                 data::p_majorant->calculate_photon_xs(E());
+  }
+}
+
+bool Particle::kill_invalid_maj()
+{
+  if (alive() && (macro_xs().total > majorant())) {
+    mark_as_lost(
+      fmt::format("Ratio of the total cross section ({}) to the majorant "
+                  "cross section ({}) for particle {} ({}) with energy {} is "
+                  "greater than unity!",
+        macro_xs().total, majorant(), id(), type().str(), E()));
+    return true;
+  }
+  return false;
+}
+
+void Particle::update_tracking_type()
+{
+  switch (settings::hybrid_delta_type) {
+  case HybridTrackingType::CrossSection: {
+    // We need to decide if delta tracking or surface tracking should be used.
+    // This is done based on Eq. 9 in the Serpent paper:
+    // http://doi.org/10.1016/j.anucene.2010.01.011
+    const double th = 1.0 - settings::hybrid_xs_threshold;
+    if (alive() && (macro_xs().total / majorant()) > th) {
+      delta_tracking() = true;
+    } else if (alive()) {
+      delta_tracking() = false;
+    }
+    break;
+  }
+  case HybridTrackingType::Energy: {
+    // Switch between tracking types based on energy. See
+    // Section 3.3 of https://doi.org/10.1080/23324309.2026.2618791
+    if (alive() &&
+        E() >= settings::hybrid_energy_threshold[type().transport_index()]) {
+      delta_tracking() = true;
+    } else if (alive()) {
+      delta_tracking() = false;
+    }
+    break;
+  }
   }
 }
 

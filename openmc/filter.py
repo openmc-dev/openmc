@@ -110,12 +110,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         self.id = filter_id
 
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        elif len(self.bins) != len(other.bins):
-            return False
-        else:
-            return np.allclose(self.bins, other.bins)
+        return type(self) is type(other) and np.array_equal(
+            self.bins, other.bins)
 
     def __gt__(self, other):
         if type(self) is not type(other):
@@ -744,16 +740,6 @@ class ParticleFilter(Filter):
         The number of filter bins
 
     """
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        elif len(self.bins) != len(other.bins):
-            return False
-        else:
-            return np.all(self.bins == other.bins)
-
-    __hash__ = Filter.__hash__
 
     @Filter.bins.setter
     def bins(self, bins):
@@ -1393,7 +1379,7 @@ class CollisionFilter(Filter):
 class ReactionFilter(Filter):
     """Bins tally events based on the reaction type (MT number).
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------
@@ -1810,7 +1796,7 @@ class ParticleProductionFilter(Filter):
 
     The incident particle type can be filtered using :class:`ParticleFilter`.
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------

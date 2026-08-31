@@ -51,8 +51,6 @@ enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 // Global variables
 //==============================================================================
 
-extern "C" const bool LIBMESH_ENABLED;
-
 class Mesh;
 
 namespace model {
@@ -389,6 +387,9 @@ public:
   //!
   //! \param[in] r Coordinate to get index for
   //! \param[in] i Direction index
+  //! \return Mesh index in [0, shape[i] + 1]. The external boundaries are
+  //! included in the mesh, and interior boundaries belong to the lower-index
+  //! mesh cell.
   virtual int get_index_in_direction(double r, int i) const = 0;
 
   //! Get the coordinate for the mesh grid boundary in the positive direction
@@ -649,7 +650,7 @@ private:
 
   inline int sanitize_angular_index(int idx, bool full, int N) const
   {
-    if ((idx > 0) and (idx <= N)) {
+    if ((idx > 0) && (idx <= N)) {
       return idx;
     } else if (full) {
       return (idx + N - 1) % N + 1;
@@ -720,7 +721,7 @@ private:
 
   inline int sanitize_angular_index(int idx, bool full, int N) const
   {
-    if ((idx > 0) and (idx <= N)) {
+    if ((idx > 0) && (idx <= N)) {
       return idx;
     } else if (full) {
       return (idx + N - 1) % N + 1;

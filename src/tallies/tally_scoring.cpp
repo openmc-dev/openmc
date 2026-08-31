@@ -613,7 +613,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         continue;
 
       // Score inverse velocity in units of s/cm.
-      score = flux / p.speed();
+      score = flux / p.speed(E);
       break;
 
     case SCORE_SCATTER:
@@ -968,8 +968,13 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
                   const DelayedGroupFilter& filt {
                     *dynamic_cast<DelayedGroupFilter*>(
                       model::tally_filters[i_dg_filt].get())};
-                  score_fission_delayed_dg(i_tally, delayed_groups[0] - 1,
-                    score, score_index, p.filter_matches());
+                  for (int d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
+                    if (filt.groups()[d_bin] == delayed_groups[0]) {
+                      score_fission_delayed_dg(
+                        i_tally, d_bin, score, score_index, p.filter_matches());
+                      break;
+                    }
+                  }
                   continue;
                 }
               }
@@ -1157,7 +1162,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       // All events score to an inverse velocity bin. We actually use a
       // collision estimator in place of an analog one since there is no way
       // to count 'events' exactly for the inverse velocity
-      score = flux * p.wgt_last() / (p.macro_xs().total * p.speed());
+      score = flux * p.wgt_last() / (p.macro_xs().total * p.speed(E));
       break;
 
     case SCORE_SCATTER:

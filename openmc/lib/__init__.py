@@ -12,7 +12,7 @@ functions or objects in :mod:`openmc.lib`, for example:
 
 """
 
-from ctypes import CDLL, c_bool, c_int
+from ctypes import CDLL, byref, c_bool, c_char_p, c_int, POINTER
 import importlib.resources
 import os
 import sys
@@ -36,21 +36,38 @@ else:
     from unittest.mock import Mock
     _dll = Mock()
 
+from .error import _error_handler
 
-def _dagmc_enabled():
-    return c_bool.in_dll(_dll, "DAGMC_ENABLED").value
+_dll.openmc_get_feature_enabled.argtypes = [c_char_p, POINTER(c_bool)]
+_dll.openmc_get_feature_enabled.restype = c_int
+_dll.openmc_get_feature_enabled.errcheck = _error_handler
+
+def feature_enabled(feature: str) -> bool:
+    """Return whether OpenMC was built with an optional feature.
+
+    Parameters
+    ----------
+    feature : {'dagmc', 'libmesh', 'strict_fp', 'uwuw'}
+        Feature to query.
+
+    Returns
+    -------
+    bool
+        Whether the feature is enabled.
+
+    Raises
+    ------
+    InvalidArgumentError
+        If *feature* is not recognized.
+
+    """
+    enabled = c_bool()
+    _dll.openmc_get_feature_enabled(feature.encode(), byref(enabled))
+    return enabled.value
+
 
 def _coord_levels():
     return c_int.in_dll(_dll, "n_coord_levels").value
-
-def _libmesh_enabled():
-    return c_bool.in_dll(_dll, "LIBMESH_ENABLED").value
-
-def _uwuw_enabled():
-    return c_bool.in_dll(_dll, "UWUW_ENABLED").value
-
-def _strict_fp_enabled():
-    return c_bool.in_dll(_dll, "STRICT_FP_ENABLED").value
 
 
 from .error import *

@@ -663,12 +663,6 @@ void Particle::cross_surface(const Surface& surf)
     write_message(1, "    Crossing surface {}", surf.id_);
   }
 
-// if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef OPENMC_DAGMC_ENABLED
-  if (surf.geom_type() == GeometryType::CSG)
-    history().reset();
-#endif
-
   // Handle any applicable boundary conditions.
   if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
       settings::run_mode != RunMode::VOLUME) {

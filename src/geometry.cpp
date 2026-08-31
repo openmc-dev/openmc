@@ -281,6 +281,16 @@ bool find_cell_inner(
 bool neighbor_list_find_cell(GeometryState& p, bool verbose)
 {
 
+#ifdef OPENMC_DAGMC_ENABLED
+  // A CSG crossing can move the particle into another instance of the same
+  // DAGMC universe, where the previous facet history is no longer valid.
+  if (p.surface() != SURFACE_NONE) {
+    const auto& surf = model::surfaces[p.surface_index()];
+    if (surf->geom_type() == GeometryType::CSG)
+      p.history().reset();
+  }
+#endif
+
   // Reset all the deeper coordinate levels.
   for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
     p.coord(i).reset();

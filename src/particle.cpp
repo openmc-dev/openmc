@@ -335,8 +335,7 @@ void Particle::event_advance()
 
 void Particle::event_cross_surface()
 {
-  // Saving previous cell data. cell_instance() still refers to the cell the
-  // particle is leaving; find_cell() overwrites it once the crossing is done.
+  // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
     cell_last(j) = coord(j).cell();
   }
@@ -465,9 +464,7 @@ void Particle::event_collide()
   r_last_current() = r();
 
   // Invalidate the cross section cache, since the particle's energy has
-  // changed and cross sections must be re-evaluated. Note this deliberately
-  // does not disturb cell_last(), which still records where the particle came
-  // from and stays valid across any number of collisions in the same cell.
+  // changed and cross sections must be re-evaluated.
   material_xs_cache() = C_NONE;
 
   // Set all directions to base level -- right now, after a collision, only

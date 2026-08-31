@@ -1,28 +1,5 @@
 """MaterialFromFilter must decompose scores the same way CellFromFilter does.
 
-`cell_last` and `material_last` are both meant to record where the particle was
-before its last cell change, and `CellFromFilter` and `MaterialFromFilter` read
-them respectively. They were not maintained on the same cadence.
-
-`material_last` was doing double duty. Besides being the tally attribute, it was
-the cache key for the cross section lookup in `event_calculate_xs()`, and
-`event_collide()` reset it to `C_NONE` after every collision to force
-re-evaluation at the new energy. From the second collision in a cell onward the
-particle therefore had `material_last == C_NONE`, which matches no
-`MaterialFromFilter` bin, while `cell_last` still correctly held the cell the
-particle came from. Scores silently vanished from `MaterialFromFilter` tallies
-while the equivalent `CellFromFilter` tally counted them.
-
-`MaterialFromFilter` now derives the material from `cell_last` directly, so the
-two filters read one source of truth and cannot disagree.
-
-Only volumetric tallies were affected. With a `flux` score these filters make a
-cell-to-cell partial current instead (tally.cpp groups them with SurfaceFilter
-under `surface_types_present`), which is scored from event_cross_surface()
-immediately after the crossing, while `material_last` still held the material
-the particle came from. That path was always correct and is covered at the end
-of this file so the change does not regress it.
-
 The geometry below gives each cell its own material, so the two decompositions
 are one-to-one and must agree bin for bin. Both must also sum to the
 undecomposed total. These are per-history identities within a single run, not
@@ -107,9 +84,9 @@ def test_material_from_matches_cell_from(model, run_in_tmpdir):
 def test_from_bin_survives_repeated_collisions(model, run_in_tmpdir):
     """The 'from inner' bin holds all of the outer cell's reaction rate.
 
-    A particle that has crossed from the inner cell keeps `cell_last` and
-    `material_last` pointing at that cell for as long as it stays in the outer
-    one, however many times it collides. The 'from outer' bin can only be
+    A particle that has crossed from the inner cell keeps `cell_last` 
+    pointing at that cell for as long as it stays in the outer one,
+    however many times it collides. The 'from outer' bin can only be
     populated by a particle that leaves the outer cell and comes back, which
     this geometry does not allow since the outer boundary is vacuum and the
     inner cell is convex. So the 'from inner' bin should carry the whole total.
@@ -217,11 +194,7 @@ def test_partial_current_decompositions_agree(model, run_in_tmpdir):
 
     A `flux` score with a "from" filter is a cell-to-cell partial current, not a
     volumetric flux: it is scored in event_cross_surface() right after the
-    crossing. `cell_last` and `cell_instance_last` are saved at the top of that
-    function, before the crossing, so a filter deriving the previous material
-    from them sees exactly what the separately tracked `material_last` used to
-    hold. This path was never broken by the post-collision reset, and must stay
-    that way.
+    crossing.
     """
     inner, outer = model.geometry.get_all_cells().values()
     water = inner.fill

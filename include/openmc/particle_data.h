@@ -424,14 +424,6 @@ public:
   // material of current and last cell
   int& material() { return material_; }
   const int& material() const { return material_; }
-  //! Material for which the cross section cache is currently valid.
-  //
-  //! This is bookkeeping for event_calculate_xs() and nothing else. It is
-  //! reset to C_NONE after every collision to force cross sections to be
-  //! re-evaluated at the particle's new energy, so it must never be used as a
-  //! tally attribute. For the material the particle was in before its last
-  //! cell change, take the material of cell_last() at the lowest coordinate
-  //! level, which is what MaterialFromFilter does.
   int& material_xs_cache() { return material_xs_cache_; }
   int material_xs_cache() const { return material_xs_cache_; }
 

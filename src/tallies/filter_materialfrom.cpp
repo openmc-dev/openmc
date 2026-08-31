@@ -9,11 +9,6 @@ namespace openmc {
 void MaterialFromFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  // Derive the material the particle came from rather than tracking it
-  // separately, so that this filter and CellFromFilter can never disagree
-  // about where a score originated. The material fill lives on the cell at the
-  // lowest coordinate level; the instance is needed because a cell with
-  // distributed materials resolves a different material per instance.
   int32_t i_cell = p.cell_last(p.n_coord_last() - 1);
   if (i_cell == C_NONE)
     return;

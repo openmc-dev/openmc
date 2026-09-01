@@ -41,7 +41,7 @@ namespace openmc {
 // XDG Mesh implementation
 //==============================================================================
 
-const std::string XDGMesh::mesh_type = "xdg";
+const std::string XDGMesh::mesh_interface = "xdg";
 
 XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
@@ -91,6 +91,8 @@ XDGMesh::XDGMesh(std::shared_ptr<xdg::XDG> external_xdg)
 
 void XDGMesh::initialize()
 {
+  interface_ = "xdg";
+
   // the XDG instance has already been created, so no action is required
   if (xdg_)
     return;
@@ -100,7 +102,7 @@ void XDGMesh::initialize()
 
   // load XDGMesh file
   if (!file_exists(filename_)) {
-    fatal_error(fmt::format("Mesh file \"{}\" does not exist", filename_));
+    fatal_error(fmt::format("Mesh file \"{}\" for mesh {} does not exist", filename_, id_));
   }
 
   xdg_->mesh_manager()->load_file(filename_);

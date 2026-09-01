@@ -870,7 +870,7 @@ std::unique_ptr<UnstructuredMesh> UnstructuredMesh::create(T dataset)
   std::unique_ptr<UnstructuredMesh> out {nullptr};
 
 #ifdef OPENMC_XDG_ENABLED
-  if (!out && mesh_interface == XDGMesh::mesh_type) {
+  if (!out && mesh_interface == XDGMesh::mesh_interface) {
     out = make_unique<XDGMesh>(dataset);
   }
 #endif
@@ -2968,7 +2968,6 @@ MOABMesh::MOABMesh(std::shared_ptr<moab::Interface> external_mbi)
 
 void MOABMesh::initialize()
 {
-
   // Create the MOAB interface and load data from file
   this->create_interface();
 

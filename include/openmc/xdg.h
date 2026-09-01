@@ -26,7 +26,7 @@ public:
   XDGMesh(const std::string& filename, double length_multiplier = 1.0);
   XDGMesh(std::shared_ptr<xdg::XDG> external_xdg);
 
-  static const std::string mesh_type;
+  static const std::string mesh_interface;
 
   //----------------------------------------------------------------------------
   // Methods
@@ -41,8 +41,6 @@ public:
   //! \param[in] bin Bin index to check
   //! \return True if the bin index is in [0, n_bins())
   bool bin_is_valid(int bin) const { return bin >= 0 && bin < n_bins(); }
-
-  std::string get_mesh_type() const override { return mesh_type; }
 
   //! Convert a mesh bin index to an XDG MeshID
   //!

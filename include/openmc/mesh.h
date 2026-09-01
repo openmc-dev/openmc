@@ -729,9 +729,10 @@ public:
   UnstructuredMesh(hid_t group);
 
   static const std::string mesh_type;
-  virtual std::string get_mesh_type() const override;
+
 
   // Overridden Methods
+  virtual std::string get_mesh_type() const override;
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
@@ -739,6 +740,8 @@ public:
   void to_hdf5_inner(hid_t group) const override;
 
   std::string bin_label(int bin) const override;
+
+  const std::string& interface() const { return interface_; }
 
   // Methods
 
@@ -848,6 +851,7 @@ protected:
   double length_multiplier_ {
     -1.0};              //!< Multiplicative factor applied to mesh coordinates
   std::string options_; //!< Options for search data structures
+  std::string interface_ {"native"}; //!< Name of the interface used for the mesh
 
   //! Determine lower-left and upper-right bounds of mesh
   void determine_bounds();

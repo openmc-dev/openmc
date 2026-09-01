@@ -6,6 +6,7 @@
 #include "openmc/geometry.h"
 #include "openmc/particle_data.h"
 #include "openmc/position.h"
+#include "openmc/random_lcg.h"
 #include "openmc/simulation.h"
 #include "openmc/surface.h"
 
@@ -190,10 +191,13 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
   return true;
 }
 
-bool reconcile_precursor_drift(SourceSite& site)
+bool reconcile_precursor_drift(SourceSite& site, int64_t particle_id)
 {
   // Set up temporary particle at the precursor's position and direction
   Particle p;
+  int64_t particle_seed = compute_transport_seed(particle_id);
+  init_particle_seeds(particle_seed, p.seeds());
+  p.stream() = STREAM_TRACKING;
   p.r() = site.r;
   p.u() = site.u;
 

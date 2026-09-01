@@ -64,9 +64,11 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed);
 //! for the next fission generation.
 //!
 //! \param[in,out] site  Fission site corresponding to the DNP
-//! \return True if the site is usable for the next generation, false if the
-//! site should be discarded.
-bool reconcile_precursor_drift(SourceSite& site);
+//! \param[in] particle_id Particle ID used to initialize the RNG seed for the
+//!                        boundary condition sampling (e.g., white BC).
+//!\return True if the site is usable for the next generation, false if the site
+//!        should be discarded.
+bool reconcile_precursor_drift(SourceSite& site, int64_t particle_id);
 
 } // namespace openmc
 

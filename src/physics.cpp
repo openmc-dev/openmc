@@ -233,7 +233,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
           continue;
 
         // Reject site if it is not usable for the next generation
-        if (!reconcile_precursor_drift(site))
+        if (!reconcile_precursor_drift(site, p.id()))
           continue;
       }
 

@@ -55,7 +55,7 @@ bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
 bool event_based {false};
-bool ifp_delayed_on {false};
+bool ifp_delayed_group_on {false};
 bool ifp_lifetime_on {false};
 bool legendre_to_tabular {true};
 bool material_cell_offsets {true};
@@ -1351,7 +1351,7 @@ void free_memory_settings()
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
-  settings::ifp_delayed_on = false;
+  settings::ifp_delayed_group_on = false;
   settings::ifp_lifetime_on = false;
 }
 

@@ -245,7 +245,7 @@ void synchronize_bank()
 
         if (settings::ifp_on()) {
           // Send IFP data
-          if (settings::ifp_delayed_on)
+          if (settings::ifp_delayed_group_on)
             send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
               temp_delayed_groups, send_delayed_groups);
           if (settings::ifp_lifetime_on)
@@ -316,7 +316,7 @@ void synchronize_bank()
 
       if (settings::ifp_on()) {
         // Receive IFP data
-        if (settings::ifp_delayed_on)
+        if (settings::ifp_delayed_group_on)
           receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
             recv_delayed_groups, deserialization_info);
         if (settings::ifp_lifetime_on)
@@ -352,7 +352,7 @@ void synchronize_bank()
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
 
   if (settings::ifp_on()) {
-    if (settings::ifp_delayed_on)
+    if (settings::ifp_delayed_group_on)
       deserialize_ifp_info(ifp_n_generation, recv_delayed_groups,
         simulation::ifp_source_delayed_group_bank, deserialization_info);
     if (settings::ifp_lifetime_on)

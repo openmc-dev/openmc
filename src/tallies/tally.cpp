@@ -235,7 +235,7 @@ Tally::Tally(pugi::xml_node node)
     // Only enable in eigenvalue mode; fixed source has already errored above
     if (settings::run_mode == RunMode::EIGENVALUE) {
       settings::ifp_lifetime_on |= wants_lifetime;
-      settings::ifp_delayed_on |= wants_delayed;
+      settings::ifp_delayed_group_on |= wants_delayed;
     }
   }
 

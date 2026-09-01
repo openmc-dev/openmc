@@ -61,9 +61,9 @@ extern bool
   delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on; //!< calculate Shannon entropy?
 extern "C" bool
-  event_based;              //!< use event-based mode (instead of history-based)
-extern bool ifp_delayed_on; //!< Store delayed group IFP data?
-extern bool ifp_lifetime_on;     //!< Store lifetime IFP data?
+  event_based; //!< use event-based mode (instead of history-based)
+extern bool ifp_delayed_group_on; //!< Store delayed group IFP data?
+extern bool ifp_lifetime_on;      //!< Store lifetime IFP data?
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets;   //!< create material cells offsets?
 extern "C" bool output_summary;      //!< write summary.h5?
@@ -198,7 +198,7 @@ extern double weight_survive;      //!< Survival weight after Russian roulette
 //! Whether Iterated Fission Probability is in use at all.
 inline bool ifp_on()
 {
-  return ifp_delayed_on || ifp_lifetime_on;
+  return ifp_delayed_group_on || ifp_lifetime_on;
 }
 
 } // namespace settings

@@ -12,7 +12,7 @@ namespace openmc {
 
 void ifp(const Particle& p, int64_t idx)
 {
-  if (settings::ifp_delayed_on) {
+  if (settings::ifp_delayed_group_on) {
     const auto& delayed_groups =
       simulation::ifp_source_delayed_group_bank[p.current_work()];
     simulation::ifp_fission_delayed_group_bank[idx] =
@@ -36,7 +36,7 @@ void resize_simulation_ifp_banks()
 void copy_ifp_data_from_fission_banks(int64_t i_bank, int64_t i_temp,
   vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes)
 {
-  if (settings::ifp_delayed_on) {
+  if (settings::ifp_delayed_group_on) {
     delayed_groups[i_temp] = simulation::ifp_fission_delayed_group_bank[i_bank];
   }
   if (settings::ifp_lifetime_on) {
@@ -50,7 +50,7 @@ void broadcast_ifp_n_generation(int& n_generation,
   const vector<vector<double>>& lifetimes)
 {
   if (mpi::rank == 0) {
-    if (settings::ifp_delayed_on) {
+    if (settings::ifp_delayed_group_on) {
       n_generation = static_cast<int>(delayed_groups[0].size());
     } else {
       n_generation = static_cast<int>(lifetimes[0].size());
@@ -63,7 +63,7 @@ void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
   const vector<vector<int>>& delayed_groups,
   const vector<vector<double>>& lifetimes)
 {
-  if (settings::ifp_delayed_on) {
+  if (settings::ifp_delayed_group_on) {
     std::copy(&delayed_groups[idx], &delayed_groups[idx + n],
       &simulation::ifp_source_delayed_group_bank[i_bank]);
   }
@@ -78,7 +78,7 @@ void copy_complete_ifp_data_to_source_banks(
   const vector<vector<int>>& delayed_groups,
   const vector<vector<double>>& lifetimes)
 {
-  if (settings::ifp_delayed_on) {
+  if (settings::ifp_delayed_group_on) {
     std::copy(delayed_groups.data(),
       delayed_groups.data() + settings::n_particles,
       simulation::ifp_source_delayed_group_bank.begin());
@@ -92,7 +92,7 @@ void copy_complete_ifp_data_to_source_banks(
 void allocate_temporary_vector_ifp(
   vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes)
 {
-  if (settings::ifp_delayed_on) {
+  if (settings::ifp_delayed_group_on) {
     delayed_groups.resize(simulation::fission_bank.size());
   }
   if (settings::ifp_lifetime_on) {
@@ -103,7 +103,7 @@ void allocate_temporary_vector_ifp(
 void copy_ifp_data_to_fission_banks(const vector<int>* const delayed_groups_ptr,
   const vector<double>* lifetimes_ptr)
 {
-  if (settings::ifp_delayed_on) {
+  if (settings::ifp_delayed_group_on) {
     std::copy(delayed_groups_ptr,
       delayed_groups_ptr + simulation::fission_bank.size(),
       simulation::ifp_fission_delayed_group_bank.data());

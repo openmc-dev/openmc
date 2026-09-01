@@ -18,7 +18,7 @@ namespace openmc {
 template<typename T, typename U>
 void resize_ifp_data(vector<T>& delayed_groups, vector<U>& lifetimes, int64_t n)
 {
-  if (settings::ifp_delayed_on) {
+  if (settings::ifp_delayed_group_on) {
     delayed_groups.resize(n);
   }
   if (settings::ifp_lifetime_on) {

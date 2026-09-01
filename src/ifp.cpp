@@ -34,13 +34,15 @@ void resize_simulation_ifp_banks()
 }
 
 void copy_ifp_data_from_fission_banks(
-  int i_bank, vector<int>& delayed_groups, vector<double>& lifetimes)
+  int64_t i_bank, int64_t i_temp, vector<vector<int>>& delayed_groups,
+  vector<vector<double>>& lifetimes)
 {
   if (settings::ifp_delayed_on) {
-    delayed_groups = simulation::ifp_fission_delayed_group_bank[i_bank];
+    delayed_groups[i_temp] =
+      simulation::ifp_fission_delayed_group_bank[i_bank];
   }
   if (settings::ifp_lifetime_on) {
-    lifetimes = simulation::ifp_fission_lifetime_bank[i_bank];
+    lifetimes[i_temp] = simulation::ifp_fission_lifetime_bank[i_bank];
   }
 }
 

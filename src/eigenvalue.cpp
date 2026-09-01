@@ -166,7 +166,7 @@ void synchronize_bank()
     temp_sites[index_temp] = simulation::fission_bank[idx];
     if (settings::ifp_on()) {
       copy_ifp_data_from_fission_banks(
-        idx, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
+        idx, index_temp, temp_delayed_groups, temp_lifetimes);
     }
     ++index_temp;
 

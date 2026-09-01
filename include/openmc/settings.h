@@ -196,9 +196,6 @@ extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
 
 //! Whether Iterated Fission Probability is in use at all.
-//!
-//! Derived from ifp_delayed_on and ifp_lifetime_on rather than stored
-//! separately, so it cannot fall out of step with them.
 inline bool ifp_on()
 {
   return ifp_delayed_on || ifp_lifetime_on;

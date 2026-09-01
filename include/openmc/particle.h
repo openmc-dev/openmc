@@ -71,6 +71,7 @@ public:
   // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();
+  void event_delta_advance();
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary(const SourceSite& site);
@@ -112,6 +113,16 @@ public:
   //! \param message A warning message to display
   virtual void mark_as_lost(const char* message) override;
   using GeometryState::mark_as_lost;
+
+  //! Update the cached majorant cross section for this particle.
+  void update_majorant();
+
+  //! Check if the majorant is valid. If its not, the particle is killed and
+  //! a restart file is written.
+  //
+  //! \return true if the majorant is invalid, false if not. If true,
+  //!   the particle is also killed.
+  bool kill_invalid_maj();
 
   //! create a particle restart HDF5 file
   void write_restart() const;

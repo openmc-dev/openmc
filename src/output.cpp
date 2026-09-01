@@ -472,6 +472,9 @@ void print_runtime()
   // display time elapsed for various sections
   show_time("Total time for initialization", time_initialize.elapsed());
   show_time("Reading cross sections", time_read_xs.elapsed(), 1);
+  if (settings::delta_tracking) {
+    show_time("Total time building majorants", time_build_majorant.elapsed());
+  }
   show_time("Total time in simulation",
     time_inactive.elapsed() + time_active.elapsed());
   show_time("Time in transport only", time_transport.elapsed(), 1);
@@ -586,9 +589,14 @@ void print_results()
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
       fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
-      std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_TRACKLENGTH, 0), n);
-      fmt::print(" k-effective (Track-length)  = {:.5f} +/- {:.5f}\n", mean,
-        t_n1 * stdev);
+      if (settings::delta_tracking) {
+        fmt::print(" k-effective (Track-length)  = (Delta-tracking enabled)\n");
+      } else {
+        std::tie(mean, stdev) =
+          mean_stdev(&gt(GlobalTally::K_TRACKLENGTH, 0), n);
+        fmt::print(" k-effective (Track-length)  = {:.5f} +/- {:.5f}\n", mean,
+          t_n1 * stdev);
+      }
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_ABSORPTION, 0), n);
       fmt::print(" k-effective (Absorption)    = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);

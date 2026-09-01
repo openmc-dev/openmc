@@ -53,6 +53,8 @@ namespace model {
 extern int root_universe;      //!< Index of root universe
 extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
 
+extern vector<int> boundary_surfaces; //!< The surfaces with boundary conditions
+
 extern vector<int64_t> overlap_check_count;
 
 // Overlap data structures get cleared every slice_data run
@@ -118,9 +120,20 @@ void cross_lattice(
 
 //==============================================================================
 //! Find the next boundary a particle will intersect.
+//! \param p A geometry state to compute distances with.
+//! \return Boundary information corresponding to the nearest surface.
 //==============================================================================
 
 BoundaryInfo distance_to_boundary(GeometryState& p);
+
+//==============================================================================
+//! Find the next external boundary a particle will intersect.
+//!
+//! \param p A geometry state to compute distances with.
+//! \return Boundary information corresponding to the nearest external boundary.
+//==============================================================================
+
+BoundaryInfo distance_to_external_boundary(GeometryState& p);
 
 } // namespace openmc
 

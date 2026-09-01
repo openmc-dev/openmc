@@ -236,6 +236,14 @@ from MF=1, MT=458 on an ENDF evaluation.
 
   *Default*: true
 
+----------------------------
+``<delta_tracking>``
+----------------------------
+
+Whether transport should be performed with delta tracking or not.
+
+  *Default*: false
+
 --------------------------------
 ``<electron_treatment>`` Element
 --------------------------------

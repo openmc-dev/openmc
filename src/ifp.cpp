@@ -33,9 +33,8 @@ void resize_simulation_ifp_banks()
     simulation::ifp_fission_lifetime_bank, 3 * simulation::work_per_rank);
 }
 
-void copy_ifp_data_from_fission_banks(
-  int64_t i_bank, int64_t i_temp, vector<vector<int>>& delayed_groups,
-  vector<vector<double>>& lifetimes)
+void copy_ifp_data_from_fission_banks(int64_t i_bank, int64_t i_temp,
+  vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes)
 {
   if (settings::ifp_delayed_on) {
     delayed_groups[i_temp] =

@@ -182,23 +182,9 @@ void WeightWindows::set_defaults()
     if (p_type == C_NONE) {
       fatal_error("Weight windows particle is not supported for transport.");
     }
-    double energy_min = data::energy_min[p_type];
-    double energy_max = data::energy_max[p_type];
-    if (energy_min >= energy_max) {
-      energy_min = 0.0;
-      energy_max = INFTY;
-    }
-    energy_bounds_.push_back(energy_min);
-    energy_bounds_.push_back(energy_max);
+    energy_bounds_.push_back(data::energy_min[p_type]);
+    energy_bounds_.push_back(data::energy_max[p_type]);
   }
-}
-
-void WeightWindows::reset_energy_bounds()
-{
-  energy_bounds_.clear();
-  set_defaults();
-  if (mesh_idx_ != C_NONE)
-    allocate_ww_bounds();
 }
 
 void WeightWindows::allocate_ww_bounds()
@@ -1171,11 +1157,7 @@ extern "C" int openmc_weight_windows_set_energy_bounds(
   if (int err = verify_ww_index(ww_idx))
     return err;
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
-  if (e_bounds_size == 0) {
-    wws->reset_energy_bounds();
-  } else {
-    wws->set_energy_bounds({e_bounds, e_bounds_size});
-  }
+  wws->set_energy_bounds({e_bounds, e_bounds_size});
   return 0;
 }
 

@@ -213,7 +213,7 @@ const std::string RECONCILE_MODEL_XML = R"xml(
   <geometry>
     <surface id="1" type="x-plane" coeffs="-5.0" boundary="vacuum"/>
     <surface id="2" type="x-plane" coeffs="5.0"  boundary="vacuum"/>
-    <surface id="3" type="y-plane" coeffs="-5.0" boundary="reflective" albedo="0.8"/>
+    <surface id="3" type="y-plane" coeffs="-5.0" boundary="white" albedo="0.8"/>
     <surface id="4" type="y-plane" coeffs="5.0"  boundary="reflective" albedo="0.8"/>
     <surface id="5" type="z-plane" coeffs="-5.0" boundary="periodic" periodic_surface_id="7" albedo="0.8"/>
     <surface id="6" type="z-plane" coeffs="0.0"  boundary="transmission"/>

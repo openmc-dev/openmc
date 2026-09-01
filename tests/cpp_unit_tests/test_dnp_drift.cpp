@@ -254,12 +254,15 @@ TEST_CASE("Test reconcile_precursor_drift")
   int err = openmc_init(1, const_cast<char**>(argv), nullptr);
   REQUIRE(err == 0);
 
+  // Initialize particle_ids
+  int64_t particle_id = 1;
+
   // Inside cell -> true
   {
     SourceSite site {};
     site.r = {0.0, 0.0, -2.0};
     site.u = {1.0, 0.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(reconcile_precursor_drift(site, particle_id) == true);
     CHECK(site.r == Position(0.0, 0.0, -2.0));
     CHECK(site.u == Direction(1.0, 0.0, 0.0));
     CHECK(site.wgt == 1.0);
@@ -273,7 +276,7 @@ TEST_CASE("Test reconcile_precursor_drift")
   //  SourceSite site {};
   //  site.r = {10.0, 0.0, 0.0};
   //  site.u = {1.0, 0.0, 0.0};
-  //  REQUIRE_THROWS(reconcile_precursor_drift(site));
+  //  REQUIRE_THROWS(reconcile_precursor_drift(site, particle_id));
   //}
 
   // -----------------------------------------------------------------------------
@@ -285,7 +288,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {5.0, 0.0, 0.0};
     site.u = {1.0, 0.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == false);
+    CHECK(reconcile_precursor_drift(site, particle_id) == false);
     CHECK(site.r == Position(5.0, 0.0, 0.0));
     CHECK(site.u == Direction(1.0, 0.0, 0.0));
   }
@@ -295,7 +298,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {5.0, 0.0, 0.0};
     site.u = {-1.0, 0.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(reconcile_precursor_drift(site, particle_id) == true);
     CHECK(site.r == Position(5.0, 0.0, 0.0));
     CHECK(site.u == Direction(-1.0, 0.0, 0.0));
     CHECK(site.wgt == 1.0);
@@ -306,7 +309,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {0.0, 5.0, 0.0};
     site.u = {0.0, 1.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(reconcile_precursor_drift(site, particle_id) == true);
     CHECK(site.r == Position(0.0, 5.0, 0.0));
     CHECK(site.u == Direction(0.0, -1.0, 0.0));
     CHECK(site.wgt == 0.8);
@@ -317,7 +320,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {0.0, 5.0, 0.0};
     site.u = {0.0, -1.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(reconcile_precursor_drift(site, particle_id) == true);
     CHECK(site.r == Position(0.0, 5.0, 0.0));
     CHECK(site.u == Direction(0.0, -1.0, 0.0));
     CHECK(site.wgt == 1.0);
@@ -328,7 +331,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {0.0, 0.0, 5.0};
     site.u = {0.0, 0.0, 1.0};
-    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(reconcile_precursor_drift(site, particle_id) == true);
     CHECK(site.r == Position(0.0, 0.0, -5.0));
     CHECK(site.u == Direction(0.0, 0.0, 1.0));
     CHECK(site.wgt == 0.8);
@@ -339,7 +342,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {0.0, 0.0, 5.0};
     site.u = {0.0, 0.0, -1.0};
-    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(reconcile_precursor_drift(site, particle_id) == true);
     CHECK(site.r == Position(0.0, 0.0, 5.0));
     CHECK(site.u == Direction(0.0, 0.0, -1.0));
     CHECK(site.wgt == 1.0);
@@ -350,7 +353,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {0.0, -5.0, 0.0};
     site.u = {0.0, -1.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(reconcile_precursor_drift(site, particle_id) == true);
     CHECK(site.r == Position(0.0, -5.0, 0.0));
     CHECK(site.u.y > 0.0);
     CHECK(site.wgt == 0.8);
@@ -361,7 +364,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {0.0, -5.0, 0.0};
     site.u = {0.0, 1.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(reconcile_precursor_drift(site, particle_id) == true);
     CHECK(site.r == Position(0.0, -5.0, 0.0));
     CHECK(site.u == Direction(0.0, 1.0, 0.0));
     CHECK(site.wgt == 1.0);
@@ -377,7 +380,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {0.0, 5.0, 0.0};
     site.u = {1.0, 0.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(reconcile_precursor_drift(site, particle_id) == true);
     CHECK(site.r == Position(0.0, 5.0, 0.0));
     CHECK(site.u == Direction(1.0, 0.0, 0.0));
     CHECK(site.wgt == 1.0);
@@ -390,7 +393,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {0.0, -5.0, 0.0};
     site.u = {1.0, 0.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == false);
+    CHECK(reconcile_precursor_drift(site, particle_id) == false);
     CHECK(site.r == Position(0.0, -5.0, 0.0));
     CHECK(site.u == Direction(1.0, 0.0, 0.0));
     CHECK(site.wgt == 1.0);
@@ -402,7 +405,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {0.0, 0.0, 5.0};
     site.u = {1.0, 0.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(reconcile_precursor_drift(site, particle_id) == true);
     CHECK(site.r == Position(0.0, 0.0, 5.0));
     CHECK(site.u == Direction(1.0, 0.0, 0.0));
     CHECK(site.wgt == 1.0);
@@ -415,7 +418,7 @@ TEST_CASE("Test reconcile_precursor_drift")
     SourceSite site {};
     site.r = {0.0, 0.0, -5.0};
     site.u = {1.0, 0.0, 0.0};
-    CHECK(reconcile_precursor_drift(site) == false);
+    CHECK(reconcile_precursor_drift(site, particle_id) == false);
     CHECK(site.r == Position(0.0, 0.0, -5.0));
     CHECK(site.u == Direction(1.0, 0.0, 0.0));
     CHECK(site.wgt == 1.0);

@@ -80,6 +80,9 @@ def test_non_numeric_values(mesh):
 
 def test_lib_temperature_field(run_in_tmpdir):
     """Check the Python bindings for the temperature-field C API."""
+    assert openmc.lib.temperature_field.mesh is None
+    assert len(openmc.lib.temperature_field) == 0
+
     model = pwr_pin_cell()
     mesh = openmc.RegularMesh()
     mesh.dimension = (2, 1, 1)
@@ -90,6 +93,8 @@ def test_lib_temperature_field(run_in_tmpdir):
 
     with openmc.lib.TemporarySession(model, output=False, args=['-c']):
         field = openmc.lib.temperature_field
+        assert field.mesh.id == mesh.id
+        assert field.mesh.n_elements == 2
         assert field.size == 2
         assert len(field) == 2
         assert field[0] == 294.0

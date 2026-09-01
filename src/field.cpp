@@ -132,12 +132,26 @@ extern "C" int openmc_temperature_field_set_temperature(
   return 0;
 }
 
-extern "C" size_t openmc_temperature_field_size()
+extern "C" int openmc_temperature_field_get_mesh(int32_t* index)
 {
-  return simulation::temperature_field.values().size();
+  if (!simulation::temperature_field.has_mesh()) {
+    *index = C_NONE;
+    return 0;
+  }
+
+  const auto* mesh = simulation::temperature_field.mesh_ptr();
+  auto it = model::mesh_map.find(mesh->id());
+  if (it == model::mesh_map.end()) {
+    set_errmsg(
+      "Temperature field mesh could not be found in the meshes array.");
+    return OPENMC_E_INVALID_ID;
+  }
+
+  *index = it->second;
+  return 0;
 }
 
-extern "C" int openmc_temperature_field_get_value(
+extern "C" int openmc_temperature_field_get_temperature(
   int32_t index, double* temperature)
 {
   if (index < 0 || index >= simulation::temperature_field.values().size()) {

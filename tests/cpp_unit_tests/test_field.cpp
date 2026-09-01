@@ -79,7 +79,7 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
 
     double temperature;
     REQUIRE(openmc_temperature_field_set_temperature(0, 400.0) == 0);
-    REQUIRE(openmc_temperature_field_get_value(0, &temperature) == 0);
+    REQUIRE(openmc_temperature_field_get_temperature(0, &temperature) == 0);
     REQUIRE(temperature == 400.0);
 
     // Below the range covered by the loaded cross sections

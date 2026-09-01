@@ -1010,6 +1010,6 @@ Functions
 
 .. doxygenfunction:: openmc_temperature_field_set_temperature
 
-.. doxygenfunction:: openmc_temperature_field_size
+.. doxygenfunction:: openmc_temperature_field_get_mesh
 
-.. doxygenfunction:: openmc_temperature_field_get_value
+.. doxygenfunction:: openmc_temperature_field_get_temperature

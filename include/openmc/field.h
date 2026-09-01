@@ -50,6 +50,8 @@ public:
     }
   }
 
+  bool has_mesh() const { return mesh_ptr_ != nullptr; }
+
   // Values
   double& value(int i) { return values_[i]; }
   const double& value(int i) const { return values_[i]; }
@@ -58,9 +60,9 @@ public:
 private:
   //----------------------------------------------------------------------------
   // Data members
-  std::string field_type_; //! Name of field type
-  Mesh* mesh_ptr_;         //!< Pointer to the geometric mesh
-  vector<double> values_;  //!< Values associated with each mesh cell
+  std::string field_type_;   //! Name of field type
+  Mesh* mesh_ptr_ {nullptr}; //!< Pointer to the geometric mesh
+  vector<double> values_;    //!< Values associated with each mesh cell
 };
 
 class TemperatureField : public ScalarField {

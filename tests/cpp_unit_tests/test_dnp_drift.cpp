@@ -272,6 +272,28 @@ TEST_CASE("Test reconcile_precursor_drift")
   //  REQUIRE_THROWS(reconcile_precursor_drift(site));
   //}
 
+  // Internal/transmission surface at z=0 (shared face), going upward -> true
+  {
+    SourceSite site {};
+    site.r = {0.0, 0.0, 0.0};
+    site.u = {0.0, 0.0, 1.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.r == Position(0.0, 0.0, 0.0));
+    CHECK(site.u == Direction(0.0, 0.0, 1.0));
+    CHECK(site.wgt == 1.0);
+  }
+
+  // Internal/transmission at z=0 (shared face), going downward -> true
+  {
+    SourceSite site {};
+    site.r = {0.0, 0.0, 0.0};
+    site.u = {0.0, 0.0, -1.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.r == Position(0.0, 0.0, 0.0));
+    CHECK(site.u == Direction(0.0, 0.0, -1.0));
+    CHECK(site.wgt == 1.0);
+  }
+
   // Vacuum surface, going outward -> false
   {
     SourceSite site {};
@@ -315,21 +337,47 @@ TEST_CASE("Test reconcile_precursor_drift")
     CHECK(site.wgt == 1.0);
   }
 
-  // Internal/transmission surface at z=0 (shared face), going upward -> true
+  // Periodic surface, going outward -> true
   {
     SourceSite site {};
-    site.r = {0.0, 0.0, 0.0};
+    site.r = {0.0, 0.0, 5.0};
     site.u = {0.0, 0.0, 1.0};
     CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.r == Position(0.0, 0.0, -5.0));
+    CHECK(site.u == Direction(0.0, 0.0, 1.0));
+    CHECK(site.wgt == 0.8);
+  }
+
+  // Periodic surface, going inward -> true
+  {
+    SourceSite site {};
+    site.r = {0.0, 0.0, 5.0};
+    site.u = {0.0, 0.0, -1.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.r == Position(0.0, 0.0, 5.0));
+    CHECK(site.u == Direction(0.0, 0.0, -1.0));
     CHECK(site.wgt == 1.0);
   }
 
-  // Internal/transmission at z=0 (shared face), going downward -> true
+  // White surface, going outward -> true
   {
     SourceSite site {};
-    site.r = {0.0, 0.0, 0.0};
-    site.u = {0.0, 0.0, -1.0};
+    site.r = {0.0, -5.0, 0.0};
+    site.u = {0.0, -1.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.r == Position(0.0, -5.0, 0.0));
+    CHECK(site.u == Direction(0.0, 1.0, 0.0));
+    CHECK(site.wgt == 0.8);
+  }
+
+  // White surface, going inward -> true
+  {
+    SourceSite site {};
+    site.r = {0.0, -5.0, 0.0};
+    site.u = {0.0, 1.0, 0.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.r == Position(0.0, -5.0, 0.0));
+    CHECK(site.u == Direction(0.0, 1.0, 0.0));
     CHECK(site.wgt == 1.0);
   }
 

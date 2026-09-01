@@ -32,11 +32,6 @@ class TemperatureField(Sequence):
     """
 
     def __len__(self):
-        return self.size
-
-    @property
-    def size(self):
-        """Number of elements in the temperature field."""
         mesh = self.mesh
         return 0 if mesh is None else mesh.n_elements
 
@@ -50,15 +45,16 @@ class TemperatureField(Sequence):
     def _index(self, index):
         """Normalize an index, converting Python conventions to C ones."""
         index = operator.index(index)
+        size = len(self)
         if index < 0:
-            index += self.size
-        if index < 0 or index >= self.size:
+            index += size
+        if index < 0 or index >= size:
             raise IndexError('Index in temperature field is out of bounds.')
         return index
 
     def __getitem__(self, index):
         if isinstance(index, slice):
-            return [self[i] for i in range(*index.indices(self.size))]
+            return [self[i] for i in range(*index.indices(len(self)))]
 
         temperature = c_double()
         _dll.openmc_temperature_field_get_temperature(

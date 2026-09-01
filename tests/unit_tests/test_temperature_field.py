@@ -95,7 +95,7 @@ def test_lib_temperature_field(run_in_tmpdir):
         field = openmc.lib.temperature_field
         assert field.mesh.id == mesh.id
         assert field.mesh.n_elements == 2
-        assert field.size == 2
+        assert not hasattr(field, 'size')
         assert len(field) == 2
         assert field[0] == 294.0
         assert field[1] == 300.0

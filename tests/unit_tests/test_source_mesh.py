@@ -57,16 +57,18 @@ def model():
 
 ### Setup test cases ###
 param_values = (['libmesh', 'moab'], # mesh libraries
+                ['native', 'xdg'], # mesh interfaces
                 ['uniform', 'manual']) # Element weighting schemes
 
 test_cases = []
-for i, (lib, schemes) in enumerate(product(*param_values)):
+for i, (lib, interface, schemes) in enumerate(product(*param_values)):
     test_cases.append({'library' : lib,
+                       'interface' : interface,
                        'source_strengths' : schemes})
 
 def ids(params):
     """Test naming function for clarity"""
-    return f"{params['library']}-{params['source_strengths']}"
+    return f"{params['library']}-{params['interface']}-{params['source_strengths']}"
 
 @pytest.mark.parametrize("test_cases", test_cases, ids=ids)
 def test_unstructured_mesh_sampling(model, request, test_cases):
@@ -77,9 +79,13 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
     if test_cases['library'] == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh is not enabled in this build.")
 
+    if test_cases['interface'] == 'xdg' and not openmc.lib.feature_enabled('xdg'):
+        pytest.skip("XDG mesh interface not enabled in this build.")
+
     # setup mesh source ###
     mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_cases['library'])
+    uscd_mesh.interface = test_cases['interface']
 
     # subtract one to account for root cell produced by RegularMesh.build_cells
     n_cells = len(model.geometry.get_all_cells()) - 1
@@ -321,8 +327,8 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
     assert mesh_source.strength == 1.0
 
 
-@pytest.mark.parametrize("library", ('moab', 'libmesh'))
-def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
+@pytest.mark.parametrize("library, interface", product(('moab', 'libmesh'), ('native', 'xdg')))
+def test_umesh_source_independent(run_in_tmpdir, request, void_model, library, interface):
     import openmc.lib
     # skip the test if the library is not enabled
     if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
@@ -331,10 +337,14 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
     if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh is not enabled in this build.")
 
+    if interface == 'xdg' and not openmc.lib.feature_enabled('xdg'):
+        pytest.skip("XDG mesh interface not enabled in this build.")
+
     model = void_model
 
     mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, library)
+    uscd_mesh.interface = interface
     ind_source = openmc.IndependentSource()
     n_elements = 12_000
     model.settings.source = openmc.MeshSource(uscd_mesh, n_elements*[ind_source])

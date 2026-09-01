@@ -78,9 +78,8 @@ void resize_simulation_ifp_banks();
 //! \param[in] i_temp Index in the temporary bank vectors
 //! \param[in,out] delayed_groups Delayed group numbers
 //! \param[in,out] lifetimes Lifetimes lists
-void copy_ifp_data_from_fission_banks(
-  int64_t i_bank, int64_t i_temp, vector<vector<int>>& delayed_groups,
-  vector<vector<double>>& lifetimes);
+void copy_ifp_data_from_fission_banks(int64_t i_bank, int64_t i_temp,
+  vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes);
 
 #ifdef OPENMC_MPI
 

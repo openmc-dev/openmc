@@ -102,7 +102,8 @@ void XDGMesh::initialize()
 
   // load XDGMesh file
   if (!file_exists(filename_)) {
-    fatal_error(fmt::format("Mesh file \"{}\" for mesh {} does not exist", filename_, id_));
+    fatal_error(fmt::format(
+      "Mesh file \"{}\" for mesh {} does not exist", filename_, id_));
   }
 
   xdg_->mesh_manager()->load_file(filename_);

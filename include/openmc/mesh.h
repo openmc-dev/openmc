@@ -730,7 +730,6 @@ public:
 
   static const std::string mesh_type;
 
-
   // Overridden Methods
   virtual std::string get_mesh_type() const override;
 
@@ -851,7 +850,8 @@ protected:
   double length_multiplier_ {
     -1.0};              //!< Multiplicative factor applied to mesh coordinates
   std::string options_; //!< Options for search data structures
-  std::string interface_ {"native"}; //!< Name of the interface used for the mesh
+  std::string interface_ {
+    "native"}; //!< Name of the interface used for the mesh
 
   //! Determine lower-left and upper-right bounds of mesh
   void determine_bounds();

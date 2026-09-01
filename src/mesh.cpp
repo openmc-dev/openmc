@@ -890,10 +890,10 @@ std::unique_ptr<UnstructuredMesh> UnstructuredMesh::create(T dataset)
 #endif
 
   if (!out) {
-    fatal_error(fmt::format(
-      "Unstructured mesh interface '{}' and library '{}' is not "
-      "enabled in this build of OpenMC.",
-      mesh_interface, mesh_library));
+    fatal_error(
+      fmt::format("Unstructured mesh interface '{}' and library '{}' is not "
+                  "enabled in this build of OpenMC.",
+        mesh_interface, mesh_library));
   }
 
   return out;

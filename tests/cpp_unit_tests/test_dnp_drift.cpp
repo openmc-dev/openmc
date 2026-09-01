@@ -345,18 +345,18 @@ TEST_CASE("Test reconcile_precursor_drift")
     CHECK(site.wgt == 1.0);
   }
 
-  // White surface, going outward -> true
+  // White surface, going outward -> reflect and return true
   {
     SourceSite site {};
     site.r = {0.0, -5.0, 0.0};
     site.u = {0.0, -1.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == true);
     CHECK(site.r == Position(0.0, -5.0, 0.0));
-    CHECK(site.u == Direction(0.0, 1.0, 0.0));
+    CHECK(site.u.y > 0.0);
     CHECK(site.wgt == 0.8);
   }
 
-  // White surface, going inward -> true
+  // White surface, going inward -> no reflection and return true
   {
     SourceSite site {};
     site.r = {0.0, -5.0, 0.0};

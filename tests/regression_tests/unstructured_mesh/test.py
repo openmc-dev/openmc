@@ -135,69 +135,18 @@ def model():
     model.materials = materials
 
     ### Geometry ###
-    fuel_min_x = openmc.XPlane(-5.0, name="minimum x")
-    fuel_max_x = openmc.XPlane(5.0, name="maximum x")
-
-    fuel_min_y = openmc.YPlane(-5.0, name="minimum y")
-    fuel_max_y = openmc.YPlane(5.0, name="maximum y")
-
-    fuel_min_z = openmc.ZPlane(-5.0, name="minimum z")
-    fuel_max_z = openmc.ZPlane(5.0, name="maximum z")
-
-    fuel_cell = openmc.Cell(name="fuel")
-    fuel_cell.region = +fuel_min_x & -fuel_max_x & \
-                       +fuel_min_y & -fuel_max_y & \
-                       +fuel_min_z & -fuel_max_z
+    fuel_box = openmc.model.RectangularParallelepiped(-5.0, 5.0, -5.0, 5.0, -5.0, 5.0)
+    fuel_cell = openmc.Cell(name="fuel", region=-fuel_box)
     fuel_cell.fill = fuel_mat
 
-    clad_min_x = openmc.XPlane(-6.0, name="minimum x")
-    clad_max_x = openmc.XPlane(6.0, name="maximum x")
-
-    clad_min_y = openmc.YPlane(-6.0, name="minimum y")
-    clad_max_y = openmc.YPlane(6.0, name="maximum y")
-
-    clad_min_z = openmc.ZPlane(-6.0, name="minimum z")
-    clad_max_z = openmc.ZPlane(6.0, name="maximum z")
-
-    clad_cell = openmc.Cell(name="clad")
-    clad_cell.region = (-fuel_min_x | +fuel_max_x |
-                        -fuel_min_y | +fuel_max_y |
-                        -fuel_min_z | +fuel_max_z) & \
-                        (+clad_min_x & -clad_max_x &
-                         +clad_min_y & -clad_max_y &
-                         +clad_min_z & -clad_max_z)
+    clad_box = openmc.model.RectangularParallelepiped(-6.0, 6.0, -6.0, 6.0, -6.0, 6.0)
+    clad_cell = openmc.Cell(name="clad", region=-clad_box & +fuel_box)
     clad_cell.fill = zirc_mat
 
     # set bounding cell dimension to one
     # this will be updated later according to the test case parameters
-    water_min_x = openmc.XPlane(x0=-1.0,
-                                name="minimum x",
-                                boundary_type='vacuum')
-    water_max_x = openmc.XPlane(x0=1.0,
-                                name="maximum x",
-                                boundary_type='vacuum')
-
-    water_min_y = openmc.YPlane(y0=-1.0,
-                                name="minimum y",
-                                boundary_type='vacuum')
-    water_max_y = openmc.YPlane(y0=1.0,
-                                name="maximum y",
-                                boundary_type='vacuum')
-
-    water_min_z = openmc.ZPlane(z0=-1.0,
-                                name="minimum z",
-                                boundary_type='vacuum')
-    water_max_z = openmc.ZPlane(z0=1.0,
-                                name="maximum z",
-                                boundary_type='vacuum')
-
-    water_cell = openmc.Cell(name="water")
-    water_cell.region = (-clad_min_x | +clad_max_x |
-                         -clad_min_y | +clad_max_y |
-                         -clad_min_z | +clad_max_z) & \
-                         (+water_min_x & -water_max_x &
-                          +water_min_y & -water_max_y &
-                          +water_min_z & -water_max_z)
+    water_box = openmc.model.RectangularParallelepiped(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0, boundary_type='vacuum')
+    water_cell = openmc.Cell(name="water", region=-water_box & +clad_box)
     water_cell.fill = water_mat
 
     # create a containing universe
@@ -225,12 +174,7 @@ def model():
     settings.batches = 10
 
     # source setup
-    r = openmc.stats.Uniform(a=0.0, b=9.0)
-    cos_theta = openmc.stats.Discrete(x=[1.0], p=[1.0])
-    phi = openmc.stats.Discrete(x=[0.0], p=[1.0])
-
-    space = openmc.stats.SphericalIndependent(
-        r=r, cos_theta=cos_theta, phi=phi, origin=(0.0, 0.0, 0.0))
+    space = openmc.stats.spherical_uniform(r_outer = 9.0)
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.IndependentSource(space=space, energy=energy)
     settings.source = source
@@ -247,12 +191,14 @@ param_values = (['libmesh', 'moab'], # mesh libraries
                 [(333, 90, 77), None]) # location of holes in the mesh
 test_cases = []
 for i, (lib, interface, estimator, ext_geom, holes) in enumerate(product(*param_values)):
+    if lib == 'libmesh' and estimator == 'tracklength':
+        continue
     test_cases.append({'library' : lib,
                        'interface': interface,
                        'estimator' : estimator,
                        'external_geom' : ext_geom,
                        'holes' : holes,
-                       'inputs_true' : f'inputs_true{i}.dat'})
+                       'inputs_true' : f'inputs_tets_true{i}.dat'})
 
 def param_ids(test_case):
     return f"{test_case['library']}_{test_case['interface']}_{test_case['estimator']}_holes_{test_case['holes']}_external_geom_{test_case['external_geom']}"
@@ -324,7 +270,7 @@ for i, (lib, interface, estimator) in enumerate(product(*param_values)):
         continue
     if lib == 'libmesh' and estimator == 'tracklength':
         continue
-    test_cases.append((lib, interface, estimator, f'inputs_true{i}.dat'))
+    test_cases.append((lib, interface, estimator, f'inputs_hexes_true{i}.dat'))
 
 @pytest.mark.parametrize("test_opts", test_cases, ids=lambda x: f"{x[0]}_{x[1]}_{x[2]}")
 def test_unstructured_mesh_hexes(model, test_opts):

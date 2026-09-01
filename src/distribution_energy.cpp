@@ -191,7 +191,8 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
   // Discrete portion
   if (n_discrete > 0) {
-    int idx = upper_bound_index(distribution_[l].c.begin(), distribution_[l].c.begin() + n_discrete, r1);
+    int idx = upper_bound_index(
+      distribution_[l].c.begin(), distribution_[l].c.begin() + n_discrete, r1);
     if (idx + 1 < n_discrete) {
       k = idx + 1;
       end = k;
@@ -203,7 +204,8 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
   // Continuous portion
   if (n_discrete < end) {
-    int idx = upper_bound_index(distribution_[l].c.begin() + n_discrete + 1, distribution_[l].c.begin() + end + 1, r1);
+    int idx = upper_bound_index(distribution_[l].c.begin() + n_discrete + 1,
+      distribution_[l].c.begin() + end + 1, r1);
     k = idx + n_discrete + 1;
     c_k = distribution_[l].c[k];
   }

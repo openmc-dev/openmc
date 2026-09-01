@@ -192,68 +192,75 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
 
 bool reconcile_precursor_drift(SourceSite& site)
 {
+  // Set up temporary particle at the precursor's position and direction
   Particle p;
   p.r() = site.r;
   p.u() = site.u;
 
-  // Is the DNP inside the model?
-  bool found = exhaustive_find_cell(p);
-
-  // If inside, the particle will be usable for the next generation
-  if (found)
-    return true;
-
-  // If outside, check if we are on an external boundary
-
-  // Nudge the particle backward
-  p.r() = p.r() - p.u() * TINY_BIT;
-  found = exhaustive_find_cell(p);
-
-  // If not found here, it is certainly lost
-  if (!found)
-    fatal_error("DNP is certainly lost");
-  // TODO: warning but we can return false
-
-  // If distance to next collision is in the order of the nudge, it means that
-  // the particle is seen outside because it is going outward while being on the
-  // surface. We need to apply the boundary that should be crossed, otherwise
-  // the site will create non-usable particles in the next generation
-  BoundaryInfo toto = distance_to_boundary(p);
-
-  if (toto.distance() <= TINY_BIT + 1E-12) {
-    // We are on the surface
-    // Reset particle positions
-    p.r() = site.r;
-    p.u() = site.u;
-
-    // Apply boundary
-    const Surface& surf = *model::surfaces[std::abs(toto.surface()) - 1].get();
-
-    // Internal surface
-    if (!surf.bc_)
-      return true;
-    // TODO: warning?
-
-    // Transmission
-    if (surf.bc_->type() == "transmission")
-      return true;
-    // TODO: warning?
-
-    // Vacuum
-    if (surf.bc_->type() == "vacuum")
-      return false;
-
-    // Remaining conditions: reflective, white, or periodic
-    // Apply transformation and albedo
-    surf.bc_->transform(p, surf, site.r, site.u, site.surf_id);
-    if (surf.bc_->has_albedo())
-      site.wgt *= surf.bc_->albedo();
+  // Case 1: the particle is seen inside the geometry.
+  if (exhaustive_find_cell(p)) {
     return true;
   }
 
-  // If we reach here, it means that the nudge allowed us to reenter but the
-  // particle is effectively outside
-  return false;
+  // Case 2: the particle is seen outside the geometry. This means that the
+  // particle is genuinely outside the geometry, on a boundary but heading
+  // outward, or traveling exactly along a boundary plane.
+
+  // Nudge the particle slightly backward to check if it reenters.
+  p.r() = p.r() - p.u() * TINY_BIT;
+
+  if (!exhaustive_find_cell(p)) {
+    // The particle is not recoverable: it is either in an undefined region or
+    // traveling exactly along a surface plane.
+    warning("DNP lost: unable to locate cell after backward nudge. If this "
+            "warning is occurring frequently, this might indicate spatial "
+            "inconsistency between the mesh used for DNP transport and the "
+            "OpenMC model. Please check both the mesh and the OpenMC model.");
+    return false;
+  }
+
+  // Compute the distance from the nudged position to the nearest boundary.
+  BoundaryInfo boundary = distance_to_boundary(p);
+
+  // If the boundary is closer than the nudge distance, the particle was
+  // genuinely outside before the nudge and not on a boundary.
+  if (boundary.distance() < TINY_BIT - FP_COINCIDENT) {
+    return false;
+  }
+
+  // The particle is on a boundary heading outward.
+  // Reset particle to its original state and apply boundary conditions.
+  p.r() = site.r;
+  p.u() = site.u;
+
+  const auto& surf = *model::surfaces[std::abs(boundary.surface()) - 1];
+  const auto* bc = surf.bc_.get();
+
+  if (!bc) {
+    fatal_error(
+      "Boundary condition not found after crossing an external boundary!");
+  }
+
+  const std::string& bc_type = bc->type();
+
+  // Transmission
+  if (bc_type == "transmission") {
+    fatal_error("Potentially crossing an external transmission boundary!");
+  }
+
+  // Vacuum
+  if (bc_type == "vacuum") {
+    return false;
+  }
+
+  // Remaining conditions: reflective, white, or periodic
+  // Apply transformation and albedo
+  bc->transform(p, surf, site.r, site.u, site.surf_id);
+  if (bc->has_albedo()) {
+    site.wgt *= bc->albedo();
+  }
+
+  return true;
 }
 
 } // namespace openmc

@@ -54,21 +54,18 @@ void _adjust_time(double& t, double ta, const Position& pa, const Position& pb,
 //!         the system. False otherwise.
 bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed);
 
-//! Reconcile a delayed neutron precursor source site after mesh-based drift
-//! with the model geometry.
+//! Reconcile a delayed neutron precursor source site with the model geometry
+//! after mesh-based drift.
 //!
 //! After transporting a delayed neutron precursor on a mesh, the emission site
-//! may land on or near a geometry boundary. This function verifies that the
-//! site is valid within the geometry and applies boundary condition corrections
-//! if needed:
-//!   - Transmission: site is accepted as is.
-//!   - Vacuum: site is accepted if the direction points inward the current
-//!     cell; rejected otherwise.
-//!   - Reflective: direction is reflected if pointing outward.
+//! may land outside the model or on a geometry boundary. This function
+//! identifies if the site is valid and applies boundary condition corrections
+//! as needed. If the function returns true, the site is guaranteed to be usable
+//! for the next fission generation.
 //!
-//! \param[inout] site  Fission site corresponding to the DNP
-//! \return True if the site is valid and usable for the next generation,
-//!         false if the site should be discarded.
+//! \param[in,out] site  Fission site corresponding to the DNP
+//! \return True if the site is usable for the next generation, false if the
+//! site should be discarded.
 bool reconcile_precursor_drift(SourceSite& site);
 
 } // namespace openmc

@@ -259,6 +259,9 @@ TEST_CASE("Test reconcile_precursor_drift")
     site.r = {0.0, 0.0, -2.0};
     site.u = {1.0, 0.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.r == Position(0.0, 0.0, -2.0));
+    CHECK(site.u == Direction(1.0, 0.0, 0.0));
+    CHECK(site.wgt == 1.0);
   }
 
   // Outside model -> should fail (fatal error)
@@ -275,6 +278,8 @@ TEST_CASE("Test reconcile_precursor_drift")
     site.r = {5.0, 0.0, 0.0};
     site.u = {1.0, 0.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == false);
+    CHECK(site.r == Position(5.0, 0.0, 0.0));
+    CHECK(site.u == Direction(1.0, 0.0, 0.0));
   }
 
   // Vacuum surface, going inward -> true
@@ -283,6 +288,8 @@ TEST_CASE("Test reconcile_precursor_drift")
     site.r = {5.0, 0.0, 0.0};
     site.u = {-1.0, 0.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.r == Position(5.0, 0.0, 0.0));
+    CHECK(site.u == Direction(-1.0, 0.0, 0.0));
     CHECK(site.wgt == 1.0);
   }
 
@@ -292,7 +299,8 @@ TEST_CASE("Test reconcile_precursor_drift")
     site.r = {0.0, 5.0, 0.0};
     site.u = {0.0, 1.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == true);
-    CHECK(site.u.y < 0.0);
+    CHECK(site.r == Position(0.0, 5.0, 0.0));
+    CHECK(site.u == Direction(0.0, -1.0, 0.0));
     CHECK(site.wgt == 0.8);
   }
 
@@ -302,7 +310,8 @@ TEST_CASE("Test reconcile_precursor_drift")
     site.r = {0.0, 5.0, 0.0};
     site.u = {0.0, -1.0, 0.0};
     CHECK(reconcile_precursor_drift(site) == true);
-    CHECK(site.u.y < 0.0);
+    CHECK(site.r == Position(0.0, 5.0, 0.0));
+    CHECK(site.u == Direction(0.0, -1.0, 0.0));
     CHECK(site.wgt == 1.0);
   }
 

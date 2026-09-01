@@ -88,9 +88,6 @@ double AngleDistribution::evaluate(double E, double mu) const
   int i;
   double r;
   get_energy_index(energy_, E, i, r);
-
-  // Both distributions are always valid since get_energy_index keeps i within
-  // the topmost interval
   return r * distribution_[i + 1]->evaluate(mu) +
          (1.0 - r) * distribution_[i]->evaluate(mu);
 }

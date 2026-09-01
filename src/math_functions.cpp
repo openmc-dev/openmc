@@ -993,8 +993,7 @@ void get_energy_index(
 {
   // Get index and interpolation factor for linear-linear energy grid. The index
   // is kept within the topmost interval so that both energies[i] and
-  // energies[i + 1] are valid for callers, matching the handling in
-  // ContinuousTabular::sample.
+  // energies[i + 1] are valid for callers.
   const int n = energies.size();
   i = 0;
   f = 0.0;

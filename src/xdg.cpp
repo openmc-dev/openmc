@@ -10,6 +10,7 @@
 
 #ifdef OPENMC_XDG_ENABLED
 #include "xdg/xdg.h"
+#include "xdg/config.h"
 #endif
 
 #include "openmc/constants.h"
@@ -92,6 +93,11 @@ XDGMesh::XDGMesh(std::shared_ptr<xdg::XDG> external_xdg)
 void XDGMesh::initialize()
 {
   interface_ = "xdg";
+
+  if(!xdg::XDGConfig::config().mesh_manager_enabled(mesh_library_)) {
+    fatal_error(fmt::format("Mesh library {} is not enabled in XDG.",
+      mesh_library_ == xdg::MeshLibrary::LIBMESH ? "libMesh" : "MOAB"));
+  }
 
   // the XDG instance has already been created, so no action is required
   if (xdg_)

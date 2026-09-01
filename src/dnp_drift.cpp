@@ -199,58 +199,61 @@ bool reconcile_precursor_drift(SourceSite& site)
   // Is the DNP inside the model?
   bool found = exhaustive_find_cell(p);
 
-  // If outside, it might be because we are on a boundary with an outward
-  // direction
-  if (!found) {
+  // If inside, the particle will be usable for the next generation
+  if (found)
+    return true;
 
-    // Nudge the particle backward
-    p.r() = p.r() - p.u() * TINY_BIT;
-    found = exhaustive_find_cell(p);
+  // If outside, check if we are on an external boundary
 
-    // If not found here, it is certainly lost
-    if (!found)
-      fatal_error("DNP is certainly lost");
+  // Nudge the particle backward
+  p.r() = p.r() - p.u() * TINY_BIT;
+  found = exhaustive_find_cell(p);
 
-    // Go back to the previous position
+  // If not found here, it is certainly lost
+  if (!found)
+    fatal_error("DNP is certainly lost");
+    // TODO: warning but we can return false
+
+  // If distance to next collision is in the order of the nudge, it means that
+  // the particle is seen outside because it is going outward while being on the
+  // surface. We need to apply the boundary that should be crossed, otherwise
+  // the site will create non-usable particles in the next generation
+  BoundaryInfo toto = distance_to_boundary(p);
+
+  if (toto.distance() <= TINY_BIT + 1E-12) {
+    // We are on the surface
+    // Reset particle positions
     p.r() = site.r;
-  }
+    p.u() = site.u;
 
-  // Apply boundary condition if the site is on a surface
-  for (auto& surf_id : model::cells[p.lowest_coord().cell()]->surfaces()) {
-    const Surface& surf = *model::surfaces[std::abs(surf_id) - 1].get();
-    double eval = surf.evaluate(p.r());
-    if (std::abs(eval) < FP_COINCIDENT) {
+    // Apply boundary
+    const Surface& surf = *model::surfaces[std::abs(toto.surface()) - 1].get();
 
-      Direction normal = surf.normal(p.r());
-      double dot = site.u.dot(normal);
-      bool going_outward = dot > 0.0;
-
-      // TODO: add more boundary types
-
-      // Internal surface
-      if (!surf.bc_)
-        continue;
-
-      // Transmission
-      if (surf.bc_->type() == "transmission")
-        continue;
-
-      // Vacuum
-      if (surf.bc_->type() == "vacuum")
-        return (!going_outward);
-
-      // Remaining conditions: reflective, white, or periodic
-      if (going_outward) {
-        // Apply transformation and albedo
-        surf.bc_->transform(p, surf, site.r, site.u, site.surf_id);
-        if (surf.bc_->has_albedo())
-          site.wgt *= surf.bc_->albedo();
-      }
+    // Internal surface
+    if (!surf.bc_)
       return true;
-    }
+      // TODO: warning?
+
+    // Transmission
+    if (surf.bc_->type() == "transmission")
+      return true;
+      // TODO: warning?
+
+    // Vacuum
+    if (surf.bc_->type() == "vacuum")
+      return false;
+
+    // Remaining conditions: reflective, white, or periodic
+    // Apply transformation and albedo
+    surf.bc_->transform(p, surf, site.r, site.u, site.surf_id);
+    if (surf.bc_->has_albedo())
+      site.wgt *= surf.bc_->albedo();
+    return true;
   }
 
-  return found;
+  // If we reach here, it means that the nudge allowed us to reenter but the
+  // particle is effectively outside
+  return false;
 }
 
 } // namespace openmc

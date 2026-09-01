@@ -69,12 +69,9 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   int32_t id = std::stoi(get_node_value(node, "id"));
   this->set_id(id);
 
-  // get the particle type. Going through the setter applies the same
-  // neutron/photon validation as the C API path and derives the
-  // particle-dependent energy defaults, which an explicit <energy_bounds>
-  // below then replaces.
+  // Get the particle type
   auto particle_type_str = std::string(get_node_value(node, "particle_type"));
-  set_particle_type(ParticleType {particle_type_str});
+  set_particle_type({particle_type_str});
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
@@ -253,8 +250,7 @@ void WeightWindows::set_particle_type(ParticleType p_type)
   particle_type_ = p_type;
 
   // The default energy grid is particle dependent, so derive it now that the
-  // particle type is known. This is a no-op when an explicit grid has already
-  // been supplied, since set_defaults() only fills an empty grid.
+  // particle type is known
   set_defaults();
 }
 
@@ -1345,7 +1341,6 @@ extern "C" int openmc_weight_windows_export(const char* filename)
   std::vector<int32_t> mesh_ids;
   std::vector<int32_t> ww_ids;
   for (const auto& ww : variance_reduction::weight_windows) {
-
     // Backstop for objects built through the C API whose particle type was
     // never set explicitly, so an empty energy grid is never written out
     ww->set_defaults();

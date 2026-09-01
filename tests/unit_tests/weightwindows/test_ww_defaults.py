@@ -1,25 +1,4 @@
-"""Default weight window energy bounds must follow the particle type.
-
-`WeightWindows::set_defaults()` derives the default energy grid from
-`data::energy_min/max` for the weight window's particle type, and only does so
-when the grid is empty. The `WeightWindows(int32_t id)` constructor used by the
-C API called it immediately, before the particle type, mesh or energy grid were
-known, so the grid was locked in for the default particle (neutron) and every
-later call became a no-op. A photon weight window created through `openmc.lib`
-therefore kept neutron energy bounds.
-
-`WeightWindowsGenerator` worked around this by calling `set_defaults()` again
-after configuring the object, which only helped because it constructs through a
-path where the grid is still empty.
-
-Note the fixture below calls `simulation_init()`, not just `init()`.
-`data::energy_min/max` are populated by `initialize_data()`, which runs from
-`openmc_simulation_init()` rather than `openmc_init()`. Before simulation
-initialization both arrays hold their static defaults of 0 and INFTY for every
-particle, so neutron and photon defaults are indistinguishable and this bug is
-unobservable. It bites weight windows created through the C API during a run,
-which is exactly the regime weight window generation operates in.
-"""
+"""Default weight window energy bounds must follow the particle type."""
 
 import numpy as np
 import pytest

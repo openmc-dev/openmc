@@ -9,8 +9,8 @@
 #include <fmt/core.h>
 
 #ifdef OPENMC_XDG_ENABLED
-#include "xdg/xdg.h"
 #include "xdg/config.h"
+#include "xdg/xdg.h"
 #endif
 
 #include "openmc/constants.h"
@@ -94,7 +94,7 @@ void XDGMesh::initialize()
 {
   interface_ = "xdg";
 
-  if(!xdg::XDGConfig::config().mesh_manager_enabled(mesh_library_)) {
+  if (!xdg::XDGConfig::config().mesh_manager_enabled(mesh_library_)) {
     fatal_error(fmt::format("Mesh library {} is not enabled in XDG.",
       mesh_library_ == xdg::MeshLibrary::LIBMESH ? "libMesh" : "MOAB"));
   }

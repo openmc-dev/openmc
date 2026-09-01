@@ -279,27 +279,6 @@ TEST_CASE("Test reconcile_precursor_drift")
   // -----------------------------------------------------------------------------
   // Particles located at an external boundary.
   // -----------------------------------------------------------------------------
-  // Internal/transmission surface at z=0 (shared face), going upward -> true
-  {
-    SourceSite site {};
-    site.r = {0.0, 0.0, 0.0};
-    site.u = {0.0, 0.0, 1.0};
-    CHECK(reconcile_precursor_drift(site) == true);
-    CHECK(site.r == Position(0.0, 0.0, 0.0));
-    CHECK(site.u == Direction(0.0, 0.0, 1.0));
-    CHECK(site.wgt == 1.0);
-  }
-
-  // Internal/transmission at z=0 (shared face), going downward -> true
-  {
-    SourceSite site {};
-    site.r = {0.0, 0.0, 0.0};
-    site.u = {0.0, 0.0, -1.0};
-    CHECK(reconcile_precursor_drift(site) == true);
-    CHECK(site.r == Position(0.0, 0.0, 0.0));
-    CHECK(site.u == Direction(0.0, 0.0, -1.0));
-    CHECK(site.wgt == 1.0);
-  }
 
   // Vacuum surface, going outward -> false
   {

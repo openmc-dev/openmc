@@ -196,7 +196,7 @@ Tally::Tally(pugi::xml_node node)
   // Determine which kinds of IFP data this tally requires. The two flags are
   // independent, so a score simply turns on the data it needs.
   bool wants_lifetime = false;
-  bool wants_delayed = false;
+  bool wants_delayed_group = false;
   for (int score : scores_) {
     switch (score) {
     case SCORE_IFP_TIME_NUM:
@@ -204,12 +204,12 @@ Tally::Tally(pugi::xml_node node)
       break;
     case SCORE_IFP_BETA_NUM:
     case SCORE_IFP_DENOM:
-      wants_delayed = true;
+      wants_delayed_group = true;
       break;
     }
   }
 
-  if (wants_lifetime || wants_delayed) {
+  if (wants_lifetime || wants_delayed_group) {
     // Validate once, when the first IFP tally is encountered
     if (!settings::ifp_on()) {
       if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -235,7 +235,7 @@ Tally::Tally(pugi::xml_node node)
     // Only enable in eigenvalue mode; fixed source has already errored above
     if (settings::run_mode == RunMode::EIGENVALUE) {
       settings::ifp_lifetime_on |= wants_lifetime;
-      settings::ifp_delayed_group_on |= wants_delayed;
+      settings::ifp_delayed_group_on |= wants_delayed_group;
     }
   }
 

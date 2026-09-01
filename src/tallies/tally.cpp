@@ -7,6 +7,7 @@
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/ifp.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -211,7 +212,7 @@ Tally::Tally(pugi::xml_node node)
 
   if (wants_lifetime || wants_delayed_group) {
     // Validate once, when the first IFP tally is encountered
-    if (!settings::ifp_on()) {
+    if (!ifp_on()) {
       if (settings::run_mode == RunMode::FIXED_SOURCE) {
         fatal_error(
           "Iterated Fission Probability can only be used in an eigenvalue "
@@ -234,8 +235,10 @@ Tally::Tally(pugi::xml_node node)
 
     // Only enable in eigenvalue mode; fixed source has already errored above
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      settings::ifp_lifetime_on |= wants_lifetime;
-      settings::ifp_delayed_group_on |= wants_delayed_group;
+      if (wants_lifetime)
+        simulation::ifp_lifetime.enable();
+      if (wants_delayed_group)
+        simulation::ifp_delayed_group.enable();
     }
   }
 

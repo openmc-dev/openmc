@@ -125,23 +125,9 @@ void KalbachMann::sample_params(
   // Sample between the ith and [i+1]th bin
   int l = r > prn(seed) ? i + 1 : i;
 
-  // Interpolation for energy E1 and EK
-  int n_energy_out = distribution_[i].e_out.size();
-  int n_discrete = distribution_[i].n_discrete;
-  double E_i_1 = distribution_[i].e_out[n_discrete];
-  double E_i_K = distribution_[i].e_out[n_energy_out - 1];
-
-  n_energy_out = distribution_[i + 1].e_out.size();
-  n_discrete = distribution_[i + 1].n_discrete;
-  double E_i1_1 = distribution_[i + 1].e_out[n_discrete];
-  double E_i1_K = distribution_[i + 1].e_out[n_energy_out - 1];
-
-  double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
-  double E_K = E_i_K + r * (E_i1_K - E_i_K);
-
   // Determine outgoing energy bin
-  n_energy_out = distribution_[l].e_out.size();
-  n_discrete = distribution_[l].n_discrete;
+  int n_energy_out = distribution_[l].e_out.size();
+  int n_discrete = distribution_[l].n_discrete;
   double r1 = prn(seed);
   double c_k = distribution_[l].c[0];
   int k = 0;
@@ -170,8 +156,12 @@ void KalbachMann::sample_params(
 
   double E_l_k = distribution_[l].e_out[k];
   if (k < n_discrete) {
-    // Discrete case
-    E_out = E_l_k;
+    // Discrete case. Discrete lines correspond by index between adjacent
+    // incident energies, so interpolate the line energy rather than using the
+    // value tabulated at grid l alone.
+    const auto& e_lo = distribution_[i].e_out;
+    const auto& e_hi = distribution_[i + 1].e_out;
+    E_out = e_lo[k] + r * (e_hi[k] - e_lo[k]);
     km_r = distribution_[l].r[k];
     km_a = distribution_[l].a[k];
 
@@ -215,11 +205,31 @@ void KalbachMann::sample_params(
                (distribution_[l].a[k + 1] - distribution_[l].a[k]);
     }
 
+    // Unit-base interpolation between the continua at i and i + 1. The ACE
+    // format requires the number of discrete lines to match at every incident
+    // energy, but does not require a continuum to be present at each one, so
+    // check for each side and fall back to whichever one has a continuum.
+    const int n_i = distribution_[i].e_out.size();
+    const int nd_i = distribution_[i].n_discrete;
+    const int n_i1 = distribution_[i + 1].e_out.size();
+    const int nd_i1 = distribution_[i + 1].n_discrete;
+    const bool cont_i = nd_i < n_i;
+    const bool cont_i1 = nd_i1 < n_i1;
+
+    const double r_c = cont_i ? (cont_i1 ? r : 0.0) : 1.0;
+    const double E_i_1 = cont_i ? distribution_[i].e_out[nd_i] : 0.0;
+    const double E_i_K = cont_i ? distribution_[i].e_out[n_i - 1] : 0.0;
+    const double E_i1_1 = cont_i1 ? distribution_[i + 1].e_out[nd_i1] : 0.0;
+    const double E_i1_K = cont_i1 ? distribution_[i + 1].e_out[n_i1 - 1] : 0.0;
+
+    const double E_1 = E_i_1 + r_c * (E_i1_1 - E_i_1);
+    const double E_K = E_i_K + r_c * (E_i1_K - E_i_K);
+
     // Now interpolate between incident energy bins i and i + 1
-    if (l == i) {
-      E_out = E_1 + (E_out - E_i_1) * (E_K - E_1) / (E_i_K - E_i_1);
-    } else {
-      E_out = E_1 + (E_out - E_i1_1) * (E_K - E_1) / (E_i1_K - E_i1_1);
+    const double E_lo = (l == i) ? E_i_1 : E_i1_1;
+    const double E_hi = (l == i) ? E_i_K : E_i1_K;
+    if (E_hi != E_lo) {
+      E_out = E_1 + (E_out - E_lo) * (E_K - E_1) / (E_hi - E_lo);
     }
   }
 }

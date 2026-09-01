@@ -213,8 +213,13 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
   double E_l_k = distribution_[l].e_out[k];
 
   if (k < n_discrete) {
-    // Discrete case
-    return E_l_k;
+    // Discrete case. Discrete lines correspond by index between adjacent
+    // incident energies, so interpolate the line energy rather than returning
+    // the value tabulated at grid l alone. Histogram interpolation on the
+    // incident energy grid pins l to i, so no interpolation is applied there.
+    const auto& e_lo = distribution_[i].e_out;
+    const auto& e_hi = distribution_[i + 1].e_out;
+    return e_lo[k] + (histogram_interp ? 0.0 : r) * (e_hi[k] - e_lo[k]);
   } else {
     // Continuous case
     double p_l_k = distribution_[l].p[k];

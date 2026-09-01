@@ -71,7 +71,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
 
   // Get the particle type
   auto particle_type_str = std::string(get_node_value(node, "particle_type"));
-  set_particle_type({particle_type_str});
+  set_particle_type(ParticleType {particle_type_str});
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));

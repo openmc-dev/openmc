@@ -991,13 +991,23 @@ double cyl_bessel_j(int n, double x)
 void get_energy_index(
   const vector<double>& energies, double E, int& i, double& f)
 {
-  // Get index and interpolation factor for linear-linear energy grid
+  // Get index and interpolation factor for linear-linear energy grid. The index
+  // is kept within the topmost interval so that both energies[i] and
+  // energies[i + 1] are valid for callers, matching the handling in
+  // ContinuousTabular::sample.
+  const int n = energies.size();
   i = 0;
   f = 0.0;
-  if (E >= energies.front()) {
-    i = lower_bound_index(energies.begin(), energies.end(), E);
-    if (i + 1 < energies.size())
-      f = (E - energies[i]) / (energies[i + 1] - energies[i]);
+  if (n < 2 || E < energies.front())
+    return;
+
+  i = lower_bound_index(energies.begin(), energies.end(), E);
+  if (i < n - 1) {
+    f = (E - energies[i]) / (energies[i + 1] - energies[i]);
+  } else {
+    // E lies above the top of the grid; use the topmost interval
+    i = n - 2;
+    f = 1.0;
   }
 }
 

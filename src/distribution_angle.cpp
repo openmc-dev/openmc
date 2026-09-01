@@ -89,12 +89,10 @@ double AngleDistribution::evaluate(double E, double mu) const
   double r;
   get_energy_index(energy_, E, i, r);
 
-  double pdf = 0.0;
-  if (r > 0.0)
-    pdf += r * distribution_[i + 1]->evaluate(mu);
-  if (r < 1.0)
-    pdf += (1.0 - r) * distribution_[i]->evaluate(mu);
-  return pdf;
+  // Both distributions are always valid since get_energy_index keeps i within
+  // the topmost interval
+  return r * distribution_[i + 1]->evaluate(mu) +
+         (1.0 - r) * distribution_[i]->evaluate(mu);
 }
 
 } // namespace openmc

@@ -177,8 +177,10 @@ class Tabulated1D(Function1D):
 
         x = np.array(x)
 
-        # Create output array
-        y = np.zeros_like(x)
+        # Create output array.  Use a floating-point dtype so that
+        # interpolated values are not truncated when the input is an
+        # integer-valued array.
+        y = np.zeros_like(x, dtype=float)
 
         # Get indices for interpolation
         idx = np.searchsorted(self.x, x, side='right') - 1

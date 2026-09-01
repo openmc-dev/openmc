@@ -83,6 +83,27 @@ def test_tabulated1d_multidimensional_input():
     assert np.array_equal(y, np.array([[4.0, 4.5], [5.5, 6.0]]))
 
 
+def test_tabulated1d_integer_input():
+    """Integer input arrays produce floating-point output, not truncated int.
+
+    Regression test: np.zeros_like(x) inherits integer dtype from the input
+    array, silently truncating interpolated float values to int (e.g.
+    f(5) = 0.5 but f(np.array([5])) = [0]).
+    """
+    f = openmc.data.Tabulated1D([0.0, 10.0], [0.0, 1.0])  # f(x) = x / 10
+
+    # Scalar path is always correct
+    assert f(5) == 0.5
+
+    # Integer array must not truncate
+    assert f(np.array([5]))[0] == 0.5
+    assert f(np.array([2, 5, 8])).dtype == np.float64
+    assert np.allclose(f(np.array([2, 5, 8])), [0.2, 0.5, 0.8])
+
+    # Float array unchanged
+    assert f(np.array([5.0]))[0] == 0.5
+
+
 def test_sum_functions_partial_domains():
     """Combining tabulated functions with differing domains leaves zeros
     where a component is undefined."""

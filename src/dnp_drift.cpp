@@ -212,7 +212,7 @@ bool reconcile_precursor_drift(SourceSite& site)
   // If not found here, it is certainly lost
   if (!found)
     fatal_error("DNP is certainly lost");
-    // TODO: warning but we can return false
+  // TODO: warning but we can return false
 
   // If distance to next collision is in the order of the nudge, it means that
   // the particle is seen outside because it is going outward while being on the
@@ -232,12 +232,12 @@ bool reconcile_precursor_drift(SourceSite& site)
     // Internal surface
     if (!surf.bc_)
       return true;
-      // TODO: warning?
+    // TODO: warning?
 
     // Transmission
     if (surf.bc_->type() == "transmission")
       return true;
-      // TODO: warning?
+    // TODO: warning?
 
     // Vacuum
     if (surf.bc_->type() == "vacuum")

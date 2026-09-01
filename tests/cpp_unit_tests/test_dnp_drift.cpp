@@ -239,6 +239,29 @@ const std::string RECONCILE_MODEL_XML = R"xml(
 
 TEST_CASE("Test reconcile_precursor_drift")
 {
+  // RAII guard to ensure cleanup happens
+  struct Cleanup {
+    bool active = true;
+    bool initialized = false;
+
+    Cleanup() = default;
+    Cleanup(const Cleanup&) = delete;
+    Cleanup& operator=(const Cleanup&) = delete;
+
+    void release()
+    {
+      if (active) {
+        if (initialized) {
+          openmc_finalize();
+        }
+        std::filesystem::remove("model.xml");
+        active = false;
+      }
+    }
+
+    ~Cleanup() { release(); }
+  } cleanup;
+
   // Write model file
   {
     std::ofstream f("model.xml");
@@ -253,6 +276,7 @@ TEST_CASE("Test reconcile_precursor_drift")
   const char* argv[] = {"test", nullptr};
   int err = openmc_init(1, const_cast<char**>(argv), nullptr);
   REQUIRE(err == 0);
+  cleanup.initialized = true;
 
   // Initialize particle_ids
   int64_t particle_id = 1;
@@ -423,8 +447,4 @@ TEST_CASE("Test reconcile_precursor_drift")
     CHECK(site.u == Direction(1.0, 0.0, 0.0));
     CHECK(site.wgt == 1.0);
   }
-
-  // Clean
-  openmc_finalize();
-  std::remove("model.xml");
 }

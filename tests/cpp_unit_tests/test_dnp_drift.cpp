@@ -197,6 +197,7 @@ TEST_CASE_METHOD(DNPTransportModelFixture,
 // reconcile_precursor_drift
 // ----------------------------------------------------------------------------
 
+// TODO: change reflective BC to white BC in surface 3
 const std::string RECONCILE_MODEL_XML = R"xml(
 <?xml version="1.0"?>
 <model>
@@ -264,6 +265,9 @@ TEST_CASE("Test reconcile_precursor_drift")
     CHECK(site.wgt == 1.0);
   }
 
+  // TODO: Cannot test outside model case because fatal_error aborts the process
+  // rather than throwing an exception
+
   // Outside model -> should fail (fatal error)
   //{
   //  SourceSite site {};
@@ -272,6 +276,9 @@ TEST_CASE("Test reconcile_precursor_drift")
   //  REQUIRE_THROWS(reconcile_precursor_drift(site));
   //}
 
+  // -----------------------------------------------------------------------------
+  // Particles located at an external boundary.
+  // -----------------------------------------------------------------------------
   // Internal/transmission surface at z=0 (shared face), going upward -> true
   {
     SourceSite site {};
@@ -378,6 +385,60 @@ TEST_CASE("Test reconcile_precursor_drift")
     CHECK(reconcile_precursor_drift(site) == true);
     CHECK(site.r == Position(0.0, -5.0, 0.0));
     CHECK(site.u == Direction(0.0, 1.0, 0.0));
+    CHECK(site.wgt == 1.0);
+  }
+
+  // -----------------------------------------------------------------------------
+  // Particles traveling exactly along external boundary planes.
+  // -----------------------------------------------------------------------------
+
+  // Any external surface (reflective in this case). The particle is originally
+  // seen inside -> true
+  {
+    SourceSite site {};
+    site.r = {0.0, 5.0, 0.0};
+    site.u = {1.0, 0.0, 0.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.r == Position(0.0, 5.0, 0.0));
+    CHECK(site.u == Direction(1.0, 0.0, 0.0));
+    CHECK(site.wgt == 1.0);
+  }
+
+  // Any external surface (white in this case). The particle is originally seen
+  // outside and the backward nudge cannot recover the particle since it remains
+  // on the surface -> false
+  {
+    SourceSite site {};
+    site.r = {0.0, -5.0, 0.0};
+    site.u = {1.0, 0.0, 0.0};
+    CHECK(reconcile_precursor_drift(site) == false);
+    CHECK(site.r == Position(0.0, -5.0, 0.0));
+    CHECK(site.u == Direction(1.0, 0.0, 0.0));
+    CHECK(site.wgt == 1.0);
+  }
+
+  // Any external surface (periodic in this case). The particle is originally
+  // seen inside -> true
+  {
+    SourceSite site {};
+    site.r = {0.0, 0.0, 5.0};
+    site.u = {1.0, 0.0, 0.0};
+    CHECK(reconcile_precursor_drift(site) == true);
+    CHECK(site.r == Position(0.0, 0.0, 5.0));
+    CHECK(site.u == Direction(1.0, 0.0, 0.0));
+    CHECK(site.wgt == 1.0);
+  }
+
+  // Any external surface (periodic in this case). The particle is originally
+  // seen outside and the backward nudge cannot recover the particle since it
+  // remains on the surface -> false
+  {
+    SourceSite site {};
+    site.r = {0.0, 0.0, -5.0};
+    site.u = {1.0, 0.0, 0.0};
+    CHECK(reconcile_precursor_drift(site) == false);
+    CHECK(site.r == Position(0.0, 0.0, -5.0));
+    CHECK(site.u == Direction(1.0, 0.0, 0.0));
     CHECK(site.wgt == 1.0);
   }
 

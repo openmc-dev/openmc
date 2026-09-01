@@ -512,9 +512,9 @@ protected:
                                      //!< at the end of the step
   };
 
-  //! Cursor that walks a ray through the grid of a structured mesh
+  //! State used to trace a ray through the grid of a structured mesh
   //!
-  //! The cursor is constructed at the origin of the ray and each call to
+  //! The traversal is initialized at the origin of the ray and each call to
   //! advance() moves it forward by one step, returning the segment covered.
   //! Inside the mesh a step ends at the nearest grid surface. Outside it, a
   //! step ends at the first point where the ray can be inside every

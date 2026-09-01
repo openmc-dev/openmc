@@ -574,6 +574,10 @@ private:
 
   int64_t n_progeny_ {0};
 
+#ifdef OPENMC_LIBMESH_ENABLED
+  mutable int current_libmesh_bin_ {-1};
+#endif
+
 public:
   //----------------------------------------------------------------------------
   // Constructors
@@ -759,6 +763,10 @@ public:
   // Particle-specific factor for on-the-fly weight window adjustment
   double ww_factor() const { return ww_factor_; }
   double& ww_factor() { return ww_factor_; }
+#ifdef OPENMC_LIBMESH_ENABLED
+  int& current_libmesh_bin() { return current_libmesh_bin_; }
+  int& current_libmesh_bin() const { return current_libmesh_bin_; }
+#endif
 
   // Number of tracks in this particle history
   int64_t& n_tracks() { return n_tracks_; }

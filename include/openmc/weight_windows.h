@@ -86,6 +86,10 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 private:
+#ifdef OPENMC_LIBMESH_ENABLED
+  // needed to use optimized libmesh lookup 
+  bool using_exodus_ww{false};
+#endif
   template<class T>
   void check_bounds(const T& lower, const T& upper) const;
 
@@ -135,6 +139,11 @@ public:
   std::array<int, 2> bounds_size() const;
 
   const vector<double>& energy_bounds() const { return energy_bounds_; }
+#ifdef OPENMC_LIBMESH_ENABLED
+  // needed to use optimized libmesh lookup 
+  bool using_exodus() const {return using_exodus_ww;}
+  void set_using_exodus(bool use_exo) {using_exodus_ww = use_exo;}
+#endif
 
   void set_bounds(const tensor::Tensor<double>& lower_ww_bounds,
     const tensor::Tensor<double>& upper_bounds);

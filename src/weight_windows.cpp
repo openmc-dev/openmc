@@ -301,7 +301,19 @@ std::pair<bool, WeightWindow> WeightWindows::get_weight_window(
 
   // Get mesh index for particle's position
   const auto& mesh = this->mesh();
-  int mesh_bin = mesh->get_bin(p.r());
+
+  int mesh_bin = -1;
+// Inside src/weight_windows.cpp
+#ifdef OPENMC_LIBMESH_ENABLED
+  if(this->using_exodus()){
+  mesh_bin = mesh->get_bin(p.r(), p.current_libmesh_bin());
+  }
+  else{
+  mesh_bin = mesh->get_bin(p.r());
+  }
+#else
+  mesh_bin = mesh->get_bin(p.r());
+#endif
 
   // particle is outside the weight window mesh
   if (mesh_bin < 0)
@@ -1188,6 +1200,7 @@ void read_weight_windows_exodus(pugi::xml_node node)
   WeightWindows* wws = WeightWindows::create();
   wws->set_mesh(model::mesh_map.at(mesh_id));
   wws->set_particle_type(ParticleType {p_type_str});
+  wws->set_using_exodus(true);
   wws->set_energy_bounds(span<const double>(e_bounds.data(), e_bounds.size()));
   wws->survival_ratio() = survival_ratio;
   wws->max_split() = max_split;

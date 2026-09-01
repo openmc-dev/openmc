@@ -196,6 +196,13 @@ public:
   //! \param[in] r Position to get bin for
   //! \return Mesh bin
   virtual int get_bin(Position r) const = 0;
+#ifdef OPENMC_LIBMESH_ENABLED
+  // New mesh bin aware in libMesh overload
+  virtual int get_bin(Position r, int& cached_bin) const {
+    cached_bin = this->get_bin(r);
+    return cached_bin;
+  }
+#endif
 
   //! Get the number of mesh cells.
   virtual int n_bins() const = 0;
@@ -1023,6 +1030,8 @@ public:
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 
   virtual int get_bin(Position r) const override;
+
+  int get_bin(Position r, int& cached_bin) const override;
 
   int n_bins() const override;
 

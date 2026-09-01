@@ -3926,6 +3926,48 @@ int LibMesh::get_bin(Position r) const
   return elem_ptr ? get_bin_from_element(elem_ptr) : -1;
 }
 
+int LibMesh::get_bin(Position r, int& cached_bin) const
+{
+  libMesh::Point p(r.x, r.y, r.z);
+  if (length_multiplier_ > 0.0) {
+    p /= length_multiplier_;
+  }
+
+  if (!bbox_.contains_point(p)) {
+    cached_bin = -1;
+    return -1;
+  }
+
+
+  if (cached_bin >= 0 && cached_bin < this->n_bins()) {
+    const libMesh::Elem& cached_elem = get_element_from_bin(cached_bin);
+    
+    // Tier 1
+    //fmt::print("SUCCESS: Tier 1 (Cached Element)\n");
+
+    if (cached_elem.contains_point(p)) {
+      return cached_bin;
+    }
+
+    // Tier 2
+    //fmt::print("SUCCESS: Tier 2 (Neighbor Element)\n");
+    for (auto neighbor_ptr : cached_elem.neighbor_ptr_range()) {
+      if (neighbor_ptr && neighbor_ptr->contains_point(p)) {
+        cached_bin = get_bin_from_element(neighbor_ptr);
+        return cached_bin;
+      }
+    }
+  }
+
+  // Tier 3
+  //fmt::print("FALLBACK: Tier 3 (KD-Tree Search)\n");
+  const auto& point_locator = pl_.at(thread_num());
+  const auto elem_ptr = (*point_locator)(p);
+  
+  cached_bin = elem_ptr ? get_bin_from_element(elem_ptr) : -1;
+  return cached_bin;
+}
+
 int LibMesh::get_bin_from_element(const libMesh::Elem* elem) const
 {
   int bin = elem->id() - first_element_id_;

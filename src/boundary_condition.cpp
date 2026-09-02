@@ -68,7 +68,6 @@ void WhiteBC::handle_particle(Particle& p, const Surface& surf) const
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);
 
-
   p.cross_reflective_bc(surf, u);
 }
 

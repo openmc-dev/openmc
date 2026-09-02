@@ -178,7 +178,7 @@ class Mesh(_FortranObjectWithID):
         return cls.__instances[index]
 
     @classmethod
-    def from_python(cls, mesh, uid=None, base_dir=None):
+    def from_python(cls, mesh, base_dir=None):
         """Create a shared-library mesh from a Python API mesh.
 
         The OpenMC shared library must be initialized before calling this
@@ -189,9 +189,6 @@ class Mesh(_FortranObjectWithID):
         ----------
         mesh : openmc.MeshBase
             Python API mesh to convert.
-        uid : int, optional
-            ID to assign to the library mesh. If omitted, the ID of *mesh* is
-            used.
         base_dir : path-like, optional
             Directory used to resolve relative filenames for unstructured
             meshes. If omitted, the current working directory is used.
@@ -220,14 +217,13 @@ class Mesh(_FortranObjectWithID):
             raise TypeError(
                 f'{cls.__name__}.from_python cannot convert {type(mesh)}')
 
-        uid = mesh.id if uid is None else uid
         base_dir = Path.cwd() if base_dir is None else Path(base_dir)
-        lib_mesh = cls._from_python(mesh, uid, base_dir)
+        lib_mesh = cls._from_python(mesh, base_dir)
         lib_mesh.name = mesh.name
         return lib_mesh
 
     @classmethod
-    def _from_python(cls, mesh, uid, base_dir):
+    def _from_python(cls, mesh, base_dir):
         raise NotImplementedError
 
     @property
@@ -461,8 +457,8 @@ class RegularMesh(Mesh):
         super().__init__(uid, new, index)
 
     @classmethod
-    def _from_python(cls, mesh, uid, base_dir):
-        lib_mesh = cls(uid=uid)
+    def _from_python(cls, mesh, base_dir):
+        lib_mesh = cls(uid=mesh.id)
         lib_mesh.dimension = mesh.dimension
         lib_mesh.set_parameters(
             lower_left=mesh.lower_left, upper_right=mesh.upper_right)
@@ -558,8 +554,8 @@ class RectilinearMesh(Mesh):
         super().__init__(uid, new, index)
 
     @classmethod
-    def _from_python(cls, mesh, uid, base_dir):
-        lib_mesh = cls(uid=uid)
+    def _from_python(cls, mesh, base_dir):
+        lib_mesh = cls(uid=mesh.id)
         lib_mesh.set_grid(mesh.x_grid, mesh.y_grid, mesh.z_grid)
         return lib_mesh
 
@@ -670,8 +666,8 @@ class CylindricalMesh(Mesh):
         super().__init__(uid, new, index)
 
     @classmethod
-    def _from_python(cls, mesh, uid, base_dir):
-        lib_mesh = cls(uid=uid)
+    def _from_python(cls, mesh, base_dir):
+        lib_mesh = cls(uid=mesh.id)
         lib_mesh.set_grid(mesh.r_grid, mesh.phi_grid, mesh.z_grid)
         lib_mesh.origin = mesh.origin
         return lib_mesh
@@ -798,8 +794,8 @@ class SphericalMesh(Mesh):
         super().__init__(uid, new, index)
 
     @classmethod
-    def _from_python(cls, mesh, uid, base_dir):
-        lib_mesh = cls(uid=uid)
+    def _from_python(cls, mesh, base_dir):
+        lib_mesh = cls(uid=mesh.id)
         lib_mesh.set_grid(mesh.r_grid, mesh.theta_grid, mesh.phi_grid)
         lib_mesh.origin = mesh.origin
         return lib_mesh
@@ -891,12 +887,12 @@ class UnstructuredMesh(Mesh):
     _python_type = PythonUnstructuredMesh
 
     @classmethod
-    def _from_python(cls, mesh, uid, base_dir):
+    def _from_python(cls, mesh, base_dir):
         filename = Path(mesh.filename)
         if not filename.is_absolute():
             filename = base_dir / filename
         return cls.from_file(
-            filename.resolve(), mesh.library, uid=uid,
+            filename.resolve(), mesh.library, uid=mesh.id,
             length_multiplier=mesh.length_multiplier, options=mesh.options)
 
     @classmethod

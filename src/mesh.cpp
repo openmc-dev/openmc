@@ -1170,7 +1170,73 @@ tensor::Tensor<double> StructuredMesh::count_sites(
   return counts;
 }
 
-StructuredMesh::MeshTraversal::MeshTraversal(
+namespace detail {
+
+//! State used to trace a ray through the grid of a structured mesh
+//!
+//! The traversal is initialized at the origin of the ray and each call to
+//! advance() moves it forward by one step, returning the segment covered.
+//! Inside the mesh a step ends at the nearest grid surface. Outside it, a step
+//! ends at the first point where the ray can be inside every coordinate
+//! direction at once, since a point outside a structured mesh may be outside
+//! in more than one direction.
+//!
+//! The ray is fixed at construction so that the position used to look up
+//! indices and the position the grid distances are measured from cannot
+//! disagree.
+class MeshTraversal {
+public:
+  //! One step through the mesh
+  //!
+  //! Describes the segment of the ray that the step covered and how the step
+  //! ended. Distances are measured from the origin the traversal was
+  //! constructed with.
+  struct Step {
+    double begin {0.0}; //!< Distance at which the step started
+    double end {0.0};   //!< Distance at which the step ended
+    int dimension {-1}; //!< Direction whose grid surface was crossed, or -1
+                        //!< if the step did not resolve a crossing
+    bool max_surface {false}; //!< Whether the surface crossed is the upper
+                              //!< one of the element being left
+    bool inward_max_surface {false}; //!< Whether the surface the ray entered
+                                     //!< through is the upper one of the
+                                     //!< element being entered. Only
+                                     //!< meaningful when in_mesh is true.
+    bool in_mesh {false};            //!< Whether the ray is inside the mesh
+                                     //!< at the end of the step
+  };
+
+  MeshTraversal(
+    const StructuredMesh& mesh, const Position& r, const Direction& u);
+
+  //! Move to the next crossing
+  //! \return The segment of the ray covered by this step
+  Step advance();
+
+  //! Indices of the element the ray is currently in. Only inside the mesh are
+  //! all of them guaranteed to be in range.
+  const StructuredMesh::MeshIndex& indices() const { return ijk_; }
+
+  //! Whether the ray is currently inside the mesh
+  bool in_mesh() const { return in_mesh_; }
+
+private:
+  //! Recompute the distance to the next grid surface in every direction
+  void update_distances();
+
+  const StructuredMesh& mesh_;
+  Position r_;       //!< Ray origin, global coordinates
+  Position local_r_; //!< Ray origin, mesh-local coordinates
+  Direction u_;      //!< Ray direction
+  StructuredMesh::MeshIndex ijk_ {};
+  std::array<StructuredMesh::MeshDistance, 3> distances_;
+  double distance_ {0.0};
+  bool in_mesh_ {false};
+};
+
+} // namespace detail
+
+detail::MeshTraversal::MeshTraversal(
   const StructuredMesh& mesh, const Position& r, const Direction& u)
   : mesh_(mesh), r_(r), local_r_(mesh.local_coords(r)), u_(u)
 {
@@ -1181,7 +1247,7 @@ StructuredMesh::MeshTraversal::MeshTraversal(
   update_distances();
 }
 
-void StructuredMesh::MeshTraversal::update_distances()
+void detail::MeshTraversal::update_distances()
 {
   for (int k = 0; k < mesh_.n_dimension_; ++k) {
     distances_[k] =
@@ -1189,9 +1255,9 @@ void StructuredMesh::MeshTraversal::update_distances()
   }
 }
 
-StructuredMesh::MeshStep StructuredMesh::MeshTraversal::advance()
+detail::MeshTraversal::Step detail::MeshTraversal::advance()
 {
-  MeshStep step;
+  Step step;
   step.begin = distance_;
 
   if (in_mesh_) {
@@ -1264,7 +1330,7 @@ void StructuredMesh::raytrace_mesh(
   if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
     return;
 
-  MeshTraversal traversal(*this, r0, u);
+  detail::MeshTraversal traversal(*this, r0, u);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
@@ -1279,7 +1345,7 @@ void StructuredMesh::raytrace_mesh(
   while (true) {
     const bool was_in_mesh = traversal.in_mesh();
     const MeshIndex ijk = traversal.indices();
-    const MeshStep step = traversal.advance();
+    const auto step = traversal.advance();
 
     // Tally track length delta since last step
     if (was_in_mesh) {
@@ -1365,7 +1431,7 @@ void StructuredMesh::surface_bins_crossed(
 MeshCrossing StructuredMesh::next_mesh_crossing(
   int current_bin, Position r, Direction u) const
 {
-  MeshTraversal traversal(*this, r, u);
+  detail::MeshTraversal traversal(*this, r, u);
 
   if (current_bin >= 0) {
     // The caller believes the particle is in the mesh but the traversal, which
@@ -1378,7 +1444,7 @@ MeshCrossing StructuredMesh::next_mesh_crossing(
       return {0.0, C_NONE};
     }
 
-    const MeshStep step = traversal.advance();
+    const auto step = traversal.advance();
 
     // The bin entered is looked up from the position rather than taken from
     // traversal.indices(). A traversal step resolves one coordinate direction
@@ -1413,7 +1479,7 @@ MeshCrossing StructuredMesh::next_mesh_crossing(
   // mesh degrades to "no crossing" rather than stalling the transport loop.
   constexpr int MAX_STEPS = 64;
   for (int i = 0; i < MAX_STEPS; ++i) {
-    const MeshStep step = traversal.advance();
+    const auto step = traversal.advance();
     if (step.in_mesh)
       return {step.end, get_bin_from_indices(traversal.indices())};
     if (step.end >= INFTY)

@@ -84,6 +84,8 @@ extern const libMesh::Parallel::Communicator* libmesh_comm;
 
 namespace detail {
 
+class MeshTraversal;
+
 class MaterialVolumes {
 public:
   MaterialVolumes(int32_t* mats, double* vols, double* bboxes, int table_size)
@@ -491,71 +493,8 @@ public:
   // Data members
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
 
-protected:
-  //! One step of a MeshTraversal
-  //!
-  //! Describes the segment of the ray that the step covered and how the step
-  //! ended. Distances are measured from the origin the traversal was
-  //! constructed with.
-  struct MeshStep {
-    double begin {0.0}; //!< Distance at which the step started
-    double end {0.0};   //!< Distance at which the step ended
-    int dimension {-1}; //!< Direction whose grid surface was crossed, or -1
-                        //!< if the step did not resolve a crossing
-    bool max_surface {false}; //!< Whether the surface crossed is the upper
-                              //!< one of the element being left
-    bool inward_max_surface {false}; //!< Whether the surface the ray entered
-                                     //!< through is the upper one of the
-                                     //!< element being entered. Only
-                                     //!< meaningful when in_mesh is true.
-    bool in_mesh {false};            //!< Whether the ray is inside the mesh
-                                     //!< at the end of the step
-  };
-
-  //! State used to trace a ray through the grid of a structured mesh
-  //!
-  //! The traversal is initialized at the origin of the ray and each call to
-  //! advance() moves it forward by one step, returning the segment covered.
-  //! Inside the mesh a step ends at the nearest grid surface. Outside it, a
-  //! step ends at the first point where the ray can be inside every
-  //! coordinate direction at once, since a point outside a structured mesh
-  //! may be outside in more than one direction.
-  //!
-  //! The ray is fixed at construction so that the position used to look up
-  //! indices and the position the grid distances are measured from cannot
-  //! disagree.
-  class MeshTraversal {
-  public:
-    MeshTraversal(
-      const StructuredMesh& mesh, const Position& r, const Direction& u);
-
-    //! Move to the next crossing
-    //! \return The segment of the ray covered by this step
-    MeshStep advance();
-
-    //! Indices of the element the ray is currently in. Only inside the mesh
-    //! are all of them guaranteed to be in range.
-    const MeshIndex& indices() const { return ijk_; }
-
-    //! Whether the ray is currently inside the mesh
-    bool in_mesh() const { return in_mesh_; }
-
-    //! Distance from the ray origin to the current position
-    double distance() const { return distance_; }
-
-  private:
-    //! Recompute the distance to the next grid surface in every direction
-    void update_distances();
-
-    const StructuredMesh& mesh_;
-    Position r_;       //!< Ray origin, global coordinates
-    Position local_r_; //!< Ray origin, mesh-local coordinates
-    Direction u_;      //!< Ray direction
-    MeshIndex ijk_ {};
-    std::array<MeshDistance, 3> distances_;
-    double distance_ {0.0};
-    bool in_mesh_ {false};
-  };
+private:
+  friend class detail::MeshTraversal;
 };
 
 class PeriodicStructuredMesh : public StructuredMesh {

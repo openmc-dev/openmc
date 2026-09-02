@@ -525,120 +525,61 @@ preferable.
 
 OpenMC also features an "adaptive" volume estimator that generalizes the
 hybrid estimator. Rather than selecting the estimator from the presence of an
-external source alone, it uses the simulation averaged estimator by default and
-falls back to the naive estimator (and the previous-iteration miss treatment)
-on a per-region basis wherever the simulation averaged estimator is prone to
-instability. The fallback is triggered by any of the following: a reduced
-source that greatly exceeds the region's scalar flux (a source sustained by an
-external or in-scatter contribution rather than by the local flux), a reduced
-source that is itself negative (which can occur under transport-corrected cross
-sections, whose negative within-group scattering term can drive the reduced
-source below zero even for a non-negative flux), a hit-starved region, a
-region whose flux converges to a negative value, and a region whose converged
-flux-independent source ("feed") is strong relative to its own converged flux.
+external source alone, it uses the simulation averaged estimator by default
+and falls back to the naive estimator (and the previous-iteration miss
+treatment) on a per-region basis wherever the simulation averaged estimator
+is prone to instability: regions that are hit-starved, regions whose reduced
+source is negative (possible under transport-corrected cross sections) or --
+while the source is still converging -- greatly exceeds their scalar flux (a
+source sustained by external or in-scatter contributions rather than by the
+local flux), and, decided from each region's running accumulated flux from
+the end of the inactive batches onward, regions whose accumulated flux is
+negative or whose flux-independent "feed" (cross-group in-scatter, fission,
+and any external source) is strong relative to their own accumulated flux.
 
-The negative-source and hit-starved conditions are evaluated each iteration
-from already-resident data. The strong-source ratio condition is evaluated
-each iteration as well, but only while the source is still converging (the
-inactive batches): applied to noisy single-iteration values in the active
-batches it would demote a churning population of regions whose converged
-ratios are below the threshold, and conditioning the estimator choice on
-per-iteration noise in the tallied batches introduces a systematic bias. The
-last two conditions are instead decided from each region's accumulated flux:
-the unmodified simulation averaged estimator is run while every batch's flux
-is accumulated into a running sum, and -- beginning at the transition from
-the inactive to the active batches, and re-evaluated every active batch as
-the accumulation keeps growing -- a region is demoted to the naive estimator
-if its accumulated (and therefore noise-averaged) flux is negative in any
-group, or if its flux-independent feed -- the part of its source arising
-from cross-group in-scatter, fission, and any external source, evaluated
-from the same accumulated flux -- exceeds the strong-source threshold times
-its own accumulated flux in any group. These decisions are demote-only: once
-a region is demoted it is never returned to the simulation averaged
-estimator, so the estimator choice cannot churn with active-batch noise, and
-a marginal region whose accumulated ratio converges below the threshold is
-never eroded into demotion by the continued re-evaluation. The active-phase
-re-evaluation matters for problems whose inactive phase is too short to
-converge deep regions: there the transition-time decision alone can miss
-chronically unstable regions whose accumulated flux only turns negative (or
-whose feed ratio only crosses the threshold) after active batches begin, and
-a single such region left on unprotected simulation averaged updates can
-corrupt the solution well beyond its own boundary through scattering
-feedback. In the active batches these accumulated-flux decisions, together
-with the per-iteration negative-source and hit-starved conditions, are what
-govern the estimator choice. Basing the noise-sensitive decisions on the
-accumulated estimate -- rather than reacting to individual per-iteration
-values -- avoids the bias that demoting on isolated fluctuations would
-introduce by treating only one tail of the estimator's noise distribution;
-regions that are merely noisy but average non-negative (and are not strongly
-fed) retain the unbiased simulation averaged estimator.
-
-The feed-based latch exists because the per-iteration strong-source test,
-evaluated on noisy single-iteration values, has exactly one blind state: an
-unlucky iteration can drag a strongly fed region's source and flux negative
-together, and in that state neither the ratio condition nor the
-negative-source condition can fire. Such a region would ride out the
-excursion on unprotected simulation averaged updates, and -- because for
-these regions the per-iteration noise scale is set by the reduced source
-rather than by the flux -- the average over a whole phase of active batches
-can land slightly negative. The latch identifies the entire strongly fed
-class from accumulated data that individual fluctuations cannot flip, and
-removes it from the simulation averaged estimator. A region with no
-cross-group or external feed can never latch, so the
-estimator choice never reacts to noise whose sign is locked to the region's
-own flux (as in one-group media, where the source is proportional to the
-local flux). Non-negativity is still not strictly enforced on individual
-active iterations; in variance reduction workflows any residual non-positive
-tally values are discarded by the weight-window generator.
-
-Whereas the hybrid estimator guards only regions with explicit external
-sources, the adaptive estimator also catches the optically thin regions of
-fixed source problems where the simulation averaged and hybrid estimators can
-otherwise develop persistent negative fluxes. When a linear source shape is in
-use, demoted regions additionally revert to a flat source representation
-(their source gradients are zeroed), extending the flat-source treatment
-already applied to hit-starved regions: in a strong-source or latched region
-the gradient terms attenuate segments against the local rather than the flat
-source, re-injecting per-iteration noise at the scale of the reduced source
-that the volume choice cannot cancel, while in a converged-negative region
-the fitted gradients carry no meaningful shape information. The adaptive
-estimator is particularly beneficial for fixed source and shielding problems
-that exhibit such instability.
+The accumulated-flux decisions are demote-only -- once demoted, a region is
+never returned to the simulation averaged estimator -- so the estimator
+choice in the tallied batches cannot churn with single-batch noise, and
+basing them on accumulated rather than per-iteration values avoids the bias
+that reacting to one tail of the noise distribution would introduce. The
+feed-based condition exists because strongly fed regions are the one class
+whose per-iteration noise scale is set by the reduced source rather than by
+the flux, which the per-iteration conditions cannot reliably identify;
+regions with no cross-group or external feed can never trigger it.
+Re-evaluating the decisions through the active phase catches regions whose
+instability only becomes visible after tallies begin, as on large problems
+run with short inactive phases. When a linear source shape is in use,
+demoted regions additionally revert to a flat source representation (their
+source gradients are zeroed), extending the flat-source treatment already
+applied to hit-starved regions. Compared to the hybrid estimator, the
+adaptive estimator notably also stabilizes the optically thin,
+scatter-dominated regions of fixed source problems, making it particularly
+beneficial for shielding analysis.
 
 The adaptive estimator's demotion machinery selects estimators; it never
-modifies a computed flux value, which is what preserves its unbiasedness --
-and also why it cannot guarantee non-negativity: in near-zero-flux regions
-the simulation averaged noise is sign-indefinite at stationarity, and a
-region can also inherit negativity through in-scatter from neighbors that
-have not (yet) been demoted, so no demotion criterion alone closes the gap.
-The "strict adaptive" estimator therefore runs the same machinery and adds a
-per-batch enforcement on the flux iterates. A group whose batch flux comes
-out negative is first *rescued*: its transport term is rescaled from the
-volume used to the batch's own volume, algebraically reproducing the naive
-(iteration) volume update, whose consistency removes the volume-mismatch
-noise that produced most negative excursions. If the flux remains negative
-(or the region already used the batch volume), it is *floored* at the
-previous iterate, which is non-negative by induction from a non-negative
-initial condition -- so strict adaptive fluxes are guaranteed non-negative.
-Because the floor prevents a chronically noisy region's accumulated flux
-from ever going negative -- masking the very signal the accumulated sign
-demotion detects -- a region whose flux goes negative (before enforcement)
-in more than a few batches is demoted outright to the naive volume and
-previous-flux miss treatment, where clipping is no longer needed; without
-this chronic-negativity channel, repeated one-sided clipping would bias the
-affected regions upward. The residual cost of the enforcement is a small
-conservative bias (several hundred pcm on typical eigenvalue problems),
-which is why the strict estimator is reserved for solves that require
-positivity rather than used as the standard default.
+modifies a computed flux value, which preserves its unbiasedness but means
+that in pathological cases a small number of flux estimates in near-void
+regions can still land slightly negative. This is generally harmless, but
+solves whose results feed variance reduction benefit from suppressing it,
+as the adjoint source is constructed from the forward flux. The "strict
+adaptive" estimator therefore runs the same machinery and adds a per-batch
+fixup: a group whose batch flux comes out negative is first recomputed with
+the batch's own volume (algebraically, the naive volume update, whose
+consistency removes the volume-mismatch noise responsible for most negative
+excursions) and floored at the previous iterate if still negative. A region
+requiring the fixup in more than a few batches is demoted outright to the
+naive treatment: the floor masks the accumulated-flux sign signal the
+adaptive demotion relies on, and without this chronic channel the repeated
+one-sided fixup would bias the affected regions upward. The residual cost is
+a small conservative bias (several hundred pcm on typical eigenvalue
+problems), which is why the strict estimator is reserved for variance
+reduction solves rather than used as the standard default.
 
-By default OpenMC selects the volume estimator automatically ("auto"):
-solves whose results feed variance reduction -- weight window generation,
-and any adjoint workflow, including the forward solve an adjoint source is
-derived from -- receive the strict adaptive estimator, since a small
-population of negative fluxes would otherwise contaminate the adjoint
-source and degrade the generated weight windows, while all other solves
-receive the adaptive estimator, preserving unbiased results where accuracy
-is the priority.
+By default, OpenMC selects the volume estimator automatically ("auto"):
+solves whose results feed variance reduction -- weight window generation and
+adjoint workflows, including the forward solve an adjoint source is derived
+from -- receive the strict adaptive estimator, while all other solves
+receive the adaptive estimator.
 
 A table that summarizes the pros and cons, as well as recommendations for
 different use cases, is given in the :ref:`volume

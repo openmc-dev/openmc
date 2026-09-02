@@ -573,17 +573,15 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // this iteration's transport contribution, normalized by the chosen
         // volume.
         set_flux_to_flux_plus_source(sr, volume, g);
-        // The strict adaptive estimator enforces non-negativity on the flux
-        // iterates: a group whose batch flux comes out negative is first
-        // rescued -- its transport term rescaled from the volume used to the
-        // batch's own volume, algebraically reproducing the naive-volume
-        // update, whose noise the near-cancellation regions require -- and,
-        // if still negative (or if the region already used the batch
-        // volume), floored at the previous iterate, which is non-negative by
-        // induction. This is what upgrades the family's demotion machinery
-        // into a guarantee: demotion alone cannot prevent a region from
-        // inheriting negativity through in-scatter from not-yet-demoted
-        // neighbors. The price is a small conservative (positivity-clip)
+        // The strict adaptive estimator applies a per-batch fixup to
+        // negative flux iterates: first a rescue -- the transport term
+        // rescaled from the volume used to the batch's own volume,
+        // algebraically reproducing the naive-volume update -- and, if still
+        // negative (or if the region already used the batch volume), a floor
+        // at the previous iterate. A value-level fixup is needed here
+        // because demotion alone cannot prevent a region from inheriting a
+        // negative excursion through in-scatter from not-yet-demoted
+        // neighbors. The price is a small conservative (one-sided clip)
         // bias, which is why the strict estimator is not the standard-solve
         // default. Linear-source flux moments are left untouched; demoted
         // and hit-starved regions already fall back to flat shapes.

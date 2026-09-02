@@ -748,10 +748,9 @@ void openmc_run_random_ray()
   // based on the type of simulation being performed: solves whose results
   // feed variance reduction -- weight window generation, and any adjoint
   // workflow, including the forward solve an adjoint source is derived from
-  // -- receive the strict adaptive estimator, whose guaranteed non-negative
-  // fluxes those workflows require, while all other solves receive the
-  // adaptive estimator, which preserves unbiasedness at the cost of allowing
-  // rare noise-driven negative tallies in near-zero-flux regions.
+  // -- receive the strict adaptive estimator, whose per-batch fixup of
+  // negative flux iterates benefits those workflows, while all other solves
+  // receive the unbiased adaptive estimator.
   if (FlatSourceDomain::volume_estimator_ == RandomRayVolumeEstimator::AUTO) {
     bool positivity_needed =
       FlatSourceDomain::adjoint_requested_ ||

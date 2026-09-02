@@ -1059,63 +1059,34 @@ following methods are currently available in OpenMC:
      - * Can lead to slightly negative fluxes in cells where the simulation
          averaged estimator is used
    * - ``adaptive``
-     - Generalizes the hybrid estimator. Uses the simulation averaged estimator
-       by default, but falls back to the naive estimator (and the
-       previous-iteration miss treatment) wherever it is needed for stability:
-       during the inactive batches, cells whose reduced source greatly exceeds
-       their flux (a strong external or in-scatter source); in every batch,
-       cells whose reduced source is itself negative (possible under
-       transport-corrected cross sections) and hit-starved cells; and --
-       decided from each cell's running accumulated flux, first at the end of
-       the inactive phase and re-evaluated every active batch -- cells whose
-       accumulated flux is negative as well as cells whose flux-independent
-       feed (cross-group in-scatter, fission, and external source) is strong
-       relative to their own accumulated flux. The accumulated-flux decisions
-       are demote-only: a demoted cell stays on the naive estimator for the
-       rest of the solve, so the estimator choice in the tallied batches never
-       churns with single-batch noise. The decisions are made automatically
-       from each cell's accumulated statistics; individual iterations are
-       never modified.
-     - * Retains the low bias of the simulation averaged estimator wherever it
-         is well behaved
-       * Eliminates the negative-flux instabilities that the simulation averaged
-         and hybrid estimators can exhibit in optically thin, in-scatter-fed
-         fixed source problems
-       * The accumulated-feed latch removes the strongly fed cell population
-         whose phase-averaged flux could otherwise straddle zero, eliminating
-         the negative tally bins that class otherwise produces
+     - Generalizes the hybrid estimator: uses the simulation averaged
+       estimator by default, but automatically (and permanently) demotes
+       individual cells to the naive treatment when their accumulated
+       statistics indicate the simulation averaged estimator is unstable
+       there (e.g., cells dominated by external or in-scatter sources, and
+       hit-starved cells).
+     - * Accuracy of the simulation averaged estimator in most cells
+       * Stable in cases where the simulation averaged and hybrid estimators
+         are not
        * No parameters to tune
-     - * Does not strictly guarantee non-negative fluxes on individual
-         active iterations (any residual non-positive tally values are
-         discarded downstream by the weight-window generator)
-       * Benefits from inactive batches to season the accumulated-flux
-         decisions before tallies begin
+     - * Benefits from a longer inactive phase to inform the demotion
+         decisions
    * - ``strict_adaptive``
-     - As ``adaptive``, but additionally enforces non-negativity on the flux
-       iterates every batch: a cell whose batch flux comes out negative is
-       first recomputed with the batch's own volume, floored at the previous
-       iterate if still negative, and demoted outright to the naive
-       treatment if its flux goes negative chronically. Because the previous
-       iterate is non-negative by induction from a non-negative start, the
-       resulting fluxes are guaranteed non-negative everywhere.
-     - * Guarantees non-negative fluxes -- the property required by weight
-         window generation and adjoint workflows, where a small population
-         of noise-driven negative fluxes would otherwise contaminate the
-         adjoint source and degrade weight window quality
-       * Matches ``adaptive``'s accuracy in stable fixed source problems and
-         degrades far more gracefully than ``naive`` at coarse ray densities
-     - * The one-sided enforcement introduces a small conservative bias
-         (several hundred pcm on eigenvalue problems), so it should not be
-         used where unbiased results are the priority
+     - As ``adaptive``, but additionally applies a per-batch fixup to any
+       negative flux estimate (recomputing it with the batch's own volume,
+       then falling back on the previous iterate) and demotes chronically
+       affected cells to the naive treatment.
+     - * Suppresses the negative flux estimates other estimators can produce
+         in pathological cases
+       * Improves the quality of generated weight windows
+     - * The one-sided fixup introduces a small conservative bias, so it is
+         not recommended where unbiased results are the priority
 
 By default, the ``volume_estimator`` field is set to ``auto``, which selects
-the appropriate estimator for the type of simulation being performed:
-``strict_adaptive`` for solves whose results feed variance reduction --
-weight window generation, and any adjoint workflow, including the forward
-solve an adjoint source is derived from -- and ``adaptive`` for all other
-solves. The end-of-simulation output reports which estimator ``auto``
-resolved to. Explicitly setting any other value overrides the automatic
-selection.
+``strict_adaptive`` for solves whose results feed variance reduction (weight
+window generation and adjoint workflows) and ``adaptive`` for all other
+solves. The end-of-simulation output reports which estimator was selected,
+and explicitly setting any other value overrides the automatic selection.
 
 These estimators can be selected by setting the ``volume_estimator`` field in the
 :attr:`openmc.Settings.random_ray` dictionary. For example, to use the naive
@@ -1126,33 +1097,20 @@ estimator, the following code would be used:
     settings.random_ray['volume_estimator'] = 'naive'
 
 The ``auto`` setting is the default, as it gives reliable behavior out of
-the box across problem types. It is especially valuable for fixed source and
-shielding problems, where the ``hybrid`` and ``simulation_averaged`` estimators
-can otherwise produce negative fluxes or numerical instability. This commonly occurs in optically thin,
-scattering- or streaming-dominated regions (for example, the air- or
-void-filled regions of a shielding model), where a small number of cells can
-develop persistent negative fluxes that degrade tally results and, in
-variance reduction workflows, the quality of generated weight windows. The
-adaptive estimator detects and stabilizes those cells automatically while
-leaving the rest of the problem on the low-bias simulation averaged estimator.
-Because the negative-flux and strong-feed demotions are decided from each
-cell's running accumulated flux -- first at the end of the inactive phase and
-re-evaluated (demote-only) every active batch -- rather than from individual
-per-iteration values, they avoid the small upward bias that per-iteration
-demotion can introduce in cells that are noisy but not genuinely negative,
-while still removing -- via the strong-feed latch -- the strongly fed cell
-class whose phase-averaged flux could otherwise straddle zero, and still
-catching cells whose instability only becomes visible after the inactive
-phase ends (as on large problems run with short inactive phases). The
-adaptive estimator does not strictly enforce non-negativity, however: in
-near-zero-flux regions its sampling noise is sign-indefinite, so over a
-finite number of active batches a small population of tally bins can land
-negative. That residue is harmless for standard tallies but contaminates
-variance reduction workflows, where the adjoint source is built from the
-forward flux and amplifies it -- which is why ``auto`` routes weight window
-generation and adjoint solves to ``strict_adaptive`` instead, whose
-per-batch enforcement guarantees non-negative fluxes at the cost of a small
-conservative bias.
+the box across problem types. The adaptive estimator is especially valuable
+for fixed source and shielding problems, where optically thin, scattering-
+or streaming-dominated regions (for example, the air- or void-filled regions
+of a shielding model) can destabilize the ``hybrid`` and
+``simulation_averaged`` estimators: it detects and stabilizes the affected
+cells automatically while leaving the rest of the problem on the low-bias
+simulation averaged estimator. Because demotions are decided from each
+cell's accumulated statistics rather than from single-iteration values, the
+estimator choice does not churn with iteration noise and avoids the bias
+that per-iteration selection can introduce. Solves that feed variance
+reduction are routed to ``strict_adaptive`` instead, as even a small number
+of slightly negative flux estimates in the near-void regions of pathological
+problems can otherwise degrade the adjoint solve and the quality of
+generated weight windows.
 
 -----------------
 Adjoint Flux Mode

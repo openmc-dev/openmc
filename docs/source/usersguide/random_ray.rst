@@ -1030,6 +1030,12 @@ following methods are currently available in OpenMC:
      - Description
      - Pros
      - Cons
+   * - ``auto`` (default)
+     - Automatically selects an appropriate estimator for the type of
+       simulation being performed. Most users do not need to consider this
+       setting further.
+     - * Reliable behavior across problem types with no user input
+     - * The selection policy may evolve in future releases
    * - ``simulation_averaged``
      - Accumulates total active ray lengths in each FSR over all iterations,
        improving the estimate of the volume in each cell each iteration.

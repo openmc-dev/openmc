@@ -126,6 +126,29 @@ def test_albedo_rejected(run_in_tmpdir):
         model.run()
 
 
+@pytest.mark.parametrize("setup", [
+    lambda t: setattr(t, 'estimator', 'analog'),
+    lambda t: setattr(t, 'estimator', 'collision'),
+    # another score in the same tally must not change the estimator undetected
+    lambda t: setattr(t, 'scores', ['migration-area', 'nu-scatter']),
+], ids=['analog', 'collision', 'analog-forced-by-other-score'])
+def test_non_tracklength_estimator_rejected(setup, run_in_tmpdir):
+    """The estimator is only final once every score has been processed."""
+    openmc.reset_auto_ids()
+    model, tally = sphere_model(2.5, 'vacuum')
+    setup(tally)
+    with pytest.raises(RuntimeError, match='tracklength estimator'):
+        model.run()
+
+
+def test_disallowed_filter_rejected(run_in_tmpdir):
+    openmc.reset_auto_ids()
+    model, tally = sphere_model(2.5, 'vacuum')
+    tally.filters = [openmc.CellFilter(model.geometry.get_all_cells()[1])]
+    with pytest.raises(RuntimeError, match='filters other than'):
+        model.run()
+
+
 def test_unit_albedo_accepted(run_in_tmpdir):
     """An albedo of one removes no weight and must not be rejected."""
     openmc.reset_auto_ids()

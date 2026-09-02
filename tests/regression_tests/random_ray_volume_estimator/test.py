@@ -16,13 +16,13 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
             os.remove(f)
 
 
-# A deliberately ray-starved configuration (~20% source region miss rate):
-# the volume estimators only differ meaningfully when regions are missed or
-# sparsely hit, so a starved run exercises every estimator code path -- the
-# per-estimator volume choices, the miss treatments, and for the adaptive
-# estimator the strong-source (kappa) demotion, the hit-starved demotion,
-# the end-of-inactive converged-negative demotion, and the previous-flux
-# miss treatment all fire at this density.
+# A deliberately ray-starved configuration (~20% source region miss rate).
+# The volume estimators only differ meaningfully when regions are missed or
+# sparsely hit, so a starved run exercises every estimator code path. At
+# this density the per-estimator volume choices, the miss treatments, and
+# for the adaptive estimator the strong-source (kappa) demotion, the
+# hit-starved demotion, the end-of-inactive converged-negative demotion,
+# and the previous-flux miss treatment all fire.
 @pytest.mark.parametrize("estimator", ["hybrid",
                                        "simulation_averaged",
                                        "naive",

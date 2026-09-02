@@ -354,7 +354,7 @@ void RandomRaySimulation::prepare_fw_fixed_sources_adjoint()
     // In eigenvalue mode there are no fixed adjoint sources to derive from
     // the forward flux, but the accumulated forward flux must still be
     // cleared so that the adjoint solve's active accumulation starts from a
-    // clean array -- otherwise any consumer of the final flux would mix
+    // clean array. Otherwise any consumer of the final flux would mix
     // forward and adjoint modes.
 #pragma omp parallel for
     for (int64_t se = 0; se < domain_->n_source_elements(); se++) {
@@ -636,8 +636,9 @@ void RandomRaySimulation::print_results_random_ray(
       // plus that batch's per-iteration demotions).
       fmt::print(" Number of Naive Demotions         = {} SRs ({:.4f}%)\n",
         domain_->n_final_naive_, domain_->n_final_naive_ * inv);
-      // The per-cause diagnostic breakdown is developer-facing; verbosity 8
-      // sits above the default (7) but below the per-particle output (9).
+      // The per-cause diagnostic breakdown is developer-facing, so it is
+      // printed at verbosity 8, above the default (7) but below the
+      // per-particle output (9).
       // The causes are mutually exclusive and sum to the total above:
       // "accumulated" causes are the demote-only decisions made from the
       // running accumulated flux (from the inactive->active transition
@@ -745,11 +746,11 @@ void openmc_run_random_ray()
 
   // Resolve the volume estimator for this solve, leaving the configured
   // setting untouched. "Auto" (the default) maps to a concrete estimator
-  // based on the type of simulation being performed: solves whose results
-  // feed variance reduction -- weight window generation, and any adjoint
-  // workflow, including the forward solve an adjoint source is derived from
-  // -- receive the strict adaptive estimator, whose per-batch fixup of
-  // negative flux iterates benefits those workflows, while all other solves
+  // based on the type of simulation being performed. Solves whose results
+  // feed variance reduction (weight window generation, and any adjoint
+  // workflow, including the forward solve an adjoint source is derived
+  // from) receive the strict adaptive estimator, whose per-batch fixup of
+  // negative flux iterates benefits those workflows. All other solves
   // receive the unbiased adaptive estimator.
   if (FlatSourceDomain::volume_estimator_ == RandomRayVolumeEstimator::AUTO) {
     bool positivity_needed =

@@ -1059,7 +1059,7 @@ following methods are currently available in OpenMC:
      - * Can lead to slightly negative fluxes in cells where the simulation
          averaged estimator is used
    * - ``adaptive``
-     - Generalizes the hybrid estimator: uses the simulation averaged
+     - Generalizes the hybrid estimator. Uses the simulation averaged
        estimator by default, but automatically (and permanently) demotes
        individual cells to the naive treatment when their accumulated
        statistics indicate the simulation averaged estimator is unstable
@@ -1101,7 +1101,7 @@ the box across problem types. The adaptive estimator is especially valuable
 for fixed source and shielding problems, where optically thin, scattering-
 or streaming-dominated regions (for example, the air- or void-filled regions
 of a shielding model) can destabilize the ``hybrid`` and
-``simulation_averaged`` estimators: it detects and stabilizes the affected
+``simulation_averaged`` estimators. It detects and stabilizes the affected
 cells automatically while leaving the rest of the problem on the unbiased
 simulation averaged estimator. Because demotions are decided from each
 cell's accumulated statistics rather than from single-iteration values, the

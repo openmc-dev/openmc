@@ -39,7 +39,7 @@ def test_random_ray_k_eff_mesh():
 
 
 def test_random_ray_k_eff_mesh_adaptive_starved():
-    # Ray-starved adaptive eigenvalue case (~1.2% miss rate): the subdivision
+    # Ray-starved adaptive eigenvalue case (~1.2% miss rate). The subdivision
     # mesh plus a low ray count engages the adaptive demotion machinery
     # (strong-source and hit-starved regions, plus the end-of-inactive
     # demotion decision and the previous-flux miss treatment) in eigenvalue

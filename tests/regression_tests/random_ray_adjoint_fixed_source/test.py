@@ -25,7 +25,7 @@ def test_random_ray_adjoint_fixed_source():
 
 
 def test_random_ray_adjoint_fixed_source_adaptive_starved():
-    # Ray-starved adaptive case (~20% forward / ~40% adjoint miss rate): the
+    # Ray-starved adaptive case (~20% forward / ~40% adjoint miss rate). The
     # adjoint (second) solve makes real end-of-inactive demotion decisions on
     # its own accumulated flux, guarding both the adaptive machinery in
     # adjoint mode and the clearing of the forward solve's accumulated flux

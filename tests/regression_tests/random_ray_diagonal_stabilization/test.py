@@ -73,7 +73,7 @@ def test_random_ray_diagonal_stabilization_adaptive():
     # The transport-corrected (P0) library's negative within-group scattering
     # drives some reduced sources negative, which the adaptive estimator must
     # handle through its negative-source (strong) treatment and its
-    # end-of-inactive demotion; this case pins that interplay.
+    # end-of-inactive demotion. This case pins that interplay.
     with change_directory('adaptive'):
         openmc.reset_auto_ids()
         model = _build_model()

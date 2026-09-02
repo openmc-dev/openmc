@@ -16,14 +16,14 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
                 os.remove(f)
 
 
-# The default "auto" volume estimator resolves by solve type: standard
+# The default "auto" volume estimator resolves by solve type. Standard
 # solves receive the adaptive estimator, while solves whose results feed
 # variance reduction (any adjoint workflow, and weight window generation)
 # receive the strict adaptive estimator. No case sets an estimator
-# explicitly, so these golds pin the routing itself: if the resolution
-# policy regresses, the affected case's results shift. The forward and
-# adjoint cases pin the adjoint-flag trigger; the weight_windows case pins
-# the generator-presence trigger.
+# explicitly, so these golds pin the routing itself, and a regression in
+# the resolution policy shifts the affected case's results. The forward and
+# adjoint cases pin the adjoint-flag trigger, while the weight_windows case
+# pins the generator-presence trigger.
 @pytest.mark.parametrize("solve", ["forward", "adjoint", "weight_windows"])
 def test_random_ray_volume_estimator_auto(solve):
     with change_directory(solve):

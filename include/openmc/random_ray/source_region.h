@@ -351,10 +351,10 @@ public:
   int converged_negative_ {
     0}; //!< Demote-only flag (adaptive estimator only), evaluated from the
         //!< running accumulated flux at the inactive->active transition and
-        //!< re-evaluated every active batch: 1 = accumulated flux negative in
-        //!< some group, 2 = strong accumulated feed (latch). Any value > 0
-        //!< demotes the region to the naive volume estimator; once set, the
-        //!< flag is never released.
+        //!< re-evaluated every active batch. 1 = accumulated flux negative
+        //!< in some group, 2 = strong accumulated feed (latch). Any value
+        //!< > 0 demotes the region to the naive volume estimator, and once
+        //!< set the flag is never released.
   int n_hits_ {0};    //!< Number of total hits (ray crossings)
                       // Mesh that subdivides this source region
   int mesh_ {C_NONE}; //!< Index in openmc::model::meshes array that subdivides
@@ -704,11 +704,11 @@ private:
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
   vector<double> scalar_flux_final_;
-  // Running sum of the scalar flux over every batch of the current solve
-  // (inactive and active; never reset within a solve, unlike
-  // scalar_flux_final which holds only the active-batch accumulation used
-  // for tallies). Allocated only for the adaptive volume estimator, which
-  // makes its demotion decisions from it.
+  // Running sum of the scalar flux over every batch of the current solve,
+  // inactive and active. Unlike scalar_flux_final, which holds only the
+  // active-batch accumulation used for tallies, it is never reset within a
+  // solve. Allocated only for the adaptive volume estimator, which makes its
+  // demotion decisions from it.
   vector<double> scalar_flux_t_;
   vector<float> source_;
   vector<float> external_source_;

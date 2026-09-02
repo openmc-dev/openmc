@@ -528,58 +528,59 @@ hybrid estimator. Rather than selecting the estimator from the presence of an
 external source alone, it uses the simulation averaged estimator by default
 and falls back to the naive estimator (and the previous-iteration miss
 treatment) on a per-region basis wherever the simulation averaged estimator
-is prone to instability: regions that are hit-starved, regions whose reduced
-source is negative (possible under transport-corrected cross sections) or --
-while the source is still converging -- greatly exceeds their scalar flux (a
-source sustained by external or in-scatter contributions rather than by the
-local flux), and, decided from each region's running accumulated flux from
-the end of the inactive batches onward, regions whose accumulated flux is
-negative or whose flux-independent "feed" (cross-group in-scatter, fission,
-and any external source) is strong relative to their own accumulated flux.
+is prone to instability. The fallback covers regions that are hit-starved,
+regions whose reduced source is negative (possible under transport-corrected
+cross sections) or, while the source is still converging, greatly exceeds
+their scalar flux (a source sustained by external or in-scatter
+contributions rather than by the local flux), and regions whose accumulated
+flux is negative or whose flux-independent "feed" (cross-group in-scatter,
+fission, and any external source) is strong relative to their own
+accumulated flux, with these last two conditions decided from each region's
+running accumulated flux from the end of the inactive batches onward.
 
-The accumulated-flux decisions are demote-only -- once demoted, a region is
-never returned to the simulation averaged estimator -- so the estimator
-choice in the tallied batches cannot churn with single-batch noise, and
-basing them on accumulated rather than per-iteration values avoids the bias
-that reacting to one tail of the noise distribution would introduce. The
-feed-based condition exists because strongly fed regions are the one class
-whose per-iteration noise scale is set by the reduced source rather than by
-the flux, which the per-iteration conditions cannot reliably identify;
-regions with no cross-group or external feed can never trigger it.
-Re-evaluating the decisions through the active phase catches regions whose
-instability only becomes visible after tallies begin, as on large problems
-run with short inactive phases. When a linear source shape is in use,
-demoted regions additionally revert to a flat source representation (their
-source gradients are zeroed), extending the flat-source treatment already
-applied to hit-starved regions. Compared to the hybrid estimator, the
-adaptive estimator notably also stabilizes the optically thin,
-scatter-dominated regions of fixed source problems, making it particularly
-beneficial for shielding analysis.
+The accumulated-flux decisions are demote-only, so once a region is demoted
+it is never returned to the simulation averaged estimator. As a result, the
+estimator choice in the tallied batches cannot churn with single-batch
+noise, and basing the decisions on accumulated rather than per-iteration
+values avoids the bias that reacting to one tail of the noise distribution
+would introduce. The feed-based condition exists because strongly fed
+regions are the one class whose per-iteration noise scale is set by the
+reduced source rather than by the flux, which the per-iteration conditions
+cannot reliably identify. Regions with no cross-group or external feed can
+never trigger it. Re-evaluating the decisions through the active phase
+catches regions whose instability only becomes visible after tallies begin,
+as on large problems run with short inactive phases. When a linear source
+shape is in use, demoted regions additionally revert to a flat source
+representation (their source gradients are zeroed), extending the
+flat-source treatment already applied to hit-starved regions. Compared to
+the hybrid estimator, the adaptive estimator notably also stabilizes the
+optically thin, scatter-dominated regions of fixed source problems, making
+it particularly beneficial for shielding analysis.
 
-The adaptive estimator's demotion machinery selects estimators; it never
+The adaptive estimator's demotion machinery selects estimators and never
 modifies a computed flux value, which preserves its unbiasedness but means
 that in pathological cases a small number of flux estimates in near-void
 regions can still land slightly negative. This is generally harmless, but
 solves whose results feed variance reduction benefit from suppressing it,
 as the adjoint source is constructed from the forward flux. The "strict
 adaptive" estimator therefore runs the same machinery and adds a per-batch
-fixup: a group whose batch flux comes out negative is first recomputed with
+fixup. A group whose batch flux comes out negative is first recomputed with
 the batch's own volume (algebraically, the naive volume update, whose
 consistency removes the volume-mismatch noise responsible for most negative
 excursions) and floored at the previous iterate if still negative. A region
 requiring the fixup in more than a few batches is demoted outright to the
-naive treatment: the floor masks the accumulated-flux sign signal the
-adaptive demotion relies on, and without this chronic channel the repeated
-one-sided fixup would bias the affected regions upward. The residual cost is
-a small conservative bias (several hundred pcm on typical eigenvalue
-problems), which is why the strict estimator is reserved for variance
-reduction solves rather than used as the standard default.
+naive treatment, as the floor masks the accumulated-flux sign signal that
+the adaptive demotion relies on, and without this chronic channel the
+repeated one-sided fixup would bias the affected regions upward. The
+residual cost is a small conservative bias (several hundred pcm on typical
+eigenvalue problems), which is why the strict estimator is reserved for
+variance reduction solves rather than used as the standard default.
 
-By default, OpenMC selects the volume estimator automatically ("auto"):
-solves whose results feed variance reduction -- weight window generation and
+By default, OpenMC selects the volume estimator automatically ("auto").
+Solves whose results feed variance reduction (weight window generation and
 adjoint workflows, including the forward solve an adjoint source is derived
-from -- receive the strict adaptive estimator, while all other solves
-receive the adaptive estimator.
+from) receive the strict adaptive estimator, while all other solves receive
+the adaptive estimator.
 
 A table that summarizes the pros and cons, as well as recommendations for
 different use cases, is given in the :ref:`volume

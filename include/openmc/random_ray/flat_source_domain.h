@@ -104,13 +104,13 @@ public:
 
   //----------------------------------------------------------------------------
   // Static data members
-  // The volume estimator as configured ("auto" by default); set when the
-  // settings are read and never modified by the solver.
+  // The volume estimator as configured ("auto" by default). This is set when
+  // the settings are read and is never modified by the solver.
   static RandomRayVolumeEstimator volume_estimator_;
-  // The concrete estimator the solver runs with, assigned unconditionally at
-  // the start of every random ray solve: the configured value, or for "auto"
-  // the estimator selected for the type of simulation being performed. All
-  // solver code reads this member, never volume_estimator_.
+  // The concrete estimator the solver runs with, assigned at the start of
+  // every random ray solve. It holds the configured value, or for "auto" the
+  // estimator selected for the type of simulation being performed. All
+  // solver code reads this member rather than volume_estimator_.
   static RandomRayVolumeEstimator resolved_volume_estimator_;
 
   //----------------------------------------------------------------------------
@@ -124,10 +124,10 @@ public:
   // Final-batch snapshot of the naive volume treatment, partitioned by
   // mutually exclusive cause (the cause counts sum to n_final_naive_), for
   // end-of-simulation reporting. The two demote-only decisions made from the
-  // running accumulated flux -- a strong accumulated feed and a negative
-  // accumulated flux -- are counted with first priority, so their counts
-  // equal the decisions settled by the final batch; the per-batch
-  // strong-source test and hit-starved causes count the remainder.
+  // running accumulated flux (a strong accumulated feed and a negative
+  // accumulated flux) are counted with first priority, so their counts equal
+  // the decisions settled by the final batch. The per-batch strong-source
+  // test and hit-starved causes count the remainder.
   int64_t n_final_naive_ {0};
   int64_t n_final_latch_ {0};  // strong source, from the accumulated feed
   int64_t n_final_strong_ {0}; // strong source, from the per-batch test
@@ -210,15 +210,15 @@ protected:
   void set_flux_to_source(int64_t sr, int g);
   virtual void set_flux_to_old_flux(int64_t sr, int g);
 
-  //! Adaptive-estimator "strong source" test: true if, in any group, the
-  //! region's reduced source q/Sigma_t is negative (with a non-negative
-  //! previous-iteration flux), or -- when include_ratio is set, which the
-  //! callers do only during the inactive batches -- exceeds
-  //! ADAPTIVE_VOLUME_KAPPA times the (non-negative) previous-iteration scalar
-  //! flux. Shared by the flat volume switch (add_source_to_scalar_flux) and
-  //! the linear gradient fallback (update_single_neutron_source); the
-  //! region's per-group reduced-source and previous-flux arrays are passed
-  //! directly.
+  //! Adaptive-estimator "strong source" test. Returns true if, in any group,
+  //! the region's reduced source q/Sigma_t is negative (with a non-negative
+  //! previous-iteration flux) or exceeds ADAPTIVE_VOLUME_KAPPA times the
+  //! (non-negative) previous-iteration scalar flux. The ratio condition is
+  //! only checked when include_ratio is set, which callers do only during
+  //! the inactive batches. The test is shared by the flat volume switch
+  //! (add_source_to_scalar_flux) and the linear gradient fallback
+  //! (update_single_neutron_source), with the region's per-group
+  //! reduced-source and previous-flux arrays passed directly.
   bool region_has_strong_source(const float* reduced_source,
     const double* flux_old, bool include_ratio) const;
 

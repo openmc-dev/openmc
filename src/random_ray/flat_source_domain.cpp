@@ -115,7 +115,7 @@ void FlatSourceDomain::accumulate_iteration_flux()
 //
 //  1. Accumulated-negative (sign): any region whose accumulated flux is
 //     negative in any group is demoted to the naive (iteration) volume
-//     estimator -- a positively weighted estimator that cannot go negative
+//     estimator, a positively weighted estimator that cannot go negative
 //     with a non-negative source. During the active phase the test also
 //     watches the active-only tally accumulation (scalar_flux_final), the
 //     quantity tally means are actually computed from. Because the decision
@@ -184,12 +184,12 @@ void FlatSourceDomain::demotion_step()
     }
     // During the active phase, a negative accumulated tally flux
     // (scalar_flux_final, the active-only sum that tally means are computed
-    // from) also demotes: a region with a strong positive inactive
+    // from) also demotes, as a region with a strong positive inactive
     // accumulation can hold the running sum positive while the active-only
-    // sum -- the quantity actually reported -- goes negative. This branch
-    // fires only when the reported mean has already lost positivity, so it
-    // clips realized-negative outcomes rather than one tail of a healthy
-    // region's noise.
+    // sum that is actually reported goes negative. This branch fires only
+    // when the reported mean has already lost positivity, so it clips
+    // realized-negative outcomes rather than one tail of a healthy region's
+    // noise.
     if (!negative && simulation::current_batch > settings::n_inactive) {
       for (int g = 0; g < negroups_; g++) {
         if (source_regions_.scalar_flux_final(sr, g) < 0.0) {
@@ -378,13 +378,13 @@ bool FlatSourceDomain::region_has_strong_source(
   for (int g = 0; g < negroups_; g++) {
     double src = reduced_source[g];
     // A negative reduced source counts as strong only when the region's own
-    // previous flux is non-negative -- the transport-corrected (TCP0)
+    // previous flux is non-negative. That is the transport-corrected (TCP0)
     // signature, where negative within-group scattering drives the source
     // negative independently of the flux. When the previous flux is itself
     // negative, a negative source is just the sign-locked image of that
     // fluctuation (exactly so in one-group problems, where q = c*phi +
-    // q_external); reacting to it iteration-by-iteration would condition the
-    // estimator choice on the sign of the noise, which is the bias the
+    // q_external), and reacting to it iteration-by-iteration would condition
+    // the estimator choice on the sign of the noise, which is the bias the
     // converged-negative demotion exists to avoid. Chronically negative
     // regions are handled by that demotion instead.
     if (src < 0.0 && flux_old[g] >= 0.0) {
@@ -460,15 +460,16 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     // (an external source, or in-scatter from other groups). The
     // flux update in such cells is a near-cancellation of the transport term
     // against q/Sigma_t, which is only exact when the volumes used by the two
-    // terms are consistent -- so these cells require the naive (iteration)
-    // volume estimator and the previous-flux miss treatment to avoid error
+    // terms are consistent. These cells therefore require the naive
+    // (iteration) volume estimator and the previous-flux miss treatment to
+    // avoid error
     // terms proportional to (q/Sigma_t) * (1 - V_iteration/V_average) that
     // can greatly exceed the physical flux.
     //
     // A reduced source that is itself negative is also treated as strong. This
     // arises under transport-corrected (e.g. TCP0) cross sections, whose
     // within-group scattering term can be negative, driving q/Sigma_t below
-    // zero even for a non-negative flux; it can also arise transiently from a
+    // zero even for a non-negative flux. It can also arise transiently from a
     // negative previous-iteration flux, which the estimator permits by design
     // (individual iterations are never modified). The diagonal (Gunow)
     // stabilization keeps the TCP0 iteration convergent but acts on the flux,
@@ -482,9 +483,9 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     // Only the adaptive estimator consults the strong-source flag, so the
     // other estimators skip the test (and its end-of-run report) entirely.
     // Void (and effectively-void, sub-MINIMUM_MACRO_XS) regions are also
-    // excluded: they carry no q/Sigma_t term -- their flux is the streaming
-    // tally plus a bounded external contribution -- so the near-cancellation
-    // the test guards against cannot occur, and demoting them to the naive
+    // excluded. They carry no q/Sigma_t term, as their flux is the streaming
+    // tally plus a bounded external contribution, so the near-cancellation
+    // the test guards against cannot occur and demoting them to the naive
     // volume would only add ratio bias. This matches the linear domain, which
     // already gates its strong-source gradient fallback on MATERIAL_VOID.
     bool strong_source =
@@ -492,37 +493,36 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       region_has_strong_source(&source_regions_.source(sr, 0),
         &source_regions_.scalar_flux_old(sr, 0),
         simulation::current_batch <= settings::n_inactive);
-    // Per-region demotion reasons. The hit-starved (small) flag is
-    // re-evaluated every iteration; the strong-source flag is re-evaluated
-    // every iteration during the inactive batches and reduces to the
-    // negative-source (TCP0) condition in the active batches, where the
-    // stable accumulated-flux decisions govern instead; converged_neg is the
+    // Per-region demotion reasons, all g-independent. The hit-starved
+    // (small) flag is re-evaluated every iteration. The strong-source flag
+    // is also re-evaluated every iteration, though in the active batches it
+    // reduces to the negative-source (TCP0) condition, as the stable
+    // accumulated-flux decisions govern there instead. converged_neg is the
     // demote-only flag set from the running accumulated flux by
-    // demotion_step. The external-source flag drives only the
-    // hybrid policy (and the default miss treatment); the adaptive estimator
-    // catches a low-cross-section external region through the kappa
-    // strong-source test (during the inactive batches) and the strong-feed
-    // latch (thereafter), since its external term is folded into q/Sigma_t.
-    // All are g-independent.
+    // demotion_step. The external-source flag drives only the hybrid policy
+    // and the default miss treatment, since the adaptive estimator catches a
+    // low-cross-section external region through the kappa strong-source test
+    // (during the inactive batches) and the strong-feed latch (thereafter),
+    // its external term being folded into q/Sigma_t.
     bool external = source_regions_.external_source_present(sr);
     bool small = source_regions_.is_small(sr);
     int conv_flag = source_regions_.converged_negative(sr);
     bool converged_neg = conv_flag > 0;
 
     // Every estimator reduces to two g-independent per-region decisions:
-    //   1. which volume to use on a hit -- the simulation-averaged volume,
-    //      unless the region is demoted to the naive (iteration) volume; and
-    //   2. what to substitute on a miss -- the reduced source by default, or
-    //      the previous iterate.
+    //   1. which volume to use on a hit (the simulation-averaged volume,
+    //      unless the region is demoted to the naive (iteration) volume)
+    //   2. what to substitute on a miss (the reduced source by default, or
+    //      the previous iterate)
     // The previous-flux miss treatment is needed wherever assigning the bare
-    // reduced source q/Sigma_t to a missed region would bias it: a low-cross-
-    // section region would otherwise deposit its full infinite-medium flux
-    // every time it is missed. Hybrid keys this on the external-source flag;
-    // the adaptive estimator instead extends the previous-flux treatment to
-    // every region it demotes, which (through the kappa test) already covers
-    // any region whose q/Sigma_t greatly exceeds its flux -- external or not.
-    // Both decisions are made once here so the per-group loop stays estimator-
-    // agnostic.
+    // reduced source q/Sigma_t to a missed region would bias it, as a low
+    // cross section region would otherwise deposit its full infinite-medium
+    // flux every time it is missed. Hybrid keys this on the external-source
+    // flag. The adaptive estimator instead extends the previous-flux
+    // treatment to every region it demotes, which (through the kappa test)
+    // already covers any region whose q/Sigma_t greatly exceeds its flux,
+    // external or not. Both decisions are made once here so the per-group
+    // loop stays estimator-agnostic.
     bool use_naive_volume = false;
     bool use_old_flux_on_miss = external;
     switch (resolved_volume_estimator_) {
@@ -545,11 +545,11 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     double volume = use_naive_volume ? volume_iteration : volume_simulation_avg;
 
     // On the final iteration, classify the demoted (naive-volume) regions by
-    // cause -- mutually exclusive, in priority order, so the causes sum to
-    // the total -- for the end-of-simulation report. The accumulated-flux
-    // demotions are counted first (their demote-only flags can only
-    // accumulate, so these counts equal the decisions settled by the final
-    // batch); the per-batch causes count only the remainder.
+    // cause for the end-of-simulation report. The causes are mutually
+    // exclusive and assigned in priority order, so they sum to the total.
+    // The accumulated-flux demotions are counted first, as their demote-only
+    // flags can only accumulate and so equal the decisions settled by the
+    // final batch. The per-batch causes count only the remainder.
     if (final_iteration && is_adaptive && use_naive_volume) {
       n_naive++;
       if (conv_flag == 2) {
@@ -574,17 +574,18 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // volume.
         set_flux_to_flux_plus_source(sr, volume, g);
         // The strict adaptive estimator applies a per-batch fixup to
-        // negative flux iterates: first a rescue -- the transport term
-        // rescaled from the volume used to the batch's own volume,
-        // algebraically reproducing the naive-volume update -- and, if still
-        // negative (or if the region already used the batch volume), a floor
-        // at the previous iterate. A value-level fixup is needed here
-        // because demotion alone cannot prevent a region from inheriting a
-        // negative excursion through in-scatter from not-yet-demoted
-        // neighbors. The price is a small conservative (one-sided clip)
-        // bias, which is why the strict estimator is not the standard-solve
-        // default. Linear-source flux moments are left untouched; demoted
-        // and hit-starved regions already fall back to flat shapes.
+        // negative flux iterates. First the flux is rescued by rescaling the
+        // transport term from the volume used to the batch's own volume,
+        // algebraically reproducing the naive-volume update. If it is still
+        // negative (or the region already used the batch volume), it is
+        // floored at the previous iterate. A value-level fixup is needed
+        // here because demotion alone cannot prevent a region from
+        // inheriting a negative excursion through in-scatter from
+        // not-yet-demoted neighbors. The price is a small conservative
+        // (one-sided clip) bias, which is why the strict estimator is not
+        // the standard-solve default. Linear-source flux moments are left
+        // untouched, as demoted and hit-starved regions already fall back to
+        // flat shapes.
         if (is_strict && source_regions_.scalar_flux_new(sr, g) < 0.0) {
           if (volume != volume_iteration) {
             double src = source_regions_.source(sr, g);
@@ -617,14 +618,14 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
                     "the source region mesh.");
       }
     }
-    // Chronic-negativity demotion (strict adaptive only): the
+    // Chronic-negativity demotion (strict adaptive only). The
     // non-negativity floor prevents a chronically noisy region's
     // accumulated flux from ever going negative, masking the very signal
-    // the accumulated sign demotion detects -- so left alone, such a
-    // region would be clipped every batch, a one-sided ratchet that
-    // biases its flux upward. Counting pre-enforcement negative batches
-    // restores the escape: after a few events the region is demoted to
-    // the naive volume and previous-flux miss treatment, where clipping
+    // the accumulated sign demotion detects. Left alone, such a region
+    // would be clipped every batch, biasing its flux upward. Counting the
+    // batches that needed the fixup restores the escape, as after a few
+    // events the region is demoted to the naive volume and previous-flux
+    // miss treatment, where clipping
     // is no longer needed.
     if (is_strict && (region_rescued || region_floored)) {
       int n = ++source_regions_.n_negative_batches(sr);

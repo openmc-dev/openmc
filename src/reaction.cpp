@@ -187,6 +187,7 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {SCORE_FLUX, "flux"},
   {SCORE_TOTAL, "total"},
   {SCORE_SCATTER, "scatter"},
+  {SCORE_MIGRATION, "migration-area"},
   {SCORE_NU_SCATTER, "nu-scatter"},
   {SCORE_ABSORPTION, "absorption"},
   {SCORE_FISSION, "fission"},

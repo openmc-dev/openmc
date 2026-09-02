@@ -81,9 +81,9 @@ class UnstructuredMeshTest(PyAPITestHarness):
     def get_mesh_tally_data(self, tally, structured=False):
         data = tally.get_reshaped_data(value='mean')
         if structured:
-           data = data.reshape((-1, self.ELEM_PER_VOXEL))
+            data = data.reshape(-1, self.ELEM_PER_VOXEL)
         else:
-            data.shape = (data.size, 1)
+            data = data.reshape(-1, 1)
         return np.sum(data, axis=1)
 
     def update_results(self):

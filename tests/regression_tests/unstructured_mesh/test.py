@@ -83,7 +83,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
         if structured:
            data = data.reshape((-1, self.ELEM_PER_VOXEL))
         else:
-            data.shape = (data.size, 1)
+            data = data.reshape(data.size, 1)
         return np.sum(data, axis=1)
 
     def update_results(self):

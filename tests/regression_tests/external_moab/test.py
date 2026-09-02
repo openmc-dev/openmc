@@ -129,8 +129,8 @@ class ExternalMoabTest(PyAPITestHarness):
     def get_mesh_tally_data(tally):
         data = tally.get_reshaped_data(value='mean')
         std_dev = tally.get_reshaped_data(value='std_dev')
-        data.shape = (data.size, 1)
-        std_dev.shape = (std_dev.size, 1)
+        data = data.reshape(data.size, 1)
+        std_dev = std_dev.reshape(std_dev.size, 1)
         return np.sum(data, axis=1), np.sum(std_dev, axis=1)
 
     def _cleanup(self):

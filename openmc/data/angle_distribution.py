@@ -194,8 +194,8 @@ class AngleDistribution(EqualityMixin):
                 intt = int(ace.xss[idx])
                 n_points = int(ace.xss[idx + 1])
                 # Data is given as rows of (values, PDF, CDF)
-                data = ace.xss[idx + 2:idx + 2 + 3*n_points]
-                data.shape = (3, n_points)
+                data = ace.xss[idx + 2:idx + 2 + 3*n_points].reshape(
+                    3, n_points)
 
                 mu_i = Tabular(data[0], data[1], INTERPOLATION_SCHEME[intt])
                 mu_i.c = data[2]

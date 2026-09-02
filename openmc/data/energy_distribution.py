@@ -1246,8 +1246,8 @@ class ContinuousTabular(EnergyDistribution):
                 intt = 2
 
             n_energy_out = int(ace.xss[idx + 1])
-            data = ace.xss[idx + 2:idx + 2 + 3*n_energy_out].copy()
-            data.shape = (3, n_energy_out)
+            data = ace.xss[idx + 2:idx + 2 + 3*n_energy_out].copy().reshape(
+                3, n_energy_out)
             data[0,:] *= EV_PER_MEV
 
             # Create continuous distribution

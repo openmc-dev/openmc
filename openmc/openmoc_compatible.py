@@ -619,8 +619,7 @@ def get_openmoc_lattice(openmc_lattice):
 
         # Convert 2D universes array to 3D for OpenMOC
         if len(universes.shape) == 2:
-            new_universes = universes.copy().reshape((1,) + universes.shape)
-            universes = new_universes
+            universes = universes.copy().reshape((1,) + universes.shape)
 
     # Initialize an empty array for the OpenMOC nested Universes in this Lattice
     universe_array = np.ndarray(tuple(dimension[::-1]), dtype=openmoc.Universe)

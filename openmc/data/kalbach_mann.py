@@ -554,8 +554,8 @@ class KalbachMann(AngleEnergy):
                 intt = 2
 
             n_energy_out = int(ace.xss[idx + 1])
-            data = ace.xss[idx + 2:idx + 2 + 5*n_energy_out].copy().reshape(
-                5, n_energy_out)
+            data = ace.xss[idx + 2:idx + 2 + 5*n_energy_out].copy()
+            data = data.reshape(5, n_energy_out)
             data[0, :] *= EV_PER_MEV
 
             # Create continuous distribution

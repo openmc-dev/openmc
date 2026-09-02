@@ -312,7 +312,6 @@ double log_spacing;
 bool migration_present {false};
 int n_lost_particles {0};
 bool need_depletion_rx {false};
-bool nonvacuum_boundary_present {false};
 int restart_batch;
 bool satisfy_triggers {false};
 int ssw_current_file;

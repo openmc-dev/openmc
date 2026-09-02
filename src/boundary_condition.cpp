@@ -68,9 +68,6 @@ void WhiteBC::handle_particle(Particle& p, const Surface& surf) const
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);
 
-  // Handle phantom birth location if migration present
-  if (simulation::migration_present)
-    fatal_error("Cannot tally migration area with white boundary conditions.");
 
   p.cross_reflective_bc(surf, u);
 }
@@ -277,6 +274,36 @@ void RotationalPeriodicBC::handle_particle(
 
   // Pass the new location, direction, and surface to the particle.
   p.cross_periodic_bc(surf, new_r, new_u, new_surface);
+}
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+MigrationBoundaryInfo scan_boundaries_for_migration()
+{
+  MigrationBoundaryInfo info;
+  for (const auto& surf : model::surfaces) {
+    if (!surf->bc_)
+      continue;
+
+    const std::string bc_type = surf->bc_->type();
+    if (bc_type != "vacuum")
+      info.nonvacuum = true;
+
+    if (info.unsupported.empty()) {
+      if (bc_type == "white") {
+        info.unsupported = "white boundary conditions";
+      } else if (surf->bc_->has_albedo()) {
+        info.unsupported = "a surface albedo";
+      }
+    }
+
+    // Nothing further to learn once both questions are answered
+    if (info.nonvacuum && !info.unsupported.empty())
+      break;
+  }
+  return info;
 }
 
 } // namespace openmc

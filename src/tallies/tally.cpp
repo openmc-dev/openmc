@@ -1,6 +1,7 @@
 #include "openmc/tallies/tally.h"
 
 #include "openmc/array.h"
+#include "openmc/boundary_condition.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/constants.h"
@@ -1240,10 +1241,17 @@ void setup_active_tallies()
       }
     }
   }
-  if (meshborn_present && simulation::migration_present &&
-      simulation::nonvacuum_boundary_present)
-    fatal_error("Cannot score migration-area in the same simulation as a "
-                "MeshBorn filter and a non vacuum b.c.");
+  if (simulation::migration_present) {
+    MigrationBoundaryInfo bc_info = scan_boundaries_for_migration();
+    if (!bc_info.unsupported.empty())
+      fatal_error(fmt::format("Cannot tally migration-area with {}. Use "
+                              "reflective or periodic boundary conditions "
+                              "without an albedo.",
+        bc_info.unsupported));
+    if (meshborn_present && bc_info.nonvacuum)
+      fatal_error("Cannot score migration-area in the same simulation as a "
+                  "MeshBorn filter and a non vacuum b.c.");
+  }
 }
 
 void free_memory_tally()

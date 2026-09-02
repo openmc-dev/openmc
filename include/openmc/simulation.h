@@ -38,14 +38,12 @@ extern bool
 extern double log_spacing; //!< lethargy spacing for energy grid searches
 extern "C" int n_lost_particles;   //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
-extern bool
-  nonvacuum_boundary_present;     //!< Does the geometry contain non-vacuum b.c.
-extern "C" int restart_batch;     //!< batch at which a restart job resumed
-extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
-extern int ssw_current_file;      //!< current surface source file
-extern "C" int total_gen;         //!< total number of generations simulated
-extern double total_weight;       //!< Total source weight in a batch
-extern int64_t work_per_rank;     //!< number of particles per MPI rank
+extern "C" int restart_batch;      //!< batch at which a restart job resumed
+extern "C" bool satisfy_triggers;  //!< have tally triggers been satisfied?
+extern int ssw_current_file;       //!< current surface source file
+extern "C" int total_gen;          //!< total number of generations simulated
+extern double total_weight;        //!< Total source weight in a batch
+extern int64_t work_per_rank;      //!< number of particles per MPI rank
 
 extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;

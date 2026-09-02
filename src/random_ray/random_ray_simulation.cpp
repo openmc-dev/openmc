@@ -288,7 +288,7 @@ void validate_random_ray_inputs()
 void openmc_finalize_random_ray()
 {
   FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::AUTO;
-  FlatSourceDomain::volume_estimator_is_auto_ = true;
+  FlatSourceDomain::resolved_volume_estimator_ = RandomRayVolumeEstimator::AUTO;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   FlatSourceDomain::adjoint_requested_ = false;
   FlatSourceDomain::solve_ = RandomRaySolve::FORWARD;
@@ -605,7 +605,7 @@ void RandomRaySimulation::print_results_random_ray(
       total_integrations / settings::n_batches);
 
     std::string estimator;
-    switch (domain_->volume_estimator_) {
+    switch (FlatSourceDomain::resolved_volume_estimator_) {
     case RandomRayVolumeEstimator::SIMULATION_AVERAGED:
       estimator = "Simulation Averaged";
       break;
@@ -624,7 +624,7 @@ void RandomRaySimulation::print_results_random_ray(
     default:
       fatal_error("Invalid volume estimator type");
     }
-    if (FlatSourceDomain::volume_estimator_is_auto_) {
+    if (FlatSourceDomain::volume_estimator_ == RandomRayVolumeEstimator::AUTO) {
       estimator += " (auto)";
     }
     fmt::print(" Volume Estimator Type             = {}\n", estimator);
@@ -656,7 +656,7 @@ void RandomRaySimulation::print_results_random_ray(
         // enforcement, reported for the final batch. These overlap the
         // partition above rather than extending it: a rescued or floored
         // region may or may not also carry the naive treatment.
-        if (FlatSourceDomain::volume_estimator_ ==
+        if (FlatSourceDomain::resolved_volume_estimator_ ==
             RandomRayVolumeEstimator::STRICT_ADAPTIVE) {
           fmt::print("   Chronic negative (per batch)    = {} SRs ({:.4f}%)\n",
             domain_->n_final_chronic_, domain_->n_final_chronic_ * inv);
@@ -743,21 +743,25 @@ void openmc_run_random_ray()
 {
   using namespace openmc;
 
-  // Resolve the "auto" volume estimator (the default) to a concrete
-  // estimator based on the type of simulation being performed. Solves whose
-  // results feed variance reduction -- weight window generation, and any
-  // adjoint workflow, including the forward solve an adjoint source is
-  // derived from -- receive the strict adaptive estimator, whose guaranteed
-  // non-negative fluxes those workflows require. All other solves receive
-  // the adaptive estimator, which preserves unbiasedness at the cost of
-  // allowing rare noise-driven negative tallies in near-zero-flux regions.
+  // Resolve the volume estimator for this solve, leaving the configured
+  // setting untouched. "Auto" (the default) maps to a concrete estimator
+  // based on the type of simulation being performed: solves whose results
+  // feed variance reduction -- weight window generation, and any adjoint
+  // workflow, including the forward solve an adjoint source is derived from
+  // -- receive the strict adaptive estimator, whose guaranteed non-negative
+  // fluxes those workflows require, while all other solves receive the
+  // adaptive estimator, which preserves unbiasedness at the cost of allowing
+  // rare noise-driven negative tallies in near-zero-flux regions.
   if (FlatSourceDomain::volume_estimator_ == RandomRayVolumeEstimator::AUTO) {
     bool positivity_needed =
       FlatSourceDomain::adjoint_requested_ ||
       !variance_reduction::weight_windows_generators.empty();
-    FlatSourceDomain::volume_estimator_ =
+    FlatSourceDomain::resolved_volume_estimator_ =
       positivity_needed ? RandomRayVolumeEstimator::STRICT_ADAPTIVE
                         : RandomRayVolumeEstimator::ADAPTIVE;
+  } else {
+    FlatSourceDomain::resolved_volume_estimator_ =
+      FlatSourceDomain::volume_estimator_;
   }
 
   // Determine which solves to run. If adjoint results are requested and no

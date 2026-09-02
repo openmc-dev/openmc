@@ -104,11 +104,14 @@ public:
 
   //----------------------------------------------------------------------------
   // Static data members
+  // The volume estimator as configured ("auto" by default); set when the
+  // settings are read and never modified by the solver.
   static RandomRayVolumeEstimator volume_estimator_;
-  // True when the user selected (or defaulted to) the "auto" volume
-  // estimator, which is resolved to a concrete estimator at the start of the
-  // random ray solve based on the type of simulation being performed.
-  static bool volume_estimator_is_auto_;
+  // The concrete estimator the solver runs with, assigned unconditionally at
+  // the start of every random ray solve: the configured value, or for "auto"
+  // the estimator selected for the type of simulation being performed. All
+  // solver code reads this member, never volume_estimator_.
+  static RandomRayVolumeEstimator resolved_volume_estimator_;
 
   //----------------------------------------------------------------------------
   // Public Data members

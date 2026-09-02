@@ -29,7 +29,8 @@ namespace openmc {
 // Static Variable Declarations
 RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::AUTO};
-bool FlatSourceDomain::volume_estimator_is_auto_ {true};
+RandomRayVolumeEstimator FlatSourceDomain::resolved_volume_estimator_ {
+  RandomRayVolumeEstimator::AUTO};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 bool FlatSourceDomain::adjoint_requested_ {false};
 RandomRaySolve FlatSourceDomain::solve_ {RandomRaySolve::FORWARD};
@@ -57,7 +58,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 
   // Initialize source regions.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
-  bool is_adaptive = is_adaptive_family(volume_estimator_);
+  bool is_adaptive = is_adaptive_family(resolved_volume_estimator_);
   source_regions_ = SourceRegionContainer(negroups_, is_linear, is_adaptive);
 
   // Initialize tally volumes
@@ -156,7 +157,7 @@ void FlatSourceDomain::accumulate_iteration_flux()
 // add_source_to_scalar_flux and by the linear-source gradient fallback.
 void FlatSourceDomain::demotion_step()
 {
-  if (!is_adaptive_family(volume_estimator_))
+  if (!is_adaptive_family(resolved_volume_estimator_))
     return;
 
 #pragma omp parallel for
@@ -421,11 +422,11 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   // demote-to-naive volume switch, and the previous-flux miss treatment, with
   // demote-only decisions made from the running accumulated flux (recorded
   // as a flag in converged_negative by demotion_step).
-  const bool is_adaptive = is_adaptive_family(volume_estimator_);
+  const bool is_adaptive = is_adaptive_family(resolved_volume_estimator_);
   // The strict adaptive estimator additionally enforces non-negativity on
   // the flux iterates each batch (see the enforcement step below).
   const bool is_strict =
-    volume_estimator_ == RandomRayVolumeEstimator::STRICT_ADAPTIVE;
+    resolved_volume_estimator_ == RandomRayVolumeEstimator::STRICT_ADAPTIVE;
   int64_t n_rescued = 0;
   int64_t n_floored = 0;
   int64_t n_chronic = 0;
@@ -524,7 +525,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     // agnostic.
     bool use_naive_volume = false;
     bool use_old_flux_on_miss = external;
-    switch (volume_estimator_) {
+    switch (resolved_volume_estimator_) {
     case RandomRayVolumeEstimator::NAIVE:
       use_naive_volume = true;
       break;

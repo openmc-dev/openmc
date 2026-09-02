@@ -129,10 +129,10 @@ public:
   // the decisions settled by the final batch. The per-batch strong-source
   // test and hit-starved causes count the remainder.
   int64_t n_final_naive_ {0};
-  int64_t n_final_latch_ {0};  // strong source, from the accumulated feed
-  int64_t n_final_strong_ {0}; // strong source, from the per-batch test
-  int64_t n_final_sign_ {0};   // negative accumulated flux
-  int64_t n_final_small_ {0};  // hit-starved
+  int64_t n_final_latch_ {0};   // strong source, from the accumulated feed
+  int64_t n_final_strong_ {0};  // strong source, from the per-batch test
+  int64_t n_final_sign_ {0};    // negative accumulated flux
+  int64_t n_final_small_ {0};   // hit-starved
   int64_t n_final_chronic_ {0}; // chronic negativity (strict adaptive)
   // Final-batch counts of the strict adaptive estimator's non-negativity
   // enforcement: regions whose negative batch flux was recomputed with the

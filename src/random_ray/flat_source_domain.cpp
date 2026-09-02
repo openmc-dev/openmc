@@ -230,9 +230,8 @@ void FlatSourceDomain::demotion_step()
           q_indep +=
             simulation::current_batch * source_regions_.external_source(sr, g);
         }
-        if (q_indep >
-            ADAPTIVE_VOLUME_KAPPA *
-              std::max(source_regions_.scalar_flux_t(sr, g), 0.0)) {
+        if (q_indep > ADAPTIVE_VOLUME_KAPPA *
+                        std::max(source_regions_.scalar_flux_t(sr, g), 0.0)) {
           latched = true;
         }
       }

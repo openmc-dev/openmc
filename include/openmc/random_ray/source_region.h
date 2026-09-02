@@ -594,7 +594,10 @@ public:
     return scalar_flux_final_[se];
   }
 
-  double& scalar_flux_t(int64_t sr, int g) { return scalar_flux_t_[index(sr, g)]; }
+  double& scalar_flux_t(int64_t sr, int g)
+  {
+    return scalar_flux_t_[index(sr, g)];
+  }
   const double scalar_flux_t(int64_t sr, int g) const
   {
     return scalar_flux_t_[index(sr, g)];

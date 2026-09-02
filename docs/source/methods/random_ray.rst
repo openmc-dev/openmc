@@ -517,7 +517,7 @@ estimator for eigenvalue solves.
 OpenMC also features a "hybrid" volume estimator that uses the naive estimator
 for all regions containing an external (fixed) source term. For all other
 source regions, the "simulation averaged" estimator is used. This typically achieves
-a best of both worlds result, with the benefits of the low bias simulation averaged
+a best of both worlds result, with the benefits of the unbiased simulation averaged
 estimator in most regions, while preventing instability and/or large biases in regions
 with external source terms via use of the naive estimator. If instability is
 encountered despite high ray densities, then the naive estimator may be

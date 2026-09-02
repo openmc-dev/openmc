@@ -1053,7 +1053,7 @@ following methods are currently available in OpenMC:
      - Applies the naive estimator to all cells that contain an external (fixed)
        source contribution. Applies the simulation averaged estimator to all
        other cells.
-     - * High accuracy/low bias of the simulation averaged estimator in most
+     - * Accuracy of the unbiased simulation averaged estimator in most
          cells
        * Stability of the naive estimator in cells with fixed sources
      - * Can lead to slightly negative fluxes in cells where the simulation
@@ -1102,7 +1102,7 @@ for fixed source and shielding problems, where optically thin, scattering-
 or streaming-dominated regions (for example, the air- or void-filled regions
 of a shielding model) can destabilize the ``hybrid`` and
 ``simulation_averaged`` estimators: it detects and stabilizes the affected
-cells automatically while leaving the rest of the problem on the low-bias
+cells automatically while leaving the rest of the problem on the unbiased
 simulation averaged estimator. Because demotions are decided from each
 cell's accumulated statistics rather than from single-iteration values, the
 estimator choice does not churn with iteration noise and avoids the bias

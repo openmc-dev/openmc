@@ -56,7 +56,8 @@ bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
 bool event_based {false};
-bool ifp_on {false};
+bool ifp_delayed_group_on {false};
+bool ifp_lifetime_on {false};
 bool legendre_to_tabular {true};
 bool material_cell_offsets {true};
 bool output_summary {true};
@@ -116,7 +117,6 @@ ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
 int ifp_n_generation {-1};
-IFPParameter ifp_parameter {IFPParameter::None};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -1412,6 +1412,8 @@ void free_memory_settings()
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
+  settings::ifp_delayed_group_on = false;
+  settings::ifp_lifetime_on = false;
 }
 
 //==============================================================================

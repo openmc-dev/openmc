@@ -1003,11 +1003,16 @@ completes the set of equations for LS.
 Consistency of the Scalar Flux Estimate
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-One subtlety of the linear source scheme deserves note. The transport sweep
-evaluates each region's linear source against the accumulated centroid
-:math:`\mathbf{C}_i`, but a batch's tracks average that source at their own
-track-length-weighted centroid :math:`\mathbf{c}_{i,b}`, so the mean
-emission the batch actually integrates is
+One subtlety of the linear source scheme deserves note. Intuitively, the
+issue is a mismatch of statistics: the naive volume treatment updates the
+flux from a single batch's rays, while the linear source is anchored to the
+simulation-averaged centroid, so the two halves of the update describe
+different sets of tracks and the exactness the naive treatment promises is
+quietly broken. Concretely, the transport sweep evaluates each region's
+linear source against the accumulated centroid :math:`\mathbf{C}_i`, but a
+batch's tracks average that source at their own track-length-weighted
+centroid :math:`\mathbf{c}_{i,b}`, so the mean emission the batch actually
+integrates is
 
 .. math::
     :label: batch_sampled_source

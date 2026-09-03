@@ -21,7 +21,7 @@ def mesh():
 def test_xml_serialization(mesh, run_in_tmpdir):
     """Test XMl serialization for a temperature field declaration."""
     # Define values
-    values = [0., 1., 2., 3., 4., 5., 6., 7.]
+    values = [1., 2., 3., 4., 5., 6., 7., 8.]
 
     # Create field
     temperature_field = openmc.TemperatureField(mesh, values)

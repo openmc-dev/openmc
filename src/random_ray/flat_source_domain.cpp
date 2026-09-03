@@ -430,9 +430,8 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   int64_t n_floored = 0;
   int64_t n_chronic = 0;
 
-#pragma omp parallel for reduction(                                           \
-  + : n_hits, n_naive, n_latch, n_strong, n_sign, n_small, n_rescued,         \
-    n_floored, n_chronic)
+#pragma omp parallel for reduction(+ : n_hits, n_naive, n_latch, n_strong,     \
+    n_sign, n_small, n_rescued, n_floored, n_chronic)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
     double volume_simulation_avg = source_regions_.volume(sr);
@@ -1735,7 +1734,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
         source_regions_.external_source_present(sr) = 0;
       }
     } // End loop over source regions
-  }   // End local FW-CADIS logic
+  } // End local FW-CADIS logic
 }
 
 void FlatSourceDomain::set_local_adjoint_sources()

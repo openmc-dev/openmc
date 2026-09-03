@@ -27,10 +27,11 @@
         <fissionable>true</fissionable>
       </constraints>
     </source>
-    <temperature_field>
+    <field type="temperature" id="1">
       <mesh>1</mesh>
       <values>294.0 394.0 494.0 594.0 694.0 794.0 894.0 994.0</values>
-    </temperature_field>
+    </field>
+    <temperature_field>1</temperature_field>
     <mesh id="1">
       <dimension>2 2 2</dimension>
       <lower_left>0.0 0.0 0.0</lower_left>

@@ -208,6 +208,7 @@ bool find_cell_inner(
         tf_bin =
           simulation::temperature_field.get_bin(p.r() + TINY_BIT * p.u());
       }
+      p.temperature_field_bin() = tf_bin;
       if (tf_bin != C_NONE) {
         p.sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
       } else {

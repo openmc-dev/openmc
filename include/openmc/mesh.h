@@ -202,14 +202,16 @@ public:
   //! initial position to the external boundary of the mesh if hit. If the mesh
   //! is never reached, the distance is INFTY and the next bin is C_NONE.
   //
-  //! The initial mesh element is determined in the direction of travel, so a
-  //! particle on a mesh boundary is treated as being on the side it is
-  //! entering.
+  //! The position is also evaluated in the direction of travel. If its
+  //! inside/outside status does not agree with current_bin, a zero-distance
+  //! crossing is returned to reconcile the current bin.
   //
+  //! \param[in] current_bin Current mesh bin, or C_NONE if outside
   //! \param[in] r Position of the particle
   //! \param[in] u Direction of the particle
   //! \return Distance to the crossing and the next bin number
-  virtual MeshCrossing next_mesh_crossing(Position r, Direction u) const = 0;
+  virtual MeshCrossing next_mesh_crossing(
+    int current_bin, Position r, Direction u) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -357,7 +359,8 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-  MeshCrossing next_mesh_crossing(Position r, Direction u) const override;
+  MeshCrossing next_mesh_crossing(
+    int current_bin, Position r, Direction u) const override;
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -746,7 +749,8 @@ public:
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(hid_t group);
 
-  MeshCrossing next_mesh_crossing(Position r, Direction u) const override;
+  MeshCrossing next_mesh_crossing(
+    int current_bin, Position r, Direction u) const override;
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;

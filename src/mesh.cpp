@@ -885,7 +885,8 @@ UnstructuredMesh::UnstructuredMesh(hid_t group) : Mesh(group)
   }
 }
 
-MeshCrossing UnstructuredMesh::next_mesh_crossing(Position r, Direction u) const
+MeshCrossing UnstructuredMesh::next_mesh_crossing(
+  int current_bin, Position r, Direction u) const
 {
   fatal_error("Not implemented");
   return {INFTY, C_NONE};
@@ -1352,10 +1353,18 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
-MeshCrossing StructuredMesh::next_mesh_crossing(Position r, Direction u) const
+MeshCrossing StructuredMesh::next_mesh_crossing(
+  int current_bin, Position r, Direction u) const
 {
   bool in_mesh;
   MeshIndex ijk = get_indices(r + TINY_BIT * u, in_mesh);
+
+  if (current_bin != C_NONE) {
+    if (!in_mesh)
+      return {0.0, C_NONE};
+  } else if (in_mesh) {
+    return {0.0, get_bin_from_indices(ijk)};
+  }
 
   const bool started_in_mesh = in_mesh;
   Position local_r = local_coords(r);

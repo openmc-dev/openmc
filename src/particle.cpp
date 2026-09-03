@@ -270,7 +270,7 @@ void Particle::event_calculate_xs()
   }
 }
 
-bool Particle::event_advance()
+AdvanceResult Particle::event_advance()
 {
   // Find the distance to the nearest geometry boundary
   boundary() = distance_to_boundary(*this);
@@ -287,13 +287,14 @@ bool Particle::event_advance()
 
   // If a temperature field is active, treat its nearest mesh surface as a
   // transport boundary.
-  bool cross_temperature_field = false;
+  AdvanceResult result;
   if (settings::temperature_field_on) {
-    const auto crossing =
-      simulation::temperature_field.next_mesh_crossing(r(), u());
+    const auto crossing = simulation::temperature_field.next_mesh_crossing(
+      temperature_field_bin(), r(), u());
     if (crossing.distance < boundary().distance() - FP_COINCIDENT) {
       boundary().distance() = crossing.distance;
-      cross_temperature_field = true;
+      result.temperature_field_crossing = true;
+      result.next_temperature_field_bin = crossing.next_bin;
     }
   }
 
@@ -342,16 +343,16 @@ bool Particle::event_advance()
   if (distance > TINY_BIT)
     surface() = SURFACE_NONE;
 
-  return cross_temperature_field;
+  return result;
 }
 
-void Particle::event_cross_temperature_field()
+void Particle::event_cross_temperature_field(int next_bin)
 {
   sqrtkT_last() = sqrtkT();
+  temperature_field_bin() = next_bin;
 
-  int tf_bin = simulation::temperature_field.get_bin(r() + TINY_BIT * u());
-  if (tf_bin != C_NONE) {
-    sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
+  if (next_bin != C_NONE) {
+    sqrtkT() = simulation::temperature_field.get_sqrtkT(next_bin);
   } else {
     int i_cell = lowest_coord().cell();
     Cell& c {*model::cells[i_cell]};
@@ -735,6 +736,7 @@ void Particle::cross_surface(const Surface& surf)
     if (settings::temperature_field_on) {
       tf_bin = simulation::temperature_field.get_bin(r() + TINY_BIT * u());
     }
+    temperature_field_bin() = tf_bin;
     if (tf_bin != C_NONE) {
       sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
     } else {

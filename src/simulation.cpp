@@ -961,14 +961,14 @@ void transport_history_based_single_particle(Particle& p)
 {
   while (p.alive()) {
     p.event_calculate_xs();
-    bool cross_temperature_field = false;
+    AdvanceResult result;
     if (p.alive()) {
-      cross_temperature_field = p.event_advance();
+      result = p.event_advance();
     }
     if (p.alive()) {
       if (p.collision_distance() > p.boundary().distance()) {
-        if (cross_temperature_field) {
-          p.event_cross_temperature_field();
+        if (result.temperature_field_crossing) {
+          p.event_cross_temperature_field(result.next_temperature_field_bin);
         } else {
           p.event_cross_surface();
         }

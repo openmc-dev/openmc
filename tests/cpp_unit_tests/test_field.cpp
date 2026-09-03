@@ -102,33 +102,39 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   SECTION("Distance to temperature mesh boundaries")
   {
     auto crossing = temp_field.next_mesh_crossing(
-      Position {-0.5, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
+      0, Position {-0.5, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
     REQUIRE(crossing.distance == Catch::Approx(0.5));
     REQUIRE(crossing.next_bin == 1);
 
     crossing = temp_field.next_mesh_crossing(
-      Position {-2.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
+      C_NONE, Position {-2.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
     REQUIRE(crossing.distance == Catch::Approx(1.0));
     REQUIRE(crossing.next_bin == 0);
 
     crossing = temp_field.next_mesh_crossing(
-      Position {-1.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
+      0, Position {-1.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
     REQUIRE(crossing.distance == Catch::Approx(1.0));
     REQUIRE(crossing.next_bin == 1);
 
+    // Reconcile stale state for a particle on the boundary entering the mesh.
     crossing = temp_field.next_mesh_crossing(
-      Position {0.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
+      C_NONE, Position {-1.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
+    REQUIRE(crossing.distance == 0.0);
+    REQUIRE(crossing.next_bin == 0);
+
+    crossing = temp_field.next_mesh_crossing(
+      1, Position {0.0, -0.5, -0.5}, Direction {1.0, 0.0, 0.0});
     REQUIRE(crossing.distance == Catch::Approx(1.0));
     REQUIRE(crossing.next_bin == C_NONE);
 
     constexpr double inverse_sqrt_three = 0.5773502691896258;
-    crossing = temp_field.next_mesh_crossing(Position {-0.5, -0.5, -0.5},
+    crossing = temp_field.next_mesh_crossing(0, Position {-0.5, -0.5, -0.5},
       Direction {inverse_sqrt_three, inverse_sqrt_three, inverse_sqrt_three});
     REQUIRE(crossing.distance == Catch::Approx(0.5 / inverse_sqrt_three));
     REQUIRE(crossing.next_bin == 7);
 
     crossing = temp_field.next_mesh_crossing(
-      Position {-2.0, 2.0, 0.0}, Direction {1.0, 0.0, 0.0});
+      C_NONE, Position {-2.0, 2.0, 0.0}, Direction {1.0, 0.0, 0.0});
     REQUIRE(crossing.distance == INFTY);
     REQUIRE(crossing.next_bin == C_NONE);
   }
@@ -150,12 +156,12 @@ TEST_CASE("Test temperature field crossings with a rectilinear mesh")
   TemperatureField field(&mesh, {300.0, 600.0});
 
   auto crossing = field.next_mesh_crossing(
-    Position {-0.5, 0.0, 0.0}, Direction {1.0, 0.0, 0.0});
+    0, Position {-0.5, 0.0, 0.0}, Direction {1.0, 0.0, 0.0});
   REQUIRE(crossing.distance == Catch::Approx(0.5));
   REQUIRE(crossing.next_bin == 1);
 
   constexpr double inverse_sqrt_two = 0.7071067811865475;
-  crossing = field.next_mesh_crossing(Position {-2.0, -2.0, 0.0},
+  crossing = field.next_mesh_crossing(C_NONE, Position {-2.0, -2.0, 0.0},
     Direction {inverse_sqrt_two, inverse_sqrt_two, 0.0});
   REQUIRE(crossing.distance == Catch::Approx(1.0 / inverse_sqrt_two));
   REQUIRE(crossing.next_bin == 0);

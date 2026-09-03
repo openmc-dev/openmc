@@ -84,8 +84,6 @@ extern const libMesh::Parallel::Communicator* libmesh_comm;
 
 namespace detail {
 
-class MeshTraversal;
-
 class MaterialVolumes {
 public:
   MaterialVolumes(int32_t* mats, double* vols, double* bboxes, int table_size)
@@ -492,9 +490,6 @@ public:
 
   // Data members
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
-
-private:
-  friend class detail::MeshTraversal;
 };
 
 class PeriodicStructuredMesh : public StructuredMesh {

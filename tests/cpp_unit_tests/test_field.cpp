@@ -134,6 +134,33 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   }
 }
 
+TEST_CASE("Test temperature field crossings with a rectilinear mesh")
+{
+  std::string xml_string = R"(
+        <mesh id="1" type="rectilinear">
+            <x_grid>-1.0 0.0 2.0</x_grid>
+            <y_grid>-1.0 1.0</y_grid>
+            <z_grid>-1.0 1.0</z_grid>
+        </mesh>
+    )";
+
+  pugi::xml_document doc;
+  doc.load_string(xml_string.c_str());
+  auto mesh = RectilinearMesh(doc.child("mesh"));
+  TemperatureField field(&mesh, {300.0, 600.0});
+
+  auto crossing = field.next_mesh_crossing(
+    0, Position {-0.5, 0.0, 0.0}, Direction {1.0, 0.0, 0.0});
+  REQUIRE(crossing.distance == Catch::Approx(0.5));
+  REQUIRE(crossing.next_bin == 1);
+
+  constexpr double inverse_sqrt_two = 0.7071067811865475;
+  crossing = field.next_mesh_crossing(-1, Position {-2.0, -2.0, 0.0},
+    Direction {inverse_sqrt_two, inverse_sqrt_two, 0.0});
+  REQUIRE(crossing.distance == Catch::Approx(1.0 / inverse_sqrt_two));
+  REQUIRE(crossing.next_bin == 0);
+}
+
 TEST_CASE("Test settings declaration exceptions for a temperature field",
   "[generators]")
 {

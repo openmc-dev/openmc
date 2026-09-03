@@ -221,7 +221,6 @@ void Particle::event_calculate_xs()
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (lowest_coord().cell() == C_NONE) {
-
     if (!exhaustive_find_cell(*this)) {
       mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
@@ -369,7 +368,6 @@ void Particle::event_cross_temperature_field(int next_bin)
 
 void Particle::event_cross_surface()
 {
-
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
     cell_last(j) = coord(j).cell();
@@ -554,7 +552,6 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
     // removed from the pulse-height of this cell.
     if (lowest_coord().cell() == C_NONE) {
       bool verbose = settings::verbosity >= 10 || trace();
-
       if (!exhaustive_find_cell(*this, verbose)) {
         mark_as_lost("Could not find the cell containing particle " +
                      std::to_string(id()));
@@ -839,8 +836,6 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // Reassign particle's cell and surface
   coord(0).cell() = cell_last(0);
   surface() = -surface();
-
-  // Particle's temperature field bin is unchanged
 
   // If a reflective surface is coincident with a lattice or universe
   // boundary, it is necessary to redetermine the particle's coordinates in

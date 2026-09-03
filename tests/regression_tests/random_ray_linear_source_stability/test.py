@@ -15,10 +15,10 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
 
 
 def test_random_ray_linear_source_stability():
-    # A linear source run in the regime that stresses the gradient limiter
-    # and the batch-consistent flux update: the naive volume estimator, an
-    # overlay source-region mesh whose cells receive modest per-batch hit
-    # counts, and the example's optically thin scattering-dominated interior.
+    # A linear source run in the regime that stresses the batch-consistent
+    # flux update: the naive volume estimator, an overlay source-region mesh
+    # whose cells receive modest per-batch hit counts, and the example's
+    # optically thin scattering-dominated interior.
     openmc.reset_auto_ids()
     model = random_ray_three_region_cube()
     model.settings.random_ray['source_shape'] = 'linear'

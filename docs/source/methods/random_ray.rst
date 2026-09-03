@@ -1021,29 +1021,32 @@ tracks integrate a mean emission of
 where :math:`\mathbf{c}_{i,b}` is the batch's track-length-weighted centroid,
 which fluctuates about :math:`\mathbf{C}_i` from batch to batch as the rays
 sample the region unevenly. If the scalar flux update adds back only
-:math:`\bar{Q}_i`, the difference -- the source gradient dotted with the
-per-batch centroid fluctuation -- is silently absorbed by the flux estimate
-as a zero-mean noise term that has no counterpart in flat source mode (a
-constant source has the same average over any set of tracks). When a region
-is updated with its own batch (iteration) volume, this term is the only
-noise the update itself contributes: adding back the full batch-sampled
-source of Equation :eq:`batch_sampled_source` makes the update an exact
-per-batch track identity, in which the scalar flux estimate equals the
-track-length average of the angular flux and therefore inherits its sign.
-Omitting the term instead breaks, in linear source mode only, the property
-that a naive-volume update is exact given its rays -- and in
-near-cancellation regions (scattering ratios near unity, as in the
-air-filled regions of shielding problems), where the reduced source
-approximately equals the scalar flux, the absorbed noise can exceed the flux
-itself at modest per-batch hit counts and ignite self-sustaining negativity
-through the scattering feedback. When a region is instead updated with the
-simulation-averaged volume, the batch-sampled gradient term enters the
-transport sum weighted by the ratio of the batch volume to the
-simulation-averaged volume, and the update adds it back with the same
-weight; the weight matters because the batch volume and batch centroid are
-sampled by the same rays, and an unweighted term would convert their
-correlation into a systematic, gradient-aligned bias in regions cut by
-geometry.
+:math:`\bar{Q}_i`, the difference (the source gradient dotted with the
+per-batch centroid fluctuation) is silently absorbed by the flux estimate
+as a zero-mean noise term that has no counterpart in flat source mode, as a
+constant source has the same average over any set of tracks.
+
+When a region is updated with its own batch (iteration) volume, this term
+is the only noise the update itself contributes. Adding back the full
+batch-sampled source of Equation :eq:`batch_sampled_source` therefore makes
+the update an exact per-batch track identity, in which the scalar flux
+estimate equals the track-length average of the angular flux and inherits
+its sign. Omitting the term breaks that exactness, and in near-cancellation
+regions (scattering ratios near unity, as in the air-filled regions of
+shielding problems) the absorbed noise can exceed the flux itself at modest
+per-batch hit counts and ignite self-sustaining negativity. OpenMC
+therefore includes the term whenever a region updates with its batch
+volume.
+
+When a region is instead updated with the simulation-averaged volume, the
+update omits the term and keeps its original form. This cannot bias the
+accumulated result, because the accumulated centroid is built from the same
+batch centroids and the omitted deviations sum to exactly zero over the
+simulation. The original form also has a variance advantage there: it
+samples the residual between the angular flux and the linear source model,
+whose fluctuation is smaller than that of the flux itself wherever the
+model tracks the field. Each volume treatment is thus paired with the
+update form that is exact or optimal for it.
 
 .. _methods-shannon-entropy-random-ray:
 

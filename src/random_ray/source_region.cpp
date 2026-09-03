@@ -245,8 +245,8 @@ void SourceRegionContainer::adjoint_reset()
   std::fill(centroid_iteration_.begin(), centroid_iteration_.end(),
     Position {0.0, 0.0, 0.0});
   std::fill(centroid_t_.begin(), centroid_t_.end(), Position {0.0, 0.0, 0.0});
-  std::fill(centroid_offset_.begin(), centroid_offset_.end(),
-    Position {0.0, 0.0, 0.0});
+  std::fill(
+    centroid_offset_.begin(), centroid_offset_.end(), Position {0.0, 0.0, 0.0});
   std::fill(mom_matrix_.begin(), mom_matrix_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),

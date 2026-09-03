@@ -269,24 +269,6 @@ private:
     0, 0, 0}; //!< which way lattice indices will change
 };
 
-struct TransportEvent {
-  int event_type = EVENT_UNDEFINED; //!< Type of transport event (crossing
-                                    //!< surface, collision, time cutoff)
-  bool cross_surface_geometry =
-    false; //!< if a surface of the geometry has been crossed during the event
-  bool cross_surface_temperature_field =
-    false; //!< if a surface of the temperature field has been crossed  during
-           //!< the event
-
-  // resets all information
-  void clear()
-  {
-    event_type = EVENT_UNDEFINED;
-    cross_surface_geometry = false;
-    cross_surface_temperature_field = false;
-  }
-};
-
 /*
  * Contains all geometry state information for a particle.
  */
@@ -439,6 +421,16 @@ public:
   const int& tf_bin() const { return tf_bin_; }
   int& tf_bin_next() { return tf_bin_next_; }
   const int& tf_bin_next() const { return tf_bin_next_; }
+  bool& cross_surface_geometry() { return cross_surface_geometry_; }
+  bool cross_surface_geometry() const { return cross_surface_geometry_; }
+  bool& cross_surface_temperature_field()
+  {
+    return cross_surface_temperature_field_;
+  }
+  bool cross_surface_temperature_field() const
+  {
+    return cross_surface_temperature_field_;
+  }
 
 private:
   int64_t id_ {-1}; //!< Unique ID
@@ -471,8 +463,11 @@ private:
   double density_mult_ {1.0};      //!< density multiplier
   double density_mult_last_ {1.0}; //!< last density multiplier
 
-  int tf_bin_ = C_NONE;      //!< Current temperature field bin
-  int tf_bin_next_ = C_NONE; //!< Next temperature field bin
+  int tf_bin_ = C_NONE;                 //!< Current temperature field bin
+  int tf_bin_next_ = C_NONE;            //!< Next temperature field bin
+  bool cross_surface_geometry_ {false}; //!< Geometry crossing at next boundary
+  bool cross_surface_temperature_field_ {
+    false}; //!< Temperature field crossing at next boundary
 
 #ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;
@@ -600,8 +595,6 @@ private:
   double ww_factor_ {0.0};
 
   int64_t n_progeny_ {0};
-
-  TransportEvent next_event_ = TransportEvent();
 
 public:
   //----------------------------------------------------------------------------
@@ -822,10 +815,6 @@ public:
       d = 0;
     }
   }
-
-  // Next event in transport
-  TransportEvent& next_event() { return next_event_; }
-  const TransportEvent& next_event() const { return next_event_; }
 };
 
 } // namespace openmc

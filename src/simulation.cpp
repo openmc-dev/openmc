@@ -3,12 +3,10 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/collision_track.h"
-#include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/event.h"
-#include "openmc/field.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
@@ -967,21 +965,10 @@ void transport_history_based_single_particle(Particle& p)
       p.event_advance();
     }
     if (p.alive()) {
-      switch (p.next_event().event_type) {
-      case EVENT_CROSS_SURFACE:
+      if (p.collision_distance() > p.boundary().distance()) {
         p.event_cross_surface();
-        break;
-      case EVENT_COLLIDE:
+      } else if (p.alive()) {
         p.event_collide();
-        break;
-      case EVENT_TIME_CUTOFF:
-        p.wgt() = 0.0;
-        break;
-      default:
-        fatal_error(
-          fmt::format("Unknown event '{}' in history-based transport!",
-            p.next_event().event_type));
-        break;
       }
     }
     p.event_check_limit_and_revive();

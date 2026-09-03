@@ -288,11 +288,6 @@ void RandomRay::event_advance_ray()
   boundary() = distance_to_boundary(*this);
   double distance = boundary().distance();
 
-  // Define next event
-  next_event().clear();
-  next_event().event_type = EVENT_CROSS_SURFACE;
-  next_event().cross_surface_geometry = true;
-
   if (distance < 0.0) {
     mark_as_lost("Negative transport distance detected for particle " +
                  std::to_string(id()));

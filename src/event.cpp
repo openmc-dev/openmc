@@ -119,21 +119,10 @@ void process_advance_particle_events()
     p.event_advance();
     if (!p.alive())
       continue;
-
-    switch (p.next_event().event_type) {
-    case EVENT_CROSS_SURFACE:
+    if (p.collision_distance() > p.boundary().distance()) {
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
-      break;
-    case EVENT_COLLIDE:
+    } else {
       simulation::collision_queue.thread_safe_append({p, buffer_idx});
-      break;
-    case EVENT_TIME_CUTOFF:
-      p.wgt() = 0.0;
-      break;
-    default:
-      fatal_error(fmt::format("Unknown event '{}' in event-based transport!",
-        p.next_event().event_type));
-      break;
     }
   }
 

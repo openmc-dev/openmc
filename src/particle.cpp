@@ -294,13 +294,20 @@ void Particle::event_advance()
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
 
-  // Find the distance to the nearest temperature mesh cell surface
-  double distance_tmesh = INFTY;
+  // If a temperature field is active, treat its nearest mesh surface as a
+  // transport boundary.
   if (settings::temperature_field_on) {
-    auto crossing =
+    const auto crossing =
       simulation::temperature_field.next_mesh_crossing(tf_bin(), r(), u());
-    distance_tmesh = crossing.distance;
     tf_bin_next() = crossing.next_bin;
+
+    const double distance_surface =
+      std::min(boundary().distance(), crossing.distance);
+    cross_surface_geometry() =
+      std::abs(distance_surface - boundary().distance()) <= FP_COINCIDENT;
+    cross_surface_temperature_field() =
+      std::abs(distance_surface - crossing.distance) <= FP_COINCIDENT;
+    boundary().distance() = distance_surface;
   }
 
   // Calculate the distance corresponding to the time cutoff
@@ -309,29 +316,9 @@ void Particle::event_advance()
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
-  // Determine minimal distance for cross surface events
-  double distance_cross_surface =
-    std::min({boundary().distance(), distance_tmesh});
-
-  // Determine minimal distance of all events
+  // Select smaller of the three distances
   double distance =
-    std::min({distance_cross_surface, collision_distance(), distance_cutoff});
-
-  // Determine next event
-  next_event().clear();
-  if (distance == distance_cutoff) {
-    next_event().event_type = EVENT_TIME_CUTOFF;
-  } else {
-    if (collision_distance() > distance_cross_surface) {
-      next_event().event_type = EVENT_CROSS_SURFACE;
-      next_event().cross_surface_geometry =
-        (std::abs(distance - boundary().distance()) <= FP_COINCIDENT);
-      next_event().cross_surface_temperature_field =
-        (std::abs(distance - distance_tmesh) <= FP_COINCIDENT);
-    } else {
-      next_event().event_type = EVENT_COLLIDE;
-    }
-  }
+    std::min({boundary().distance(), collision_distance(), distance_cutoff});
 
   // Advance particle in space and time
   this->move_distance(distance);
@@ -359,6 +346,11 @@ void Particle::event_advance()
     score_track_derivative(*this, distance);
   }
 
+  // Set particle weight to zero if it hit the time boundary
+  if (distance == distance_cutoff) {
+    wgt() = 0.0;
+  }
+
   // Clear surface component if distance is long enough
   if (distance > TINY_BIT)
     surface() = SURFACE_NONE;
@@ -366,77 +358,8 @@ void Particle::event_advance()
 
 void Particle::event_cross_surface()
 {
-  if (next_event().cross_surface_geometry) {
-
-    // Saving previous cell data
-    for (int j = 0; j < n_coord(); ++j) {
-      cell_last(j) = coord(j).cell();
-    }
-    n_coord_last() = n_coord();
-
-    // Set surface that particle is on and adjust coordinate levels
-    surface() = boundary().surface();
-    n_coord() = boundary().coord_level();
-
-    if (boundary().lattice_translation()[0] != 0 ||
-        boundary().lattice_translation()[1] != 0 ||
-        boundary().lattice_translation()[2] != 0) {
-      // Particle crosses lattice boundary
-
-      // Update temperature field bin
-      if (settings::temperature_field_on) {
-        if (next_event().cross_surface_temperature_field) {
-          tf_bin() = tf_bin_next();
-        }
-      }
-
-      int i_lattice = coord(boundary().coord_level() - 1).lattice();
-      bool verbose = settings::verbosity >= 10 || trace();
-      cross_lattice(*this, boundary(), verbose);
-      event() = TallyEvent::LATTICE;
-
-      // Score cell to cell partial currents
-      if (!model::active_surface_tallies.empty()) {
-        auto& lat {*model::lattices[i_lattice]};
-        bool is_valid;
-        Direction normal =
-          lat.get_normal(boundary().lattice_translation(), is_valid);
-        if (is_valid) {
-          normal /= normal.norm();
-          score_surface_tally(*this, model::active_surface_tallies, normal);
-        }
-      }
-
-    } else {
-
-      const auto& surf {*model::surfaces[surface_index()].get()};
-
-      // Particle crosses surface
-      // If BC, add particle to surface source before crossing surface
-      if (surf.surf_source_ && surf.bc_) {
-        add_surf_source_to_bank(*this, surf);
-      }
-      this->cross_surface(surf);
-      // If no BC, add particle to surface source after crossing surface
-      if (surf.surf_source_ && !surf.bc_) {
-        add_surf_source_to_bank(*this, surf);
-      }
-      if (settings::weight_window_checkpoint_surface) {
-        apply_weight_windows(*this);
-      }
-      event() = TallyEvent::SURFACE;
-
-      // Score cell to cell partial currents
-      if (!model::active_surface_tallies.empty()) {
-        Direction normal = surf.normal(r());
-        normal /= normal.norm();
-        score_surface_tally(*this, model::active_surface_tallies, normal);
-      }
-    }
-
-    // Update particle temperature from the temperature field
-  } else if (next_event().cross_surface_temperature_field) {
-
+  if (settings::temperature_field_on && !cross_surface_geometry()) {
+    // Update particle temperature after crossing only the field mesh.
     sqrtkT_last() = sqrtkT();
 
     tf_bin() = tf_bin_next();
@@ -452,6 +375,70 @@ void Particle::event_cross_surface()
 #ifdef OPENMC_DAGMC_ENABLED
     history().reset();
 #endif
+    return;
+  }
+
+  // Saving previous cell data
+  for (int j = 0; j < n_coord(); ++j) {
+    cell_last(j) = coord(j).cell();
+  }
+  n_coord_last() = n_coord();
+
+  // Set surface that particle is on and adjust coordinate levels
+  surface() = boundary().surface();
+  n_coord() = boundary().coord_level();
+
+  if (boundary().lattice_translation()[0] != 0 ||
+      boundary().lattice_translation()[1] != 0 ||
+      boundary().lattice_translation()[2] != 0) {
+    // Particle crosses lattice boundary
+
+    // Update temperature field bin
+    if (settings::temperature_field_on && cross_surface_temperature_field())
+      tf_bin() = tf_bin_next();
+
+    int i_lattice = coord(boundary().coord_level() - 1).lattice();
+    bool verbose = settings::verbosity >= 10 || trace();
+    cross_lattice(*this, boundary(), verbose);
+    event() = TallyEvent::LATTICE;
+
+    // Score cell to cell partial currents
+    if (!model::active_surface_tallies.empty()) {
+      auto& lat {*model::lattices[i_lattice]};
+      bool is_valid;
+      Direction normal =
+        lat.get_normal(boundary().lattice_translation(), is_valid);
+      if (is_valid) {
+        normal /= normal.norm();
+        score_surface_tally(*this, model::active_surface_tallies, normal);
+      }
+    }
+
+  } else {
+
+    const auto& surf {*model::surfaces[surface_index()].get()};
+
+    // Particle crosses surface
+    // If BC, add particle to surface source before crossing surface
+    if (surf.surf_source_ && surf.bc_) {
+      add_surf_source_to_bank(*this, surf);
+    }
+    this->cross_surface(surf);
+    // If no BC, add particle to surface source after crossing surface
+    if (surf.surf_source_ && !surf.bc_) {
+      add_surf_source_to_bank(*this, surf);
+    }
+    if (settings::weight_window_checkpoint_surface) {
+      apply_weight_windows(*this);
+    }
+    event() = TallyEvent::SURFACE;
+
+    // Score cell to cell partial currents
+    if (!model::active_surface_tallies.empty()) {
+      Direction normal = surf.normal(r());
+      normal /= normal.norm();
+      score_surface_tally(*this, model::active_surface_tallies, normal);
+    }
   }
 }
 
@@ -744,10 +731,8 @@ void Particle::cross_surface(const Surface& surf)
   }
 
   // Update temperature field bin after handling boundary conditions
-  if (settings::temperature_field_on) {
-    if (next_event().cross_surface_temperature_field) {
-      tf_bin() = tf_bin_next();
-    }
+  if (settings::temperature_field_on && cross_surface_temperature_field()) {
+    tf_bin() = tf_bin_next();
   }
 
   // ==========================================================================

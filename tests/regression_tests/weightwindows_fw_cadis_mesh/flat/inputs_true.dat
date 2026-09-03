@@ -236,6 +236,7 @@
         </mesh>
       </source_region_meshes>
       <source_shape>flat</source_shape>
+      <volume_estimator>hybrid</volume_estimator>
     </random_ray>
   </settings>
   <tallies>

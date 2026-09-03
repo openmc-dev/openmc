@@ -20,6 +20,7 @@ from openmc.source import *
 from openmc.settings import *
 from openmc.lattice import *
 from openmc.field import *
+from openmc.dnp_drift import *
 from openmc.filter import *
 from openmc.filter_expansion import *
 from openmc.trigger import *

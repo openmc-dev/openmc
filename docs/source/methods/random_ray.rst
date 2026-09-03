@@ -1003,50 +1003,25 @@ completes the set of equations for LS.
 Consistency of the Scalar Flux Estimate
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-One subtlety of the linear source scheme deserves explicit treatment. During
-a batch, the transport sweep evaluates the linear source of region :math:`i`
-against the accumulated centroid estimate :math:`\mathbf{C}_i`, so every
-segment's attenuation calculation subtracts the local source value
-:math:`\bar{Q}_i + \vec{Q}_i \cdot (\mathbf{m}_s - \mathbf{C}_i)` at that
-segment's midpoint :math:`\mathbf{m}_s`. Because the chord integral of a
-linear function is exactly its midpoint value times the chord length,
-summing the segment balance equations over a batch's tracks shows that the
-tracks integrate a mean emission of
+One subtlety of the linear source scheme deserves note. The transport sweep
+evaluates each region's linear source against the accumulated centroid
+:math:`\mathbf{C}_i`, but a batch's tracks average that source at their own
+track-length-weighted centroid :math:`\mathbf{c}_{i,b}`, so the mean
+emission the batch actually integrates is
 
 .. math::
     :label: batch_sampled_source
 
-    \bar{Q}_i + \vec{Q}_i \cdot (\mathbf{c}_{i,b} - \mathbf{C}_i)\;,
+    \bar{Q}_i + \vec{Q}_i \cdot (\mathbf{c}_{i,b} - \mathbf{C}_i)\;.
 
-where :math:`\mathbf{c}_{i,b}` is the batch's track-length-weighted centroid,
-which fluctuates about :math:`\mathbf{C}_i` from batch to batch as the rays
-sample the region unevenly. If the scalar flux update adds back only
-:math:`\bar{Q}_i`, the difference (the source gradient dotted with the
-per-batch centroid fluctuation) is silently absorbed by the flux estimate
-as a zero-mean noise term that has no counterpart in flat source mode, as a
-constant source has the same average over any set of tracks.
-
-When a region is updated with its own batch (iteration) volume, this term
-is the only noise the update itself contributes. Adding back the full
-batch-sampled source of Equation :eq:`batch_sampled_source` therefore makes
-the update an exact per-batch track identity, in which the scalar flux
-estimate equals the track-length average of the angular flux and inherits
-its sign. Omitting the term breaks that exactness, and in near-cancellation
-regions (scattering ratios near unity, as in the air-filled regions of
-shielding problems) the absorbed noise can exceed the flux itself at modest
-per-batch hit counts and ignite self-sustaining negativity. OpenMC
-therefore includes the term whenever a region updates with its batch
-volume.
-
-When a region is instead updated with the simulation-averaged volume, the
-update omits the term and keeps its original form. This cannot bias the
-accumulated result, because the accumulated centroid is built from the same
-batch centroids and the omitted deviations sum to exactly zero over the
-simulation. The original form also has a variance advantage there: it
-samples the residual between the angular flux and the linear source model,
-whose fluctuation is smaller than that of the flux itself wherever the
-model tracks the field. Each volume treatment is thus paired with the
-update form that is exact or optimal for it.
+A flux update that adds back only :math:`\bar{Q}_i` absorbs the difference
+as gradient-scale noise, which in optically thin scatter-fed regions can
+ignite self-sustaining negative fluxes. OpenMC therefore adds back the full
+batch-sampled source whenever a region updates with its own batch
+(iteration) volume, making that update exact for the batch's tracks.
+Regions updating with the simulation-averaged volume keep the original
+form, which is unbiased (the omitted deviations sum to zero against the
+accumulated centroid) and carries less variance there.
 
 .. _methods-shannon-entropy-random-ray:
 

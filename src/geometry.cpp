@@ -203,8 +203,13 @@ bool find_cell_inner(
 
       // Set the temperature.
       p.sqrtkT_last() = p.sqrtkT();
-      if (settings::temperature_field_on && p.tf_bin() != C_NONE) {
-        p.sqrtkT() = simulation::temperature_field.get_sqrtkT(p.tf_bin());
+      int tf_bin = C_NONE;
+      if (settings::temperature_field_on) {
+        tf_bin =
+          simulation::temperature_field.get_bin(p.r() + TINY_BIT * p.u());
+      }
+      if (tf_bin != C_NONE) {
+        p.sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
       } else {
         p.sqrtkT() = c.sqrtkT(p.cell_instance());
       }

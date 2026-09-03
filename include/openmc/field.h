@@ -23,16 +23,10 @@ public:
   //! the particle is initially outside, the crossing will be at the nearest
   //! outer boundary of the mesh along its direction of travel.
   //
-  //! See Mesh::next_mesh_crossing for how current_bin is interpreted and for
-  //! the zero-distance crossing reported when it disagrees with the position.
-  //
-  //! \param[in] current_bin Bin the particle is believed to be in, or a
-  //!   negative value if it is believed to be outside the mesh
   //! \param[in] r Position of the particle
   //! \param[in] u Direction of the particle
   //! \return Distance to the crossing and the next bin number
-  MeshCrossing next_mesh_crossing(
-    int current_bin, const Position& r, const Direction& u);
+  MeshCrossing next_mesh_crossing(const Position& r, const Direction& u);
 
   //----------------------------------------------------------------------------
   // Accessors

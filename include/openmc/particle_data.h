@@ -416,22 +416,6 @@ public:
   const double& density_mult() const { return density_mult_; }
   double& density_mult_last() { return density_mult_last_; }
 
-  // Temperature field related information
-  int& tf_bin() { return tf_bin_; }
-  const int& tf_bin() const { return tf_bin_; }
-  int& tf_bin_next() { return tf_bin_next_; }
-  const int& tf_bin_next() const { return tf_bin_next_; }
-  bool& cross_surface_geometry() { return cross_surface_geometry_; }
-  bool cross_surface_geometry() const { return cross_surface_geometry_; }
-  bool& cross_surface_temperature_field()
-  {
-    return cross_surface_temperature_field_;
-  }
-  bool cross_surface_temperature_field() const
-  {
-    return cross_surface_temperature_field_;
-  }
-
 private:
   int64_t id_ {-1}; //!< Unique ID
 
@@ -462,12 +446,6 @@ private:
 
   double density_mult_ {1.0};      //!< density multiplier
   double density_mult_last_ {1.0}; //!< last density multiplier
-
-  int tf_bin_ = C_NONE;                 //!< Current temperature field bin
-  int tf_bin_next_ = C_NONE;            //!< Next temperature field bin
-  bool cross_surface_geometry_ {false}; //!< Geometry crossing at next boundary
-  bool cross_surface_temperature_field_ {
-    false}; //!< Temperature field crossing at next boundary
 
 #ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;

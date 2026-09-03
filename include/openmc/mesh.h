@@ -202,22 +202,14 @@ public:
   //! initial position to the external boundary of the mesh if hit. If the mesh
   //! is never reached, the distance is INFTY and the next bin is C_NONE.
   //
-  //! Only the sign of current_bin is used, to tell whether the caller believes
-  //! the particle to be inside the mesh; the element the particle is in is
-  //! determined from r and u. When the two disagree, a crossing at zero
-  //! distance is reported carrying the bin implied by the position, so that the
-  //! caller resynchronizes before advancing. This happens for a particle
-  //! sitting exactly on the outer boundary of the mesh, which get_bin() places
-  //! in the boundary element while this function resolves it in the direction
-  //! of travel.
+  //! The initial mesh element is determined in the direction of travel, so a
+  //! particle on a mesh boundary is treated as being on the side it is
+  //! entering.
   //
-  //! \param[in] current_bin Bin the particle is believed to be in, or a
-  //!   negative value if it is believed to be outside the mesh
   //! \param[in] r Position of the particle
   //! \param[in] u Direction of the particle
   //! \return Distance to the crossing and the next bin number
-  virtual MeshCrossing next_mesh_crossing(
-    int current_bin, Position r, Direction u) const = 0;
+  virtual MeshCrossing next_mesh_crossing(Position r, Direction u) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -365,8 +357,7 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-  MeshCrossing next_mesh_crossing(
-    int current_bin, Position r, Direction u) const override;
+  MeshCrossing next_mesh_crossing(Position r, Direction u) const override;
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -755,8 +746,7 @@ public:
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(hid_t group);
 
-  MeshCrossing next_mesh_crossing(
-    int current_bin, Position r, Direction u) const override;
+  MeshCrossing next_mesh_crossing(Position r, Direction u) const override;
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;

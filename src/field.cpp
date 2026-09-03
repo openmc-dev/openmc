@@ -37,9 +37,9 @@ ScalarField::ScalarField(
 }
 
 MeshCrossing ScalarField::next_mesh_crossing(
-  int current_bin, const Position& r, const Direction& u)
+  const Position& r, const Direction& u)
 {
-  return this->mesh_ptr()->next_mesh_crossing(current_bin, r, u);
+  return this->mesh_ptr()->next_mesh_crossing(r, u);
 }
 
 void TemperatureField::validate_temperature(double temperature)

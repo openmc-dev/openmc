@@ -155,10 +155,6 @@ void Particle::from_source(const SourceSite* src)
   fission() = false;
   zero_flux_derivs();
   lifetime() = 0.0;
-  if (settings::temperature_field_on) {
-    tf_bin() = C_NONE;
-    tf_bin_next() = C_NONE;
-  }
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
@@ -223,11 +219,6 @@ void Particle::event_calculate_xs()
   // beginning of the history and again for any secondary particles
   if (lowest_coord().cell() == C_NONE) {
 
-    // Define temperature field cell
-    if (settings::temperature_field_on) {
-      tf_bin() = simulation::temperature_field.get_bin(r());
-    }
-
     if (!exhaustive_find_cell(*this)) {
       mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
@@ -279,7 +270,7 @@ void Particle::event_calculate_xs()
   }
 }
 
-void Particle::event_advance()
+bool Particle::event_advance()
 {
   // Find the distance to the nearest geometry boundary
   boundary() = distance_to_boundary(*this);
@@ -296,18 +287,14 @@ void Particle::event_advance()
 
   // If a temperature field is active, treat its nearest mesh surface as a
   // transport boundary.
+  bool cross_temperature_field = false;
   if (settings::temperature_field_on) {
     const auto crossing =
-      simulation::temperature_field.next_mesh_crossing(tf_bin(), r(), u());
-    tf_bin_next() = crossing.next_bin;
-
-    const double distance_surface =
-      std::min(boundary().distance(), crossing.distance);
-    cross_surface_geometry() =
-      std::abs(distance_surface - boundary().distance()) <= FP_COINCIDENT;
-    cross_surface_temperature_field() =
-      std::abs(distance_surface - crossing.distance) <= FP_COINCIDENT;
-    boundary().distance() = distance_surface;
+      simulation::temperature_field.next_mesh_crossing(r(), u());
+    if (crossing.distance < boundary().distance() - FP_COINCIDENT) {
+      boundary().distance() = crossing.distance;
+      cross_temperature_field = true;
+    }
   }
 
   // Calculate the distance corresponding to the time cutoff
@@ -354,29 +341,30 @@ void Particle::event_advance()
   // Clear surface component if distance is long enough
   if (distance > TINY_BIT)
     surface() = SURFACE_NONE;
+
+  return cross_temperature_field;
+}
+
+void Particle::event_cross_temperature_field()
+{
+  sqrtkT_last() = sqrtkT();
+
+  int tf_bin = simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+  if (tf_bin != C_NONE) {
+    sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
+  } else {
+    int i_cell = lowest_coord().cell();
+    Cell& c {*model::cells[i_cell]};
+    sqrtkT() = c.sqrtkT(cell_instance());
+  }
+
+#ifdef OPENMC_DAGMC_ENABLED
+  history().reset();
+#endif
 }
 
 void Particle::event_cross_surface()
 {
-  if (settings::temperature_field_on && !cross_surface_geometry()) {
-    // Update particle temperature after crossing only the field mesh.
-    sqrtkT_last() = sqrtkT();
-
-    tf_bin() = tf_bin_next();
-
-    if (tf_bin() != C_NONE) {
-      sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin());
-    } else {
-      int i_cell = lowest_coord().cell();
-      Cell& c {*model::cells[i_cell]};
-      sqrtkT() = c.sqrtkT(cell_instance());
-    }
-
-#ifdef OPENMC_DAGMC_ENABLED
-    history().reset();
-#endif
-    return;
-  }
 
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
@@ -392,10 +380,6 @@ void Particle::event_cross_surface()
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
-
-    // Update temperature field bin
-    if (settings::temperature_field_on && cross_surface_temperature_field())
-      tf_bin() = tf_bin_next();
 
     int i_lattice = coord(boundary().coord_level() - 1).lattice();
     bool verbose = settings::verbosity >= 10 || trace();
@@ -567,11 +551,6 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
     if (lowest_coord().cell() == C_NONE) {
       bool verbose = settings::verbosity >= 10 || trace();
 
-      // Define temperature field cell
-      if (settings::temperature_field_on) {
-        tf_bin() = simulation::temperature_field.get_bin(r());
-      }
-
       if (!exhaustive_find_cell(*this, verbose)) {
         mark_as_lost("Could not find the cell containing particle " +
                      std::to_string(id()));
@@ -730,11 +709,6 @@ void Particle::cross_surface(const Surface& surf)
     return;
   }
 
-  // Update temperature field bin after handling boundary conditions
-  if (settings::temperature_field_on && cross_surface_temperature_field()) {
-    tf_bin() = tf_bin_next();
-  }
-
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
@@ -757,8 +731,12 @@ void Particle::cross_surface(const Surface& surf)
       cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
 
     material() = cell->material(cell_instance());
-    if (settings::temperature_field_on && tf_bin() != C_NONE) {
-      sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin());
+    int tf_bin = C_NONE;
+    if (settings::temperature_field_on) {
+      tf_bin = simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+    }
+    if (tf_bin != C_NONE) {
+      sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
     } else {
       sqrtkT() = cell->sqrtkT(cell_instance());
     }
@@ -914,11 +892,6 @@ void Particle::cross_periodic_bc(
 
   // Reassign particle's surface
   surface() = new_surface;
-
-  // Reassign particle's temperature field bin
-  if (settings::temperature_field_on) {
-    tf_bin() = simulation::temperature_field.get_bin(r());
-  }
 
   // Figure out what cell particle is in now
   n_coord() = 1;

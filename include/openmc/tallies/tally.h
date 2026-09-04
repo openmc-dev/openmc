@@ -3,6 +3,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/position.h"
 #include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/trigger.h"
@@ -11,6 +12,7 @@
 #include "openmc/tensor.h"
 #include "pugixml.hpp"
 
+#include <set>
 #include <string>
 #include <unordered_map>
 
@@ -209,11 +211,13 @@ extern vector<int> active_analog_tallies;
 extern vector<int> active_tracklength_tallies;
 extern vector<int> active_timed_tracklength_tallies;
 extern vector<int> active_collision_tallies;
+extern vector<int> active_point_tallies;
 extern vector<int> active_meshsurf_tallies;
 extern vector<int> active_surface_tallies;
 extern vector<int> active_pulse_height_tallies;
 extern vector<int32_t> pulse_height_cells;
 extern vector<double> time_grid;
+extern std::set<Position> active_point_detectors;
 
 } // namespace model
 

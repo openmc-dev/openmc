@@ -24,7 +24,9 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/tallies/next_event_scoring.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/tally_scoring.h"
 #include "openmc/thermal.h"
 #include "openmc/weight_windows.h"
 
@@ -156,6 +158,8 @@ void sample_neutron_reaction(Particle& p)
   // exiting neutron
   const auto& ncrystal_mat = model::materials[p.material()]->ncrystal_mat();
   if (ncrystal_mat && p.E() < NCRYSTAL_MAX_ENERGY) {
+    if (!model::active_point_tallies.empty())
+      fatal_error("Next-Event estimator does not support ncrystal materials");
     ncrystal_mat.scatter(p);
   } else {
     scatter(p, i_nuclide);
@@ -766,7 +770,7 @@ void scatter(Particle& p, int i_nuclide)
 
     // Perform collision physics for inelastic scattering
     const auto& rx {nuc->reactions_[i]};
-    inelastic_scatter(*nuc, *rx, p);
+    inelastic_scatter(i_nuclide, *rx, p);
     p.event_mt() = rx->mt_;
   }
 
@@ -811,6 +815,10 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
 
   // Find speed of neutron in CM
   vel = v_n.norm();
+
+  if (!model::active_point_tallies.empty()) {
+    score_point_tally_elastic(p, i_nuclide, rx, 0, v_t);
+  }
 
   // Sample scattering angle, checking if angle distribution is present (assume
   // isotropic otherwise)
@@ -859,8 +867,13 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
 
   // Sample energy and angle
   double E_out;
-  data::thermal_scatt[i_sab]->data_[i_temp].sample(
-    micro, p.E(), &E_out, &p.mu(), p.current_seed());
+  auto& sab = data::thermal_scatt[i_sab]->data_[i_temp];
+
+  if (!model::active_point_tallies.empty()) {
+    score_point_tally_sab(p, i_nuclide, sab, micro);
+  }
+
+  sab.sample(micro, p.E(), &E_out, &p.mu(), p.current_seed());
 
   // Set energy to outgoing, change direction of particle
   p.E() = E_out;
@@ -1125,6 +1138,10 @@ void sample_fission_neutron(
     site->delayed_group = 0;
   }
 
+  if (!model::active_point_tallies.empty()) {
+    score_point_tally_fission(p, i_nuclide, rx, site->delayed_group);
+  }
+
   // sample from prompt neutron energy distribution
   int n_sample = 0;
   double mu;
@@ -1150,8 +1167,11 @@ void sample_fission_neutron(
   site->u = rotate_angle(p.u(), mu, nullptr, seed);
 }
 
-void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
+void inelastic_scatter(int i_nuclide, const Reaction& rx, Particle& p)
 {
+  // Get pointer to nuclide
+  const auto& nuc {data::nuclides[i_nuclide]};
+
   // copy energy of neutron
   double E_in = p.E();
 
@@ -1160,13 +1180,19 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   double mu;
   rx.products_[0].sample(E_in, E, mu, p.current_seed());
 
+  double yield = (*rx.products_[0].yield_)(E_in);
+
+  if (!model::active_point_tallies.empty()) {
+    score_point_tally_inelastic(p, i_nuclide, rx, 0, yield);
+  }
+
   // if scattering system is in center-of-mass, transfer cosine of scattering
   // angle and outgoing energy from CM to LAB
   if (rx.scatter_in_cm_) {
     double E_cm = E;
 
     // determine outgoing energy in lab
-    double A = nuc.awr_;
+    double A = nuc->awr_;
     E = E_cm + (E_in + 2.0 * mu * (A + 1.0) * std::sqrt(E_in * E_cm)) /
                  ((A + 1.0) * (A + 1.0));
 
@@ -1187,8 +1213,6 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   // change direction of particle
   p.u() = rotate_angle(p.u(), mu, nullptr, p.current_seed());
 
-  // evaluate yield
-  double yield = (*rx.products_[0].yield_)(E_in);
   if (std::floor(yield) == yield && yield > 0) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {

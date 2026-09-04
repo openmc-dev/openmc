@@ -31,6 +31,7 @@
 #include "openmc/tallies/filter_meshmaterial.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_particle.h"
+#include "openmc/tallies/filter_point.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_time.h"
@@ -60,11 +61,13 @@ vector<int> active_analog_tallies;
 vector<int> active_tracklength_tallies;
 vector<int> active_timed_tracklength_tallies;
 vector<int> active_collision_tallies;
+vector<int> active_point_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int32_t> pulse_height_cells;
 vector<double> time_grid;
+std::set<Position> active_point_detectors;
 } // namespace model
 
 namespace simulation {
@@ -528,6 +531,7 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool legendre_present = false;
   bool cell_present = false;
   bool cellfrom_present = false;
+  bool point_present = false;
   bool material_present = false;
   bool materialfrom_present = false;
   bool surface_present = false;
@@ -550,6 +554,10 @@ void Tally::set_scores(const vector<std::string>& scores)
       materialfrom_present = true;
     } else if (filt->type() == FilterType::MATERIAL) {
       material_present = true;
+    } else if (filt->type() == FilterType::POINT) {
+      point_present = true;
+      type_ = TallyType::POINT;
+      estimator_ = TallyEstimator::NEXT_EVENT;
     } else if (filt->type() == FilterType::SURFACE) {
       surface_present = true;
     } else if (filt->type() == FilterType::MESH_SURFACE) {
@@ -561,6 +569,21 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool non_meshsurface_types_present =
     (surface_present || cell_present || cellfrom_present || material_present ||
       materialfrom_present);
+
+  if (point_present) {
+    if (!settings::run_CE)
+      fatal_error("Cannot use point detectors in multi-group mode.");
+    if (simulation::nonvacuum_boundary_present)
+      fatal_error(
+        "Cannot use point detectors with non-vacuum boundary conditions.");
+    if (legendre_present)
+      fatal_error("Cannot use LegendreFilter with PointFilter.");
+    if (energyout_present)
+      fatal_error("Cannot use EnergyoutFilter with PointFilter.");
+    if (surface_present || meshsurface_present)
+      fatal_error(
+        "Cannot use surface or mesh-surface filters with PointFilter.");
+  }
 
   // Iterate over the given scores.
   for (auto score_str : scores) {
@@ -611,6 +634,9 @@ void Tally::set_scores(const vector<std::string>& scores)
 
     case SCORE_NU_SCATTER:
       if (settings::run_CE) {
+        if (point_present)
+          fatal_error("Cannot use nu-scatter score with PointFilter in "
+                      "continuous energy mode.");
         estimator_ = TallyEstimator::ANALOG;
       } else {
         if (energyout_present || legendre_present)
@@ -619,6 +645,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case SCORE_CURRENT:
+      if (point_present)
+        fatal_error("Cannot use current score with PointFilter.");
       // Check which type of current is desired: mesh or surface currents.
       if (meshsurface_present) {
         if (non_meshsurface_types_present)
@@ -632,6 +660,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case HEATING:
+      if (point_present)
+        fatal_error("Cannot use heating score with PointFilter.");
       if (settings::photon_transport) {
         // Photon heating requires a collision estimator (analog energy
         // balance). However, if the tally only scores neutrons, we can keep the
@@ -653,6 +683,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case SCORE_PULSE_HEIGHT: {
+      if (point_present)
+        fatal_error("Cannot use pulse-height score with PointFilter.");
       if (non_cell_energy_present) {
         fatal_error("Pulse-height tallies are not compatible with filters "
                     "other than CellFilter and EnergyFilter");
@@ -674,6 +706,8 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_IFP_TIME_NUM:
     case SCORE_IFP_BETA_NUM:
     case SCORE_IFP_DENOM:
+      if (point_present)
+        fatal_error("Cannot use ifp scores with PointFilter.");
       estimator_ = TallyEstimator::COLLISION;
       break;
     }
@@ -1172,6 +1206,8 @@ void setup_active_tallies()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::active_point_tallies.clear();
+  model::active_point_detectors.clear();
   model::time_grid.clear();
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
@@ -1213,6 +1249,16 @@ void setup_active_tallies()
       case TallyType::PULSE_HEIGHT:
         model::active_pulse_height_tallies.push_back(i);
         break;
+
+      case TallyType::POINT:
+        model::active_point_tallies.push_back(i);
+        // Populate the set of unique detector positions from PointFilter
+        if (auto pf = tally.get_filter<PointFilter>()) {
+          for (const auto& [pos, r0] : pf->detectors()) {
+            model::active_point_detectors.insert(pos);
+          }
+        }
+        break;
       }
     }
   }
@@ -1236,6 +1282,8 @@ void free_memory_tally()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::active_point_tallies.clear();
+  model::active_point_detectors.clear();
   model::time_grid.clear();
 
   model::tally_map.clear();

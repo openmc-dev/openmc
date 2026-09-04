@@ -2,6 +2,8 @@
 
 #include "openmc/error.h"
 #include "openmc/geometry.h"
+#include "openmc/material.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/settings.h"
 
 namespace openmc {
@@ -11,7 +13,7 @@ void Ray::compute_distance()
   boundary() = distance_to_boundary(*this);
 }
 
-void Ray::trace()
+void Ray::trace(double max_distance)
 {
   // To trace the ray from its origin all the way through the model, we have
   // to proceed in two phases. In the first, the ray may or may not be found
@@ -23,6 +25,8 @@ void Ray::trace()
   //
   // After phase one is done, we can starting tracing from cell to cell within
   // the model. This step can use neighbor lists to accelerate the ray tracing.
+
+  double max = max_distance;
 
   bool inside_cell;
   // Check for location if the particle is already known
@@ -118,10 +122,28 @@ void Ray::trace()
     // distance to properly check cell inclusion.
     boundary().distance() += TINY_BIT;
 
+    double distance = std::min(boundary().distance(), max);
+
     // Advance particle, prepare for next intersection
     for (int lev = 0; lev < n_coord(); ++lev) {
-      coord(lev).r() += boundary().distance() * coord(lev).u();
+      coord(lev).r() += distance * coord(lev).u();
     }
+
+    max -= distance;
+
+    if (max == 0.0) {
+      // The ray stopped part-way through this segment, so only the truncated
+      // distance was actually travelled. update_distance() accumulates
+      // boundary().distance() into traversal_distance_ and traversal_mfp_,
+      // so it has to see the truncated value -- otherwise the remainder of
+      // the segment (out to the next surface) is counted, which over-states
+      // the optical depth for anything that stops inside a cell.
+      boundary().distance() = distance;
+      update_distance();
+      completed_ = true;
+      break;
+    }
+
     surface() = boundary().surface();
     // Initialize last cells from the current cell, because the cell() variable
     // does not contain the data for the case of a single-segment ray
@@ -136,8 +158,8 @@ void Ray::trace()
       cross_lattice(*this, boundary(), settings::verbosity >= 10);
     }
 
-    // Record how far the ray has traveled
-    traversal_distance_ += boundary().distance();
+    update_distance();
+
     inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
 
     // Call the specialized logic for this type of ray. Note that we do not
@@ -163,6 +185,49 @@ void Ray::trace()
       return;
     }
   }
+}
+
+void Ray::update_distance()
+{
+  // Record how far the ray has traveled
+  traversal_distance_ += boundary().distance();
+}
+
+void ParticleRay::on_intersection() {}
+
+void ParticleRay::update_distance()
+{
+  Ray::update_distance();
+
+  time() += boundary().distance() / speed();
+
+  // Calculate microscopic and macroscopic cross sections
+  if (material() != MATERIAL_VOID) {
+    if (settings::run_CE) {
+      if (material() != material_last() || sqrtkT() != sqrtkT_last() ||
+          density_mult() != density_mult_last()) {
+        // If the material is the same as the last material and the
+        // temperature hasn't changed, we don't need to lookup cross
+        // sections again.
+        model::materials[material()]->calculate_xs(*this);
+      }
+    } else {
+      // Get the MG data; unlike the CE case above, we have to re-calculate
+      // cross sections for every collision since the cross sections may
+      // be angle-dependent
+      data::mg.macro_xs_[material()].calculate_xs(*this);
+
+      // Update the particle's group while we know we are multi-group
+      g_last() = g();
+    }
+  } else {
+    macro_xs().total = 0.0;
+    macro_xs().absorption = 0.0;
+    macro_xs().fission = 0.0;
+    macro_xs().nu_fission = 0.0;
+  }
+
+  traversal_mfp_ += macro_xs().total * boundary().distance();
 }
 
 } // namespace openmc

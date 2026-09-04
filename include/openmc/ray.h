@@ -1,14 +1,14 @@
 #ifndef OPENMC_RAY_H
 #define OPENMC_RAY_H
 
-#include "openmc/particle_data.h"
+#include "openmc/particle.h"
 #include "openmc/position.h"
 
 namespace openmc {
 
 // Base class that implements ray tracing logic, not necessarily through
 // defined regions of the geometry but also outside of it.
-class Ray : public GeometryState {
+class Ray : virtual public GeometryState {
 
 public:
   // Initialize from location and direction
@@ -24,7 +24,7 @@ public:
    * Traces the ray through the geometry, calling on_intersection
    * at every surface boundary.
    */
-  void trace();
+  void trace(double max_distance = INFTY);
 
   // Stops the ray and exits tracing when called from on_intersection
   void stop() { stop_ = true; }
@@ -32,9 +32,20 @@ public:
   // Sets the dist_ variable
   void compute_distance();
 
+  virtual void update_distance();
+
+  //! Whether the ray travelled the full max_distance passed to trace().
+  //! False if it left the model (or hit a dead end) beforehand. This is an
+  //! exact flag rather than a comparison of traversal_distance() against the
+  //! requested distance, which is only accurate to floating-point roundoff.
+  bool completed() const { return completed_; }
+
 protected:
   // Records how far the ray has traveled
   double traversal_distance_ {0.0};
+
+  // Set when trace() consumed the whole max_distance it was given
+  bool completed_ {false};
 
 private:
   // Max intersections before we assume ray tracing is caught in an infinite
@@ -44,6 +55,33 @@ private:
   bool stop_ {false};
 
   unsigned event_counter_ {0};
+};
+
+class ParticleRay : public Ray, public Particle {
+
+public:
+  ParticleRay(
+    Position r, Direction u, ParticleType type_, double time_, double E_)
+    : Ray(r, u)
+  {
+    type() = type_;
+    time() = time_;
+    E() = E_;
+    E_last() = E_;
+    r_last() = r;
+  }
+
+  void on_intersection() override;
+
+  // Sets the dist_ variable
+  void update_distance() override;
+
+  const double& traversal_distance() const { return traversal_distance_; }
+  const double& traversal_mfp() const { return traversal_mfp_; }
+
+protected:
+  // Records how much mean free paths the ray traveled
+  double traversal_mfp_ {0.0};
 };
 
 } // namespace openmc

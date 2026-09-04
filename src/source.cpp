@@ -39,6 +39,8 @@
 #include "openmc/state_point.h"
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
+#include "openmc/tallies/next_event_scoring.h"
+#include "openmc/tallies/tally_scoring.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -1227,6 +1229,10 @@ SourceSite sample_external_source(uint64_t* seed)
     site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),
       data::mg.rev_energy_bins_.end(), site.E);
     site.E = data::mg.num_energy_groups_ - site.E - 1.;
+  }
+
+  if (!model::active_point_tallies.empty()) {
+    score_point_tally_source(site, i);
   }
 
   return site;

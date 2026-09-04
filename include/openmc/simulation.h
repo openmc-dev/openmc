@@ -34,12 +34,14 @@ extern double k_abs_tra;   //!< sum over batches of k_absorption * k_tracklength
 extern double log_spacing; //!< lethargy spacing for energy grid searches
 extern int n_lost_particles;   //!< cumulative number of lost particles
 extern bool need_depletion_rx; //!< need to calculate depletion rx?
-extern int restart_batch;      //!< batch at which a restart job resumed
-extern bool satisfy_triggers;  //!< have tally triggers been satisfied?
-extern int ssw_current_file;   //!< current surface source file
-extern int total_gen;          //!< total number of generations simulated
-extern double total_weight;    //!< Total source weight in a batch
-extern int64_t work_per_rank;  //!< number of particles per MPI rank
+extern bool
+  nonvacuum_boundary_present; //!< Does the geometry contain non-vacuum b.c.
+extern int restart_batch;     //!< batch at which a restart job resumed
+extern bool satisfy_triggers; //!< have tally triggers been satisfied?
+extern int ssw_current_file;  //!< current surface source file
+extern int total_gen;         //!< total number of generations simulated
+extern double total_weight;   //!< Total source weight in a batch
+extern int64_t work_per_rank; //!< number of particles per MPI rank
 
 extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;

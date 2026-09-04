@@ -32,6 +32,7 @@
 #include "openmc/tallies/filter_parent_nuclide.h"
 #include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_particle_production.h"
+#include "openmc/tallies/filter_point.h"
 #include "openmc/tallies/filter_polar.h"
 #include "openmc/tallies/filter_reaction.h"
 #include "openmc/tallies/filter_sph_harm.h"
@@ -150,6 +151,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<ParticleFilter>(id);
   } else if (type == "particleproduction") {
     return Filter::create<ParticleProductionFilter>(id);
+  } else if (type == "point") {
+    return Filter::create<PointFilter>(id);
   } else if (type == "polar") {
     return Filter::create<PolarFilter>(id);
   } else if (type == "reaction") {

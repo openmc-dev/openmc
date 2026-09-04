@@ -22,7 +22,7 @@ __all__ = [
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
     'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
     'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter',
-    'ParentNuclideFilter', 'ParticleFilter', 'ParticleProductionFilter', 'PolarFilter',
+    'ParentNuclideFilter', 'ParticleFilter', 'ParticleProductionFilter', 'PointFilter', 'PolarFilter',
     'ReactionFilter', 'SphericalHarmonicsFilter', 'SpatialLegendreFilter',
     'SurfaceFilter', 'TimeFilter', 'UniverseFilter', 'WeightFilter', 'ZernikeFilter',
     'ZernikeRadialFilter', 'filters'
@@ -607,6 +607,8 @@ class ParticleFilter(Filter):
             self._index, particle_i.ctypes.data_as(POINTER(c_int32)))
         return [ParticleType(i) for i in particle_i]
 
+class PointFilter(Filter):
+    filter_type = 'point'
 
 class ParticleProductionFilter(Filter):
     """Filter secondary-particle production events.

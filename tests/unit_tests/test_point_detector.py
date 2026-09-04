@@ -109,12 +109,19 @@ def _fissile_model(detectors, particles=200, batches=10, inactive=2, seed=1):
 def _run(model):
     """Run and return (keff, {tally name: (mean, std_dev)}).
 
+    Pinned to one thread. Tally contributions are accumulated with atomics, so
+    with several threads the summation order varies between runs and results
+    agree only to the last couple of bits -- which would defeat the exact
+    comparisons below. The properties under test here (whose random numbers a
+    detector draws) are exactly reproducible; the floating-point summation
+    order is not, and is not what these tests are about.
+
     Results are read eagerly. openmc.Tally loads them lazily from whichever
     statepoint it was linked to, and successive runs in one working directory
     overwrite that file, so anything not copied out here is gone by the time
     the next model has run.
     """
-    sp_path = model.run()
+    sp_path = model.run(threads=1)
     results = {}
     with openmc.StatePoint(sp_path) as sp:
         keff = sp.keff if sp.run_mode == 'eigenvalue' else None

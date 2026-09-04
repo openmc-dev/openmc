@@ -534,8 +534,11 @@ private:
 
   bool write_track_ {false};
 
-  uint64_t seeds_[N_STREAMS];
-  int stream_;
+  // Default-initialized: ParticleRay and any other ParticleData built outside
+  // init_particle_seeds() would otherwise carry indeterminate values, and
+  // current_seed() indexes seeds_ with stream_
+  uint64_t seeds_[N_STREAMS] {};
+  int stream_ {STREAM_TRACKING};
 
   vector<SourceSite> local_secondary_bank_;
 

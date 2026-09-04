@@ -1,9 +1,10 @@
 #ifndef OPENMC_TALLIES_NEXT_EVENT_SCORING_H
 #define OPENMC_TALLIES_NEXT_EVENT_SCORING_H
 
-#include <cmath>   // for exp
-#include <cstdint> // for uint64_t
-#include <cstring> // for memcpy
+#include <cmath>            // for exp
+#include <cstdint>          // for uint64_t
+#include <cstring>          // for memcpy
+#include <initializer_list> // for initializer_list
 
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
@@ -16,27 +17,33 @@
 
 namespace openmc {
 
+//! FNV-1a over the bit patterns of a set of doubles.
+inline uint64_t point_detector_hash(std::initializer_list<double> values)
+{
+  uint64_t h {14695981039346656037ULL};
+  for (double value : values) {
+    uint64_t bits;
+    std::memcpy(&bits, &value, sizeof(bits));
+    for (int b = 0; b < 8; ++b) {
+      h ^= (bits >> (8 * b)) & 0xFFULL;
+      h *= 1099511628211ULL;
+    }
+  }
+  return h;
+}
+
 //! RNG substream offset for a detector, derived from its position.
 //!
 //! Keying on the position rather than on the detector's index in
 //! model::active_point_detectors matters: that container is a std::set, so
 //! adding a detector can renumber the ones already there. A position-derived
 //! offset makes each detector's contribution depend only on where it is.
-//! FNV-1a over the coordinate bits, masked to 56 bits to keep the skip-ahead
-//! cheap while leaving collisions between substreams negligible.
+//! Masked to 56 bits to keep the skip-ahead cheap while leaving collisions
+//! between substreams negligible.
 inline int64_t point_detector_substream_offset(const Position& det)
 {
-  uint64_t h {14695981039346656037ULL};
-  const double xyz[3] {det.x, det.y, det.z};
-  for (int i = 0; i < 3; ++i) {
-    uint64_t bits;
-    std::memcpy(&bits, &xyz[i], sizeof(bits));
-    for (int b = 0; b < 8; ++b) {
-      h ^= (bits >> (8 * b)) & 0xFFULL;
-      h *= 1099511628211ULL;
-    }
-  }
-  return static_cast<int64_t>(h & 0x00FFFFFFFFFFFFFFULL);
+  return static_cast<int64_t>(
+    point_detector_hash({det.x, det.y, det.z}) & 0x00FFFFFFFFFFFFFFULL);
 }
 
 //==============================================================================
@@ -119,6 +126,23 @@ void score_point_tally_impl(const Position r, const ParticleType type,
     if (pdf == 0.0)
       continue;
     auto p = ParticleRay(r, u, type, time, E);
+
+    // The ray needs a defined RNG state of its own: calculate_xs() reaches
+    // Nuclide::calculate_urr_xs() for any nuclide with probability tables, and
+    // that samples from seeds(STREAM_URR_PTABLE). Whatever the ray inherits by
+    // default is not detector-specific, so seed every stream from this
+    // detector's substream. Without this the optical depth through a URR
+    // nuclide depends on how many detectors were traced before this one.
+    uint64_t ray_seed =
+      (seed != nullptr)
+        ? *seed
+        : point_detector_hash({det.x, det.y, det.z, r.x, r.y, r.z, E});
+    for (int i_stream = 0; i_stream < N_STREAMS; ++i_stream) {
+      p.seeds(i_stream) = ray_seed;
+      advance_prn_seed(1, &ray_seed);
+    }
+    p.stream() = STREAM_TRACKING;
+
     p.Ray::trace(total_distance);
     // The ray left the model before reaching the detector
     if (!p.completed())

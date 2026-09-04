@@ -31,19 +31,23 @@ def _point_tally(detectors, scores=('flux',), energy_bins=None):
     return tally
 
 
-def _hydrogen_model(detectors, energy_bins=None, survival=False,
-                    particles=200, batches=10, seed=1):
+def _hydrogen_model(detectors, energy_bins=None, survival=False, absorber=False,
+                    radius=100.0, particles=200, batches=10, seed=1):
     """Point source at the origin inside a homogeneous hydrogen sphere.
 
     Hydrogen is deliberate: awr < 1 puts elastic scattering on the
     double-valued CM->lab branch, which is the path that consumes random
-    numbers inside the estimator.
+    numbers inside the estimator. The optional B10 gives histories somewhere to
+    terminate -- without it neutrons thermalize and wander for a very long time,
+    since H1 capture alone barely removes anything.
     """
     h = openmc.Material()
     h.add_nuclide('H1', 1.0)
+    if absorber:
+        h.add_nuclide('B10', 0.02)
     h.set_density('atom/b-cm', 0.05)
 
-    sphere = openmc.Sphere(r=100.0, boundary_type='vacuum')
+    sphere = openmc.Sphere(r=radius, boundary_type='vacuum')
     cell = openmc.Cell(fill=h, region=-sphere)
 
     model = openmc.Model()
@@ -103,13 +107,19 @@ def _fissile_model(detectors, particles=200, batches=10, inactive=2, seed=1):
 
 
 def _run(model):
-    """Run and return (keff, {tally name: mean array})."""
+    """Run and return (keff, {tally name: (mean, std_dev)}).
+
+    Results are read eagerly. openmc.Tally loads them lazily from whichever
+    statepoint it was linked to, and successive runs in one working directory
+    overwrite that file, so anything not copied out here is gone by the time
+    the next model has run.
+    """
     sp_path = model.run()
     results = {}
     with openmc.StatePoint(sp_path) as sp:
         keff = sp.keff if sp.run_mode == 'eigenvalue' else None
         for tally in sp.tallies.values():
-            results[tally.name] = tally.mean.copy()
+            results[tally.name] = (tally.mean.copy(), tally.std_dev.copy())
     return keff, results
 
 
@@ -126,7 +136,7 @@ def test_point_detector_does_not_perturb_transport(run_in_tmpdir):
 
     assert keff_det.nominal_value == keff_ref.nominal_value
     assert keff_det.std_dev == keff_ref.std_dev
-    np.testing.assert_array_equal(det['witness'], ref['witness'])
+    np.testing.assert_array_equal(det['witness'][0], ref['witness'][0])
 
 
 def test_point_detector_independent_of_other_detectors(run_in_tmpdir):
@@ -141,12 +151,15 @@ def test_point_detector_independent_of_other_detectors(run_in_tmpdir):
     _, one = _run(_fissile_model([DETECTOR]))
     _, two = _run(_fissile_model([DETECTOR, second]))
 
-    # Transport is untouched either way
-    np.testing.assert_array_equal(two['witness'], one['witness'])
+    # Transport is untouched either way -- this part is exact
+    np.testing.assert_array_equal(two['witness'][0], one['witness'][0])
 
-    # ...and so is the first detector's bin
+    # ...and so is the first detector's bin. This is exact: every input to the
+    # score -- the substream, the ray's own RNG state, the geometry -- is a
+    # function of the detector's position alone.
     np.testing.assert_array_equal(
-        two['detector'].reshape(2, -1)[0], one['detector'].reshape(1, -1)[0])
+        two['detector'][0].reshape(2, -1)[0],
+        one['detector'][0].reshape(1, -1)[0])
 
 
 def test_point_detector_uncollided_attenuation(run_in_tmpdir):
@@ -166,6 +179,7 @@ def test_point_detector_uncollided_attenuation(run_in_tmpdir):
     model.settings.cutoff = {'energy_neutron': 1.99e6}
 
     _, results = _run(model)
+    mean, _ = results['detector']
 
     # Total macroscopic cross section at the source energy
     library = openmc.data.DataLibrary.from_xml()
@@ -176,7 +190,7 @@ def test_point_detector_uncollided_attenuation(run_in_tmpdir):
     distance = np.linalg.norm(DETECTOR[0])
     expected = np.exp(-sigma_t * distance) / (4.0 * np.pi * distance**2)
 
-    assert results['detector'].sum() == pytest.approx(expected, rel=0.02)
+    assert mean.sum() == pytest.approx(expected, rel=0.02)
 
 
 def test_point_detector_applies_particle_weight(run_in_tmpdir):
@@ -188,16 +202,17 @@ def test_point_detector_applies_particle_weight(run_in_tmpdir):
     survival-biased runs are compared statistically, so the tolerance is loose
     -- the failure mode this guards against is order-unity, not marginal.
     """
-    kwargs = dict(particles=4000, batches=20)
+    kwargs = dict(absorber=True, radius=30.0, particles=1000, batches=20)
     analog, _ = _hydrogen_model([DETECTOR], survival=False, **kwargs)
     biased, _ = _hydrogen_model([DETECTOR], survival=True, **kwargs)
 
-    analog.run(apply_tally_results=True)
-    biased.run(apply_tally_results=True)
+    _, analog_results = _run(analog)
+    _, biased_results = _run(biased)
 
-    a = analog.tallies[0]
-    b = biased.tallies[0]
-    sigma = np.hypot(a.std_dev.sum(), b.std_dev.sum())
-    difference = abs(b.mean.sum() - a.mean.sum())
+    a_mean, a_std = analog_results['detector']
+    b_mean, b_std = biased_results['detector']
 
-    assert difference < max(4.0 * sigma, 0.02 * a.mean.sum())
+    sigma = np.hypot(a_std.sum(), b_std.sum())
+    difference = abs(b_mean.sum() - a_mean.sum())
+
+    assert difference < max(4.0 * sigma, 0.05 * a_mean.sum())

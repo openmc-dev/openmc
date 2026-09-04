@@ -35,6 +35,9 @@ class Library:
         A geometry which has been initialized with a root universe
     by_nuclide : bool
         If true, computes cross sections for each nuclide in each domain
+    particle_type : {'neutron', 'photon'}, optional
+        Particle type for which cross sections are computed. If not specified,
+        tallies are not filtered by particle type.
     mgxs_types : Iterable of str
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     name : str, optional
@@ -47,6 +50,8 @@ class Library:
         An geometry which has been initialized with a root universe
     by_nuclide : bool
         If true, computes cross sections for each nuclide in each domain
+    particle_type : openmc.ParticleType or None
+        Particle type for which cross sections are computed
     mgxs_types : Iterable of str
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
@@ -102,11 +107,12 @@ class Library:
     """
 
     def __init__(self, geometry, by_nuclide=False,
-                 mgxs_types=None, name=''):
+                 mgxs_types=None, name='', particle_type=None):
 
         self._name = ''
         self._geometry = None
         self._by_nuclide = None
+        self._particle_type = None
         self._mgxs_types = []
         self._domain_type = None
         self._domains = 'all'
@@ -129,6 +135,8 @@ class Library:
         self.name = name
         self.geometry = geometry
         self.by_nuclide = by_nuclide
+        if particle_type is not None:
+            self.particle_type = particle_type
 
         if mgxs_types is not None:
             self.mgxs_types = mgxs_types
@@ -142,6 +150,7 @@ class Library:
             clone._name = self.name
             clone._geometry = self.geometry
             clone._by_nuclide = self.by_nuclide
+            clone._particle_type = self.particle_type
             clone._mgxs_types = self.mgxs_types
             clone._domain_type = self.domain_type
             clone._domains = copy.deepcopy(self.domains)
@@ -159,6 +168,7 @@ class Library:
             clone._sp_filename = self._sp_filename
             clone._keff = self._keff
             clone._sparse = self.sparse
+            clone._estimator = self.estimator
 
             clone._all_mgxs = {}
             for domain in self.domains:
@@ -203,7 +213,11 @@ class Library:
             openmc.mgxs.ARBITRARY_VECTOR_TYPES + \
             openmc.mgxs.ARBITRARY_MATRIX_TYPES
         if mgxs_types == 'all':
-            self._mgxs_types = all_mgxs_types
+            if self.particle_type == openmc.ParticleType.PHOTON:
+                self._mgxs_types = (
+                    'total', 'absorption', 'nu-scatter matrix')
+            else:
+                self._mgxs_types = all_mgxs_types
         else:
             cv.check_iterable_type('mgxs_types', mgxs_types, str)
             for mgxs_type in mgxs_types:
@@ -223,6 +237,20 @@ class Library:
                              'mesh domain')
 
         self._by_nuclide = by_nuclide
+
+    @property
+    def particle_type(self):
+        return self._particle_type
+
+    @particle_type.setter
+    def particle_type(self, particle_type):
+        particle_type = openmc.ParticleType(particle_type)
+        cv.check_value('particle type', particle_type,
+                       (openmc.ParticleType.NEUTRON,
+                        openmc.ParticleType.PHOTON))
+        self._particle_type = particle_type
+        if particle_type == openmc.ParticleType.PHOTON:
+            self._correction = None
 
     @property
     def domain_type(self):
@@ -513,13 +541,15 @@ class Library:
                 else:
                     mgxs = openmc.mgxs.MGXS.get_mgxs(
                         mgxs_type, name=self.name, num_polar=self.num_polar,
-                        num_azimuthal=self.num_azimuthal)
+                        num_azimuthal=self.num_azimuthal,
+                        particle_type=self.particle_type)
 
                 mgxs.domain = domain
                 mgxs.domain_type = self.domain_type
                 mgxs.energy_groups = self.energy_groups
                 mgxs.by_nuclide = self.by_nuclide
-                if self.estimator is not None:
+                if self.estimator is not None and not isinstance(
+                        mgxs, openmc.mgxs.PhotonTransferMatrixXS):
                     mgxs.estimator = self.estimator
 
                 if mgxs_type in openmc.mgxs.MDGXS_TYPES:
@@ -1194,8 +1224,18 @@ class Library:
             xsdata.set_decay_rate_mgxs(mymgxs, temperature=temperature, xs_type=xs_type,
                                        nuclide=[nuclide], subdomain=subdomain)
 
+        # Photon nu-scatter includes both the surviving primary photon and all
+        # banked secondary photons, so its multiplicity is already folded into
+        # the matrix values.
+        if self.particle_type == openmc.ParticleType.PHOTON:
+            production = self.get_mgxs(domain, 'nu-scatter matrix')
+            xsdata.set_scatter_matrix_mgxs(
+                production, temperature=temperature, xs_type=xs_type,
+                nuclide=[nuclide], subdomain=subdomain)
+            using_multiplicity = False
+
         # If multiplicity matrix is available, prefer that
-        if 'multiplicity matrix' in self.mgxs_types:
+        elif 'multiplicity matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'multiplicity matrix')
             xsdata.set_multiplicity_matrix_mgxs(mymgxs, temperature=temperature,
                                                 xs_type=xs_type,
@@ -1231,7 +1271,9 @@ class Library:
         else:
             using_multiplicity = False
 
-        if using_multiplicity:
+        if self.particle_type == openmc.ParticleType.PHOTON:
+            pass
+        elif using_multiplicity:
             if 'nu-scatter matrix' in self.mgxs_types:
                 nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
             else:
@@ -1369,7 +1411,8 @@ class Library:
 
         # Initialize file
         mgxs_file = openmc.MGXSLibrary(
-            self.energy_groups, num_delayed_groups=self.num_delayed_groups)
+            self.energy_groups, num_delayed_groups=self.num_delayed_groups,
+            particle_type=self.particle_type)
 
         if self.domain_type == 'mesh':
             # Create the xsdata objects and add to the mgxs_file
@@ -1584,6 +1627,39 @@ class Library:
         """
 
         error_flag = False
+
+        if self.particle_type == openmc.ParticleType.PHOTON:
+            photon_mgxs_types = {
+                'total', 'absorption', 'nu-scatter matrix'}
+            unsupported = set(self.mgxs_types) - photon_mgxs_types
+            if unsupported:
+                warn('Photon MGXS libraries do not support the following '
+                     f'MGXS types: {sorted(unsupported)}.')
+                error_flag = True
+            if self.by_nuclide:
+                warn('Photon production cannot be tallied by nuclide.')
+                error_flag = True
+            if self.correction is not None:
+                warn('Photon MGXS libraries do not support a transport '
+                     'correction; correction must be None.')
+                error_flag = True
+            if self.num_polar != 1 or self.num_azimuthal != 1:
+                warn('Photon production only supports an isotropic '
+                     'representation.')
+                error_flag = True
+            if self.estimator not in (None, 'tracklength'):
+                warn('Photon MGXS libraries require the default tracklength '
+                     'estimator for flux-weighted cross sections.')
+                error_flag = True
+            for mgxs_type in ('total', 'absorption', 'nu-scatter matrix'):
+                if mgxs_type not in self.mgxs_types:
+                    warn(f'A "{mgxs_type}" MGXS type is required for a '
+                         'photon MGXS library.')
+                    error_flag = True
+            if error_flag:
+                raise ValueError('Invalid photon MGXS configuration '
+                                 'encountered.')
+            return
 
         # if correction is 'P0', then transport must be provided
         # otherwise total must be provided

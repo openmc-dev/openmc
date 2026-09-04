@@ -177,6 +177,9 @@ class MGXS:
         The energy group structure for energy condensation
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
+    particle_type : {'neutron', 'photon'}, optional
+        Particle type for which cross sections are computed. If not specified,
+        tallies are not filtered by particle type.
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
@@ -195,6 +198,8 @@ class MGXS:
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
+    particle_type : openmc.ParticleType or None
+        Particle type for which cross sections are computed
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
@@ -261,10 +266,11 @@ class MGXS:
 
     def __init__(self, domain=None, domain_type=None,
                  energy_groups=None, by_nuclide=False, name='', num_polar=1,
-                 num_azimuthal=1):
+                 num_azimuthal=1, particle_type=None):
         self._name = ''
         self._rxn_type = None
         self._by_nuclide = None
+        self._particle_type = None
         self._nuclides = None
         self._estimator = 'tracklength'
         self._domain = None
@@ -284,6 +290,8 @@ class MGXS:
 
         self.name = name
         self.by_nuclide = by_nuclide
+        if particle_type is not None:
+            self.particle_type = particle_type
 
         if domain_type is not None:
             self.domain_type = domain_type
@@ -306,6 +314,7 @@ class MGXS:
         clone._name = self.name
         clone._rxn_type = self.rxn_type
         clone._by_nuclide = self.by_nuclide
+        clone._particle_type = self.particle_type
         clone._nuclides = copy.deepcopy(self._nuclides, memo)
         clone._domain = self.domain
         clone._domain_type = self.domain_type
@@ -473,6 +482,18 @@ class MGXS:
         self._by_nuclide = by_nuclide
 
     @property
+    def particle_type(self):
+        return self._particle_type
+
+    @particle_type.setter
+    def particle_type(self, particle_type):
+        particle_type = openmc.ParticleType(particle_type)
+        cv.check_value('particle type', particle_type,
+                       (openmc.ParticleType.NEUTRON,
+                        openmc.ParticleType.PHOTON))
+        self._particle_type = particle_type
+
+    @property
     def domain(self):
         return self._domain
 
@@ -611,6 +632,10 @@ class MGXS:
                 for add_filter in filters:
                     self._tallies[key].filters.append(add_filter)
 
+                if self.particle_type is not None:
+                    self._tallies[key].filters.append(
+                        openmc.ParticleFilter(self.particle_type))
+
                 # If this is a by-nuclide cross-section, add nuclides to Tally
                 if self.by_nuclide and score != 'flux':
                     self._tallies[key].nuclides += self.get_nuclides()
@@ -719,7 +744,7 @@ class MGXS:
     @staticmethod
     def get_mgxs(mgxs_type, domain=None, domain_type=None,
                  energy_groups=None, by_nuclide=False, name='', num_polar=1,
-                 num_azimuthal=1):
+                 num_azimuthal=1, particle_type=None):
         """Return a MGXS subclass object for some energy group structure within
         some spatial domain for some reaction type.
 
@@ -753,6 +778,9 @@ class MGXS:
         num_azimuthal : Integral, optional
             Number of equi-width azimuthal angles for angle discretization;
             defaults to no discretization
+        particle_type : {'neutron', 'photon'}, optional
+            Particle type for which cross sections are computed. If not
+            specified, tallies are not filtered by particle type.
 
         Returns
         -------
@@ -790,6 +818,13 @@ class MGXS:
             mgxs = ScatterXS(domain, domain_type, energy_groups, nu=True)
         elif mgxs_type == 'scatter matrix':
             mgxs = ScatterMatrixXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'nu-scatter matrix' and \
+                particle_type is not None and \
+                openmc.ParticleType(particle_type) == \
+                openmc.ParticleType.PHOTON:
+            mgxs = PhotonTransferMatrixXS(
+                domain, domain_type, energy_groups, by_nuclide, name,
+                num_polar, num_azimuthal)
         elif mgxs_type == 'nu-scatter matrix':
             mgxs = ScatterMatrixXS(domain, domain_type, energy_groups, nu=True)
         elif mgxs_type == 'multiplicity matrix':
@@ -835,6 +870,8 @@ class MGXS:
         mgxs.name = name
         mgxs.num_polar = num_polar
         mgxs.num_azimuthal = num_azimuthal
+        if particle_type is not None:
+            mgxs.particle_type = particle_type
         return mgxs
 
     def get_nuclides(self):
@@ -4921,6 +4958,168 @@ class ScatterMatrixXS(MatrixMGXS):
             string += '\n'
 
         print(string)
+
+
+@add_params
+class PhotonTransferMatrixXS(MatrixMGXS):
+    r"""A photon transfer matrix multigroup cross section.
+
+    This matrix includes both the photon that survives a coherent or incoherent
+    scattering event and secondary photons banked during photon interactions.
+    The latter include photons from atomic relaxation, thick-target
+    bremsstrahlung, and positron annihilation. Since each banked photon is
+    scored with its statistical weight, photon multiplicity is included directly
+    in the production matrix.
+
+    Photon production is only available as a macroscopic, isotropic cross
+    section. Per-nuclide production cannot be determined because secondary
+    photons are tallied from the collision bank rather than a reaction score.
+    """
+
+    def __init__(self, domain=None, domain_type=None, energy_groups=None,
+                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+        if by_nuclide:
+            raise ValueError('Photon production cannot be tallied by nuclide')
+        if num_polar != 1 or num_azimuthal != 1:
+            raise ValueError('Photon production only supports an isotropic '
+                             'representation')
+        super().__init__(domain, domain_type, energy_groups, False, name)
+        self._rxn_type = 'nu-scatter'
+        self._mgxs_type = 'nu-scatter matrix'
+        self._particle_type = openmc.ParticleType.PHOTON
+        self._valid_estimators = ['analog']
+
+    @property
+    def by_nuclide(self):
+        return self._by_nuclide
+
+    @by_nuclide.setter
+    def by_nuclide(self, by_nuclide):
+        cv.check_type('by_nuclide', by_nuclide, bool)
+        if by_nuclide:
+            raise ValueError('Photon production cannot be tallied by nuclide')
+        self._by_nuclide = False
+
+    @property
+    def particle_type(self):
+        return self._particle_type
+
+    @particle_type.setter
+    def particle_type(self, particle_type):
+        particle_type = openmc.ParticleType(particle_type)
+        if particle_type != openmc.ParticleType.PHOTON:
+            raise ValueError('Photon production requires photon tallies')
+        self._particle_type = particle_type
+
+    @property
+    def scores(self):
+        return ['flux', 'scatter', 'events']
+
+    @property
+    def tally_keys(self):
+        return ['flux', 'primary photon production', 'secondary photon production']
+
+    @property
+    def filters(self):
+        group_edges = self.energy_groups.group_edges
+        energy = openmc.EnergyFilter(group_edges)
+        energyout = openmc.EnergyoutFilter(group_edges)
+        production = openmc.ParticleProductionFilter(
+            'photon', group_edges)
+        return [[energy], [energy, energyout], [energy, production]]
+
+    @property
+    def estimator(self):
+        return ['tracklength', 'analog', 'analog']
+
+    @property
+    def scatter_format(self):
+        return SCATTER_LEGENDRE
+
+    @property
+    def legendre_order(self):
+        return 0
+
+    def _with_energyout_filter(self):
+        """Return a copy using an outgoing-energy production filter."""
+        production = copy.deepcopy(self)
+        secondary = production.tallies['secondary photon production']
+        if not secondary.contains_filter(openmc.ParticleProductionFilter):
+            return production
+        particle_production = secondary.find_filter(
+            openmc.ParticleProductionFilter)
+        energyout = openmc.EnergyoutFilter(particle_production.energies)
+        secondary.filters = [
+            energyout
+            if isinstance(f, openmc.ParticleProductionFilter) else f
+            for f in secondary.filters
+        ]
+        return production
+
+    def get_condensed_xs(self, coarse_groups):
+        """Construct an energy-condensed photon production matrix.
+
+        Parameters
+        ----------
+        coarse_groups : openmc.mgxs.EnergyGroups
+            Coarse energy group structure
+
+        Returns
+        -------
+        openmc.mgxs.PhotonTransferMatrixXS
+            Photon transfer matrix condensed to the coarse group structure
+
+        """
+        production = self._with_energyout_filter()
+        return MGXS.get_condensed_xs(production, coarse_groups)
+
+    def get_slice(self, nuclides=[], in_groups=[], out_groups=[]):
+        """Build a sliced photon production matrix.
+
+        Parameters
+        ----------
+        nuclides : list of str
+            Nuclides to include; photon production only supports macroscopic
+            data
+        in_groups : list of int
+            Incoming energy groups to include
+        out_groups : list of int
+            Outgoing energy groups to include
+
+        Returns
+        -------
+        openmc.mgxs.PhotonTransferMatrixXS
+            Sliced photon transfer matrix
+
+        """
+        production = self._with_energyout_filter()
+        return MatrixMGXS.get_slice(
+            production, nuclides, in_groups, out_groups)
+
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            primary = copy.deepcopy(
+                self.tallies['primary photon production'])
+            secondary = copy.deepcopy(
+                self.tallies['secondary photon production'])
+
+            # Give the secondary tally the same outgoing-energy filter as the
+            # primary tally so that the two production contributions can be
+            # combined with standard tally arithmetic.
+            energyout = copy.deepcopy(
+                primary.find_filter(openmc.EnergyoutFilter))
+            secondary.filters = [
+                energyout
+                if isinstance(f, openmc.ParticleProductionFilter) else f
+                for f in secondary.filters
+            ]
+            primary._scores = ['photon-production']
+            secondary._scores = ['photon-production']
+            self._rxn_rate_tally = primary + secondary
+            self._rxn_rate_tally.sparse = self.sparse
+
+        return self._rxn_rate_tally
 
 
 @add_params

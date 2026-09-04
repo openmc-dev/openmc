@@ -1586,7 +1586,8 @@ class XSdata:
 
         """
 
-        check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
+        check_type('scatter', scatter, (openmc.mgxs.ScatterMatrixXS,
+                                        openmc.mgxs.PhotonTransferMatrixXS))
         check_value('energy_groups', scatter.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', scatter.domain_type,
@@ -2364,6 +2365,8 @@ class MGXSLibrary:
         Energy group structure
     num_delayed_groups : int
         Num delayed groups
+    particle_type : {'neutron', 'photon'}, optional
+        Particle type represented by the library
 
     Attributes
     ----------
@@ -2371,13 +2374,19 @@ class MGXSLibrary:
         Energy group structure.
     num_delayed_groups : int
         Num delayed groups
+    particle_type : openmc.ParticleType or None
+        Particle type represented by the library
     xsdatas : Iterable of openmc.XSdata
         Iterable of multi-Group cross section data objects
     """
 
-    def __init__(self, energy_groups, num_delayed_groups=0):
+    def __init__(self, energy_groups, num_delayed_groups=0,
+                 particle_type=None):
         self.energy_groups = energy_groups
         self.num_delayed_groups = num_delayed_groups
+        self._particle_type = None
+        if particle_type is not None:
+            self.particle_type = particle_type
         self._xsdatas = []
 
     def __deepcopy__(self, memo):
@@ -2388,6 +2397,7 @@ class MGXSLibrary:
             clone = type(self).__new__(type(self))
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._num_delayed_groups = self.num_delayed_groups
+            clone._particle_type = self.particle_type
             clone._xsdatas = copy.deepcopy(self.xsdatas, memo)
 
             memo[id(self)] = clone
@@ -2419,6 +2429,18 @@ class MGXSLibrary:
         check_less_than('num_delayed_groups', num_delayed_groups,
                         openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
         self._num_delayed_groups = num_delayed_groups
+
+    @property
+    def particle_type(self):
+        return self._particle_type
+
+    @particle_type.setter
+    def particle_type(self, particle_type):
+        particle_type = openmc.ParticleType(particle_type)
+        check_value('particle type', particle_type,
+                    (openmc.ParticleType.NEUTRON,
+                     openmc.ParticleType.PHOTON))
+        self._particle_type = particle_type
 
     @property
     def xsdatas(self):
@@ -2592,6 +2614,8 @@ class MGXSLibrary:
         file.attrs['energy_groups'] = self.energy_groups.num_groups
         file.attrs['delayed_groups'] = self.num_delayed_groups
         file.attrs['group structure'] = self.energy_groups.group_edges
+        if self.particle_type is not None:
+            file.attrs['particle_type'] = np.bytes_(str(self.particle_type))
 
         for xsdata in self._xsdatas:
             xsdata.to_hdf5(file)
@@ -2633,7 +2657,10 @@ class MGXSLibrary:
             group_structure = file.attrs['group structure']
             num_delayed_groups = file.attrs['delayed_groups']
             energy_groups = openmc.mgxs.EnergyGroups(group_structure)
-            data = cls(energy_groups, num_delayed_groups)
+            particle_type = file.attrs.get('particle_type')
+            if isinstance(particle_type, bytes):
+                particle_type = particle_type.decode()
+            data = cls(energy_groups, num_delayed_groups, particle_type)
 
             for group_name, group in file.items():
                 data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,

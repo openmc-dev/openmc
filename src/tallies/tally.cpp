@@ -1606,6 +1606,11 @@ extern "C" int openmc_global_tallies(double** ptr)
   return 0;
 }
 
+extern "C" int32_t openmc_get_n_realizations()
+{
+  return simulation::n_realizations;
+}
+
 extern "C" size_t tallies_size()
 {
   return model::tallies.size();

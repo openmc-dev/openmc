@@ -11,6 +11,10 @@ void score_point_tally_elastic(
   Particle& p, int i_nuclide, const Reaction& rx, int i_product, Direction v_t)
 {
 
+  // Draw from the dedicated point-detector stream so that scoring does not
+  // perturb the transport random sequence
+  PointDetectorStream stream_guard {p};
+
   const auto& nuc {data::nuclides[i_nuclide]};
   double awr = nuc->awr_;
 
@@ -44,12 +48,15 @@ void score_point_tally_elastic(
       return jac * 0.5 / (2.0 * PI);
     }
   };
-  score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
+  score_point_tally_impl(
+    p.r(), p.type(), p.time(), p.wgt(), p.current_seed(), pdf);
 }
 
 void score_point_tally_inelastic(
   Particle& p, int i_nuclide, const Reaction& rx, int i_product, double yield)
 {
+  PointDetectorStream stream_guard {p};
+
   const auto& nuc {data::nuclides[i_nuclide]};
   double awr = nuc->awr_;
   auto u_n = p.u();
@@ -62,12 +69,15 @@ void score_point_tally_inelastic(
              E_n, mu, E, p.current_seed(), is_com, awr) /
            (2.0 * PI) * yield;
   };
-  score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
+  score_point_tally_impl(
+    p.r(), p.type(), p.time(), p.wgt(), p.current_seed(), pdf);
 }
 
 void score_point_tally_fission(
   Particle& p, int i_nuclide, const Reaction& rx, int i_product)
 {
+  PointDetectorStream stream_guard {p};
+
   const auto& nuc {data::nuclides[i_nuclide]};
   double awr = nuc->awr_;
   auto u_n = p.u();
@@ -80,12 +90,15 @@ void score_point_tally_fission(
              E_n, mu, E, p.current_seed(), is_com, awr) /
            (2.0 * PI);
   };
-  score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
+  score_point_tally_impl(
+    p.r(), p.type(), p.time(), p.wgt(), p.current_seed(), pdf);
 }
 
 void score_point_tally_sab(Particle& p, int i_nuclide, const ThermalData& sab,
   const NuclideMicroXS& micro)
 {
+  PointDetectorStream stream_guard {p};
+
   const auto& nuc {data::nuclides[i_nuclide]};
   double awr = nuc->awr_;
   auto u_n = p.u();
@@ -96,7 +109,8 @@ void score_point_tally_sab(Particle& p, int i_nuclide, const ThermalData& sab,
              micro, E_n, mu, E, p.current_seed(), false, awr) /
            (2.0 * PI);
   };
-  score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
+  score_point_tally_impl(
+    p.r(), p.type(), p.time(), p.wgt(), p.current_seed(), pdf);
 }
 
 void score_point_tally_source(SourceSite& site, int source_index)
@@ -109,7 +123,10 @@ void score_point_tally_source(SourceSite& site, int source_index)
     E = site.E;
     return src->angle()->evaluate(u);
   };
-  score_point_tally_impl(site.r, site.particle, site.time, pdf);
+  // The source angular density is evaluated analytically, so no random numbers
+  // are consumed and no substream is needed
+  score_point_tally_impl(
+    site.r, site.particle, site.time, site.wgt, nullptr, pdf);
 }
 
 } // namespace openmc

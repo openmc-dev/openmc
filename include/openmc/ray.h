@@ -34,9 +34,18 @@ public:
 
   virtual void update_distance();
 
+  //! Whether the ray travelled the full max_distance passed to trace().
+  //! False if it left the model (or hit a dead end) beforehand. This is an
+  //! exact flag rather than a comparison of traversal_distance() against the
+  //! requested distance, which is only accurate to floating-point roundoff.
+  bool completed() const { return completed_; }
+
 protected:
   // Records how far the ray has traveled
   double traversal_distance_ {0.0};
+
+  // Set when trace() consumed the whole max_distance it was given
+  bool completed_ {false};
 
 private:
   // Max intersections before we assume ray tracing is caught in an infinite

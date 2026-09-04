@@ -132,7 +132,15 @@ void Ray::trace(double max_distance)
     max -= distance;
 
     if (max == 0.0) {
+      // The ray stopped part-way through this segment, so only the truncated
+      // distance was actually travelled. update_distance() accumulates
+      // boundary().distance() into traversal_distance_ and traversal_mfp_,
+      // so it has to see the truncated value -- otherwise the remainder of
+      // the segment (out to the next surface) is counted, which over-states
+      // the optical depth for anything that stops inside a cell.
+      boundary().distance() = distance;
       update_distance();
+      completed_ = true;
       break;
     }
 

@@ -26,6 +26,7 @@ _dll.openmc_get_tally_index.errcheck = _error_handler
 _dll.openmc_global_tallies.argtypes = [POINTER(POINTER(c_double))]
 _dll.openmc_global_tallies.restype = c_int
 _dll.openmc_global_tallies.errcheck = _error_handler
+_dll.openmc_get_n_realizations.restype = c_int32
 _dll.openmc_tally_get_active.argtypes = [c_int32, POINTER(c_bool)]
 _dll.openmc_tally_get_active.restype = c_int
 _dll.openmc_tally_get_active.errcheck = _error_handler
@@ -152,7 +153,7 @@ def global_tallies():
 
 def num_realizations():
     """Number of realizations of global tallies."""
-    return c_int32.in_dll(_dll, 'n_realizations').value
+    return _dll.openmc_get_n_realizations()
 
 
 class Tally(_FortranObjectWithID):

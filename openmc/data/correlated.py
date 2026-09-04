@@ -360,7 +360,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
             # Secondary energy distribution
             n_energy_out = int(ace.xss[idx + 1])
             data = ace.xss[idx + 2:idx + 2 + 4*n_energy_out].copy()
-            data.shape = (4, n_energy_out)
+            data = data.reshape(4, n_energy_out)
             data[0,:] *= EV_PER_MEV
 
             # Create continuous distribution
@@ -400,7 +400,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
                     intt = int(ace.xss[idx])
                     n_cosine = int(ace.xss[idx + 1])
                     data = ace.xss[idx + 2:idx + 2 + 3*n_cosine]
-                    data.shape = (3, n_cosine)
+                    data = data.reshape(3, n_cosine)
 
                     mu_ij = Tabular(data[0], data[1], INTERPOLATION_SCHEME[intt])
                     mu_ij.c = data[2]
@@ -445,8 +445,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
             # TODO: separate out discrete lines
             n_angle = items[3]
             n_energy_out = items[5]
-            values = np.asarray(values)
-            values.shape = (n_energy_out, n_angle + 2)
+            values = np.asarray(values).reshape(n_energy_out, n_angle + 2)
 
             # Outgoing energy distribution at the i-th incoming energy
             eout_i = values[:,0]

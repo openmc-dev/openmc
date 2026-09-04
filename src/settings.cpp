@@ -1240,6 +1240,11 @@ void read_settings_xml(pugi::xml_node root)
       std::make_unique<WeightWindows>(node_ww));
   }
 
+  // Weight windows built from adjoint flux in an Exodus file (libMesh)
+  if (check_for_node(root, "weight_windows_exodus")) {
+    read_weight_windows_exodus(root.child("weight_windows_exodus"));
+  }
+
   // Enable weight windows by default if one or more are present
   if (variance_reduction::weight_windows.size() > 0)
     settings::weight_windows_on = true;

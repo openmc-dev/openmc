@@ -3708,6 +3708,23 @@ LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
   initialize();
 }
 
+// create the mesh from an externally constructed libMesh mesh, transferring
+// ownership to OpenMC
+LibMesh::LibMesh(unique_ptr<libMesh::MeshBase> input_mesh,
+  double length_multiplier, const std::string& filename)
+{
+  if (!input_mesh->is_replicated()) {
+    fatal_error("At present LibMesh tallies require a replicated mesh. Please "
+                "ensure 'input_mesh' is a libMesh::ReplicatedMesh.");
+  }
+
+  unique_m_ = std::move(input_mesh);
+  m_ = unique_m_.get();
+  filename_ = filename;
+  set_length_multiplier(length_multiplier);
+  initialize();
+}
+
 // create the mesh from an input file
 LibMesh::LibMesh(const std::string& filename, double length_multiplier)
 {
@@ -3924,7 +3941,7 @@ void LibMesh::set_score_data(const std::string& var_name,
   unsigned int std_dev_num = variable_map_.at(std_dev_name);
 
   for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
-       it++) {
+    it++) {
     if (!(*it)->active()) {
       continue;
     }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from math import pi
+from math import pi, sqrt
 
 import numpy as np
 from numpy.linalg import norm
@@ -12,13 +12,19 @@ import scipy.spatial
 
 _RADIUS = 0.1
 _PACKING_FRACTION = 0.35
+_TETRA_SIZE = 1
+_TETRA_VOLUME = _TETRA_SIZE**3/6
+_TETRA_NUM_SPHERES = 8
+_TETRA_PACKING_FRACTION = 0.2
 _PARAMS = [
     {'shape': 'rectangular_prism', 'volume': 1**3},
     {'shape': 'x_cylinder', 'volume': 1*pi*1**2},
     {'shape': 'y_cylinder', 'volume': 1*pi*1**2},
     {'shape': 'z_cylinder', 'volume': 1*pi*1**2},
     {'shape': 'sphere', 'volume': 4/3*pi*1**3},
-    {'shape': 'spherical_shell', 'volume': 4/3*pi*(1**3 - 0.5**3)}
+    {'shape': 'spherical_shell', 'volume': 4/3*pi*(1**3 - 0.5**3)},
+    {'shape': 'tetrahedron', 'volume': _TETRA_VOLUME,
+     'pf': _TETRA_PACKING_FRACTION}
 ]
 
 
@@ -90,6 +96,20 @@ def centers_spherical_shell():
     region = -sphere & +inner_sphere
     return openmc.model.pack_spheres(radius=_RADIUS, region=region,
         pf=_PACKING_FRACTION, initial_pf=0.2)
+
+
+@pytest.fixture(scope='module')
+def centers_tetrahedron():
+    min_x = openmc.XPlane(0)
+    min_y = openmc.YPlane(0)
+    min_z = openmc.ZPlane(0)
+    max_plane = openmc.Plane(a=1, b=1, c=1, d=_TETRA_SIZE)
+    region = +min_x & +min_y & +min_z & -max_plane
+    bounding_box = openmc.BoundingBox((0, 0, 0),
+                                      (_TETRA_SIZE, _TETRA_SIZE, _TETRA_SIZE))
+    return openmc.model.pack_spheres(radius=_RADIUS, region=region,
+        num_spheres=_TETRA_NUM_SPHERES, volume=_TETRA_VOLUME,
+        bounding_box=bounding_box)
 
 
 @pytest.fixture(scope='module')
@@ -170,10 +190,24 @@ def test_contained_spherical_shell(centers_spherical_shell):
     assert r_min > 0.5 or r_min == pytest.approx(0.5)
 
 
+def test_contained_tetrahedron(centers_tetrahedron):
+    """Make sure all spheres are entirely contained within the domain."""
+    x_min = min(centers_tetrahedron[:, 0]) - _RADIUS
+    y_min = min(centers_tetrahedron[:, 1]) - _RADIUS
+    z_min = min(centers_tetrahedron[:, 2]) - _RADIUS
+    limit = _TETRA_SIZE - _RADIUS*sqrt(3)
+    sum_max = max(centers_tetrahedron.sum(axis=1))
+    assert x_min > 0 or x_min == pytest.approx(0)
+    assert y_min > 0 or y_min == pytest.approx(0)
+    assert z_min > 0 or z_min == pytest.approx(0)
+    assert sum_max < limit or sum_max == pytest.approx(limit)
+
+
 def test_packing_fraction(container, centers):
     """Check that the actual PF is close to the requested PF."""
     pf = len(centers) * 4/3 * pi *_RADIUS**3 / container['volume']
-    assert pf == pytest.approx(_PACKING_FRACTION, rel=1e-2)
+    target_pf = container.get('pf', _PACKING_FRACTION)
+    assert pf == pytest.approx(target_pf, rel=1e-2)
 
 
 def test_num_spheres():

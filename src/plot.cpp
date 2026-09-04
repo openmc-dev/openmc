@@ -1517,8 +1517,8 @@ ImageData WireframeRayTracePlot::create_image() const
             if (i * i + j * j < wireframe_thickness_ * wireframe_thickness_) {
 
               // Check if wireframe pixel is out of bounds
-              int w_i = std::max(std::min(horiz + i, pixels()[0] - 1), 0);
-              int w_j = std::max(std::min(vert + j, pixels()[1] - 1), 0);
+              int w_i = std::clamp(horiz + i, 0, pixels()[0] - 1);
+              int w_j = std::clamp(vert + j, 0, pixels()[1] - 1);
               data(w_i, w_j) = wireframe_color_;
             }
       }
@@ -1816,7 +1816,7 @@ void PhongRay::on_intersection()
     // calculation
     int surf_level = boundary().coord_level() - 1;
     // ensure surface level is within bounds of current coordinate stack
-    surf_level = std::max(0, std::min(surf_level, n_coord() - 1));
+    surf_level = std::clamp(surf_level, 0, n_coord() - 1);
 
     Position r_hit_level =
       coord(surf_level).r() - TINY_BIT * coord(surf_level).u();

@@ -24,7 +24,7 @@ from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import (check_type, check_value, check_greater_than,
                                check_length, PathLike)
 from openmc.exceptions import InvalidIDError
-from openmc.plots import add_plot_params, _BASIS_INDICES, id_map_to_rgb
+from openmc.plots import add_plot_params, _BASIS_INDICES, _id_map_to_rgb
 from openmc.utility_funcs import change_directory, set_xml_input_path
 
 
@@ -1399,7 +1399,7 @@ class Model:
             colors = plot.colors
 
         # Convert ID map to RGB image
-        img = id_map_to_rgb(
+        img = _id_map_to_rgb(
             id_map=id_map,
             color_by=color_by,
             colors=colors,
@@ -2677,7 +2677,7 @@ class Model:
             Number of particles to simulate per batch when generating MGXS.
             Defaults to 2000.
 
-            .. deprecated:: 0.15.4
+            .. deprecated:: 0.16.0
                 Pass ``particles`` as a keyword argument instead.
         overwrite_mgxs_library : bool, optional
             Whether to overwrite an existing MGXS library file.
@@ -2713,7 +2713,7 @@ class Model:
             Valid entries for temperature_settings are the same as the valid
             entries in openmc.Settings.temperature_settings.
 
-            .. deprecated:: 0.15.4
+            .. deprecated:: 0.16.0
                 Pass ``temperature`` as a keyword argument instead.
         **kwargs
             :class:`openmc.Settings` attributes used to customize the continuous
@@ -2730,7 +2730,7 @@ class Model:
             enables. Cannot be combined with the deprecated ``nparticles`` or
             ``temperature_settings`` arguments.
 
-            .. versionadded:: 0.15.4
+            .. versionadded:: 0.16.0
         """
         if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)

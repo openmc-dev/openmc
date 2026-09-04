@@ -61,12 +61,6 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-#ifdef OPENMC_LIBMESH_ENABLED
-const bool LIBMESH_ENABLED = true;
-#else
-const bool LIBMESH_ENABLED = false;
-#endif
-
 // Value used to indicate an empty slot in the hash table. We use -2 because
 // the value -1 is used to indicate a void material.
 constexpr int32_t EMPTY = -2;
@@ -488,9 +482,6 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   width.y = (ny > 0) ? width.y / ny : 0.0;
   width.z = (nz > 0) ? width.z / nz : 0.0;
 
-  // Set flag for mesh being contained within model
-  bool out_of_model = false;
-
 #pragma omp parallel
   {
     // Preallocate vector for mesh indices and length fractions and particle
@@ -501,6 +492,32 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
     SourceSite site;
     site.E = 1.0;
     site.particle = ParticleType::neutron();
+
+    bool verbose = settings::verbosity >= 10;
+
+    // Save the cells occupied immediately before a boundary crossing.
+    auto save_cell_state = [&p]() {
+      for (int j = 0; j < p.n_coord(); ++j) {
+        p.cell_last(j) = p.coord(j).cell();
+      }
+      p.n_coord_last() = p.n_coord();
+    };
+
+    // Initialize cell history after locating a ray inside the model.
+    auto initialize_cell_state = [&p, &save_cell_state]() {
+      if (p.cell_born() == C_NONE)
+        p.cell_born() = p.lowest_coord().cell();
+
+      save_cell_state();
+    };
+
+    // Reset a failed coordinate search while preserving position and direction.
+    auto reset_geometry_state = [&p]() {
+      Position r = p.r();
+      Direction u = p.u();
+      p.init_from_r_u(r, u);
+      p.coord(0).universe() = model::root_universe;
+    };
 
     for (int axis = 0; axis < 3; ++axis) {
       // Set starting position and direction
@@ -530,6 +547,50 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
       int i1_start = mpi::rank * min_work + std::min(mpi::rank, remainder);
       int i1_end = i1_start + n1_local;
 
+      // Add the contribution from a ray segment. The positions used here are
+      // kept separate from the particle position because the latter is moved a
+      // tiny distance across each surface for robust geometry searches.
+      auto add_segment = [&](const Position& r0, const Position& r1,
+                           int i_material) {
+        double distance = r1[axis] - r0[axis];
+        if (distance <= 0.0)
+          return;
+
+        bins.clear();
+        length_fractions.clear();
+        this->bins_crossed(r0, r1, site.u, bins, length_fractions);
+
+        double cumulative_frac = 0.0;
+        for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
+          int mesh_index = bins[i_bin];
+          double length = distance * length_fractions[i_bin];
+          double volume = length * d1 * d2;
+
+          if (compute_bboxes) {
+            double axis_start = r0[axis] + distance * cumulative_frac;
+            double axis_end = axis_start + length;
+            cumulative_frac += length_fractions[i_bin];
+
+            Position contrib_min = site.r;
+            Position contrib_max = site.r;
+
+            contrib_min[ax1] = site.r[ax1] - 0.5 * d1;
+            contrib_max[ax1] = site.r[ax1] + 0.5 * d1;
+            contrib_min[ax2] = site.r[ax2] - 0.5 * d2;
+            contrib_max[ax2] = site.r[ax2] + 0.5 * d2;
+            contrib_min[axis] = std::min(axis_start, axis_end);
+            contrib_max[axis] = std::max(axis_start, axis_end);
+
+            BoundingBox contrib_bbox {contrib_min, contrib_max};
+            contrib_bbox &= bbox;
+
+            result.add_volume(mesh_index, i_material, volume, &contrib_bbox);
+          } else {
+            result.add_volume(mesh_index, i_material, volume);
+          }
+        }
+      };
+
       // Loop over rays on face of bounding box
 #pragma omp for collapse(2)
       for (int i1 = i1_start; i1 < i1_end; ++i1) {
@@ -539,98 +600,115 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
           p.from_source(&site);
 
+          // Set the physical endpoint of this ray at the far mesh face.
+          Position r_mesh_end = site.r;
+          r_mesh_end[axis] = bbox.max[axis];
+
           // Determine particle's location
-          if (!exhaustive_find_cell(p)) {
-            out_of_model = true;
-            continue;
+          bool inside_model = exhaustive_find_cell(p, verbose);
+
+          if (inside_model) {
+            initialize_cell_state();
+          } else {
+            // Clear any partial descent into nested universes before searching
+            // for the first root-universe boundary from undefined space.
+            reset_geometry_state();
           }
 
-          // Set birth cell attribute
-          if (p.cell_born() == C_NONE)
-            p.cell_born() = p.lowest_coord().cell();
+          // Physical position through which volume has been accumulated. This
+          // differs by TINY_BIT from p.r() after crossing a surface.
+          Position r_scored = site.r;
 
-          // Initialize last cells from current cell
-          for (int j = 0; j < p.n_coord(); ++j) {
-            p.cell_last(j) = p.coord(j).cell();
-          }
-          p.n_coord_last() = p.n_coord();
+          while (r_scored[axis] < r_mesh_end[axis]) {
+            if (!inside_model) {
+              // The ray is outside the model. Advance to the next surface of
+              // any cell in the root universe, as is done for ray-traced
+              // plots. Undefined space traversed along the way is void.
+              Position r0 = p.r();
+              p.advance_to_boundary_from_void();
 
-          while (true) {
-            // Ray trace from r_start to r_end
-            Position r0 = p.r();
-            double max_distance = bbox.max[axis] - r0[axis];
+              // If no model surface lies before the mesh edge, score the
+              // remaining exterior interval as void and finish the ray.
+              double distance_to_mesh_end = r_mesh_end[axis] - r0[axis];
+              if (p.boundary().surface() == SURFACE_NONE ||
+                  p.boundary().distance() >= distance_to_mesh_end) {
+                add_segment(r_scored, r_mesh_end, MATERIAL_VOID);
+                break;
+              }
+
+              // Determine the physical position of the model boundary.
+              Position r_boundary = r0 + p.boundary().distance() * p.u();
+
+              // Score the exterior interval and record its physical endpoint.
+              add_segment(r_scored, r_boundary, MATERIAL_VOID);
+              r_scored = r_boundary;
+
+              // Check whether advancing through the surface entered the model.
+              inside_model = exhaustive_find_cell(p, verbose);
+              if (inside_model) {
+                initialize_cell_state();
+              } else {
+                // Clear any partial coordinate search before looking for the
+                // next surface from undefined space.
+                reset_geometry_state();
+              }
+              continue;
+            }
 
             // Find the distance to the nearest boundary
             BoundaryInfo boundary = distance_to_boundary(p);
 
-            // Advance particle forward
-            double distance = std::min(boundary.distance(), max_distance);
-            p.move_distance(distance);
-
-            // Determine what mesh elements were crossed by particle
-            bins.clear();
-            length_fractions.clear();
-            this->bins_crossed(r0, p.r(), p.u(), bins, length_fractions);
-
-            // Add volumes to any mesh elements that were crossed
+            // Convert the material index to a user-facing ID
             int i_material = p.material();
             if (i_material != C_NONE) {
               i_material = model::materials[i_material]->id();
             }
-            double cumulative_frac = 0.0;
-            for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
-              int mesh_index = bins[i_bin];
-              double length = distance * length_fractions[i_bin];
-              double volume = length * d1 * d2;
 
-              if (compute_bboxes) {
-                double axis_start = r0[axis] + distance * cumulative_frac;
-                double axis_end = axis_start + length;
-                cumulative_frac += length_fractions[i_bin];
-
-                Position contrib_min = site.r;
-                Position contrib_max = site.r;
-
-                contrib_min[ax1] = site.r[ax1] - 0.5 * d1;
-                contrib_max[ax1] = site.r[ax1] + 0.5 * d1;
-                contrib_min[ax2] = site.r[ax2] - 0.5 * d2;
-                contrib_max[ax2] = site.r[ax2] + 0.5 * d2;
-                contrib_min[axis] = std::min(axis_start, axis_end);
-                contrib_max[axis] = std::max(axis_start, axis_end);
-
-                BoundingBox contrib_bbox {contrib_min, contrib_max};
-                contrib_bbox &= bbox;
-
-                result.add_volume(
-                  mesh_index, i_material, volume, &contrib_bbox);
-              } else {
-                // Add volume to result
-                result.add_volume(mesh_index, i_material, volume);
-              }
-            }
-
-            if (distance == max_distance)
+            // If no model boundary lies before the mesh edge, score the
+            // remaining material interval and finish the ray.
+            double distance_to_mesh_end = r_mesh_end[axis] - p.r()[axis];
+            if (boundary.distance() >= distance_to_mesh_end) {
+              add_segment(r_scored, r_mesh_end, i_material);
               break;
-
-            // cross next geometric surface
-            for (int j = 0; j < p.n_coord(); ++j) {
-              p.cell_last(j) = p.coord(j).cell();
             }
-            p.n_coord_last() = p.n_coord();
+
+            // Determine the physical position of the model boundary.
+            Position r_boundary = p.r() + boundary.distance() * p.u();
+
+            // Score the material interval and record its physical endpoint.
+            add_segment(r_scored, r_boundary, i_material);
+            r_scored = r_boundary;
+
+            // Cross the next geometric surface. The small forward movement
+            // and neighbor-list search mirror Ray::trace, allowing a failed
+            // search to mean that the ray has left the model rather than that
+            // a transport particle has been lost.
+            save_cell_state();
+
+            // Move just beyond the surface to make the next search robust.
+            p.move_distance(boundary.distance() + TINY_BIT);
 
             // Set surface that particle is on and adjust coordinate levels
             p.surface() = boundary.surface();
             p.n_coord() = boundary.coord_level();
 
+            // Update the geometry state according to the boundary type.
             if (boundary.lattice_translation()[0] != 0 ||
                 boundary.lattice_translation()[1] != 0 ||
                 boundary.lattice_translation()[2] != 0) {
               // Particle crosses lattice boundary
-              cross_lattice(p, boundary);
+              cross_lattice(p, boundary, verbose);
+              inside_model = true;
             } else {
-              // Particle crosses surface
-              const auto& surf {model::surfaces[p.surface_index()].get()};
-              p.cross_surface(*surf);
+              // Search for the cell on the opposite side of a surface.
+              inside_model = neighbor_list_find_cell(p, verbose);
+            }
+
+            // Treat a failed cell search as a transition to exterior void.
+            if (!inside_model) {
+              // Reset the geometry state so the next iteration can search for
+              // another disjoint portion of the model.
+              reset_geometry_state();
             }
           }
         }
@@ -639,9 +717,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   }
 
   // Check for errors
-  if (out_of_model) {
-    throw std::runtime_error("Mesh not fully contained in geometry.");
-  } else if (result.table_full()) {
+  if (result.table_full()) {
     throw std::runtime_error("Maximum number of materials for mesh material "
                              "volume calculation insufficient.");
   }
@@ -1154,8 +1230,7 @@ tensor::Tensor<double> StructuredMesh::count_sites(
 
 #ifdef OPENMC_MPI
   // collect values from all processors
-  MPI_Reduce(
-    cnt.data(), counts.data(), total, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(cnt.data(), counts.data(), total, MPI_SUM, 0, mpi::intracomm);
 
   // Check if there were sites outside the mesh for any processor
   if (outside) {
@@ -1462,7 +1537,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
   }
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -1498,12 +1573,17 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
   }
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
 int RegularMesh::get_index_in_direction(double r, int i) const
 {
+  if (r <= lower_left_[i])
+    return r == lower_left_[i] ? 1 : 0;
+  if (r >= upper_right_[i])
+    return r == upper_right_[i] ? shape_[i] : shape_[i] + 1;
+
   return std::ceil((r - lower_left_[i]) / width_[i]);
 }
 
@@ -1627,8 +1707,7 @@ tensor::Tensor<double> RegularMesh::count_sites(
 
 #ifdef OPENMC_MPI
   // collect values from all processors
-  MPI_Reduce(
-    cnt.data(), counts.data(), total, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(cnt.data(), counts.data(), total, MPI_SUM, 0, mpi::intracomm);
 
   // Check if there were sites outside the mesh for any processor
   if (outside) {
@@ -1661,7 +1740,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[2] = get_node_array<double>(node, "z_grid");
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -1674,7 +1753,7 @@ RectilinearMesh::RectilinearMesh(hid_t group) : StructuredMesh {group}
   read_dataset(group, "z_grid", grid_[2]);
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -1809,7 +1888,7 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node)
   origin_ = get_node_position(node, "origin");
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -1822,7 +1901,7 @@ CylindricalMesh::CylindricalMesh(hid_t group) : PeriodicStructuredMesh {group}
   read_dataset(group, "origin", origin_);
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -2106,7 +2185,7 @@ SphericalMesh::SphericalMesh(pugi::xml_node node)
   origin_ = get_node_position(node, "origin");
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -2120,7 +2199,7 @@ SphericalMesh::SphericalMesh(hid_t group) : PeriodicStructuredMesh {group}
   read_dataset(group, "origin", origin_);
 
   if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+    fatal_error(get_errmsg());
   }
 }
 
@@ -3868,6 +3947,14 @@ void LibMesh::set_score_data(const std::string& var_name,
 
 void LibMesh::write(const std::string& filename) const
 {
+  // A serial libMesh communicator considers every OpenMC rank to be its
+  // processor 0. Restrict the non-collective write to the OpenMC master in
+  // that case. With a parallel communicator, all ranks must participate in
+  // libMesh's solution assembly.
+  if (settings::libmesh_comm->size() == 1 && !mpi::master) {
+    return;
+  }
+
   write_message(fmt::format(
     "Writing file: {}.e for unstructured mesh {}", filename, this->id_));
   libMesh::ExodusII_IO exo(*m_);

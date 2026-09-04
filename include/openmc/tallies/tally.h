@@ -226,7 +226,7 @@ namespace simulation {
 extern tensor::StaticTensor2D<double, N_GLOBAL_TALLIES, 3> global_tallies;
 
 //! Number of realizations for global tallies
-extern "C" int32_t n_realizations;
+extern int32_t n_realizations;
 } // namespace simulation
 
 extern double global_tally_absorption;

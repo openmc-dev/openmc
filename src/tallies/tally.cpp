@@ -196,20 +196,30 @@ Tally::Tally(pugi::xml_node node)
     fatal_error(fmt::format("No scores specified on tally {}.", id_));
   }
 
-  // Set IFP if needed
-  if (!settings::ifp_on) {
-    // Determine if this tally has an IFP score
-    bool has_ifp_score = false;
-    for (int score : scores_) {
-      if (score == SCORE_IFP_TIME_NUM || score == SCORE_IFP_BETA_NUM ||
-          score == SCORE_IFP_DENOM) {
-        has_ifp_score = true;
-        break;
-      }
+  // Determine which kinds of IFP data this tally requires. The two flags are
+  // independent, so a score simply turns on the data it needs.
+  bool wants_lifetime = false;
+  bool wants_delayed_group = false;
+  for (int score : scores_) {
+    switch (score) {
+    case SCORE_IFP_TIME_NUM:
+      wants_lifetime = true;
+      break;
+    case SCORE_IFP_BETA_NUM:
+    case SCORE_IFP_DENOM:
+      wants_delayed_group = true;
+      break;
     }
+  }
 
-    // Check for errors
-    if (has_ifp_score) {
+  if (wants_lifetime || wants_delayed_group) {
+    // Validate once, when the first IFP tally is encountered
+    if (!settings::ifp_on()) {
+      if (settings::run_mode == RunMode::FIXED_SOURCE) {
+        fatal_error(
+          "Iterated Fission Probability can only be used in an eigenvalue "
+          "calculation.");
+      }
       if (settings::run_mode == RunMode::EIGENVALUE) {
         if (settings::ifp_n_generation < 0) {
           settings::ifp_n_generation = DEFAULT_IFP_N_GENERATION;
@@ -222,35 +232,13 @@ Tally::Tally(pugi::xml_node node)
           fatal_error("'ifp_n_generation' must be lower than or equal to the "
                       "number of inactive cycles.");
         }
-        settings::ifp_on = true;
-      } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
-        fatal_error(
-          "Iterated Fission Probability can only be used in an eigenvalue "
-          "calculation.");
       }
     }
-  }
 
-  // Set IFP parameters if needed
-  if (settings::ifp_on) {
-    for (int score : scores_) {
-      switch (score) {
-      case SCORE_IFP_TIME_NUM:
-        if (settings::ifp_parameter == IFPParameter::None) {
-          settings::ifp_parameter = IFPParameter::GenerationTime;
-        } else if (settings::ifp_parameter == IFPParameter::BetaEffective) {
-          settings::ifp_parameter = IFPParameter::Both;
-        }
-        break;
-      case SCORE_IFP_BETA_NUM:
-      case SCORE_IFP_DENOM:
-        if (settings::ifp_parameter == IFPParameter::None) {
-          settings::ifp_parameter = IFPParameter::BetaEffective;
-        } else if (settings::ifp_parameter == IFPParameter::GenerationTime) {
-          settings::ifp_parameter = IFPParameter::Both;
-        }
-        break;
-      }
+    // Only enable in eigenvalue mode; fixed source has already errored above
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      settings::ifp_lifetime_on |= wants_lifetime;
+      settings::ifp_delayed_group_on |= wants_delayed_group;
     }
   }
 
@@ -790,7 +778,7 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       if (search == data::nuclide_map.end()) {
         int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
         if (err < 0)
-          throw std::runtime_error {openmc_err_msg};
+          throw std::runtime_error {get_errmsg()};
       }
       nuclides_.push_back(data::nuclide_map.at(nuc));
     }
@@ -1084,8 +1072,8 @@ void reduce_tally_results()
       tensor::Tensor<double> values_reduced(values.shape());
 
       // Reduce contiguous set of tally results
-      MPI_Reduce(values.data(), values_reduced.data(), values.size(),
-        MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+      mpi::reduce(values.data(), values_reduced.data(), values.size(), MPI_SUM,
+        0, mpi::intracomm);
 
       // Transfer values on master and reset on other ranks
       if (mpi::master) {
@@ -1558,7 +1546,6 @@ extern "C" int openmc_tally_set_nuclides(
       if (search == data::nuclide_map.end()) {
         int err = openmc_load_nuclide(word.c_str(), nullptr, 0);
         if (err < 0) {
-          set_errmsg(openmc_err_msg);
           return OPENMC_E_DATA;
         }
       }
@@ -1665,6 +1652,11 @@ extern "C" int openmc_global_tallies(double** ptr)
 {
   *ptr = simulation::global_tallies.data();
   return 0;
+}
+
+extern "C" int32_t openmc_get_n_realizations()
+{
+  return simulation::n_realizations;
 }
 
 extern "C" size_t tallies_size()

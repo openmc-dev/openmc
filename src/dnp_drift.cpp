@@ -74,7 +74,7 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
   Position intersection; // Intersection with the mesh boundary
 
   // Localize initial position
-  cell_n = simulation::velocity_field.get_bin(y_n);
+  cell_n = simulation::velocity_field->get_bin(y_n);
   if (cell_n < 0) {
     //  Particle can be close to the wall of the mesh so it can be stopped at
     //  the initial location because we generally put no slip boundary
@@ -105,7 +105,7 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
       t_n, y_n, cell_n, simulation::velocity_field);
 
     // Find the next cell
-    cell_n = simulation::velocity_field.get_next_bin(
+    cell_n = simulation::velocity_field->get_next_bin(
       y_n_minus_1, y_n, cell_n, crossed_boundary, intersection);
 
     // If the distance between two consecutive points is low, we block the point
@@ -160,7 +160,7 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
       // Perform action
       switch (action) {
       case Actions::REENTER:
-        simulation::velocity_field.randomly_place_on_inlet(y_n, cell_n, seed);
+        simulation::velocity_field->randomly_place_on_inlet(y_n, cell_n, seed);
         t_n += settings::dnp_drift_external_travel_time;
         cell_n_minus_1 = -1;
         y_n_minus_1 = Position();

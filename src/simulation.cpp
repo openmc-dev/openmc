@@ -352,8 +352,8 @@ int64_t work_per_rank;
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
-TemperatureField temperature_field;
-VelocityField velocity_field;
+TemperatureField* temperature_field {nullptr};
+VelocityField* velocity_field {nullptr};
 std::unique_ptr<StreamlineIntegrator> streamline_integrator;
 
 vector<double> k_generation;

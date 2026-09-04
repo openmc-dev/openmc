@@ -274,7 +274,7 @@ void get_temperatures(
   // could limit the declarations of temperature from the temperature field to
   // impacted nuclides only.
   if (settings::temperature_field_on) {
-    for (auto t : simulation::temperature_field.values()) {
+    for (auto t : simulation::temperature_field->values()) {
       // Nuclide temperatures
       for (size_t i = 0; i < nuc_temps.size(); i++) {
         if (!contains(nuc_temps[i], t)) {

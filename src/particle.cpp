@@ -225,7 +225,7 @@ void Particle::event_calculate_xs()
 
     // Define temperature field cell
     if (settings::temperature_field_on) {
-      tf_bin() = simulation::temperature_field.get_bin(r());
+      tf_bin() = simulation::temperature_field->get_bin(r());
     }
 
     if (!exhaustive_find_cell(*this)) {
@@ -297,7 +297,7 @@ void Particle::event_advance()
   // Find the distance to the nearest temperature mesh cell surface
   double distance_tmesh = INFTY;
   if (settings::temperature_field_on) {
-    distance_tmesh = simulation::temperature_field.distance_to_next_boundary(
+    distance_tmesh = simulation::temperature_field->distance_to_next_boundary(
       tf_bin(), r(), u(), tf_bin_next());
   }
 
@@ -440,7 +440,7 @@ void Particle::event_cross_surface()
     tf_bin() = tf_bin_next();
 
     if (tf_bin() != C_NONE) {
-      sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin());
+      sqrtkT() = simulation::temperature_field->get_sqrtkT(tf_bin());
     } else {
       int i_cell = lowest_coord().cell();
       Cell& c {*model::cells[i_cell]};
@@ -580,7 +580,7 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
 
       // Define temperature field cell
       if (settings::temperature_field_on) {
-        tf_bin() = simulation::temperature_field.get_bin(r());
+        tf_bin() = simulation::temperature_field->get_bin(r());
       }
 
       if (!exhaustive_find_cell(*this, verbose)) {
@@ -771,7 +771,7 @@ void Particle::cross_surface(const Surface& surf)
 
     material() = cell->material(cell_instance());
     if (settings::temperature_field_on && tf_bin() != C_NONE) {
-      sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin());
+      sqrtkT() = simulation::temperature_field->get_sqrtkT(tf_bin());
     } else {
       sqrtkT() = cell->sqrtkT(cell_instance());
     }
@@ -930,7 +930,7 @@ void Particle::cross_periodic_bc(
 
   // Reassign particle's temperature field bin
   if (settings::temperature_field_on) {
-    tf_bin() = simulation::temperature_field.get_bin(r());
+    tf_bin() = simulation::temperature_field->get_bin(r());
   }
 
   // Figure out what cell particle is in now

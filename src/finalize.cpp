@@ -168,8 +168,8 @@ int openmc_finalize()
   simulation::entropy_mesh = nullptr;
   simulation::ufs_mesh = nullptr;
 
-  simulation::temperature_field = TemperatureField();
-  simulation::velocity_field = VelocityField();
+  simulation::temperature_field = nullptr;
+  simulation::velocity_field = nullptr;
   simulation::streamline_integrator.reset();
 
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};

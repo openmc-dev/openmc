@@ -20,7 +20,7 @@ public:
   //! \param [in] cell_n Cell containing y_n
   //! \param [in] field Pointer to the velocity field
   virtual void next_step(
-    double& t_n, Position& y_n, int cell_n, VelocityField& field) = 0;
+    double& t_n, Position& y_n, int cell_n, VelocityField* field) = 0;
 
   //! Time step accessors
   double& dt() { return dt_; }
@@ -38,7 +38,7 @@ public:
   ~RK4StreamlineIntegrator() override = default;
 
   void next_step(
-    double& t_n, Position& y_n, int cell_n, VelocityField& field) override;
+    double& t_n, Position& y_n, int cell_n, VelocityField* field) override;
 
 private:
   std::string method_ = "Runge Kutta 4"; //!< Method name

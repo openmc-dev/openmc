@@ -61,8 +61,8 @@ protected:
   void set_velocity_field(const Direction& v, const std::string& type = "cell")
   {
     vector<Direction> velocities(8, v);
-    simulation::velocity_field = VelocityField(&mesh, velocities, type);
-    simulation::velocity_field.bc_map() = bc_map;
+    simulation::velocity_field = new VelocityField(&mesh, velocities, type);
+    simulation::velocity_field->bc_map() = bc_map;
   }
 
   void set_integrator(double step_size)
@@ -118,9 +118,9 @@ public:
   {
     // Reset all openmc global variables
     simulation::streamline_integrator.reset();
-    simulation::velocity_field = VelocityField();
     settings::dnp_drift_external_travel_time = 0.0;
     settings::dnp_drift_recycling_on = false;
+    delete simulation::velocity_field;
   }
 };
 
@@ -171,7 +171,7 @@ TEST_CASE_METHOD(DNPTransportModelFixture, "Test DNP transport - cross wall")
 
 TEST_CASE_METHOD(DNPTransportModelFixture, "Test DNP transport - cross inlet")
 {
-  simulation::velocity_field.assign(0, Direction(-1.0, 0.0, 0.0));
+  simulation::velocity_field->assign(0, Direction(-1.0, 0.0, 0.0));
   set_site(Position(-0.5, -0.5, -0.5), Direction(1.0, 0.0, 0.0));
 
   bool is_inside = transport_dnp(site, 1.0, &seed);

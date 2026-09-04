@@ -133,29 +133,29 @@ BCType VelocityField::get_boundary_condition(int physical_group)
 extern "C" int openmc_temperature_field_set_temperature(
   int32_t index, double temperature)
 {
-  if (index < 0 || index >= simulation::temperature_field.values().size()) {
+  if (index < 0 || index >= simulation::temperature_field->values().size()) {
     set_errmsg("Index in temperature field is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  simulation::temperature_field.assign(index, temperature);
+  simulation::temperature_field->assign(index, temperature);
   return 0;
 }
 
 extern "C" size_t openmc_temperature_field_size()
 {
-  return simulation::temperature_field.values().size();
+  return simulation::temperature_field->values().size();
 }
 
 extern "C" int openmc_temperature_field_get_value(
   int32_t index, double* temperature)
 {
-  if (index < 0 || index >= simulation::temperature_field.values().size()) {
+  if (index < 0 || index >= simulation::temperature_field->values().size()) {
     set_errmsg("Index in temperature field is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *temperature = simulation::temperature_field.value(index);
+  *temperature = simulation::temperature_field->value(index);
   return 0;
 }
 

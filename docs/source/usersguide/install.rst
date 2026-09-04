@@ -386,7 +386,7 @@ how to set up git to work with GitHub since this involves setting up ssh_ keys.
 With git installed and setup, the following command will download the full
 source code from the GitHub repository::
 
-    git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
+    git clone https://github.com/openmc-dev/openmc.git
 
 By default, the cloned repository will be set to the development branch. To
 switch to the source of the latest stable release, run the following commands::
@@ -466,10 +466,24 @@ OPENMC_ENABLE_STRICT_FP
   suite. By default (off), the compiler is free to use all optimizations for
   best performance. (Default: off)
 
-OPENMC_FORCE_VENDORED_LIBS
-  Forces OpenMC to use the submodules located in the vendor directory, as
-  opposed to searching the system for already installed versions of those
-  modules.
+OPENMC_FORCE_FETCHCONTENT
+  Forces OpenMC to download and build its pinned versions of fmt, pugixml, and
+  Catch2 rather than searching for installed packages. Catch2 is only needed
+  when ``OPENMC_BUILD_TESTS`` is enabled. (Default: off)
+
+OpenMC searches for installed CMake packages for fmt, pugixml, and Catch2
+before downloading pinned sources with CMake's ``FetchContent`` module. Thus,
+network access is only needed during configuration when a required package is
+not installed. For offline builds, install the dependencies ahead of time or
+provide unpacked sources through ``FETCHCONTENT_SOURCE_DIR_FMT``,
+``FETCHCONTENT_SOURCE_DIR_PUGIXML``, and ``FETCHCONTENT_SOURCE_DIR_CATCH2``.
+
+Two further ``FetchContent`` variables are useful when packaging OpenMC.
+Setting ``FETCHCONTENT_FULLY_DISCONNECTED=ON`` makes configuration fail rather
+than silently download anything, which is typically what is wanted in a
+sandboxed build that must rely only on installed packages. Setting
+``FETCHCONTENT_BASE_DIR`` to a shared location allows downloads to be reused
+across multiple build directories.
 
 To set any of these options (e.g., turning on profiling), the following form
 should be used:

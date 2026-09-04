@@ -39,6 +39,8 @@ public:
 
   double speed() const;
 
+  double speed(double E) const;
+
   double mass() const;
 
   //! create a secondary particle

@@ -682,10 +682,13 @@ void FlatSourceDomain::random_ray_tally()
           break;
 
         case SCORE_KAPPA_FISSION:
-          score =
-            flux * volume *
-            kappa_fission_[(material * ntemperature_ + temp) * negroups_ + g] *
-            density_mult;
+          if (material != MATERIAL_VOID) {
+            score =
+              flux * volume *
+              kappa_fission_[(material * ntemperature_ + temp) * negroups_ +
+                             g] *
+              density_mult;
+          }
           break;
 
         default:

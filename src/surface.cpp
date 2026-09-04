@@ -352,6 +352,41 @@ double SurfacePlane::evaluate(Position r) const
   return A_ * r.x + B_ * r.y + C_ * r.z - D_;
 }
 
+BoundingBox SurfacePlane::bounding_box(bool pos_side) const
+{
+  // A general plane bounds a half-space in one direction only when its normal
+  // is parallel to a coordinate axis; otherwise both half-spaces are unbounded
+  // along every axis. This mirrors PlaneMixin.bounding_box on the Python side,
+  // so that a plane whose off-axis coefficients are rotation-matrix roundoff
+  // (e.g. B = 1 with A = C = 6.1e-17) yields the same box through both APIs.
+  const array<double, 3> coeffs {A_, B_, C_};
+  const double norm = std::sqrt(A_ * A_ + B_ * B_ + C_ * C_);
+  if (norm == 0.0)
+    return {};
+
+  int axis = -1;
+  double sign = 0.0;
+  for (int i = 0; i < 3; ++i) {
+    const double n = coeffs[i] / norm;
+    sign += n;
+    if (axis == -1 && std::abs(std::abs(n) - 1.0) <= PLANE_ALIGNMENT_TOL)
+      axis = i;
+  }
+  if (axis == -1)
+    return {};
+
+  // The half-space is bounded below when the outward normal points along the
+  // positive axis direction and we are on the positive side, or vice versa.
+  BoundingBox bbox;
+  const double intercept = D_ / coeffs[axis];
+  if (pos_side == (sign > 0.0)) {
+    bbox.min[axis] = intercept;
+  } else {
+    bbox.max[axis] = intercept;
+  }
+  return bbox;
+}
+
 double SurfacePlane::distance(Position r, Direction u, bool coincident) const
 {
   const double f = A_ * r.x + B_ * r.y + C_ * r.z - D_;
@@ -1034,6 +1069,17 @@ double SurfaceXTorus::evaluate(Position r) const
          std::pow(std::sqrt(y * y + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
+BoundingBox SurfaceXTorus::bounding_box(bool pos_side) const
+{
+  // The torus interior is compact: it extends +/-B_ along the axis of
+  // revolution and +/-(A_ + C_) in the two perpendicular directions. Mirrors
+  // XTorus.bounding_box on the Python side.
+  if (pos_side)
+    return {};
+  return {{x0_ - B_, y0_ - A_ - C_, z0_ - A_ - C_},
+    {x0_ + B_, y0_ + A_ + C_, z0_ + A_ + C_}};
+}
+
 double SurfaceXTorus::distance(Position r, Direction u, bool coincident) const
 {
   double x = r.x - x0_;
@@ -1087,6 +1133,14 @@ double SurfaceYTorus::evaluate(Position r) const
          std::pow(std::sqrt(x * x + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
+BoundingBox SurfaceYTorus::bounding_box(bool pos_side) const
+{
+  if (pos_side)
+    return {};
+  return {{x0_ - A_ - C_, y0_ - B_, z0_ - A_ - C_},
+    {x0_ + A_ + C_, y0_ + B_, z0_ + A_ + C_}};
+}
+
 double SurfaceYTorus::distance(Position r, Direction u, bool coincident) const
 {
   double x = r.x - x0_;
@@ -1138,6 +1192,14 @@ double SurfaceZTorus::evaluate(Position r) const
   double z = r.z - z0_;
   return (z * z) / (B_ * B_) +
          std::pow(std::sqrt(x * x + y * y) - A_, 2) / (C_ * C_) - 1.;
+}
+
+BoundingBox SurfaceZTorus::bounding_box(bool pos_side) const
+{
+  if (pos_side)
+    return {};
+  return {{x0_ - A_ - C_, y0_ - A_ - C_, z0_ - B_},
+    {x0_ + A_ + C_, y0_ + A_ + C_, z0_ + B_}};
 }
 
 double SurfaceZTorus::distance(Position r, Direction u, bool coincident) const

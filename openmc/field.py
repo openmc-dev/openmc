@@ -29,6 +29,8 @@ class FieldBase(IDManagerMixin, ABC):
     values : array-like
         Field values. Shape must be (n_elements,) for scalar fields
         or (n_elements, n_components) for vector fields.
+    mapping : {'nodal', 'cell'}
+        How field values map to the mesh. Default is 'cell'.
 
     Attributes
     ----------
@@ -36,6 +38,8 @@ class FieldBase(IDManagerMixin, ABC):
         Spatial mesh associated with the field.
     values : numpy.ndarray
         Array of field values.
+    mapping : {'nodal', 'cell'}
+        How field values map to the mesh.
 
     """
     # Shared accross all FieldBase subclasses so that IDs are globally unique
@@ -46,8 +50,9 @@ class FieldBase(IDManagerMixin, ABC):
     _n_components = None
     _supported_meshes = (RegularMesh, RectilinearMesh)
 
-    def __init__(self, mesh, values, field_id=None, name=''):
+    def __init__(self, mesh, values, mapping="cell", field_id=None, name=''):
         self.mesh = mesh
+        self.mapping = mapping
         self.values = values
         self.id = field_id
         self.name = name
@@ -73,6 +78,9 @@ class FieldBase(IDManagerMixin, ABC):
 
     @values.setter
     def values(self, values: ArrayLike):
+        if not hasattr(self, "_mapping"):
+            raise AttributeError("Mapping must be set before values.")
+
         # Check that _n_components is defined
         if self._n_components is None:
             raise NotImplementedError(
@@ -86,7 +94,11 @@ class FieldBase(IDManagerMixin, ABC):
         values = np.asarray(values, dtype=float)
 
         # Determine expected range shape
-        n = self._mesh.n_elements
+        if self.mapping == "nodal":
+            n = self._mesh.n_vertices
+        elif self.mapping == "cell":
+            n = self._mesh.n_elements
+
         if self._n_components == 1:
             expected = (n,)
         else:
@@ -101,6 +113,15 @@ class FieldBase(IDManagerMixin, ABC):
 
         self._validate_data(values)
         self._values = values
+
+    @property
+    def mapping(self) -> str:
+        return self._mapping
+
+    @mapping.setter
+    def mapping(self, mapping: str):
+        cv.check_value("mapping", mapping, ("nodal", "cell"))
+        self._mapping = mapping
 
     def _validate_data(self, values):
         """Subclass-specific validation.
@@ -131,6 +152,10 @@ class FieldBase(IDManagerMixin, ABC):
 
         mesh_elem = ET.SubElement(element, "mesh")
         mesh_elem.text = str(self.mesh.id)
+
+        # Mapping
+        mapping_elem = ET.SubElement(element, "mapping")
+        mapping_elem.text = self.mapping
 
         values_elem = ET.SubElement(element, "values")
         flat = self.values.flatten(order="C")
@@ -179,30 +204,50 @@ class FieldBase(IDManagerMixin, ABC):
             raise ValueError(f"Mesh with id={mesh_id} not found.")
         mesh = meshes[mesh_id]
 
+        # Mapping
+        mapping_elem = elem.find("mapping")
+        mapping = mapping_elem.text if mapping_elem is not None else "cell"
         values_text = elem.find("values").text
         flat = np.array([float(v) for v in values_text.split()])
 
-        expected_size = mesh.n_elements * subcls._n_components
+        if mapping == "nodal":
+            n = mesh.n_vertices
+        elif mapping == "cell":
+            n = mesh.n_elements
+        else:
+            raise ValueError(f"Unknown mapping '{mapping}'")
+
+        expected_size = n * subcls._n_components
         if flat.size != expected_size:
             raise ValueError(f"Expected {expected_size} values, got {flat.size}.")
 
         if subcls._n_components > 1:
-            flat = flat.reshape((mesh.n_elements, subcls._n_components), order="C")
+            flat = flat.reshape((n, subcls._n_components), order="C")
 
-        return subcls(mesh=mesh, values=flat, field_id=field_id, name=name)
+        kwargs = {
+            "mesh": mesh,
+            "mapping": mapping,
+            "values": flat,
+            "field_id": field_id,
+            "name": name
+        }
+        return subcls(**kwargs)
 
     def __eq__(self, other):
         if type(self) is not type(other):
             return NotImplemented
         # Only checks that mesh IDs are consistent
-        return self.mesh.id == other.mesh.id and np.array_equal(
-            self.values, other.values
+        return (
+            self.mesh.id == other.mesh.id
+            and np.array_equal(self.values, other.values)
+            and self.mapping == other.mapping
         )
 
     def __repr__(self):
         repr_str = f"{type(self).__name__}(id={self.id}"
         if self.name:
             repr_str += f", name='{self.name}'"
+        repr_str += f", mapping='{self.mapping}'"
         repr_str += f", mesh_id={self.mesh.id}"
         repr_str += f", n_elements={self.mesh.n_elements})"
         return repr_str
@@ -221,6 +266,8 @@ class TemperatureField(FieldBase):
         Unique identifier for this field.
     name : str, optional
         User-defined name for the field.
+    mapping : {'nodal', 'cell'}
+        How field values map to the mesh. Default is 'cell'.
 
     """
     _field_type = "temperature"
@@ -247,6 +294,8 @@ class VelocityField(FieldBase):
         Unique identifier for this field.
     name : str, optional
         User-defined name for the field.
+    mapping : {'nodal', 'cell'}
+        How field values map to the mesh. Default is 'cell'.
 
     """
     _field_type = "velocity"

@@ -24,8 +24,6 @@ class DNPDrift:
         Mapping from mesh face IDs to physical group IDs. Must contain
         keys "face_ids" and "physical_groups", each mapping to a list
         of int of equal length.
-    mapping : {'nodal', 'cell'}
-        How field values map to the mesh.
     integrator : {'RK4'}
         Time integration scheme for precursor transport.
     integrator_dt : float
@@ -44,8 +42,6 @@ class DNPDrift:
         Mapping of boundary types to physical groups.
     physical_group_map : dict
         Mapping from mesh face IDs to physical group IDs.
-    mapping : {'nodal', 'cell'}
-        How field values map to the mesh.
     integrator : {'RK4'}
         Time integration scheme.
     integrator_dt : float
@@ -61,7 +57,6 @@ class DNPDrift:
         velocity_field,
         boundary_map,
         physical_group_map,
-        mapping="cell",
         integrator="RK4",
         integrator_dt=0.1,
         recycling=True,
@@ -70,7 +65,6 @@ class DNPDrift:
         self.velocity_field = velocity_field
         self.boundary_map = boundary_map
         self.physical_group_map = physical_group_map
-        self.mapping = mapping
         self.integrator = integrator
         self.integrator_dt = integrator_dt
         self.recycling = recycling
@@ -120,8 +114,6 @@ class DNPDrift:
     @property
     def physical_group_map(self) -> dict[str, list[int]]:
         return self._physical_group_map
-    def mapping(self) -> str:
-        return self._mapping
 
     @physical_group_map.setter
     def physical_group_map(self, physical_group_map: dict[str, list[int]]):
@@ -151,10 +143,6 @@ class DNPDrift:
             "face_ids": face_ids,
             "physical_groups": physical_groups,
         }
-    @mapping.setter
-    def mapping(self, mapping: str):
-        cv.check_value("mapping", mapping, ("nodal", "cell"))
-        self._mapping = mapping
 
     @property
     def integrator(self) -> str:
@@ -225,8 +213,6 @@ class DNPDrift:
         pg_elem.text = " ".join(
             str(i) for i in self.physical_group_map["physical_groups"]
         )
-        mapping_elem = ET.SubElement(element, "mapping")
-        mapping_elem.text = self.mapping
 
         integrator_elem = ET.SubElement(element, "integrator")
         integrator_elem.text = self.integrator
@@ -310,9 +296,6 @@ class DNPDrift:
             "face_ids": [int(i) for i in face_ids_elem.text.split()],
             "physical_groups": [int(i) for i in pg_elem.text.split()]
         }
-        mapping = elem.find("mapping")
-        if mapping is not None:
-            kwargs["mapping"] = mapping.text
 
         integrator = elem.find("integrator")
         if integrator is not None:
@@ -339,7 +322,6 @@ class DNPDrift:
             self.velocity_field == other.velocity_field
             and self.boundary_map == other.boundary_map
             and self.physical_group_map == other.physical_group_map
-            and self.mapping == other.mapping
             and self.integrator == other.integrator
             and self.integrator_dt == other.integrator_dt
             and self.recycling == other.recycling
@@ -351,7 +333,6 @@ class DNPDrift:
             f"DNPDrift(velocity_field_id={self.velocity_field.id}, "
             f"boundary_map={self.boundary_map}, "
             f"physical_group_map=({len(self._physical_group_map['face_ids'])} faces), "
-            f"mapping='{self.mapping}', "
             f"integrator='{self.integrator}', "
             f"integrator_dt={self.integrator_dt}, "
             f"recycling={self.recycling}, "

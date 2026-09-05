@@ -267,7 +267,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
     if (settings::reduce_tallies) {
       // Write global tallies
-      write_dataset(file_id, "global_tallies", simulation::global_tallies);
+      write_global_tallies(file_id);
 
       // Write tallies
       if (model::active_tallies.size() > 0) {
@@ -369,13 +369,13 @@ void restart_set_keff()
 {
   if (simulation::restart_batch > settings::n_inactive) {
     for (int i = settings::n_inactive; i < simulation::restart_batch; ++i) {
-      simulation::k_sum[0] += simulation::k_generation[i];
-      simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
+      simulation::k_sum[0] += simulation::k_generation[i][0];
+      simulation::k_sum[1] += std::pow(simulation::k_generation[i][0], 2);
     }
     int n = settings::gen_per_batch * simulation::n_realizations;
     simulation::keff = simulation::k_sum[0] / n;
   } else {
-    simulation::keff = simulation::k_generation.back();
+    simulation::keff = simulation::k_generation.back()[0];
   }
 }
 
@@ -499,8 +499,7 @@ extern "C" int openmc_statepoint_load(const char* filename)
   if (mpi::master) {
 #endif
     // Read global tally data
-    read_dataset_lowlevel(file_id, "global_tallies", H5T_NATIVE_DOUBLE, H5S_ALL,
-      false, simulation::global_tallies.data());
+    read_global_tallies(file_id);
 
     // Check if tally results are present
     bool present;
@@ -884,6 +883,34 @@ void write_unstructured_mesh_results()
     }
   }
 }
+void write_global_tallies(hid_t file_id)
+{
+  // Get global tallies
+  auto& gt = simulation::global_tallies;
+  auto gt_view =
+    gt.slice(tensor::range(static_cast<int>(GlobalTally::K_COLLISION),
+               static_cast<int>(GlobalTally::LEAKAGE) + 1),
+      tensor::range(static_cast<int>(TallyResult::SUM),
+        static_cast<int>(TallyResult::SUM_SQ) + 1));
+  auto gt_reduced = tensor::Tensor<double>(gt_view.shape_vec());
+  gt_reduced = gt_view;
+  write_dataset(file_id, "global_tallies", gt_reduced);
+}
+
+void read_global_tallies(hid_t file_id)
+{
+  // Get global tallies
+  auto& gt = simulation::global_tallies;
+  auto gt_view =
+    gt.slice(tensor::range(static_cast<int>(GlobalTally::K_COLLISION),
+               static_cast<int>(GlobalTally::LEAKAGE) + 1),
+      tensor::range(static_cast<int>(TallyResult::SUM),
+        static_cast<int>(TallyResult::SUM_SQ) + 1));
+  auto gt_reduced = tensor::Tensor<double>(gt_view.shape_vec());
+  read_dataset_lowlevel(file_id, "global_tallies", H5T_NATIVE_DOUBLE, H5S_ALL,
+    false, gt_reduced.data());
+  gt_view = gt_reduced;
+}
 
 void write_tally_results_nr(hid_t file_id)
 {
@@ -918,7 +945,7 @@ void write_tally_results_nr(hid_t file_id)
 
   // Write out global tallies sum and sum_sq
   if (mpi::master) {
-    write_dataset(file_id, "global_tallies", gt);
+    write_global_tallies(file_id);
   }
 
   for (const auto& t : model::tallies) {

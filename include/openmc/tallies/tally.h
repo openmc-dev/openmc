@@ -228,6 +228,7 @@ extern int32_t n_realizations;
 extern double global_tally_absorption;
 extern double global_tally_collision;
 extern double global_tally_tracklength;
+extern double global_tally_tracklength_sq;
 extern double global_tally_leakage;
 
 //==============================================================================

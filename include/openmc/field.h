@@ -85,9 +85,6 @@ class Field {
 public:
   virtual ~Field() = default;
 
-  int id() const { return id_; }
-  const std::string& type() const { return type_; }
-  const std::string& name() const { return name_; }
   Mesh* mesh_ptr() const
   {
     if (mesh_ == nullptr) {
@@ -100,9 +97,6 @@ public:
   FieldMapping mapping() const { return mapping_; }
 
 protected:
-  int id_;               //!< Unique field identifier
-  std::string type_;     //!< Field type descriptor string
-  std::string name_;     //!< Optional user-defined name
   Mesh* mesh_;           //!< Non-owning pointer to the geometric mesh
   FieldMapping mapping_; //!< Relationship between values and mesh entities
                          //!< (nodes vs. cells)

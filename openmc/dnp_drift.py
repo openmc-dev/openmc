@@ -20,6 +20,10 @@ class DNPDrift:
         Mapping of boundary types to physical groups.
         Keys: "inlet", "outlet", "wall" (optional). Values: list of int.
         "inlet" and "outlet" are required.
+    physical_group_map : dict
+        Mapping from mesh face IDs to physical group IDs. Must contain
+        keys "face_ids" and "physical_groups", each mapping to a list
+        of int of equal length.
     mapping : {'nodal', 'cell'}
         How field values map to the mesh.
     integrator : {'RK4'}
@@ -38,6 +42,8 @@ class DNPDrift:
         Velocity field describing the fluid motion.
     boundary_map : dict
         Mapping of boundary types to physical groups.
+    physical_group_map : dict
+        Mapping from mesh face IDs to physical group IDs.
     mapping : {'nodal', 'cell'}
         How field values map to the mesh.
     integrator : {'RK4'}
@@ -54,6 +60,7 @@ class DNPDrift:
         self,
         velocity_field,
         boundary_map,
+        physical_group_map,
         mapping="cell",
         integrator="RK4",
         integrator_dt=0.1,
@@ -62,6 +69,7 @@ class DNPDrift:
     ):
         self.velocity_field = velocity_field
         self.boundary_map = boundary_map
+        self.physical_group_map = physical_group_map
         self.mapping = mapping
         self.integrator = integrator
         self.integrator_dt = integrator_dt
@@ -110,9 +118,39 @@ class DNPDrift:
         self._boundary_map = bm
 
     @property
+    def physical_group_map(self) -> dict[str, list[int]]:
+        return self._physical_group_map
     def mapping(self) -> str:
         return self._mapping
 
+    @physical_group_map.setter
+    def physical_group_map(self, physical_group_map: dict[str, list[int]]):
+        cv.check_type("physical_group_map", physical_group_map, dict)
+
+        if "face_ids" not in physical_group_map:
+            raise ValueError("physical_group_map must contain 'face_ids'.")
+        if "physical_groups" not in physical_group_map:
+            raise ValueError("physical_group_map must contain 'physical_groups'.")
+
+        face_ids = list(physical_group_map["face_ids"])
+        physical_groups = list(physical_group_map["physical_groups"])
+
+        for fid in face_ids:
+            cv.check_type("face if in physical_group_map", fid, int)
+        for pg in physical_groups:
+            cv.check_type("physical group in physical_group_map", pg, int)
+
+        if len(face_ids) != len(physical_groups):
+            raise ValueError(
+                f"physical_group_map: face_ids has {len(face_ids)} entries but "
+                f"physical_groups has {len(physical_groups)} entries. "
+                f"They must be identical."
+            )
+
+        self._physical_group_map = {
+            "face_ids": face_ids,
+            "physical_groups": physical_groups,
+        }
     @mapping.setter
     def mapping(self, mapping: str):
         cv.check_value("mapping", mapping, ("nodal", "cell"))
@@ -178,6 +216,15 @@ class DNPDrift:
             bt_elem = ET.SubElement(bm_elem, btype)
             bt_elem.text = ' '.join(str(s) for s in surface_ids)
 
+        pgm_elem = ET.SubElement(element, "physical_group_map")
+        face_ids_elem = ET.SubElement(pgm_elem, "face_ids")
+        face_ids_elem.text = " ".join(
+            str(i) for i in self.physical_group_map["face_ids"]
+        )
+        pg_elem = ET.SubElement(pgm_elem, "physical_groups")
+        pg_elem.text = " ".join(
+            str(i) for i in self.physical_group_map["physical_groups"]
+        )
         mapping_elem = ET.SubElement(element, "mapping")
         mapping_elem.text = self.mapping
 
@@ -245,6 +292,24 @@ class DNPDrift:
             boundary_map[child.tag] = ids
         kwargs["boundary_map"] = boundary_map
 
+        # Physical group map (required)
+        pgm_elem = elem.find("physical_group_map")
+        if pgm_elem is None:
+            raise ValueError("dnp_drift: missing <physical_group_map> element.")
+        face_ids_elem = pgm_elem.find("face_ids")
+        if face_ids_elem is None or face_ids_elem.text is None:
+            raise ValueError(
+                "dnp_drift: missing or empty <face_ids> in the <physical_group_map> element."
+            )
+        pg_elem = pgm_elem.find("physical_groups")
+        if pg_elem is None or pg_elem.text is None:
+            raise ValueError(
+                "dnp_drift: missing or empty <physical_groups> in the <physical_group_map> element."
+            )
+        kwargs["physical_group_map"] = {
+            "face_ids": [int(i) for i in face_ids_elem.text.split()],
+            "physical_groups": [int(i) for i in pg_elem.text.split()]
+        }
         mapping = elem.find("mapping")
         if mapping is not None:
             kwargs["mapping"] = mapping.text
@@ -273,6 +338,7 @@ class DNPDrift:
         return (
             self.velocity_field == other.velocity_field
             and self.boundary_map == other.boundary_map
+            and self.physical_group_map == other.physical_group_map
             and self.mapping == other.mapping
             and self.integrator == other.integrator
             and self.integrator_dt == other.integrator_dt
@@ -284,6 +350,7 @@ class DNPDrift:
         return (
             f"DNPDrift(velocity_field_id={self.velocity_field.id}, "
             f"boundary_map={self.boundary_map}, "
+            f"physical_group_map=({len(self._physical_group_map['face_ids'])} faces), "
             f"mapping='{self.mapping}', "
             f"integrator='{self.integrator}', "
             f"integrator_dt={self.integrator_dt}, "

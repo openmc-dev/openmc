@@ -1237,6 +1237,50 @@ void read_settings_xml(pugi::xml_node root)
       fatal_error("Boundary conditions must be declared.");
     }
 
+    // Physical group map
+    if (check_for_node(node_dnp_drift, "physical_group_map")) {
+
+      auto node_physical_group = node_dnp_drift.child("physical_group_map");
+
+      // Face IDs
+      vector<int> face_ids;
+      if (check_for_node(node_physical_group, "face_ids")) {
+        face_ids = get_node_array<int>(node_physical_group, "face_ids");
+      } else {
+        fatal_error("Surface IDs must be declared.");
+      }
+
+      // Check for duplicate face IDs
+      std::set<int> unique_face_ids(face_ids.begin(), face_ids.end());
+      if (unique_face_ids.size() != face_ids.size()) {
+        fatal_error("Duplicate face IDs found in physical groups definition!");
+      }
+
+      // Physical groups
+      vector<int> physical_groups;
+      if (check_for_node(node_physical_group, "physical_groups")) {
+        physical_groups =
+          get_node_array<int>(node_physical_group, "physical_groups");
+      } else {
+        fatal_error("Physical_groups must be declared.");
+      }
+
+      // Check for consistency
+      if (face_ids.size() != physical_groups.size()) {
+        fatal_error(
+          "The lists of face IDs and physical groups must have the same size!");
+      }
+
+      // Create the physical group map
+      PGMap pg_map;
+      for (size_t i = 0; i < face_ids.size(); i++) {
+        pg_map[physical_groups[i]].push_back(face_ids[i]);
+      }
+
+      // Save the map in the mesh
+      simulation::velocity_field->mesh_ptr()->pg_map() = pg_map;
+    }
+
     // Integrator
     if (check_for_node(node_dnp_drift, "integrator")) {
       std::string integration_method =
@@ -1280,63 +1324,6 @@ void read_settings_xml(pugi::xml_node root)
         }
       }
     }
-  }
-
-  // Add physical group information to mesh
-  if (check_for_node(root, "mesh_physical_group")) {
-
-    auto node_physical_group = root.child("mesh_physical_group");
-
-    // Mesh pointer
-    Mesh* mesh_ptr;
-    if (check_for_node(node_physical_group, "mesh")) {
-      int temp = std::stoi(get_node_value(node_physical_group, "mesh"));
-      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
-        fatal_error(fmt::format(
-          "Mesh {} specified for the physical groups does not exist.", temp));
-      }
-      mesh_ptr = model::meshes[model::mesh_map.at(temp)].get();
-    } else {
-      fatal_error("A mesh must be given for the velocity field.");
-    }
-
-    // Face IDs
-    vector<int> face_ids;
-    if (check_for_node(node_physical_group, "face_ids")) {
-      face_ids = get_node_array<int>(node_physical_group, "face_ids");
-    } else {
-      fatal_error("Surface IDs must be declared.");
-    }
-
-    // Check for duplicate face IDs
-    std::set<int> unique_face_ids(face_ids.begin(), face_ids.end());
-    if (unique_face_ids.size() != face_ids.size()) {
-      fatal_error("Duplicate face IDs found in physical groups definition!");
-    }
-
-    // Physical groups
-    vector<int> physical_groups;
-    if (check_for_node(node_physical_group, "physical_groups")) {
-      physical_groups =
-        get_node_array<int>(node_physical_group, "physical_groups");
-    } else {
-      fatal_error("Physical_groups must be declared.");
-    }
-
-    // Check for consistency
-    if (face_ids.size() != physical_groups.size()) {
-      fatal_error(
-        "The lists of face IDs and physical groups must have the same size!");
-    }
-
-    // Create the physical group map
-    PGMap pg_map;
-    for (size_t i = 0; i < face_ids.size(); i++) {
-      pg_map[physical_groups[i]].push_back(face_ids[i]);
-    }
-
-    // Save the map in the mesh
-    mesh_ptr->pg_map() = pg_map;
   }
 
   // Check for tabular_legendre options

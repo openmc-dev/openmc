@@ -2664,8 +2664,12 @@ class Model:
 
         Parameters
         ----------
-        method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
-            Method to generate the MGXS.
+        method : {"material_wise", "stochastic_slab", "infinite_medium", \
+                  "cell_wise"}, optional
+            Method to generate the MGXS. "cell_wise" is like
+            "material_wise" but gives each cell its own cross sections. The
+            material in each material-filled cell is cloned, so the per-material
+            generation produces one cross section set per cell.
         groups : openmc.mgxs.EnergyGroups, str, or sequence of float, optional
             Energy group structure for the MGXS. Can be an
             :class:`openmc.mgxs.EnergyGroups` object, a string name of a
@@ -2725,9 +2729,9 @@ class Model:
             also construct their own sources and always disable
             ``create_fission_neutrons`` so that fission is treated as capture.
             A ``weight_windows_file`` is applied during ``"material_wise"``
-            generation and ignored with a warning by the other methods; see the
-            user guide for the weight window "bootstrapping" workflow this
-            enables. Cannot be combined with the deprecated ``nparticles`` or
+            and ``"cell_wise"`` generation and ignored with a warning by the
+            other methods; see the user guide for the weight window
+            "bootstrapping" workflow this enables. Cannot be combined with the deprecated ``nparticles`` or
             ``temperature_settings`` arguments.
 
             .. versionadded:: 0.16.0
@@ -2736,7 +2740,8 @@ class Model:
             groups = openmc.mgxs.EnergyGroups(groups)
 
         check_value('method', method,
-                    ('material_wise', 'stochastic_slab', 'infinite_medium'))
+                    ('material_wise', 'cell_wise', 'stochastic_slab',
+                     'infinite_medium'))
 
         # Keyword arguments are Settings attributes applied as overrides on
         # the generation defaults
@@ -2765,10 +2770,11 @@ class Model:
 
         # Resolve the settings for the MGXS generation run(s) in three layers,
         # with later layers taking precedence: the model's own settings
-        # ("material_wise") or a fresh Settings object (surrogate methods), then
-        # the generation defaults, then the user's keyword-argument overrides.
+        # ("material_wise"/"cell_wise") or a fresh Settings object (surrogate
+        # methods), then the generation defaults, then the user's
+        # keyword-argument overrides.
         user_settings = settings
-        if method == 'material_wise':
+        if method in ('material_wise', 'cell_wise'):
             settings = copy.deepcopy(self.settings)
         else:
             settings = openmc.Settings()
@@ -2786,7 +2792,8 @@ class Model:
 
         if user_settings is not None:
             # The surrogate-geometry methods construct their own sources
-            if method != "material_wise" and len(user_settings.source) > 0:
+            if method not in ("material_wise", "cell_wise") \
+                    and len(user_settings.source) > 0:
                 warnings.warn(
                     'The given "source" setting is ignored by the '
                     f'"{method}" MGXS generation method, which constructs '
@@ -2799,11 +2806,12 @@ class Model:
 
         # The run mode is the one attribute that cannot be detected as
         # user-populated (a fresh Settings object defaults it to 'eigenvalue'),
-        # so it is owned by the generation method: "material_wise" always takes
-        # it from the model, while the surrogate-geometry methods always run in
-        # fixed source mode. The surrogate-geometry methods also treat fission
-        # as capture (nu-fission is still tallied)
-        if method == 'material_wise':
+        # so it is owned by the generation method: "material_wise" and
+        # "cell_wise" always take it from the model, while the
+        # surrogate-geometry methods always run in fixed source mode. The
+        # surrogate-geometry methods also treat fission as capture (nu-fission
+        # is still tallied)
+        if method in ('material_wise', 'cell_wise'):
             settings.run_mode = self.settings.run_mode
         else:
             settings.run_mode = 'fixed source'
@@ -2811,19 +2819,19 @@ class Model:
 
         # A weight windows file on the generation settings is loaded and
         # applied (specifying a file turns weight windows on) during the
-        # "material_wise" method's continuous energy simulation of the
-        # original geometry, allowing materials far from the source --
-        # which an analog simulation may struggle to reach -- to still be
-        # tallied, and thus obtain nonzero cross sections. The
+        # "material_wise" and "cell_wise" methods' continuous energy
+        # simulation of the original geometry, allowing materials far from
+        # the source -- which an analog simulation may struggle to reach --
+        # to still be tallied, and thus obtain nonzero cross sections. The
         # "stochastic_slab" and "infinite_medium" methods use simplified
         # surrogate geometries for which weight windows defined over the
         # original geometry are neither applicable nor needed.
         if settings.weight_windows_file is not None and \
-                method != "material_wise":
+                method not in ("material_wise", "cell_wise"):
             warnings.warn(
                 'The "weight_windows_file" setting is only applicable to '
-                'the "material_wise" MGXS generation method and will be '
-                f'ignored for the "{method}" method.'
+                'the "material_wise" and "cell_wise" MGXS generation methods '
+                f'and will be ignored for the "{method}" method.'
             )
             settings.weight_windows_file = None
 
@@ -2848,6 +2856,18 @@ class Model:
                     self.settings.run_mode = original_run_mode
                     break
 
+            # For "cell_wise", give each cell its own cross sections by
+            # cloning the material in every material-filled cell. Each clone gets
+            # a unique id, so the per-material generation below produces (and
+            # assigns) one cross section set per cell.
+            if method == "cell_wise":
+                cell_materials = []
+                for cell in self.geometry.get_all_cells().values():
+                    if isinstance(cell.fill, openmc.Material):
+                        cell.fill = cell.fill.clone()
+                        cell_materials.append(cell.fill)
+                self.materials = openmc.Materials(cell_materials)
+
             # Temporarily replace each material's name with a unique, valid HDF5
             # dataset name (its name plus ID) for use as its MGXS library entry
             # and macroscopic. The ID keeps the name unique even when materials
@@ -2864,7 +2884,7 @@ class Model:
                     self._generate_infinite_medium_mgxs(
                         groups, settings, mgxs_path, correction, tmpdir,
                         source_energy, temperatures)
-                elif method == "material_wise":
+                elif method in ("material_wise", "cell_wise"):
                     self._generate_material_wise_mgxs(
                         groups, settings, mgxs_path, correction, tmpdir,
                         temperatures)

@@ -999,6 +999,35 @@ The contents of this section, alongside the equations for the flat source and
 scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively,
 completes the set of equations for LS.
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Consistency of the Scalar Flux Estimate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One subtlety of the linear source scheme deserves note. Intuitively, the
+issue is a mismatch of statistics: the naive volume treatment updates the
+flux from a single batch's rays, while the linear source is anchored to the
+simulation-averaged centroid, so the two halves of the update describe
+different sets of tracks and the exactness the naive treatment promises is
+quietly broken. Concretely, the transport sweep evaluates each region's
+linear source against the accumulated centroid :math:`\mathbf{C}_i`, but a
+batch's tracks average that source at their own track-length-weighted
+centroid :math:`\mathbf{c}_{i,b}`, so the mean emission the batch actually
+integrates is
+
+.. math::
+    :label: batch_sampled_source
+
+    \bar{Q}_i + \vec{Q}_i \cdot (\mathbf{c}_{i,b} - \mathbf{C}_i)\;.
+
+A flux update that adds back only :math:`\bar{Q}_i` absorbs the difference
+as gradient-scale noise, which in optically thin scatter-fed regions can
+ignite self-sustaining negative fluxes. OpenMC therefore adds back the full
+batch-sampled source whenever a region updates with its own batch
+(iteration) volume, making that update exact for the batch's tracks.
+Regions updating with the simulation-averaged volume keep the original
+form, which is unbiased (the omitted deviations sum to zero against the
+accumulated centroid) and carries less variance there.
+
 .. _methods-shannon-entropy-random-ray:
 
 -----------------------------

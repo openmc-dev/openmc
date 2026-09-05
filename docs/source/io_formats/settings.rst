@@ -630,6 +630,20 @@ found in the :ref:`random ray user guide <random_ray>`.
 
     *Default*: None
 
+  :source_shape:
+    Specifies the assumed shape of the source distribution within each
+    source region. Options are "flat", "linear", or "linear_xy".
+
+    *Default*: flat
+
+  :source_gradient_limiter:
+    Specifies whether to rescale linear source gradients as needed so that
+    the source shape modeled within each source region remains non-negative
+    over the extent described by the region's spatial moments (bool). Only
+    used when the source shape is "linear" or "linear_xy".
+
+    *Default*: false
+
   :volume_normalized_flux_tallies:
     Specifies whether to normalize flux tallies by volume (bool). The
     default is 'False'. When enabled, flux tallies will be reported in units

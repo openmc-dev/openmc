@@ -49,7 +49,7 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test Field - regular mesh")
           {29.5, 16.5, 17.5, 25.5, 23.0, 10.0}}}));
 
   // Create a temperature field
-  Field<double> field = Field<double>(&mesh, values, mapping);
+  MappedField<double> field = MappedField<double>(&mesh, values, mapping);
 
   // Assign
   double saved_value = field.data().values()[2];
@@ -248,10 +248,12 @@ TEST_CASE(
         <run_mode>eigenvalue</run_mode>
         <particles>200</particles>
         <batches>20</batches>
-        <temperature_field>
+        <temperature_field>1</temperature_field>
+        <field type="temperature" id="1">
           <mesh>1</mesh>
           <values>294.0 394.0 494.0 594.0 694.0 794.0 894.0</values>
-        </temperature_field>
+          <mapping>cell</mapping>
+        </field>
         <mesh id="1">
           <dimension>2 2 2</dimension>
           <lower_left>0.0 0.0 0.0</lower_left>
@@ -259,18 +261,19 @@ TEST_CASE(
         </mesh>
       </settings>
       )",
-      "Inconsistency in the temperature field: the number of values must be "
-      "equal to the number of bins in the mesh."},
+      "Field id=1: temperature field has 7 values but mesh has 8 elements."},
     {// If the mesh declared is not defined -> error
       R"(
       <settings>
         <run_mode>eigenvalue</run_mode>
         <particles>200</particles>
         <batches>20</batches>
-        <temperature_field>
+        <temperature_field>1</temperature_field>
+        <field type="temperature" id="1">
           <mesh>2</mesh>
           <values>294.0 394.0 494.0 594.0 694.0 794.0 894.0 994.0</values>
-        </temperature_field>
+          <mapping>cell</mapping>
+        </field>
         <mesh id="1">
           <dimension>2 2 2</dimension>
           <lower_left>0.0 0.0 0.0</lower_left>
@@ -278,16 +281,18 @@ TEST_CASE(
         </mesh>
       </settings>
       )",
-      "Mesh 2 specified for the temperature field does not exist."},
+      "Mesh 2 specified in field id=1 does not exist."},
     {// No mesh declared -> error
       R"(
       <settings>
         <run_mode>eigenvalue</run_mode>
         <particles>200</particles>
         <batches>20</batches>
-        <temperature_field>
+        <temperature_field>1</temperature_field>
+        <field type="temperature" id="1">
           <values>294.0 394.0 494.0 594.0 694.0 794.0 894.0 994.0</values>
-        </temperature_field>
+          <mapping>cell</mapping>
+        </field>
         <mesh id="1">
           <dimension>2 2 2</dimension>
           <lower_left>0.0 0.0 0.0</lower_left>
@@ -295,16 +300,18 @@ TEST_CASE(
         </mesh>
       </settings>
       )",
-      "A mesh must be given for the temperature field."},
+      "Field id=1 must specify a mesh."},
     {// No values declared -> error
       R"(
       <settings>
         <run_mode>eigenvalue</run_mode>
         <particles>200</particles>
         <batches>20</batches>
-        <temperature_field>
+        <temperature_field>1</temperature_field>
+        <field type="temperature" id="1">
           <mesh>1</mesh>
-        </temperature_field>
+          <mapping>cell</mapping>
+        </field>
         <mesh id="1">
           <dimension>2 2 2</dimension>
           <lower_left>0.0 0.0 0.0</lower_left>
@@ -312,7 +319,7 @@ TEST_CASE(
         </mesh>
       </settings>
       )",
-      "Temperature values must be given for the temperature field."},
+      "Field id=1 must specify values."},
   }));
 
   free_memory_mesh();

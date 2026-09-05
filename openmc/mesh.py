@@ -305,8 +305,11 @@ class MeshBase(IDManagerMixin, ABC):
             return CylindricalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'spherical':
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
-        elif mesh_type == 'unstructured':
-            return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
+        elif mesh_type in ('unstructured', 'xdg'):
+            out = UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
+            if mesh_type == 'xdg':
+                out.interface = 'xdg'
+            return out
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
@@ -352,6 +355,8 @@ class MeshBase(IDManagerMixin, ABC):
             mesh = CylindricalMesh.from_xml_element(elem)
         elif mesh_type == 'spherical':
             mesh = SphericalMesh.from_xml_element(elem)
+        elif mesh_type == 'xdg':
+            mesh = openmc.XDGMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
             mesh = UnstructuredMesh.from_xml_element(elem)
         else:
@@ -2791,6 +2796,13 @@ class UnstructuredMesh(MeshBase):
         Multiplicative factor to apply to mesh coordinates
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
+    interface : {'native', 'xdg'}
+        Interface type for the unstructured mesh. The value 'native' indicates
+        that the C++ implementation interfaces directly with the indicated mesh
+        library. The value 'xdg' indicates that the C++ implementation
+        interfaces with the mesh library through the XDG interface, enabling
+        consistent behavior across different mesh libraries. The default value
+        is 'native'.
     options : str
         Special options that control spatial search data structures used. This
         is currently only used to set `parameters
@@ -2840,6 +2852,7 @@ class UnstructuredMesh(MeshBase):
         self._conectivity = None
         self._vertices = None
         self.library = library
+        self.interface = 'native'
         self._output = False
         self.length_multiplier = length_multiplier
         self.options = options
@@ -2860,7 +2873,7 @@ class UnstructuredMesh(MeshBase):
 
     @library.setter
     def library(self, lib: str):
-        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
+        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh', 'xdg'))
         self._library = lib
 
     @property
@@ -2984,6 +2997,7 @@ class UnstructuredMesh(MeshBase):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
         string += '{: <16}=\t{}\n'.format('\tMesh Library', self.library)
+        string += '{: <16}=\t{}\n'.format('\tInterface', self.interface)
         if self.length_multiplier != 1.0:
             string += '{: <16}=\t{}\n'.format('\tLength multiplier',
                                               self.length_multiplier)
@@ -3281,18 +3295,17 @@ class UnstructuredMesh(MeshBase):
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         filename = group["filename"][()].decode()
         library = group["library"][()].decode()
-        if "options" in group.attrs:
-            options = group.attrs['options'].decode()
-        else:
-            options = None
 
-        mesh = cls(
-            filename=filename,
-            library=library,
-            mesh_id=mesh_id,
-            name=name,
-            options=options,
-        )
+        kwargs = {'filename': filename,
+                  'library': library,
+                  'mesh_id': mesh_id,
+                  'name': name}
+
+        if "options" in group.attrs:
+            kwargs['options'] = group.attrs['options'].decode()
+
+        mesh = cls(**kwargs)
+
         mesh._has_statepoint_data = True
         vol_data = group["volumes"][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -3328,6 +3341,9 @@ class UnstructuredMesh(MeshBase):
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
 
+        if self.interface != 'native':
+            element.set("interface", self.interface)
+
         if self._length_multiplier != 1.0:
             element.set("length_multiplier", str(self.length_multiplier))
 
@@ -3352,8 +3368,10 @@ class UnstructuredMesh(MeshBase):
         library = get_text(elem, 'library')
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
         options = get_text(elem, "options")
-
-        return cls(filename, library, mesh_id, '', length_multiplier, options)
+        out = cls(filename, library, mesh_id, '', length_multiplier, options)
+        if interface := get_text(elem, "interface") is not None:
+            out.interface = interface
+        return out
 
 
 def _read_meshes(elem):

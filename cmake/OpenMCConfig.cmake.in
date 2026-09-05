@@ -26,6 +26,10 @@ if("@PNG_FOUND@")
   find_dependency(PNG)
 endif()
 
+if(@OPENMC_USE_XDG@)
+  find_dependency(XDG REQUIRED HINTS @XDG_DIR@)
+endif()
+
 if(@OPENMC_USE_MPI@)
   find_dependency(MPI REQUIRED)
 endif()

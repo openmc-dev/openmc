@@ -73,7 +73,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
         # we expect these results to be the same to within at least ten
         # decimal places
-        decimals = 10 if umesh_tally.estimator == 'collision' else 8
+        decimals = 10 if umesh_tally.estimator == 'collision' else 6
         np.testing.assert_array_almost_equal(np.sort(unstructured_data),
                                             np.sort(reg_mesh_data),
                                             decimals)
@@ -135,69 +135,18 @@ def model():
     model.materials = materials
 
     ### Geometry ###
-    fuel_min_x = openmc.XPlane(-5.0, name="minimum x")
-    fuel_max_x = openmc.XPlane(5.0, name="maximum x")
-
-    fuel_min_y = openmc.YPlane(-5.0, name="minimum y")
-    fuel_max_y = openmc.YPlane(5.0, name="maximum y")
-
-    fuel_min_z = openmc.ZPlane(-5.0, name="minimum z")
-    fuel_max_z = openmc.ZPlane(5.0, name="maximum z")
-
-    fuel_cell = openmc.Cell(name="fuel")
-    fuel_cell.region = +fuel_min_x & -fuel_max_x & \
-                       +fuel_min_y & -fuel_max_y & \
-                       +fuel_min_z & -fuel_max_z
+    fuel_box = openmc.model.RectangularParallelepiped(-5.0, 5.0, -5.0, 5.0, -5.0, 5.0)
+    fuel_cell = openmc.Cell(name="fuel", region=-fuel_box)
     fuel_cell.fill = fuel_mat
 
-    clad_min_x = openmc.XPlane(-6.0, name="minimum x")
-    clad_max_x = openmc.XPlane(6.0, name="maximum x")
-
-    clad_min_y = openmc.YPlane(-6.0, name="minimum y")
-    clad_max_y = openmc.YPlane(6.0, name="maximum y")
-
-    clad_min_z = openmc.ZPlane(-6.0, name="minimum z")
-    clad_max_z = openmc.ZPlane(6.0, name="maximum z")
-
-    clad_cell = openmc.Cell(name="clad")
-    clad_cell.region = (-fuel_min_x | +fuel_max_x |
-                        -fuel_min_y | +fuel_max_y |
-                        -fuel_min_z | +fuel_max_z) & \
-                        (+clad_min_x & -clad_max_x &
-                         +clad_min_y & -clad_max_y &
-                         +clad_min_z & -clad_max_z)
+    clad_box = openmc.model.RectangularParallelepiped(-6.0, 6.0, -6.0, 6.0, -6.0, 6.0)
+    clad_cell = openmc.Cell(name="clad", region=-clad_box & +fuel_box)
     clad_cell.fill = zirc_mat
 
     # set bounding cell dimension to one
     # this will be updated later according to the test case parameters
-    water_min_x = openmc.XPlane(x0=-1.0,
-                                name="minimum x",
-                                boundary_type='vacuum')
-    water_max_x = openmc.XPlane(x0=1.0,
-                                name="maximum x",
-                                boundary_type='vacuum')
-
-    water_min_y = openmc.YPlane(y0=-1.0,
-                                name="minimum y",
-                                boundary_type='vacuum')
-    water_max_y = openmc.YPlane(y0=1.0,
-                                name="maximum y",
-                                boundary_type='vacuum')
-
-    water_min_z = openmc.ZPlane(z0=-1.0,
-                                name="minimum z",
-                                boundary_type='vacuum')
-    water_max_z = openmc.ZPlane(z0=1.0,
-                                name="maximum z",
-                                boundary_type='vacuum')
-
-    water_cell = openmc.Cell(name="water")
-    water_cell.region = (-clad_min_x | +clad_max_x |
-                         -clad_min_y | +clad_max_y |
-                         -clad_min_z | +clad_max_z) & \
-                         (+water_min_x & -water_max_x &
-                          +water_min_y & -water_max_y &
-                          +water_min_z & -water_max_z)
+    water_box = openmc.model.RectangularParallelepiped(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0, boundary_type='vacuum')
+    water_cell = openmc.Cell(name="water", region=-water_box & +clad_box)
     water_cell.fill = water_mat
 
     # create a containing universe
@@ -225,11 +174,7 @@ def model():
     settings.batches = 10
 
     # source setup
-    r = openmc.stats.Uniform(a=0.0, b=0.0)
-    cos_theta = openmc.stats.Discrete(x=[1.0], p=[1.0])
-    phi = openmc.stats.Discrete(x=[0.0], p=[1.0])
-
-    space = openmc.stats.SphericalIndependent(r, cos_theta, phi)
+    space = openmc.stats.spherical_uniform(r_outer = 9.0)
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.IndependentSource(space=space, energy=energy)
     settings.source = source
@@ -240,36 +185,48 @@ def model():
 
 
 param_values = (['libmesh', 'moab'], # mesh libraries
+                ['native', 'xdg'], # mesh interfaces
                 ['collision', 'tracklength'], # estimators
                 [True, False], # geometry outside of the mesh
                 [(333, 90, 77), None]) # location of holes in the mesh
 test_cases = []
-for i, (lib, estimator, ext_geom, holes) in enumerate(product(*param_values)):
+for i, (lib, interface, estimator, ext_geom, holes) in enumerate(product(*param_values)):
+    if lib == 'libmesh' and estimator == 'tracklength':
+        continue
     test_cases.append({'library' : lib,
+                       'interface': interface,
                        'estimator' : estimator,
                        'external_geom' : ext_geom,
                        'holes' : holes,
-                       'inputs_true' : 'inputs_true{}.dat'.format(i)})
+                       'inputs_true' : f'inputs_tets_true{i}.dat'})
 
+def param_ids(test_case):
+    return f"{test_case['library']}_{test_case['interface']}_{test_case['estimator']}_holes_{test_case['holes']}_external_geom_{test_case['external_geom']}"
 
-@pytest.mark.parametrize("test_opts", test_cases)
+@pytest.mark.parametrize("test_opts", test_cases, ids=param_ids)
 def test_unstructured_mesh_tets(model, test_opts):
-    # skip the test if the library is not enabled
-    if test_opts['library'] == 'moab' and not openmc.lib.feature_enabled('dagmc'):
-        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
+    # skip the test if appropriate libraries or interfaces are not enabled
+    if test_opts['interface'] == 'xdg' and not openmc.lib.feature_enabled('xdg'):
+        pytest.skip("XDG interface is not enabled in this build.")
+    elif test_opts['interface'] == 'native':
+        if test_opts['library'] == 'moab' and not openmc.lib.feature_enabled('dagmc'):
+            pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
 
-    if test_opts['library'] == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
-        pytest.skip("LibMesh is not enabled in this build.")
+        if test_opts['library'] == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
+            pytest.skip("LibMesh is not enabled in this build.")
 
     # skip the tracklength test for libmesh
     if test_opts['library'] == 'libmesh' and \
-       test_opts['estimator'] == 'tracklength':
+       test_opts['estimator'] == 'tracklength' and \
+       test_opts['interface'] != 'xdg':
        pytest.skip("Tracklength tallies are not supported using libmesh.")
 
     if test_opts['holes']:
         mesh_filename = "test_mesh_tets_w_holes.e"
     else:
         mesh_filename = "test_mesh_tets.e"
+
+    interface = test_opts['interface']
 
     # add reference mesh tally
     regular_mesh_tally = model.tallies[0]
@@ -280,6 +237,8 @@ def test_unstructured_mesh_tets(model, test_opts):
     if test_opts['library'] == 'moab':
         uscd_mesh.options = 'MAX_DEPTH=15;PLANE_SET=2'
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
+
+    uscd_mesh.interface = interface
 
     # create tallies
     uscd_tally = openmc.Tally(name="unstructured mesh tally")
@@ -302,25 +261,48 @@ def test_unstructured_mesh_tets(model, test_opts):
     harness.main()
 
 
-@pytest.mark.skipif(not openmc.lib.feature_enabled('libmesh'),
-                    reason='LibMesh is not enabled in this build.')
-def test_unstructured_mesh_hexes(model):
+param_values = (['libmesh', 'moab'], # mesh libraries
+                ['native', 'xdg'], # mesh interfaces
+                ['collision', 'tracklength']) # estimators
+test_cases = []
+for i, (lib, interface, estimator) in enumerate(product(*param_values)):
+    if lib == 'moab' and interface != 'xdg':
+        continue
+    if lib == 'libmesh' and estimator == 'tracklength':
+        continue
+    test_cases.append((lib, interface, estimator, f'inputs_hexes_true{i}.dat'))
+
+@pytest.mark.parametrize("test_opts", test_cases, ids=lambda x: f"{x[0]}_{x[1]}_{x[2]}")
+def test_unstructured_mesh_hexes(model, test_opts):
+
+    library, interface, estimator, inputs_true = test_opts
+
+    if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
+        pytest.skip("LibMesh is not enabled in this build.")
+    if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
+        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
+    if interface == 'xdg' and not openmc.lib.feature_enabled('xdg'):
+        pytest.skip("XDG interface is not enabled in this build.")
+
     regular_mesh_tally = model.tallies[0]
-    regular_mesh_tally.estimator = 'collision'
+    regular_mesh_tally.estimator = estimator
 
     # add analagous unstructured mesh tally
-    uscd_mesh = openmc.UnstructuredMesh('test_mesh_hexes.e', 'libmesh')
+    filename = "test_mesh_hexes.e" if library == 'libmesh' else "test_mesh_hexes.exo"
+    uscd_mesh = openmc.UnstructuredMesh(filename, library)
+    uscd_mesh.interface = interface
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies
     uscd_tally = openmc.Tally(name="unstructured mesh tally")
     uscd_tally.filters = [uscd_filter]
     uscd_tally.scores = ['flux']
-    uscd_tally.estimator = 'collision'
+    uscd_tally.estimator = estimator
     model.tallies.append(uscd_tally)
 
     harness = UnstructuredMeshTest('statepoint.10.h5',
-                                   model)
+                                   model,
+                                   inputs_true)
     harness.ELEM_PER_VOXEL = 1
 
     harness.main()

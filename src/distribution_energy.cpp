@@ -190,24 +190,24 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
   int end = n_energy_out - 2;
 
   // Discrete portion
-  for (int j = 0; j < n_discrete; ++j) {
-    k = j;
-    c_k = distribution_[l].c[k];
-    if (r1 < c_k) {
-      end = j;
-      break;
+  if (n_discrete > 0) {
+    int idx = upper_bound_index(
+      distribution_[l].c.begin(), distribution_[l].c.begin() + n_discrete, r1);
+    if (idx + 1 < n_discrete) {
+      k = idx + 1;
+      end = k;
+    } else {
+      k = n_discrete - 1;
     }
+    c_k = distribution_[l].c[k];
   }
 
   // Continuous portion
-  double c_k1;
-  for (int j = n_discrete; j < end; ++j) {
-    k = j;
-    c_k1 = distribution_[l].c[k + 1];
-    if (r1 < c_k1)
-      break;
-    k = j + 1;
-    c_k = c_k1;
+  if (n_discrete < end) {
+    int idx = upper_bound_index(distribution_[l].c.begin() + n_discrete + 1,
+      distribution_[l].c.begin() + end + 1, r1);
+    k = idx + n_discrete + 1;
+    c_k = distribution_[l].c[k];
   }
 
   double E_l_k = distribution_[l].e_out[k];

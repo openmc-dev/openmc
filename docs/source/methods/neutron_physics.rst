@@ -568,7 +568,7 @@ and the incoming energy:
 .. math::
     :label: level-scattering
 
-    E' = \left ( \frac{A}{A+1} \right )^2 \left ( E - \frac{A + 1}{A} Q \right )
+    E' = \left ( \frac{A}{A+1} \right )^2 \left ( E - \frac{A + 1}{A} |Q| \right )
 
 where :math:`A` is the mass of the target nucleus measured in neutron masses.
 

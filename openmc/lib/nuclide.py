@@ -29,6 +29,10 @@ _dll.openmc_nuclide_collapse_rate.argtypes = [c_int, c_int, c_double,
     _array_1d_dble, _array_1d_dble, c_int, POINTER(c_double)]
 _dll.openmc_nuclide_collapse_rate.restype = c_int
 _dll.openmc_nuclide_collapse_rate.errcheck = _error_handler
+_dll.openmc_nuclide_group_xs.argtypes = [c_int, c_int, c_double,
+    _array_1d_dble, c_int, _array_1d_dble]
+_dll.openmc_nuclide_group_xs.restype = c_int
+_dll.openmc_nuclide_group_xs.errcheck = _error_handler
 _dll.nuclides_size.restype = c_size_t
 
 
@@ -111,6 +115,34 @@ class Nuclide(_FortranObject):
         _dll.openmc_nuclide_collapse_rate(self._index, MT, temperature, energy,
                                           flux, len(flux), xs)
         return xs.value
+
+    def group_xs(self, MT, temperature, energy):
+        """Calculate group-averaged microscopic cross sections.
+
+        The average over each group, ``integral(sigma dE) / dE_group``,
+        assumes a flat flux within the group, so the collapsed rate
+        ``sum(flux * group_xs)`` matches :meth:`collapse_rate`.
+
+        Parameters
+        ----------
+        MT : int
+            ENDF MT value of the desired reaction
+        temperature : float
+            Temperature in [K] at which to evaluate cross sections
+        energy : iterable of float
+            Energy group boundaries in [eV]
+
+        Returns
+        -------
+        numpy.ndarray
+            Group-averaged cross section in [b] for each energy group
+
+        """
+        energy = np.asarray(energy, dtype=float)
+        xs = np.zeros(energy.size - 1)
+        _dll.openmc_nuclide_group_xs(self._index, MT, temperature, energy,
+                                     len(xs), xs)
+        return xs
 
 
 class _NuclideMapping(Mapping):

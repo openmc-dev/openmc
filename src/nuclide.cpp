@@ -1072,6 +1072,36 @@ double Nuclide::collapse_rate(int MT, double temperature,
   }
 }
 
+void Nuclide::group_xs(
+  int MT, double temperature, span<const double> energy, span<double> xs) const
+{
+  assert(MT > 0);
+  assert(energy.size() > 0);
+  assert(energy.size() == xs.size() + 1);
+
+  // Zero the output; group_xs only writes groups that have data
+  std::fill(xs.data(), xs.data() + xs.size(), 0.0);
+
+  int i_rx = reaction_index_[MT];
+  if (i_rx < 0)
+    return;
+  const auto& rx = reactions_[i_rx];
+
+  // Determine temperature index
+  auto [i_temp, f] = this->find_temperature(temperature);
+
+  // Get group-averaged cross sections at lower temperature
+  rx->group_xs(i_temp, energy, grid_[i_temp].energy, xs);
+
+  if (f > 0.0) {
+    // Interpolate element-wise between lower and higher temperature
+    vector<double> xs_high(xs.size(), 0.0);
+    rx->group_xs(i_temp + 1, energy, grid_[i_temp + 1].energy, xs_high);
+    for (std::size_t g = 0; g < xs.size(); ++g)
+      xs[g] += f * (xs_high[g] - xs[g]);
+  }
+}
+
 //==============================================================================
 // Non-member functions
 //==============================================================================
@@ -1208,6 +1238,24 @@ extern "C" int openmc_nuclide_collapse_rate(int index, int MT,
   try {
     *xs = data::nuclides[index]->collapse_rate(
       MT, temperature, {energy, energy + n + 1}, {flux, flux + n});
+  } catch (const std::out_of_range& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+
+extern "C" int openmc_nuclide_group_xs(int index, int MT, double temperature,
+  const double* energy, int n_groups, double* group_xs)
+{
+  if (index < 0 || index >= data::nuclides.size()) {
+    set_errmsg("Index in nuclides vector is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  try {
+    data::nuclides[index]->group_xs(MT, temperature,
+      {energy, energy + n_groups + 1}, {group_xs, group_xs + n_groups});
   } catch (const std::out_of_range& e) {
     set_errmsg(e.what());
     return OPENMC_E_OUT_OF_BOUNDS;

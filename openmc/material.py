@@ -2394,27 +2394,38 @@ class Materials(cv.CheckedList):
         chain = _get_chain(chain_file)
 
         # Create MicroXS objects for all materials
-        micros = []
+        micros = [None] * len(self)
         fluxes = []
 
         with openmc.lib.TemporarySession():
-            for material, flux, energy in zip(
+            # Group by (energy, temperature) so the table is built once per group
+            groups = {}
+            for i, (material, flux, energy) in enumerate(zip(
                 self, multigroup_fluxes, energy_group_structures
-            ):
+            )):
                 if material.volume is None:
                     raise ValueError(
                         f"Material {material.id} has no volume; cannot deplete"
                     )
+                fluxes.append(material.volume)
                 temperature = material.temperature or 293.6
-                micro_xs = openmc.deplete.MicroXS.from_multigroup_flux(
+                key = (energy if isinstance(energy, str)
+                       else np.asarray(energy, dtype=float).tobytes())
+                groups.setdefault((key, temperature), (energy, []))[1].append(
+                    (i, flux))
+
+            # Collapse each group's fluxes against a single shared table
+            for (_, temperature), (energy, members) in groups.items():
+                indices, group_fluxes = zip(*members)
+                micros_grp = openmc.deplete.MicroXS.from_multigroup_flux(
                     energies=energy,
-                    multigroup_flux=flux,
+                    multigroup_flux=group_fluxes,
                     chain_file=chain,
                     temperature=temperature,
                     reactions=reactions,
                 )
-                micros.append(micro_xs)
-                fluxes.append(material.volume)
+                for i, micro in zip(indices, micros_grp):
+                    micros[i] = micro
 
         # Create a single operator for all materials
         operator = openmc.deplete.IndependentOperator(

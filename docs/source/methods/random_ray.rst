@@ -1017,15 +1017,15 @@ When the user enables the source gradient limiter, OpenMC limits each
 group's source gradient so the modeled source stays non-negative over the
 region as described by its spatial moments. The
 worst-case overshoot of the linear term over the moment ellipsoid is
-:math:`\sqrt{3 \vec{Q}_i^T M_i \vec{Q}_i}`, where the factor of three makes
-the bound exact for a slab (a uniform interval of length :math:`L` has
-:math:`\langle x^2 \rangle = L^2/12`) and per-axis exact for a box. If the
-overshoot exceeds the flat source, the gradient vector is rescaled so the
-two are equal. The bound covers the moment ellipsoid rather than the true
-region shape, and the corners of box-like or mesh-cut regions lie beyond it
-(up to a factor of :math:`\sqrt{3}` farther from the centroid), so the
-limiter reduces rather than eliminates modeled-source negativity for
-arbitrary shapes. Because the linear term
+:math:`\sqrt{3 \vec{Q}_i^T M_i \vec{Q}_i}`, where the factor of three
+scales the moments up to physical extents (a uniform interval of length
+:math:`L` has :math:`\langle x^2 \rangle = L^2/12`, and :math:`\sqrt{3
+\langle x^2 \rangle} = L/2`). If the overshoot exceeds the flat source,
+the gradient vector is rescaled so the two are equal. The bound is exact
+for the ellipsoid the moments describe, but OpenMC supports arbitrarily
+complex region shapes, and a real region can have corners that extend
+beyond its moment ellipsoid. The limiter therefore reduces rather than
+eliminates modeled-source negativity. Because the linear term
 integrates to zero over the region, the rescaling preserves the region's
 mean emission exactly, and gradients that pass the test are left
 untouched. A group whose flat source is

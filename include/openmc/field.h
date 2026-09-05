@@ -11,13 +11,27 @@
 
 namespace openmc {
 
+class Field;
+
+namespace model {
+
+//! Global container of all field instances, indexed by position.
+extern vector<unique_ptr<Field>> fields;
+
+//! Map from user-facing field ID to index in fields
+extern std::unordered_map<int, int> field_map;
+
+} // namespace model
+
 // -----------------------------------------------------------
 // FieldData
 // -----------------------------------------------------------
 
-template<typename T>
-class Field;
-
+//! Container for field data values defined in a mesh.
+//!
+//! Wraps a flat vector of values and provides element-wise access.
+//! \tparam T Value type (e.g., double for scalar fields, Direction for vector
+//!           fields)
 template<typename T>
 class FieldData {
 public:
@@ -58,12 +72,59 @@ enum class FieldMapping {
   CELL   // Cell-based representation (values defined for each cell)
 };
 
-template<typename T>
+//! Abstract base class for all fields defined on a geometric mesh.
+//
+//! Provides common metadata (ID, type string, name) and a non-owning
+//! pointer to the associated mesh. Concrete field behaviour is
+//! implemented by MappedField and its subclasses.
 class Field {
 public:
-  // Constructor
-  Field() = default;
-  Field(Mesh* mesh_ptr, std::vector<T> values, std::string mapping)
+  virtual ~Field() = default;
+
+  int id() const { return id_; }
+  const std::string& type() const { return type_; }
+  const std::string& name() const { return name_; }
+  Mesh* mesh_ptr() const
+  {
+    if (mesh_ == nullptr) {
+      fatal_error("No mesh found for this field!");
+    } else {
+      return mesh_;
+    }
+  }
+  FieldMapping mapping() const { return mapping_; }
+
+protected:
+  int id_;               //!< Unique field identifier
+  std::string type_;     //!< Field type descriptor string
+  std::string name_;     //!< Optional user-defined name
+  Mesh* mesh_;           //!< Non-owning pointer to the geometric mesh
+  FieldMapping mapping_; //!< Relationship between values and mesh entities
+                         //!< (nodes vs. cells)
+};
+
+// -----------------------------------------------------------
+// MappedField
+// -----------------------------------------------------------
+
+//! A field that stores type data on a mesh with a specified mapping.
+//!
+//! Provides evaluation (including trilinear interpolation for nodal fields),
+//! assignment, and mesh-boundary queries.
+//!
+//! \tparam T Value type stored per mesh entity (e.g., double for scalar fields,
+//!           Direction for vector fields).
+template<typename T>
+class MappedField : public Field {
+public:
+  MappedField() = default;
+
+  //! Construct a fully initialized MappedField.
+  //
+  //! \param[in] mesh_ptr Non-owning pointer to the mesh
+  //! \param[in] values Field values.
+  //! \param[in] mapping Mapping type: 'nodal' or 'cell'
+  MappedField(Mesh* mesh_ptr, vector<T> values, std::string mapping)
   {
     set_mesh(mesh_ptr);
     set_mapping(mapping);
@@ -236,20 +297,6 @@ public:
       current_bin, r, u, bin_next);
   }
 
-  // Mesh pointer accessor
-  Mesh* mesh_ptr() const
-  {
-    if (mesh_ == nullptr) {
-      fatal_error("No mesh found for this field!");
-    } else {
-      return mesh_;
-    }
-  }
-
-  // Mapping accessors
-  FieldMapping mapping() { return mapping_; }
-  const FieldMapping mapping() const { return mapping_; }
-
   // Data field accessor
   FieldData<T>& data() const
   {
@@ -265,8 +312,6 @@ public:
   const vector<T> values() const { return data().values(); }
 
 private:
-  Mesh* mesh_;                         //!< Pointer to the geometric mesh
-  FieldMapping mapping_;               //!< Relationship between values and mesh
   std::unique_ptr<FieldData<T>> data_; //!< Data associated with the mesh
 };
 
@@ -274,13 +319,13 @@ private:
 // TemperatureField
 // -----------------------------------------------------------
 
-class TemperatureField : public Field<double> {
+class TemperatureField : public MappedField<double> {
 public:
   // Constructors
-  TemperatureField() : Field<double>() {};
+  TemperatureField() : MappedField<double>() {};
   TemperatureField(
     Mesh* mesh_ptr, vector<double> values, std::string mapping = "cell")
-    : Field<double>(mesh_ptr, values, mapping) {};
+    : MappedField<double>(mesh_ptr, values, mapping) {};
 
   //! Returns the temperature in Kelvin corresponding to a given bin number
   //! relative to the mesh.
@@ -307,12 +352,12 @@ enum class BCType { NONE, INLET, OUTLET, WALL };
 // Boundary conditions map type
 using BCMap = std::unordered_map<BCType, vector<int>>;
 
-class VelocityField : public Field<Direction> {
+class VelocityField : public MappedField<Direction> {
 public:
   // Constructors
-  VelocityField() : Field<Direction>() {};
+  VelocityField() : MappedField<Direction>() {};
   VelocityField(Mesh* mesh_ptr, vector<Direction> values, std::string mapping)
-    : Field<Direction>(mesh_ptr, values, mapping) {};
+    : MappedField<Direction>(mesh_ptr, values, mapping) {};
 
   //! Find next bin associated with a given position (r1) knowing the previous
   //! position (r0) and the previous bin (bin0). The next bin is evaluated using
@@ -358,6 +403,29 @@ private:
   BCMap bc_map_; //!< Boundary conditions map linking a boundary condition type
                  //!< to physical group numbers
 };
+
+template<typename T>
+T* get_field(int field_id, const std::string& context)
+{
+  auto it = model::field_map.find(field_id);
+  if (it == model::field_map.end()) {
+    fatal_error(fmt::format("{} references field id={}, but no <field> element "
+                            "with that id was found.",
+      context, field_id));
+  }
+
+  Field* base = model::fields[it->second].get();
+  auto* field = dynamic_cast<T*>(base);
+  if (!field) {
+    fatal_error(fmt::format("{} references field id={} of type '{}', "
+                            "which has an incompatible type.",
+      context, field_id, base->type()));
+  }
+
+  return field;
+}
+
+void read_fields(const pugi::xml_node& root);
 
 } //  namespace openmc
 

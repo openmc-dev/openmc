@@ -453,6 +453,9 @@ void read_settings_xml(pugi::xml_node root)
   // Check for user meshes and allocate
   read_meshes(root);
 
+  // Read all fields
+  read_fields(root);
+
   // Look for deprecated cross_sections.xml file in settings.xml
   if (check_for_node(root, "cross_sections")) {
     warning(
@@ -841,52 +844,8 @@ void read_settings_xml(pugi::xml_node root)
   // Temperature field
   if (check_for_node(root, "temperature_field")) {
     temperature_field_on = true;
-
-    // Get pointer to temperature_field node
-    auto node_tf = root.child("temperature_field");
-
-    // Mesh parameter
-    Mesh* tf_mesh_ptr;
-    if (check_for_node(node_tf, "mesh")) {
-      int temp = std::stoi(get_node_value(node_tf, "mesh"));
-      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
-        throw std::runtime_error(fmt::format(
-          "Mesh {} specified for the temperature field does not exist.", temp));
-      }
-      tf_mesh_ptr = model::meshes[model::mesh_map.at(temp)].get();
-    } else {
-      throw std::runtime_error(
-        "A mesh must be given for the temperature field.");
-    }
-
-    // Values parameter
-    vector<double> tf_values;
-    if (check_for_node(node_tf, "values")) {
-      auto temp = get_node_array<double>(node_tf, "values");
-      if (temp.size() != tf_mesh_ptr->n_bins()) {
-        throw std::runtime_error(
-          "Inconsistency in the temperature field: the number of "
-          "values must be equal to the number of bins in the mesh.");
-      }
-      for (const auto& b : temp) {
-        tf_values.push_back(b);
-      }
-    } else {
-      throw std::runtime_error(
-        "Temperature values must be given for the temperature field.");
-    }
-
-    // Mapping representation
-    std::string mapping;
-    if (check_for_node(node_tf, "mapping")) {
-      mapping = get_node_value(node_tf, "mapping");
-    } else {
-      mapping = "cell";
-    }
-
-    // Instantiate the temperature field
-    simulation::temperature_field =
-      TemperatureField(tf_mesh_ptr, tf_values, mapping);
+    int field_id = std::stoi(get_node_value(root, "temperature_field"));
+    simulation::temperature_field = get_field<TemperatureField>(field_id);
   }
 
   // Uniform fission source weighting mesh
@@ -1245,46 +1204,9 @@ void read_settings_xml(pugi::xml_node root)
     dnp_drift_on = true;
     auto node_dnp_drift = root.child("dnp_drift");
 
-    // Mesh
-    Mesh* mesh_ptr;
-    if (check_for_node(node_dnp_drift, "field_mesh")) {
-      int temp = std::stoi(get_node_value(node_dnp_drift, "field_mesh"));
-      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
-        fatal_error(fmt::format(
-          "Mesh {} specified for the velocity field does not exist.", temp));
-      }
-      mesh_ptr = model::meshes[model::mesh_map.at(temp)].get();
-    } else {
-      fatal_error("A mesh must be given for the velocity field.");
-    }
-
-    // Values
-    vector<Direction> vf_values;
-    if (check_for_node(node_dnp_drift, "field_values")) {
-      auto temp = get_node_array<double>(node_dnp_drift, "field_values");
-      if (temp.size() % 3 != 0) {
-        fatal_error("The number of values must be a multiple of 3.");
-      }
-      for (size_t i = 0; i + 2 < temp.size(); i += 3) {
-        Direction d = Direction(temp[i], temp[i + 1], temp[i + 2]);
-        vf_values.push_back(d);
-      }
-    } else {
-      fatal_error("Values must be given for the velocity field.");
-    }
-
-    // Mapping representation
-    std::string field_mapping;
-    if (check_for_node(node_dnp_drift, "field_mapping")) {
-      field_mapping = get_node_value(node_dnp_drift, "field_mapping");
-    } else {
-      fatal_error(
-        "A mapping representation must be given for the velocity field.");
-    }
-
     // Velocity field
-    simulation::velocity_field =
-      VelocityField(mesh_ptr, vf_values, field_mapping);
+    int field_id = std::stoi(get_node_value(node_dnp_drift, "velocity_field"));
+    simulation::velocity_field = get_field<VelocityField>(field_id);
 
     // Boundary conditions map
     if (check_for_node(node_dnp_drift, "boundary_map")) {

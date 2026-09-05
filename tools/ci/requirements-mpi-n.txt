@@ -1,0 +1,18 @@
+# requirements-mpi-n.txt
+numpy
+h5py
+scipy
+ipython
+matplotlib
+pandas
+lxml
+uncertainties
+endf
+packaging
+pytest
+pytest-cov>=4.0
+pytest-rerunfailures
+colorama
+openpyxl
+coverage>=7.4
+gcovr>=7.2

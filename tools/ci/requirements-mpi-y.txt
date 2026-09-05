@@ -1,0 +1,7 @@
+# requirements-mpi-y.txt
+-r requirements-mpi-n.txt
+mpi4py
+setuptools
+Cython
+pkgconfig
+h5py

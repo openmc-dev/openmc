@@ -216,6 +216,7 @@
       </ray_source>
       <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
       <source_shape>linear</source_shape>
+      <source_gradient_limiter>true</source_gradient_limiter>
       <volume_estimator>naive</volume_estimator>
       <source_region_meshes>
         <mesh id="1">

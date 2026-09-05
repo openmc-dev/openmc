@@ -207,6 +207,11 @@ class Settings:
         :source_shape:
             Assumed shape of the source distribution within each source region.
             Options are 'flat' (default), 'linear', or 'linear_xy'.
+        :source_gradient_limiter:
+            Whether to rescale linear source gradients as needed so that the
+            source shape modeled within each source region remains
+            non-negative (bool). The default is 'False'. Only used when the
+            source shape is 'linear' or 'linear_xy'.
         :volume_normalized_flux_tallies:
             Whether to normalize flux tallies by volume (bool). The default is
             'False'. When enabled, flux tallies will be reported in units of
@@ -1422,6 +1427,8 @@ class Settings:
                                ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
                 cv.check_type('volume normalized flux tallies', value, bool)
+            elif key == 'source_gradient_limiter':
+                cv.check_type('source gradient limiter', value, bool)
             elif key == 'adjoint':
                 cv.check_type('adjoint', value, bool)
             elif key == 'source_region_meshes':
@@ -2513,6 +2520,10 @@ class Settings:
                     )
                 elif child.tag == 'adjoint':
                     self.random_ray['adjoint'] = (
+                        child.text in ('true', '1')
+                    )
+                elif child.tag == 'source_gradient_limiter':
+                    self.random_ray['source_gradient_limiter'] = (
                         child.text in ('true', '1')
                     )
                 elif child.tag == 'adjoint_source':

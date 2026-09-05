@@ -95,10 +95,15 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       // Compute the linear source terms. During the first
       // LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES iterations, when the centroids
       // and spatial moments are not well known, the source gradients are
-      // left at zero to avoid numerical instability. Negative and
-      // excessively steep sources are handled by the gradient limiter below,
+      // left at zero to avoid numerical instability. If a negative source is
+      // encountered, this region must be very small/noisy or have poorly
+      // developed spatial moments, so we zero the source gradients
+      // (effectively making this a flat source region temporarily), so as to
+      // improve stability. With the gradient limiter enabled, negative and
+      // excessively steep sources are instead handled by the limiter below,
       // after the external source (which carries no gradient) is added.
-      if (simulation::current_batch > LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES) {
+      if (simulation::current_batch > LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES &&
+          (source_gradient_limiter_ || srh.source(g_out) >= 0.0)) {
         srh.source_gradients(g_out) =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       } else {
@@ -114,7 +119,8 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
     }
   }
 
-  // Limit the source gradients so the modeled local source
+  // If enabled by the user, limit the source gradients so the modeled local
+  // source
   // q(r) = q_flat + (r - centroid) . q_gradient
   // stays non-negative over the region as described by its spatial moments.
   // Noisy fitted moments can produce spuriously steep gradients (the
@@ -132,12 +138,8 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   // zero over the region, and gradients that pass the test are left
   // bit-identical. A group whose flat source is negative
   // has its gradient zeroed, as no meaningful shape information exists in
-  // that state. Groups in which the region is optically thick along the
-  // gradient direction are exempt, since steep fits across a thick span are
-  // physical and clipping them produces an error that compounds with depth
-  // in deep-penetration problems. See the methods documentation for the
-  // derivation.
-  if (material != MATERIAL_VOID) {
+  // that state. See the methods documentation for the derivation.
+  if (source_gradient_limiter_ && material != MATERIAL_VOID) {
     const MomentMatrix& m = srh.mom_matrix();
     for (int g = 0; g < negroups_; g++) {
       MomentArray& gradient = srh.source_gradients(g);
@@ -152,18 +154,9 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
         2.0 * (m.b * gradient.x * gradient.y + m.c * gradient.x * gradient.z +
                 m.e * gradient.y * gradient.z);
       double overshoot = std::sqrt(3.0 * std::max(quad, 0.0));
-      if (overshoot <= flat) {
-        continue;
+      if (overshoot > flat) {
+        gradient *= flat / overshoot;
       }
-      double sigma_t =
-        sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
-        density_mult;
-      double gradient_norm = gradient.norm();
-      if (2.0 * sigma_t * overshoot >=
-          SOURCE_GRADIENT_LIMITER_MAX_TAU * gradient_norm) {
-        continue;
-      }
-      gradient *= flat / overshoot;
     }
   }
 }

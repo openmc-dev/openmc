@@ -290,6 +290,7 @@ void openmc_finalize_random_ray()
   FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   FlatSourceDomain::adjoint_requested_ = false;
+  FlatSourceDomain::source_gradient_limiter_ = false;
   FlatSourceDomain::solve_ = RandomRaySolve::FORWARD;
   FlatSourceDomain::fw_cadis_local_ = false;
   FlatSourceDomain::fw_cadis_local_targets_.clear();

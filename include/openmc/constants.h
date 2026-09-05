@@ -71,18 +71,6 @@ constexpr double MIN_HITS_PER_BATCH {1.5};
 // enough samples exist are numerically unstable.
 constexpr int LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES {10};
 
-// The linear source gradient limiter rescales a region's source gradient so
-// that the modeled source stays non-negative on the ellipsoid implied by the
-// region's spatial moment matrix (see
-// LinearSourceDomain::update_single_neutron_source). Groups in which the
-// region is optically thick along the gradient direction (optical thickness
-// at or above this value) are exempt, as steep source shapes there are
-// physical. A linear fit to a sharply attenuated flux legitimately crosses
-// zero near the region edge, while the optically thin media that amplify
-// exported negativity can never be thick along the gradient direction and so
-// are always limited.
-constexpr double SOURCE_GRADIENT_LIMITER_MAX_TAU {1.0};
-
 // The minimum flux value to be considered non-zero when computing adjoint
 // sources. Positive values below this cutoff will be treated as zero, so as to
 // prevent extremely large adjoint source terms from being generated.

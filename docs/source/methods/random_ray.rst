@@ -1013,8 +1013,9 @@ optically thin media with scattering ratios near one (for example, the
 air-filled regions of shielding problems), the in-group feedback can then
 amplify the exported negativity without bound.
 
-OpenMC therefore limits each group's source gradient so the modeled source
-stays non-negative over the region as described by its spatial moments. The
+When the user enables the source gradient limiter, OpenMC limits each
+group's source gradient so the modeled source stays non-negative over the
+region as described by its spatial moments. The
 worst-case overshoot of the linear term over the moment ellipsoid is
 :math:`\sqrt{3 \vec{Q}_i^T M_i \vec{Q}_i}`, where the factor of three makes
 the bound exact for a slab (a uniform interval of length :math:`L` has
@@ -1031,16 +1032,12 @@ untouched. A group whose flat source is
 negative has its gradient zeroed, as no meaningful shape information exists
 in that state.
 
-Groups in which the region is optically thick along the gradient direction
-(an optical thickness of :math:`2 \Sigma_t \sqrt{3 \vec{Q}_i^T M_i
-\vec{Q}_i} / |\vec{Q}_i|` at or above one) are exempt from limiting. A
-steep fit across an optically thick span is physical, as a linear fit to a
-sharply attenuated flux legitimately crosses zero near the region edge, and
-clipping such fits produces an error that compounds with depth in
-deep-penetration problems. The optically thin media that amplify exported
-negativity can never be thick along any direction, so they are always
-limited. The limiter requires no user input and leaves well-resolved
-solutions unchanged.
+The limiter is disabled by default because a steep fit can also be
+physical. A linear fit to a sharply attenuated flux legitimately crosses
+zero near the edge of an optically thick region, and clipping such fits
+produces an error that compounds with depth in deep-penetration problems.
+The limiter is therefore best reserved for simulations that negative
+sources destabilize.
 
 .. _methods-shannon-entropy-random-ray:
 

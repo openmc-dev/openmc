@@ -193,6 +193,12 @@ int openmc_finalize()
   if (mpi::collision_track_site != MPI_DATATYPE_NULL) {
     MPI_Type_free(&mpi::collision_track_site);
   }
+  if (mpi::volume_results != MPI_DATATYPE_NULL) {
+    MPI_Type_free(&mpi::volume_results);
+  }
+  if (mpi::volume_tally != MPI_DATATYPE_NULL) {
+    MPI_Type_free(&mpi::volume_tally);
+  }
 #endif
 
   openmc_finalize_random_ray();

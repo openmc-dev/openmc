@@ -35,6 +35,7 @@
     </source>
     <field type="temperature" id="1">
       <mesh>1</mesh>
+      <mapping>cell</mapping>
       <values>294.0 394.0 494.0 594.0 694.0 794.0 894.0 994.0</values>
     </field>
     <temperature_field>1</temperature_field>

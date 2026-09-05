@@ -301,6 +301,13 @@ public:
   int n_dimension_ {-1};               //!< Number of dimensions
 };
 
+//! Maximum number of axes a structured mesh may have.
+//
+//! Mesh indices, shapes and the per-axis distance-to-surface arrays are all
+//! sized by this, so it is the single place to change if a mesh type ever
+//! needs more.
+constexpr int MESH_MAX_AXES {3};
+
 class StructuredMesh : public Mesh {
 public:
   StructuredMesh() = default;
@@ -308,14 +315,15 @@ public:
   StructuredMesh(hid_t group) : Mesh {group} {};
   virtual ~StructuredMesh() = default;
 
-  using MeshIndex = std::array<int, 3>;
+  using MeshIndex = std::array<int, MESH_MAX_AXES>;
 
   struct MeshDistance {
     MeshDistance() = default;
-    MeshDistance(int _index, bool _max_surface, double _distance)
-      : next_index {_index}, max_surface {_max_surface}, distance {_distance}
+    MeshDistance(MeshIndex _offset, bool _max_surface, double _distance)
+      : offset {_offset}, max_surface {_max_surface}, distance {_distance}
     {}
-    int next_index {-1};
+    //! Change in each index when this surface is crossed
+    MeshIndex offset {0, 0, 0};
     bool max_surface {true};
     double distance {INFTY};
     bool operator<(const MeshDistance& o) const
@@ -323,6 +331,12 @@ public:
       return distance < o.distance;
     }
   };
+
+  //! Fold an index back into range on any periodic axis.
+  //
+  //! Called after an index is advanced by a MeshDistance offset. Meshes with a
+  //! periodic axis override this; for the rest it is a no-op.
+  virtual void sanitize_index(MeshIndex& idx) const {}
 
   Position sample_element(int32_t bin, uint64_t* seed) const override
   {
@@ -429,6 +443,17 @@ public:
   virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const = 0;
 
+  //! Distance to travel to re-enter the mesh from outside it
+  //
+  //! \param[in] ijk Current (out of range) indices
+  //! \param[in] distances Distance to the next surface on each axis
+  //! \param[in] traveled_distance Distance travelled so far
+  //! \param[out] k_max Axis whose surface is crossed last, or -1
+  //! \return Updated travelled distance
+  double distance_to_mesh(const MeshIndex& ijk,
+    const std::array<MeshDistance, MESH_MAX_AXES>& distances,
+    double traveled_distance, int& k_max) const;
+
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
@@ -464,7 +489,8 @@ public:
   virtual double volume(const MeshIndex& ijk) const = 0;
 
   // Data members
-  std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
+  std::array<int, MESH_MAX_AXES>
+    shape_; //!< Number of mesh elements in each dimension
 
 protected:
 };
@@ -593,6 +619,11 @@ public:
   CylindricalMesh(hid_t group);
 
   // Overridden methods
+  void sanitize_index(MeshIndex& idx) const override
+  {
+    idx[1] = sanitize_phi(idx[1]);
+  }
+
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
   int get_index_in_direction(double r, int i) const override;
@@ -660,6 +691,12 @@ public:
   SphericalMesh(hid_t group);
 
   // Overridden methods
+  void sanitize_index(MeshIndex& idx) const override
+  {
+    idx[1] = sanitize_theta(idx[1]);
+    idx[2] = sanitize_phi(idx[2]);
+  }
+
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
   int get_index_in_direction(double r, int i) const override;

@@ -219,12 +219,16 @@ DADZ = {
 
 # Unit conversions
 JOULE_PER_EV = 1.602176634e-19
+EV_PER_AMU = 931.49410372e6 # eV/c^2 per amu
 
 # Avogadro's constant
 AVOGADRO = 6.02214076e23
 
 # Neutron mass in units of amu
 NEUTRON_MASS = 1.00866491595
+
+# Neutron mass in units of eV/c^2
+NEUTRON_MASS_EV = NEUTRON_MASS*EV_PER_AMU
 
 # Used in atomic_mass function as a cache
 _ATOMIC_MASS: dict[str, float] = {}

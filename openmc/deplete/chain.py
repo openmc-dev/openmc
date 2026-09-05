@@ -1295,6 +1295,54 @@ class Chain:
 
         return new_chain
 
+    def get_decay_daughters(self, nuclide):
+        """Return all radioactive nuclides reachable via decay.
+
+        Parameters
+        ----------
+        nuclide : str
+            Name of the parent nuclide.
+
+        Returns
+        -------
+        set of str
+            Names of all radioactive decay daughters reachable from the
+            parent.
+
+        Raises
+        ------
+        ValueError
+            If the nuclide is not present in the chain.
+
+        """
+        if nuclide not in self.nuclide_dict:
+            raise ValueError(
+                f"Cannot find decay daughters for '{nuclide}': "
+                "nuclide is not in the chain."
+            )
+        daughters = set()
+        stack = [nuclide]
+        visited = set()
+        while stack:
+            name = stack.pop()
+            if name in visited:
+                continue
+            visited.add(name)
+            if name not in self.nuclide_dict:
+                continue
+            for mode in self[name].decay_modes:
+                target = mode.target
+                if target is None or target in visited:
+                    continue
+                if target not in self.nuclide_dict:
+                    continue
+                target_nuc = self[target]
+                if target_nuc.half_life is None or target_nuc.half_life <= 0:
+                    continue
+                daughters.add(target)
+                stack.append(target)
+        return daughters
+
     def _follow(self, isotopes, level):
         """Return all isotopes present up to depth level"""
         found = isotopes.copy()

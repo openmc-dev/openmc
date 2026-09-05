@@ -1231,7 +1231,7 @@ void read_settings_xml(pugi::xml_node root)
         fatal_error("Wall boundary conditions must be declared.");
       }
 
-      simulation::velocity_field.bc_map() = bc_map;
+      simulation::velocity_field->bc_map() = bc_map;
 
     } else {
       fatal_error("Boundary conditions must be declared.");

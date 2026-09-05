@@ -1080,6 +1080,12 @@ following methods are currently available in OpenMC:
      - Description
      - Pros
      - Cons
+   * - ``auto`` (default)
+     - Automatically selects an appropriate estimator for the type of
+       simulation being performed. Most users do not need to consider this
+       setting further.
+     - * No user input needed
+     - * N/A
    * - ``simulation_averaged``
      - Accumulates total active ray lengths in each FSR over all iterations,
        improving the estimate of the volume in each cell each iteration.
@@ -1099,15 +1105,44 @@ following methods are currently available in OpenMC:
          unstable
      - * Biased estimator
        * Requires more rays or longer active ray length to mitigate bias
-   * - ``hybrid`` (default)
+   * - ``hybrid``
      - Applies the naive estimator to all cells that contain an external (fixed)
        source contribution. Applies the simulation averaged estimator to all
        other cells.
-     - * High accuracy/low bias of the simulation averaged estimator in most
+     - * Accuracy of the unbiased simulation averaged estimator in most
          cells
        * Stability of the naive estimator in cells with fixed sources
      - * Can lead to slightly negative fluxes in cells where the simulation
          averaged estimator is used
+   * - ``adaptive``
+     - Generalizes the hybrid estimator. Uses the simulation averaged
+       estimator by default, but automatically (and permanently) demotes
+       individual cells to the naive treatment when their accumulated
+       statistics indicate the simulation averaged estimator is unstable
+       there (e.g., cells dominated by external or in-scatter sources, and
+       hit-starved cells).
+     - * Accuracy of the simulation averaged estimator in most cells
+       * Stable in cases where the simulation averaged and hybrid estimators
+         are not
+       * No parameters to tune
+     - * Benefits from a longer inactive phase to inform the demotion
+         decisions
+   * - ``strict_adaptive``
+     - As ``adaptive``, but additionally applies a per-batch fixup to any
+       negative flux estimate (recomputing it with the batch's own volume,
+       then falling back on the previous iterate) and demotes chronically
+       affected cells to the naive treatment.
+     - * Suppresses the negative flux estimates other estimators can produce
+         in pathological cases
+       * Improves the quality of generated weight windows
+     - * The one-sided fixup introduces a small conservative bias, so it is
+         not recommended where unbiased results are the priority
+
+By default, the ``volume_estimator`` field is set to ``auto``, which selects
+``strict_adaptive`` for solves whose results feed variance reduction (weight
+window generation and adjoint workflows) and ``adaptive`` for all other
+solves. The end-of-simulation output reports which estimator was selected,
+and explicitly setting any other value overrides the automatic selection.
 
 These estimators can be selected by setting the ``volume_estimator`` field in the
 :attr:`openmc.Settings.random_ray` dictionary. For example, to use the naive
@@ -1116,6 +1151,22 @@ estimator, the following code would be used:
 ::
 
     settings.random_ray['volume_estimator'] = 'naive'
+
+The ``auto`` setting is the default, as it gives reliable behavior out of
+the box across problem types. The adaptive estimator is especially valuable
+for fixed source and shielding problems, where optically thin, scattering-
+or streaming-dominated regions (for example, the air- or void-filled regions
+of a shielding model) can destabilize the ``hybrid`` and
+``simulation_averaged`` estimators. It detects and stabilizes the affected
+cells automatically while leaving the rest of the problem on the unbiased
+simulation averaged estimator. Because demotions are decided from each
+cell's accumulated statistics rather than from single-iteration values, the
+estimator choice does not churn with iteration noise and avoids the bias
+that per-iteration selection can introduce. Solves that feed variance
+reduction are routed to ``strict_adaptive`` instead, as even a small number
+of slightly negative flux estimates in the near-void regions of pathological
+problems can otherwise degrade the adjoint solve and the quality of
+generated weight windows.
 
 -----------------
 Adjoint Flux Mode

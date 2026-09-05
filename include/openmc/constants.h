@@ -65,6 +65,27 @@ constexpr int MAX_SAMPLE {100000};
 // source region in the random ray solver
 constexpr double MIN_HITS_PER_BATCH {1.5};
 
+// Strong-source ratio threshold for the adaptive volume estimator. A source
+// region is treated as having a "strong" inhomogeneous source in any group
+// where the reduced source q/Sigma_t exceeds this multiple of the region's
+// scalar flux, indicating a source sustained by an external or in-scatter
+// contribution rather than by the local flux. Such regions are given the
+// naive volume and previous-flux miss treatment. The value sits well inside
+// the range over which benign problems remain untriggered while pathological
+// cells are still caught.
+constexpr double ADAPTIVE_VOLUME_KAPPA {4.0};
+
+// Chronic-negativity demotion thresholds for the strict adaptive volume
+// estimator. A region whose flux has gone negative (before the fixup) in at
+// least max(MIN_COUNT, RATE * current_batch) batches is demoted to the naive
+// volume and previous-flux miss treatment. Without this channel the
+// non-negativity floor would mask the accumulated-flux sign signal that the
+// adaptive demotion relies on, leaving noisy regions to be clipped every
+// batch and biasing their fluxes upward. Demotion instead moves such regions
+// onto an estimator that does not need clipping.
+constexpr int NEGATIVE_FLUX_DEMOTION_MIN_COUNT {3};
+constexpr double NEGATIVE_FLUX_DEMOTION_RATE {0.005};
+
 // The minimum flux value to be considered non-zero when computing adjoint
 // sources. Positive values below this cutoff will be treated as zero, so as to
 // prevent extremely large adjoint source terms from being generated.
@@ -378,7 +399,14 @@ enum class RunMode {
 
 enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
-enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
+enum class RandomRayVolumeEstimator {
+  NAIVE,
+  SIMULATION_AVERAGED,
+  HYBRID,
+  ADAPTIVE,
+  STRICT_ADAPTIVE,
+  AUTO
+};
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
 enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };

@@ -57,6 +57,7 @@
       </source_region_meshes>
       <source_shape>linear</source_shape>
       <diagonal_stabilization_rho>0.5</diagonal_stabilization_rho>
+      <volume_estimator>hybrid</volume_estimator>
     </random_ray>
     <mesh id="1">
       <dimension>2 2</dimension>

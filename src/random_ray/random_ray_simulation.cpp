@@ -287,7 +287,8 @@ void validate_random_ray_inputs()
 
 void openmc_finalize_random_ray()
 {
-  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
+  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::AUTO;
+  FlatSourceDomain::resolved_volume_estimator_ = RandomRayVolumeEstimator::AUTO;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   FlatSourceDomain::adjoint_requested_ = false;
   FlatSourceDomain::solve_ = RandomRaySolve::FORWARD;
@@ -346,7 +347,19 @@ void RandomRaySimulation::prepare_fw_fixed_sources_adjoint()
   // Prepare adjoint fixed sources using forward flux
   domain_->source_regions_.adjoint_reset();
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    // Consumes the accumulated forward flux (and zeroes it as it goes), so
+    // the adjoint solve starts from a clean accumulator.
     domain_->set_fw_adjoint_sources();
+  } else {
+    // In eigenvalue mode there are no fixed adjoint sources to derive from
+    // the forward flux, but the accumulated forward flux must still be
+    // cleared so that the adjoint solve's active accumulation starts from a
+    // clean array. Otherwise any consumer of the final flux would mix
+    // forward and adjoint modes.
+#pragma omp parallel for
+    for (int64_t se = 0; se < domain_->n_source_elements(); se++) {
+      domain_->source_regions_.scalar_flux_final(se) = 0.0;
+    }
   }
 }
 
@@ -474,6 +487,11 @@ void RandomRaySimulation::simulate()
         domain_->random_ray_tally();
       }
 
+      // For the adaptive estimator, accumulate this batch's flux into the
+      // running sum and update (demote-only) which regions use the naive
+      // volume estimator (no-op for the other estimators).
+      domain_->demotion_step();
+
       // Set phi_old = phi_new
       domain_->flux_swap();
 
@@ -594,7 +612,7 @@ void RandomRaySimulation::print_results_random_ray(
       total_integrations / settings::n_batches);
 
     std::string estimator;
-    switch (domain_->volume_estimator_) {
+    switch (FlatSourceDomain::resolved_volume_estimator_) {
     case RandomRayVolumeEstimator::SIMULATION_AVERAGED:
       estimator = "Simulation Averaged";
       break;
@@ -604,10 +622,59 @@ void RandomRaySimulation::print_results_random_ray(
     case RandomRayVolumeEstimator::HYBRID:
       estimator = "Hybrid";
       break;
+    case RandomRayVolumeEstimator::ADAPTIVE:
+      estimator = "Adaptive";
+      break;
+    case RandomRayVolumeEstimator::STRICT_ADAPTIVE:
+      estimator = "Strict Adaptive";
+      break;
     default:
       fatal_error("Invalid volume estimator type");
     }
+    if (FlatSourceDomain::volume_estimator_ == RandomRayVolumeEstimator::AUTO) {
+      estimator += " (auto)";
+    }
     fmt::print(" Volume Estimator Type             = {}\n", estimator);
+    if (domain_->final_stats_valid_) {
+      double inv = 100.0 / domain_->n_source_regions();
+      // Single summary at default verbosity: every source region that
+      // received the naive volume treatment in the final batch, for any
+      // reason (the demote-only decisions made from the accumulated flux
+      // plus that batch's per-iteration demotions).
+      fmt::print(" Number of Naive Demotions         = {} SRs ({:.4f}%)\n",
+        domain_->n_final_naive_, domain_->n_final_naive_ * inv);
+      // The per-cause diagnostic breakdown is developer-facing, so it is
+      // printed at verbosity 8, above the default (7) but below the
+      // per-particle output (9).
+      // The causes are mutually exclusive and sum to the total above:
+      // "accumulated" causes are the demote-only decisions made from the
+      // running accumulated flux (from the inactive->active transition
+      // onward), "per batch" causes are re-evaluated each batch and reported
+      // for the final batch.
+      if (settings::verbosity >= 8) {
+        fmt::print("   Strong source (accumulated)     = {} SRs ({:.4f}%)\n",
+          domain_->n_final_latch_, domain_->n_final_latch_ * inv);
+        fmt::print("   Strong source (per batch)       = {} SRs ({:.4f}%)\n",
+          domain_->n_final_strong_, domain_->n_final_strong_ * inv);
+        fmt::print("   Negative flux (accumulated)     = {} SRs ({:.4f}%)\n",
+          domain_->n_final_sign_, domain_->n_final_sign_ * inv);
+        fmt::print("   Hit-starved (per batch)         = {} SRs ({:.4f}%)\n",
+          domain_->n_final_small_, domain_->n_final_small_ * inv);
+        // The strict adaptive estimator's per-batch non-negativity
+        // enforcement, reported for the final batch. These overlap the
+        // partition above rather than extending it: a rescued or floored
+        // region may or may not also carry the naive treatment.
+        if (FlatSourceDomain::resolved_volume_estimator_ ==
+            RandomRayVolumeEstimator::STRICT_ADAPTIVE) {
+          fmt::print("   Chronic negative (per batch)    = {} SRs ({:.4f}%)\n",
+            domain_->n_final_chronic_, domain_->n_final_chronic_ * inv);
+          fmt::print("   Rescued (batch volume)          = {} SRs ({:.4f}%)\n",
+            domain_->n_final_rescued_, domain_->n_final_rescued_ * inv);
+          fmt::print("   Floored (previous flux)         = {} SRs ({:.4f}%)\n",
+            domain_->n_final_floored_, domain_->n_final_floored_ * inv);
+        }
+      }
+    }
 
     std::string adjoint_true =
       (FlatSourceDomain::solve_ == RandomRaySolve::ADJOINT) ? "ON" : "OFF";
@@ -683,6 +750,26 @@ void RandomRaySimulation::print_results_random_ray(
 void openmc_run_random_ray()
 {
   using namespace openmc;
+
+  // Resolve the volume estimator for this solve, leaving the configured
+  // setting untouched. "Auto" (the default) maps to a concrete estimator
+  // based on the type of simulation being performed. Solves whose results
+  // feed variance reduction (weight window generation, and any adjoint
+  // workflow, including the forward solve an adjoint source is derived
+  // from) receive the strict adaptive estimator, whose per-batch fixup of
+  // negative flux iterates benefits those workflows. All other solves
+  // receive the unbiased adaptive estimator.
+  if (FlatSourceDomain::volume_estimator_ == RandomRayVolumeEstimator::AUTO) {
+    bool positivity_needed =
+      FlatSourceDomain::adjoint_requested_ ||
+      !variance_reduction::weight_windows_generators.empty();
+    FlatSourceDomain::resolved_volume_estimator_ =
+      positivity_needed ? RandomRayVolumeEstimator::STRICT_ADAPTIVE
+                        : RandomRayVolumeEstimator::ADAPTIVE;
+  } else {
+    FlatSourceDomain::resolved_volume_estimator_ =
+      FlatSourceDomain::volume_estimator_;
+  }
 
   // Determine which solves to run. If adjoint results are requested and no
   // user-defined adjoint source is present, an initial forward solve is needed

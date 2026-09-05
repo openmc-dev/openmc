@@ -149,6 +149,8 @@ public:
   int* temperature_idx_;
   double* density_mult_;
   int* is_small_;
+  int* n_negative_batches_;
+  int* converged_negative_;
   int* n_hits_;
   int* birthday_;
   OpenMPMutex* lock_;
@@ -204,7 +206,10 @@ public:
   const int temperature_idx() const { return *temperature_idx_; }
 
   int& is_small() { return *is_small_; }
+  int& n_negative_batches() { return *n_negative_batches_; }
   const int is_small() const { return *is_small_; }
+  int& converged_negative() { return *converged_negative_; }
+  const int converged_negative() const { return *converged_negative_; }
 
   int& n_hits() { return *n_hits_; }
   const int n_hits() const { return *n_hits_; }
@@ -337,8 +342,19 @@ public:
   double volume_naive_ {0.0}; //!< Volume as integrated from this iteration only
   int position_recorded_ {0}; //!< Has the position been recorded yet?
   int external_source_present_ {
-    0};               //!< Is an external source present in this region?
-  int is_small_ {0};  //!< Is it "small", receiving < 1.5 hits per iteration?
+    0};              //!< Is an external source present in this region?
+  int is_small_ {0}; //!< Is it "small", receiving < 1.5 hits per iteration?
+  int n_negative_batches_ {
+    0}; //!< Number of batches in which this region's flux went negative
+        //!< before the strict adaptive estimator's non-negativity
+        //!< enforcement (drives the chronic-negativity demotion)
+  int converged_negative_ {
+    0}; //!< Demote-only flag (adaptive estimator only), evaluated from the
+        //!< running accumulated flux at the inactive->active transition and
+        //!< re-evaluated every active batch. 1 = accumulated flux negative
+        //!< in some group, 2 = strong accumulated feed (latch). Any value
+        //!< > 0 demotes the region to the naive volume estimator, and once
+        //!< set the flag is never released.
   int n_hits_ {0};    //!< Number of total hits (ray crossings)
                       // Mesh that subdivides this source region
   int mesh_ {C_NONE}; //!< Index in openmc::model::meshes array that subdivides
@@ -395,8 +411,8 @@ class SourceRegionContainer {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegionContainer(int negroups, bool is_linear)
-    : negroups_(negroups), is_linear_(is_linear)
+  SourceRegionContainer(int negroups, bool is_linear, bool is_adaptive)
+    : negroups_(negroups), is_linear_(is_linear), is_adaptive_(is_adaptive)
   {}
   SourceRegionContainer() = default;
 
@@ -412,7 +428,13 @@ public:
   const double density_mult(int64_t sr) const { return density_mult_[sr]; }
 
   int& is_small(int64_t sr) { return is_small_[sr]; }
+  int& n_negative_batches(int64_t sr) { return n_negative_batches_[sr]; }
   const int is_small(int64_t sr) const { return is_small_[sr]; }
+  int& converged_negative(int64_t sr) { return converged_negative_[sr]; }
+  const int converged_negative(int64_t sr) const
+  {
+    return converged_negative_[sr];
+  }
 
   int& n_hits(int64_t sr) { return n_hits_[sr]; }
   const int n_hits(int64_t sr) const { return n_hits_[sr]; }
@@ -572,6 +594,17 @@ public:
     return scalar_flux_final_[se];
   }
 
+  double& scalar_flux_t(int64_t sr, int g)
+  {
+    return scalar_flux_t_[index(sr, g)];
+  }
+  const double scalar_flux_t(int64_t sr, int g) const
+  {
+    return scalar_flux_t_[index(sr, g)];
+  }
+  double& scalar_flux_t(int64_t se) { return scalar_flux_t_[se]; }
+  const double scalar_flux_t(int64_t se) const { return scalar_flux_t_[se]; }
+
   float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
   const float source(int64_t sr, int g) const { return source_[index(sr, g)]; }
   float& source(int64_t se) { return source_[se]; }
@@ -639,12 +672,15 @@ private:
   int64_t n_source_regions_ {0};
   int negroups_ {0};
   bool is_linear_ {false};
+  bool is_adaptive_ {false};
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;
   vector<int> temperature_idx_;
   vector<double> density_mult_;
   vector<int> is_small_;
+  vector<int> n_negative_batches_;
+  vector<int> converged_negative_;
   vector<int> n_hits_;
   vector<int> mesh_;
   vector<int64_t> parent_sr_;
@@ -671,6 +707,12 @@ private:
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
   vector<double> scalar_flux_final_;
+  // Running sum of the scalar flux over every batch of the current solve,
+  // inactive and active. Unlike scalar_flux_final, which holds only the
+  // active-batch accumulation used for tallies, it is never reset within a
+  // solve. Allocated only for the adaptive volume estimator, which makes its
+  // demotion decisions from it.
+  vector<double> scalar_flux_t_;
   vector<float> source_;
   vector<float> external_source_;
 

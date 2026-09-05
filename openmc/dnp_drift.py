@@ -177,10 +177,10 @@ class DNPDrift:
         return self._external_travel_time
 
     @external_travel_time.setter
-    def external_travel_time(self, ett: int | float):
-        cv.check_type("external_travel_time", ett, (int, float))
-        cv.check_greater_than("external_travel_time", ett, 0, True)
-        self._external_travel_time = float(ett)
+    def external_travel_time(self, external_travel_time: int | float):
+        cv.check_type("external_travel_time", external_travel_time, (int, float))
+        cv.check_greater_than("external_travel_time", external_travel_time, 0, True)
+        self._external_travel_time = float(external_travel_time)
 
     def to_xml_element(self):
         """Create an XML element for DNP drift settings.
@@ -251,6 +251,7 @@ class DNPDrift:
             not a VelocityField. Also, if the boundary_map is not found.
 
         """
+        # Velocity field (required)
         vel_elem = elem.find("velocity_field")
         if vel_elem is None:
             raise ValueError("Missing required <velocity_field> in <dnp_drift>.")
@@ -266,14 +267,14 @@ class DNPDrift:
                 f"Field id={vel_id} referenced by <dnp_drift> is of "
                 f"type '{vel_field._field_type}', expected 'velocity'."
             )
-
         kwargs = {"velocity_field": vel_field}
 
-        bm = elem.find("boundary_map")
-        if bm is None:
+        # Boundary map (required)
+        bm_elem = elem.find("boundary_map")
+        if bm_elem is None:
             raise ValueError("Missing required <boundary_map> in <dnp_drift>.")
         boundary_map = {}
-        for child in bm:
+        for child in bm_elem:
             ids = [int(x) for x in child.text.split()]
             boundary_map[child.tag] = ids
         kwargs["boundary_map"] = boundary_map
@@ -297,21 +298,25 @@ class DNPDrift:
             "physical_groups": [int(i) for i in pg_elem.text.split()]
         }
 
+        # Integrator (optional)
         integrator = elem.find("integrator")
         if integrator is not None:
             kwargs["integrator"] = integrator.text
 
+        # Integrator time step (optional)
         dt = elem.find("integrator_dt")
         if dt is not None:
             kwargs["integrator_dt"] = float(dt.text)
 
-        recycling = elem.find("recycling")
-        if recycling is not None:
-            kwargs["recycling"] = recycling.text.lower() == "true"
+        # Recycling (optional)
+        recycling_elem = elem.find("recycling")
+        if recycling_elem is not None:
+            kwargs["recycling"] = recycling_elem.text.lower() == "true"
 
-        ett = elem.find("external_travel_time")
-        if ett is not None:
-            kwargs["external_travel_time"] = float(ett.text)
+        # External travel time (optional)
+        ett_elem = elem.find("external_travel_time")
+        if ett_elem is not None:
+            kwargs["external_travel_time"] = float(ett_elem.text)
 
         return cls(**kwargs)
 

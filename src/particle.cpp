@@ -20,6 +20,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle_data.h"
+#include "openmc/particle_restart.h"
 #include "openmc/photon.h"
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
@@ -865,11 +866,24 @@ void Particle::cross_periodic_bc(
 
 void Particle::mark_as_lost(const char* message)
 {
+  // Skip if we are already replaying a lost particle
+  if (in_lost_track) {
+    wgt() = 0.0;
+    return;
+  }
+
   // Print warning and write lost particle file
-  warning(message);
+#pragma omp critical(PrintErrorMessage)
+  {
+    warning(message);
+  }
   if (settings::max_write_lost_particles < 0 ||
       simulation::n_lost_particles < settings::max_write_lost_particles) {
     write_restart();
+    if (settings::run_mode != RunMode::PARTICLE &&
+        !settings::write_all_tracks) {
+      run_lost_particle_track(*this);
+    }
   }
   // Increment number of lost particles
   wgt() = 0.0;
@@ -880,11 +894,21 @@ void Particle::mark_as_lost(const char* message)
   auto n = simulation::current_batch * settings::gen_per_batch *
            simulation::work_per_rank;
 
-  // Abort the simulation if the maximum number of lost particles has been
-  // reached
-  if (simulation::n_lost_particles >= settings::max_lost_particles &&
-      simulation::n_lost_particles >= settings::rel_max_lost_particles * n) {
-    fatal_error("Maximum number of lost particles has been reached.");
+// Abort the simulation if the maximum number of lost particles reached
+#pragma omp critical(TrackFile)
+  {
+    if (simulation::n_lost_particles >= settings::max_lost_particles &&
+        simulation::n_lost_particles >= settings::rel_max_lost_particles * n) {
+      // close track file manually
+      if (track_file >= 0) {
+        H5Tclose(track_dtype);
+        file_close(track_file);
+        track_file = -1;
+        track_dtype = -1;
+      }
+      lost_particle_track_file_open = false;
+      fatal_error("Maximum number of lost particles has been reached.");
+    }
   }
 }
 

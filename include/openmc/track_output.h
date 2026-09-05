@@ -2,6 +2,7 @@
 #define OPENMC_TRACK_OUTPUT_H
 
 #include "openmc/particle.h"
+#include <hdf5.h>
 
 namespace openmc {
 
@@ -35,6 +36,12 @@ void write_particle_track(Particle& p);
 //
 //! \param[in] p  Current particle
 void finalize_particle_track(Particle& p);
+
+// Check whether --track is calling or lost particles are calling automatically
+extern bool lost_particle_track_file_open;
+extern hid_t track_file;
+extern hid_t track_dtype;
+extern thread_local bool in_lost_track;
 
 } // namespace openmc
 

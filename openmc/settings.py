@@ -15,6 +15,8 @@ from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
+from .field import FieldBase, TemperatureField, VelocityField
+from .dnp_drift import DNPDrift
 from .utility_funcs import input_path, set_xml_input_path
 from .volume import VolumeCalculation
 from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
@@ -344,6 +346,14 @@ class Settings:
         sections be loaded at all temperatures within the range. 'multipole' is
         a boolean indicating whether or not the windowed multipole method should
         be used to evaluate resolved resonance cross sections.
+    temperature_field : openmc.TemperatureField
+        Temperature field based on a geometric mesh used to specify temperatures
+        in a model. Temperatures declared from a temperature field take precedence
+        over all other temperature definition (cell, material, and global).
+    dnp_drift : openmc.DNPDrift
+        Settings for delayed neutron precursor (DNP) drift in flowing fuel systems.
+        When specified, precursors are transported along the velocity field rather
+        than being treated as stationary.
     trace : tuple or list
         Show detailed information about a single particle, indicated by three
         integers: the batch number, generation number, and particle number
@@ -435,6 +445,12 @@ class Settings:
 
         # Shannon entropy mesh
         self._entropy_mesh = None
+
+        # Temperature field
+        self._temperature_field = None
+
+        # DNP drift
+        self._dnp_drift = None
 
         # Trigger subelement
         self._trigger_active = None
@@ -789,6 +805,24 @@ class Settings:
     def entropy_mesh(self, entropy: RegularMesh):
         cv.check_type('entropy mesh', entropy, RegularMesh)
         self._entropy_mesh = entropy
+
+    @property
+    def temperature_field(self) -> TemperatureField:
+        return self._temperature_field
+
+    @temperature_field.setter
+    def temperature_field(self, temperature_field: TemperatureField):
+        cv.check_type("temperature field", temperature_field, TemperatureField)
+        self._temperature_field = temperature_field
+
+    @property
+    def dnp_drift(self) -> DNPDrift:
+        return self._dnp_drift
+
+    @dnp_drift.setter
+    def dnp_drift(self, dnp_drift: DNPDrift):
+        cv.check_type("DNP drift", dnp_drift, DNPDrift)
+        self._dnp_drift = dnp_drift
 
     @property
     def trigger_active(self) -> bool:
@@ -1774,6 +1808,31 @@ class Settings:
             if mesh_memo is not None:
                 mesh_memo.add(self.entropy_mesh.id)
 
+    def _append_mesh_if_needed(self, root, mesh, mesh_memo):
+        """Append mesh element to root if not already present."""
+        if mesh_memo is not None and mesh.id in mesh_memo:
+            return
+        path = f"./mesh[@id='{mesh.id}']"
+        if root.find(path) is None:
+            root.append(mesh.to_xml_element())
+            if mesh_memo is not None:
+                mesh_memo.add(mesh.id)
+
+    def _create_temperature_field_subelement(self, root, mesh_memo=None):
+        if self._temperature_field is not None:
+            temp = self._temperature_field
+            root.append(temp.to_xml_element())
+            ref_elem = ET.SubElement(root, "temperature_field")
+            ref_elem.text = str(temp.id)
+            self._append_mesh_if_needed(root, temp.mesh, mesh_memo)
+
+    def _create_dnp_drift_subelement(self, root, mesh_memo=None):
+        if self._dnp_drift is not None:
+            vel = self._dnp_drift.velocity_field
+            root.append(vel.to_xml_element())
+            root.append(self._dnp_drift.to_xml_element())
+            self._append_mesh_if_needed(root, vel.mesh, mesh_memo)
+
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:
             trigger_element = ET.SubElement(root, "trigger")
@@ -2302,6 +2361,28 @@ class Settings:
             raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
         self.entropy_mesh = meshes[mesh_id]
 
+    def _temperature_field_from_xml_element(self, root, fields):
+        ref_elem = root.find("temperature_field")
+        if ref_elem is not None:
+            field_id = int(ref_elem.text)
+            if field_id not in fields:
+                raise ValueError(
+                    f"Temperature field references field id={field_id}, "
+                    f"but no <field> element with that id was found."
+                )
+            field = fields[field_id]
+            if not isinstance(field, TemperatureField):
+                raise ValueError(
+                    f"Field id={field_id} referenced by <temperature_field> "
+                    f"is of type '{field._field_type}', expected 'temperature'."
+                )
+            self.temperature_field = field
+
+    def _dnp_drift_from_xml_element(self, root, fields):
+        dnp_elem = root.find("dnp_drift")
+        if dnp_elem is not None:
+            self.dnp_drift = DNPDrift.from_xml_element(dnp_elem, fields)
+
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
         if elem is not None:
@@ -2603,6 +2684,8 @@ class Settings:
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
         self._create_entropy_mesh_subelement(element, mesh_memo)
+        self._create_temperature_field_subelement(element, mesh_memo)
+        self._create_dnp_drift_subelement(element, mesh_memo)
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
         self._create_verbosity_subelement(element)
@@ -2663,6 +2746,23 @@ class Settings:
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
+    def _read_fields(root, meshes):
+        """Parse all <Field> elements from XML.
+
+        Parameters
+        ----------
+        root : xml.etree._Element
+            Root XML Element.
+        meshes : dict
+            Dictionnary mapping mesh IDs to mesh instance.
+
+        """
+        fields = {}
+        for field_elem in root.findall("field"):
+            field = FieldBase.from_xml_element(field_elem, meshes)
+            fields[field.id] = field
+        return fields
+
     @classmethod
     def from_xml_element(cls, elem, meshes=None):
         """Generate settings from XML element
@@ -2688,6 +2788,10 @@ class Settings:
         meshes.update(settings_meshes)
 
         settings = cls()
+
+        # read all fields
+        fields = cls._read_fields(elem, meshes)
+
         settings._eigenvalue_from_xml_element(elem)
         settings._run_mode_from_xml_element(elem)
         settings._particles_from_xml_element(elem)
@@ -2722,6 +2826,8 @@ class Settings:
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
         settings._entropy_mesh_from_xml_element(elem, meshes)
+        settings._temperature_field_from_xml_element(elem, fields)
+        settings._dnp_drift_from_xml_element(elem, fields)
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
         settings._verbosity_from_xml_element(elem)

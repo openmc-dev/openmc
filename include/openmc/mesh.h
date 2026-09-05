@@ -145,6 +145,9 @@ private:
 //! Base mesh class
 //==============================================================================
 
+// Physical groups map type
+using PGMap = std::unordered_map<int, std::vector<int>>;
+
 class Mesh {
 public:
   // Constructors and destructor
@@ -191,6 +194,80 @@ public:
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
+  //! Determine which bins and surface bins were crossed by a particle.
+  //
+  //! Surface bins are identified without the inward flag.
+  //
+  //! \param[in] r0 Previous position
+  //! \param[in] r1 Current position
+  //! \param[out] leaving_surface_ids Surface bins that were left
+  //! \param[out] entering_surface_ids Surface bins that were entered
+  //! \param[out] bins Bins that were crossed
+  //! \param[out] length_fractions Fraction of tracklength in each bin
+  virtual void bins_and_surface_bins_crossed(Position r0, Position r1,
+    vector<int>& leaving_surface_ids, vector<int>& entering_surface_ids,
+    vector<int>& bins, vector<double>& length_fractions) const
+  {
+    fatal_error("Not implemented.");
+  }
+
+  //! Get bin at a given position r1 if r1 is inside the mesh. If r1 is located
+  //! outside the mesh, this function returns the nearest valid bin inside the
+  //! mesh, if bins were crossed during ray traversal between r0 and r1, or
+  //! bin0.
+  //
+  //! \param[in] r0 Previous position
+  //! \param[in] r1 Current position
+  //! \param[in] bin0 Bin corresponding to r0
+  //! \return If r1 is inside the mesh: bin corresponding to r1,
+  //! if r1 outside the mesh: last bin inside the mesh when travelling from r0
+  //! to r1 or bin0 if no bins were crossed.
+  virtual int get_bin_clamped(Position r0, Position r1, int bin0) const
+  {
+    fatal_error("Not implemented.");
+  }
+
+  //! Sample a position on mesh faces belonging to one or more physical groups
+  //
+  //! \param[out] p Sampled position
+  //! \param[out] bin Bin number corresponding to r
+  //! \param[in] seed Random number generator seed
+  //! \param[in] physical_groups Physical groups considered
+  virtual void sample_on_physical_groups(
+    Position& p, int& bin, uint64_t* seed, vector<int> physical_groups)
+  {
+    fatal_error("Not implemented!");
+  }
+
+  //! Normalize coordinates by scaling them to the dimensions of a given bin
+  //
+  //! \param[in] r Position
+  //! \param[in] bin Bin
+  //! \return Normalized position
+  virtual Position normalize_coordinates(const Position& r, int bin)
+  {
+    fatal_error("Not implemented!");
+  }
+
+  //! Retrieve connectivity of a mesh element
+  //
+  //! \param[in] element ID
+  //! \return element connectivity as IDs of the vertices
+  virtual std::vector<int> connectivity(int id) const = 0;
+
+  //! Distance to the next boundary.
+  //! If the initial position is outside the mesh, the distance
+  //! will be from the initial position to the external boundary
+  //! of the mesh if hit.
+  //
+  //! \param[in] current_bin Current bin number
+  //! \param[in] r Position of the particle
+  //! \param[in] u Direction of the particle
+  //! \param[out] bin_next Next bin number
+  //! \return Distance to the next boundary
+  virtual double distance_to_next_boundary(
+    int current_bin, Position r, Direction u, int& bin_next) const = 0;
+
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
@@ -202,6 +279,9 @@ public:
 
   //! Get the number of mesh cell surfaces.
   virtual int n_surface_bins() const = 0;
+
+  //! Get the number of unique vertices.
+  virtual int n_vertices() const = 0;
 
   int32_t id() const { return id_; }
 
@@ -299,6 +379,25 @@ public:
   int id_ {-1};                        //!< Mesh ID
   std::string name_;                   //!< User-specified name
   int n_dimension_ {-1};               //!< Number of dimensions
+
+  // Physical groups map accessors
+  PGMap& pg_map() { return pg_map_; }
+  const PGMap& pg_map() const { return pg_map_; }
+
+  //! Returns the physical group associated with a given face ID.
+  //
+  //! \param[in] face_id Face ID
+  //! \return Physical group
+  int get_physical_group(int face_id) const;
+
+  //! Returns face IDs corresponding to a given physical group.
+  //
+  //! \param[in] group Physical group
+  //! \return Face IDs
+  const std::vector<int>& get_face_ids(int group) const;
+
+private:
+  PGMap pg_map_; //!< Physical groups map linking physical group to face IDs
 };
 
 class StructuredMesh : public Mesh {
@@ -337,11 +436,27 @@ public:
 
   int n_surface_bins() const override;
 
+  int n_vertices() const override { fatal_error("Not implemented!"); };
+
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
+
+  void bins_and_surface_bins_crossed(Position r0, Position r1,
+    vector<int>& leaving_surface_ids, vector<int>& entering_surface_ids,
+    vector<int>& bins, vector<double>& length_fractions) const override;
+
+  double distance_to_next_boundary(
+    int current_bin, Position r, Direction u, int& bin_next) const override;
+
+  int get_bin_clamped(Position r0, Position r1, int bin0) const override;
+
+  std::vector<int> connectivity(int id) const override
+  {
+    fatal_error("Not implemented!");
+  };
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -429,6 +544,21 @@ public:
   virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const = 0;
 
+  //! Find the closest distance from a point to the mesh boundaries that are
+  //! aligned with the k direction. The point has to be located outside the
+  //! mesh.
+  //!
+  //! \param[in] k direction index of grid surface
+  //! \param[in] r position, from where to calculate the distance
+  //! \param[in] u direction of flight
+  //! \return distance to the mesh boundary
+  virtual double distance_to_mesh_boundary_from_outside(
+    int k, const Position& r, const Direction& u) const
+  {
+    fatal_error("Not implemented");
+    return -1.0;
+  }
+
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
@@ -497,6 +627,8 @@ public:
   RegularMesh(hid_t group);
 
   // Overridden methods
+  int n_vertices() const override;
+
   int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
@@ -505,6 +637,9 @@ public:
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
+
+  double distance_to_mesh_boundary_from_outside(
+    int k, const Position& r, const Direction& u) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -536,6 +671,36 @@ public:
 
   int set_grid();
 
+  //! Calculate the area of a face given its ID number
+  //
+  //! \param[in] face_id Face ID number (without inward information)
+  //! \return Area of the face
+  double face_area(int face_id);
+
+  void sample_on_physical_groups(Position& pa, int& cell, uint64_t* seed,
+    vector<int> physical_groups) override;
+
+  //! Sample a position on a face given its ID number
+  //
+  //! \param[in] face_id Face ID number (without inward information)
+  //! \param[in] seed Random number generator seed
+  //! \return Sampled position
+  Position sample_on_face(int face_id, uint64_t* seed);
+
+  //! Return the unique ID of a vertex
+  //
+  //! The vertex unique ID system ensures that vertices from different bins
+  //! located at the same position in space share the same unique ID.
+  //
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] local_verted_idx Local index of a vertex relative to a bin
+  //! \return Vertex unique ID
+  int return_vertex_unique_id(MeshIndex ijk, int local_vertex_idx) const;
+
+  std::vector<int> connectivity(int id) const override;
+
+  Position normalize_coordinates(const Position& r, int bin) override;
+
   // Data members
   double volume_frac_;           //!< Volume fraction of each mesh element
   double element_volume_;        //!< Volume of each mesh element
@@ -558,6 +723,9 @@ public:
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
+
+  double distance_to_mesh_boundary_from_outside(
+    int k, const Position& r, const Direction& u) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -732,6 +900,9 @@ public:
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(hid_t group);
 
+  double distance_to_next_boundary(
+    int current_bin, Position r, Direction u, int& bin_next) const override;
+
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;
 
@@ -768,22 +939,11 @@ public:
   //! \return The centroid of the bin
   virtual Position centroid(int bin) const = 0;
 
-  //! Get the number of vertices in the mesh
-  //
-  //! \return Number of vertices
-  virtual int n_vertices() const = 0;
-
   //! Retrieve a vertex of the mesh
   //
   //! \param[in] vertex ID
   //! \return vertex coordinates
   virtual Position vertex(int id) const = 0;
-
-  //! Retrieve connectivity of a mesh element
-  //
-  //! \param[in] element ID
-  //! \return element connectivity as IDs of the vertices
-  virtual std::vector<int> connectivity(int id) const = 0;
 
   //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;

@@ -20,6 +20,7 @@
 #include "openmc/distribution_spatial.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/field.h"
 #include "openmc/file_utils.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
@@ -54,6 +55,7 @@ bool confidence_intervals {false};
 bool create_delayed_neutrons {true};
 bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
+bool dnp_drift_on {false};
 bool entropy_on {false};
 bool event_based {false};
 bool ifp_delayed_group_on {false};
@@ -78,6 +80,7 @@ bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
 bool survival_normalization {false};
+bool temperature_field_on {false};
 bool temperature_multipole {false};
 bool trigger_on {false};
 bool trigger_predict {false};
@@ -153,6 +156,9 @@ int trigger_batch_interval {1};
 int verbosity {-1};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+
+double dnp_drift_external_travel_time {0.0};
+bool dnp_drift_recycling_on {false};
 
 } // namespace settings
 
@@ -446,6 +452,9 @@ void read_settings_xml(pugi::xml_node root)
 
   // Check for user meshes and allocate
   read_meshes(root);
+
+  // Read all fields
+  read_fields(root);
 
   // Look for deprecated cross_sections.xml file in settings.xml
   if (check_for_node(root, "cross_sections")) {
@@ -831,6 +840,14 @@ void read_settings_xml(pugi::xml_node root)
         "it by specifying its ID in an <entropy_mesh> element.");
     }
   }
+
+  // Temperature field
+  if (check_for_node(root, "temperature_field")) {
+    temperature_field_on = true;
+    int field_id = std::stoi(get_node_value(root, "temperature_field"));
+    simulation::temperature_field = get_field<TemperatureField>(field_id);
+  }
+
   // Uniform fission source weighting mesh
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
@@ -1180,6 +1197,133 @@ void read_settings_xml(pugi::xml_node root)
     auto range = get_node_array<double>(root, "temperature_range");
     temperature_range[0] = range.at(0);
     temperature_range[1] = range.at(1);
+  }
+
+  // Explicit transport of Delayed Neutron Precursor (DNP)
+  if (check_for_node(root, "dnp_drift")) {
+    dnp_drift_on = true;
+    auto node_dnp_drift = root.child("dnp_drift");
+
+    // Velocity field
+    int field_id = std::stoi(get_node_value(node_dnp_drift, "velocity_field"));
+    simulation::velocity_field = get_field<VelocityField>(field_id);
+
+    // Boundary conditions map
+    if (check_for_node(node_dnp_drift, "boundary_map")) {
+      BCMap bc_map;
+      auto node_boundary = node_dnp_drift.child("boundary_map");
+
+      if (check_for_node(node_boundary, "inlet")) {
+        bc_map[BCType::INLET] = get_node_array<int>(node_boundary, "inlet");
+      } else {
+        fatal_error("Inlet boundary conditions must be declared.");
+      }
+
+      if (check_for_node(node_boundary, "outlet")) {
+        bc_map[BCType::OUTLET] = get_node_array<int>(node_boundary, "outlet");
+      } else {
+        fatal_error("Outlet boundary conditions must be declared.");
+      }
+
+      if (check_for_node(node_boundary, "wall")) {
+        bc_map[BCType::WALL] = get_node_array<int>(node_boundary, "wall");
+      } else {
+        fatal_error("Wall boundary conditions must be declared.");
+      }
+
+      simulation::velocity_field->bc_map() = bc_map;
+
+    } else {
+      fatal_error("Boundary conditions must be declared.");
+    }
+
+    // Physical group map
+    if (check_for_node(node_dnp_drift, "physical_group_map")) {
+
+      auto node_physical_group = node_dnp_drift.child("physical_group_map");
+
+      // Face IDs
+      vector<int> face_ids;
+      if (check_for_node(node_physical_group, "face_ids")) {
+        face_ids = get_node_array<int>(node_physical_group, "face_ids");
+      } else {
+        fatal_error("Surface IDs must be declared.");
+      }
+
+      // Check for duplicate face IDs
+      std::set<int> unique_face_ids(face_ids.begin(), face_ids.end());
+      if (unique_face_ids.size() != face_ids.size()) {
+        fatal_error("Duplicate face IDs found in physical groups definition!");
+      }
+
+      // Physical groups
+      vector<int> physical_groups;
+      if (check_for_node(node_physical_group, "physical_groups")) {
+        physical_groups =
+          get_node_array<int>(node_physical_group, "physical_groups");
+      } else {
+        fatal_error("Physical_groups must be declared.");
+      }
+
+      // Check for consistency
+      if (face_ids.size() != physical_groups.size()) {
+        fatal_error(
+          "The lists of face IDs and physical groups must have the same size!");
+      }
+
+      // Create the physical group map
+      PGMap pg_map;
+      for (size_t i = 0; i < face_ids.size(); i++) {
+        pg_map[physical_groups[i]].push_back(face_ids[i]);
+      }
+
+      // Save the map in the mesh
+      simulation::velocity_field->mesh_ptr()->pg_map() = pg_map;
+    }
+
+    // Integrator
+    if (check_for_node(node_dnp_drift, "integrator")) {
+      std::string integration_method =
+        get_node_value(node_dnp_drift, "integrator");
+
+      // Runge Kutta 4
+      if (integration_method == "RK4") {
+
+        // Time step
+        double dt;
+        if (!check_for_node(node_dnp_drift, "integrator_dt")) {
+          fatal_error("The attribute 'integrator_dt' is not declared in the "
+                      "DNP drift settings.");
+        } else {
+          dt = std::stod(get_node_value(node_dnp_drift, "integrator_dt"));
+        }
+
+        // Instantiate integrator
+        simulation::streamline_integrator =
+          std::make_unique<RK4StreamlineIntegrator>(dt);
+
+        // Undefined integration method
+      } else {
+        fatal_error(
+          fmt::format("Integrator '{}' not implemented", integration_method));
+      }
+    } else {
+      fatal_error("An integrator should be defined in the DNP drift settings.");
+    }
+
+    // Recycle precursor when reaching an outlet?
+    if (check_for_node(node_dnp_drift, "recycling")) {
+      dnp_drift_recycling_on = get_node_value_bool(node_dnp_drift, "recycling");
+      if (dnp_drift_recycling_on) {
+        if (!check_for_node(node_dnp_drift, "external_travel_time")) {
+          fatal_error("The external travel time is not declared in "
+                      "the DNP drift settings.");
+        } else {
+          dnp_drift_external_travel_time =
+            std::stod(get_node_value(node_dnp_drift, "external_travel_time"));
+        }
+      }
+    }
   }
 
   // Check for tabular_legendre options

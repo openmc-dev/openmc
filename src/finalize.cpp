@@ -138,6 +138,7 @@ int openmc_finalize()
   settings::ssw_max_particles = 0;
   settings::ssw_max_files = 1;
   settings::survival_biasing = false;
+  settings::temperature_field_on = false;
   settings::temperature_default = 293.6;
   settings::temperature_method = TemperatureMethod::NEAREST;
   settings::temperature_multipole = false;
@@ -167,6 +168,10 @@ int openmc_finalize()
 
   simulation::entropy_mesh = nullptr;
   simulation::ufs_mesh = nullptr;
+
+  simulation::temperature_field = nullptr;
+  simulation::velocity_field = nullptr;
+  simulation::streamline_integrator.reset();
 
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};

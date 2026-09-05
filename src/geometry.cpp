@@ -197,11 +197,19 @@ bool find_cell_inner(
         p.cell_instance() = cell_instance_at_level(p, p.n_coord() - 1);
       }
 
-      // Set the material, temperature and density multiplier.
+      // Set the material.
       p.material_last() = p.material();
       p.material() = c.material(p.cell_instance());
+
+      // Set the temperature.
       p.sqrtkT_last() = p.sqrtkT();
-      p.sqrtkT() = c.sqrtkT(p.cell_instance());
+      if (settings::temperature_field_on && p.tf_bin() != C_NONE) {
+        p.sqrtkT() = simulation::temperature_field->get_sqrtkT(p.tf_bin());
+      } else {
+        p.sqrtkT() = c.sqrtkT(p.cell_instance());
+      }
+
+      // Set the density multiplier.
       p.density_mult_last() = p.density_mult();
       p.density_mult() = c.density_mult(p.cell_instance());
 

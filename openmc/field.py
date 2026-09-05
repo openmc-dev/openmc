@@ -11,7 +11,9 @@ from .mixin import IDManagerMixin
 from .mesh import RegularMesh, RectilinearMesh
 
 
-# Field types
+# Registry mapping field type strings (e.g., "temperature", "velocity")
+# to their corresponding FieldBase subclasses. Populated automatically
+# by __init_subclass__.
 _FIELD_TYPES = {}
 
 
@@ -25,12 +27,15 @@ class FieldBase(IDManagerMixin, ABC):
     ----------
     mesh : openmc.RegularMesh or openmc.RectilinearMesh
         Spatial mesh on which the field is defined.
-
     values : array-like
         Field values. Shape must be (n_elements,) for scalar fields
         or (n_elements, n_components) for vector fields.
     mapping : {'nodal', 'cell'}
         How field values map to the mesh. Default is 'cell'.
+    field_id : int
+        Unique identifier for the field. If None, an ID is automatically assigned.
+    name : str
+        User-defined name for the field. Default is ''.
 
     Attributes
     ----------
@@ -40,9 +45,25 @@ class FieldBase(IDManagerMixin, ABC):
         Array of field values.
     mapping : {'nodal', 'cell'}
         How field values map to the mesh.
+    id : int
+        Unique identifier for the field.
+    name : str
+        User-defined name for the field.
+    next_id : int
+        Next auto-assigned field ID.
+    used_ids : set of int
+        Set of all field IDs currently in use.
+    _field_type : str or None
+        String identifier for the field type. Subclasses must set this
+        to a unique string to be auto-registered.
+    _n_components : int or None
+        Number of components per element (1 for scalar field, 3 for vector field).
+        Subclasses must define this.
+    _supported_meshes : tuple of type
+        Mesh types accepted by this field class.
 
     """
-    # Shared accross all FieldBase subclasses so that IDs are globally unique
+    # Shared across all FieldBase subclasses so that IDs are globally unique
     next_id = 1
     used_ids = set()
 
@@ -139,17 +160,23 @@ class FieldBase(IDManagerMixin, ABC):
 
         Returns
         -------
-        element : xml.etree._Element
+        element : lxml.etree._Element
             XML element for this field.
 
         """
         element = ET.Element("field")
+
+        # Field type
         element.set("type", self._field_type)
+
+        # ID
         element.set("id", str(self.id))
 
+        # Name
         if self.name:
             element.set("name", self.name)
 
+        # Mesh
         mesh_elem = ET.SubElement(element, "mesh")
         mesh_elem.text = str(self.mesh.id)
 
@@ -157,15 +184,17 @@ class FieldBase(IDManagerMixin, ABC):
         mapping_elem = ET.SubElement(element, "mapping")
         mapping_elem.text = self.mapping
 
+        # Values
         values_elem = ET.SubElement(element, "values")
         flat = self.values.flatten(order="C")
 
-        # Assumes two XML block levels for the indent
+        # Assumes four XML block levels for the indent
         indent = 8 * ' '
         # f"{v:.15e}" instead of str(v) for consistency?
         values_elem.text = f"\n{indent}".join(
-            textwrap.wrap(" ".join([str(v) for v in flat]), 80)
+            textwrap.wrap(" ".join(str(v) for v in flat), 80)
         )
+
         return element
 
     @classmethod
@@ -174,21 +203,19 @@ class FieldBase(IDManagerMixin, ABC):
 
         Parameters
         ----------
-        elem : xml.etree._Element
+        elem : lxml.etree._Element
             XML <field> element to parse.
         meshes : dict
             Dictionary mapping mesh IDs (int) to mesh instances
 
         Returns
         -------
-        Field
+        FieldBase
             Reconstructed field instance
 
         """
+        # Resolve subclass
         field_type = elem.get("type")
-        field_id = int(elem.get("id"))
-        name = elem.get("name", "")
-
         if cls is FieldBase:
             if field_type not in _FIELD_TYPES:
                 raise TypeError(
@@ -199,7 +226,11 @@ class FieldBase(IDManagerMixin, ABC):
         else:
             subcls = cls
 
-        mesh_id = int(elem.find("mesh").text)
+        # Mesh
+        mesh_elem = elem.find("mesh")
+        if mesh_elem is None:
+            raise ValueError(f"Field: missing required <mesh> sub-element.")
+        mesh_id = int(mesh_elem.text)
         if mesh_id not in meshes:
             raise ValueError(f"Mesh with id={mesh_id} not found.")
         mesh = meshes[mesh_id]
@@ -207,7 +238,12 @@ class FieldBase(IDManagerMixin, ABC):
         # Mapping
         mapping_elem = elem.find("mapping")
         mapping = mapping_elem.text if mapping_elem is not None else "cell"
-        values_text = elem.find("values").text
+
+        # Values
+        values_elem = elem.find("values")
+        if values_elem is None:
+            raise ValueError(f"Field: missing required <values> sub-element.")
+        values_text = values_elem.text
         flat = np.array([float(v) for v in values_text.split()])
 
         if mapping == "nodal":
@@ -223,6 +259,12 @@ class FieldBase(IDManagerMixin, ABC):
 
         if subcls._n_components > 1:
             flat = flat.reshape((n, subcls._n_components), order="C")
+
+        # Field ID
+        field_id = int(elem.get("id"))
+
+        # Name
+        name = elem.get("name", "")
 
         kwargs = {
             "mesh": mesh,
@@ -258,22 +300,36 @@ class TemperatureField(FieldBase):
 
     Parameters
     ----------
-    mesh : Mesh
-        Spatial mesh associated with the field.
-    values : iterable of float
-        Temperature values (K) for each mesh element. Must be strictly positive.
-    field_id : int, optional
-        Unique identifier for this field.
-    name : str, optional
-        User-defined name for the field.
+    mesh : openmc.RegularMesh or openmc.RectilinearMesh
+        Spatial mesh on which the field is defined.
+    values : array-like
+        Temperature values in Kelvin. Shape must be (n,) where n is the number of
+        mesh elements or nodes. All values must be strictly positive.
     mapping : {'nodal', 'cell'}
         How field values map to the mesh. Default is 'cell'.
+    field_id : int
+        Unique identifier for the field. If None, an ID is automatically assigned.
+    name : str
+        User-defined name for the field. Default is ''.
 
     """
     _field_type = "temperature"
     _n_components = 1
 
     def _validate_data(self, values):
+        """Validate that all temperatures are strictly positive.
+
+        Parameters
+        ----------
+        values : numpy.ndarray
+            Temperature data array in Kelvin.
+
+        Raises
+        ------
+        ValueError
+            If any temperature value is zero or negative.
+
+        """
         if np.any(values <= 0.0):
             raise ValueError(
                 "All temperature values must be strictly positive (Kelvin). "
@@ -286,16 +342,17 @@ class VelocityField(FieldBase):
 
     Parameters
     ----------
-    mesh : Mesh
-        Spatial mesh associated with the field.
-    values : iterable of float
-        Velocity vectors (vx, vy, vz) in cm/s for each mesh element.
-    field_id : int, optional
-        Unique identifier for this field.
-    name : str, optional
-        User-defined name for the field.
+    mesh : openmc.RegularMesh or openmc.RectilinearMesh
+        Spatial mesh on which the field is defined.
+    values : array-like
+        Velocity vectors (vx, vy, vz) in cm/s. Shape must be (n, 3)
+        where n is the number of mesh elements or nodes.
     mapping : {'nodal', 'cell'}
         How field values map to the mesh. Default is 'cell'.
+    field_id : int
+        Unique identifier for the field. If None, an ID is automatically assigned.
+    name : str
+        User-defined name for the field. Default is ''.
 
     """
     _field_type = "velocity"
@@ -303,7 +360,7 @@ class VelocityField(FieldBase):
 
     @property
     def magnitude(self):
-        """Velocity magnitude at each mesh element."""
+        """Velocity magnitude at each mesh element (cm/s)."""
         return np.linalg.norm(self.values, axis=1)
 
     def max_speed(self):

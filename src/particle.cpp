@@ -272,9 +272,9 @@ void Particle::event_calculate_xs()
   }
 }
 
-void Particle::event_advance()
+AdvanceResult Particle::event_advance()
 {
-  // Find the distance to the nearest boundary
+  // Find the distance to the nearest geometry boundary
   boundary() = distance_to_boundary(*this);
 
   // Sample a distance to collision
@@ -287,6 +287,20 @@ void Particle::event_advance()
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
 
+  // If a temperature field is active, treat its nearest mesh surface as a
+  // transport boundary.
+  AdvanceResult result;
+  if (settings::temperature_field_on) {
+    const auto crossing = simulation::temperature_field.next_mesh_crossing(
+      temperature_field_bin(), r(), u());
+    if (crossing.distance < boundary().distance() - FP_COINCIDENT) {
+      boundary().distance() = crossing.distance;
+      result.temperature_field_crossing = true;
+      result.next_temperature_field_bin = crossing.next_bin;
+    }
+  }
+
+  // Calculate the distance corresponding to the time cutoff
   double speed = this->speed();
   double time_cutoff = settings::time_cutoff[type().transport_index()];
   double distance_cutoff =
@@ -330,6 +344,26 @@ void Particle::event_advance()
   // Clear surface component if distance is long enough
   if (distance > TINY_BIT)
     surface() = SURFACE_NONE;
+
+  return result;
+}
+
+void Particle::event_cross_temperature_field(int next_bin)
+{
+  sqrtkT_last() = sqrtkT();
+  temperature_field_bin() = next_bin;
+
+  if (next_bin != C_NONE) {
+    sqrtkT() = simulation::temperature_field.get_sqrtkT(next_bin);
+  } else {
+    int i_cell = lowest_coord().cell();
+    Cell& c {*model::cells[i_cell]};
+    sqrtkT() = c.sqrtkT(cell_instance());
+  }
+
+#ifdef OPENMC_DAGMC_ENABLED
+  history().reset();
+#endif
 }
 
 void Particle::event_cross_surface()
@@ -692,7 +726,16 @@ void Particle::cross_surface(const Surface& surf)
       cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
 
     material() = cell->material(cell_instance());
-    sqrtkT() = cell->sqrtkT(cell_instance());
+    int tf_bin = C_NONE;
+    if (settings::temperature_field_on) {
+      tf_bin = simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+    }
+    temperature_field_bin() = tf_bin;
+    if (tf_bin != C_NONE) {
+      sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
+    } else {
+      sqrtkT() = cell->sqrtkT(cell_instance());
+    }
     density_mult() = cell->density_mult(cell_instance());
     return;
   }

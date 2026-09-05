@@ -191,6 +191,54 @@ attribute, e.g.,
              :attr:`Material.temperature` or :attr:`Cell.temperature`
              attributes, respectively.
 
+Alternatively, temperatures can be specified using a temperature field composed
+of a mesh and a map that associates a temperature value to each mesh element.
+During the simulation, temperatures associated with particles are also updated
+every time a temperature field mesh surface is crossed. While a particle is
+contained inside the temperature mesh, temperatures from the temperature field
+take precedence over any temperature declared for a cell, a material, or
+globally.
+
+The following example shows how to specify temperatures using a temperature
+field based on a regular mesh:
+
+.. code-block:: python
+
+   # Define a mesh
+   dim = 5
+   mesh = openmc.RegularMesh()
+   mesh.lower_left = (0., 0., 0.)
+   mesh.upper_right = (10.0, 10.0, 10.0)
+   mesh.dimension = (dim, dim, dim)
+
+   # Define temperature values for each mesh element
+   temperature_values = [273.0 + i * 10 for i in range(dim**3)]
+
+   # Create a temperature field
+   temperature_field = openmc.TemperatureField(mesh, temperature_values)
+
+   # Register the temperature field in the settings
+   settings = openmc.Settings()
+   settings.temperature_field = temperature_field
+
+.. note:: Temperature fields are currently limited to
+          :class:`~openmc.RegularMesh` and
+          :class:`~openmc.RectilinearMesh`.
+
+Temperatures in the field can also be changed while the library is in
+memory -- for example between batches of a coupled calculation -- through
+:data:`openmc.lib.temperature_field`, which behaves as a mutable sequence
+indexed by mesh element::
+
+   import openmc.lib
+
+   with openmc.lib.run_in_memory():
+       openmc.lib.temperature_field[0] = 900.0
+
+Because cross sections are loaded once at initialization for the
+temperatures declared in the input file, a temperature assigned this way
+must fall within the temperature range covered by the loaded data.
+
 -----------------
 Material Mixtures
 -----------------

@@ -20,6 +20,7 @@
 #include "openmc/distribution_spatial.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/field.h"
 #include "openmc/file_utils.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
@@ -78,6 +79,7 @@ bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
 bool survival_normalization {false};
+bool temperature_field_on {false};
 bool temperature_multipole {false};
 bool trigger_on {false};
 bool trigger_predict {false};
@@ -831,6 +833,65 @@ void read_settings_xml(pugi::xml_node root)
         "it by specifying its ID in an <entropy_mesh> element.");
     }
   }
+
+  // Temperature field
+  if (check_for_node(root, "temperature_field")) {
+    // The random ray solver does not apply temperature fields. Leave the flag
+    // off here so that every consumer of the field -- cross section loading,
+    // transport, plotting -- agrees that it is not in use, rather than each
+    // one having to exclude the solver on its own. The field is still parsed
+    // so that malformed input is still reported.
+    if (solver_type == SolverType::RANDOM_RAY) {
+      warning("Temperature fields are not supported with the random ray "
+              "solver. It will be ignored during this simulation.");
+    } else {
+      temperature_field_on = true;
+    }
+
+    // Get pointer to temperature_field node
+    auto node_tf = root.child("temperature_field");
+
+    // Mesh parameter
+    Mesh* tf_mesh_ptr;
+    if (check_for_node(node_tf, "mesh")) {
+      int temp = std::stoi(get_node_value(node_tf, "mesh"));
+      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
+        throw std::runtime_error(fmt::format(
+          "Mesh {} specified for the temperature field does not exist.", temp));
+      }
+      tf_mesh_ptr = model::meshes[model::mesh_map.at(temp)].get();
+      if (!dynamic_cast<RegularMesh*>(tf_mesh_ptr) &&
+          !dynamic_cast<RectilinearMesh*>(tf_mesh_ptr)) {
+        throw std::runtime_error(
+          "Temperature fields are only supported on regular and rectilinear "
+          "meshes.");
+      }
+    } else {
+      throw std::runtime_error(
+        "A mesh should be given for the temperature field.");
+    }
+
+    // Values parameter
+    vector<double> tf_values;
+    if (check_for_node(node_tf, "values")) {
+      auto temp = get_node_array<double>(node_tf, "values");
+      if (temp.size() != tf_mesh_ptr->n_bins()) {
+        throw std::runtime_error(
+          "Inconsistency in the temperature field: the number of "
+          "values must be equal to the number of bins in the mesh.");
+      }
+      for (const auto& b : temp) {
+        tf_values.push_back(b);
+      }
+    } else {
+      throw std::runtime_error(
+        "Temperature values should be given for the temperature field.");
+    }
+
+    // Instantiate the temperature field
+    simulation::temperature_field = TemperatureField(tf_mesh_ptr, tf_values);
+  }
+
   // Uniform fission source weighting mesh
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));

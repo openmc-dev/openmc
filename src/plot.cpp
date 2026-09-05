@@ -44,6 +44,27 @@ constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int32_t NOT_FOUND {-2};
 constexpr int32_t OVERLAP {-3};
 
+namespace {
+
+//! Temperature in [K] to report for a plot pixel
+//
+//! Where a temperature field covers the position, the field takes precedence
+//! over the cell/material temperature carried by the particle, matching how
+//! temperatures are resolved during transport. Positions outside the field
+//! mesh fall back to the particle's own temperature.
+double plot_temperature(const Particle& p)
+{
+  double sqrtkT = p.sqrtkT();
+  if (settings::temperature_field_on) {
+    int bin = simulation::temperature_field.get_bin(p.r());
+    if (bin != C_NONE)
+      sqrtkT = simulation::temperature_field.get_sqrtkT(bin);
+  }
+  return (sqrtkT * sqrtkT) / K_BOLTZMANN;
+}
+
+} // namespace
+
 IdData::IdData(size_t h_res, size_t v_res, bool /*include_filter*/)
   : data_({v_res, h_res, 3}, NOT_FOUND)
 {}
@@ -86,7 +107,7 @@ void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level,
   Filter* /*filter*/, FilterMatch* /*match*/)
 {
   Cell* c = model::cells.at(p.lowest_coord().cell()).get();
-  data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
+  data_(y, x, 0) = plot_temperature(p);
   data_(y, x, 1) = c->density(p.cell_instance());
 }
 
@@ -141,7 +162,7 @@ void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
   }
 
   // set temperature (in K)
-  property_data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
+  property_data_(y, x, 0) = plot_temperature(p);
 
   // set density (g/cm³)
   if (c->type_ != Fill::UNIVERSE && p.material() != MATERIAL_VOID) {

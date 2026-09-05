@@ -266,6 +266,29 @@ int openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides);
 int openmc_tally_set_scores(int32_t index, int n, const char** scores);
 int openmc_tally_set_type(int32_t index, const char* type);
 int openmc_tally_set_writable(int32_t index, bool writable);
+
+//! Set the temperature at a given index in the temperature field
+//
+//! \param[in] index Index in the field
+//! \param[in] temperature Temperature value to apply
+//! \return Status (negative if an error occurred)
+int openmc_temperature_field_set_temperature(int32_t index, double temperature);
+
+//! Get the mesh associated with the temperature field
+//
+//! \param[out] index Index in the meshes array, or C_NONE if no temperature
+//!   field is configured
+//! \return Status (negative if an error occurred)
+int openmc_temperature_field_get_mesh(int32_t* index);
+
+//! Get the temperature at a given index in the temperature field
+//
+//! \param[in] index Index in the field
+//! \param[out] temperature Temperature value at the given index
+//! \return Status (negative if an error occurred)
+int openmc_temperature_field_get_temperature(
+  int32_t index, double* temperature);
+
 int openmc_get_weight_windows_index(int32_t id, int32_t* idx);
 int openmc_weight_windows_get_id(int32_t index, int32_t* id);
 int openmc_weight_windows_set_id(int32_t index, int32_t id);

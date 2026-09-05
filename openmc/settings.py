@@ -4,6 +4,7 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
+import textwrap
 import traceback
 
 import lxml.etree as ET
@@ -15,6 +16,7 @@ from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
+from .field import TemperatureField
 from .utility_funcs import input_path, set_xml_input_path
 from .volume import VolumeCalculation
 from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
@@ -344,6 +346,10 @@ class Settings:
         sections be loaded at all temperatures within the range. 'multipole' is
         a boolean indicating whether or not the windowed multipole method should
         be used to evaluate resolved resonance cross sections.
+    temperature_field : openmc.TemperatureField
+        Temperature field based on a geometric mesh used to specify temperatures
+        in a model. Temperatures declared from a temperature field take precedence
+        over all other temperature definition (cell, material, and global).
     trace : tuple or list
         Show detailed information about a single particle, indicated by three
         integers: the batch number, generation number, and particle number
@@ -435,6 +441,9 @@ class Settings:
 
         # Shannon entropy mesh
         self._entropy_mesh = None
+
+        # Temperature field
+        self._temperature_field = None
 
         # Trigger subelement
         self._trigger_active = None
@@ -789,6 +798,15 @@ class Settings:
     def entropy_mesh(self, entropy: RegularMesh):
         cv.check_type('entropy mesh', entropy, RegularMesh)
         self._entropy_mesh = entropy
+
+    @property
+    def temperature_field(self) -> TemperatureField:
+        return self._temperature_field
+
+    @temperature_field.setter
+    def temperature_field(self, temperature_field: TemperatureField):
+        cv.check_type('temperature field', temperature_field, TemperatureField)
+        self._temperature_field = temperature_field
 
     @property
     def trigger_active(self) -> bool:
@@ -1774,6 +1792,33 @@ class Settings:
             if mesh_memo is not None:
                 mesh_memo.add(self.entropy_mesh.id)
 
+    def _create_temperature_field_subelement(self, root, mesh_memo=None):
+        if self.temperature_field is None:
+            return
+
+        # add mesh ID to this element
+        element = ET.SubElement(root, "temperature_field")
+        subelement = ET.SubElement(element, "mesh")
+        subelement.text = str(self.temperature_field.mesh.id)
+
+        # Add temperature values
+        subelement = ET.SubElement(element, "values")
+        subelement.text = "\n        ".join(
+            textwrap.wrap(" ".join(
+                [str(i) for i in self.temperature_field.values]), 80))
+
+        # If this mesh has already been written outside the
+        # settings element, skip writing it again
+        if mesh_memo and self.temperature_field.mesh.id in mesh_memo:
+            return
+
+        # See if a <mesh> element already exists -- if not, add it
+        path = f"./mesh[@id='{self.temperature_field.mesh.id}']"
+        if root.find(path) is None:
+            root.append(self.temperature_field.mesh.to_xml_element())
+            if mesh_memo is not None:
+                mesh_memo.add(self.temperature_field.mesh.id)
+
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:
             trigger_element = ET.SubElement(root, "trigger")
@@ -2302,6 +2347,16 @@ class Settings:
             raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
         self.entropy_mesh = meshes[mesh_id]
 
+    def _temperature_field_from_xml_element(self, root, meshes):
+        elem = root.find('temperature_field')
+        if elem is not None:
+            mesh_id = int(get_text(elem, 'mesh'))
+            if mesh_id not in meshes:
+                raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
+            mesh = meshes[mesh_id]
+            values = [float(x) for x in get_text(elem, 'values').split()]
+            self.temperature_field = TemperatureField(mesh, values)
+
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
         if elem is not None:
@@ -2603,6 +2658,7 @@ class Settings:
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
         self._create_entropy_mesh_subelement(element, mesh_memo)
+        self._create_temperature_field_subelement(element, mesh_memo)
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
         self._create_verbosity_subelement(element)
@@ -2722,6 +2778,7 @@ class Settings:
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
         settings._entropy_mesh_from_xml_element(elem, meshes)
+        settings._temperature_field_from_xml_element(elem, meshes)
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
         settings._verbosity_from_xml_element(elem)

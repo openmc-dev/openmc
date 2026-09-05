@@ -298,6 +298,7 @@ public:
       cell = C_NONE;
     }
     n_coord_last_ = 1;
+    temperature_field_bin_ = C_NONE;
   }
 
   //! moves the particle by the specified distance to its next location
@@ -416,6 +417,10 @@ public:
   const double& density_mult() const { return density_mult_; }
   double& density_mult_last() { return density_mult_last_; }
 
+  // Current temperature field mesh bin
+  int& temperature_field_bin() { return temperature_field_bin_; }
+  const int& temperature_field_bin() const { return temperature_field_bin_; }
+
 private:
   int64_t id_ {-1}; //!< Unique ID
 
@@ -441,11 +446,13 @@ private:
   int material_ {-1};      //!< index for current material
   int material_last_ {-1}; //!< index for last material
 
-  double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
-  double sqrtkT_last_ {0.0}; //!< last temperature
+  double sqrtkT_ {-1.0};      //!< sqrt(k_Boltzmann * temperature) in eV
+  double sqrtkT_last_ {-1.0}; //!< last temperature
 
   double density_mult_ {1.0};      //!< density multiplier
   double density_mult_last_ {1.0}; //!< last density multiplier
+
+  int temperature_field_bin_ {C_NONE}; //!< Current temperature field mesh bin
 
 #ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;

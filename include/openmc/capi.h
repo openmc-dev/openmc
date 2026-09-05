@@ -108,6 +108,16 @@ void openmc_get_tally_next_id(int32_t* id);
 int openmc_global_tallies(double** ptr);
 int openmc_hard_reset();
 int openmc_init(int argc, char* argv[], const void* intracomm);
+
+//! Run OpenMC as a command-line application.
+//!
+//! This function initializes OpenMC, executes the requested run mode, and
+//! finalizes the library.
+//! \param argc Number of command-line arguments (including command)
+//! \param argv Command-line arguments
+//! \return Exit status
+int openmc_main(int argc, char* argv[]);
+
 bool openmc_is_statepoint_batch();
 int openmc_legendre_filter_get_order(int32_t index, int* order);
 int openmc_legendre_filter_set_order(int32_t index, int order);
@@ -380,6 +390,93 @@ int openmc_properties_import(const char* filename);
 //! \param enabled Whether the feature is enabled
 //! \return Error code
 int openmc_get_feature_enabled(const char* feature, bool* enabled);
+
+// Simulation state
+
+//! Get the current batch number.
+//!
+//! \return Current batch number
+int openmc_get_current_batch();
+
+//! Get the number of coordinate levels in the geometry.
+//!
+//! \return Number of coordinate levels
+int openmc_get_n_coord_levels();
+
+//! Get the number of realizations in the global tally results.
+//!
+//! \return Number of realizations
+int32_t openmc_get_n_realizations();
+
+//! Determine whether the current process is the master process.
+//!
+//! \return True if the current process is the master process
+bool openmc_master();
+
+// Settings
+
+//! Get a boolean setting.
+//!
+//! \param name Name of the setting
+//! \param value Value of the setting
+//! \return Status (negative if an error occurred)
+int openmc_setting_get_bool(const char* name, bool* value);
+
+//! Get a double-precision floating-point setting.
+//!
+//! \param name Name of the setting
+//! \param value Value of the setting
+//! \return Status (negative if an error occurred)
+int openmc_setting_get_double(const char* name, double* value);
+
+//! Get a 32-bit integer setting.
+//!
+//! \param name Name of the setting
+//! \param value Value of the setting
+//! \return Status (negative if an error occurred)
+int openmc_setting_get_int32(const char* name, int32_t* value);
+
+//! Get a 64-bit integer setting.
+//!
+//! \param name Name of the setting
+//! \param value Value of the setting
+//! \return Status (negative if an error occurred)
+int openmc_setting_get_int64(const char* name, int64_t* value);
+
+//! Get a string setting.
+//!
+//! \param name Name of the setting
+//! \param value Value of the setting
+//! \return Status (negative if an error occurred)
+int openmc_setting_get_string(const char* name, const char** value);
+
+//! Set a boolean setting.
+//!
+//! \param name Name of the setting
+//! \param value Value of the setting
+//! \return Status (negative if an error occurred)
+int openmc_setting_set_bool(const char* name, bool value);
+
+//! Set a double-precision floating-point setting.
+//!
+//! \param name Name of the setting
+//! \param value Value of the setting
+//! \return Status (negative if an error occurred)
+int openmc_setting_set_double(const char* name, double value);
+
+//! Set a 32-bit integer setting.
+//!
+//! \param name Name of the setting
+//! \param value Value of the setting
+//! \return Status (negative if an error occurred)
+int openmc_setting_set_int32(const char* name, int32_t value);
+
+//! Set a 64-bit integer setting.
+//!
+//! \param name Name of the setting
+//! \param value Value of the setting
+//! \return Status (negative if an error occurred)
+int openmc_setting_set_int64(const char* name, int64_t value);
 
 //! Return the message associated with the most recent C API error.
 //!

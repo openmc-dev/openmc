@@ -106,6 +106,7 @@ int openmc_finalize()
   settings::n_log_bins = 8000;
   settings::n_inactive = 0;
   settings::n_particles = -1;
+  settings::ifp_n_generation = -1;
   settings::output_summary = true;
   settings::output_tallies = true;
   settings::particle_restart_run = false;
@@ -174,8 +175,8 @@ int openmc_finalize()
 
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};
-  data::temperature_min = 0.0;
-  data::temperature_max = INFTY;
+  data::temperature_min = INFTY;
+  data::temperature_max = 0.0;
   data::mg = {};
   model::root_universe = -1;
   model::plotter_seed = 1;

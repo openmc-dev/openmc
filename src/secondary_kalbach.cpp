@@ -169,46 +169,53 @@ void KalbachMann::sample_params(
   }
 
   double E_l_k = distribution_[l].e_out[k];
-  double p_l_k = distribution_[l].p[k];
-  if (distribution_[l].interpolation == Interpolation::histogram) {
-    // Histogram interpolation
-    if (p_l_k > 0.0 && k >= n_discrete) {
-      E_out = E_l_k + (r1 - c_k) / p_l_k;
-    } else {
-      E_out = E_l_k;
-    }
-
-    // Determine Kalbach-Mann parameters
+  if (k < n_discrete) {
+    // Discrete case
+    E_out = E_l_k;
     km_r = distribution_[l].r[k];
     km_a = distribution_[l].a[k];
 
   } else {
-    // Linear-linear interpolation
-    double E_l_k1 = distribution_[l].e_out[k + 1];
-    double p_l_k1 = distribution_[l].p[k + 1];
+    // Continuous case
+    double p_l_k = distribution_[l].p[k];
+    if (distribution_[l].interpolation == Interpolation::histogram) {
+      // Histogram interpolation
+      if (p_l_k > 0.0) {
+        E_out = E_l_k + (r1 - c_k) / p_l_k;
+      } else {
+        E_out = E_l_k;
+      }
 
-    double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
-    if (frac == 0.0) {
-      E_out = E_l_k + (r1 - c_k) / p_l_k;
+      // Determine Kalbach-Mann parameters
+      km_r = distribution_[l].r[k];
+      km_a = distribution_[l].a[k];
+
     } else {
-      E_out =
-        E_l_k +
-        (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
-          p_l_k) /
-          frac;
+      // Linear-linear interpolation
+      double E_l_k1 = distribution_[l].e_out[k + 1];
+      double p_l_k1 = distribution_[l].p[k + 1];
+
+      double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
+      if (frac == 0.0) {
+        E_out = E_l_k + (r1 - c_k) / p_l_k;
+      } else {
+        E_out =
+          E_l_k +
+          (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
+            p_l_k) /
+            frac;
+      }
+
+      // Determine Kalbach-Mann parameters
+      km_r = distribution_[l].r[k] +
+             (E_out - E_l_k) / (E_l_k1 - E_l_k) *
+               (distribution_[l].r[k + 1] - distribution_[l].r[k]);
+      km_a = distribution_[l].a[k] +
+             (E_out - E_l_k) / (E_l_k1 - E_l_k) *
+               (distribution_[l].a[k + 1] - distribution_[l].a[k]);
     }
 
-    // Determine Kalbach-Mann parameters
-    km_r = distribution_[l].r[k] +
-           (E_out - E_l_k) / (E_l_k1 - E_l_k) *
-             (distribution_[l].r[k + 1] - distribution_[l].r[k]);
-    km_a = distribution_[l].a[k] +
-           (E_out - E_l_k) / (E_l_k1 - E_l_k) *
-             (distribution_[l].a[k + 1] - distribution_[l].a[k]);
-  }
-
-  // Now interpolate between incident energy bins i and i + 1
-  if (k >= n_discrete) {
+    // Now interpolate between incident energy bins i and i + 1
     if (l == i) {
       E_out = E_1 + (E_out - E_i_1) * (E_K - E_1) / (E_i_K - E_i_1);
     } else {

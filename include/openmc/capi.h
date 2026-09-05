@@ -99,8 +99,8 @@ int openmc_get_material_index(int32_t id, int32_t* index);
 int openmc_get_mesh_index(int32_t id, int32_t* index);
 int openmc_get_n_batches(int* n_batches, bool get_max_batches);
 int openmc_get_nuclide_index(const char name[], int* index);
-int openmc_add_unstructured_mesh(
-  const char filename[], const char library[], int* id);
+int openmc_add_unstructured_mesh(const char filename[], const char library[],
+  double length_multiplier, const char options[], int32_t id, int32_t* index);
 int64_t openmc_get_seed();
 uint64_t openmc_get_stride();
 int openmc_get_tally_index(int32_t id, int32_t* index);
@@ -150,12 +150,18 @@ int openmc_mesh_filter_get_translation(int32_t index, double translation[3]);
 int openmc_mesh_filter_set_translation(int32_t index, double translation[3]);
 int openmc_mesh_get_id(int32_t index, int32_t* id);
 int openmc_mesh_set_id(int32_t index, int32_t id);
+int openmc_mesh_get_name(int32_t index, const char** name);
+int openmc_mesh_set_name(int32_t index, const char* name);
 int openmc_mesh_get_n_elements(int32_t index, size_t* n);
 int openmc_mesh_get_volumes(int32_t index, double* volumes);
 int openmc_mesh_material_volumes(int32_t index, int nx, int ny, int nz,
   int max_mats, int32_t* materials, double* volumes, double* bboxes);
 int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
 int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
+int openmc_cylindrical_mesh_get_origin(int32_t index, double origin[3]);
+int openmc_cylindrical_mesh_set_origin(int32_t index, const double origin[3]);
+int openmc_spherical_mesh_get_origin(int32_t index, double origin[3]);
+int openmc_spherical_mesh_set_origin(int32_t index, const double origin[3]);
 int openmc_new_filter(const char* type, int32_t* index);
 int openmc_next_batch(int* status);
 int openmc_nuclide_name(int index, const char** name);

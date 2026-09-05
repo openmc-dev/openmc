@@ -11,8 +11,7 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .filter import EnergyFilter, MeshFilter, ParticleFilter
-from .mesh import _get_mesh
-from .mesh import meshes
+from .mesh import Mesh, _get_mesh, meshes
 
 
 __all__ = ['WeightWindows', 'weight_windows']
@@ -194,7 +193,7 @@ class WeightWindows(_FortranObjectWithID):
 
     @energy_bounds.setter
     def energy_bounds(self, e_bounds):
-        e_bounds_arr = np.asarray(e_bounds, dtype=float)
+        e_bounds_arr = np.ascontiguousarray(e_bounds, dtype=np.float64)
         e_bounds_ptr = e_bounds_arr.ctypes.data_as(POINTER(c_double))
         _dll.openmc_weight_windows_set_energy_bounds(
             self._index, e_bounds_ptr, e_bounds_arr.size)
@@ -222,8 +221,8 @@ class WeightWindows(_FortranObjectWithID):
 
     @bounds.setter
     def bounds(self, bounds):
-        lower = np.asarray(bounds[0])
-        upper = np.asarray(bounds[1])
+        lower = np.ascontiguousarray(bounds[0], dtype=np.float64)
+        upper = np.ascontiguousarray(bounds[1], dtype=np.float64)
 
         lower_p = lower.ctypes.data_as(POINTER(c_double))
         upper_p = upper.ctypes.data_as(POINTER(c_double))
@@ -292,6 +291,49 @@ class WeightWindows(_FortranObjectWithID):
                                                 c_char_p(value.encode()),
                                                 threshold,
                                                 ratio)
+
+    @classmethod
+    def from_python(cls, weight_windows, mesh=None, base_dir=None):
+        """Create shared-library weight windows from a Python API object.
+
+        Parameters
+        ----------
+        weight_windows : openmc.WeightWindows
+            Python API weight windows to convert.
+        mesh : openmc.lib.Mesh, optional
+            Previously converted library mesh. If omitted, the mesh associated
+            with *weight_windows* is converted automatically.
+        base_dir : path-like, optional
+            Directory used to resolve relative unstructured-mesh filenames
+            when *mesh* is omitted.
+
+        Returns
+        -------
+        openmc.lib.WeightWindows
+            Corresponding weight windows in the active library session.
+
+        """
+        if mesh is None:
+            mesh = Mesh.from_python(weight_windows.mesh, base_dir=base_dir)
+
+        lib_ww = cls(weight_windows.id)
+        lib_ww.particle = weight_windows.particle_type
+        lib_ww.mesh = mesh
+        if weight_windows.energy_bounds is not None:
+            lib_ww.energy_bounds = weight_windows.energy_bounds
+
+        lower = np.ascontiguousarray(
+            weight_windows.lower_ww_bounds.ravel(order='F'), dtype=np.float64)
+        upper = np.ascontiguousarray(
+            weight_windows.upper_ww_bounds.ravel(order='F'), dtype=np.float64)
+        lib_ww.bounds = lower, upper
+
+        lib_ww.survival_ratio = weight_windows.survival_ratio
+        if weight_windows.max_lower_bound_ratio is not None:
+            lib_ww.max_lower_bound_ratio = weight_windows.max_lower_bound_ratio
+        lib_ww.max_split = weight_windows.max_split
+        lib_ww.weight_cutoff = weight_windows.weight_cutoff
+        return lib_ww
 
     @classmethod
     def from_tally(cls, tally, particle=ParticleType.NEUTRON):

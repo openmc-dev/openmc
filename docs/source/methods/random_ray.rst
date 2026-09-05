@@ -1035,9 +1035,10 @@ in that state.
 The limiter is disabled by default because a steep fit can also be
 physical. A linear fit to a sharply attenuated flux legitimately crosses
 zero near the edge of an optically thick region, and clipping such fits
-produces an error that compounds with depth in deep-penetration problems.
-The limiter is therefore best reserved for simulations that negative
-sources destabilize.
+discards real shape information. In problems like deep penetration, where
+every steep gradient is physical, the limiter has nothing to fix and
+alters the solution at depth. The limiter is therefore best reserved for
+simulations that negative sources destabilize.
 
 .. _methods-shannon-entropy-random-ray:
 

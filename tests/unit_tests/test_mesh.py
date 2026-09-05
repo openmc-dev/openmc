@@ -1131,6 +1131,468 @@ def test_regular_mesh_get_indices_at_coords():
     assert len(result_1d) == 1
     assert result_1d == (5,)
 
+def _read_vtkhdf(filename):
+    """Read a VTKHDF file with VTK, skipping the test if VTK is unavailable"""
+    vtk = pytest.importorskip("vtk")
+    reader = vtk.vtkHDFReader()
+    reader.SetFileName(str(filename))
+    reader.Update()
+    return reader.GetOutput()
+
+
+VTKHDF_MESHES = {
+    "regular": lambda: openmc.RegularMesh.from_domain(
+        openmc.BoundingBox([0.0, 0.0, 0.0], [2.0, 3.0, 4.0]),
+        dimension=[2, 3, 4],
+    ),
+    "rectilinear": lambda: openmc.RectilinearMesh.from_domain(
+        openmc.BoundingBox([0.0, 0.0, 0.0], [2.0, 3.0, 4.0]),
+        dimension=[2, 3, 4],
+    ),
+    "cylindrical": lambda: openmc.CylindricalMesh(
+        r_grid=[0.0, 1.0, 2.0],
+        phi_grid=np.linspace(0.0, 2 * pi, 4),
+        z_grid=[0.0, 1.0, 2.0, 3.0, 4.0],
+    ),
+    "spherical": lambda: openmc.SphericalMesh(
+        r_grid=[0.0, 1.0, 2.0],
+        theta_grid=np.linspace(0.0, pi, 4),
+        phi_grid=np.linspace(0.0, 2 * pi, 6),
+    ),
+}
+
+
+@pytest.mark.parametrize("kind", list(VTKHDF_MESHES))
+def test_write_vtkhdf_readable_by_vtk(run_in_tmpdir, kind):
+    """VTKHDF output must be readable by VTK, not merely well formed HDF5.
+
+    VTKHDF has no StructuredGrid or RectilinearGrid dataset type, so a file
+    claiming to be one is silently rejected by every VTK reader. Assert that
+    the file loads and that the element data survives the round trip.
+    """
+    mesh = VTKHDF_MESHES[kind]()
+    # distinct values per element so any reordering is detected
+    data = np.arange(float(mesh.n_elements)).reshape(mesh.dimension)
+
+    filename = f"test_readable_{kind}.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"values": data}, filename=filename,
+                           volume_normalization=False)
+
+    grid = _read_vtkhdf(filename)
+    assert grid.GetNumberOfCells() == mesh.n_elements
+    assert grid.GetNumberOfPoints() == np.prod([d + 1 for d in mesh.dimension])
+
+    array = grid.GetCellData().GetArray("values")
+    assert array is not None
+    read_data = np.array([array.GetTuple1(i) for i in range(mesh.n_elements)])
+    np.testing.assert_allclose(read_data, data.T.ravel())
+
+
+@pytest.mark.parametrize("kind", list(VTKHDF_MESHES))
+def test_write_vtkhdf_element_geometry(run_in_tmpdir, kind):
+    """Each element read back by VTK must span the expected mesh vertices"""
+    mesh = VTKHDF_MESHES[kind]()
+    mesh.write_data_to_vtk(datasets=None, filename=f"test_geom_{kind}.vtkhdf")
+
+    grid = _read_vtkhdf(f"test_geom_{kind}.vtkhdf")
+    n_i, n_j, _ = mesh.dimension
+    vertices = np.asarray(mesh.vertices)
+
+    for cell_id in range(grid.GetNumberOfCells()):
+        i = cell_id % n_i
+        j = (cell_id // n_i) % n_j
+        k = cell_id // (n_i * n_j)
+        cell = grid.GetCell(cell_id)
+        found = np.array([cell.GetPoints().GetPoint(n) for n in range(8)])
+        expected = vertices[i:i+2, j:j+2, k:k+2].reshape(-1, 3)
+        np.testing.assert_allclose(
+            np.array(sorted(map(tuple, np.round(found, 8)))),
+            np.array(sorted(map(tuple, np.round(expected, 8)))),
+            atol=1e-8,
+        )
+
+
+def test_write_vtkhdf_regular_mesh(run_in_tmpdir):
+    """A regular mesh is uniform, so it is written as VTKHDF ImageData."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [-5., -5., -5.]
+    mesh.upper_right = [5., 5., 5.]
+    mesh.dimension = [2, 3, 4]
+
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_regular_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    with h5py.File(filename, "r") as f:
+        assert "VTKHDF" in f
+        root = f["VTKHDF"]
+        assert root.attrs["Type"] == b"ImageData"
+        assert tuple(root.attrs["Version"]) == (2, 1)
+        assert "CellData" in root
+        assert "data" in root["CellData"]
+
+        # ImageData is described by an extent, origin and spacing rather than
+        # explicit point coordinates
+        assert "Points" not in root
+        np.testing.assert_array_equal(root.attrs["WholeExtent"],
+                                      [0, 2, 0, 3, 0, 4])
+        np.testing.assert_allclose(root.attrs["Origin"], [-5., -5., -5.])
+        np.testing.assert_allclose(root.attrs["Spacing"], [5., 10/3, 2.5])
+
+        # element data is stored with the last index varying fastest
+        assert root["CellData"]["data"].shape == (4, 3, 2)
+
+
+def test_write_vtkhdf_rectilinear_mesh(run_in_tmpdir):
+    """A rectilinear mesh is written as a VTKHDF UnstructuredGrid."""
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = np.array([0., 1., 3., 6.])
+    mesh.y_grid = np.array([-5., 0., 5.])
+    mesh.z_grid = np.array([-10., -5., 0., 5., 10.])
+
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_rectilinear_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"flux": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    with h5py.File(filename, "r") as f:
+        assert "VTKHDF" in f
+        root = f["VTKHDF"]
+        assert root.attrs["Type"] == b"UnstructuredGrid"
+        assert "CellData" in root
+        assert "flux" in root["CellData"]
+
+        assert root["CellData"]["flux"].size == ref_data.size
+        assert root["NumberOfCells"][0] == mesh.n_elements
+        # all elements are linear hexahedra
+        assert np.all(root["Types"][()] == 12)
+        assert root["Offsets"].size == mesh.n_elements + 1
+
+
+def test_write_vtkhdf_cylindrical_mesh(run_in_tmpdir):
+    """Test writing a cylindrical mesh to VTKHDF format."""
+    mesh = openmc.CylindricalMesh(
+        r_grid=[0., 1., 2., 3.],
+        phi_grid=[0., pi/2, pi, 3*pi/2, 2*pi],
+        z_grid=[-5., 0., 5.],
+        origin=[0., 0., 0.]
+    )
+
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_cylindrical_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"power": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    with h5py.File(filename, "r") as f:
+        assert "VTKHDF" in f
+        root = f["VTKHDF"]
+        assert root.attrs["Type"] == b"UnstructuredGrid"
+        assert "CellData" in root
+        assert "power" in root["CellData"]
+
+        # one point per mesh vertex, r x phi x z
+        assert root["NumberOfPoints"][0] == (3+1) * (4+1) * (2+1)
+        assert root["NumberOfCells"][0] == 3 * 4 * 2
+
+
+def test_write_vtkhdf_spherical_mesh(run_in_tmpdir):
+    """Test writing a spherical mesh to VTKHDF format."""
+    mesh = openmc.SphericalMesh(
+        r_grid=[0., 1., 2., 3.],
+        theta_grid=[0., pi/4, pi/2, 3*pi/4, pi],
+        phi_grid=[0., pi/2, pi, 3*pi/2, 2*pi],
+        origin=[0., 0., 0.]
+    )
+
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_spherical_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"density": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    with h5py.File(filename, "r") as f:
+        assert "VTKHDF" in f
+        root = f["VTKHDF"]
+        assert root.attrs["Type"] == b"UnstructuredGrid"
+        assert "Points" in root
+        assert "CellData" in root
+        assert "density" in root["CellData"]
+
+
+@pytest.mark.parametrize(
+    "kind", ["rectilinear", "cylindrical", "spherical"]
+)
+def test_write_vtkhdf_points_match_vertices(run_in_tmpdir, kind):
+    """Points written for an unstructured grid must be the mesh vertices."""
+    mesh = VTKHDF_MESHES[kind]()
+    data = np.arange(float(mesh.n_elements)).reshape(mesh.dimension)
+    mesh.write_data_to_vtk(
+        datasets={"values": data},
+        filename="test_unstructured.vtkhdf",
+        volume_normalization=False,
+    )
+
+    with h5py.File("test_unstructured.vtkhdf", "r") as f:
+        root = f["VTKHDF"]
+        np.testing.assert_allclose(
+            root["Points"][()], np.asarray(mesh.vertices).reshape(-1, 3)
+        )
+        assert root.attrs["Type"] == b"UnstructuredGrid"
+
+
+def test_write_vtkhdf_volume_normalization(run_in_tmpdir):
+    """Test volume normalization in VTKHDF format."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0., 0.]
+    mesh.upper_right = [10., 10., 10.]
+    mesh.dimension = [2, 2, 2]
+
+    # Use non-uniform data so that .T.ravel() and .ravel() differ,
+    # catching any ordering mistakes in the implementation.
+    ref_data = np.arange(8, dtype=float).reshape(mesh.dimension)
+    filename_with_norm = "test_normalized.vtkhdf"
+    filename_without_norm = "test_unnormalized.vtkhdf"
+
+    mesh.write_data_to_vtk(
+        datasets={"flux": ref_data},
+        filename=filename_with_norm,
+        volume_normalization=True
+    )
+    mesh.write_data_to_vtk(
+        datasets={"flux": ref_data},
+        filename=filename_without_norm,
+        volume_normalization=False
+    )
+
+    with h5py.File(filename_with_norm, "r") as f:
+        normalized_data = f["VTKHDF"]["CellData"]["flux"][()]
+
+    with h5py.File(filename_without_norm, "r") as f:
+        unnormalized_data = f["VTKHDF"]["CellData"]["flux"][()]
+
+    # Volume for each cell is 5 x 5 x 5 = 125
+    cell_volume = 125.0
+    shape = (2, 2, 2)
+    np.testing.assert_allclose(
+        normalized_data, (ref_data.T.ravel() / cell_volume).reshape(shape))
+    np.testing.assert_allclose(
+        unnormalized_data, ref_data.T.ravel().reshape(shape))
+
+
+def test_write_vtkhdf_default_volume_normalization_for_vtkhdf(run_in_tmpdir):
+    """Ensure VTKHDF default normalizes data by volume (same as legacy)."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0.0, 0.0, 0.0]
+    mesh.upper_right = [10.0, 10.0, 10.0]
+    mesh.dimension = [2, 2, 2]
+
+    data = np.ones(mesh.dimension) * 100.0
+    mesh.write_data_to_vtk(
+        datasets={"flux": data},
+        filename="test_default_norm.vtkhdf",
+    )
+
+    with h5py.File("test_default_norm.vtkhdf", "r") as f:
+        saved = f["VTKHDF"]["CellData"]["flux"][()]
+
+    # Each cell volume is 5*5*5 = 125, default normalization divides by it
+    cell_volume = 125.0
+    np.testing.assert_allclose(
+        saved, (data / cell_volume).T.ravel().reshape(2, 2, 2))
+
+
+@pytest.mark.parametrize(
+    "x_grid,y_grid,z_grid,data,expected", [
+        (
+            [0.0, 1.0, 2.0],
+            [0.0, 1.0],
+            [0.0, 1.0],
+            np.arange(2),
+            np.arange(2),
+        ),
+        (
+            [0.0, 1.0, 2.0],
+            [0.0, 1.0, 2.0],
+            [0.0, 1.0],
+            np.arange(4).reshape(2,2),
+            np.arange(4),
+        ),
+        (
+            [0.0, 1.0, 2.0],
+            [0.0, 1.0, 2.0],
+            [0.0, 1.0, 2.0],
+            np.arange(8).reshape(2,2,2),
+            np.arange(8),
+        ),
+    ],
+    ids=["1d", "2d", "3d"],
+)
+def test_write_vtkhdf_rectilinear_multi_dimensional_data(run_in_tmpdir, x_grid, y_grid, z_grid, data, expected):
+    """Test RectilinearMesh VTKHDF accepts 1D/2D/3D data with singleton padding."""
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = x_grid
+    mesh.y_grid = y_grid
+    mesh.z_grid = z_grid
+
+    mesh.write_data_to_vtk(
+        datasets={"flux": data},
+        filename="test_rectilinear_dims.vtkhdf",
+        volume_normalization=False,
+    )
+
+    with h5py.File("test_rectilinear_dims.vtkhdf", "r") as f:
+        saved = f["VTKHDF"]["CellData"]["flux"][()]
+
+    expected_written = data.T.ravel() if data.ndim > 1 else data.ravel()
+    np.testing.assert_allclose(saved, expected_written)
+
+
+def test_write_vtkhdf_multiple_datasets(run_in_tmpdir):
+    """Test writing multiple datasets to VTKHDF format."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0., 0.]
+    mesh.upper_right = [1., 1., 1.]
+    mesh.dimension = [2, 2, 2]
+
+    rng = np.random.default_rng(42)
+    data1 = rng.random(mesh.dimension)
+    data2 = rng.random(mesh.dimension)
+    data3 = rng.random(mesh.dimension)
+
+    filename = "test_multiple_datasets.vtkhdf"
+    mesh.write_data_to_vtk(
+        datasets={"flux": data1, "power": data2, "heating": data3},
+        filename=filename,
+        volume_normalization=False
+    )
+
+    assert Path(filename).exists()
+
+    shape = (2, 2, 2)
+    with h5py.File(filename, "r") as f:
+        root = f["VTKHDF"]
+        assert "flux" in root["CellData"]
+        assert "power" in root["CellData"]
+        assert "heating" in root["CellData"]
+
+        np.testing.assert_allclose(
+            root["CellData"]["flux"][()], data1.T.ravel().reshape(shape))
+        np.testing.assert_allclose(
+            root["CellData"]["power"][()], data2.T.ravel().reshape(shape))
+        np.testing.assert_allclose(
+            root["CellData"]["heating"][()], data3.T.ravel().reshape(shape))
+
+
+def test_write_vtkhdf_invalid_data_shape(run_in_tmpdir):
+    """Test that VTKHDF raises error for mismatched data shape."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0., 0.]
+    mesh.upper_right = [1., 1., 1.]
+    mesh.dimension = [2, 2, 2]
+
+    # Create data with wrong shape but correct total size
+    wrong_data = np.ones((4, 2, 1))
+    filename = "test_invalid_shape.vtkhdf"
+
+    with pytest.raises(ValueError, match="Cannot apply multidimensional dataset"):
+        mesh.write_data_to_vtk(
+            datasets={"bad_data": wrong_data},
+            filename=filename
+        )
+
+
+def test_write_vtkhdf_1d_mesh(run_in_tmpdir):
+    """Test writing a 1D regular mesh to VTKHDF format."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0.]
+    mesh.upper_right = [10.]
+    mesh.dimension = [5]
+
+    ref_data = np.arange(5, dtype=float)
+    filename = "test_1d_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    with h5py.File(filename, "r") as f:
+        root = f["VTKHDF"]
+        # a VTKHDF extent always has six entries, flat axes are padded to one
+        np.testing.assert_array_equal(root.attrs["WholeExtent"],
+                                      [0, 5, 0, 1, 0, 1])
+        saved = root["CellData"]["data"][()]
+
+    # Default volume_normalization=True; cell width = 2.0 -> volume = 2.0
+    np.testing.assert_allclose(saved, (ref_data / 2.0).reshape(1, 1, 5))
+
+    grid = _read_vtkhdf(filename)
+    assert grid.GetNumberOfCells() == 5
+
+
+def test_write_vtkhdf_2d_mesh(run_in_tmpdir):
+    """Test writing a 2D regular mesh to VTKHDF format."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0.]
+    mesh.upper_right = [10., 10.]
+    mesh.dimension = [5, 3]
+
+    ref_data = np.arange(15, dtype=float).reshape(mesh.dimension)
+    filename = "test_2d_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    with h5py.File(filename, "r") as f:
+        root = f["VTKHDF"]
+        np.testing.assert_array_equal(root.attrs["WholeExtent"],
+                                      [0, 5, 0, 3, 0, 1])
+        saved = root["CellData"]["data"][()]
+
+    # Default volume_normalization=True; cell volume = 2.0 * (10/3)
+    cell_volume = 2.0 * (10.0 / 3.0)
+    np.testing.assert_allclose(
+        saved, (ref_data / cell_volume).T.ravel().reshape(1, 3, 5))
+
+    grid = _read_vtkhdf(filename)
+    assert grid.GetNumberOfCells() == 15
+
+
+def test_write_ascii_vtk_unchanged(run_in_tmpdir):
+    """Test that ASCII .vtk format still works as before."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0., 0.]
+    mesh.upper_right = [1., 1., 1.]
+    mesh.dimension = [2, 2, 2]
+
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_ascii.vtk"
+
+    # This should work without requiring vtk module changes
+    vtkIOLegacy = pytest.importorskip("vtkmodules.vtkIOLegacy")
+    mesh.write_data_to_vtk(datasets={"data": ref_data},
+                           filename=filename,
+                           volume_normalization=False
+                           )
+
+    assert Path(filename).exists()
+
+    # Verify with VTK reader
+    reader = vtkIOLegacy.vtkGenericDataObjectReader()
+    reader.SetFileName(str(filename))
+    reader.Update()
+
+    # Get data from file
+    arr = reader.GetOutput().GetCellData().GetArray("data")
+    read_data = np.array([arr.GetTuple1(i) for i in range(ref_data.size)])
+    np.testing.assert_almost_equal(read_data, ref_data.T.ravel())
 
 def test_rectilinear_mesh_get_indices_at_coords():
     """Test get_indices_at_coords method for RectilinearMesh"""

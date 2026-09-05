@@ -22,6 +22,23 @@ from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
 
 
+# VTKHDF format version used for structured mesh output
+_VTKHDF_VERSION = (2, 1)
+
+
+def _write_vtkhdf_type(group, name: str):
+    """Write the VTKHDF dataset type as a fixed length ASCII string
+
+    A variable length string is read back as ``str`` rather than ``bytes``,
+    which does not match what VTK readers expect.
+
+    """
+    ascii_name = name.encode("ascii")
+    group.attrs.create(
+        "Type", ascii_name, dtype=h5py.string_dtype("ascii", len(ascii_name))
+    )
+
+
 class MeshMaterialVolumes(Mapping):
     """Results from a material volume in mesh calculation.
 
@@ -673,12 +690,16 @@ class StructuredMesh(MeshBase):
                           datasets: dict | None = None,
                           volume_normalization: bool = True,
                           curvilinear: bool = False):
-        """Creates a VTK object of the mesh
+        """Creates a VTK object of the mesh and writes it to a file.
+
+        Supported formats are legacy ASCII ``.vtk`` (requires the ``vtk``
+        package) and ``.vtkhdf`` (requires only ``h5py``).
 
         Parameters
         ----------
-        filename : str
-            Name of the VTK file to write.
+        filename : str or PathLike
+            Name of the VTK file to write. Use a ``.vtkhdf`` extension for
+            the VTKHDF format or ``.vtk`` for the legacy ASCII format.
         datasets : dict
             Dictionary whose keys are the data labels and values are the data
             sets. 1D datasets are expected to be extracted directly from
@@ -701,8 +722,9 @@ class StructuredMesh(MeshBase):
 
         Returns
         -------
-        vtk.StructuredGrid or vtk.UnstructuredGrid
-            a VTK grid object representing the mesh
+        vtk.StructuredGrid or vtk.UnstructuredGrid or None
+            A VTK grid object representing the mesh for the legacy ASCII
+            format, or None for the VTKHDF format.
 
         Examples
         --------
@@ -721,6 +743,11 @@ class StructuredMesh(MeshBase):
            >>> heating = tally.get_reshaped_data(expand_dims=True)
            >>> mesh.write_data_to_vtk({'heating': heating})
         """
+        if Path(filename).suffix == ".vtkhdf":
+            self._write_vtk_hdf5(filename, datasets, volume_normalization)
+            return None
+
+        # vtk is an optional dependency only needed for the legacy ASCII path
         import vtk
         from vtk.util import numpy_support as nps
 
@@ -928,22 +955,134 @@ class StructuredMesh(MeshBase):
         """
         cv.check_type('data label', label, str)
 
+        # If this is a multidimensional dataset, validate its shape first so
+        # that the user receives the more specific error message.
+        if dataset.ndim > 1:
+            if dataset.shape == self.dimension:
+                return
+
+            if dataset.ndim < len(self.dimension):
+                padded_shape = tuple(dataset.shape) + (1,) * (len(self.dimension) - dataset.ndim)
+                if padded_shape == tuple(self.dimension):
+                    return
+
+            raise ValueError(
+                f'Cannot apply multidimensional dataset "{label}" with '
+                f"shape {dataset.shape} to mesh {self.id} "
+                f"with dimensions {self.dimension}"
+            )
+
         if dataset.size != self.n_elements:
             raise ValueError(
                 f"The size of the dataset '{label}' ({dataset.size}) should be"
                 f" equal to the number of mesh cells ({self.n_elements})"
             )
 
-        # accept a flat array as-is, assuming it is in the correct order
-        if dataset.ndim == 1:
+    def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None,
+                        volume_normalization: bool) -> None:
+        """Write the mesh and data in the VTKHDF UnstructuredGrid format
+
+        VTKHDF defines no StructuredGrid or RectilinearGrid dataset type, so
+        meshes with non-uniform or curvilinear elements are written as an
+        unstructured grid of linear hexahedra. :class:`RegularMesh` overrides
+        this with the more compact ImageData format.
+
+        Parameters
+        ----------
+        filename : str or PathLike
+            Name of the VTKHDF file to write.
+        datasets : dict or None
+            Dictionary whose keys are the data labels and values are the data
+            sets.
+        volume_normalization : bool
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
+
+        """
+        n_i, n_j, n_k = self.dimension
+        vertex_shape = (n_i + 1, n_j + 1, n_k + 1)
+        points = np.asarray(self.vertices).reshape(-1, 3)
+
+        # Index of the (i, j, k) corner of each element, ordered with i varying
+        # fastest to match the cell ordering used elsewhere for VTK output
+        i, j, k = np.meshgrid(np.arange(n_i), np.arange(n_j), np.arange(n_k),
+                              indexing='ij')
+        corner = np.ravel_multi_index((i, j, k), vertex_shape)
+        corner = corner.transpose(2, 1, 0).ravel()
+
+        # Offset from the (i, j, k) corner to each vertex of a VTK hexahedron
+        stride_i = (n_j + 1) * (n_k + 1)
+        stride_j = n_k + 1
+        offsets = np.array([
+            0,
+            stride_i,
+            stride_i + stride_j,
+            stride_j,
+            1,
+            stride_i + 1,
+            stride_i + stride_j + 1,
+            stride_j + 1,
+        ])
+        connectivity = (corner[:, None] + offsets[None, :]).ravel()
+
+        n_cells = corner.size
+        with h5py.File(filename, "w") as f:
+            root = f.create_group("VTKHDF")
+            root.attrs["Version"] = _VTKHDF_VERSION
+            _write_vtkhdf_type(root, "UnstructuredGrid")
+            root.create_dataset("NumberOfPoints", data=[len(points)], dtype="i8")
+            root.create_dataset("Points", data=points, dtype="f8")
+            root.create_dataset("NumberOfCells", data=[n_cells], dtype="i8")
+            root.create_dataset("NumberOfConnectivityIds",
+                                data=[connectivity.size], dtype="i8")
+            root.create_dataset("Connectivity", data=connectivity, dtype="i8")
+            root.create_dataset(
+                "Offsets",
+                data=np.arange(0, connectivity.size + 1, _N_HEX_VERTICES),
+                dtype="i8",
+            )
+            # 12 is the VTK cell type for a linear hexahedron
+            root.create_dataset("Types", data=np.full(n_cells, 12),
+                                dtype="uint8")
+
+            cell_data_group = root.create_group("CellData")
+            for label, dataset in self._vtk_hdf5_datasets(datasets,
+                                                          volume_normalization):
+                cell_data_group.create_dataset(label, data=dataset,
+                                               dtype="float64", chunks=True)
+
+    def _vtk_hdf5_datasets(self, datasets: dict | None,
+                           volume_normalization: bool):
+        """Validate and flatten datasets for VTKHDF output
+
+        Yields
+        ------
+        tuple of (str, numpy.ndarray)
+            Data label and the corresponding flat array of element values,
+            ordered with the first mesh index varying fastest.
+
+        """
+        if not datasets:
             return
 
-        if dataset.shape != self.dimension:
-            raise ValueError(
-                f'Cannot apply multidimensional dataset "{label}" with '
-                f"shape {dataset.shape} to mesh {self.id} "
-                f"with dimensions {self.dimension}"
-            )
+        for label, dataset in datasets.items():
+            dataset = self._reshape_vtk_dataset(dataset)
+            self._check_vtk_dataset(label, dataset)
+
+            if volume_normalization:
+                # a flat dataset is already ordered with the first index
+                # varying fastest, so the volumes have to match that ordering
+                if dataset.ndim > 1:
+                    dataset = dataset / self.volumes
+                else:
+                    dataset = dataset / self.volumes.T.ravel()
+
+            if dataset.ndim > 1:
+                dataset = dataset.T.ravel()
+            else:
+                dataset = dataset.ravel()
+
+            yield label, dataset
 
     @classmethod
     def from_domain(
@@ -1146,7 +1285,7 @@ class RegularMesh(StructuredMesh):
             if self._lower_left is not None and self._dimension is not None:
                 us = self._upper_right
                 ls = self._lower_left
-                dims =  self._dimension
+                dims = self._dimension
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @width.setter
@@ -1555,6 +1694,56 @@ class RegularMesh(StructuredMesh):
         indices = np.floor((coords_array - lower_left) / spacing).astype(int)
         return tuple(int(i) for i in indices[:ndim])
 
+    def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None,
+                        volume_normalization: bool) -> None:
+        """Write the mesh and data in the VTKHDF ImageData format
+
+        A regular mesh is a uniform grid, so it is fully described by an origin
+        and a spacing and no point coordinates need to be stored. Meshes with
+        fewer than three dimensions are padded to three, as required by the
+        VTKHDF ImageData specification.
+
+        Parameters
+        ----------
+        filename : str or PathLike
+            Name of the VTKHDF file to write.
+        datasets : dict or None
+            Dictionary whose keys are the data labels and values are the data
+            sets.
+        volume_normalization : bool
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
+
+        """
+        ndim = len(self.dimension)
+        shape = list(self.dimension) + [1] * (3 - ndim)
+        origin = list(self.lower_left) + [0.0] * (3 - ndim)
+        spacing = list(self.width) + [1.0] * (3 - ndim)
+
+        with h5py.File(filename, "w") as f:
+            root = f.create_group("VTKHDF")
+            root.attrs["Version"] = _VTKHDF_VERSION
+            _write_vtkhdf_type(root, "ImageData")
+            root.attrs.create(
+                "WholeExtent",
+                np.array([0, shape[0], 0, shape[1], 0, shape[2]], dtype="i8"),
+            )
+            root.attrs.create("Origin", np.array(origin, dtype="f8"))
+            root.attrs.create("Spacing", np.array(spacing, dtype="f8"))
+            root.attrs.create("Direction", np.eye(3).ravel())
+
+            cell_data_group = root.create_group("CellData")
+            for label, dataset in self._vtk_hdf5_datasets(datasets,
+                                                          volume_normalization):
+                # ImageData element data is stored with the last index varying
+                # fastest, i.e. with shape (nz, ny, nx)
+                cell_data_group.create_dataset(
+                    label,
+                    data=dataset.reshape(shape[2], shape[1], shape[0]),
+                    dtype="float64",
+                    chunks=True,
+                )
+
 
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
@@ -1809,6 +1998,7 @@ class RectilinearMesh(StructuredMesh):
             indices.append(int(min(idx, len(grid) - 2)))
 
         return tuple(indices)
+
 
     @classmethod
     def from_bounding_box(
@@ -2291,6 +2481,7 @@ class CylindricalMesh(StructuredMesh):
         return arr
 
 
+
 class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
 
@@ -2647,7 +2838,6 @@ class SphericalMesh(StructuredMesh):
         """
         return super().centroids
 
-
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
         """Converts an array with r, theta, phi values in the last dimension (shape (..., 3))
@@ -2738,6 +2928,7 @@ class SphericalMesh(StructuredMesh):
         ))
 
         return (r_index, theta_index, phi_index)
+
 
 
 def require_statepoint_data(func):
@@ -3198,6 +3389,18 @@ class UnstructuredMesh(MeshBase):
         datasets: dict | None = None,
         volume_normalization: bool = True,
     ):
+        """Write UnstructuredMesh as VTK-HDF5 UnstructuredGrid format.
+
+        Supports linear tetrahedra and linear hexahedra elements.
+        """
+        def append_dataset(dset, array):
+            """Convenience function to append data to an HDF5 dataset"""
+            origLen = dset.shape[0]
+            dset.resize(origLen + array.shape[0], axis=0)
+            dset[origLen:] = array
+
+        datasets = {} if datasets is None else datasets
+
         # This writer supports linear tetrahedra and linear hexahedra elements
         conn_list = []           # flattened connectivity ids
         cell_sizes = []          # number of points per cell
@@ -3228,12 +3431,15 @@ class UnstructuredMesh(MeshBase):
             )
 
         connectivity = np.asarray(conn_list, dtype=np.int64)
+        n_cells = len(vtk_types)
 
-        # Offsets must be length (numCells + 1) with a leading 0 and
-        # cumulative end-indices thereafter, per VTK's layout
-        cell_sizes_arr = np.asarray(cell_sizes, dtype=np.int64)
-        offsets = np.zeros(cell_sizes_arr.size + 1, dtype=np.int64)
-        np.cumsum(cell_sizes_arr, out=offsets[1:])
+        # Offsets are the index of the first point of each cell in the
+        # flattened connectivity array.
+        if cell_sizes:
+            # VTKHDF requires n_cells + 1 offset entries per partition
+            offsets = np.concatenate(([0], np.cumsum(cell_sizes, dtype=np.int64)))
+        else:
+            offsets = np.array([0], dtype=np.int64)
 
         for name, data in datasets.items():
             if data.shape != self.dimension:
@@ -3244,7 +3450,6 @@ class UnstructuredMesh(MeshBase):
                 )
 
         with h5py.File(filename, "w") as f:
-
             root = f.create_group("VTKHDF")
             vtk_file_format_version = (2, 1)
             root.attrs["Version"] = vtk_file_format_version
@@ -3255,22 +3460,37 @@ class UnstructuredMesh(MeshBase):
                 dtype=h5py.string_dtype("ascii", len(ascii_type)),
             )
 
-            # Create HDF5 file structure compliant with VTKHDF UnstructuredGrid
-            n_points = int(len(self.vertices))
-            n_cells = int(len(cell_sizes))
-            n_conn_ids = int(len(connectivity))
+            # create hdf5 file structure
+            root.create_dataset("NumberOfPoints", (0,),
+                                maxshape=(None,), dtype="i8")
+            root.create_dataset("Types", (0,), maxshape=(None,), dtype="uint8")
+            root.create_dataset(
+                "Points", (0, 3), maxshape=(None, 3), dtype="f")
+            root.create_dataset(
+                "NumberOfConnectivityIds", (0,), maxshape=(None,), dtype="i8"
+            )
+            root.create_dataset("NumberOfCells", (0,),
+                                maxshape=(None,), dtype="i8")
+            root.create_dataset("Offsets", (0,), maxshape=(None,), dtype="i8")
+            root.create_dataset("Connectivity", (0,),
+                                maxshape=(None,), dtype="i8")
 
-            root.create_dataset("NumberOfPoints", data=(n_points,), dtype="i8")
-            root.create_dataset("NumberOfCells", data=(n_cells,), dtype="i8")
-            root.create_dataset("NumberOfConnectivityIds", data=(n_conn_ids,), dtype="i8")
-            root.create_dataset("Points", data=self.vertices.astype(np.float64, copy=False), dtype="f8")
-            root.create_dataset("Types", data=np.asarray(vtk_types, dtype=np.uint8), dtype="uint8")
-            root.create_dataset("Offsets", data=offsets.astype("i8"), dtype="i8")
-            root.create_dataset("Connectivity", data=connectivity.astype("i8"), dtype="i8")
+            append_dataset(root["NumberOfPoints"],
+                           np.array([len(self.vertices)]))
+            append_dataset(root["Points"], self.vertices)
+            append_dataset(
+                root["NumberOfConnectivityIds"],
+                np.array([len(connectivity)]),
+            )
+            append_dataset(root["Connectivity"], connectivity)
+            append_dataset(root["NumberOfCells"], np.array([n_cells]))
+            append_dataset(root["Offsets"], offsets)
+            append_dataset(root["Types"], np.asarray(vtk_types, dtype="uint8"))
 
             cell_data_group = root.create_group("CellData")
 
             for name, data in datasets.items():
+                data = np.asarray(data, dtype="float64")
                 if volume_normalization:
                     data /= self.volumes
                 cell_data_group.create_dataset(

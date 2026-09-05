@@ -274,9 +274,6 @@ void Particle::event_calculate_xs()
 
 void Particle::event_advance()
 {
-  // Find the distance to the nearest boundary
-  boundary() = distance_to_boundary(*this);
-
   // Sample a distance to collision
   if (type() == ParticleType::electron() ||
       type() == ParticleType::positron()) {
@@ -286,6 +283,9 @@ void Particle::event_advance()
   } else {
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
+
+  // Find the distance to the nearest boundary
+  boundary() = distance_to_boundary(*this);
 
   double speed = this->speed();
   double time_cutoff = settings::time_cutoff[type().transport_index()];
@@ -697,10 +697,16 @@ void Particle::cross_surface(const Surface& surf)
     return;
   }
 #endif
-
+  int i_surface = std::abs(surface());
   bool verbose = settings::verbosity >= 10 || trace();
-  if (neighbor_list_find_cell(*this, verbose)) {
-    return;
+  if (surf.is_triso_surface_) {
+    if (find_cell_in_virtual_lattice(*this, verbose)) {
+      return;
+    }
+  } else {
+    if (neighbor_list_find_cell(*this, verbose)) {
+      return;
+    }
   }
 
   // ==========================================================================

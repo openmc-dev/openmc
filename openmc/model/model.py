@@ -2951,8 +2951,10 @@ class Model:
         upper_right : Sequence[float]
             Upper-right corner of the sampled 3D region.
         n_samples : int or Sequence[int]
-            Number of sample points in the x, y, and z directions. If a single
-            integer is given, the value is split into all three directions.
+            Approximate total number of sample points when given as an integer.
+            Counts in each direction are chosen according to the bounding-box
+            aspect ratio. A sequence specifies the counts in x, y, and z
+            directly.
         print_summary : bool, optional
             Whether to print a summary of overlap and undefined sample results.
         **init_kwargs
@@ -2965,20 +2967,17 @@ class Model:
 
             ``"overlap_boxes"`` : list of dict
                 Detected overlap regions. Each dictionary contains ``"key"``,
-                identifying the overlapping cells, and ``"bbox"``, containing
-                the region's world-coordinate bounding box.
+                a tuple of (universe ID, cell ID, cell ID), and ``"bbox"``, an
+                :class:`openmc.BoundingBox` enclosing the sampled voxels in
+                world coordinates [cm]. All detections of the same key are
+                combined, including spatially disconnected occurrences.
 
             ``"undefined_boxes"`` : list of dict
                 Detected internal undefined regions. Each dictionary contains
-                ``"bbox"``, containing the region's world-coordinate bounding
-                box, and ``"under_resolved"``, indicating whether the region
+                ``"bbox"``, an :class:`openmc.BoundingBox` enclosing the
+                region's sampled voxels in world coordinates [cm], and
+                ``"under_resolved"``, a bool indicating whether the region
                 may be too thin for the sampling resolution.
-
-            ``"n_overlaps"`` : int
-                Number of detected overlap regions.
-
-            ``"n_undefined_regions"`` : int
-                Number of detected internal undefined regions.
 
             ``"under_resolved"`` : bool
                 Whether any undefined region may be under-resolved.
@@ -3061,12 +3060,17 @@ class Model:
                         continue
 
                     key_t = tuple(int(v) for v in key)
-                    xc = x0 + (pix[:, 1] + 0.5) * (x1 - x0) / nx
-                    yc = y1 - (pix[:, 0] + 0.5) * (y1 - y0) / ny
+                    # Enclose entire voxels, including the slice thickness.
+                    row_min, col_min = pix.min(axis=0)
+                    row_max, col_max = pix.max(axis=0)
+                    x_lo = x0 + col_min * (x1 - x0) / nx
+                    x_hi = x0 + (col_max + 1) * (x1 - x0) / nx
+                    y_lo = y1 - (row_max + 1) * (y1 - y0) / ny
+                    y_hi = y1 - row_min * (y1 - y0) / ny
 
                     slice_box = openmc.BoundingBox(
-                        (float(xc.min()), float(yc.min()), z),
-                        (float(xc.max()), float(yc.max()), z),
+                        (x_lo, y_lo, z0 + k * dz),
+                        (x_hi, y_hi, z0 + (k + 1) * dz),
                     )
                     if key_t in overlap_boxes:
                         overlap_boxes[key_t] |= slice_box
@@ -3143,7 +3147,7 @@ class Model:
             print("Geometry debug summary:")
 
             if result["overlap_boxes"]:
-                print(f"  Overlaps found: {result['n_overlaps']}")
+                print(f"  Overlaps found: {len(overlap_boxes)}")
                 for box in result["overlap_boxes"]:
                     ll, ur = box["bbox"].lower_left, box["bbox"].upper_right
                     print(
@@ -3156,7 +3160,7 @@ class Model:
                 print("  Overlap bounding boxes: None")
 
             if result["undefined_boxes"]:
-                print(f"  Undefined regions found: {result['n_undefined_regions']}")
+                print(f"  Undefined regions found: {len(undefined_boxes)}")
                 for i, box in enumerate(result["undefined_boxes"], start=1):
                     flag = "  [under-resolved]" if box["under_resolved"] else ""
                     ll, ur = box["bbox"].lower_left, box["bbox"].upper_right

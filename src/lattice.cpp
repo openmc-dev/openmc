@@ -139,9 +139,7 @@ void Lattice::to_hdf5(hid_t lattices_group) const
   hid_t lat_group = create_group(lattices_group, group_name);
 
   // Write the name and outer universe.
-  if (!name_.empty()) {
-    write_string(lat_group, "name", name_, false);
-  }
+  write_string(lat_group, "name", name_, false);
 
   if (outer_ != NO_OUTER_UNIVERSE) {
     int32_t outer_id = model::universes[outer_]->id_;

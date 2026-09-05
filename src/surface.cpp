@@ -191,9 +191,7 @@ void Surface::to_hdf5(hid_t group_id) const
     }
   }
 
-  if (!name_.empty()) {
-    write_string(surf_group, "name", name_, false);
-  }
+  write_string(surf_group, "name", name_, false);
 
   to_hdf5_inner(surf_group);
 

@@ -405,21 +405,18 @@ private:
 };
 
 template<typename T>
-T* get_field(int field_id, const std::string& context)
+T* get_field(int field_id)
 {
   auto it = model::field_map.find(field_id);
   if (it == model::field_map.end()) {
-    fatal_error(fmt::format("{} references field id={}, but no <field> element "
-                            "with that id was found.",
-      context, field_id));
+    fatal_error(
+      fmt::format("No <field> element with id={} was found.", field_id));
   }
 
   Field* base = model::fields[it->second].get();
   auto* field = dynamic_cast<T*>(base);
   if (!field) {
-    fatal_error(fmt::format("{} references field id={} of type '{}', "
-                            "which has an incompatible type.",
-      context, field_id, base->type()));
+    fatal_error(fmt::format("Field id={} is of incompatible type.", field_id));
   }
 
   return field;

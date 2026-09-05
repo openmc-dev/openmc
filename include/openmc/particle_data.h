@@ -52,6 +52,7 @@ struct SourceSite {
   int parent_nuclide {-1};
   int64_t parent_id {0};
   int64_t progeny_id {0};
+  int64_t root_index {-1};
   double wgt_born {1.0};
   double wgt_ww_born {-1.0};
   int64_t n_split {0};
@@ -556,6 +557,8 @@ private:
 
   vector<double> pht_storage_;
 
+  int64_t root_index_ {-1};
+
   double keff_tally_absorption_ {0.0};
   double keff_tally_collision_ {0.0};
   double keff_tally_tracklength_ {0.0};
@@ -736,6 +739,11 @@ public:
 
   // Interim pulse height tally storage
   vector<double>& pht_storage() { return pht_storage_; }
+  const vector<double>& pht_storage() const { return pht_storage_; }
+
+  // Index of the primary particle at the root of this particle's tree
+  int64_t& root_index() { return root_index_; }
+  int64_t root_index() const { return root_index_; }
 
   // Global tally accumulators
   double& keff_tally_absorption() { return keff_tally_absorption_; }

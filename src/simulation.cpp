@@ -23,6 +23,7 @@
 #include "openmc/state_point.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/tallies/pulse_height.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/timer.h"
@@ -351,6 +352,7 @@ const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
 vector<int64_t> work_index;
+vector<int64_t> phase1_work_index;
 
 int64_t simulation_tracks_completed {0};
 
@@ -740,6 +742,17 @@ void initialize_particle_track(
   // Reset pulse_height_storage
   std::fill(p.pht_storage().begin(), p.pht_storage().end(), 0);
 
+  // A primary is the root of its own tree. Secondaries overwrite this in
+  // Particle::event_revive_from_secondary() using the value carried on the
+  // bank site. Only meaningful in shared-secondary mode, where a history is
+  // spread over several Particle objects; harmless otherwise.
+  if (!is_secondary) {
+    p.root_index() =
+      simulation::phase1_work_index.empty()
+        ? index_source - 1
+        : simulation::phase1_work_index[mpi::rank] + index_source - 1;
+  }
+
   // set random number seed
   int64_t particle_seed = compute_transport_seed(p.id());
   init_particle_seeds(particle_seed, p.seeds());
@@ -1001,6 +1014,15 @@ void transport_history_based_shared_secondary()
   simulation::shared_secondary_bank_read.clear();
   simulation::shared_secondary_bank_write.clear();
 
+  // Record the primary partition before calculate_work() starts rewriting
+  // work_index for each secondary generation. finalize_pulse_height_tallies()
+  // needs it to map a root index back to the rank that owns that history.
+  simulation::phase1_work_index = simulation::work_index;
+
+  if (!model::active_pulse_height_tallies.empty()) {
+    init_pulse_height_buffers();
+  }
+
   if (mpi::master) {
     write_message(fmt::format(" Primary source          particles: {}",
                     settings::n_particles),
@@ -1099,6 +1121,12 @@ void transport_history_based_shared_secondary()
     simulation::simulation_tracks_completed += alive_secondary;
   } // End of loop over secondary generations
 
+  // The full particle tree of every history is now complete, so per-history
+  // pulse-height results can be reassembled and scored.
+  if (!model::active_pulse_height_tallies.empty()) {
+    finalize_pulse_height_tallies();
+  }
+
   // Reset work so that fission bank etc works correctly
   calculate_work(settings::n_particles);
 }
@@ -1134,6 +1162,15 @@ void transport_event_based_shared_secondary()
   // Clear shared secondary banks from any prior use
   simulation::shared_secondary_bank_read.clear();
   simulation::shared_secondary_bank_write.clear();
+
+  // Record the primary partition before calculate_work() starts rewriting
+  // work_index for each secondary generation. finalize_pulse_height_tallies()
+  // needs it to map a root index back to the rank that owns that history.
+  simulation::phase1_work_index = simulation::work_index;
+
+  if (!model::active_pulse_height_tallies.empty()) {
+    init_pulse_height_buffers();
+  }
 
   if (mpi::master) {
     write_message(fmt::format(" Primary source          particles: {}",
@@ -1230,6 +1267,12 @@ void transport_event_based_shared_secondary()
     n_generation_depth++;
     simulation::simulation_tracks_completed += alive_secondary;
   } // End of loop over secondary generations
+
+  // The full particle tree of every history is now complete, so per-history
+  // pulse-height results can be reassembled and scored.
+  if (!model::active_pulse_height_tallies.empty()) {
+    finalize_pulse_height_tallies();
+  }
 
   // Reset work so that fission bank etc works correctly
   calculate_work(settings::n_particles);

@@ -47,6 +47,8 @@ extern const RegularMesh* ufs_mesh;
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;
 
+extern vector<int64_t> phase1_work_index;
+
 extern int64_t
   simulation_tracks_completed; //!< Number of tracks completed on this rank
 

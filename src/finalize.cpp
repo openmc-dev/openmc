@@ -25,6 +25,7 @@
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/surface.h"
+#include "openmc/tallies/pulse_height.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
@@ -51,6 +52,7 @@ void free_memory()
   free_memory_source();
   free_memory_mesh();
   free_memory_tally();
+  free_memory_pulse_height();
   free_memory_bank();
   free_memory_plot();
   free_memory_weight_windows();

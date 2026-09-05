@@ -161,7 +161,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   SourceSite b;
-  MPI_Aint disp[15];
+  MPI_Aint disp[16];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
@@ -173,16 +173,17 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.parent_nuclide, &disp[8]);
   MPI_Get_address(&b.parent_id, &disp[9]);
   MPI_Get_address(&b.progeny_id, &disp[10]);
-  MPI_Get_address(&b.wgt_born, &disp[11]);
-  MPI_Get_address(&b.wgt_ww_born, &disp[12]);
-  MPI_Get_address(&b.n_split, &disp[13]);
-  MPI_Get_address(&b.n_collision, &disp[14]);
-  for (int i = 14; i >= 0; --i) {
+  MPI_Get_address(&b.root_index, &disp[11]);
+  MPI_Get_address(&b.wgt_born, &disp[12]);
+  MPI_Get_address(&b.wgt_ww_born, &disp[13]);
+  MPI_Get_address(&b.n_split, &disp[14]);
+  MPI_Get_address(&b.n_collision, &disp[15]);
+  for (int i = 15; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
   // Block counts for each field
-  int blocks[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  int blocks[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
   // Types for each field
   MPI_Datatype types[] = {
@@ -197,13 +198,14 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_INT,     // parent_nuclide
     MPI_INT64_T, // parent_id
     MPI_INT64_T, // progeny_id
+    MPI_INT64_T, // root_index
     MPI_DOUBLE,  // wgt_born
     MPI_DOUBLE,  // wgt_ww_born
     MPI_INT64_T, // n_split
     MPI_INT      // n_collision
   };
 
-  MPI_Type_create_struct(15, blocks, disp, types, &mpi::source_site);
+  MPI_Type_create_struct(16, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 
   CollisionTrackSite bc;
@@ -388,28 +390,6 @@ int parse_command_line(int argc, char* argv[])
   return 0;
 }
 
-// TODO: Pulse-height tallies require per-history scoring across the full
-// particle tree (parent + all descendants). The shared secondary bank
-// transports each secondary as an independent Particle, breaking this
-// assumption. A proper fix would defer pulse-height scoring: save
-// (root_source_id, cell, pht_storage) per particle, then aggregate by
-// root_source_id after all secondary generations complete before scoring
-// into the histogram. For now, disable shared secondary when pulse-height
-// tallies are present.
-static void check_pulse_height_compatibility()
-{
-  if (settings::use_shared_secondary_bank) {
-    for (const auto& t : model::tallies) {
-      if (t->type_ == TallyType::PULSE_HEIGHT) {
-        settings::use_shared_secondary_bank = false;
-        warning("Pulse-height tallies are not yet compatible with the shared "
-                "secondary bank. Disabling shared secondary bank.");
-        break;
-      }
-    }
-  }
-}
-
 bool read_model_xml()
 {
   std::string model_filename = settings::path_input;
@@ -504,8 +484,6 @@ bool read_model_xml()
   if (check_for_node(root, "tallies"))
     read_tallies_xml(root.child("tallies"));
 
-  check_pulse_height_compatibility();
-
   // Initialize distribcell_filters
   prepare_distribcell();
 
@@ -550,8 +528,6 @@ void read_separate_xml_files()
   finalize_cell_densities();
 
   read_tallies_xml();
-
-  check_pulse_height_compatibility();
 
   // Initialize distribcell_filters
   prepare_distribcell();

@@ -29,6 +29,7 @@
 #include "openmc/source.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
+#include "openmc/tallies/pulse_height.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
@@ -109,9 +110,28 @@ bool Particle::create_secondary(
   if (settings::use_shared_secondary_bank) {
     bank.progeny_id = n_progeny()++;
   }
+  bank.root_index = root_index();
   bank.wgt_born = wgt_born();
   bank.wgt_ww_born = wgt_ww_born();
   bank.n_split = n_split();
+
+  // Remove the energy carried off by this secondary from the parent's interim
+  // pulse-height result for the cell the parent is currently in. In non-shared
+  // mode the equivalent subtraction is performed at revival by
+  // pht_secondary_particles(); doing it here instead is equivalent, because the
+  // secondary is born at the parent's position and therefore in the parent's
+  // current cell, and it avoids the exhaustive_find_cell() call needed there.
+  // Placing this after the energy-cutoff early return above means a secondary
+  // that is never created is never subtracted, matching the non-shared path.
+  if (settings::use_shared_secondary_bank &&
+      !model::active_pulse_height_tallies.empty() && type.is_photon()) {
+    auto it = std::find(model::pulse_height_cells.begin(),
+      model::pulse_height_cells.end(), lowest_coord().cell());
+    if (it != model::pulse_height_cells.end()) {
+      int index = std::distance(model::pulse_height_cells.begin(), it);
+      pht_storage()[index] -= bank.E;
+    }
+  }
 
   local_secondary_bank().emplace_back(bank);
   return true;
@@ -143,6 +163,10 @@ void Particle::split(double wgt)
   if (settings::use_shared_secondary_bank) {
     bank.progeny_id = n_progeny()++;
   }
+  // A split clone belongs to the same history as its parent. No pulse-height
+  // subtraction is applied here: a split is a weight artifact, not a physical
+  // secondary, and its energy is not carried away from the parent.
+  bank.root_index = root_index();
 
   local_secondary_bank().emplace_back(bank);
 }
@@ -502,6 +526,11 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
 
   from_source(&site);
 
+  // Inherit the root of the tree this secondary belongs to. from_source() does
+  // not copy this, because it is also used for primaries read from the source
+  // bank, whose root index is assigned in initialize_particle_track().
+  root_index() = site.root_index;
+
   n_event() = 0;
   if (!settings::use_shared_secondary_bank) {
     n_tracks()++;
@@ -509,8 +538,8 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
   bank_second_E() = 0.0;
 
   // Subtract secondary particle energy from interim pulse-height results.
-  // In shared secondary mode, this subtraction was already done on the parent
-  // particle during create_secondary(), so skip it here.
+  // In shared secondary mode this subtraction is performed on the parent in
+  // create_secondary(), so skip it here.
   if (!settings::use_shared_secondary_bank &&
       !model::active_pulse_height_tallies.empty() && this->type().is_photon()) {
     // Since the birth cell of the particle has not been set we
@@ -604,7 +633,15 @@ void Particle::event_death()
   keff_tally_leakage() = 0.0;
 
   if (!model::active_pulse_height_tallies.empty()) {
-    score_pulse_height_tally(*this, model::active_pulse_height_tallies);
+    if (settings::use_shared_secondary_bank) {
+      // This Particle carries only one fragment of its history's pulse. Stage
+      // it for aggregation by root index; scoring happens once per history in
+      // finalize_pulse_height_tallies() after all generations have drained.
+      stage_pulse_height(root_index(), pht_storage());
+    } else {
+      score_pulse_height_tally(
+        *this, pht_storage(), model::active_pulse_height_tallies);
+    }
   }
 
   // Accumulate track count for this particle history

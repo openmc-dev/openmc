@@ -31,34 +31,41 @@
         <fissionable>true</fissionable>
       </constraints>
     </source>
+    <field type="velocity" id="1">
+      <mesh>1</mesh>
+      <mapping>cell</mapping>
+      <values>1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0
+        1.0 1.0 1.0 1.0</values>
+    </field>
     <dnp_drift>
-      <field_mapping>nodal</field_mapping>
-      <field_mesh>1</field_mesh>
-      <field_values>
-        1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0
-        1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0
-        1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0
-      </field_values>
+      <velocity_field>1</velocity_field>
       <boundary_map>
-        <inlet> 1 </inlet>
-        <outlet> 2 </outlet>
-        <wall> 3 4 </wall>
+        <inlet>1</inlet>
+        <outlet>2</outlet>
+        <wall>3 4</wall>
       </boundary_map>
+      <physical_group_map>
+        <face_ids>0 24 12 36 7 31 19 43 15 39 21 45 2 26 8 32 4 16 10 22 29 41 35 47</face_ids>
+        <physical_groups>1 1 1 1 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3</physical_groups>
+      </physical_group_map>
       <integrator>RK4</integrator>
       <integrator_dt>0.1</integrator_dt>
       <recycling>true</recycling>
       <external_travel_time>2.0</external_travel_time>
     </dnp_drift>
-    <mesh_physical_group>
-      <mesh>1</mesh>
-      <face_ids> 0 24 12 36 7 31 19 43 15 39 21 45 2 26 8 32 4 16 10 22 29 41 35 47</face_ids>
-      <physical_groups> 1 1 1 1 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3</physical_groups>
-    </mesh_physical_group>
     <mesh id="1">
       <dimension>2 2 2</dimension>
       <lower_left>0.0 0.0 0.0</lower_left>
       <upper_right>10.0 10.0 10.0</upper_right>
     </mesh>
-    <temperature_method>interpolation</temperature_method>
   </settings>
+  <tallies>
+    <filter id="1" type="mesh">
+      <bins>1</bins>
+    </filter>
+    <tally id="1" name="total reaction rate">
+      <filters>1</filters>
+      <scores>total</scores>
+    </tally>
+  </tallies>
 </model>

@@ -5,6 +5,9 @@
 #include <string>
 #include <unordered_map>
 
+#include "fmt/format.h"
+#include "pugixml.hpp"
+
 #include "openmc/mesh.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
@@ -36,7 +39,7 @@ template<typename T>
 class FieldData {
 public:
   // Constructor
-  FieldData(vector<T> values) { values_ = values; }
+  FieldData(vector<T> values) : values_(std::move(values)) {}
 
   //! Get the value for a given index.
   //
@@ -53,7 +56,7 @@ public:
   //! Return the size of the data field.
   //
   //! \return Number of values
-  int size() { return values_.size(); }
+  int size() const { return values_.size(); }
 
   // Values accessors
   vector<T>& values() { return values_; }
@@ -67,6 +70,7 @@ private:
 // Field
 // -----------------------------------------------------------
 
+//! Describes how field values are mapped onto a mesh
 enum class FieldMapping {
   NODAL, // Nodal representation (values defined for each vertex)
   CELL   // Cell-based representation (values defined for each cell)
@@ -92,6 +96,7 @@ public:
       return mesh_;
     }
   }
+
   FieldMapping mapping() const { return mapping_; }
 
 protected:
@@ -129,7 +134,8 @@ public:
     set_mesh(mesh_ptr);
     set_mapping(mapping);
 
-    std::unique_ptr<FieldData<T>> data = std::make_unique<FieldData<T>>(values);
+    std::unique_ptr<FieldData<T>> data =
+      std::make_unique<FieldData<T>>(std::move(values));
     set_data(std::move(data));
   }
 

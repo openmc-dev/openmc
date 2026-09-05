@@ -12,7 +12,8 @@ from openmc import lib
 from openmc.deplete.nuclide import Nuclide, FissionYieldDistribution
 from openmc.deplete.helpers import (
     FissionYieldCutoffHelper, ConstantFissionYieldHelper,
-    AveragedFissionYieldHelper)
+    AveragedFissionYieldHelper, LogLinInterpolateFissionYieldHelper,
+    LinLinInterpolateFissionYieldHelper)
 
 
 @pytest.fixture(scope="module")
@@ -289,3 +290,76 @@ def interp_average_yields(nuc, avg_energy):
     assert thermal_E < avg_energy < fast_E
     split = (avg_energy - thermal_E)/(fast_E - thermal_E)
     return yields[thermal_E]*(1 - split) + yields[fast_E]*split
+
+
+@pytest.mark.parametrize(
+    "helper_cls, expected_split",
+    (
+        (
+            LogLinInterpolateFissionYieldHelper,
+            lambda E, E1, E2: (np.log(E) - np.log(E1)) / (np.log(E2) - np.log(E1)),
+        ),
+        (
+            LinLinInterpolateFissionYieldHelper,
+            lambda E, E1, E2: (E - E1) / (E2 - E1),
+        ),
+    ),
+)
+def test_interpolate_helpers_single_event(materials, nuclide_bundle, helper_cls,
+                                          expected_split):
+    """Emulate one fission event at 1000 eV and verify group weighting."""
+    energy_bins = (0.025, 500.0e3, 14.0e6)
+    event_energy = 1.0e3
+    helper = helper_cls(nuclide_bundle, energy_bins=energy_bins)
+    helper.generate_tallies(materials, [0])
+
+    tallied_nucs = helper.update_tally_nuclides([n.name for n in nuclide_bundle])
+    assert tallied_nucs == ["Pu239", "U235"]
+
+    # Emulate denominator tally with exactly one fission event in material 0.
+    fission_data = proxy_tally_data(helper._fission_rate_tally, fill=0.0)
+    fission_data[0] = 1.0
+    helper._fission_rate_tally = Mock()
+    helper._fission_rate_tally.mean = fission_data
+
+    # Event at 1000 eV lies between first two bins, so only groups 1 and 2
+    # contribute. Group 3 is zero by construction.
+    split = expected_split(event_energy, energy_bins[0], energy_bins[1])
+    w1 = 1.0 - split
+    w2 = split
+    w3 = 0.0
+
+    weighted_vals = (w1, w2, w3)
+    for i_group, weighted_tally in enumerate(helper._weighted_tallies):
+        data = proxy_tally_data(weighted_tally, fill=0.0)
+        data[0] = weighted_vals[i_group]
+        helper._weighted_tallies[i_group] = Mock()
+        helper._weighted_tallies[i_group].mean = data
+
+    helper.unpack()
+
+    expected_results = np.empty((1, 3, len(tallied_nucs)))
+    expected_results[:, 0] = w1
+    expected_results[:, 1] = w2
+    expected_results[:, 2] = w3
+    assert helper.results == pytest.approx(expected_results)
+
+    actual_yields = helper.weighted_yields(0)
+
+    # U238 has one yield set and is therefore constant.
+    assert actual_yields["U238"] == nuclide_bundle.u238.yield_data[5e5]
+
+    nuc_by_name = {n.name: n for n in nuclide_bundle}
+    for nuc in tallied_nucs:
+        nuclide = nuc_by_name[nuc]
+        group_energies = [
+            min(nuclide.yield_energies,
+                key=lambda e: abs(e - boundary))
+            for boundary in energy_bins
+        ]
+        expected = (
+            nuclide.yield_data[group_energies[0]] * w1
+            + nuclide.yield_data[group_energies[1]] * w2
+            + nuclide.yield_data[group_energies[2]] * w3
+        )
+        assert actual_yields[nuc] == expected

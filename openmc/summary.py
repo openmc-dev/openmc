@@ -112,6 +112,10 @@ class Summary:
             if "dagmc" not in self._f['geometry'].attrs.keys():
                 self._read_surfaces()
                 cell_fills = self._read_cells()
+                # Read compact TRISO particle data if present
+                if 'geometry/triso_particles' in self._f:
+                    triso_fills = self._read_triso_particles()
+                    cell_fills.update(triso_fills)
                 self._read_universes()
                 self._read_lattices()
                 self._finalize_geometry(cell_fills)
@@ -191,6 +195,69 @@ class Summary:
 
             # Add the Cell to the global dictionary of all Cells
             self._fast_cells[cell.id] = cell
+
+        return cell_fills
+
+    def _read_triso_particles(self):
+        """Read compact TRISO particle data from HDF5 and reconstruct objects.
+
+        Returns
+        -------
+        dict
+            Cell fill information for all TRISO and background cells
+        """
+        triso_grp = self._f['geometry/triso_particles']
+        n_triso = int(triso_grp.attrs['n_triso'])
+        if n_triso == 0:
+            return {}
+
+        # Batch-read all arrays
+        positions = triso_grp['positions'][()]       # (N, 4) array
+        surface_ids = triso_grp['surface_ids'][()]    # (N,) array
+        cell_ids = triso_grp['cell_ids'][()]          # (N,) array
+        fill_universes = triso_grp['fill_universes'][()]  # (N,) array
+        group_offsets = triso_grp['group_offsets'][()]    # (n_groups+1,) array
+
+        cell_fills = {}
+
+        # Create all TRISO Sphere surfaces in batch
+        for i in range(n_triso):
+            x0, y0, z0, r = positions[i]
+            sid = int(surface_ids[i])
+            surf = openmc.Sphere(x0=float(x0), y0=float(y0),
+                                 z0=float(z0), r=float(r),
+                                 surface_id=sid)
+            self._fast_surfaces[sid] = surf
+
+        # Create all TRISO Cell objects in batch
+        for i in range(n_triso):
+            cid = int(cell_ids[i])
+            sid = int(surface_ids[i])
+            fill_univ_id = int(fill_universes[i])
+            x0, y0, z0, _ = positions[i]
+
+            cell = openmc.Cell(cell_id=cid)
+            cell.region = -self._fast_surfaces[sid]
+            cell.translation = np.array([x0, y0, z0], dtype=np.float64)
+            cell_fills[cid] = ('universe', fill_univ_id)
+            self._fast_cells[cid] = cell
+
+        # Create background cells for each group
+        n_groups = len(group_offsets) - 1
+        groups_grp = triso_grp['groups']
+        for g in range(n_groups):
+            grp = groups_grp[str(g)]
+            bg_cell_id = int(grp['background_cell_id'][()])
+            bg_material_id = int(grp['background_material_id'][()])
+            bg_universe_id = int(grp['background_universe_id'][()])
+
+            bg_cell = openmc.Cell(cell_id=bg_cell_id)
+            bg_cell.virtual_lattice = True
+            bg_cell.lower_left = list(grp['vl_lower_left'][()])
+            bg_cell.pitch = list(grp['vl_pitch'][()])
+            bg_cell.shape = list(grp['vl_shape'][()])
+            cell_fills[bg_cell_id] = ('material', bg_material_id)
+            self._fast_cells[bg_cell_id] = bg_cell
 
         return cell_fills
 

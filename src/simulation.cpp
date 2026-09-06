@@ -468,7 +468,7 @@ void allocate_banks()
     init_fission_bank(3 * simulation::work_per_rank);
 
     // Allocate IFP bank
-    if (settings::ifp_on) {
+    if (settings::ifp_on()) {
       resize_simulation_ifp_banks();
     }
   }
@@ -1304,6 +1304,11 @@ void transport_event_based_shared_secondary()
 
   // Reset work so that fission bank etc works correctly
   calculate_work(settings::n_particles);
+}
+
+extern "C" int openmc_get_current_batch()
+{
+  return simulation::current_batch;
 }
 
 } // namespace openmc

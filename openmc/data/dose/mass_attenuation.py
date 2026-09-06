@@ -105,6 +105,8 @@ def mass_energy_absorption_coefficient(
     from `NIST Standard Reference Database 126
     <https://doi.org/10.18434/T4D01F>`_: X-Ray Mass Attenuation Coefficients.
 
+    .. versionadded:: 0.16.0
+
     Parameters
     ----------
     material : str or int
@@ -161,6 +163,8 @@ def mass_attenuation_coefficient(element):
     mass thickness. Values for each element are obtained from `NIST Standard
     Reference Database 8 <https://doi.org/10.18434/T48G6X>`_: XCOM Photon Cross
     Sections Database.
+
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------

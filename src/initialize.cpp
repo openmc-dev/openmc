@@ -258,7 +258,7 @@ int parse_command_line(int argc, char* argv[])
         settings::verbosity = std::stoi(argv[i]);
         if (settings::verbosity > 10 || settings::verbosity < 1) {
           auto msg = fmt::format("Invalid verbosity: {}.", settings::verbosity);
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
 
@@ -275,7 +275,6 @@ int parse_command_line(int argc, char* argv[])
         // Set path and flag for type of run
         if (filetype == "statepoint") {
           settings::path_statepoint = argv[i];
-          settings::path_statepoint_c = settings::path_statepoint.c_str();
           settings::restart_run = true;
         } else if (filetype == "particle restart") {
           settings::path_particle_restart = argv[i];
@@ -283,7 +282,7 @@ int parse_command_line(int argc, char* argv[])
         } else {
           auto msg =
             fmt::format("Unrecognized file after restart flag: {}.", filetype);
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
 
@@ -299,7 +298,7 @@ int parse_command_line(int argc, char* argv[])
             if (filetype != "source") {
               std::string msg {
                 "Second file after restart flag must be a source file"};
-              strcpy(openmc_err_msg, msg.c_str());
+              set_errmsg(msg);
               return OPENMC_E_INVALID_ARGUMENT;
             }
 
@@ -325,7 +324,7 @@ int parse_command_line(int argc, char* argv[])
         // Read number of threads
         if (i + 1 >= argc) {
           std::string msg {"Number of threads not specified."};
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
         i += 1;
@@ -335,7 +334,7 @@ int parse_command_line(int argc, char* argv[])
         int n_threads = std::stoi(argv[i]);
         if (n_threads < 1) {
           std::string msg {"Number of threads must be positive."};
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
         omp_set_num_threads(n_threads);

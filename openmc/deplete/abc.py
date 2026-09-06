@@ -577,7 +577,7 @@ class Integrator(ABC):
         factorizations may be reused across them, improving accuracy for
         nuclides with large decay-constant × timestep products.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
         previous simulation. Defaults to `False`. When `False`, the depletion
@@ -1192,7 +1192,7 @@ class Integrator(ABC):
         ...     target=1.0
         ... )
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
 
         """
         self._keff_search_control = _KeffSearchControl(
@@ -1256,7 +1256,7 @@ class SIIntegrator(Integrator):
         factorizations may be reused across them, improving accuracy for
         nuclides with large decay-constant × timestep products.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
         previous simulation. Defaults to `False`. If `False`, all time steps and

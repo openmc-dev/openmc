@@ -9,7 +9,7 @@ import h5py
 from openmc.utility_funcs import change_directory
 
 pytestmark = pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(),
+    not openmc.lib.feature_enabled('dagmc'),
     reason="DAGMC CAD geometry is not enabled.")
 
 

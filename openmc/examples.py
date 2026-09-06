@@ -968,6 +968,8 @@ def random_ray_pin_cell(second_temp = False) -> openmc.Model:
     """Create a PWR pin cell example using C5G7 cross section data.
     cross section data.
 
+    .. versionadded:: 0.16.0
+
     Parameters
     ----------
     second_temp : bool, optional
@@ -1419,6 +1421,8 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     region. The model returned by this function contains cell tallies on each
     detector.
 
+    .. versionadded:: 0.16.0
+
     Returns
     -------
     model : openmc.Model
@@ -1715,6 +1719,8 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
 
 def sphere_with_shielded_pocket() -> openmc.Model:
     """Create a continuous energy deep-shielding model with a far detector pocket.
+
+    .. versionadded:: 0.16.0
 
     A concrete sphere is centered at the origin. A 2 MeV isotropic neutron
     source sits in a small air cavity just inside the sphere surface on the -x

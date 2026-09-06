@@ -272,7 +272,7 @@ class Settings:
         enabled automatically for fixed-source simulations with weight
         windows active, and disabled otherwise.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     source_rejection_fraction : float

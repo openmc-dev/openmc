@@ -451,7 +451,10 @@ class MeshBase(IDManagerMixin, ABC):
         This method works by raytracing repeatedly through the mesh to count the
         estimated volume of each material in all mesh elements. Three sets of
         rays are used: one set parallel to the x-axis, one parallel to the
-        y-axis, and one parallel to the z-axis.
+        y-axis, and one parallel to the z-axis. Regions of the mesh that are
+        outside the model geometry are treated as void, equivalent to a cell
+        with no material. Universe fills within the model must still define all
+        enclosed space.
 
         .. versionadded:: 0.15.1
 
@@ -1514,7 +1517,7 @@ class RegularMesh(StructuredMesh):
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
         """Finds the index of the mesh element at the specified coordinates.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
 
         Parameters
         ----------
@@ -1768,7 +1771,7 @@ class RectilinearMesh(StructuredMesh):
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple[int, int, int]:
         """Find the mesh cell indices containing the specified coordinates.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
 
         Parameters
         ----------
@@ -2665,7 +2668,7 @@ class SphericalMesh(StructuredMesh):
     ) -> tuple[int, int, int]:
         """Find the mesh cell indices containing the specified coordinates.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
 
         Parameters
         ----------

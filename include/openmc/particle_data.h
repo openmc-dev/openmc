@@ -689,8 +689,11 @@ public:
 
   // RNG state
   uint64_t& seeds(int i) { return seeds_[i]; }
+  const uint64_t& seeds(int i) const { return seeds_[i]; }
   uint64_t* seeds() { return seeds_; }
+  const uint64_t* seeds() const { return seeds_; }
   int& stream() { return stream_; }
+  int stream() const { return stream_; }
 
   // secondary particle bank
   SourceSite& secondary_bank(int i) { return secondary_bank_[i]; }

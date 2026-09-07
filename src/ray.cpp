@@ -57,24 +57,26 @@ void Ray::trace(double max_distance)
     advance_to_boundary_from_void();
 
     // Flight through void is real flight: it has to be charged against the
-    // distance budget and accumulated, otherwise a ray that starts outside
-    // the model reports a traversal distance that excludes the leg up to the
-    // model, and max_distance ends up being measured from the entry point
-    // rather than from the ray's origin. advance_to_boundary_from_void()
-    // leaves boundary().distance() holding the true distance and has already
-    // moved the ray that far plus TINY_BIT of padding.
-    if (boundary().surface() != SURFACE_NONE &&
-        boundary().distance() < INFTY) {
-      if (boundary().distance() >= max) {
+    // distance budget, otherwise max_distance ends up being measured from the
+    // point where the ray entered the model rather than from its origin. It
+    // is accumulated into total_distance_ only -- traversal_distance_ stays
+    // zero until the model is reached.
+    if (boundary().surface() != SURFACE_NONE && boundary().distance() < INFTY) {
+      // advance_to_boundary_from_void() has already moved the ray to the
+      // boundary plus the TINY_BIT of padding, so that is the distance to
+      // account for.
+      double advance = boundary().distance() + TINY_BIT;
+
+      if (advance >= max) {
         // The budget runs out before the ray even reaches the model. Back it
-        // up to exactly max, undoing the padding as well.
-        move_distance(max - boundary().distance() - TINY_BIT);
+        // up so the net movement is exactly max.
+        move_distance(max - advance);
         update_distance(max);
         completed_ = true;
         return;
       }
-      update_distance(boundary().distance());
-      max -= boundary().distance();
+      update_distance(advance);
+      max -= advance;
     }
 
     inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
@@ -101,6 +103,10 @@ void Ray::trace(double max_distance)
       return;
     }
   }
+
+  // From here on the ray is inside the model, so its flight counts toward
+  // traversal_distance_ as well as total_distance_.
+  in_model_ = true;
 
   // Call the specialized logic for this type of ray. This is for the
   // intersection for the first intersection if we had one.
@@ -137,18 +143,18 @@ void Ray::trace(double max_distance)
       return;
     }
 
-    // True geometric distance to the next surface, before any numerical
-    // padding is applied. Everything that is physics -- accumulated path
-    // length, optical depth, time of flight -- has to be based on this and
-    // not on the padded value, or every surface crossing biases the result
-    // by TINY_BIT.
+    // Distance from the ray's current position to the next surface.
     const double surface_distance = boundary().distance();
 
     // See below comment where call_on_intersection is checked in an
     // if statement for an explanation of this.
     bool call_on_intersection {surface_distance >= 10 * TINY_BIT};
 
-    if (surface_distance >= max) {
+    // DAGMC surfaces expect us to go a little bit further than the advance
+    // distance to properly check cell inclusion.
+    double advance = surface_distance + TINY_BIT;
+
+    if (advance >= max) {
       // The ray runs out of budget inside this cell, so no surface is
       // crossed. Only the truncated distance was actually travelled.
       move_distance(max);
@@ -157,12 +163,9 @@ void Ray::trace(double max_distance)
       return;
     }
 
-    // DAGMC surfaces expect us to go a little bit further than the advance
-    // distance to properly check cell inclusion. The padding is applied to
-    // the motion only.
-    move_distance(surface_distance + TINY_BIT);
+    move_distance(advance);
 
-    max -= surface_distance;
+    max -= advance;
 
     surface() = boundary().surface();
     // Initialize last cells from the current cell, because the cell() variable
@@ -180,7 +183,7 @@ void Ray::trace(double max_distance)
 
     // Accumulate before the cell search, while material() still refers to the
     // cell the ray just crossed.
-    update_distance(surface_distance);
+    update_distance(advance);
 
     inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
 
@@ -211,12 +214,13 @@ void Ray::trace(double max_distance)
 
 void Ray::update_distance(double distance)
 {
-  // Record how far the ray has traveled
-  traversal_distance_ += distance;
+  total_distance_ += distance;
+  if (in_model_) {
+    traversal_distance_ += distance;
+  }
 }
 
-void ParticleRay::init_physics(
-  ParticleType type_, double time_, double E_)
+void ParticleRay::init_physics(ParticleType type_, double time_, double E_)
 {
   type() = type_;
   time() = time_;

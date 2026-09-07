@@ -48,13 +48,19 @@ public:
 
   //! Whether the ray travelled the full max_distance passed to trace().
   //! False if it left the model (or hit a dead end) beforehand. This is an
-  //! exact flag rather than a comparison of traversal_distance() against the
+  //! exact flag rather than a comparison of total_distance() against the
   //! requested distance, which is only accurate to floating-point roundoff.
   bool completed() const { return completed_; }
 
-  // Records how far the ray has traveled, including any flight through void
-  // before it reached the model
+  //! Distance travelled inside the model, i.e. measured from the point where
+  //! the ray entered the model rather than from its origin. This is the
+  //! quantity reported to on_intersection().
   double traversal_distance() const { return traversal_distance_; }
+
+  //! Distance travelled since the ray's origin, including any flight through
+  //! void before the model was reached. This is what max_distance is measured
+  //! against.
+  double total_distance() const { return total_distance_; }
 
 protected:
   //! Reset everything trace() accumulates. Derived classes that add their own
@@ -62,14 +68,24 @@ protected:
   virtual void reset_trace_state()
   {
     traversal_distance_ = 0.0;
+    total_distance_ = 0.0;
+    in_model_ = false;
     completed_ = false;
     stop_ = false;
     event_counter_ = 0;
     boundary().reset();
   }
 
-  // Records how far the ray has traveled
+  // Records how far the ray has traveled inside the model
   double traversal_distance_ {0.0};
+
+  // Records how far the ray has traveled in total, including the leg through
+  // void before it reached the model
+  double total_distance_ {0.0};
+
+  // Whether the ray has entered the model yet. Segments flown before that
+  // count toward total_distance_ but not toward traversal_distance_.
+  bool in_model_ {false};
 
   // Set when trace() consumed the whole max_distance it was given
   bool completed_ {false};

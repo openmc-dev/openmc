@@ -3,6 +3,7 @@ import filecmp
 import glob
 import h5py
 import hashlib
+import math
 import os
 import shutil
 
@@ -416,6 +417,9 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
         def compare_tokens(token1, token2):
             if isfloat(token1) and isfloat(token2):
                 float1, float2 = float(token1), float(token2)
+                if not (math.isfinite(float1) and math.isfinite(float2)):
+                    # Infinities only match with the same sign; NaNs never match.
+                    return float1 == float2
                 return abs(float1 - float2) <= tolerance * max(abs(float1), abs(float2))
             else:
                 return token1 == token2

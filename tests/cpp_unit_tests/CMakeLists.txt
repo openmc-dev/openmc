@@ -1,4 +1,5 @@
 set(TEST_NAMES
+  test_combine_estimates
   test_distribution
   test_file_utils
   test_tally

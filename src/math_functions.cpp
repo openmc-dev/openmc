@@ -1,9 +1,11 @@
 #include "openmc/math_functions.h"
 
+#include <cmath>  // for abs, sqrt, isfinite
 #include <limits> // for numeric_limits
 
 #include "openmc/external/Faddeeva.hh"
 
+#include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/random_lcg.h"
 
@@ -1007,6 +1009,136 @@ bool isclose(double a, double b, double rel_tol, double abs_tol)
 {
   return std::abs(a - b) <=
          std::max(rel_tol * std::max(std::abs(a), std::abs(b)), abs_tol);
+}
+
+bool combine_estimates(const array<double, 3>& estimates,
+  const tensor::StaticTensor2D<double, 3, 3>& cov, int64_t n,
+  array<double, 2>& combined)
+{
+  combined[0] = 0.0;
+  combined[1] = 0.0;
+
+  // The three-estimate expression has an n-3 term in a denominator, and the
+  // two-estimate expression an n-2 term
+  if (n <= 3)
+    return false;
+
+  // Check to see if two estimates are the same. If they are, the three
+  // estimate expressions are singular and will produce floating-point
+  // exceptions, so an expression specifically derived for the combination of
+  // two estimates (vice three) is used instead.
+
+  // First we will identify if there are any matching estimates
+  int i, j;
+  bool use_three = false;
+  if ((std::abs(estimates[0] - estimates[1]) / estimates[0] <
+        FP_REL_PRECISION) &&
+      (std::abs(cov(0, 0) - cov(1, 1)) / cov(0, 0) < FP_REL_PRECISION)) {
+    // 0 and 1 match, so only use 0 and 2 in our comparisons
+    i = 0;
+    j = 2;
+
+  } else if ((std::abs(estimates[0] - estimates[2]) / estimates[0] <
+               FP_REL_PRECISION) &&
+             (std::abs(cov(0, 0) - cov(2, 2)) / cov(0, 0) < FP_REL_PRECISION)) {
+    // 0 and 2 match, so only use 0 and 1 in our comparisons
+    i = 0;
+    j = 1;
+
+  } else if ((std::abs(estimates[1] - estimates[2]) / estimates[1] <
+               FP_REL_PRECISION) &&
+             (std::abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) < FP_REL_PRECISION)) {
+    // 1 and 2 match, so only use 0 and 1 in our comparisons
+    i = 0;
+    j = 1;
+
+  } else {
+    // No two estimates match, so set boolean to use all three estimates.
+    use_three = true;
+  }
+
+  if (use_three) {
+    // Use three estimates as derived in the paper by Urbatsch
+
+    // Initialize variables
+    double g = 0.0;
+    array<double, 3> S {};
+
+    for (int l = 0; l < 3; ++l) {
+      // Permutations of the three estimates
+      int k;
+      switch (l) {
+      case 0:
+        i = 0;
+        j = 1;
+        k = 2;
+        break;
+      case 1:
+        i = 1;
+        j = 2;
+        k = 0;
+        break;
+      case 2:
+        i = 2;
+        j = 0;
+        k = 1;
+        break;
+      }
+
+      // Calculate weighting
+      double f = cov(j, j) * (cov(k, k) - cov(i, k)) - cov(k, k) * cov(i, j) +
+                 cov(j, k) * (cov(i, j) + cov(i, k) - cov(j, k));
+
+      // Add to S sums for variance of combined estimate
+      S[0] += f * cov(0, l);
+      S[1] +=
+        (cov(j, j) + cov(k, k) - 2.0 * cov(j, k)) * estimates[l] * estimates[l];
+      S[2] += (cov(k, k) + cov(i, j) - cov(j, k) - cov(i, k)) * estimates[l] *
+              estimates[j];
+
+      // Add to sum for the combination
+      combined[0] += f * estimates[l];
+      g += f;
+    }
+
+    // Complete calculations of S sums
+    for (auto& S_i : S) {
+      S_i *= (n - 1);
+    }
+    S[0] *= (n - 1) * (n - 1);
+
+    // Calculate the combination
+    combined[0] /= g;
+
+    // Calculate standard deviation of the combination
+    g *= (n - 1) * (n - 1);
+    combined[1] =
+      std::sqrt(S[0] / (g * n * (n - 3)) * (1 + n * ((S[1] - 2 * S[2]) / g)));
+
+  } else {
+    // Use only two estimates
+    // These equations are derived analogously to that done in the paper by
+    // Urbatsch, but are simpler than for the three estimate case since the
+    // block matrices of the three estimate equations reduces to scalars here
+
+    // Store the commonly used term
+    double f = estimates[i] - estimates[j];
+    double g = cov(i, i) + cov(j, j) - 2.0 * cov(i, j);
+
+    // Calculate the combination
+    combined[0] = estimates[i] - (cov(i, i) - cov(i, j)) / g * f;
+
+    // Calculate standard deviation of the combination. Urbatsch's Eq. 40 is
+    // written in terms of the matrix S rather than the sample covariance
+    // Sigma = S / (n - 1). The factor cancels in the combination itself but
+    // not here, and omitting it understates the standard deviation by up to
+    // sqrt(n - 1).
+    combined[1] = (cov(i, i) * cov(j, j) - cov(i, j) * cov(i, j)) *
+                  ((n - 1) * g + n * f * f) / (n * (n - 2) * g * g);
+    combined[1] = std::sqrt(combined[1]);
+  }
+
+  return std::isfinite(combined[0]) && std::isfinite(combined[1]);
 }
 
 } // namespace openmc

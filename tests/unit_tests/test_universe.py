@@ -222,21 +222,25 @@ def test_clone():
     dagmc_u.volume = 1.
     dagmc_u.auto_geom_ids = True
     dagmc_u.auto_mat_ids = True
+    dagmc_u.length_multiplier = 0.5
     dagmc_u1 = dagmc_u.clone()
     assert dagmc_u1.name == dagmc_u.name
     assert dagmc_u1.volume == dagmc_u.volume
     assert dagmc_u1.auto_geom_ids == dagmc_u.auto_geom_ids
     assert dagmc_u1.auto_mat_ids == dagmc_u.auto_mat_ids
+    assert dagmc_u1.length_multiplier == dagmc_u.length_multiplier
 
     # Change attributes, check the clone remained intact
     dagmc_u.name = "another name"
     dagmc_u.auto_geom_ids = False
     dagmc_u.auto_mat_ids = False
+    dagmc_u.length_multiplier = 2.0
     dagmc_u.volume = 2.
     assert dagmc_u1.name != dagmc_u.name
     assert dagmc_u1.volume != dagmc_u.volume
     assert dagmc_u1.auto_geom_ids != dagmc_u.auto_geom_ids
     assert dagmc_u1.auto_mat_ids != dagmc_u.auto_mat_ids
+    assert dagmc_u1.length_multiplier != dagmc_u.length_multiplier
 
 
 def test_create_xml(cell_with_lattice):

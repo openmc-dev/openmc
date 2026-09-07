@@ -70,14 +70,14 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // (if initialized externally, the libmesh_init object needs to be provided
   // also)
   if (!settings::libmesh_init && !libMesh::initialized()) {
-#ifdef OPENMC_MPI
-    // pass command line args, empty MPI communicator, and number of threads.
+#if defined(OPENMC_MPI) && defined(LIBMESH_HAVE_MPI)
+    // Pass command line arguments, the OpenMC communicator, and thread count.
     // Because libMesh was not initialized, we assume that OpenMC is the primary
     // application and that its main MPI comm should be used.
     settings::libmesh_init =
       make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads);
 #else
-    // pass command line args, empty MPI communicator, and number of threads
+    // libMesh was built without MPI, so use its serial communicator.
     settings::libmesh_init =
       make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
 #endif
@@ -161,7 +161,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   SourceSite b;
-  MPI_Aint disp[11];
+  MPI_Aint disp[15];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
@@ -173,14 +173,37 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.parent_nuclide, &disp[8]);
   MPI_Get_address(&b.parent_id, &disp[9]);
   MPI_Get_address(&b.progeny_id, &disp[10]);
-  for (int i = 10; i >= 0; --i) {
+  MPI_Get_address(&b.wgt_born, &disp[11]);
+  MPI_Get_address(&b.wgt_ww_born, &disp[12]);
+  MPI_Get_address(&b.n_split, &disp[13]);
+  MPI_Get_address(&b.n_collision, &disp[14]);
+  for (int i = 14; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-  MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
-  MPI_Type_create_struct(11, blocks, disp, types, &mpi::source_site);
+  // Block counts for each field
+  int blocks[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+
+  // Types for each field
+  MPI_Datatype types[] = {
+    MPI_DOUBLE,  // r (3 doubles)
+    MPI_DOUBLE,  // u (3 doubles)
+    MPI_DOUBLE,  // E
+    MPI_DOUBLE,  // time
+    MPI_DOUBLE,  // wgt
+    MPI_INT,     // delayed_group
+    MPI_INT,     // surf_id
+    MPI_INT,     // particle (enum)
+    MPI_INT,     // parent_nuclide
+    MPI_INT64_T, // parent_id
+    MPI_INT64_T, // progeny_id
+    MPI_DOUBLE,  // wgt_born
+    MPI_DOUBLE,  // wgt_ww_born
+    MPI_INT64_T, // n_split
+    MPI_INT      // n_collision
+  };
+
+  MPI_Type_create_struct(15, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 
   CollisionTrackSite bc;
@@ -235,7 +258,7 @@ int parse_command_line(int argc, char* argv[])
         settings::verbosity = std::stoi(argv[i]);
         if (settings::verbosity > 10 || settings::verbosity < 1) {
           auto msg = fmt::format("Invalid verbosity: {}.", settings::verbosity);
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
 
@@ -252,7 +275,6 @@ int parse_command_line(int argc, char* argv[])
         // Set path and flag for type of run
         if (filetype == "statepoint") {
           settings::path_statepoint = argv[i];
-          settings::path_statepoint_c = settings::path_statepoint.c_str();
           settings::restart_run = true;
         } else if (filetype == "particle restart") {
           settings::path_particle_restart = argv[i];
@@ -260,7 +282,7 @@ int parse_command_line(int argc, char* argv[])
         } else {
           auto msg =
             fmt::format("Unrecognized file after restart flag: {}.", filetype);
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
 
@@ -276,7 +298,7 @@ int parse_command_line(int argc, char* argv[])
             if (filetype != "source") {
               std::string msg {
                 "Second file after restart flag must be a source file"};
-              strcpy(openmc_err_msg, msg.c_str());
+              set_errmsg(msg);
               return OPENMC_E_INVALID_ARGUMENT;
             }
 
@@ -300,6 +322,11 @@ int parse_command_line(int argc, char* argv[])
         settings::run_mode = RunMode::VOLUME;
       } else if (arg == "-s" || arg == "--threads") {
         // Read number of threads
+        if (i + 1 >= argc) {
+          std::string msg {"Number of threads not specified."};
+          set_errmsg(msg);
+          return OPENMC_E_INVALID_ARGUMENT;
+        }
         i += 1;
 
 #ifdef _OPENMP
@@ -307,7 +334,7 @@ int parse_command_line(int argc, char* argv[])
         int n_threads = std::stoi(argv[i]);
         if (n_threads < 1) {
           std::string msg {"Number of threads must be positive."};
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
         omp_set_num_threads(n_threads);
@@ -359,6 +386,28 @@ int parse_command_line(int argc, char* argv[])
   }
 
   return 0;
+}
+
+// TODO: Pulse-height tallies require per-history scoring across the full
+// particle tree (parent + all descendants). The shared secondary bank
+// transports each secondary as an independent Particle, breaking this
+// assumption. A proper fix would defer pulse-height scoring: save
+// (root_source_id, cell, pht_storage) per particle, then aggregate by
+// root_source_id after all secondary generations complete before scoring
+// into the histogram. For now, disable shared secondary when pulse-height
+// tallies are present.
+static void check_pulse_height_compatibility()
+{
+  if (settings::use_shared_secondary_bank) {
+    for (const auto& t : model::tallies) {
+      if (t->type_ == TallyType::PULSE_HEIGHT) {
+        settings::use_shared_secondary_bank = false;
+        warning("Pulse-height tallies are not yet compatible with the shared "
+                "secondary bank. Disabling shared secondary bank.");
+        break;
+      }
+    }
+  }
 }
 
 bool read_model_xml()
@@ -455,6 +504,8 @@ bool read_model_xml()
   if (check_for_node(root, "tallies"))
     read_tallies_xml(root.child("tallies"));
 
+  check_pulse_height_compatibility();
+
   // Initialize distribcell_filters
   prepare_distribcell();
 
@@ -499,6 +550,8 @@ void read_separate_xml_files()
   finalize_cell_densities();
 
   read_tallies_xml();
+
+  check_pulse_height_compatibility();
 
   // Initialize distribcell_filters
   prepare_distribcell();

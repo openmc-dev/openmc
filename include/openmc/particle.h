@@ -39,6 +39,8 @@ public:
 
   double speed() const;
 
+  double speed(double E) const;
+
   double mass() const;
 
   //! create a secondary particle
@@ -71,7 +73,8 @@ public:
   void event_advance();
   void event_cross_surface();
   void event_collide();
-  void event_revive_from_secondary();
+  void event_revive_from_secondary(const SourceSite& site);
+  void event_check_limit_and_revive();
   void event_death();
 
   //! pulse-height recording

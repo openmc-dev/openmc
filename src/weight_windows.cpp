@@ -52,7 +52,6 @@ WeightWindows::WeightWindows(int32_t id)
 {
   index_ = variance_reduction::weight_windows.size();
   set_id(id);
-  set_defaults();
 }
 
 WeightWindows::WeightWindows(pugi::xml_node node)
@@ -70,9 +69,9 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   int32_t id = std::stoi(get_node_value(node, "id"));
   this->set_id(id);
 
-  // get the particle type
+  // Get the particle type
   auto particle_type_str = std::string(get_node_value(node, "particle_type"));
-  particle_type_ = ParticleType {particle_type_str};
+  set_particle_type(ParticleType {particle_type_str});
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
@@ -117,8 +116,6 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   // read the lower/upper weight bounds
   this->set_bounds(get_node_array<double>(node, "lower_ww_bounds"),
     get_node_array<double>(node, "upper_ww_bounds"));
-
-  set_defaults();
 }
 
 WeightWindows::~WeightWindows()
@@ -251,6 +248,10 @@ void WeightWindows::set_particle_type(ParticleType p_type)
     fatal_error(fmt::format(
       "Particle type '{}' cannot be applied to weight windows.", p_type.str()));
   particle_type_ = p_type;
+
+  // The default energy grid is particle dependent, so derive it now that the
+  // particle type is known
+  set_defaults();
 }
 
 void WeightWindows::set_mesh(int32_t mesh_idx)
@@ -791,7 +792,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   if (method_string == "magic") {
     method_ = WeightWindowUpdateMethod::MAGIC;
     if (settings::solver_type == SolverType::RANDOM_RAY &&
-        FlatSourceDomain::adjoint_) {
+        FlatSourceDomain::adjoint_requested_) {
       fatal_error("Random ray weight window generation with MAGIC cannot be "
                   "done in adjoint mode.");
     }
@@ -800,7 +801,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
     if (settings::solver_type != SolverType::RANDOM_RAY) {
       fatal_error("FW-CADIS can only be run in random ray solver mode.");
     }
-    FlatSourceDomain::adjoint_ = true;
+    FlatSourceDomain::adjoint_requested_ = true;
     if (check_for_node(node, "targets")) {
       FlatSourceDomain::fw_cadis_local_ = true;
       targets_ = get_node_array<size_t>(node, "targets");
@@ -837,7 +838,8 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
       ratio_));
   if (ratio_ <= 1.0)
     fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
-                            "specified for weight window generation"));
+                            "specified for weight window generation",
+      ratio_));
 
   // create a matching weight windows object
   auto wws = WeightWindows::create();
@@ -846,7 +848,6 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   if (e_bounds.size() > 0)
     wws->set_energy_bounds(e_bounds);
   wws->set_particle_type(particle_type);
-  wws->set_defaults();
 }
 
 void WeightWindowsGenerator::create_tally()
@@ -945,6 +946,11 @@ void apply_weight_windows(Particle& p)
   if (!settings::weight_windows_on)
     return;
 
+  // Random ray rays are not Monte Carlo particles and must not be biased by
+  // weight windows; the solver generates weight windows but never applies them
+  if (settings::solver_type == SolverType::RANDOM_RAY)
+    return;
+
   // WW on photon and neutron only
   if (!p.type().is_neutron() && !p.type().is_photon())
     return;
@@ -1003,14 +1009,27 @@ void apply_weight_window(Particle& p, WeightWindow weight_window)
   if (p.ww_factor() > 1.0)
     weight_window.scale(p.ww_factor());
 
-  // if particle's weight is above the weight window split until they are within
-  // the window
-  if (weight > weight_window.upper_weight) {
+  // If the particle's weight is above the weight window, split it until the
+  // resulting particles are within the window. The comparisons use a relative
+  // dead band so that the branch taken is insensitive to bit-level differences
+  // in the window bounds (see WEIGHT_WINDOW_REL_TOL).
+  if (weight > weight_window.upper_weight * (1.0 + WEIGHT_WINDOW_REL_TOL)) {
     // do not further split the particle if above the limit
     if (p.n_split() >= settings::max_history_splits)
       return;
 
-    double n_split = std::ceil(weight / weight_window.upper_weight);
+    // Dividing by the same dead-banded bound used in the branch condition
+    // keeps the number of splits stable when the weight-to-bound ratio sits
+    // within rounding of an exact integer, which the weight window arithmetic
+    // itself can produce (e.g., a roulette survivor assigned weight *
+    // max_split, later split against an upper bound that is an exact multiple
+    // of the same lower bound). Ratios within the dead band of an integer
+    // consistently round down, and the branch condition guarantees the ratio
+    // exceeds one; the lower clamp of 2 makes the always-splits invariant
+    // explicit.
+    double n_split = std::max(2.0,
+      std::ceil(
+        weight / ((1.0 + WEIGHT_WINDOW_REL_TOL) * weight_window.upper_weight)));
     double max_split = weight_window.max_split;
     n_split = std::min(n_split, max_split);
 
@@ -1024,7 +1043,8 @@ void apply_weight_window(Particle& p, WeightWindow weight_window)
     // remaining weight is applied to current particle
     p.wgt() = weight / n_split;
 
-  } else if (weight <= weight_window.lower_weight) {
+  } else if (weight <
+             weight_window.lower_weight * (1.0 - WEIGHT_WINDOW_REL_TOL)) {
     // if the particle weight is below the window, play Russian roulette
     double weight_survive =
       std::min(weight * weight_window.max_split, weight_window.survival_weight);
@@ -1036,6 +1056,7 @@ void free_memory_weight_windows()
 {
   variance_reduction::ww_map.clear();
   variance_reduction::weight_windows.clear();
+  variance_reduction::weight_windows_generators.clear();
 }
 
 void finalize_variance_reduction()
@@ -1320,6 +1341,9 @@ extern "C" int openmc_weight_windows_export(const char* filename)
   std::vector<int32_t> mesh_ids;
   std::vector<int32_t> ww_ids;
   for (const auto& ww : variance_reduction::weight_windows) {
+    // Backstop for objects built through the C API whose particle type was
+    // never set explicitly, so an empty energy grid is never written out
+    ww->set_defaults();
 
     ww->to_hdf5(weight_windows_group);
     ww_ids.push_back(ww->id());

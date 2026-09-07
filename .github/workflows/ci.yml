@@ -177,7 +177,7 @@ jobs:
 
       - name: Setup tmate debug session
         continue-on-error: true
-        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
+        if: ${{ failure() && contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 10
 

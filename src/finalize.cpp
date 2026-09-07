@@ -106,6 +106,7 @@ int openmc_finalize()
   settings::n_log_bins = 8000;
   settings::n_inactive = 0;
   settings::n_particles = -1;
+  settings::ifp_n_generation = -1;
   settings::output_summary = true;
   settings::output_tallies = true;
   settings::particle_restart_run = false;
@@ -149,6 +150,8 @@ int openmc_finalize()
   settings::uniform_source_sampling = false;
   settings::ufs_on = false;
   settings::urr_ptables_on = true;
+  settings::use_decay_photons = false;
+  settings::use_shared_secondary_bank = false;
   settings::verbosity = -1;
   settings::weight_cutoff = 0.25;
   settings::weight_survive = 1.0;
@@ -167,8 +170,8 @@ int openmc_finalize()
 
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};
-  data::temperature_min = 0.0;
-  data::temperature_max = INFTY;
+  data::temperature_min = INFTY;
+  data::temperature_max = 0.0;
   data::mg = {};
   model::root_universe = -1;
   model::plotter_seed = 1;
@@ -219,6 +222,7 @@ int openmc_reset()
   settings::cmfd_run = false;
 
   simulation::n_lost_particles = 0;
+  simulation::simulation_tracks_completed = 0;
 
   return 0;
 }

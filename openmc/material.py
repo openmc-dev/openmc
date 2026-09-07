@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 import tempfile
-from typing import Sequence, Dict
+from typing import TYPE_CHECKING, Literal, Sequence, Dict
 import warnings
 
 import lxml.etree as ET
@@ -20,13 +20,16 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
-from .utility_funcs import input_path
+from .utility_funcs import input_path, set_xml_input_path
 from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, JOULE_PER_EV
 from openmc.data.function import Tabulated1D
 from openmc.data import mass_energy_absorption_coefficient, dose_coefficients
+
+if TYPE_CHECKING:
+    from openmc.deplete import Chain
 
 
 # Units for density supported by OpenMC
@@ -37,6 +40,10 @@ DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
 _SMALLEST_NORMAL = sys.float_info.min
 
 _BECQUEREL_PER_CURIE = 3.7e10
+
+# Minimum mass fraction of nuclides without photon attenuation data that
+# results in a warning from Material.get_photon_contact_dose_rate()
+_MIN_ATTENUATION_MASS_FRACTION = 1e-6
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
 
@@ -296,6 +303,8 @@ class Material(IDManagerMixin):
                 mass += nuc.percent
 
         # Compute and return the molar mass
+        if moles == 0.0:
+            raise ValueError("Material has no nuclides; cannot compute molar mass")
         return mass / moles
 
     @property
@@ -468,6 +477,9 @@ class Material(IDManagerMixin):
         relevant at close distances.
         In addition, it computes the gamma contact dose rate only for the unstable nuclides
         for which the radiation source specification is present in the chain file.
+        Photon attenuation data is only tabulated up to Z=100; nuclides with a
+        higher atomic number are neglected when building the material
+        attenuation coefficient.
 
         Returns
         -------
@@ -488,16 +500,47 @@ class Material(IDManagerMixin):
             raise ValueError("Material has no nuclides; cannot compute mass attenuation")
 
         # Collect partial mass densities ρ_i [g/cm³] and elemental mass
-        # attenuation coefficients µ_i/ρ_i [cm²/g] per nuclide
+        # attenuation coefficients µ_i/ρ_i [cm²/g] per nuclide. Attenuation
+        # data is only tabulated up to Z=100, so nuclides beyond that -- which
+        # show up in trace quantities after depletion -- are left out of
+        # µ_material(E) instead of aborting the calculation.
         nuc_attenuation = []
+        missing_data = {}
+        total_rho = 0.0
         for nuc, atom_density_bcm in nuc_densities.items():
-            Z = openmc.data.zam(nuc)[0]
-            mu_over_rho = openmc.data.mass_attenuation_coefficient(Z)
             rho_i = (
                 atom_density_bcm * 1.0e24
                 * openmc.data.atomic_mass(nuc) / openmc.data.AVOGADRO
             )
+            total_rho += rho_i
+
+            Z = openmc.data.zam(nuc)[0]
+            try:
+                mu_over_rho = openmc.data.mass_attenuation_coefficient(Z)
+            except ValueError:
+                missing_data[nuc] = rho_i
+                continue
+
             nuc_attenuation.append((rho_i, mu_over_rho))
+
+        if not nuc_attenuation:
+            raise ValueError(
+                "No photon attenuation data is available for any nuclide in "
+                f"material ID={self.id}; cannot compute the contact dose rate."
+            )
+
+        # Only warn about neglected nuclides if they are more than a trace
+        if missing_data and total_rho > 0.0:
+            missing_frac = sum(missing_data.values()) / total_rho
+            if missing_frac > _MIN_ATTENUATION_MASS_FRACTION:
+                warnings.warn(
+                    'No photon attenuation data available for '
+                    f'{", ".join(sorted(missing_data))} in material '
+                    f'ID={self.id}. These nuclides make up a mass fraction of '
+                    f'{missing_frac:.3e} and are neglected in the material '
+                    'attenuation coefficient.',
+                    stacklevel=2,
+                )
 
         # Build union energy grid across all nuclides
         mu_e_vals = reduce(np.union1d, [t.x for _, t in nuc_attenuation])
@@ -1383,8 +1426,13 @@ class Material(IDManagerMixin):
         return densities
 
 
-    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: float | None = None) -> dict[str, float] | float:
+    def get_activity(
+        self,
+        units: str = 'Bq/cm3',
+        by_nuclide: bool = False,
+        volume: float | None = None,
+        chain_file: Literal[False] | None | PathLike | Chain = None
+    ) -> dict[str, float] | float:
         """Return the activity of the material or each nuclide within.
 
         .. versionadded:: 0.13.1
@@ -1403,13 +1451,22 @@ class Material(IDManagerMixin):
             :attr:`Material.volume` attribute.
 
             .. versionadded:: 0.13.3
+        chain_file : False, None, PathLike, or openmc.deplete.Chain, optional
+            Source of half-life values. If ``False``, only ENDF/B-VIII.0 data is
+            used. If ``None``, the chain specified by
+            ``openmc.config['chain_file']`` is used when available. If a path or
+            :class:`openmc.deplete.Chain` is given, that chain is used. For
+            ``None`` or an explicit chain, nuclides absent from the chain fall
+            back to ENDF/B-VIII.0 data.
+
+            .. versionadded:: 0.16.0
 
         Returns
         -------
         Union[dict, float]
-            If by_nuclide is True then a dictionary whose keys are nuclide
-            names and values are activity is returned. Otherwise the activity
-            of the material is returned as a float.
+            If by_nuclide is True then a dictionary whose keys are nuclide names
+            and values are activity is returned. Otherwise the activity of the
+            material is returned as a float.
         """
 
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3', 'Ci', 'Ci/m3'})
@@ -1417,6 +1474,9 @@ class Material(IDManagerMixin):
 
         if volume is None:
             volume = self.volume
+
+        if units in {'Bq', 'Ci'} and volume is None:
+            raise ValueError(f"Volume must be set in order to compute activity in '{units}'.")
 
         if units == 'Bq':
             multiplier = volume
@@ -1433,9 +1493,15 @@ class Material(IDManagerMixin):
         elif units == 'Ci/m3':
             multiplier = 1e6 / _BECQUEREL_PER_CURIE
 
+        # Resolve chain to avoid repeated lookups for each nuclide
+        from openmc.deplete.chain import _get_chain
+        if chain_file is not False:
+            if chain_file is not None or openmc.config.get('chain_file') is not None:
+                chain_file = _get_chain(chain_file)
+
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            inv_seconds = openmc.data.decay_constant(nuclide)
+            inv_seconds = openmc.data.decay_constant(nuclide, chain_file=chain_file)
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())
@@ -1474,6 +1540,8 @@ class Material(IDManagerMixin):
 
         if units == 'W':
             multiplier = volume if volume is not None else self.volume
+            if multiplier is None:
+                raise ValueError("Volume must be set in order to compute total decay heat.")
         elif units == 'W/cm3':
             multiplier = 1
         elif units == 'W/m3':
@@ -2256,11 +2324,12 @@ class Materials(cv.CheckedList):
             Materials collection
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
 
-        return cls.from_xml_element(root)
+            return cls.from_xml_element(root)
 
 
     def deplete(
@@ -2282,7 +2351,7 @@ class Materials(cv.CheckedList):
         multigroup_fluxes: Sequence[Sequence[float]]
             Energy-dependent multigroup flux values, where each sublist corresponds
             to a specific material. Will be normalized so that it sums to 1.
-        energy_group_structures': Sequence[Sequence[float] | str]
+        energy_group_structures: Sequence[Sequence[float] | str]
             Energy group boundaries in [eV] or the name of the group structure.
         timesteps : iterable of float or iterable of tuple
             Array of timesteps. Note that values are not cumulative. The units are
@@ -2317,6 +2386,11 @@ class Materials(cv.CheckedList):
         for mat in self:
             mat.depletable = True
 
+        if len(multigroup_fluxes) != len(self):
+            raise ValueError("multigroup_fluxes length must match number of materials")
+        if len(energy_group_structures) != len(self):
+            raise ValueError("energy_group_structures length must match number of materials")
+
         chain = _get_chain(chain_file)
 
         # Create MicroXS objects for all materials
@@ -2327,6 +2401,10 @@ class Materials(cv.CheckedList):
             for material, flux, energy in zip(
                 self, multigroup_fluxes, energy_group_structures
             ):
+                if material.volume is None:
+                    raise ValueError(
+                        f"Material {material.id} has no volume; cannot deplete"
+                    )
                 temperature = material.temperature or 293.6
                 micro_xs = openmc.deplete.MicroXS.from_multigroup_flux(
                     energies=energy,

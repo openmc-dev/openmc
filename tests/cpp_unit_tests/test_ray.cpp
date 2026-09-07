@@ -1,115 +1,117 @@
-#include <algorithm>
+#include <cmath>
+#include <utility>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <pugixml.hpp>
 
 #include "openmc/geometry.h"
-#include "openmc/particle.h"
-#include "openmc/particle_type.h"
-#include "openmc/random_lcg.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/ray.h"
-
-using namespace openmc;
+#include "openmc/settings.h"
+#include "openmc/surface.h"
 
 namespace {
 
-// GeometryState sizes its coordinate levels from model::n_coord_levels, which
-// is zero until a model is read. These tests do not trace through geometry,
-// but they do construct rays, so one level has to exist.
-struct CoordLevelFixture {
-  CoordLevelFixture() : saved_(model::n_coord_levels)
+using Catch::Matchers::WithinAbs;
+
+constexpr double DISTANCE_TOLERANCE = 1.0e-12;
+
+class SphericalShellFixture {
+public:
+  SphericalShellFixture()
+    : run_mode_(openmc::settings::run_mode),
+      root_universe_(openmc::model::root_universe),
+      n_coord_levels_(openmc::model::n_coord_levels)
   {
-    model::n_coord_levels = 1;
+    openmc::settings::run_mode = openmc::RunMode::PLOTTING;
+
+    constexpr auto geometry = R"(
+      <geometry>
+        <surface id="1" type="sphere" coeffs="0 0 0 1"/>
+        <surface id="2" type="sphere" coeffs="0 0 0 2"
+                 boundary="vacuum"/>
+        <cell id="1" material="void" region="-1"/>
+        <cell id="2" material="void" region="1 -2"/>
+      </geometry>
+    )";
+
+    auto result = document_.load_string(geometry);
+    REQUIRE(result);
+    openmc::read_geometry_xml(document_.document_element());
+    openmc::finalize_geometry();
+    openmc::finalize_cell_densities();
   }
-  ~CoordLevelFixture() { model::n_coord_levels = saved_; }
-  int saved_;
+
+  ~SphericalShellFixture()
+  {
+    openmc::free_memory_geometry();
+    openmc::free_memory_surfaces();
+    openmc::model::universe_level_counts.clear();
+    openmc::model::root_universe = root_universe_;
+    openmc::model::n_coord_levels = n_coord_levels_;
+    openmc::settings::run_mode = run_mode_;
+  }
+
+private:
+  pugi::xml_document document_;
+  openmc::RunMode run_mode_;
+  int root_universe_;
+  int n_coord_levels_;
 };
 
-ParticleRay make_ray(int64_t seed_id)
-{
-  return ParticleRay({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0},
-    ParticleType::neutron(), 0.0, 1.0e6, seed_id);
-}
+class RecordingRay : public openmc::Ray {
+public:
+  using Ray::Ray;
+
+  void on_intersection() override
+  {
+    intersections.emplace_back(
+      traversal_distance_, boundary().surface_index() + 1);
+  }
+
+  openmc::vector<std::pair<double, int>> intersections;
+};
 
 } // namespace
 
-TEST_CASE("ParticleRay initializes its RNG state")
+TEST_CASE_METHOD(SphericalShellFixture, "Trace a single chord through a sphere")
 {
-  CoordLevelFixture fixture;
+  constexpr double impact_parameter = 1.5;
+  const double half_chord =
+    std::sqrt(4.0 - impact_parameter * impact_parameter);
 
-  ParticleRay ray = make_ray(0);
+  RecordingRay ray({-3.0, impact_parameter, 0.0}, {1.0, 0.0, 0.0});
+  ray.trace();
 
-  // stream() indexes seeds_, so an uninitialized value is an out-of-bounds
-  // pointer in current_seed(), which prn() writes through.
-  REQUIRE(ray.stream() == STREAM_TRACKING);
-  REQUIRE(ray.current_seed() == ray.seeds() + STREAM_TRACKING);
-
-  // Every stream must be seeded, not just the tracking one: URR probability
-  // tables draw from STREAM_URR_PTABLE during cross section lookup.
-  uint64_t expected[N_STREAMS];
-  init_particle_seeds(0, expected);
-  for (int i = 0; i < N_STREAMS; ++i) {
-    REQUIRE(ray.seeds(i) == expected[i]);
-  }
+  REQUIRE(ray.intersections.size() == 2);
+  CHECK(ray.intersections[0].second == 2);
+  CHECK_THAT(ray.intersections[0].first, WithinAbs(0.0, DISTANCE_TOLERANCE));
+  CHECK(ray.intersections[1].second == 2);
+  CHECK_THAT(ray.intersections[1].first,
+    WithinAbs(2.0 * half_chord, DISTANCE_TOLERANCE));
 }
 
-TEST_CASE("ParticleRay seeding is deterministic and seed_id dependent")
+TEST_CASE_METHOD(
+  SphericalShellFixture, "Trace both segments of a spherical shell")
 {
-  CoordLevelFixture fixture;
+  constexpr double impact_parameter = 0.5;
+  const double outer = std::sqrt(4.0 - impact_parameter * impact_parameter);
+  const double inner = std::sqrt(1.0 - impact_parameter * impact_parameter);
 
-  ParticleRay a = make_ray(7);
-  ParticleRay b = make_ray(7);
-  ParticleRay c = make_ray(8);
+  RecordingRay ray({-3.0, impact_parameter, 0.0}, {1.0, 0.0, 0.0});
+  ray.trace();
 
-  for (int i = 0; i < N_STREAMS; ++i) {
-    REQUIRE(a.seeds(i) == b.seeds(i));
-  }
-  REQUIRE(a.seeds(STREAM_TRACKING) != c.seeds(STREAM_TRACKING));
-}
-
-TEST_CASE("ParticleRay copies its parent's RNG state without sharing it")
-{
-  CoordLevelFixture fixture;
-
-  Particle parent;
-  init_particle_seeds(1234, parent.seeds());
-  parent.stream() = STREAM_TRACKING;
-  parent.type() = ParticleType::neutron();
-  parent.E() = 2.0e6;
-  parent.time() = 3.0e-8;
-
-  uint64_t parent_seeds_before[N_STREAMS];
-  std::copy(parent.seeds(), parent.seeds() + N_STREAMS, parent_seeds_before);
-
-  ParticleRay ray(parent, {1.0, 0.0, 0.0}, 2.0e6);
-
-  // The ray starts from the parent's state, so the URR probability table
-  // realization it samples matches the parent's.
-  for (int i = 0; i < N_STREAMS; ++i) {
-    REQUIRE(ray.seeds(i) == parent_seeds_before[i]);
-  }
-  REQUIRE(ray.stream() == STREAM_TRACKING);
-  REQUIRE(ray.time() == parent.time());
-
-  // Drawing from the ray must not disturb the parent's random walk.
-  prn(ray.current_seed());
-  for (int i = 0; i < N_STREAMS; ++i) {
-    REQUIRE(parent.seeds(i) == parent_seeds_before[i]);
-  }
-  REQUIRE(ray.seeds(STREAM_TRACKING) != parent.seeds(STREAM_TRACKING));
-}
-
-TEST_CASE("ParticleRay accumulators start clean")
-{
-  CoordLevelFixture fixture;
-
-  ParticleRay ray = make_ray(0);
-
-  REQUIRE(ray.traversal_distance() == 0.0);
-  REQUIRE(ray.traversal_mfp() == 0.0);
-  REQUIRE_FALSE(ray.completed());
-
-  // update_distance() in a void region must not touch the mfp.
-  ray.update_distance(10.0);
-  REQUIRE(ray.traversal_distance() == 10.0);
-  REQUIRE(ray.traversal_mfp() == 0.0);
+  REQUIRE(ray.intersections.size() == 4);
+  CHECK(ray.intersections[0].second == 2);
+  CHECK_THAT(ray.intersections[0].first, WithinAbs(0.0, DISTANCE_TOLERANCE));
+  CHECK(ray.intersections[1].second == 1);
+  CHECK_THAT(
+    ray.intersections[1].first, WithinAbs(outer - inner, DISTANCE_TOLERANCE));
+  CHECK(ray.intersections[2].second == 1);
+  CHECK_THAT(
+    ray.intersections[2].first, WithinAbs(outer + inner, DISTANCE_TOLERANCE));
+  CHECK(ray.intersections[3].second == 2);
+  CHECK_THAT(
+    ray.intersections[3].first, WithinAbs(2.0 * outer, DISTANCE_TOLERANCE));
 }

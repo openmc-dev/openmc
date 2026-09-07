@@ -7,7 +7,9 @@ import pandas as pd
 
 import openmc.checkvalue as cv
 from .data import NEUTRON_MASS
-from .endf import get_head_record, get_cont_record, get_tab1_record, get_list_record
+from .endf import (
+    as_evaluation, get_head_record, get_cont_record, get_tab1_record,
+    get_list_record)
 try:
     from .reconstruct import wave_number, penetration_shift, reconstruct_mlbw, \
         reconstruct_slbw, reconstruct_rm
@@ -77,7 +79,7 @@ class Resonances:
 
         Parameters
         ----------
-        ev : openmc.data.endf.Evaluation
+        ev : openmc.data.endf.Evaluation or endf.Material
             ENDF evaluation
 
         Returns
@@ -86,6 +88,7 @@ class Resonances:
             Resonance data
 
         """
+        ev = as_evaluation(ev)
         file_obj = io.StringIO(ev.section[2, 151])
 
         # Determine whether discrete or continuous representation

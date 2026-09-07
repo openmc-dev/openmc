@@ -12,6 +12,45 @@ constexpr uint64_t prn_mult {6364136223846793005ULL}; // multiplication
 constexpr uint64_t prn_add {1442695040888963407ULL};  // additive factor, c
 uint64_t prn_stride {DEFAULT_STRIDE}; // stride between particles
 
+namespace {
+
+struct SkipAheadCoefficients {
+  uint64_t multiplier;
+  uint64_t increment;
+};
+
+SkipAheadCoefficients future_seed_coefficients(uint64_t n)
+{
+  // The algorithm here to determine the parameters used to skip ahead is
+  // described in F. Brown, "Random Number Generation with Arbitrary Stride,"
+  // Trans. Am. Nucl. Soc. (Nov. 1994). This algorithm is able to skip ahead in
+  // O(log2(N)) operations instead of O(N). Basically, it computes parameters G
+  // and C which can then be used to find x_N = G*x_0 + C mod 2^M.
+
+  // Initialize constants
+  uint64_t g {prn_mult};
+  uint64_t c {prn_add};
+  uint64_t g_new {1};
+  uint64_t c_new {0};
+
+  while (n > 0) {
+    // Check if the least significant bit is 1.
+    if (n & 1) {
+      g_new *= g;
+      c_new = c_new * g + c;
+    }
+    c *= (g + 1);
+    g *= g;
+
+    // Move bits right, dropping least significant bit.
+    n >>= 1;
+  }
+
+  return {g_new, c_new};
+}
+
+} // namespace
+
 //==============================================================================
 // PRN
 //==============================================================================
@@ -69,9 +108,10 @@ uint64_t init_seed(int64_t id, int offset)
 
 void init_particle_seeds(int64_t id, uint64_t* seeds)
 {
+  auto [multiplier, increment] =
+    future_seed_coefficients(static_cast<uint64_t>(id) * prn_stride);
   for (int i = 0; i < N_STREAMS; i++) {
-    seeds[i] =
-      future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + i);
+    seeds[i] = multiplier * (master_seed + i) + increment;
   }
 }
 
@@ -90,33 +130,9 @@ void advance_prn_seed(int64_t n, uint64_t* seed)
 
 uint64_t future_seed(uint64_t n, uint64_t seed)
 {
-  // The algorithm here to determine the parameters used to skip ahead is
-  // described in F. Brown, "Random Number Generation with Arbitrary Stride,"
-  // Trans. Am. Nucl. Soc. (Nov. 1994). This algorithm is able to skip ahead in
-  // O(log2(N)) operations instead of O(N). Basically, it computes parameters G
-  // and C which can then be used to find x_N = G*x_0 + C mod 2^M.
-
-  // Initialize constants
-  uint64_t g {prn_mult};
-  uint64_t c {prn_add};
-  uint64_t g_new {1};
-  uint64_t c_new {0};
-
-  while (n > 0) {
-    // Check if the least significant bit is 1.
-    if (n & 1) {
-      g_new *= g;
-      c_new = c_new * g + c;
-    }
-    c *= (g + 1);
-    g *= g;
-
-    // Move bits right, dropping least significant bit.
-    n >>= 1;
-  }
-
   // With G and C, we can now find the new seed.
-  return g_new * seed + c_new;
+  auto [multiplier, increment] = future_seed_coefficients(n);
+  return multiplier * seed + increment;
 }
 
 //==============================================================================

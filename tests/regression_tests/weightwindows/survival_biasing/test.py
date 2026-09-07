@@ -1,14 +1,16 @@
+from pathlib import Path
+
 import pytest
 import numpy as np
-
 import openmc
-from openmc.stats import Discrete, Point
+from openmc.utility_funcs import change_directory
 
 from tests.testing_harness import HashedPyAPITestHarness
 
 
-@pytest.fixture
-def model():
+def build_model(shared_secondary):
+    openmc.reset_auto_ids()
+
     # Material
     w = openmc.Material(name='Tungsten')
     w.add_element('W', 1.0)
@@ -38,13 +40,14 @@ def model():
     angle = openmc.stats.Monodirectional((1.0, 0.0, 0.0))
     energy = openmc.stats.Discrete([14.1e6], [1.0])
 
-    source = openmc.Source(space=space, angle=angle, energy=energy)
+    source = openmc.IndependentSource(space=space, angle=angle, energy=energy)
 
     settings = openmc.Settings()
     settings.run_mode = 'fixed source'
     settings.batches = 5
     settings.particles = 50
     settings.source = source
+    settings.shared_secondary_bank = shared_secondary
 
     model = openmc.Model(geometry=geometry, materials=materials, settings=settings)
 
@@ -61,7 +64,8 @@ def model():
     tallies = openmc.Tallies([flux_tally])
     model.tallies = tallies
 
-    lower_ww_bounds = np.loadtxt('ww_n.txt')
+    parent_dir = Path(__file__).parent
+    lower_ww_bounds = np.loadtxt(parent_dir / 'ww_n.txt')
 
     weight_windows = openmc.WeightWindows(mesh,
                                           lower_ww_bounds,
@@ -76,6 +80,12 @@ def model():
     return model
 
 
-def test_weight_windows_with_survival_biasing(model):
-    harness = HashedPyAPITestHarness('statepoint.5.h5', model)
-    harness.main()
+@pytest.mark.parametrize("shared_secondary,subdir", [
+    (False, "local"),
+    (True, "shared"),
+])
+def test_weight_windows_with_survival_biasing(shared_secondary, subdir):
+    with change_directory(subdir):
+        model = build_model(shared_secondary)
+        harness = HashedPyAPITestHarness('statepoint.5.h5', model)
+        harness.main()

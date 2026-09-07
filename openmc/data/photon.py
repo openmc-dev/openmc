@@ -15,7 +15,8 @@ from openmc.mixin import EqualityMixin
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_metadata, get_table
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
-from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
+from .endf import (
+    as_evaluation, get_head_record, get_tab1_record, get_list_record)
 from .function import Tabulated1D
 
 
@@ -272,7 +273,7 @@ class AtomicRelaxation(EqualityMixin):
 
         Parameters
         ----------
-        ev_or_filename : str or openmc.data.endf.Evaluation
+        ev_or_filename : str, openmc.data.endf.Evaluation, or endf.Material
             ENDF atomic relaxation evaluation to read from. If given as a
             string, it is assumed to be the filename for the ENDF file.
 
@@ -282,10 +283,7 @@ class AtomicRelaxation(EqualityMixin):
             Atomic relaxation data
 
         """
-        if isinstance(ev_or_filename, Evaluation):
-            ev = ev_or_filename
-        else:
-            ev = Evaluation(ev_or_filename)
+        ev = as_evaluation(ev_or_filename)
 
         # Atomic relaxation data is always MF=28, MT=533
         if (28, 533) not in ev.section:
@@ -606,10 +604,10 @@ class IncidentPhoton(EqualityMixin):
 
         Parameters
         ----------
-        photoatomic : str or openmc.data.endf.Evaluation
+        photoatomic : str, openmc.data.endf.Evaluation, or endf.Material
             ENDF photoatomic data evaluation to read from. If given as a string,
             it is assumed to be the filename for the ENDF file.
-        relaxation : str or openmc.data.endf.Evaluation, optional
+        relaxation : str, openmc.data.endf.Evaluation, or endf.Material, optional
             ENDF atomic relaxation data evaluation to read from. If given as a
             string, it is assumed to be the filename for the ENDF file.
 
@@ -619,10 +617,7 @@ class IncidentPhoton(EqualityMixin):
             Photon interaction data
 
         """
-        if isinstance(photoatomic, Evaluation):
-            ev = photoatomic
-        else:
-            ev = Evaluation(photoatomic)
+        ev = as_evaluation(photoatomic)
 
         Z = ev.target['atomic_number']
         data = cls(Z)
@@ -1071,7 +1066,7 @@ class PhotonReaction(EqualityMixin):
 
         Parameters
         ----------
-        ev : openmc.data.endf.Evaluation
+        ev : openmc.data.endf.Evaluation or endf.Material
             ENDF photo-atomic interaction data evaluation
         mt : int
             The MT value of the reaction to get data for
@@ -1082,6 +1077,7 @@ class PhotonReaction(EqualityMixin):
             Photon reaction data
 
         """
+        ev = as_evaluation(ev)
         rx = cls(mt)
 
         # Read photon cross section

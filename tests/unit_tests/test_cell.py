@@ -374,6 +374,49 @@ def test_rotation_from_xml(rotation):
     np.testing.assert_allclose(new_cell.rotation, cell.rotation)
 
 
+def test_dagmccell_from_xml_element():
+    """DAGMCCell.from_xml_element parses material, temperature, density,
+    and volume; rejects unsupported attributes."""
+    mat = openmc.Material(1)
+    mat.add_nuclide('U235', 1.0)
+    mats = {'1': mat}
+    # In practice, from_xml_element is always called from DAGMCUniverse
+    # during XML parsing. A placeholder universe is used here so the test
+    # can exercise the method directly without a real DAGMC model file.
+    placeholder_univ = openmc.DAGMCUniverse('model.h5m')
+
+    # material + temperature + density round-trip
+    xml = '<cell id="5" name="fuel" material="1" temperature="900.0" density="10.5"/>'
+    cell = openmc.DAGMCCell.from_xml_element(ET.fromstring(xml), mats, placeholder_univ)
+    assert cell.id == 5
+    assert cell.name == 'fuel'
+    assert cell.fill is mat
+    assert cell.density == 10.5
+    assert cell.temperature == 900.0
+
+    # volume round-trip
+    xml = '<cell id="6" material="1" volume="42.0"/>'
+    cell = openmc.DAGMCCell.from_xml_element(ET.fromstring(xml), mats, placeholder_univ)
+    assert cell.volume == 42.0
+
+    # forbidden: region, fill, universe
+    for tag, val in [('region', '-1'), ('fill', '2'), ('universe', '0')]:
+        xml = f'<cell id="7" material="1" {tag}="{val}"/>'
+        with pytest.raises(ValueError, match=tag):
+            openmc.DAGMCCell.from_xml_element(ET.fromstring(xml), mats, placeholder_univ)
+
+    # forbidden: translation, rotation
+    for tag, val in [('translation', '1 0 0'), ('rotation', '0 0 90')]:
+        xml = f'<cell id="7" material="1" {tag}="{val}"/>'
+        with pytest.raises(ValueError, match=tag):
+            openmc.DAGMCCell.from_xml_element(ET.fromstring(xml), mats, placeholder_univ)
+
+    # missing material raises
+    xml = '<cell id="8"/>'
+    with pytest.raises(ValueError, match='material'):
+        openmc.DAGMCCell.from_xml_element(ET.fromstring(xml), mats, placeholder_univ)
+
+
 def test_plot(run_in_tmpdir):
     zcyl = openmc.ZCylinder()
     c = openmc.Cell(region=-zcyl)

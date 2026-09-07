@@ -35,7 +35,7 @@ constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr array<int, 2> VERSION_PROPERTIES {1, 1};
 constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
-constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 1};
+constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 2};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -74,6 +74,19 @@ constexpr double ZERO_FLUX_CUTOFF {1e-22};
 // random ray solver. Materials with any group with a cross section below this
 // value will be converted to pure void.
 constexpr double MINIMUM_MACRO_XS {1e-6};
+
+// Relative dead band applied to weight window comparisons: particles split
+// only above upper * (1 + tol) and roulette only below lower * (1 - tol).
+// Weight window arithmetic can land a particle's weight exactly back on a
+// bound value (e.g., a roulette survivor is assigned survival_ratio * lower
+// and a later split divides that back down), in which case the branch taken
+// would be decided by the last ulp of the bound. Since window data carries
+// ulp-level noise from non-associative parallel reductions in the solver that
+// generated it, transport results would otherwise be chaotically sensitive to
+// bit-level differences in the weight window file. Treating weights within
+// the band as inside the window is statistically negligible, and weight
+// window games are unbiased regardless of where the thresholds sit.
+constexpr double WEIGHT_WINDOW_REL_TOL {1e-9};
 
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
@@ -368,6 +381,7 @@ enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
+enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };
 
 //==============================================================================
 // Geometry Constants

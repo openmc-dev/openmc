@@ -74,6 +74,13 @@ void DecayPhotonAngleEnergy::sample(
   mu = Uniform(-1., 1.).sample(seed).first;
 }
 
+double DecayPhotonAngleEnergy::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  E_out = photon_energy_->sample(seed).first;
+  return 0.5;
+}
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -91,6 +98,8 @@ vector<unique_ptr<ChainNuclide>> chain_nuclides;
 
 void read_chain_file_xml()
 {
+  free_memory_chain();
+
   char* chain_file_path = std::getenv("OPENMC_CHAIN_FILE");
   if (!chain_file_path) {
     return;
@@ -111,6 +120,12 @@ void read_chain_file_xml()
   for (auto node : root.children("nuclide")) {
     data::chain_nuclides.push_back(std::make_unique<ChainNuclide>(node));
   }
+}
+
+void free_memory_chain()
+{
+  data::chain_nuclides.clear();
+  data::chain_nuclide_map.clear();
 }
 
 } // namespace openmc

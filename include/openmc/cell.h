@@ -112,12 +112,20 @@ private:
 
   //! Determine if a particle is inside the cell for a complex cell.
   //!
-  //! Uses the comobination of half-spaces and binary operators to determine
-  //! if short circuiting can be used. Short cicuiting uses the relative and
+  //! Uses the combination of half-spaces and binary operators to determine
+  //! if short circuiting can be used. Short circuiting uses the relative and
   //! absolute depth of parentheses in the expression.
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 
-  //! BoundingBox if the paritcle is in a simple cell.
+  //! Find the nearest intersection with any surface in the region expression.
+  std::pair<double, int32_t> distance_to_nearest_surface(Position r,
+    Direction u, int32_t on_surface, bool ignore_coincident_surfaces) const;
+
+  //! Find the oncoming boundary of this cell for a complex cell.
+  std::pair<double, int32_t> distance_complex(
+    Position r, Direction u, int32_t on_surface) const;
+
+  //! BoundingBox if the particle is in a simple cell.
   BoundingBox bounding_box_simple() const;
 
   //! BoundingBox if the particle is in a complex cell.
@@ -144,6 +152,30 @@ private:
   vector<int32_t> expression_;
   bool simple_; //!< Does the region contain only intersections?
 };
+
+//==============================================================================
+// XML parsing helpers for <cell> nodes
+//==============================================================================
+
+//! Parse material IDs from a <cell> XML node.
+//! \param node XML node containing a "material" attribute or child element
+//! \param cell_id Cell ID used in error messages
+//! \return Vector of material IDs (MATERIAL_VOID for "void")
+vector<int32_t> parse_cell_material_xml(pugi::xml_node node, int32_t cell_id);
+
+//! Parse temperatures in [K] from a <cell> XML node.
+//! Validates that all values are non-negative and the list is non-empty.
+//! \param node XML node containing a "temperature" attribute or child element
+//! \param cell_id Cell ID used in error messages
+//! \return Vector of temperatures in [K]
+vector<double> parse_cell_temperature_xml(pugi::xml_node node, int32_t cell_id);
+
+//! Parse densities in [g/cm³] from a <cell> XML node.
+//! Validates that all values are positive and the list is non-empty.
+//! \param node XML node containing a "density" attribute or child element
+//! \param cell_id Cell ID used in error messages
+//! \return Vector of densities in [g/cm³]
+vector<double> parse_cell_density_xml(pugi::xml_node node, int32_t cell_id);
 
 //==============================================================================
 

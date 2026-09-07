@@ -20,8 +20,9 @@ public:
   //----------------------------------------------------------------------------
   // Methods
   void apply_fixed_sources_and_mesh_domains();
-  void prepare_fixed_sources_adjoint();
-  void prepare_adjoint_simulation();
+  void prepare_fw_fixed_sources_adjoint();
+  void prepare_local_fixed_sources_adjoint();
+  void prepare_adjoint_simulation(bool from_forward);
   void simulate();
   void output_simulation_results() const;
   void instability_check(
@@ -34,15 +35,9 @@ public:
   // Accessors
   FlatSourceDomain* domain() const { return domain_.get(); }
 
-  //----------------------------------------------------------------------------
-  // Public data members
-
-  // Flag for adjoint simulation;
-  bool adjoint_needed_;
-
 private:
   //----------------------------------------------------------------------------
-  // Private data members
+  // Data members
 
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;
@@ -57,9 +52,6 @@ private:
   // Number of energy groups
   int negroups_;
 
-  // Toggle for first simulation
-  bool is_first_simulation_;
-
 }; // class RandomRaySimulation
 
 //============================================================================
@@ -67,7 +59,6 @@ private:
 //============================================================================
 
 void validate_random_ray_inputs();
-void print_adjoint_header();
 void openmc_finalize_random_ray();
 
 } // namespace openmc

@@ -200,8 +200,13 @@ void collision_track_record(Particle& particle)
     return;
 
   int cell_id = model::cells[cell_index]->id_;
-  const auto* nuclide_ptr = data::nuclides[particle.event_nuclide()].get();
-  std::string nuclide = nuclide_ptr->name_;
+  std::string nuclide {};
+  int nuclide_id = 0;
+  if (particle.event_nuclide() != NUCLIDE_NONE) {
+    const auto* nuclide_ptr = data::nuclides[particle.event_nuclide()].get();
+    nuclide = nuclide_ptr->name_;
+    nuclide_id = nuclide_ptr->particle_type().pdg_number();
+  }
   int universe_id = model::universes[particle.lowest_coord().universe()]->id_;
   double delta_E = particle.E_last() - particle.E();
   int material_index = particle.material();
@@ -224,8 +229,7 @@ void collision_track_record(Particle& particle)
   site.event_mt = particle.event_mt();
   site.delayed_group = particle.delayed_group();
   site.cell_id = cell_id;
-  site.nuclide_id =
-    10000 * nuclide_ptr->Z_ + 10 * nuclide_ptr->A_ + nuclide_ptr->metastable_;
+  site.nuclide_id = nuclide_id;
   site.material_id = material_id;
   site.universe_id = universe_id;
   site.n_collision = particle.n_collision();

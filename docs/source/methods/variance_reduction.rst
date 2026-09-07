@@ -82,8 +82,8 @@ where it was born from.
 
 The Forward-Weighted Consistent Adjoint Driven Importance Sampling method, or
 `FW-CADIS method <https://doi.org/10.13182/NSE12-33>`_, produces weight windows
-for global variance reduction given adjoint flux information throughout the
-entire domain. The weight window lower bound is defined in Equation
+for global or local variance reduction given adjoint flux information throughout 
+the entire domain. The weight window lower bound is defined in Equation
 :eq:`fw_cadis`, and also involves a normalization step not shown here.
 
 .. math::
@@ -134,6 +134,18 @@ aware of this.
     :label: variance_fom
 
     \text{FOM} = \frac{1}{\text{Time} \times \sigma^2}
+
+Finally, one unique capability of the FW-CADIS weight window generator is to 
+produce weight windows for local variance reduction, given a list of the 
+responses of interest. This is controlled by optionally specifying target 
+tallies from the :class:`openmc.model.Model` to the 
+:class:`openmc.WeightWindowGenerator`, as illustrated in the
+:ref:`user guide<variance_reduction>`. If target tallies for local variance 
+reduction are supplied, then the adjoint sources are only populated after the 
+initial forward simulation in the source regions associated with those tallies. 
+In other regions, the adjoint source term is instead set to zero. The Random  
+Ray solver then determines the adjoint flux map used to generate FW-CADIS 
+weight windows following the usual technique.
 
 .. _methods_source_biasing:
 

@@ -291,6 +291,53 @@ example, the following would generate a photon source::
 For a full list of all classes related to statistical distributions, see
 :ref:`pythonapi_stats`.
 
+Tokamak Plasma Sources
+----------------------
+
+For fusion applications, the :class:`openmc.TokamakSource` class provides a
+native parametric neutron source for tokamak plasmas. Rather than specifying
+spatial, angular, and energy distributions separately, the source is defined by
+the plasma geometry (using a `Miller-style flux-surface parameterization
+<https://doi.org/10.1063/1.872666>`_) and a radial emission profile. Source
+sites are sampled directly from the plasma volume without rejection.
+
+The plasma shape is described by the major radius :math:`R_0`, minor radius
+:math:`a`, elongation :math:`\kappa`, triangularity :math:`\delta`, and
+Shafranov shift :math:`\Delta`. The neutron birth profile is given as an
+emission density :math:`S(r/a)` tabulated on a normalized minor-radius grid that
+runs from 0 (magnetic axis) to 1 (last closed flux surface); only the shape of
+the profile matters, since it is normalized internally. The emission density is
+linearly interpolated between the supplied points and refined internally for
+radial sampling. For example::
+
+  import numpy as np
+
+  r_over_a = np.linspace(0.0, 1.0, 50)
+  emission = (1.0 - r_over_a**2)**2  # peaked on-axis profile
+
+  source = openmc.TokamakSource(
+      major_radius=620.0,    # cm
+      minor_radius=200.0,    # cm
+      elongation=1.8,
+      triangularity=0.45,
+      shafranov_shift=10.0,  # cm
+      r_over_a=r_over_a,
+      emission_density=emission,
+      energy=openmc.stats.muir(e0=14.08e6, m_rat=5.0, kt=20000.0),
+  )
+
+  settings.source = source
+
+The ``energy`` argument accepts either a single
+:class:`~openmc.stats.Univariate` distribution applied at all radii, or a
+sequence with one distribution per ``r_over_a`` grid point to model a
+radially-varying neutron spectrum (energies are then sampled by stochastic
+interpolation between the two distributions bracketing the sampled radius). A
+time distribution can be given with the ``time`` argument; by default, particles
+are born at :math:`t=0`. The toroidal extent can be restricted with
+``phi_start`` and ``phi_extent`` to model a sector of the plasma, and
+``vertical_shift`` translates the plasma center along the z-axis.
+
 File-based Sources
 ------------------
 
@@ -604,13 +651,22 @@ transport::
 
   settings.photon_transport = True
 
+Atomic relaxation (the cascade of fluorescence photons and Auger electrons
+emitted when an inner-shell vacancy is filled) is enabled by default whenever
+photon transport is on. It can be disabled using the
+:attr:`Settings.atomic_relaxation` attribute::
+
+  settings.atomic_relaxation = False
+
 The way in which OpenMC handles secondary charged particles can be specified
 with the :attr:`Settings.electron_treatment` attribute. By default, the
 :ref:`thick-target bremsstrahlung <ttb>` (TTB) approximation is used to generate
 bremsstrahlung radiation emitted by electrons and positrons created in photon
-interactions. To neglect secondary bremsstrahlung photons and instead deposit
-all energy from electrons locally, the local energy deposition option can be
-selected::
+interactions. Electron and positron secondaries created by photon interactions
+are processed at their birth site rather than transported as separate charged
+particle tracks. To neglect secondary bremsstrahlung photons and instead
+deposit all energy from electrons locally, the local energy deposition option
+can be selected::
 
   settings.electron_treatment = 'led'
 
@@ -785,6 +841,11 @@ collision_track.h5 file at the end of the simulation. The file contains
 300 recorded collisions that occurred in materials with IDs 1 or 2, involving
 fission or (n,2n) reactions on the nuclides U-238 or O-16, within cells
 with IDs 5 and 12.
+
+.. note::
+   Electron and positron collision-track events are not associated with a
+   specific nuclide. If a ``nuclides`` entry is specified, these events are omitted.
+
 The file can be read using :func:`openmc.read_collision_track_file`.
 The example below shows how to extract the data from the collision_track
 feature and displays the fields stored in the file:

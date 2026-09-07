@@ -11,6 +11,7 @@ import h5py
 
 import openmc
 from openmc.mesh import MeshBase, RectilinearMesh, CylindricalMesh, SphericalMesh, UnstructuredMesh
+from openmc.tallies import Tallies
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from ._xml import get_elem_list, get_text, clean_indentation
@@ -499,6 +500,8 @@ class WeightWindowGenerator:
         Particle type the weight windows apply to
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
+    targets : :class:`openmc.Tallies` or iterable of int
+        Target tallies for local variance reduction via FW-CADIS.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -518,6 +521,8 @@ class WeightWindowGenerator:
         Particle type the weight windows apply to
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
+    targets : :class:`openmc.Tallies` or numpy.ndarray
+        Target tallies for local variance reduction via FW-CADIS.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -529,7 +534,7 @@ class WeightWindowGenerator:
         Whether or not to apply weight windows on the fly.
     """
 
-    _MAGIC_PARAMS = {'value': str, 'threshold': float, 'ratio': float}
+    _WWG_PARAMS = {'value': str, 'threshold': float, 'ratio': float}
 
     def __init__(
         self,
@@ -537,6 +542,7 @@ class WeightWindowGenerator:
         energy_bounds: Sequence[float] | None = None,
         particle_type: str | int | openmc.ParticleType = 'neutron',
         method: str = 'magic',
+        targets: openmc.Tallies | Iterable[int] | None = None,
         max_realizations: int = 1,
         update_interval: int = 1,
         on_the_fly: bool = True
@@ -549,6 +555,7 @@ class WeightWindowGenerator:
             self.energy_bounds = energy_bounds
         self.particle_type = particle_type
         self.method = method
+        self.targets = targets
         self.max_realizations = max_realizations
         self.update_interval = update_interval
         self.on_the_fly = on_the_fly
@@ -611,6 +618,22 @@ class WeightWindowGenerator:
                 self._check_update_parameters()
             except (TypeError, KeyError):
                 warnings.warn(f'Update parameters are invalid for the "{m}" method.')
+    
+    @property
+    def targets(self) -> openmc.Tallies:
+        return self._targets
+
+    @targets.setter
+    def targets(self, t):
+        if t is None:
+            self._targets = t
+        else:
+            cv.check_type('Local FW-CADIS target tallies', t, Iterable)
+            cv.check_greater_than('Local FW-CADIS target tallies', len(t), 0)
+            if not isinstance(t, openmc.Tallies):
+                cv.check_iterable_type('Local FW-CADIS target tallies', t, int)
+                t = np.asarray(list(t), dtype=int)
+            self._targets = t
 
     @property
     def max_realizations(self) -> int:
@@ -638,13 +661,13 @@ class WeightWindowGenerator:
 
     def _check_update_parameters(self, params: dict):
         if self.method == 'magic' or self.method == 'fw_cadis':
-            check_params = self._MAGIC_PARAMS
+            check_params = self._WWG_PARAMS
 
         for key, val in params.items():
             if key not in check_params:
                 raise ValueError(f'Invalid param "{key}" for {self.method} '
                                   'weight window generation')
-            cv.check_type(f'weight window generation param: "{key}"', val, self._MAGIC_PARAMS[key])
+            cv.check_type(f'weight window generation param: "{key}"', val, self._WWG_PARAMS[key])
 
     @update_parameters.setter
     def update_parameters(self, params: dict):
@@ -681,7 +704,7 @@ class WeightWindowGenerator:
             The update parameters as-read from the XML node (keys: str, values: str)
         """
         if method == 'magic' or method == 'fw_cadis':
-            check_params = cls._MAGIC_PARAMS
+            check_params = cls._WWG_PARAMS
 
         for param, param_type in check_params.items():
             if param in update_parameters:
@@ -707,6 +730,20 @@ class WeightWindowGenerator:
         otf_elem.text = str(self.on_the_fly).lower()
         method_elem = ET.SubElement(element, 'method')
         method_elem.text = self.method
+        if self.targets is not None:
+            if self.method != 'fw_cadis':
+                raise ValueError(
+                    "FW-CADIS update method is required in order to use " \
+                    "target tallies for WeightWindowGenerator.")
+            elif isinstance(self.targets, openmc.Tallies):
+                raise RuntimeError(
+                    "FW-CADIS target tallies must be checked to ensure they are " \
+                    "present on model.tallies. Use model.export_to_xml() or " \
+                    "model.export_to_model_xml() to link FW-CADIS target tallies.")
+            else:
+                targets_elem = ET.SubElement(element, 'targets')
+                targets_elem.text = ' '.join(str(tally_id) for tally_id in self.targets)
+
         if self.update_parameters is not None:
             self._update_parameters_subelement(element)
 
@@ -733,8 +770,8 @@ class WeightWindowGenerator:
 
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
-
-        energy_bounds = get_elem_list(elem, "energy_bounds, float")
+        
+        energy_bounds = get_elem_list(elem, "energy_bounds", float)
         particle_type = get_text(elem, 'particle_type')
 
         wwg = cls(mesh, energy_bounds, particle_type)
@@ -743,6 +780,14 @@ class WeightWindowGenerator:
         wwg.update_interval = int(get_text(elem, 'update_interval'))
         wwg.on_the_fly = bool(get_text(elem, 'on_the_fly'))
         wwg.method = get_text(elem, 'method')
+        targets_elem = elem.find('targets')
+        if targets_elem is not None:
+            if wwg.method != 'fw_cadis':
+                raise ValueError(
+                    "FW-CADIS update method is required in order to use " \
+                    "target tallies for WeightWindowGenerator.")
+            else:
+                wwg.targets = get_elem_list(elem, "targets")
 
         if elem.find('update_parameters') is not None:
             update_parameters = {}

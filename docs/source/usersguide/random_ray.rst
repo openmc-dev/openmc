@@ -642,13 +642,11 @@ model to use these multigroup cross sections. An example is given below::
   model.convert_to_multigroup(
       method="material_wise",
       groups="CASMO-2",
-      nparticles=2000,
       overwrite_mgxs_library=False,
       mgxs_path="mgxs.h5",
       correction=None,
       source_energy=None,
-      temperatures=None,
-      temperature_settings=None
+      temperatures=None
   )
 
 The most important parameter to set is the ``method`` parameter, which can be
@@ -672,7 +670,9 @@ of these methods is given below:
          both spatial and resonance self shielding effects
      - * Potentially slower as the full geometry must be run
        * If a material is only present far from the source and doesn't get tallied
-         to in the CE simulation, the MGXS will be zero for that material.
+         to in the CE simulation, the MGXS will be zero for that material. This
+         can be mitigated by supplying weight windows via ``weight_windows_file``
+         (see :ref:`mgxs_bootstrap`).
    * - ``stochastic_slab``
      - * Medium Fidelity
        * Runs a CE simulation with a greatly simplified geometry, where materials
@@ -693,12 +693,20 @@ of these methods is given below:
 
 When selecting a non-default energy group structure, you can manually define
 group boundaries or specify the name of a known group structure (a list of which
-can be found at :data:`openmc.mgxs.GROUP_STRUCTURES`). The ``nparticles``
-parameter can be adjusted upward to improve the fidelity of the generated cross
-section library. The ``correction`` parameter can be set to ``"P0"`` to enable
-P0 transport correction. The ``overwrite_mgxs_library`` parameter can be set to
-``True`` to overwrite an existing MGXS library file, or ``False`` to skip
-generation and use an existing library file.
+can be found at :data:`openmc.mgxs.GROUP_STRUCTURES`). The ``correction``
+parameter can be set to ``"P0"`` to enable P0 transport correction. The
+``overwrite_mgxs_library`` parameter can be set to ``True`` to overwrite an
+existing MGXS library file, or ``False`` to skip generation and use an existing
+library file.
+
+The continuous energy simulations used to generate the cross section library
+can be customized by passing :class:`openmc.Settings` attributes as keyword
+arguments; only the fields you set override the generation defaults. For
+example, the number of particles per batch (2,000 by default) can be
+increased to improve the fidelity of the generated cross section library
+as::
+
+  model.convert_to_multigroup(particles=100_000)
 
 .. note::
     MGXS transport correction (via setting the ``correction`` parameter in the
@@ -739,15 +747,13 @@ The ``temperatures`` parameter can be provided if temperature-dependent
 multi-group cross sections are desired for multi-physics simulations. An
 individual cross section generation calculation is run for each temperature
 provided, where the materials in the model are set to the temperature. The
-temperature settings used during cross section generation can be specified with the
-``temperature_settings`` parameter. If no ``temperature_settings`` are provided,
-the settings contained in the model will be used. The valid keys and values in the
-``temperature_settings`` dictionary are identical to
-:attr:`openmc.Settings.temperature_settings`; more information can be found in
-:class:`openmc.Settings` . This approach yields isothermal cross section interpolation
-tables, which can be inaccurate for systems with large differences between temperatures
-in each material (often the case in fission reactors). If a more sophisticated
-temperature-dependence is required, we recommend generating cross sections manually.
+temperature settings used during cross section generation default to those
+contained in the model and can be customized with the ``temperature`` keyword
+argument to :meth:`openmc.Model.convert_to_multigroup`. This approach yields
+isothermal cross section interpolation tables, which can be inaccurate for
+systems with large differences between temperatures in each material (often the
+case in fission reactors). If a more sophisticated temperature-dependence is
+required, we recommend generating cross sections manually.
 
 Ultimately, the methods described above are all just approximations.
 Approximations in the generated MGXS data will fundamentally limit the potential
@@ -756,6 +762,50 @@ useful in that they can provide a good starting point for a random ray
 simulation, and if more fidelity is needed the user may wish to follow the
 instructions below or experiment with transport correction techniques to improve
 the fidelity of the generated MGXS data.
+
+.. _mgxs_bootstrap:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Bootstrapping Material-Wise MGXS with Weight Windows
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``"material_wise"`` method runs a continuous energy simulation of the
+original geometry, so it produces the highest fidelity cross sections of the
+three methods. However, it has a notable weakness: if a material only appears
+far from the source (for example, a detector or structural material located
+outside a thick shield), an analog continuous energy simulation may be unable to
+transport any particles to that material. No tallies are scored there, and the
+resulting cross sections for that material are zero. This situation is common in
+shielding problems.
+
+This limitation can be overcome by "bootstrapping" the cross section generation
+with weight windows. The idea is to first cheaply produce a set of weight
+windows that cover the entire problem and then reuse them to push particles into
+the far regions during the higher fidelity ``"material_wise"`` solve. The weight
+windows are generated using the ``"stochastic_slab"`` method (which produces
+cross sections for *all* materials regardless of their location) together with
+the random ray solver and a :class:`~openmc.WeightWindowGenerator`, exactly as
+described in the :ref:`FW-CADIS user guide <usersguide_fw_cadis>`. The resulting
+``weight_windows.h5`` file is then supplied to a second, higher fidelity
+``"material_wise"`` cross section generation by passing
+``weight_windows_file``::
+
+    # First, generate weight windows with the stochastic slab method and random
+    # ray (see the FW-CADIS user guide), producing a weight_windows.h5 file.
+    ...
+
+    # Then, bootstrap a higher fidelity material-wise library, applying those
+    # weight windows during the continuous energy solve so that particles can
+    # reach materials far from the source.
+    model.convert_to_multigroup(
+        weight_windows_file="weight_windows.h5", overwrite_mgxs_library=True)
+
+The ``weight_windows_file`` setting is only used with the
+``"material_wise"`` method, as the ``"stochastic_slab"`` and
+``"infinite_medium"`` methods use simplified surrogate geometries that are
+incompatible with a weight window mesh defined over the original geometry (and
+do not need weight windows, since they already tally all materials). A warning
+is issued and the file is ignored if it is supplied to another method.
 
 ~~~~~~~~~~~~
 The Hard Way
@@ -944,6 +994,8 @@ as::
 which will greatly improve the quality of the linear source term in 2D
 simulations.
 
+.. _usersguide_random_ray_run_modes:
+
 ---------------------------------
 Fixed Source and Eigenvalue Modes
 ---------------------------------
@@ -1073,22 +1125,52 @@ The adjoint flux random ray solver mode can be enabled as::
 
     settings.random_ray['adjoint'] = True
 
-When enabled, OpenMC will first run a forward transport simulation followed by
-an adjoint transport simulation. The purpose of the forward solve is to compute
-the adjoint external source when an external source is present in the
-simulation. Simulation settings (e.g., number of rays, batches, etc.) will be
-identical for both simulations. At the conclusion of the run, all results (e.g.,
-tallies, plots, etc.) will be derived from the adjoint flux rather than the
-forward flux but are not labeled any differently. The initial forward flux
-solution will not be stored or available in the final statepoint file. Those
-wishing to do analysis requiring both the forward and adjoint solutions will
-need to run two separate simulations and load both statepoint files.
+When enabled, OpenMC will first run a forward transport simulation if there are
+no user-specified adjoint sources present, followed by an adjoint transport
+simulation. Fixed adjoint sources can be specified on the
+:attr:`openmc.Settings.random_ray` dictionary as follows::
+
+    # Geometry definition
+    ...
+    detector_cell = openmc.Cell(fill=detector_mat, name='cell where detector will be')
+    ...
+    # Define fixed adjoint neutron source
+    strengths = [1.0]
+    midpoints = [1.0e-4]
+    energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
+
+    adj_source = openmc.IndependentSource(
+        energy=energy_distribution,
+        constraints={'domains': [detector_cell]}
+    )
+
+    # Add to random_ray dict
+    settings.random_ray['adjoint_source'] = adj_source
+
+The same constraints apply to the user-defined adjoint source as to the forward
+source, described in the :ref:`Fixed Source and Eigenvalue section
+<usersguide_random_ray_run_modes>`. If this source is not provided, a forward
+solve must take place to compute the adjoint external source when a forward
+external source is present in the problem. Simulation settings (e.g., number of
+rays, batches, etc.) will be identical for both calculations. At the
+conclusion of the run, all results (e.g., tallies, plots, etc.) will be
+derived from the adjoint flux rather than the forward flux but are not labeled
+any differently. When an initial forward solve is performed (i.e., when no
+user-specified adjoint source is present), its output files are also written to
+disk with a ``forward`` infix, so they are not overwritten by the subsequent
+adjoint solve. This applies to the statepoint, ``tallies.out``, and any voxel
+plots, e.g., ``statepoint.forward.N.h5`` and ``tallies.forward.out``; the
+adjoint solve keeps the usual file names. This allows analyses requiring both
+the forward and adjoint solutions to be performed from a single run. When
+generating FW-CADIS weight windows, no weight window file is written for the
+forward solve, as only the final adjoint-derived weight windows are meaningful.
 
 .. note::
-    When adjoint mode is selected, OpenMC will always perform a full forward
-    solve and then run a full adjoint solve immediately afterwards. Statepoint
-    and tally results will be derived from the adjoint flux, but will not be
-    labeled any differently.
+    Use of the automated
+    :ref:`FW-CADIS weight window generator<usersguide_fw_cadis>` is not
+    currently compatible with user-defined adjoint sources. Instead, the
+    initial forward calculation is used to assign "forward-weighted" adjoint
+    sources to the tally regions of interest.
 
 ---------------------------------------
 Putting it All Together: Example Inputs

@@ -1,8 +1,9 @@
 #include "openmc/settings.h"
 #include "openmc/random_ray/flat_source_domain.h"
 
-#include <cmath>  // for ceil, pow
-#include <limits> // for numeric_limits
+#include <cmath>   // for ceil, pow
+#include <cstring> // for strcmp
+#include <limits>  // for numeric_limits
 #include <string>
 
 #include <fmt/core.h>
@@ -55,13 +56,15 @@ bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
 bool event_based {false};
-bool ifp_on {false};
+bool ifp_delayed_group_on {false};
+bool ifp_lifetime_on {false};
 bool legendre_to_tabular {true};
 bool material_cell_offsets {true};
 bool output_summary {true};
 bool output_tallies {true};
 bool particle_restart_run {false};
 bool photon_transport {false};
+bool atomic_relaxation {true};
 bool reduce_tallies {true};
 bool res_scat_on {false};
 bool restart_run {false};
@@ -82,6 +85,7 @@ bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
 bool use_decay_photons {false};
+bool use_shared_secondary_bank {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
@@ -94,8 +98,8 @@ std::string path_output;
 std::string path_particle_restart;
 std::string path_sourcepoint;
 std::string path_statepoint;
-const char* path_statepoint_c {path_statepoint.c_str()};
 std::string weight_windows_file;
+std::string properties_file;
 
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
@@ -111,7 +115,6 @@ ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
 int ifp_n_generation {-1};
-IFPParameter ifp_parameter {IFPParameter::None};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -278,8 +281,9 @@ void get_run_parameters(pugi::xml_node node_base)
     } else {
       fatal_error("Specify random ray inactive distance in settings XML");
     }
-    if (check_for_node(random_ray_node, "source")) {
-      xml_node source_node = random_ray_node.child("source");
+    if (check_for_node(random_ray_node, "ray_source")) {
+      xml_node ray_source_node = random_ray_node.child("ray_source");
+      xml_node source_node = ray_source_node.child("source");
       // Get point to list of <source> elements and make sure there is at least
       // one
       RandomRay::ray_source_ = Source::create(source_node);
@@ -318,7 +322,7 @@ void get_run_parameters(pugi::xml_node node_base)
         get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
     }
     if (check_for_node(random_ray_node, "adjoint")) {
-      FlatSourceDomain::adjoint_ =
+      FlatSourceDomain::adjoint_requested_ =
         get_node_value_bool(random_ray_node, "adjoint");
     }
     if (check_for_node(random_ray_node, "sample_method")) {
@@ -365,6 +369,13 @@ void get_run_parameters(pugi::xml_node node_base)
           FlatSourceDomain::diagonal_stabilization_rho_ > 1.0) {
         fatal_error("Random ray diagonal stabilization rho factor must be "
                     "between 0 and 1");
+      }
+    }
+    if (check_for_node(random_ray_node, "adjoint_source")) {
+      pugi::xml_node adj_source_node = random_ray_node.child("adjoint_source");
+      for (pugi::xml_node source_node : adj_source_node.children("source")) {
+        // Find any local adjoint sources
+        model::adjoint_sources.push_back(Source::create(source_node));
       }
     }
   }
@@ -607,6 +618,11 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
+  // Check for atomic relaxation
+  if (check_for_node(root, "atomic_relaxation")) {
+    atomic_relaxation = get_node_value_bool(root, "atomic_relaxation");
+  }
+
   // Number of bins for logarithmic grid
   if (check_for_node(root, "log_grid_bins")) {
     n_log_bins = std::stoi(get_node_value(root, "log_grid_bins"));
@@ -742,6 +758,14 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "time_positron")) {
       time_cutoff[3] = std::stod(get_node_value(node_cutoff, "time_positron"));
+    }
+  }
+
+  // read properties from file
+  if (check_for_node(root, "properties_file")) {
+    properties_file = get_node_value(root, "properties_file");
+    if (!file_exists(properties_file)) {
+      fatal_error(fmt::format("File '{}' does not exist.", properties_file));
     }
   }
 
@@ -1223,6 +1247,7 @@ void read_settings_xml(pugi::xml_node root)
   // read weight windows from file
   if (check_for_node(root, "weight_windows_file")) {
     weight_windows_file = get_node_value(root, "weight_windows_file");
+    weight_windows_on = true;
   }
 
   // read settings for weight windows value, this will override
@@ -1261,6 +1286,16 @@ void read_settings_xml(pugi::xml_node root)
         break;
       }
     }
+    // If any weight window generators have local FW-CADIS target tallies,
+    // user-defined adjoint sources cannot be used at the same time.
+    if (!model::adjoint_sources.empty()) {
+      for (const auto& wwg : variance_reduction::weight_windows_generators) {
+        if (!wwg->targets_.empty()) {
+          fatal_error("Cannot use both user-defined adjoint sources and "
+                      "FW-CADIS target tallies at the same time.");
+        }
+      }
+    }
   }
 
   // Set up weight window checkpoints
@@ -1287,6 +1322,27 @@ void read_settings_xml(pugi::xml_node root)
     settings::use_decay_photons =
       get_node_value_bool(root, "use_decay_photons");
   }
+
+  // If weight windows are on, also enable shared secondary bank (unless
+  // explicitly disabled by user).
+  if (check_for_node(root, "shared_secondary_bank")) {
+    bool val = get_node_value_bool(root, "shared_secondary_bank");
+    if (val && run_mode == RunMode::EIGENVALUE) {
+      warning(
+        "Shared secondary bank is not supported in eigenvalue calculations. "
+        "Setting will be ignored.");
+    } else {
+      settings::use_shared_secondary_bank = val;
+    }
+  } else if (settings::weight_windows_on) {
+    if (run_mode == RunMode::EIGENVALUE) {
+      warning(
+        "Shared secondary bank is not supported in eigenvalue calculations. "
+        "Particle local secondary banks will be used instead.");
+    } else if (run_mode == RunMode::FIXED_SOURCE) {
+      settings::use_shared_secondary_bank = true;
+    }
+  }
 }
 
 void free_memory_settings()
@@ -1295,11 +1351,206 @@ void free_memory_settings()
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
+  settings::ifp_delayed_group_on = false;
+  settings::ifp_lifetime_on = false;
 }
 
 //==============================================================================
 // C API functions
 //==============================================================================
+
+namespace {
+
+int invalid_setting(const char* type, const char* name)
+{
+  set_errmsg(fmt::format("Unknown {} setting '{}'.", type, name));
+  return OPENMC_E_INVALID_ARGUMENT;
+}
+
+bool* bool_setting(const char* name)
+{
+  if (std::strcmp(name, "cmfd_run") == 0) {
+    return &settings::cmfd_run;
+  } else if (std::strcmp(name, "entropy_on") == 0) {
+    return &settings::entropy_on;
+  } else if (std::strcmp(name, "event_based") == 0) {
+    return &settings::event_based;
+  } else if (std::strcmp(name, "need_depletion_rx") == 0) {
+    return &simulation::need_depletion_rx;
+  } else if (std::strcmp(name, "photon_transport") == 0) {
+    return &settings::photon_transport;
+  } else if (std::strcmp(name, "output_summary") == 0) {
+    return &settings::output_summary;
+  } else if (std::strcmp(name, "reduce_tallies") == 0) {
+    return &settings::reduce_tallies;
+  } else if (std::strcmp(name, "restart_run") == 0) {
+    return &settings::restart_run;
+  } else if (std::strcmp(name, "run_ce") == 0) {
+    return &settings::run_CE;
+  } else if (std::strcmp(name, "trigger_on") == 0) {
+    return &settings::trigger_on;
+  } else if (std::strcmp(name, "weight_windows_on") == 0) {
+    return &settings::weight_windows_on;
+  }
+  return nullptr;
+}
+
+} // namespace
+
+extern "C" int openmc_setting_get_bool(const char* name, bool* value)
+{
+  if (!name || !value) {
+    set_errmsg("Setting name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  bool* setting = bool_setting(name);
+  if (!setting)
+    return invalid_setting("boolean", name);
+
+  *value = *setting;
+  return 0;
+}
+
+extern "C" int openmc_setting_set_bool(const char* name, bool value)
+{
+  if (!name) {
+    set_errmsg("Setting name must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  bool* setting = bool_setting(name);
+  if (!setting)
+    return invalid_setting("boolean", name);
+
+  *setting = value;
+  return 0;
+}
+
+extern "C" int openmc_setting_get_int32(const char* name, int32_t* value)
+{
+  if (!name || !value) {
+    set_errmsg("Setting name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "gen_per_batch") == 0) {
+    *value = settings::gen_per_batch;
+  } else if (std::strcmp(name, "max_lost_particles") == 0) {
+    *value = settings::max_lost_particles;
+  } else if (std::strcmp(name, "max_write_lost_particles") == 0) {
+    *value = settings::max_write_lost_particles;
+  } else if (std::strcmp(name, "n_inactive") == 0) {
+    *value = settings::n_inactive;
+  } else if (std::strcmp(name, "run_mode") == 0) {
+    *value = static_cast<int32_t>(settings::run_mode);
+  } else if (std::strcmp(name, "verbosity") == 0) {
+    *value = settings::verbosity;
+  } else {
+    return invalid_setting("int32", name);
+  }
+  return 0;
+}
+
+extern "C" int openmc_setting_set_int32(const char* name, int32_t value)
+{
+  if (!name) {
+    set_errmsg("Setting name must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "gen_per_batch") == 0) {
+    settings::gen_per_batch = value;
+  } else if (std::strcmp(name, "max_lost_particles") == 0) {
+    settings::max_lost_particles = value;
+  } else if (std::strcmp(name, "max_write_lost_particles") == 0) {
+    settings::max_write_lost_particles = value;
+  } else if (std::strcmp(name, "n_inactive") == 0) {
+    settings::n_inactive = value;
+  } else if (std::strcmp(name, "run_mode") == 0) {
+    if (value < static_cast<int32_t>(RunMode::UNSET) ||
+        value > static_cast<int32_t>(RunMode::VOLUME)) {
+      set_errmsg(fmt::format("Invalid run mode: {}.", value));
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+    settings::run_mode = static_cast<RunMode>(value);
+  } else if (std::strcmp(name, "verbosity") == 0) {
+    settings::verbosity = value;
+  } else {
+    return invalid_setting("int32", name);
+  }
+  return 0;
+}
+
+extern "C" int openmc_setting_get_int64(const char* name, int64_t* value)
+{
+  if (!name || !value) {
+    set_errmsg("Setting name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "n_particles") != 0)
+    return invalid_setting("int64", name);
+
+  *value = settings::n_particles;
+  return 0;
+}
+
+extern "C" int openmc_setting_set_int64(const char* name, int64_t value)
+{
+  if (!name) {
+    set_errmsg("Setting name must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "n_particles") != 0)
+    return invalid_setting("int64", name);
+
+  settings::n_particles = value;
+  return 0;
+}
+
+extern "C" int openmc_setting_get_double(const char* name, double* value)
+{
+  if (!name || !value) {
+    set_errmsg("Setting name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "rel_max_lost_particles") != 0)
+    return invalid_setting("double", name);
+
+  *value = settings::rel_max_lost_particles;
+  return 0;
+}
+
+extern "C" int openmc_setting_set_double(const char* name, double value)
+{
+  if (!name) {
+    set_errmsg("Setting name must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "rel_max_lost_particles") != 0)
+    return invalid_setting("double", name);
+
+  settings::rel_max_lost_particles = value;
+  return 0;
+}
+
+extern "C" int openmc_setting_get_string(const char* name, const char** value)
+{
+  if (!name || !value) {
+    set_errmsg("Setting name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (std::strcmp(name, "path_statepoint") != 0)
+    return invalid_setting("string", name);
+
+  *value = settings::path_statepoint.c_str();
+  return 0;
+}
 
 extern "C" int openmc_set_n_batches(
   int32_t n_batches, bool set_max_batches, bool add_statepoint_batch)

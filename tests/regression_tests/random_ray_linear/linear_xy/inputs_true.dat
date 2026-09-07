@@ -80,11 +80,13 @@
     <random_ray>
       <distance_active>100.0</distance_active>
       <distance_inactive>20.0</distance_inactive>
-      <source type="independent" strength="1.0" particle="neutron">
-        <space type="box">
-          <parameters>-1.26 -1.26 -1 1.26 1.26 1</parameters>
-        </space>
-      </source>
+      <ray_source>
+        <source type="independent" strength="1.0" particle="neutron">
+          <space type="box">
+            <parameters>-1.26 -1.26 -1 1.26 1.26 1</parameters>
+          </space>
+        </source>
+      </ray_source>
       <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
       <source_shape>linear_xy</source_shape>
     </random_ray>

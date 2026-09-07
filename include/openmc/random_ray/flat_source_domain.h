@@ -40,9 +40,10 @@ public:
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
   void output_to_vtk() const;
-  void convert_external_sources();
+  void convert_external_sources(bool use_adjoint_sources);
   void count_external_source_regions();
-  void set_adjoint_sources();
+  void set_fw_adjoint_sources();
+  void set_local_adjoint_sources();
   void flux_swap();
   virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;
@@ -75,7 +76,11 @@ public:
   //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
-  static bool adjoint_; // If the user wants outputs based on the adjoint flux
+  // If the user wants outputs based on the adjoint flux
+  static bool adjoint_requested_;
+  // The solve currently being executed
+  static RandomRaySolve solve_;
+  static bool fw_cadis_local_;
   static double
     diagonal_stabilization_rho_; // Adjusts strength of diagonal stabilization
                                  // for transport corrected MGXS data
@@ -83,6 +88,8 @@ public:
   // Static variables to store source region meshes and domains
   static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
     mesh_domain_map_;
+
+  static std::vector<size_t> fw_cadis_local_targets_;
 
   //----------------------------------------------------------------------------
   // Static data members

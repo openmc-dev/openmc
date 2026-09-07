@@ -46,6 +46,21 @@ TEST_CASE("Test t_percentile")
   }
 }
 
+TEST_CASE("Test cylindrical Bessel functions")
+{
+  constexpr double x = 2.0;
+  constexpr double expected[] {0.22389077914123567, 0.57672480775687339,
+    0.35283402861563773, 0.12894324947440205};
+
+  for (int n = 0; n < 4; ++n) {
+    REQUIRE_THAT(openmc::cyl_bessel_j(n, x),
+      Catch::Matchers::WithinRel(expected[n], 1.0e-14));
+    REQUIRE_THAT(openmc::cyl_bessel_j(n, -x),
+      Catch::Matchers::WithinRel(
+        (n % 2 == 0 ? 1.0 : -1.0) * expected[n], 1.0e-14));
+  }
+}
+
 TEST_CASE("Test calc_pn")
 {
   // The reference solutions come from scipy.special.eval_legendre
@@ -354,4 +369,25 @@ TEST_CASE("Test broaden_wmp_polynomials")
 
     REQUIRE_THAT(ref_val, Catch::Matchers::Approx(test_val));
   }
+}
+
+TEST_CASE("Test isclose")
+{
+  using openmc::isclose;
+
+  // Identical values are always close, regardless of tolerances.
+  REQUIRE(isclose(1.0, 1.0, 0.0, 0.0));
+  REQUIRE(isclose(0.0, 0.0, 0.0, 0.0));
+
+  // Absolute tolerance governs comparisons near zero.
+  REQUIRE(isclose(0.0, 1e-15, 0.0, 1e-14));
+  REQUIRE_FALSE(isclose(0.0, 1e-13, 0.0, 1e-14));
+
+  // Relative tolerance scales with the magnitude of the operands.
+  REQUIRE(isclose(1.0e12, 1.0e12 + 1.0, 1e-12, 0.0));
+  REQUIRE_FALSE(isclose(1.0e12, 1.0e12 + 10.0, 1e-12, 0.0));
+
+  // The looser of the two tolerances wins.
+  REQUIRE(isclose(1.0, 1.0 + 1e-13, 0.0, 1e-12));
+  REQUIRE(isclose(1.0e6, 1.0e6 + 1e-4, 1e-9, 0.0));
 }

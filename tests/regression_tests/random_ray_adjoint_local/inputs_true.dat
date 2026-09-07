@@ -1,0 +1,293 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="source">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="source"/>
+    </material>
+    <material id="2" name="cavity">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="cavity"/>
+    </material>
+    <material id="3" name="absorber">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="absorber"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" name="infinite source region" material="1" universe="1"/>
+    <cell id="2" name="cube cavity region" material="2" universe="2"/>
+    <cell id="3" name="absorber region" material="3" universe="3"/>
+    <cell id="4" fill="4" universe="5"/>
+    <cell id="5" name="full domain" fill="5" region="1 -2 3 -4 5 -6" universe="6"/>
+    <cell id="6" name="detector 1" material="3" region="1 -10 4 -8 5 -11" universe="6"/>
+    <cell id="7" name="detector 2" material="3" region="2 -7 4 -8 6 -9" universe="6"/>
+    <cell id="8" name="outside cube" material="2" region="(2 3 5 -7 ((-8 -6) | (-4 6 -9))) | (4 -8 ((10 -2 5 -9) | (-10 1 11 -9) | (2 -7 5 -6))) | (1 3 6 -9 ((-8 -2) | (-4 2 -7)))" universe="6"/>
+    <lattice id="4">
+      <pitch>2.5 2.5 2.5</pitch>
+      <dimension>12 12 12</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <universes>
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 </universes>
+    </lattice>
+    <surface id="1" type="x-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="2" type="x-plane" coeffs="30.0"/>
+    <surface id="3" type="y-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="4" type="y-plane" coeffs="30.0"/>
+    <surface id="5" type="z-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="6" type="z-plane" coeffs="30.0"/>
+    <surface id="7" type="x-plane" boundary="vacuum" coeffs="35.0"/>
+    <surface id="8" type="y-plane" boundary="vacuum" coeffs="35.0"/>
+    <surface id="9" type="z-plane" boundary="vacuum" coeffs="35.0"/>
+    <surface id="10" type="x-plane" coeffs="5.0"/>
+    <surface id="11" type="z-plane" coeffs="5.0"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>500</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <source type="independent" strength="3.14" particle="neutron">
+      <energy type="discrete">
+        <parameters>100.0 1.0</parameters>
+      </energy>
+      <constraints>
+        <domain_type>universe</domain_type>
+        <domain_ids>1</domain_ids>
+      </constraints>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <random_ray>
+      <distance_active>800.0</distance_active>
+      <distance_inactive>100.0</distance_inactive>
+      <ray_source>
+        <source type="independent" strength="1.0" particle="neutron">
+          <space type="box">
+            <parameters>0.0 0.0 0.0 35.0 35.0 35.0</parameters>
+          </space>
+        </source>
+      </ray_source>
+      <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
+      <source_region_meshes>
+        <mesh id="1">
+          <domain id="6" type="universe"/>
+        </mesh>
+      </source_region_meshes>
+      <adjoint>true</adjoint>
+      <adjoint_source>
+        <source type="independent" strength="3.14" particle="neutron">
+          <energy type="discrete">
+            <parameters>100.0 1.0</parameters>
+          </energy>
+          <constraints>
+            <domain_type>cell</domain_type>
+            <domain_ids>6 7</domain_ids>
+          </constraints>
+        </source>
+      </adjoint_source>
+      <volume_estimator>naive</volume_estimator>
+    </random_ray>
+    <mesh id="1">
+      <dimension>14 14 14</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <upper_right>35.0 35.0 35.0</upper_right>
+    </mesh>
+  </settings>
+  <tallies>
+    <filter id="1" type="cell">
+      <bins>6</bins>
+    </filter>
+    <filter id="2" type="cell">
+      <bins>7</bins>
+    </filter>
+    <filter id="3" type="material">
+      <bins>3</bins>
+    </filter>
+    <filter id="4" type="material">
+      <bins>2</bins>
+    </filter>
+    <filter id="5" type="material">
+      <bins>1</bins>
+    </filter>
+    <tally id="1" name="Detector 1 Tally">
+      <filters>1</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="2" name="Detector 2 Tally">
+      <filters>2</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="3" name="Absorber Tally">
+      <filters>3</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="4" name="Cavity Tally">
+      <filters>4</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="5" name="Source Tally">
+      <filters>5</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+  </tallies>
+</model>

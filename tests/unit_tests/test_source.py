@@ -1,5 +1,6 @@
 from collections import Counter
 from math import pi
+from pathlib import Path
 
 import openmc
 import openmc.lib
@@ -89,6 +90,74 @@ def test_point_cloud_strengths(run_in_tmpdir, sphere_box_model):
         sampled_strength = count[position] / n_samples
         expected_strength = pytest.approx(strength/sum(strengths), abs=0.02)
         assert sampled_strength == expected_strength, f'Strength incorrect for {positions[i]}'
+
+
+def test_decay_spectrum_parent_nuclide(run_in_tmpdir):
+    chain_file = Path('chain_decay_spectrum_parent.xml')
+    chain_file.write_text("""<?xml version="1.0"?>
+<depletion_chain>
+  <nuclide name="ParentA" decay_modes="0" reactions="0" half_life="1.0">
+    <source type="discrete" particle="photon">
+      <parameters>1000000.0 1.0</parameters>
+    </source>
+  </nuclide>
+  <nuclide name="ParentB" decay_modes="0" reactions="0" half_life="1.0">
+    <source type="discrete" particle="photon">
+      <parameters>2000000.0 1.0</parameters>
+    </source>
+  </nuclide>
+</depletion_chain>
+""")
+
+    inner_sphere = openmc.Sphere(r=10.0)
+    outer_sphere = openmc.Sphere(r=20.0, boundary_type='vacuum')
+
+    shell_mat = openmc.Material()
+    shell_mat.add_nuclide('H1', 1.0)
+    shell_mat.set_density('atom/b-cm', 1.0e-12)
+
+    void_cell = openmc.Cell(region=-inner_sphere)
+    shell_cell = openmc.Cell(fill=shell_mat, region=+inner_sphere & -outer_sphere)
+
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([void_cell, shell_cell])
+    model.materials = [shell_mat]
+    model.settings.run_mode = 'fixed source'
+    model.settings.photon_transport = True
+    model.settings.particles = 1000
+    model.settings.batches = 5
+    model.settings.source = openmc.IndependentSource(
+        particle='photon',
+        space=openmc.stats.Point((0.0, 0.0, 0.0)),
+        energy=openmc.stats.DecaySpectrum(
+            {'ParentA': 1.0, 'ParentB': 1.0},
+            volume=1.0
+        )
+    )
+
+    tally = openmc.Tally()
+    tally.filters = [
+        openmc.CellFilter([void_cell]),
+        openmc.ParticleFilter(['photon']),
+        openmc.EnergyFilter([0.0, 1.5e6, 2.5e6]),
+        openmc.ParentNuclideFilter(['ParentA', 'ParentB'])
+    ]
+    tally.scores = ['flux']
+    model.tallies = [tally]
+
+    with openmc.config.patch('chain_file', chain_file):
+        sp_filename = model.run()
+
+    with openmc.StatePoint(sp_filename) as sp:
+        tally_out = sp.tallies[tally.id]
+        mean = tally_out.get_reshaped_data('mean').squeeze()
+
+    assert mean.shape == (2, 2)
+    assert mean[0, 0] > 0.0
+    assert mean[1, 1] > 0.0
+    assert mean[0, 1] == 0.0
+    assert mean[1, 0] == 0.0
+    assert np.count_nonzero(mean) == 2
 
 
 def test_source_file():

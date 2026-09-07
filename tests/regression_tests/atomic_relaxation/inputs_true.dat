@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1">
+      <density value="11.35" units="g/cm3"/>
+      <nuclide name="Pb208" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface id="1" type="sphere" boundary="reflective" coeffs="0.0 0.0 0.0 1000000000.0"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>10000</particles>
+    <batches>1</batches>
+    <source type="independent" strength="1.0" particle="photon">
+      <energy type="discrete">
+        <parameters>1000000.0 1.0</parameters>
+      </energy>
+    </source>
+    <electron_treatment>led</electron_treatment>
+    <atomic_relaxation>false</atomic_relaxation>
+    <photon_transport>true</photon_transport>
+  </settings>
+  <tallies>
+    <filter id="1" type="particle">
+      <bins>photon electron</bins>
+    </filter>
+    <tally id="1">
+      <filters>1</filters>
+      <scores>flux heating</scores>
+    </tally>
+  </tallies>
+</model>

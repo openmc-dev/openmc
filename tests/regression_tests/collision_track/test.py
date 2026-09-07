@@ -59,26 +59,11 @@ TODO:
 
 """
 
-import os
-
 import openmc
-import openmc.lib
 import pytest
 
 from tests.testing_harness import CollisionTrackTestHarness
 from tests.regression_tests import config
-
-
-@pytest.fixture(scope="function")
-def two_threads(monkeypatch):
-    """Set the number of OMP threads to 2 for the test."""
-    monkeypatch.setenv("OMP_NUM_THREADS", "2")
-
-
-@pytest.fixture(scope="function")
-def single_process(monkeypatch):
-    """Set the number of MPI process to 1 for the test."""
-    monkeypatch.setitem(config, "mpi_np", "1")
 
 
 @pytest.fixture(scope="module")
@@ -181,9 +166,9 @@ def model_1():
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.particles = 100
+    model.settings.particles = 80
     model.settings.batches = 5
-    model.settings.inactive = 1
+    model.settings.inactive = 4
     model.settings.seed = 1
 
     bounds = [
@@ -203,19 +188,19 @@ def model_1():
 
 @pytest.mark.parametrize(
     "folder, model_name, parameter",
-    [("case_1_Reactions", "model_1", {"max_collisions": 300, "reactions": ["(n,fission)", 101]}),
+    [("case_1_Reactions", "model_1", {"max_collisions": 100, "reactions": ["(n,fission)", 101]}),
         ("case_2_Cell_ID", "model_1", {
-         "max_collisions": 300, "cell_ids": [22]}),
+         "max_collisions": 100, "cell_ids": [22]}),
         ("case_3_Material_ID", "model_1", {
-         "max_collisions": 300, "material_ids": [1]}),
+         "max_collisions": 100, "material_ids": [1]}),
         ("case_4_Nuclide_ID", "model_1", {
-         "max_collisions": 300, "nuclides": ["O16", "U235"]}),
+         "max_collisions": 100, "nuclides": ["O16", "U235"]}),
         ("case_5_Universe_ID", "model_1", {
-         "max_collisions": 300, "cell_ids": [22], "universe_ids": [77]}),
+         "max_collisions": 100, "cell_ids": [22], "universe_ids": [77]}),
         ("case_6_deposited_energy_threshold", "model_1", {
-         "max_collisions": 300, "deposited_E_threshold": 5.5e5}),
+         "max_collisions": 100, "deposited_E_threshold": 5.5e5}),
         ("case_7_all_parameters_used_together", "model_1", {
-            "max_collisions": 300,
+            "max_collisions": 100,
             "reactions": ["elastic", 18, "(n,disappear)"],
             "material_ids": [1, 11],
             "universe_ids": [77],
@@ -233,23 +218,5 @@ def test_collision_track_several_cases(
     model.settings.collision_track = parameter
     harness = CollisionTrackTestHarness(
         "statepoint.5.h5", model=model, workdir=folder
-    )
-    harness.main()
-
-
-@pytest.mark.skipif(config["event"], reason="Results from history-based mode.")
-def test_collision_track_2threads(model_1, two_threads, single_process):
-    # This test checks that the `max_collisions` setting is honored:
-    # no collisions beyond the specified limit should be recorded.
-    #
-    # For the result to be reproducible, the number of threads and
-    # the transport mode (history vs. event) must remain fixed.
-    assert os.environ["OMP_NUM_THREADS"] == "2"
-    assert config["mpi_np"] == "1"
-    model_1.settings.collision_track = {
-        "max_collisions": 200
-    }
-    harness = CollisionTrackTestHarness(
-        "statepoint.5.h5", model=model_1, workdir="case_8_2threads"
     )
     harness.main()

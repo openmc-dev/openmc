@@ -114,8 +114,8 @@ KalbachMann::KalbachMann(hid_t group)
   } // incoming energies
 }
 
-void KalbachMann::sample(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+void KalbachMann::sample_params(
+  double E_in, double& E_out, double& km_a, double& km_r, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor
   int i;
@@ -169,53 +169,66 @@ void KalbachMann::sample(
   }
 
   double E_l_k = distribution_[l].e_out[k];
-  double p_l_k = distribution_[l].p[k];
-  double km_r, km_a;
-  if (distribution_[l].interpolation == Interpolation::histogram) {
-    // Histogram interpolation
-    if (p_l_k > 0.0 && k >= n_discrete) {
-      E_out = E_l_k + (r1 - c_k) / p_l_k;
-    } else {
-      E_out = E_l_k;
-    }
-
-    // Determine Kalbach-Mann parameters
+  if (k < n_discrete) {
+    // Discrete case
+    E_out = E_l_k;
     km_r = distribution_[l].r[k];
     km_a = distribution_[l].a[k];
 
   } else {
-    // Linear-linear interpolation
-    double E_l_k1 = distribution_[l].e_out[k + 1];
-    double p_l_k1 = distribution_[l].p[k + 1];
+    // Continuous case
+    double p_l_k = distribution_[l].p[k];
+    if (distribution_[l].interpolation == Interpolation::histogram) {
+      // Histogram interpolation
+      if (p_l_k > 0.0) {
+        E_out = E_l_k + (r1 - c_k) / p_l_k;
+      } else {
+        E_out = E_l_k;
+      }
 
-    double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
-    if (frac == 0.0) {
-      E_out = E_l_k + (r1 - c_k) / p_l_k;
+      // Determine Kalbach-Mann parameters
+      km_r = distribution_[l].r[k];
+      km_a = distribution_[l].a[k];
+
     } else {
-      E_out =
-        E_l_k +
-        (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
-          p_l_k) /
-          frac;
+      // Linear-linear interpolation
+      double E_l_k1 = distribution_[l].e_out[k + 1];
+      double p_l_k1 = distribution_[l].p[k + 1];
+
+      double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
+      if (frac == 0.0) {
+        E_out = E_l_k + (r1 - c_k) / p_l_k;
+      } else {
+        E_out =
+          E_l_k +
+          (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
+            p_l_k) /
+            frac;
+      }
+
+      // Determine Kalbach-Mann parameters
+      km_r = distribution_[l].r[k] +
+             (E_out - E_l_k) / (E_l_k1 - E_l_k) *
+               (distribution_[l].r[k + 1] - distribution_[l].r[k]);
+      km_a = distribution_[l].a[k] +
+             (E_out - E_l_k) / (E_l_k1 - E_l_k) *
+               (distribution_[l].a[k + 1] - distribution_[l].a[k]);
     }
 
-    // Determine Kalbach-Mann parameters
-    km_r = distribution_[l].r[k] +
-           (E_out - E_l_k) / (E_l_k1 - E_l_k) *
-             (distribution_[l].r[k + 1] - distribution_[l].r[k]);
-    km_a = distribution_[l].a[k] +
-           (E_out - E_l_k) / (E_l_k1 - E_l_k) *
-             (distribution_[l].a[k + 1] - distribution_[l].a[k]);
-  }
-
-  // Now interpolate between incident energy bins i and i + 1
-  if (k >= n_discrete) {
+    // Now interpolate between incident energy bins i and i + 1
     if (l == i) {
       E_out = E_1 + (E_out - E_i_1) * (E_K - E_1) / (E_i_K - E_i_1);
     } else {
       E_out = E_1 + (E_out - E_i1_1) * (E_K - E_1) / (E_i1_K - E_i1_1);
     }
   }
+}
+
+void KalbachMann::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  double km_r, km_a;
+  sample_params(E_in, E_out, km_a, km_r, seed);
 
   // Sampled correlated angle from Kalbach-Mann parameters
   if (prn(seed) > km_r) {
@@ -225,6 +238,16 @@ void KalbachMann::sample(
     double r1 = prn(seed);
     mu = std::log(r1 * std::exp(km_a) + (1.0 - r1) * std::exp(-km_a)) / km_a;
   }
+}
+double KalbachMann::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  double km_r, km_a;
+  sample_params(E_in, E_out, km_a, km_r, seed);
+
+  // https://docs.openmc.org/en/latest/methods/neutron_physics.html#equation-KM-pdf-angle
+  return km_a / (2 * std::sinh(km_a)) *
+         (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu));
 }
 
 } // namespace openmc

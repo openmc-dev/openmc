@@ -37,11 +37,13 @@
     <random_ray>
       <distance_inactive>100.0</distance_inactive>
       <distance_active>400.0</distance_active>
-      <source type="independent" strength="1.0" particle="neutron">
-        <space type="box">
-          <parameters>0.0 -5.0 -5.0 40.0 5.0 5.0</parameters>
-        </space>
-      </source>
+      <ray_source>
+        <source type="independent" strength="1.0" particle="neutron">
+          <space type="box">
+            <parameters>0.0 -5.0 -5.0 40.0 5.0 5.0</parameters>
+          </space>
+        </source>
+      </ray_source>
       <source_shape>flat</source_shape>
       <sample_method>s2</sample_method>
       <source_region_meshes>

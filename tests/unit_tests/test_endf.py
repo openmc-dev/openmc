@@ -2,6 +2,17 @@ from openmc.data import endf
 from pytest import approx
 
 
+def test_evaluation_from_material(endf_data):
+    filename = f'{endf_data}/neutrons/n-001_H_001.endf'
+    material = endf.get_evaluations(filename)[0]
+    evaluation = endf.Evaluation(material)
+
+    assert evaluation.material == material.MAT
+    assert evaluation.gnds_name == 'H1'
+    assert evaluation.section == material.section_text
+    assert evaluation.reaction_list == material[1, 451]['section_list']
+
+
 def test_float_endf():
     assert endf.float_endf('+3.2146') == approx(3.2146)
     assert endf.float_endf('.12345') == approx(0.12345)

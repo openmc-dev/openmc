@@ -10,6 +10,7 @@
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
 #include "openmc/string_utils.h"
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
@@ -260,25 +261,33 @@ std::pair<double, array<int, 3>> RectLattice::distance(
   // Determine the oncoming edge.
   double x0 {copysign(0.5 * pitch_[0], u.x)};
   double y0 {copysign(0.5 * pitch_[1], u.y)};
-  double z0;
 
-  double d = std::min(
-    u.x != 0.0 ? (x0 - x) / u.x : INFTY, u.y != 0.0 ? (y0 - y) / u.y : INFTY);
+  // Evaluate the distance to each oncoming edge independently. Comparing these
+  // distances directly (rather than reconstructing the crossing position)
+  // avoids the floating-point cancellation that occurs for large pitches.
+  double dx = u.x != 0.0 ? (x0 - x) / u.x : INFTY;
+  double dy = u.y != 0.0 ? (y0 - y) / u.y : INFTY;
+  double dz = INFTY;
   if (is_3d_) {
-    z0 = copysign(0.5 * pitch_[2], u.z);
-    d = std::min(d, u.z != 0.0 ? (z0 - z) / u.z : INFTY);
+    double z0 {copysign(0.5 * pitch_[2], u.z)};
+    dz = u.z != 0.0 ? (z0 - z) / u.z : INFTY;
   }
 
-  // Determine which lattice boundaries are being crossed
+  // The distance to the nearest lattice boundary is the smallest axial
+  // distance.
+  double d = std::min({dx, dy, dz});
+
+  // Determine which lattice boundaries are being crossed. The axis attaining
+  // the minimum is exactly equal to d, so at least one translation is always
+  // set for a finite crossing; a near-equal second axis indicates a corner
+  // crossing.
   array<int, 3> lattice_trans = {0, 0, 0};
-  if (u.x != 0.0 && std::abs(x + u.x * d - x0) < FP_PRECISION)
+  if (isclose(d, dx, FP_COINCIDENT, FP_PRECISION))
     lattice_trans[0] = copysign(1, u.x);
-  if (u.y != 0.0 && std::abs(y + u.y * d - y0) < FP_PRECISION)
+  if (isclose(d, dy, FP_COINCIDENT, FP_PRECISION))
     lattice_trans[1] = copysign(1, u.y);
-  if (is_3d_) {
-    if (u.z != 0.0 && std::abs(z + u.z * d - z0) < FP_PRECISION)
-      lattice_trans[2] = copysign(1, u.z);
-  }
+  if (is_3d_ && isclose(d, dz, FP_COINCIDENT, FP_PRECISION))
+    lattice_trans[2] = copysign(1, u.z);
 
   return {d, lattice_trans};
 }
@@ -336,6 +345,26 @@ Position RectLattice::get_local_position(
     r.z -= (lower_left_.z + (i_xyz[2] + 0.5) * pitch_.z);
   }
   return r;
+}
+
+//==============================================================================
+
+Direction RectLattice::get_normal(
+  const array<int, 3>& i_xyz, bool& is_valid) const
+{
+  is_valid = false;
+  Direction dir = {0.0, 0.0, 0.0};
+  if ((std::abs(i_xyz[0]) == 1) && (i_xyz[1] == 0) && (i_xyz[2] == 0)) {
+    is_valid = true;
+    dir[0] = std::copysign(1.0, i_xyz[0]);
+  } else if ((i_xyz[0] == 0) && (std::abs(i_xyz[1]) == 1) && (i_xyz[2] == 0)) {
+    is_valid = true;
+    dir[1] = std::copysign(1.0, i_xyz[1]);
+  } else if ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (std::abs(i_xyz[2]) == 1)) {
+    is_valid = true;
+    dir[2] = std::copysign(1.0, i_xyz[2]);
+  }
+  return dir;
 }
 
 //==============================================================================
@@ -982,6 +1011,91 @@ Position HexLattice::get_local_position(
   }
 
   return r;
+}
+
+//==============================================================================
+
+Direction HexLattice::get_normal(
+  const array<int, 3>& i_xyz, bool& is_valid) const
+{
+  // Short description of the direction vectors used here.  The beta, gamma, and
+  // delta vectors point towards the flat sides of each hexagonal tile.
+  // Y - orientation:
+  //   basis0 = (1, 0)
+  //   basis1 = (-1/sqrt(3), 1)   = +120 degrees from basis0
+  //   beta   = (sqrt(3)/2, 1/2)  = +30 degrees from basis0
+  //   gamma  = (sqrt(3)/2, -1/2) = -60 degrees from beta
+  //   delta  = (0, 1)            = +60 degrees from beta
+  // X - orientation:
+  //   basis0 = (1/sqrt(3), -1)
+  //   basis1 = (0, 1)            = +120 degrees from basis0
+  //   beta   = (1, 0)            = +30 degrees from basis0
+  //   gamma  = (1/2, -sqrt(3)/2) = -60 degrees from beta
+  //   delta  = (1/2, sqrt(3)/2)  = +60 degrees from beta
+
+  is_valid = false;
+  Direction dir = {0.0, 0.0, 0.0};
+  if ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (std::abs(i_xyz[2]) == 1)) {
+    is_valid = true;
+    dir[2] = std::copysign(1.0, i_xyz[2]);
+  } else if ((i_xyz[2] == 0) &&
+             std::max({std::abs(i_xyz[0]), std::abs(i_xyz[1]),
+               std::abs(i_xyz[0] + i_xyz[1])}) == 1) {
+    is_valid = true;
+    // beta direction
+    if ((i_xyz[0] == 1) && (i_xyz[1] == 0)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.5 * std::sqrt(3.0);
+        dir[1] = 0.5;
+      } else {
+        dir[0] = 1.0;
+        dir[1] = 0.0;
+      }
+    } else if ((i_xyz[0] == -1) && (i_xyz[1] == 0)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = -0.5 * std::sqrt(3.0);
+        dir[1] = -0.5;
+      } else {
+        dir[0] = -1.0;
+        dir[1] = 0.0;
+      }
+      // gamma direction
+    } else if ((i_xyz[0] == 1) && (i_xyz[1] == -1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.5 * std::sqrt(3.0);
+        dir[1] = -0.5;
+      } else {
+        dir[0] = 0.5;
+        dir[1] = -0.5 * std::sqrt(3.0);
+      }
+    } else if ((i_xyz[0] == -1) && (i_xyz[1] == 1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = -0.5 * std::sqrt(3.0);
+        dir[1] = 0.5;
+      } else {
+        dir[0] = -0.5;
+        dir[1] = 0.5 * std::sqrt(3.0);
+      }
+      // delta direction
+    } else if ((i_xyz[0] == 0) && (i_xyz[1] == 1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.0;
+        dir[1] = 1.0;
+      } else {
+        dir[0] = 0.5;
+        dir[1] = 0.5 * std::sqrt(3.0);
+      }
+    } else if ((i_xyz[0] == 0) && (i_xyz[1] == -1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.0;
+        dir[1] = -1.0;
+      } else {
+        dir[0] = -0.5;
+        dir[1] = -0.5 * std::sqrt(3.0);
+      }
+    }
+  }
+  return dir;
 }
 
 //==============================================================================

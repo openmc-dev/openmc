@@ -133,6 +133,28 @@ def test_attributes(pu239):
     assert pu239.atomic_weight_ratio == pytest.approx(236.9986)
 
 
+def test_from_endf_material(endf_data):
+    filename = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
+    material = openmc.data.endf.get_evaluations(filename)[0]
+
+    data = openmc.data.IncidentNeutron.from_endf(material)
+
+    assert data.name == 'H1'
+    assert data.atomic_number == 1
+    assert data.mass_number == 1
+    assert 2 in data.reactions
+
+
+def test_fission_energy_from_endf_material(endf_data):
+    filename = os.path.join(endf_data, 'neutrons', 'n-092_U_235.endf')
+    material = openmc.data.endf.get_evaluations(filename)[0]
+    neutron = openmc.data.IncidentNeutron.from_endf(material)
+
+    data = openmc.data.FissionEnergyRelease.from_endf(material, neutron)
+
+    assert data.fragments(0.0) > 0.0
+
+
 def test_fission_energy(pu239):
     fer = pu239.fission_energy
     assert isinstance(fer, openmc.data.FissionEnergyRelease)

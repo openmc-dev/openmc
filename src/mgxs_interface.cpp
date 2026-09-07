@@ -237,6 +237,19 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
                 "library file!");
   }
 
+  // Calculate approximate default inverse velocity data
+  for (int i = 0; i < energy_bins_.size() - 1; ++i) {
+    double e_min = std::max(energy_bins_[i + 1], 1e-5);
+    double e_max = energy_bins_[i];
+    double alpha = 1.0 / (C_LIGHT * std::log(e_max / e_min));
+    double k_max = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_max);
+    double k_min = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_min);
+    double inv_v =
+      alpha * (2.0 * (std::atanh(1.0 / k_max) - std::atanh(1.0 / k_min)) -
+                (k_max - k_min));
+    default_inverse_velocity_.push_back(inv_v);
+  }
+
   // Close MGXS HDF5 file
   file_close(file_id);
 }

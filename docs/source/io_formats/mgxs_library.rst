@@ -133,6 +133,10 @@ Temperature-dependent data, provided for temperature <TTT>K.
              This dataset is optional. This is a 1-D vector if `representation`
              is "isotropic", or a 3-D vector if `representation` is "angle"
              with dimensions of [polar][azimuthal][groups].
+	     When this data is not available, an approximation using the
+	     group energy boundaries is used. For more information see
+	     the particle speed subsection in the multigroup-data section
+	     of the theory manual.
 
 **/<library name>/<TTT>K/scatter_data/**
 

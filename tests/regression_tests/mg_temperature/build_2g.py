@@ -227,7 +227,7 @@ def analytical_solution_2g_therm(xsmin, xsmax=None, wgt=1.0):
     L = np.array([sa[0] + ss12, 0.0, -ss12, sa[1]]).reshape(2, 2)
     Q = np.array([nsf[0], nsf[1], 0.0, 0.0]).reshape(2, 2)
     arr = np.linalg.inv(L).dot(Q)
-    return np.amax(np.linalg.eigvals(arr))
+    return np.amax(np.linalg.eigvals(arr).real)
 
 
 def build_inf_model(xsnames, xslibname, temperature, tempmethod='nearest'):

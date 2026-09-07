@@ -7,13 +7,19 @@
 #include <numeric>   // for accumulate
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
+#include <unordered_set>
 
+#include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/xml_interface.h"
+
+namespace {
+std::unordered_set<std::string> decay_spectrum_missing_chain_nuclides;
+}
 
 namespace openmc {
 
@@ -546,14 +552,9 @@ double Tabular::sample_unbiased(uint64_t* seed) const
   double c = prn(seed);
 
   // Find first CDF bin which is above the sampled value
-  double c_i = c_[0];
-  int i;
-  std::size_t n = c_.size();
-  for (i = 0; i < n - 1; ++i) {
-    if (c <= c_[i + 1])
-      break;
-    c_i = c_[i + 1];
-  }
+  auto c_iter = std::lower_bound(c_.begin() + 1, c_.end(), c);
+  int i = std::distance(c_.begin(), c_iter) - 1;
+  double c_i = c_[i];
 
   // Determine bounding PDF values
   double x_i = x_[i];
@@ -758,6 +759,8 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     dist = UPtrDist {new Tabular(node)};
   } else if (type == "mixture") {
     dist = UPtrDist {new Mixture(node)};
+  } else if (type == "decay_spectrum") {
+    dist = UPtrDist {new DecaySpectrum(node)};
   } else if (type == "muir") {
     openmc::fatal_error(
       "'muir' distributions are now specified using the openmc.stats.muir() "
@@ -766,6 +769,122 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     openmc::fatal_error("Invalid distribution type: " + type);
   }
   return dist;
+}
+
+//==============================================================================
+// DecaySpectrum implementation
+//==============================================================================
+
+DecaySpectrum::DecaySpectrum(pugi::xml_node node)
+{
+  // Read the region volume [cm^3] needed for absolute emission rate
+  if (!check_for_node(node, "volume"))
+    fatal_error("DecaySpectrum: 'volume' attribute is required.");
+  double volume = std::stod(get_node_value(node, "volume"));
+
+  // Read nuclide names and atom densities from XML
+  vector<int> nuclide_indices;
+  vector<double> atoms;
+  auto names = get_node_array<std::string>(node, "nuclides");
+  auto densities = get_node_array<double>(node, "parameters");
+  if (names.size() != densities.size()) {
+    fatal_error("DecaySpectrum nuclides and parameters must have the same "
+                "length.");
+  }
+
+  for (size_t i = 0; i < names.size(); ++i) {
+    const auto& name = names[i];
+    double density = densities[i];
+
+    // Look up nuclide in the depletion chain
+    auto it = data::chain_nuclide_map.find(name);
+    if (it == data::chain_nuclide_map.end()) {
+      if (decay_spectrum_missing_chain_nuclides.insert(name).second) {
+        warning("Nuclide '" + name +
+                "' appears in a DecaySpectrum source but is not present in "
+                "the depletion chain; it will be ignored.");
+      }
+      continue;
+    }
+
+    int nuclide_index = it->second;
+    const auto& chain_nuc = data::chain_nuclides[nuclide_index];
+    const Distribution* photon_dist = chain_nuc->photon_energy();
+    if (!photon_dist)
+      continue;
+
+    // Skip non-positive densities and warn if negative
+    if (density <= 0.0) {
+      if (density < 0.0) {
+        warning("Nuclide '" + name +
+                "' has a negative density in a DecaySpectrum source; it will "
+                "be ignored.");
+      }
+      continue;
+    }
+
+    // atoms = density [atom/b-cm] * 1e24 [b/cm^2] * volume [cm^3]
+    double atoms_i = density * 1.0e24 * volume;
+
+    nuclide_indices.push_back(nuclide_index);
+    atoms.push_back(atoms_i);
+  }
+
+  init(std::move(nuclide_indices), atoms);
+}
+
+void DecaySpectrum::init(
+  vector<int> nuclide_indices, const vector<double>& atoms)
+{
+  if (nuclide_indices.size() != atoms.size()) {
+    fatal_error("DecaySpectrum nuclide index and atoms arrays must have "
+                "the same length.");
+  }
+
+  vector<double> probs;
+  probs.reserve(nuclide_indices.size());
+  for (size_t i = 0; i < nuclide_indices.size(); ++i) {
+    // Distribution integral is in [photons/s/atom]; multiplying by atoms gives
+    // the total emission rate [photons/s] for this nuclide.
+    const auto* dist =
+      data::chain_nuclides[nuclide_indices[i]]->photon_energy();
+    probs.push_back(atoms[i] * dist->integral());
+  }
+
+  nuclide_indices_ = std::move(nuclide_indices);
+  integral_ = std::accumulate(probs.begin(), probs.end(), 0.0);
+  if (nuclide_indices_.empty() || integral_ <= 0.0) {
+    fatal_error("DecaySpectrum source did not resolve any nuclides with decay "
+                "photon spectra and positive atom densities. Ensure "
+                "OPENMC_CHAIN_FILE is set and matches the nuclides in the "
+                "source definition.");
+  }
+  di_.assign(probs);
+}
+
+DecaySpectrum::Sample DecaySpectrum::sample_with_parent(uint64_t* seed) const
+{
+  size_t idx = di_.sample(seed);
+  int parent_nuclide = nuclide_indices_[idx];
+  const auto* dist = data::chain_nuclides[parent_nuclide]->photon_energy();
+  auto [energy, weight] = dist->sample(seed);
+  return {energy, weight, parent_nuclide};
+}
+
+std::pair<double, double> DecaySpectrum::sample(uint64_t* seed) const
+{
+  auto sample = sample_with_parent(seed);
+  return {sample.energy, sample.weight};
+}
+
+double DecaySpectrum::integral() const
+{
+  return integral_;
+}
+
+double DecaySpectrum::sample_unbiased(uint64_t* seed) const
+{
+  return sample_with_parent(seed).energy;
 }
 
 } // namespace openmc

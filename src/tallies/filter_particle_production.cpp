@@ -19,7 +19,7 @@ void ParticleProductionFilter::get_all_bins(
 
   // Loop over secondary bank entries
   for (int bank_idx = start_idx; bank_idx < end_idx; bank_idx++) {
-    const auto& site = p.secondary_bank(bank_idx);
+    const auto& site = p.local_secondary_bank(bank_idx);
 
     // Find which particle-type slot this secondary belongs to
     auto it = type_to_index_.find(site.particle.pdg_number());

@@ -34,6 +34,7 @@ def geometry():
         {"max_collisions": 200, "mcpl": True}
 
     ],
+    ids=str
 )
 def test_xml_serialization(parameter, run_in_tmpdir):
     """Check that the different use cases can be written and read in XML."""
@@ -45,7 +46,7 @@ def test_xml_serialization(parameter, run_in_tmpdir):
     assert read_settings.collision_track == parameter
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def model():
     """Simple hydrogen sphere divided in two hemispheres
     by a z-plane to form 2 cells."""
@@ -127,3 +128,43 @@ def test_format_similarity(run_in_tmpdir, model):
     np.testing.assert_allclose(data_h5, data_mcpl, rtol=1e-05)
     # tolerance not that low due to the strings that is saved in MCPL,
     # not enough precision!
+
+
+def test_photon_particles(run_in_tmpdir, model):
+    """Test that the collision track can be used to track photon particles."""
+    model.settings.collision_track = {"max_collisions": 200, "cell_ids": [1, 2]}
+
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box(*model.geometry.bounding_box),
+        energy=openmc.stats.delta_function(1e5),
+        particle='photon'
+    )
+    model.run()
+
+    with h5py.File("collision_track.h5", "r") as f:
+        source = f["collision_track_bank"]
+
+        assert len(source) < 200
+
+        allowed_particles = (openmc.ParticleType.PHOTON, openmc.ParticleType.ELECTRON)
+
+        for point in source:
+            particle_type = openmc.ParticleType(point['particle'])
+            assert particle_type in allowed_particles
+
+            if particle_type == openmc.ParticleType.ELECTRON:
+                assert point['nuclide_id'] == 0
+
+
+def test_collision_track_two_threads(model, run_in_tmpdir):
+    # This test checks that the `max_collisions` setting is honored:
+    # no collisions beyond the specified limit should be recorded.
+    #
+    # The exact set of events in the capped bank is not reproducible with
+    # multiple threads because the bank stores whichever thread appends first
+    # until capacity is reached.
+    model.settings.collision_track = {"max_collisions": 200}
+    model.run(threads=2, particles=500)
+
+    collision_track = openmc.read_collision_track_hdf5("collision_track.h5")
+    assert len(collision_track) == 200

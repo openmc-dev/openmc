@@ -289,6 +289,48 @@ sections. This allows flexibility for the model to use highly anisotropic
 scattering information in the water while the fuel can be simulated with linear
 or even isotropic scattering.
 
+Particle Speed
+--------------
+
+When using a multigroup representation of cross sections, the particle speed has
+meaning only in an average sense. The particle speed is important when modeling
+dynamic behavior. OpenMC calculates the particle speed using the inverse
+velocity multigroup data if it is available. If such data is not available,
+OpenMC uses an approximate velocity using the group energy bounds in the
+following way:
+
+.. math::
+
+   \frac{1}{v_g} = \int_{E_{\text{min}}^g}^{E_{\text{max}}^g} \frac{1}{v(E)} \frac{\alpha}{E} dE
+
+Where :math:`E_{\text{min}}^g` and :math:`E_{\text{max}}^g` are the group energy
+boundaries for group :math:`g`. :math:`v(E)` is the neutron velocity calculated
+using relativistic kinematics, :math:`\alpha` is a normalization constant for the
+:math:`\frac{1}{E}` spectrum.
+
+This equation is valid when inside the group boundaries the neutron spectrum
+follows a typical :math:`\frac{1}{E}` slowing down spectrum. This assumption is
+widely used when generating fine group neutron cross section data libraries from
+continuous energy data.
+
+The solution to this equation is:
+
+.. math::
+
+   \frac{1}{v_g} = \frac{1}{c \log\left(\frac{E_{\text{max}}^g}{E_{\text{min}}^g}\right)}
+   \left[ 2(\operatorname{arctanh}(k_{\text{max}}^{-1}) - \operatorname{arctanh}(k_{\text{min}}^{-1}))
+   - (k_{\text{max}}-k_{\text{min}}) \right]
+
+where :math:`c` is the speed of light and :math:`k_{\text{max}}`,
+:math:`k_{\text{min}}` are defined by a change of variables:
+
+.. math::
+
+   k = \sqrt{1+\frac{2 m_n c^2}{E}}
+
+where :math:`E` is the particle kinetic energy and :math:`m_n` is the neutron
+rest mass.
+
 .. _logarithmic mapping technique:
    https://mcnp.lanl.gov/pdf_files/TechReport_2014_LANL_LA-UR-14-24530_Brown.pdf
 .. _Hwang: https://doi.org/10.13182/NSE87-A16381

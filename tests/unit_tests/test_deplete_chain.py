@@ -90,6 +90,24 @@ def test_unstable_nuclides(simple_chain: Chain):
     assert [nuc.name for nuc in simple_chain.unstable_nuclides] == ["A", "B"]
 
 
+def test_from_xml_empty_source(tmp_path):
+    """Ignore legacy chain sources with no distribution parameters."""
+    chain_path = tmp_path / 'chain.xml'
+    chain_path.write_text("""\
+<depletion_chain>
+  <nuclide name="Sm164" half_life="1.226" decay_modes="0"
+    decay_energy="0.0" reactions="0">
+    <source type="discrete" particle="neutron">
+      <parameters> </parameters>
+    </source>
+  </nuclide>
+</depletion_chain>
+""")
+
+    chain = Chain.from_xml(chain_path)
+    assert chain['Sm164'].sources == {}
+
+
 def test_stable_nuclides(simple_chain: Chain):
     assert [nuc.name for nuc in simple_chain.stable_nuclides] == ["H1", "C"]
 
@@ -244,6 +262,29 @@ def test_form_matrix(simple_chain):
     new_mat = chain.form_matrix(react[0], f_yields)
     for r, c in product(range(3), range(3)):
         assert new_mat[r, c] == mat[r, c]
+
+
+def test_decay_matrix(simple_chain):
+    """Test that decay_matrix contains only radioactive decay terms."""
+    # Nuclide order: H1(0), A(1), B(2), C(3)
+    decay_A = log(2) / 2.36520E+04
+    decay_B = log(2) / 3.29040E+04
+
+    expected = np.zeros((4, 4))
+    expected[1, 1] = -decay_A           # Loss: A decays
+    expected[2, 1] = decay_A * 0.6      # A -> B (branching ratio 0.6)
+    expected[3, 1] = decay_A * 0.4      # A -> C (branching ratio 0.4)
+    expected[1, 2] = decay_B            # B -> A (branching ratio 1.0)
+    expected[2, 2] = -decay_B           # Loss: B decays
+
+    assert np.allclose(expected, simple_chain.decay_matrix.toarray())
+
+
+def test_decay_matrix_cached(simple_chain):
+    """Test that decay_matrix is lazily computed and returns the same object."""
+    m1 = simple_chain.decay_matrix
+    m2 = simple_chain.decay_matrix
+    assert m1 is m2
 
 
 def test_getitem():

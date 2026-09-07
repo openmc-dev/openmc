@@ -1081,28 +1081,32 @@ lifetimes.
 
 In OpenMC, the random ray adjoint solver is implemented simply by transposing
 the scattering matrix, swapping :math:`\nu\Sigma_f` and :math:`\chi`, and then
-running a normal transport solve. When no external fixed source is present, no
-additional changes are needed in the transport process. However, if an external
-fixed forward source is present in the simulation problem, then an additional
-step is taken to compute the accompanying fixed adjoint source. In OpenMC, the
-adjoint flux does *not* represent a response function for a particular detector
-region. Rather, the adjoint flux is the global response, making it appropriate
-for use with weight window generation schemes for global variance reduction.
-Thus, if using a fixed source, the external source for the adjoint mode is
-simply computed as being :math:`1 / \phi`, where :math:`\phi` is the forward
-scalar flux that results from a normal forward solve (which OpenMC will run
-first automatically when in adjoint mode). The adjoint external source will be
-computed for each source region in the simulation mesh, independent of any
-tallies. The adjoint external source is always flat, even when a linear
-scattering and fission source shape is used. When in adjoint mode, all reported
-results (e.g., tallies, eigenvalues, etc.) are derived from the adjoint flux,
-even when the physical meaning is not necessarily obvious. These values are
-still reported, though we emphasize that the primary use case for adjoint mode
-is for producing adjoint flux tallies to support subsequent perturbation studies
-and weight window generation.
+running a normal transport solve. When no external fixed forward source is 
+present, or if an adjoint fixed source is specifically provided, no additional 
+changes are needed in the transport process. This adjoint source can 
+correspond, for example, to a detector response function in a particular 
+region. However, if an external fixed forward source is present in the 
+simulation problem without an adjoint fixed source, an additional step is taken 
+to compute the accompanying forward-weighted adjoint source. In this case, the
+adjoint flux does *not* represent the importance of locations in phase space to 
+detector response; rather, the "response" in question is a uniform distribution 
+of Monte Carlo particle density, making the importance provided by the adjoint 
+flux appropriate for use with weight window generation schemes for global 
+variance reduction. Thus, if using a fixed source, the forward-weighted 
+external source for adjoint mode is simply computed as being :math:`1 / \phi`, 
+where :math:`\phi` is the forward scalar flux that results from a normal 
+forward solve (which OpenMC will run first automatically when in adjoint mode). 
+The adjoint external source will be computed for each source region in the 
+simulation mesh, independent of any tallies. The adjoint external source is 
+always flat, even when a linear scattering and fission source shape is used. 
 
-Note that the adjoint :math:`k_{eff}` is statistically the same as the forward
-:math:`k_{eff}`, despite the flux distributions taking different shapes.
+When in adjoint mode, all reported results (e.g., tallies, eigenvalues, etc.) 
+are derived from the adjoint flux, even when the physical meaning is not 
+necessarily obvious. These values are still reported, though we emphasize that 
+the primary use case for adjoint mode is for producing adjoint flux tallies to 
+support subsequent perturbation studies and weight window generation. Note 
+however that the adjoint :math:`k_{eff}` is statistically the same as the 
+forward :math:`k_{eff}`, despite the flux distributions taking different shapes.
 
 ---------------------------
 Fundamental Sources of Bias

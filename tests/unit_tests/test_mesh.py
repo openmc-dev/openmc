@@ -1,4 +1,4 @@
-from math import pi
+from math import pi, sqrt
 from tempfile import TemporaryDirectory
 from pathlib import Path
 import itertools
@@ -453,7 +453,9 @@ def simple_umesh(request):
             return sp.meshes[1]
 
 
-@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
+@pytest.mark.skipif(
+    not openmc.lib.feature_enabled('dagmc'), reason="DAGMC not enabled."
+)
 @pytest.mark.parametrize('export_type', ('.vtk', '.vtu'))
 def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
@@ -490,13 +492,28 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
         simple_umesh.write_data_to_vtk(datasets={'mean': ref_data[:-2]}, filename=filename)
 
 
-@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
-def test_write_vtkhdf(request, run_in_tmpdir):
+vtkhdf_tests = [
+    (
+        Path("test_mesh_dagmc_tets.vtk"),
+        "moab"
+    ),
+    (
+        Path("test_mesh_hexes.exo"),
+        "libmesh"
+    )
+]
+@pytest.mark.parametrize('mesh_file, mesh_library', vtkhdf_tests)
+def test_write_vtkhdf(mesh_file, mesh_library, request, run_in_tmpdir):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
     statepoint file and writes the mesh data to vtk and vtkhdf files. It is
     necessary to read in the unstructured mesh from a statepoint file to ensure
     it has all the required attributes
     """
+    if mesh_library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
+        pytest.skip("DAGMC not enabled.")
+    if mesh_library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
+        pytest.skip("LibMesh not enabled.")
+
     model = openmc.Model()
 
     surf1 = openmc.Sphere(r=1000.0, boundary_type="vacuum")
@@ -504,8 +521,8 @@ def test_write_vtkhdf(request, run_in_tmpdir):
     model.geometry = openmc.Geometry([cell1])
 
     umesh = openmc.UnstructuredMesh(
-        request.path.parent / "test_mesh_dagmc_tets.vtk",
-        "moab",
+        request.path.parent / mesh_file,
+        mesh_library,
         mesh_id = 1
     )
     mesh_filter = openmc.MeshFilter(umesh)
@@ -514,6 +531,8 @@ def test_write_vtkhdf(request, run_in_tmpdir):
     mesh_tally = openmc.Tally(name="test_tally")
     mesh_tally.filters = [mesh_filter]
     mesh_tally.scores = ["flux"]
+    if mesh_library == "libmesh":
+        mesh_tally.estimator = "collision"
 
     model.tallies = [mesh_tally]
 
@@ -555,6 +574,26 @@ def test_write_vtkhdf(request, run_in_tmpdir):
     # just ensure we can open the file without error
     with h5py.File("test_mesh.vtkhdf", "r"):
         ...
+
+    import vtk
+    reader = vtk.vtkHDFReader()
+    reader.SetFileName("test_mesh.vtkhdf")
+    reader.Update()
+
+    # Get mean from file and make sure it matches original data
+    num_elements = reader.GetOutput().GetNumberOfCells()
+    assert num_elements == umesh_from_sp.n_elements
+
+    num_vertices = reader.GetOutput().GetNumberOfPoints()
+    assert num_vertices == umesh_from_sp.vertices.shape[0]
+
+    arr = reader.GetOutput().GetCellData().GetArray("mean")
+    mean = np.array([arr.GetTuple1(i) for i in range(my_tally.mean.size)])
+    np.testing.assert_almost_equal(mean, my_tally.mean.flatten()/umesh_from_sp.volumes)
+
+    arr = reader.GetOutput().GetCellData().GetArray("std_dev")
+    std_dev = np.array([arr.GetTuple1(i) for i in range(my_tally.std_dev.size)])
+    np.testing.assert_almost_equal(std_dev, my_tally.std_dev.flatten()/umesh_from_sp.volumes)
 
 
 def test_mesh_get_homogenized_materials():
@@ -647,6 +686,103 @@ def test_material_volumes_regular_mesh(sphere_model, n_rays):
     np.testing.assert_almost_equal(volumes[mats[2].id], [1., 1., 1., 1., 0., 0., 0., 0.])
     assert volumes.by_element(4) == [(mats[1].id, 1.)]
     assert volumes.by_element(0) == [(mats[2].id, 1.)]
+
+
+def test_material_volumes_outside_geometry():
+    """Test a regular mesh that extends outside a spherical geometry."""
+    openmc.reset_auto_ids()
+
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+    mat.set_density('g/cm3', 1.0)
+
+    # In the first model, space outside the material sphere is undefined. In
+    # the reference model, a larger void cell fully contains the mesh.
+    inner = openmc.Sphere(r=1.0, boundary_type='vacuum')
+    model = openmc.Model(
+        geometry=openmc.Geometry([openmc.Cell(fill=mat, region=-inner)]),
+        materials=[mat],
+    )
+
+    inner_ref = openmc.Sphere(r=1.0)
+    outer_ref = openmc.Sphere(r=4.0, boundary_type='vacuum')
+    model_ref = openmc.Model(
+        geometry=openmc.Geometry([
+            openmc.Cell(fill=mat, region=-inner_ref),
+            openmc.Cell(region=+inner_ref & -outer_ref),
+        ]),
+        materials=[mat],
+    )
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-2.0, -2.0, -2.0)
+    mesh.upper_right = (2.0, 2.0, 2.0)
+    mesh.dimension = (4, 4, 4)
+
+    kwargs = {
+        'n_samples': (20, 20, 20),
+        'max_materials': 2,
+        'bounding_boxes': True,
+        'output': False,
+    }
+    volumes = mesh.material_volumes(model, **kwargs)
+    volumes_ref = mesh.material_volumes(model_ref, **kwargs)
+
+    assert volumes.has_bounding_boxes
+    assert volumes_ref.has_bounding_boxes
+
+    found_material = False
+    for i, element_volume in enumerate(mesh.volumes.ravel()):
+        by_material = dict(volumes.by_element(i))
+        by_material_ref = dict(volumes_ref.by_element(i))
+
+        assert by_material.keys() == by_material_ref.keys()
+        for material_id in by_material:
+            assert by_material[material_id] == pytest.approx(
+                by_material_ref[material_id], rel=1e-12, abs=1e-12)
+
+        assert None in by_material
+        assert sum(by_material.values()) == pytest.approx(element_volume)
+        found_material |= mat.id in by_material
+
+    assert found_material
+
+
+@pytest.mark.skipif(not openmc.lib.feature_enabled('dagmc'), reason="DAGMC not enabled.")
+def test_material_volumes_outside_dagmc_geometry():
+    """Test a mesh extending outside a root DAGMC universe."""
+    openmc.reset_auto_ids()
+
+    dagmc_path = (Path(__file__).parents[1] /
+                  'regression_tests/dagmc/legacy/dagmc.h5m')
+    dagmc_universe = openmc.DAGMCUniverse(dagmc_path)
+
+    fuel = openmc.Material(name='no-void fuel')
+    fuel.add_nuclide('U235', 0.03)
+    fuel.add_nuclide('U238', 0.97)
+    fuel.add_nuclide('O16', 2.0)
+    water = openmc.Material(name='41')
+    water.add_nuclide('H1', 2.0)
+    water.add_element('O', 1.0)
+
+    model = openmc.Model(
+        geometry=openmc.Geometry(dagmc_universe),
+        materials=[fuel, water],
+    )
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = dagmc_universe.bounding_box.lower_left - 5.0
+    mesh.upper_right = dagmc_universe.bounding_box.upper_right + 5.0
+    mesh.dimension = (3, 3, 3)
+
+    volumes = mesh.material_volumes(
+        model, n_samples=(4, 4, 4), output=False)
+
+    assert any(None in dict(volumes.by_element(i))
+               for i in range(volumes.num_elements))
+    for i, element_volume in enumerate(mesh.volumes.ravel()):
+        assert sum(dict(volumes.by_element(i)).values()) == pytest.approx(
+            element_volume)
 
 
 def test_material_volumes_cylindrical_mesh(sphere_model):
@@ -994,3 +1130,126 @@ def test_regular_mesh_get_indices_at_coords():
     assert isinstance(result_1d, tuple)
     assert len(result_1d) == 1
     assert result_1d == (5,)
+
+
+def test_rectilinear_mesh_get_indices_at_coords():
+    """Test get_indices_at_coords method for RectilinearMesh"""
+    # Create a 3x2x2 rectilinear mesh with non-uniform spacing
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = [0., 1., 5., 10.]
+    mesh.y_grid = [-10., -5., 0.]
+    mesh.z_grid = [-100., 0., 100.]
+
+    # Test lower-left corner maps to first voxel (0, 0, 0)
+    assert mesh.get_indices_at_coords([0.0, -10., -100.]) == (0, 0, 0)
+
+    # Test centroid of first voxel
+    assert mesh.get_indices_at_coords([0.5, -7.5, -50.]) == (0, 0, 0)
+
+    # Test centroid of last voxel maps correctly
+    assert mesh.get_indices_at_coords([7.5, -2.5, 50.]) == (2, 1, 1)
+
+    # Test upper_right corner maps to last voxel
+    assert mesh.get_indices_at_coords([10., 0., 100.]) == (2, 1, 1)
+
+    # Test a middle voxel
+    assert mesh.get_indices_at_coords([2., -5., 0.]) == (1, 1, 1)
+
+    # Test coordinates outside mesh bounds raise ValueError
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([-0.5, 0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([1.5, 0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, -0.5, 110.])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, -20., 110.])
+
+
+def test_SphericalMesh_get_indices_at_coords():
+    """Test get_indices_at_coords method for SphericalMesh"""
+
+    # Basic mesh with default phi and theta grids (single angular bin)
+    mesh = openmc.SphericalMesh(r_grid=(0, 5, 10))
+
+    assert mesh.get_indices_at_coords([3, 0, 0]) == (0, 0, 0)
+    assert mesh.get_indices_at_coords([0, 0, 3]) == (0, 0, 0)
+    assert mesh.get_indices_at_coords([0, 0, -3]) == (0, 0, 0)
+    assert mesh.get_indices_at_coords([7, 0, 0]) == (1, 0, 0)
+    assert mesh.get_indices_at_coords([10, 0, 0]) == (1, 0, 0)
+
+    # Out-of-bounds r
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([11, 0, 0])
+
+    mesh2 = openmc.SphericalMesh(r_grid=(2, 5, 10))
+    with pytest.raises(ValueError):
+        mesh2.get_indices_at_coords([1, 0, 0])
+
+    # Multi-bin angular grids: use points clearly inside bins
+    mesh3 = openmc.SphericalMesh(
+        r_grid=(0, 5, 10),
+        theta_grid=(0, pi/4, pi/2, pi),
+        phi_grid=(0, pi/2, pi, 3*pi/2, 2*pi)
+    )
+
+    # Near z-axis: theta~0 -> bin 0
+    assert mesh3.get_indices_at_coords([0.01, 0, 3]) == (0, 0, 0)
+
+    # theta in (0, pi/4) -> bin 0: [1, 0, 2] theta=arccos(2/sqrt(5))~0.46
+    assert mesh3.get_indices_at_coords([1, 0, 2]) == (0, 0, 0)
+
+    # theta in (pi/4, pi/2) -> bin 1: [2, 0, 1] theta=arccos(1/sqrt(5))~1.107
+    assert mesh3.get_indices_at_coords([2, 0, 1]) == (0, 1, 0)
+
+    # theta in (pi/2, pi) -> bin 2: [1, 0, -2] theta=arccos(-2/sqrt(5))~2.034
+    assert mesh3.get_indices_at_coords([1, 0, -2]) == (0, 2, 0)
+
+    # phi in (pi/2, pi) -> bin 1: [-1, 1, 0.5]
+    assert mesh3.get_indices_at_coords([-1, 1, 0.5]) == (0, 1, 1)
+
+    # phi in (pi, 3*pi/2) -> bin 2: [-1, -1, 0.5]
+    assert mesh3.get_indices_at_coords([-1, -1, 0.5]) == (0, 1, 2)
+
+    # phi in (3*pi/2, 2*pi) -> bin 3: [1, -1, 0.5]
+    assert mesh3.get_indices_at_coords([1, -1, 0.5]) == (0, 1, 3)
+
+    # Non-default origin
+    mesh4 = openmc.SphericalMesh(
+        r_grid=(0, 5, 10),
+        origin=(100, 200, 300)
+    )
+
+    assert mesh4.get_indices_at_coords([103, 200, 300]) == (0, 0, 0)
+    assert mesh4.get_indices_at_coords([100, 200, 307]) == (1, 0, 0)
+
+    with pytest.raises(ValueError):
+        mesh4.get_indices_at_coords([111, 200, 300])
+
+    # Degenerate case: point at origin with r_grid starting at 0
+    mesh5 = openmc.SphericalMesh(r_grid=(0, 5))
+    assert mesh5.get_indices_at_coords([0, 0, 0]) == (0, 0, 0)
+
+    # Out-of-bounds theta: restricted theta grid
+    mesh6 = openmc.SphericalMesh(
+        r_grid=(0, 10),
+        theta_grid=(0, pi/4)
+    )
+    with pytest.raises(ValueError):
+        mesh6.get_indices_at_coords([5, 0, 0])  # theta=pi/2 > pi/4
+
+    # Out-of-bounds phi: restricted phi grid
+    mesh7 = openmc.SphericalMesh(
+        r_grid=(0, 10),
+        phi_grid=(0, pi/2)
+    )
+    with pytest.raises(ValueError):
+        mesh7.get_indices_at_coords([-5, 0, 0])  # phi=pi > pi/2
+
+    # Diagonal point: verify r, theta, phi all computed correctly
+    r = 6.0
+    val = r / sqrt(3)
+    result = mesh3.get_indices_at_coords([val, val, val])
+    assert result[0] == 1  # r=6 in second bin [5, 10]
+    assert result[1] == 1  # theta=arccos(1/sqrt(3))~0.955, in (pi/4, pi/2)
+    assert result[2] == 0  # phi=pi/4, in [0, pi/2)

@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" depletable="true">
+      <density value="18.0" units="g/cm3"/>
+      <nuclide name="U235" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface id="1" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 5.0"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>100</particles>
+    <batches>2</batches>
+    <source type="independent" strength="1.0" particle="neutron">
+      <energy type="discrete">
+        <parameters>1000000.0 1.0</parameters>
+      </energy>
+    </source>
+    <create_fission_neutrons>true</create_fission_neutrons>
+    <shared_secondary_bank>false</shared_secondary_bank>
+  </settings>
+  <tallies>
+    <filter id="2" type="particle">
+      <bins>neutron</bins>
+    </filter>
+    <filter id="1" type="particleproduction">
+      <particles>neutron</particles>
+    </filter>
+    <tally id="1">
+      <filters>2 1</filters>
+      <scores>events</scores>
+      <estimator>analog</estimator>
+    </tally>
+  </tallies>
+</model>

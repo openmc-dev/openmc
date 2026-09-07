@@ -399,7 +399,7 @@ class CoupledOperator(OpenMCOperator):
 
         self.materials.export_to_xml(nuclides_to_ignore=self._decay_nucs)
 
-    def __call__(self, vec, source_rate):
+    def __call__(self, vec, source_rate) -> OperatorResult:
         """Runs a simulation.
 
         Simulation will abort under the following circumstances:

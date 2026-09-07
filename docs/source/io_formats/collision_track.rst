@@ -10,7 +10,7 @@ may also be written after each batch when multiple files are requested
 (``collision_track.N.h5``) or when the run is performed in parallel. The file
 contains the information needed to reconstruct each recorded collision.
 
-The current revision of the collision track file format is 1.1.
+The current revision of the collision track file format is 1.2.
 
 **/**
 
@@ -33,7 +33,7 @@ The current revision of the collision track file format is 1.1.
               - ``event_mt`` (*int*) -- ENDF MT number identifying the reaction.
               - ``delayed_group`` (*int*) -- Delayed neutron group index (non-zero for delayed events).
               - ``cell_id`` (*int*) -- ID of the cell in which the collision occurred.
-              - ``nuclide_id`` (*int*) -- ZA identifier of the nuclide (ZZZAAAM format).
+              - ``nuclide_id`` (*int*) -- PDG number of the nuclide (100ZZZAAAM).
               - ``material_id`` (*int*) -- ID of the material containing the collision site.
               - ``universe_id`` (*int*) -- ID of the universe containing the collision site.
               - ``n_collision`` (*int*) -- Collision counter for the particle history.

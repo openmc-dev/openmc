@@ -22,13 +22,8 @@ NBodyPhaseSpace::NBodyPhaseSpace(hid_t group)
   read_attribute(group, "q_value", Q_);
 }
 
-void NBodyPhaseSpace::sample(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+double NBodyPhaseSpace::sample_energy(double E_in, uint64_t* seed) const
 {
-  // By definition, the distribution of the angle is isotropic for an N-body
-  // phase space distribution
-  mu = uniform_distribution(-1., 1., seed);
-
   // Determine E_max parameter
   double Ap = mass_ratio_;
   double E_max = (Ap - 1.0) / Ap * (A_ / (A_ + 1.0) * E_in + Q_);
@@ -59,12 +54,29 @@ void NBodyPhaseSpace::sample(
         std::log(r5) * std::pow(std::cos(PI / 2.0 * r6), 2);
     break;
   default:
-    throw std::runtime_error {"N-body phase space with >5 bodies."};
+    fatal_error("N-body phase space with >5 bodies.");
   }
 
   // Now determine v and E_out
   double v = x / (x + y);
-  E_out = E_max * v;
+  return E_max * v;
+}
+
+void NBodyPhaseSpace::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  // By definition, the distribution of the angle is isotropic for an N-body
+  // phase space distribution
+  mu = uniform_distribution(-1., 1., seed);
+
+  E_out = sample_energy(E_in, seed);
+}
+
+double NBodyPhaseSpace::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  E_out = sample_energy(E_in, seed);
+  return 0.5;
 }
 
 } // namespace openmc

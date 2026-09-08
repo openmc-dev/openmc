@@ -352,7 +352,6 @@ const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
 vector<int64_t> work_index;
-vector<int64_t> phase1_work_index;
 
 int64_t simulation_tracks_completed {0};
 
@@ -396,15 +395,15 @@ void collect_sorted_history_secondary_banks(
   // Place each secondary according to its parent and progeny identifiers
   for (const auto& bank : thread_banks) {
     for (const auto& site : bank) {
-      if (site.parent_id < 0 ||
-          site.parent_id >=
+      if (site.parent_slot() < 0 ||
+          site.parent_slot() >=
             static_cast<int64_t>(simulation::progeny_per_particle.size())) {
-        fatal_error(fmt::format("Invalid parent_id {} for banked site "
+        fatal_error(fmt::format("Invalid parent slot {} for banked site "
                                 "(expected range [0, {})).",
-          site.parent_id, simulation::progeny_per_particle.size()));
+          site.parent_slot(), simulation::progeny_per_particle.size()));
       }
       int64_t idx =
-        simulation::progeny_per_particle[site.parent_id] + site.progeny_id;
+        simulation::progeny_per_particle[site.parent_slot()] + site.progeny_id;
       if (idx < 0 || idx >= n_progeny) {
         fatal_error("Mismatch detected between sum of all particle progeny and "
                     "secondary bank size during collection.");
@@ -747,10 +746,7 @@ void initialize_particle_track(
   // bank site. Only meaningful in shared-secondary mode, where a history is
   // spread over several Particle objects; harmless otherwise.
   if (!is_secondary) {
-    p.root_index() =
-      simulation::phase1_work_index.empty()
-        ? index_source - 1
-        : simulation::phase1_work_index[mpi::rank] + index_source - 1;
+    p.root_index() = phase1_first_root(mpi::rank) + index_source - 1;
   }
 
   // set random number seed
@@ -818,6 +814,67 @@ int64_t compute_transport_seed(int64_t particle_id)
     return (simulation::total_gen + overall_generation() - 1) *
              settings::n_particles +
            particle_id;
+  }
+}
+
+int64_t phase1_first_root(int rank)
+{
+  // Reproduces the partition calculate_work(settings::n_particles) produces,
+  // without depending on the current contents of simulation::work_index, which
+  // is overwritten for every secondary generation. The partition is a pure
+  // function of the primary count and the number of ranks, so it can be
+  // recomputed wherever it is needed instead of being snapshotted.
+  int64_t min_work = settings::n_particles / mpi::n_procs;
+  int64_t remainder = settings::n_particles % mpi::n_procs;
+  return rank < remainder
+           ? static_cast<int64_t>(rank) * (min_work + 1)
+           : remainder * (min_work + 1) +
+               (static_cast<int64_t>(rank) - remainder) * min_work;
+}
+
+int phase1_owner_of_root(int64_t root)
+{
+  int64_t min_work = settings::n_particles / mpi::n_procs;
+  int64_t remainder = settings::n_particles % mpi::n_procs;
+
+  // Ranks below the remainder carry one extra primary each. Roots below the
+  // boundary fall in that region; the rest divide evenly. When min_work is
+  // zero the boundary equals n_particles, so the second branch, which would
+  // divide by zero, is unreachable.
+  int64_t boundary = remainder * (min_work + 1);
+  if (root < boundary) {
+    return static_cast<int>(root / (min_work + 1));
+  }
+  return static_cast<int>(remainder + (root - boundary) / min_work);
+}
+
+void resolve_root_indices(
+  SharedArray<SourceSite>& sites, const SharedArray<SourceSite>* parents)
+{
+  // Every site has now been placed, so its placement key has been consumed and
+  // the field can be overwritten with the root of its history. A site's parent
+  // is a primary when parents is null, and an entry of the generation just
+  // transported otherwise; in the latter case that entry already carries its
+  // own root, so the value simply propagates down the tree.
+  int64_t n = sites.size();
+  int64_t n_parents = parents ? parents->size() : 0;
+  int64_t first_root = phase1_first_root(mpi::rank);
+
+#pragma omp parallel for schedule(static)
+  for (int64_t i = 0; i < n; ++i) {
+    int64_t slot = sites[i].parent_slot();
+    if (parents) {
+      if (slot < 0 || slot >= n_parents) {
+        // fatal_error aborts the process, so it is safe to call from inside a
+        // parallel region
+        fatal_error(fmt::format("Invalid parent slot {} while resolving root "
+                                "index (expected range [0, {})).",
+          slot, n_parents));
+      }
+      sites[i].root_index() = (*parents)[slot].root_index();
+    } else {
+      sites[i].root_index() = first_root + slot;
+    }
   }
 }
 
@@ -1014,11 +1071,6 @@ void transport_history_based_shared_secondary()
   simulation::shared_secondary_bank_read.clear();
   simulation::shared_secondary_bank_write.clear();
 
-  // Record the primary partition before calculate_work() starts rewriting
-  // work_index for each secondary generation. finalize_pulse_height_tallies()
-  // needs it to map a root index back to the rank that owns that history.
-  simulation::phase1_work_index = simulation::work_index;
-
   if (!model::active_pulse_height_tallies.empty()) {
     init_pulse_height_buffers();
   }
@@ -1053,6 +1105,7 @@ void transport_history_based_shared_secondary()
     }
   }
   collect_sorted_history_secondary_banks(thread_banks);
+  resolve_root_indices(simulation::shared_secondary_bank_write, nullptr);
   thread_banks.clear();
 
   simulation::simulation_tracks_completed += settings::n_particles;
@@ -1112,10 +1165,13 @@ void transport_history_based_shared_secondary()
         p.local_secondary_bank().clear();
       }
     } // End of transport loop over tracks in shared secondary bank
-    simulation::shared_secondary_bank_write =
-      std::move(simulation::shared_secondary_bank_read);
-    simulation::shared_secondary_bank_read = SharedArray<SourceSite>();
+    // The bank just transported is needed to resolve the roots of the sites it
+    // produced, so it is released after collection rather than recycled into
+    // the write bank beforehand.
     collect_sorted_history_secondary_banks(thread_banks);
+    resolve_root_indices(simulation::shared_secondary_bank_write,
+      &simulation::shared_secondary_bank_read);
+    simulation::shared_secondary_bank_read = SharedArray<SourceSite>();
     thread_banks.clear();
     n_generation_depth++;
     simulation::simulation_tracks_completed += alive_secondary;
@@ -1163,11 +1219,6 @@ void transport_event_based_shared_secondary()
   simulation::shared_secondary_bank_read.clear();
   simulation::shared_secondary_bank_write.clear();
 
-  // Record the primary partition before calculate_work() starts rewriting
-  // work_index for each secondary generation. finalize_pulse_height_tallies()
-  // needs it to map a root index back to the rank that owns that history.
-  simulation::phase1_work_index = simulation::work_index;
-
   if (!model::active_pulse_height_tallies.empty()) {
     init_pulse_height_buffers();
   }
@@ -1212,6 +1263,15 @@ void transport_event_based_shared_secondary()
     // Sort the shared secondary bank by parent ID then progeny ID to
     // ensure reproducibility.
     sort_bank(simulation::shared_secondary_bank_write, false);
+
+    // Roots are resolved after the sort, which consumes the placement key, and
+    // before the migration below, which invalidates the parent slots by moving
+    // sites away from the rank whose bank they index. On the first pass the
+    // read bank is empty because the parents were the primaries.
+    resolve_root_indices(simulation::shared_secondary_bank_write,
+      simulation::shared_secondary_bank_read.size() > 0
+        ? &simulation::shared_secondary_bank_read
+        : nullptr);
 
     // Synchronize the shared secondary bank amongst all MPI ranks, such
     // that each MPI rank has an approximately equal number of secondary

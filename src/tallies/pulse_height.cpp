@@ -1,7 +1,9 @@
 #include "openmc/tallies/pulse_height.h"
 
-#include <algorithm> // upper_bound
+#include <algorithm> // sort
 #include <cstddef>
+#include <numeric> // iota
+#include <utility> // make_pair
 
 #include "openmc/message_passing.h"
 #include "openmc/openmp_interface.h"
@@ -39,11 +41,10 @@ void free_memory_pulse_height()
 {
   simulation::pht_thread_buffers.clear();
   simulation::pht_thread_buffers.shrink_to_fit();
-  simulation::phase1_work_index.clear();
-  simulation::phase1_work_index.shrink_to_fit();
 }
 
-void stage_pulse_height(int64_t root_index, const vector<double>& pht)
+void stage_pulse_height(
+  int64_t root_index, int64_t track_id, const vector<double>& pht)
 {
   // A particle whose root was never assigned cannot be attributed to a
   // history. This should not happen, but dropping the fragment is safer than
@@ -72,22 +73,11 @@ void stage_pulse_height(int64_t root_index, const vector<double>& pht)
 
   PulseHeightContribution contribution;
   contribution.root_index = root_index;
+  contribution.track_id = track_id;
   contribution.energy = pht;
   simulation::pht_thread_buffers[thread_num()].push_back(
     std::move(contribution));
 }
-
-namespace {
-
-//! Rank that owns a given root index, from the phase-1 primary partition.
-int owner_of_root(int64_t root_index)
-{
-  const auto& index = simulation::phase1_work_index;
-  auto it = std::upper_bound(index.begin(), index.end(), root_index);
-  return static_cast<int>(std::distance(index.begin(), it)) - 1;
-}
-
-} // namespace
 
 void finalize_pulse_height_tallies()
 {
@@ -96,8 +86,8 @@ void finalize_pulse_height_tallies()
     return;
 
   // Range of root indices owned by this rank
-  int64_t first_root = simulation::phase1_work_index[mpi::rank];
-  int64_t last_root = simulation::phase1_work_index[mpi::rank + 1];
+  int64_t first_root = phase1_first_root(mpi::rank);
+  int64_t last_root = phase1_first_root(mpi::rank + 1);
   int64_t n_owned = last_root - first_root;
 
   // Per-history, per-cell deposited energy for the histories owned here.
@@ -106,28 +96,39 @@ void finalize_pulse_height_tallies()
   // behaviour of the non-shared path where every primary is scored at death.
   vector<double> totals(n_owned * n_cells, 0.0);
 
-  // Flatten the per-thread staging buffers, folding in everything already
-  // destined for this rank and packing the rest by destination.
+  // Fragments are collected rather than summed as they are found, so that the
+  // summation order below can be fixed by track id instead of left to arrival
+  // order, which depends on thread scheduling and on where a descendant
+  // landed. A track id is the particle's global slot within its generation plus
+  // the tracks completed in earlier generations, both global quantities, so the
+  // resulting order is the same for any thread or rank count.
+  // Root and track id travel together as a pair, so one exchange carries both
+  vector<int64_t> own_keys;
+  vector<double> own_energy;
+
+  // Flatten the per-thread staging buffers, keeping everything already destined
+  // for this rank and packing the rest by destination.
 #ifdef OPENMC_MPI
   vector<int> send_counts(mpi::n_procs, 0);
-  vector<int64_t> send_roots;
+  vector<int64_t> send_keys;
   vector<double> send_energy;
-  vector<vector<int64_t>> roots_by_rank(mpi::n_procs);
+  vector<vector<int64_t>> keys_by_rank(mpi::n_procs);
   vector<vector<double>> energy_by_rank(mpi::n_procs);
 #endif
 
   for (auto& buffer : simulation::pht_thread_buffers) {
     for (auto& contribution : buffer) {
       int64_t root = contribution.root_index;
-      int owner = owner_of_root(root);
+      int owner = phase1_owner_of_root(root);
       if (owner == mpi::rank) {
-        int64_t offset = (root - first_root) * n_cells;
-        for (int c = 0; c < n_cells; ++c) {
-          totals[offset + c] += contribution.energy[c];
-        }
+        own_keys.push_back(root);
+        own_keys.push_back(contribution.track_id);
+        own_energy.insert(own_energy.end(), contribution.energy.begin(),
+          contribution.energy.end());
       } else {
 #ifdef OPENMC_MPI
-        roots_by_rank[owner].push_back(root);
+        keys_by_rank[owner].push_back(root);
+        keys_by_rank[owner].push_back(contribution.track_id);
         energy_by_rank[owner].insert(energy_by_rank[owner].end(),
           contribution.energy.begin(), contribution.energy.end());
         send_counts[owner]++;
@@ -146,15 +147,15 @@ void finalize_pulse_height_tallies()
       send_displs[r] = total_send;
       total_send += send_counts[r];
     }
-    send_roots.reserve(total_send);
+    send_keys.reserve(static_cast<size_t>(total_send) * 2);
     send_energy.reserve(static_cast<size_t>(total_send) * n_cells);
     for (int r = 0; r < mpi::n_procs; ++r) {
-      send_roots.insert(
-        send_roots.end(), roots_by_rank[r].begin(), roots_by_rank[r].end());
+      send_keys.insert(
+        send_keys.end(), keys_by_rank[r].begin(), keys_by_rank[r].end());
       send_energy.insert(
         send_energy.end(), energy_by_rank[r].begin(), energy_by_rank[r].end());
-      roots_by_rank[r].clear();
-      roots_by_rank[r].shrink_to_fit();
+      keys_by_rank[r].clear();
+      keys_by_rank[r].shrink_to_fit();
       energy_by_rank[r].clear();
       energy_by_rank[r].shrink_to_fit();
     }
@@ -171,36 +172,49 @@ void finalize_pulse_height_tallies()
       total_recv += recv_counts[r];
     }
 
-    // Root indices, one per contribution
-    vector<int64_t> recv_roots(total_recv);
-    MPI_Alltoallv(send_roots.data(), send_counts.data(), send_displs.data(),
-      MPI_INT64_T, recv_roots.data(), recv_counts.data(), recv_displs.data(),
-      MPI_INT64_T, mpi::intracomm);
+    // Both payloads are a fixed number of items per contribution, so their
+    // counts and displacements are the contribution ones scaled
+    auto scaled = [&](const vector<int>& v, int factor) {
+      vector<int> out(v.size());
+      for (size_t i = 0; i < v.size(); ++i)
+        out[i] = v[i] * factor;
+      return out;
+    };
 
-    // Energies, n_cells per contribution
-    vector<int> send_counts_e(mpi::n_procs);
-    vector<int> send_displs_e(mpi::n_procs);
-    vector<int> recv_counts_e(mpi::n_procs);
-    vector<int> recv_displs_e(mpi::n_procs);
-    for (int r = 0; r < mpi::n_procs; ++r) {
-      send_counts_e[r] = send_counts[r] * n_cells;
-      send_displs_e[r] = send_displs[r] * n_cells;
-      recv_counts_e[r] = recv_counts[r] * n_cells;
-      recv_displs_e[r] = recv_displs[r] * n_cells;
-    }
+    vector<int64_t> recv_keys(static_cast<size_t>(total_recv) * 2);
+    MPI_Alltoallv(send_keys.data(), scaled(send_counts, 2).data(),
+      scaled(send_displs, 2).data(), MPI_INT64_T, recv_keys.data(),
+      scaled(recv_counts, 2).data(), scaled(recv_displs, 2).data(), MPI_INT64_T,
+      mpi::intracomm);
+
     vector<double> recv_energy(static_cast<size_t>(total_recv) * n_cells);
-    MPI_Alltoallv(send_energy.data(), send_counts_e.data(),
-      send_displs_e.data(), MPI_DOUBLE, recv_energy.data(),
-      recv_counts_e.data(), recv_displs_e.data(), MPI_DOUBLE, mpi::intracomm);
+    MPI_Alltoallv(send_energy.data(), scaled(send_counts, n_cells).data(),
+      scaled(send_displs, n_cells).data(), MPI_DOUBLE, recv_energy.data(),
+      scaled(recv_counts, n_cells).data(), scaled(recv_displs, n_cells).data(),
+      MPI_DOUBLE, mpi::intracomm);
 
-    for (int i = 0; i < total_recv; ++i) {
-      int64_t offset = (recv_roots[i] - first_root) * n_cells;
-      for (int c = 0; c < n_cells; ++c) {
-        totals[offset + c] += recv_energy[static_cast<size_t>(i) * n_cells + c];
-      }
-    }
+    // Received fragments join the local ones, to be ordered together below
+    own_keys.insert(own_keys.end(), recv_keys.begin(), recv_keys.end());
+    own_energy.insert(own_energy.end(), recv_energy.begin(), recv_energy.end());
   }
 #endif
+
+  // Sum each history's fragments in track id order. Sorting by root first is
+  // not needed for the result, since fragments of different histories land in
+  // disjoint accumulators, but it keeps the accumulation local in memory.
+  vector<int64_t> order(own_keys.size() / 2);
+  std::iota(order.begin(), order.end(), int64_t {0});
+  std::sort(order.begin(), order.end(), [&](int64_t a, int64_t b) {
+    return std::make_pair(own_keys[2 * a], own_keys[2 * a + 1]) <
+           std::make_pair(own_keys[2 * b], own_keys[2 * b + 1]);
+  });
+
+  for (int64_t i : order) {
+    int64_t offset = (own_keys[2 * i] - first_root) * n_cells;
+    for (int c = 0; c < n_cells; ++c) {
+      totals[offset + c] += own_energy[static_cast<size_t>(i) * n_cells + c];
+    }
+  }
 
   // Score one pulse per owned history. score_pulse_height_tally() drives filter
   // matching off a Particle, so give each thread a default-constructed one; its

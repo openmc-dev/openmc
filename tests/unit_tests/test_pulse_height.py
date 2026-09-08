@@ -184,79 +184,46 @@ def test_pulse_height_count_conservation(particle, shared_secondary,
     assert spectrum.sum() == pytest.approx(1.0, abs=1e-9)
 
 
-@pytest.mark.parametrize('particle', ['photon', 'neutron'])
-def test_shared_secondary_matches_local(particle, run_in_tmpdir):
-    """Both modes give the same pulse-height distribution in a thin detector.
+# Thin detectors exercise the aggregation bookkeeping on short cascades. The
+# thick one is tens of mean free paths at 1 MeV, so nothing escapes and each
+# history spawns roughly 1.7 secondaries through Compton scattering,
+# fluorescence and bremsstrahlung, which makes it far more sensitive to the
+# subtraction performed on the parent in create_secondary() being matched by
+# the descendants' own contributions once they are reassembled. Its top bin
+# extends past the source energy for the reason given above.
+_COMPARISON_CASES = [
+    ('photon', 1.0, np.linspace(0.0, 1.1e6, 51), 2000),
+    ('neutron', 1.0, np.linspace(0.0, 20.0e6, 51), 2000),
+    ('photon', 50.0, np.concatenate([np.linspace(0.0, 0.99e6, 20), [1.1e6]]),
+     1000),
+]
 
-    A 1 cm NaI sphere at 1 MeV produces short cascades, so this mostly exercises
-    the aggregation bookkeeping rather than deep secondary trees. Compared are
-    the mean deposited energy per history and the spectrum shape bin by bin.
-    """
-    upper = 1.1e6 if particle == 'photon' else 20.0e6
-    bounds = np.linspace(0.0, upper, 51)
 
-    local = _detector_model(particle, radius=1.0, energy_bounds=bounds,
-                            particles=2000, shared_secondary=False)
-    local_spec, local_err = _pulse_height(local.run())
+@pytest.mark.parametrize('particle,radius,bounds,particles', _COMPARISON_CASES,
+                         ids=['thin-photon', 'thin-neutron', 'thick-photon'])
+def test_shared_secondary_matches_local(particle, radius, bounds, particles,
+                                        run_in_tmpdir):
+    """Both transport modes give the same pulse-height distribution."""
+    spectra = {}
+    for shared in (False, True):
+        model = _detector_model(particle, radius=radius, energy_bounds=bounds,
+                                particles=particles, shared_secondary=shared)
+        spectra[shared] = _pulse_height(model.run())
 
-    shared = _detector_model(particle, radius=1.0, energy_bounds=bounds,
-                             particles=2000, shared_secondary=True)
-    shared_spec, shared_err = _pulse_height(shared.run())
+    (local_spec, local_err), (shared_spec, shared_err) = \
+        spectra[False], spectra[True]
 
     # Count conservation must hold in both before the shapes are compared
     assert local_spec.sum() == pytest.approx(1.0, abs=1e-9)
     assert shared_spec.sum() == pytest.approx(1.0, abs=1e-9)
 
+    # Mean deposited energy is the sharpest single statistic available, and
+    # catches a systematic shift that a per-bin comparison can absorb
     local_mean, local_mean_err = _mean_deposition(local_spec, local_err, bounds)
     shared_mean, shared_mean_err = _mean_deposition(
         shared_spec, shared_err, bounds)
     mean_sigma = np.hypot(local_mean_err, shared_mean_err)
     assert mean_sigma > 0.0
     assert abs(local_mean - shared_mean) < 4.0 * mean_sigma
-
-    _assert_spectra_consistent(local_spec, local_err, shared_spec, shared_err)
-
-
-def test_shared_secondary_matches_local_thick_detector(run_in_tmpdir):
-    """Both modes agree when the secondary cascade is deep.
-
-    A 50 cm NaI sphere is tens of mean free paths thick at 1 MeV, so nothing
-    escapes and each history spawns roughly 1.7 secondaries through Compton
-    scattering, fluorescence and bremsstrahlung. That makes this far more
-    sensitive than the thin-detector case to the subtraction performed on the
-    parent in create_secondary() being matched by the descendants' own
-    contributions once they are reassembled.
-
-    The top bin deliberately extends past the source energy. Pulse height
-    accumulates as a telescoping sum of E_last() - E() over a history, which
-    equals the source energy in exact arithmetic but not in floating point:
-    measured on this geometry, about 94% of histories sum to exactly 1 MeV or
-    just below and about 6% land a few ULPs above it. EnergyFilter matches on
-    E >= bins.front() && E <= bins.back(), so a top edge sitting exactly at
-    1 MeV drops that 6% entirely. They are then absent from the tally, count
-    conservation silently breaks, and the comparison below degenerates into a
-    comparison of rounding behaviour between two different random number
-    streams rather than of spectra.
-    """
-    # Top bin straddles the full-energy peak so histories whose floating point
-    # sum lands marginally above 1 MeV are still binned
-    bounds = np.concatenate([np.linspace(0.0, 0.99e6, 20), [1.1e6]])
-
-    local = _detector_model('photon', radius=50.0, energy_bounds=bounds,
-                            shared_secondary=False)
-    local_spec, local_err = _pulse_height(local.run())
-
-    shared = _detector_model('photon', radius=50.0, energy_bounds=bounds,
-                             shared_secondary=True)
-    shared_spec, shared_err = _pulse_height(shared.run())
-
-    assert local_spec.sum() == pytest.approx(1.0, abs=1e-9)
-    assert shared_spec.sum() == pytest.approx(1.0, abs=1e-9)
-
-    # The full-energy peak holds the great majority of histories, so its
-    # fraction is the sharpest single statistic available here.
-    peak_sigma = np.hypot(local_err[-1], shared_err[-1])
-    assert peak_sigma > 0.0
-    assert abs(local_spec[-1] - shared_spec[-1]) < 4.0 * peak_sigma
 
     _assert_spectra_consistent(local_spec, local_err, shared_spec, shared_err)

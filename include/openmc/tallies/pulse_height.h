@@ -29,6 +29,7 @@ namespace openmc {
 
 struct PulseHeightContribution {
   int64_t root_index;    //!< index of the primary at the root of the tree
+  int64_t track_id;      //!< id of the track that deposited this fragment
   vector<double> energy; //!< per-cell energy, indexed as pulse_height_cells
 };
 
@@ -54,16 +55,23 @@ void free_memory_pulse_height();
 //! iterating over the full root range rather than over staged entries.
 //
 //! \param root_index index of the primary at the root of this particle's tree
+//! \param track_id this particle's id, used to give the fragments of a history
+//!   a canonical summation order in finalize_pulse_height_tallies()
 //! \param pht per-cell energy deposited by this particle alone
-void stage_pulse_height(int64_t root_index, const vector<double>& pht);
+void stage_pulse_height(
+  int64_t root_index, int64_t track_id, const vector<double>& pht);
 
 //! Aggregate staged contributions by history and score them.
 //
 //! Sends each contribution to the rank that owns its root according to
-//! simulation::phase1_work_index, sums per (history, cell), and scores every
+//! the phase-1 primary partition, sums per (history, cell), and scores every
 //! owned history including those with no deposition. Must be called after the
 //! last secondary generation has been transported and before tally results are
 //! accumulated for the batch.
+//
+//! Fragments are summed in order of track id rather than in arrival order, so
+//! a history's total is bit-for-bit independent of thread scheduling and of the
+//! rank a descendant happened to land on.
 void finalize_pulse_height_tallies();
 
 } // namespace openmc

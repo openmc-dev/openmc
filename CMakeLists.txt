@@ -39,7 +39,7 @@ option(OPENMC_BUILD_TESTS     "Build tests"                                     
 option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
 option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
-option(OPENMC_USE_XDG         "Enable support for XDG discretized CAD geometry"      OFF)
+option(OPENMC_USE_XDG         "Enable support for XDG mesh interfaces"      OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)

@@ -278,16 +278,25 @@ bool isclose(double a, double b, double rel_tol, double abs_tol);
 //! and an expression derived for a combination of two estimates is used
 //! instead.
 //!
+//! \p n must be at least MIN_REALIZATIONS_TO_COMBINE; below that the
+//! covariance is singular and the expressions are undefined.
+//!
 //! \param[in] estimates The three estimates
 //! \param[in] cov Covariance of the three estimates over a single
 //!   realization, not of the mean
 //! \param[in] n Number of realizations each estimate was formed from
 //! \param[out] combined The combination and the standard deviation of its mean
-//! \return Whether there were enough realizations to form a combination at all.
-//!   When false, the caller must supply its own estimate.
 //==============================================================================
 
-bool combine_estimates(const array<double, 3>& estimates,
+//! Fewest realizations from which a combination can be formed
+//!
+//! A k by k sample covariance built from n realizations has rank at most
+//! n - 1, so it is singular unless n exceeds k. The n-3 and n-2 factors in the
+//! expressions for the standard deviation are the residual degrees of freedom
+//! and vanish at the same point.
+constexpr int64_t MIN_REALIZATIONS_TO_COMBINE {4};
+
+void combine_estimates(const array<double, 3>& estimates,
   const tensor::StaticTensor2D<double, 3, 3>& cov, int64_t n,
   array<double, 2>& combined);
 

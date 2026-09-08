@@ -429,68 +429,59 @@ int openmc_get_keff(double* k_combined)
 {
   int64_t n = simulation::n_realizations;
 
-  // The covariance needs at least two realizations to be formed at all; a
-  // combination needs more still, which combine_estimates() decides. Random
-  // ray produces a single estimate of k rather than three independent ones,
-  // so there is nothing to combine there either.
-  bool combined = false;
-  if (n > 1 && settings::solver_type != SolverType::RANDOM_RAY) {
-    // Copy estimates of k-effective and its variance (not variance of the
-    // mean)
-    const auto& gt = simulation::global_tallies;
-
-    array<double, 3> kv {};
-    tensor::StaticTensor2D<double, 3, 3> cov;
-    cov.fill(0.0);
-    kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
-    kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
-    kv[2] = gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n;
-    cov(0, 0) =
-      (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n * kv[0] * kv[0]) /
-      (n - 1);
-    cov(1, 1) =
-      (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n * kv[1] * kv[1]) /
-      (n - 1);
-    cov(2, 2) = (gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM_SQ) -
-                  n * kv[2] * kv[2]) /
-                (n - 1);
-
-    // Calculate covariances based on sums with Bessel's correction
-    cov(0, 1) = (simulation::k_col_abs - n * kv[0] * kv[1]) / (n - 1);
-    cov(0, 2) = (simulation::k_col_tra - n * kv[0] * kv[2]) / (n - 1);
-    cov(1, 2) = (simulation::k_abs_tra - n * kv[1] * kv[2]) / (n - 1);
-    cov(1, 0) = cov(0, 1);
-    cov(2, 0) = cov(0, 2);
-    cov(2, 1) = cov(1, 2);
-
-    // In multi-group mode with survival biasing the collision and absorption
-    // estimators are identical, which combine_estimates() detects and handles
-    // with its two-estimate expression
-    array<double, 2> result;
-    combined = combine_estimates(kv, cov, n, result);
-    if (combined) {
-      k_combined[0] = result[0];
-      k_combined[1] = result[1];
-    }
-  }
-
-  if (!combined) {
-    // Report the average over generations. This function has to return a value
-    // whenever it is called -- including from a statepoint written during the
-    // inactive batches, when no realization has been accumulated -- and the
-    // generation average is the only estimate of k that is defined at every
-    // point in a run: during inactive generations it holds the most recent
-    // generation estimate, and thereafter the average over active ones. For
-    // random ray it is not a fallback at all, but the only estimate there is.
+  // Random ray computes a single estimate of k from the scalar flux rather
+  // than three independent ones, and a combination is not defined below
+  // MIN_REALIZATIONS_TO_COMBINE realizations. In both cases report the average
+  // over generations, which is the only estimate of k defined at every point
+  // in a run: during inactive generations it holds the most recent generation
+  // estimate, and thereafter the average over active ones. For random ray it
+  // is not a substitute at all, but the only estimate there is.
+  if (settings::solver_type == SolverType::RANDOM_RAY ||
+      n < MIN_REALIZATIONS_TO_COMBINE) {
     k_combined[0] = simulation::keff;
-    k_combined[1] = simulation::keff_std;
 
     // keff_std is only assigned once there is more than one active generation
     // to take a spread over, so it carries no meaning below that
-    if (n <= 1) {
-      k_combined[1] = std::numeric_limits<double>::infinity();
-    }
+    k_combined[1] =
+      n > 1 ? simulation::keff_std : std::numeric_limits<double>::infinity();
+    return 0;
   }
+
+  // Copy estimates of k-effective and its variance (not variance of the mean)
+  const auto& gt = simulation::global_tallies;
+
+  array<double, 3> kv {};
+  tensor::StaticTensor2D<double, 3, 3> cov;
+  cov.fill(0.0);
+  kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
+  kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
+  kv[2] = gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n;
+  cov(0, 0) =
+    (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n * kv[0] * kv[0]) /
+    (n - 1);
+  cov(1, 1) =
+    (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n * kv[1] * kv[1]) /
+    (n - 1);
+  cov(2, 2) =
+    (gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM_SQ) - n * kv[2] * kv[2]) /
+    (n - 1);
+
+  // Calculate covariances based on sums with Bessel's correction
+  cov(0, 1) = (simulation::k_col_abs - n * kv[0] * kv[1]) / (n - 1);
+  cov(0, 2) = (simulation::k_col_tra - n * kv[0] * kv[2]) / (n - 1);
+  cov(1, 2) = (simulation::k_abs_tra - n * kv[1] * kv[2]) / (n - 1);
+  cov(1, 0) = cov(0, 1);
+  cov(2, 0) = cov(0, 2);
+  cov(2, 1) = cov(1, 2);
+
+  // In multi-group mode with survival biasing the collision and absorption
+  // estimators are identical, which combine_estimates() detects and handles
+  // with its two-estimate expression. Whatever it produces is reported as it
+  // stands, including for a degenerate covariance.
+  array<double, 2> result;
+  combine_estimates(kv, cov, n, result);
+  k_combined[0] = result[0];
+  k_combined[1] = result[1];
 
   return 0;
 }

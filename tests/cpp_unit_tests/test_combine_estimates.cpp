@@ -70,18 +70,18 @@ TEST_CASE("Test combine_estimates with three distinct estimates")
   int64_t n = 100;
 
   array<double, 2> result;
-  REQUIRE(combine_estimates({0.980, 0.982, 0.981}, cov, n, result));
+  combine_estimates({0.980, 0.982, 0.981}, cov, n, result);
   REQUIRE(result[1] > 0.0);
 
   // The weights sum to one, so estimates that all agree must combine to
   // exactly that value
   array<double, 2> agreed;
-  REQUIRE(combine_estimates({0.975, 0.975, 0.975}, cov, n, agreed));
+  combine_estimates({0.975, 0.975, 0.975}, cov, n, agreed);
   REQUIRE_THAT(agreed[0], WithinRel(0.975, 1e-12));
 
   // and shifting every estimate must shift the combination by the same amount
   array<double, 2> shifted;
-  REQUIRE(combine_estimates({0.990, 0.992, 0.991}, cov, n, shifted));
+  combine_estimates({0.990, 0.992, 0.991}, cov, n, shifted);
   REQUIRE_THAT(shifted[0] - result[0], WithinAbs(0.01, 1e-12));
 }
 
@@ -94,7 +94,7 @@ TEST_CASE("Test combine_estimates with two coincident estimates")
   int64_t n = 100;
 
   array<double, 2> result;
-  REQUIRE(combine_estimates(estimates, cov, n, result));
+  combine_estimates(estimates, cov, n, result);
 
   auto reference = two_estimate_reference(
     estimates[0], estimates[2], cov(0, 0), cov(2, 2), cov(0, 2), n);
@@ -116,21 +116,22 @@ TEST_CASE("Test combine_estimates standard deviation scales as 1/sqrt(n)")
   // expression is evaluated with the sample covariance where the derivation
   // calls for S, since the neglected factor carries its own dependence on n.
   array<double, 2> low, high;
-  REQUIRE(combine_estimates(estimates, cov, 100, low));
-  REQUIRE(combine_estimates(estimates, cov, 400, high));
+  combine_estimates(estimates, cov, 100, low);
+  combine_estimates(estimates, cov, 400, high);
   REQUIRE_THAT(low[1] / high[1], WithinRel(2.0, 0.02));
 }
 
-TEST_CASE("Test combine_estimates rejects too few realizations")
+TEST_CASE("Test combine_estimates precondition")
 {
+  // A k by k sample covariance from n realizations has rank at most n - 1, so
+  // it is singular unless n exceeds k. Combining three estimates therefore
+  // needs four realizations, which is also where the n-3 factor in the
+  // standard deviation stops being positive.
+  REQUIRE(openmc::MIN_REALIZATIONS_TO_COMBINE == 4);
+
   auto cov = distinct_cov();
   array<double, 2> result;
-
-  // The three-estimate expression has an n-3 term in a denominator and the
-  // two-estimate expression an n-2 term, so a combination is only defined
-  // above three realizations. Callers supply their own estimate below that.
-  for (int64_t n : {int64_t(0), int64_t(1), int64_t(2), int64_t(3)}) {
-    REQUIRE_FALSE(combine_estimates({0.980, 0.982, 0.981}, cov, n, result));
-  }
-  REQUIRE(combine_estimates({0.980, 0.982, 0.981}, cov, 4, result));
+  combine_estimates(
+    {0.980, 0.982, 0.981}, cov, openmc::MIN_REALIZATIONS_TO_COMBINE, result);
+  REQUIRE(result[1] > 0.0);
 }

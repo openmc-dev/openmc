@@ -2,11 +2,13 @@
 
 #include <cmath>  // for abs, sqrt
 #include <limits> // for numeric_limits
+#include <string> // for to_string
 
 #include "openmc/external/Faddeeva.hh"
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
+#include "openmc/error.h"
 #include "openmc/random_lcg.h"
 
 namespace openmc {
@@ -1011,17 +1013,18 @@ bool isclose(double a, double b, double rel_tol, double abs_tol)
          std::max(rel_tol * std::max(std::abs(a), std::abs(b)), abs_tol);
 }
 
-bool combine_estimates(const array<double, 3>& estimates,
+void combine_estimates(const array<double, 3>& estimates,
   const tensor::StaticTensor2D<double, 3, 3>& cov, int64_t n,
   array<double, 2>& combined)
 {
   combined[0] = 0.0;
   combined[1] = 0.0;
 
-  // The three-estimate expression has an n-3 term in a denominator, and the
-  // two-estimate expression an n-2 term
-  if (n <= 3)
-    return false;
+  if (n < MIN_REALIZATIONS_TO_COMBINE) {
+    fatal_error("combine_estimates() requires at least " +
+                std::to_string(MIN_REALIZATIONS_TO_COMBINE) +
+                " realizations; the covariance is singular below that.");
+  }
 
   // Check to see if two estimates are the same. If they are, the three
   // estimate expressions are singular and will produce floating-point
@@ -1137,8 +1140,6 @@ bool combine_estimates(const array<double, 3>& estimates,
                   ((n - 1) * g + n * f * f) / (n * (n - 2) * g * g);
     combined[1] = std::sqrt(combined[1]);
   }
-
-  return true;
 }
 
 } // namespace openmc

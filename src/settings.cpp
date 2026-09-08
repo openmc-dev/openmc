@@ -221,6 +221,15 @@ void get_run_parameters(pugi::xml_node node_base)
     if (check_for_node(node_base, "generations_per_batch")) {
       gen_per_batch =
         std::stoi(get_node_value(node_base, "generations_per_batch"));
+
+      // The random ray solver runs a single generation per batch. The rest of
+      // the code has to see that, since overall_generation() strides by
+      // gen_per_batch while only one generation per batch is ever recorded.
+      if (gen_per_batch != 1 && solver_type == SolverType::RANDOM_RAY) {
+        warning("The 'generations_per_batch' setting does not apply to the "
+                "random ray solver and is ignored.");
+        gen_per_batch = 1;
+      }
     }
 
     // Preallocate space for keff and entropy by generation

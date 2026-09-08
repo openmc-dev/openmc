@@ -283,9 +283,8 @@ bool isclose(double a, double b, double rel_tol, double abs_tol);
 //!   realization, not of the mean
 //! \param[in] n Number of realizations each estimate was formed from
 //! \param[out] combined The combination and the standard deviation of its mean
-//! \return Whether a combination was formed. False when there are too few
-//!   realizations, or when the covariance is degenerate enough that the result
-//!   is not finite; in either case the caller must supply its own estimate.
+//! \return Whether there were enough realizations to form a combination at all.
+//!   When false, the caller must supply its own estimate.
 //==============================================================================
 
 bool combine_estimates(const array<double, 3>& estimates,

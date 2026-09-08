@@ -1,6 +1,6 @@
 #include "openmc/math_functions.h"
 
-#include <cmath>  // for abs, sqrt, isfinite
+#include <cmath>  // for abs, sqrt
 #include <limits> // for numeric_limits
 
 #include "openmc/external/Faddeeva.hh"
@@ -1138,7 +1138,7 @@ bool combine_estimates(const array<double, 3>& estimates,
     combined[1] = std::sqrt(combined[1]);
   }
 
-  return std::isfinite(combined[0]) && std::isfinite(combined[1]);
+  return true;
 }
 
 } // namespace openmc

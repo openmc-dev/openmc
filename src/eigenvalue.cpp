@@ -448,9 +448,9 @@ int openmc_get_keff(double* k_combined)
     cov(0, 0) =
       (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n * kv[0] * kv[0]) /
       (n - 1);
-    cov(1, 1) = (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) -
-                  n * kv[1] * kv[1]) /
-                (n - 1);
+    cov(1, 1) =
+      (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n * kv[1] * kv[1]) /
+      (n - 1);
     cov(2, 2) = (gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM_SQ) -
                   n * kv[2] * kv[2]) /
                 (n - 1);

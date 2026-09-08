@@ -46,8 +46,8 @@ openmc::tensor::StaticTensor2D<double, 3, 3> coincident_cov()
 //! S, so the sample covariance is converted with S = (n - 1) * Sigma before
 //! being substituted. This is an independent statement of the same result and
 //! is what pins down the standard deviation.
-array<double, 2> two_estimate_reference(double e_i, double e_j,
-  double sigma_ii, double sigma_jj, double sigma_ij, int64_t n)
+array<double, 2> two_estimate_reference(double e_i, double e_j, double sigma_ii,
+  double sigma_jj, double sigma_ij, int64_t n)
 {
   double s_ii = (n - 1) * sigma_ii;
   double s_jj = (n - 1) * sigma_jj;

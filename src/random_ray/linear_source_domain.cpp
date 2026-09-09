@@ -1,7 +1,6 @@
 #include "openmc/random_ray/linear_source_domain.h"
 
 #include <algorithm>
-#include <cmath>
 
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
@@ -119,14 +118,15 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   // source q(r) = q_flat + (r - centroid) . q_gradient stays non-negative
   // over the region's bounding box as sampled by the ray segment endpoints.
   // The largest value the linear term can take over the box is the sum,
-  // over the three axes, of the gradient component times the box half-extent
-  // on the side that component points to. The box contains the region, so
-  // the modeled source is non-negative throughout it once the boundary has
-  // been sampled. Rescaling the gradient preserves the region's mean
-  // emission, since the linear term integrates to zero over the region, and
-  // gradients that pass are left untouched. A non-positive flat source
-  // leaves no shape to keep, so its cap is zero and its gradient is scaled
-  // away. A region with no sampled box yet carries no gradient to limit.
+  // over the three axes, of the gradient component times the distance from
+  // the centroid to the box face that component points to. The box contains
+  // the region, so the modeled source is non-negative throughout it once
+  // the boundary has been sampled. Rescaling the gradient preserves the
+  // region's mean emission, since the linear term integrates to zero over
+  // the region, and gradients that pass are left untouched. A non-positive
+  // flat source leaves no shape to keep, so its cap is zero and its gradient
+  // is scaled away. A region with no sampled box yet carries no gradient to
+  // limit.
   if (source_gradient_limiter_ && material != MATERIAL_VOID &&
       srh.extent_min().x <= srh.extent_max().x) {
     Position lo = srh.extent_min() - srh.centroid();

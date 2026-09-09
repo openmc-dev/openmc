@@ -487,7 +487,7 @@ OpenMC shared library. This can be done by writing a CMakeLists.txt file:
 
    cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
    project(openmc_sources CXX)
-   add_library(source SHARED source_ring.cpp)
+   add_library(source MODULE source_ring.cpp)
    find_package(OpenMC REQUIRED HINTS <path to openmc>)
    target_link_libraries(source OpenMC::libopenmc)
 

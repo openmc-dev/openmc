@@ -43,17 +43,16 @@ enum class FieldMapping {
 //! implemented by MappedField and its subclasses.
 class Field {
 public:
-  virtual ~Field() = default;
-
-  Mesh* mesh_ptr() const
+  explicit Field(Mesh* mesh, FieldMapping mapping)
+    : mesh_(mesh), mapping_(mapping)
   {
-    if (mesh_ == nullptr) {
-      fatal_error("No mesh found for this field!");
-    } else {
-      return mesh_;
-    }
+    if (mesh_ == nullptr)
+      fatal_error("Field requires a non-null mesh pointer!");
   }
 
+  virtual ~Field() = default;
+
+  Mesh* mesh_ptr() const { return mesh_; }
   FieldMapping mapping() const { return mapping_; }
 
 protected:

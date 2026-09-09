@@ -125,7 +125,7 @@ public:
   //
   //! \param[in] r Position
   //! \return Bin number
-  int get_bin(const Position& r) { return mesh_ptr()->get_bin(r); }
+  int get_bin(const Position& r) const { return mesh_ptr()->get_bin(r); }
 
   //! Evaluate field at a given position inside the mesh knowing the current
   //! bin.
@@ -133,7 +133,7 @@ public:
   //! \param[in] r Position
   //! \param[in] bin Bin number corresponding to r
   //! \return Value corresponding to r
-  T evaluate_in_mesh(const Position& r, int bin)
+  T evaluate_in_mesh(const Position& r, int bin) const
   {
     if (bin != C_NONE) {
       switch (mapping()) {
@@ -166,7 +166,7 @@ public:
   //! \param[in] r1 Current position
   //! \param[in] bin0 Bin corresponding to r0
   //! \return Value corresponding to r1 relative to a clamped bin
-  T evaluate_clamped(const Position& r0, const Position& r1, int bin0)
+  T evaluate_clamped(const Position& r0, const Position& r1, int bin0) const
   {
     int next_bin = mesh_ptr()->get_bin_clamped(r0, r1, bin0);
     return evaluate_in_mesh(r1, next_bin);
@@ -181,7 +181,7 @@ public:
   //! \param[in] r Position
   //! \param[in] bin Bin number
   //! \return Interpolated value
-  T trilinear_interpolation(const Position& r, int bin)
+  T trilinear_interpolation(const Position& r, int bin) const
   {
     // Normalize coordinates
     Position n_r = mesh_ptr()->normalize_coordinates(r, bin);
@@ -227,7 +227,7 @@ public:
   //! \param[out] bin_next Next bin number
   //! \return Distance to the next mesh boundary
   double distance_to_next_boundary(
-    int current_bin, const Position& r, const Direction& u, int& bin_next)
+    int current_bin, const Position& r, const Direction& u, int& bin_next) const
   {
     return mesh_ptr()->distance_to_next_boundary(
       current_bin, r, u, bin_next);

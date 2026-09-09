@@ -1003,20 +1003,23 @@ completes the set of equations for LS.
 Source Gradient Limiting
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-The fitted source gradient :math:`\vec{Q}_i = M_i^{-1} \vec{q}_i` amplifies
-noise in the fitted moments along any thin extent of a region, so a poorly
+The fitted source gradient :math:`\boldsymbol{\vec{Q}}_{i,g} =
+\mathbf{M}_i^{-1} \boldsymbol{\vec{q}}_{i,g}` amplifies noise in the fitted
+moments along any thin extent of a region, so a poorly
 sampled region can carry a spuriously steep gradient and emit a negative
 source over part of its extent. Rays crossing that part carry negative
 angular flux downstream, which optically thin media with scattering ratios
 near one can amplify.
 
 When the source gradient limiter is enabled, each group's gradient is
-rescaled so that the modeled source stays non-negative over the ellipsoid
-described by the region's spatial moments, over which the linear term
-reaches at most :math:`\sqrt{3 \vec{Q}_i^T M_i \vec{Q}_i}`. This treats
-the region as if it were shaped like its moment representation, which an
-arbitrary CSG region essentially never is, so the limiter reduces negative
-sources rather than eliminating them. Because the linear term integrates
+rescaled so that the modeled source stays non-negative within
+:math:`\sqrt{3}` standard deviations of the centroid along the gradient,
+the half-extent of a uniform slab with the region's second moment, where
+the linear term reaches :math:`\sqrt{3 \boldsymbol{\vec{Q}}_{i,g}^T
+\mathbf{M}_i \boldsymbol{\vec{Q}}_{i,g}}`. Real regions extend further
+along some directions (a uniform sphere reaches :math:`\sqrt{5}` standard
+deviations, and the corner of a cube three), so the limiter reduces
+negative sources rather than eliminating them. Because the linear term integrates
 to zero over the region, the rescaling preserves the region's mean
 emission, and gradients that pass the test are left untouched. A group
 whose flat source is negative has its gradient zeroed.

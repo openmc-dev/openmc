@@ -987,10 +987,10 @@ enabled as::
     settings.random_ray['source_gradient_limiter'] = True
 
 The limiter rescales a region's gradient as needed so that the modeled
-source stays non-negative over the shape described by the region's spatial
-moments, preserving the region's mean emission. Since a real region is
-essentially never shaped like its moment representation, some negativity
-may remain. The limiter is off by default, as limiting also clips
+source stays non-negative within the extent inferred from the region's
+spatial moments, preserving the region's mean emission. Real regions extend
+further along some directions than that extent, so some negativity may
+remain. The limiter is off by default, as limiting also clips
 physically steep source shapes such as those found in optically thick
 regions of deep-penetration problems; see the :ref:`methods documentation
 <methods_random_ray>` for details.

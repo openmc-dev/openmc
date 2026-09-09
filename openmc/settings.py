@@ -210,7 +210,7 @@ class Settings:
         :source_gradient_limiter:
             Whether to rescale linear source gradients as needed so that the
             source shape modeled within each source region remains
-            non-negative over the extent described by the region's spatial
+            non-negative over the extent inferred from the region's spatial
             moments (bool). The default is 'False'. Only used when the
             source shape is 'linear' or 'linear_xy'.
         :volume_normalized_flux_tallies:

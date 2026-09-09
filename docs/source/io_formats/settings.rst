@@ -639,7 +639,7 @@ found in the :ref:`random ray user guide <random_ray>`.
   :source_gradient_limiter:
     Specifies whether to rescale linear source gradients as needed so that
     the source shape modeled within each source region remains non-negative
-    over the extent described by the region's spatial moments (bool). Only
+    over the extent inferred from the region's spatial moments (bool). Only
     used when the source shape is "linear" or "linear_xy".
 
     *Default*: false

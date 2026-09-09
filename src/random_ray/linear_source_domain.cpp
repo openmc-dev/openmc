@@ -117,16 +117,16 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
 
   // If enabled by the user, limit the source gradients so the modeled local
   // source q(r) = q_flat + (r - centroid) . q_gradient stays non-negative
-  // over the ellipsoid described by the region's spatial moments, over
-  // which the linear term reaches at most sqrt(3 g^T M g). This treats the
-  // region as if it were shaped like its moment representation, which an
-  // arbitrary CSG region essentially never is, so the limiter reduces
-  // negative sources rather than eliminating them. Rescaling the gradient
-  // preserves the region's mean emission, since the linear term integrates
-  // to zero over the region, and gradients that pass are left untouched. A
-  // group whose flat source is negative after the external source is added
-  // (as an adjoint source can be) carries no meaningful shape, so its cap
-  // is zero and its gradient is scaled away.
+  // within sqrt(3) standard deviations of the centroid along the gradient,
+  // the half-extent of a uniform slab with the region's second moment,
+  // where the linear term reaches sqrt(3 g^T M g). Real regions extend
+  // further along some directions (a sphere to sqrt(5) standard
+  // deviations, a cube's corner to three), so the limiter reduces negative
+  // sources rather than eliminating them. Rescaling the gradient preserves
+  // the region's mean emission, since the linear term integrates to zero
+  // over the region, and gradients that pass are left untouched. A
+  // non-positive flat source leaves no shape to keep, so its cap is zero
+  // and its gradient is scaled away.
   if (source_gradient_limiter_ && material != MATERIAL_VOID) {
     const MomentMatrix& m = srh.mom_matrix();
     for (int g = 0; g < negroups_; g++) {

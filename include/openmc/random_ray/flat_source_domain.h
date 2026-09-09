@@ -12,6 +12,12 @@
 
 namespace openmc {
 
+// Number of initial batches during which the linear source gradients are held
+// at zero (a flat source). The per-region centroids and spatial moment
+// matrices are accumulated from ray samples, and gradients computed before
+// enough samples exist are numerically unstable.
+constexpr int LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES {10};
+
 /*
  * The FlatSourceDomain class encompasses data and methods for storing
  * scalar flux and source region for all flat source regions in a

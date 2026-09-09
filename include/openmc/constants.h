@@ -65,12 +65,6 @@ constexpr int MAX_SAMPLE {100000};
 // source region in the random ray solver
 constexpr double MIN_HITS_PER_BATCH {1.5};
 
-// Number of initial batches during which the linear source gradients are held
-// at zero (a flat source). The per-region centroids and spatial moment
-// matrices are accumulated from ray samples, and gradients computed before
-// enough samples exist are numerically unstable.
-constexpr int LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES {10};
-
 // The minimum flux value to be considered non-zero when computing adjoint
 // sources. Positive values below this cutoff will be treated as zero, so as to
 // prevent extremely large adjoint source terms from being generated.

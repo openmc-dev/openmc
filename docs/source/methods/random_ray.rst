@@ -999,6 +999,8 @@ The contents of this section, alongside the equations for the flat source and
 scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively,
 completes the set of equations for LS.
 
+.. _methods_random_ray_gradient_limiter:
+
 ~~~~~~~~~~~~~~~~~~~~~~~~
 Source Gradient Limiting
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1007,36 +1009,38 @@ The fitted source gradient :math:`\boldsymbol{\vec{Q}}_{i,g} =
 \mathbf{M}_i^{-1} \boldsymbol{\vec{q}}_{i,g}` amplifies noise in the fitted
 moments along any thin extent of a region, so a poorly
 sampled region can carry a spuriously steep gradient and emit a negative
-source over part of its extent. Rays crossing that part carry negative
+source over part of its extent. Rays crossing that part can carry negative
 angular flux downstream, which optically thin media with scattering ratios
 near one can amplify.
 
 When the source gradient limiter is enabled, each group's gradient is
 rescaled so that the modeled source stays non-negative over the region's
 axis-aligned bounding box. The box is accumulated from the endpoints of
-every ray segment that has crossed the region, which lie on the region's
-boundary except where a ray starts or ends inside it. The linear term is
-largest at a corner of the box, where it reaches
+every ray segment that has crossed the region past the ray's inactive
+length. These lie on the region's boundary except where a ray starts or
+ends inside it. The linear term is lowest at a corner of the box, where it
+reaches
 
 .. math::
     :label: gradient-limiter-bound
 
-    \sum_{d \in \{x, y, z\}} \; \max_{x_d \in \{x^{\min}_{i,d},\,
+    \sum_{d \in \{x, y, z\}} \; \min_{x_d \in \{x^{\min}_{i,d},\,
     x^{\max}_{i,d}\}} \left(\boldsymbol{\vec{Q}}_{i,g}\right)_d \left(x_d -
     r_{\mathrm{c},i,d}\right),
 
 where :math:`x^{\min}_{i}` and :math:`x^{\max}_{i}` are the box bounds,
 :math:`\mathbf{r}_{\mathrm{c},i}` is the centroid, and :math:`d` indexes
-their components. Whenever this exceeds the flat source :math:`Q_{i,g}`, the
-gradient is scaled by the ratio of the two. Because the linear term
-integrates to zero over the region, the rescaling preserves the region's
-mean emission, and gradients that pass the test are left untouched. A group
-whose flat source is not positive has its gradient zeroed. The box contains
-the region, so once its boundary has been sampled the modeled source is
-non-negative throughout. The bound is exact for box-shaped regions and
-conservative for others, so rounded or diagonally oriented regions are
-limited somewhat more than necessary (by up to a factor of
-:math:`\sqrt{3}` for a sphere).
+their components. Whenever the flat source :math:`Q_{i,g}` plus this
+minimum is negative, the gradient is scaled by the ratio of the flat source
+to the magnitude of the minimum, so that the modeled source reaches zero at
+that corner. Because the linear term integrates to zero over the region,
+the rescaling preserves the region's mean emission, and gradients that pass
+the test are left untouched. A group whose flat source is not positive has
+its gradient zeroed. The box contains the region, so once its boundary has
+been sampled the modeled source is non-negative throughout. The bound is
+exact for box-shaped regions and conservative for others, so rounded or
+diagonally oriented regions are limited somewhat more than necessary (by up
+to a factor of :math:`\sqrt{3}` for a sphere).
 
 This is the treatment `MPACT <Choi-2024_>`_ applies in its limited linear
 source approximation, with the same mean-preserving factor. MPACT finds

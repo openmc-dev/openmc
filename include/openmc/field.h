@@ -65,7 +65,7 @@ protected:
 // MappedField
 // -----------------------------------------------------------
 
-//! A field that stores type data on a mesh with a specified mapping.
+//! A field that stores typed data on a mesh with a specified mapping.
 //!
 //! Provides evaluation (including trilinear interpolation for nodal fields),
 //! assignment, and mesh-boundary queries.
@@ -229,7 +229,7 @@ public:
   double distance_to_next_boundary(
     int current_bin, const Position& r, const Direction& u, int& bin_next)
   {
-    return this->mesh_ptr()->distance_to_next_boundary(
+    return mesh_ptr()->distance_to_next_boundary(
       current_bin, r, u, bin_next);
   }
 

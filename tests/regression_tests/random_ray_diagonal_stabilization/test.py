@@ -6,6 +6,7 @@ import openmc.mgxs
 from openmc.examples import pwr_pin_cell
 from openmc.utility_funcs import change_directory
 from openmc import RegularMesh
+import pytest
 
 from tests.testing_harness import TolerantPyAPITestHarness
 
@@ -62,26 +63,6 @@ def _build_model():
     model.settings.batches = 20
 
     return model
-
-
-def test_random_ray_diagonal_stabilization():
-    model = _build_model()
-    model.settings.random_ray['volume_estimator'] = 'hybrid'
-    harness = MGXSTestHarness('statepoint.20.h5', model)
-    harness.main()
-
-
-def test_random_ray_diagonal_stabilization_adaptive():
-    # The transport-corrected (P0) library's negative within-group scattering
-    # drives some reduced sources negative, which the adaptive estimator must
-    # handle through its negative-source (strong) treatment and its
-    # end-of-inactive demotion. This case pins that interplay.
-    with change_directory('adaptive'):
-        openmc.reset_auto_ids()
-        model = _build_model()
-        model.settings.random_ray['volume_estimator'] = 'adaptive'
-        harness = MGXSTestHarness('statepoint.20.h5', model)
-        harness.main()
 
 
 def _build_homogeneous_model():
@@ -141,16 +122,32 @@ def _build_homogeneous_model():
     return model
 
 
-def test_random_ray_diagonal_stabilization_strict_adaptive():
-    # The strict estimator's non-negativity fixup must assess the stabilized
-    # flux iterate. The negative within-group scattering drives the raw
-    # fast-group iterate negative early on, which the stabilization maps to
-    # a positive value. Flooring the raw value first would freeze the
-    # iteration at the previous iterate, and this problem then climbs toward
-    # a spurious k of 2.0 instead of descending toward the analytic 0.5.
-    with change_directory('strict_adaptive'):
+# The transport-corrected (P0) library's negative within-group scattering
+# drives some reduced sources negative, which the adaptive estimator must
+# handle through its negative-source (strong) treatment and its
+# end-of-inactive demotion. The adaptive case pins that interplay.
+@pytest.mark.parametrize("estimator", ["hybrid", "adaptive"])
+def test_random_ray_diagonal_stabilization(estimator):
+    with change_directory(estimator):
+        openmc.reset_auto_ids()
+        model = _build_model()
+        model.settings.random_ray['volume_estimator'] = estimator
+        harness = MGXSTestHarness('statepoint.20.h5', model)
+        harness.main()
+
+
+# Every estimator must descend toward the analytic eigenvalue of the
+# homogeneous problem. The strict estimator's non-negativity fixup must
+# assess the stabilized flux iterate: the negative within-group scattering
+# drives the raw fast-group iterate negative early on, which the
+# stabilization maps to a positive value. Flooring the raw value first would
+# freeze the iteration at the previous iterate, and this problem then climbs
+# toward a spurious k of 2.0 instead.
+@pytest.mark.parametrize("estimator", ["hybrid", "adaptive", "strict_adaptive"])
+def test_random_ray_diagonal_stabilization_homogeneous(estimator):
+    with change_directory(f'homogeneous_{estimator}'):
         openmc.reset_auto_ids()
         model = _build_homogeneous_model()
-        model.settings.random_ray['volume_estimator'] = 'strict_adaptive'
+        model.settings.random_ray['volume_estimator'] = estimator
         harness = MGXSTestHarness('statepoint.8.h5', model)
         harness.main()

@@ -1007,11 +1007,11 @@ Source Gradient Limiting
 
 The fitted source gradient :math:`\boldsymbol{\vec{Q}}_{i,g} =
 \mathbf{M}_i^{-1} \boldsymbol{\vec{q}}_{i,g}` amplifies noise in the fitted
-moments along any thin extent of a region, so a poorly
-sampled region can carry a spuriously steep gradient and emit a negative
-source over part of its extent. Rays crossing that part can carry negative
-angular flux downstream, which optically thin media with scattering ratios
-near one can amplify.
+moments along any thin extent of a region, so a poorly sampled region can
+carry a spuriously steep gradient and emit a negative source over part of
+its extent. Rays crossing that part can carry negative angular flux
+downstream, which optically thin media with scattering ratios near one can
+amplify.
 
 When the source gradient limiter is enabled, each group's gradient is
 rescaled so that the modeled source stays non-negative over the region's
@@ -1036,11 +1036,12 @@ to the magnitude of the minimum, so that the modeled source reaches zero at
 that corner. Because the linear term integrates to zero over the region,
 the rescaling preserves the region's mean emission, and gradients that pass
 the test are left untouched. A group whose flat source is not positive has
-its gradient zeroed. The box contains the region, so once its boundary has
-been sampled the modeled source is non-negative throughout. The bound is
-exact for box-shaped regions and conservative for others, so rounded or
-diagonally oriented regions are limited somewhat more than necessary (by up
-to a factor of :math:`\sqrt{3}` for a sphere).
+its gradient zeroed. Once the region's extreme points along each axis have
+been sampled, the box contains the region and the modeled source is
+non-negative throughout it. The bound is exact for axis-aligned box regions
+and conservative for others: a sphere is limited by up to a factor of
+:math:`\sqrt{3}` more than necessary, and a thin region lying diagonally to
+the axes by much more, as its bounding box is far larger than the region.
 
 This is the treatment `MPACT <Choi-2024_>`_ applies in its limited linear
 source approximation, with the same mean-preserving factor. MPACT finds

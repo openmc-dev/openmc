@@ -1028,16 +1028,27 @@ beyond its moment ellipsoid. The limiter therefore reduces rather than
 eliminates modeled-source negativity. Because the linear term
 integrates to zero over the region, the rescaling preserves the region's
 mean emission exactly, and gradients that pass the test are left
-untouched. A group whose flat source is
-negative has its gradient zeroed, as no meaningful shape information exists
-in that state.
+untouched. A group whose flat source is negative has its gradient zeroed,
+as no meaningful shape information exists in that state.
+
+This is the treatment `MPACT <Choi-2024_>`_ applies in its limited linear
+source approximation, which reduces the gradient by the same
+mean-preserving factor. MPACT finds each region's minimum source exactly,
+as the minimum of the modeled source over the entrance and exit points of
+every segment crossing the region, which requires the fixed set of tracks
+that deterministic MOC lays down once and reuses every sweep. Random ray
+samples new rays every batch, so no segment set exists when the source is
+built, and the moment ellipsoid bound takes the place of the exact minimum
+as a bound that holds for whatever rays the batch draws.
 
 The limiter is disabled by default because a steep fit can also be
 physical. A linear fit to a sharply attenuated flux legitimately crosses
 zero near the edge of an optically thick region, and clipping such fits
 discards real shape information. In problems like deep penetration, where
 every steep gradient is physical, the limiter has nothing to fix and
-alters the solution at depth. The limiter is therefore best reserved for
+alters the solution at depth. Random ray is also often run with
+deliberately coarse source regions in which the linear fit carries the
+accuracy. The limiter is therefore left as a user choice, best reserved for
 simulations that negative sources destabilize.
 
 .. _methods-shannon-entropy-random-ray:
@@ -1202,6 +1213,7 @@ in random ray particle transport are:
 .. _Tramm-2020: https://doi.org/10.1051/EPJCONF/202124703021
 .. _Cosgrove-2023: https://doi.org/10.1080/00295639.2023.2270618
 .. _Ferrer-2016: https://doi.org/10.13182/NSE15-6
+.. _Choi-2024: https://doi.org/10.1080/00295639.2023.2224234
 .. _Gunow-2018: https://dspace.mit.edu/handle/1721.1/119030
 
 .. only:: html

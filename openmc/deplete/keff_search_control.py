@@ -54,13 +54,10 @@ class _KeffSearchControl:
         root : float
             Parameter value that achieves target keff
         """
-        # The keff search happens before the transport operator is called for
-        # this step, so both openmc.lib.materials and the operator's AtomNumber
-        # still hold the compositions from the previous operator call. Push the
-        # current beginning-of-step compositions in first, otherwise the search
-        # is performed on stale materials and _update_vec() below overwrites
-        # `x` with those stale densities, freezing the composition at its
-        # initial state for the entire depletion calculation.
+        # This runs before the operator is called for this step, so
+        # openmc.lib.materials and the operator's AtomNumber still hold the
+        # previous step's compositions. Push `x` in first, otherwise the search
+        # runs on stale materials and _update_vec() reverts `x` to them.
         self.operator._update_materials_and_nuclides(x)
 
         root = self._search_for_keff()

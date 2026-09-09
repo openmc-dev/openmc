@@ -266,12 +266,19 @@ public:
   // Grows the sampled bounding box to include a point
   void expand_extent(const Position& p)
   {
-    extent_min_->x = std::min(extent_min_->x, p.x);
-    extent_min_->y = std::min(extent_min_->y, p.y);
-    extent_min_->z = std::min(extent_min_->z, p.z);
-    extent_max_->x = std::max(extent_max_->x, p.x);
-    extent_max_->y = std::max(extent_max_->y, p.y);
-    extent_max_->z = std::max(extent_max_->z, p.z);
+    // Conditional stores: once the box has converged, no write is made
+    if (p.x < extent_min_->x)
+      extent_min_->x = p.x;
+    if (p.y < extent_min_->y)
+      extent_min_->y = p.y;
+    if (p.z < extent_min_->z)
+      extent_min_->z = p.z;
+    if (p.x > extent_max_->x)
+      extent_max_->x = p.x;
+    if (p.y > extent_max_->y)
+      extent_max_->y = p.y;
+    if (p.z > extent_max_->z)
+      extent_max_->z = p.z;
   }
 
   std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()

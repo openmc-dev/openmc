@@ -57,7 +57,9 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 
   // Initialize source regions.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
-  source_regions_ = SourceRegionContainer(negroups_, is_linear);
+  // The sampled bounding boxes exist only for the source gradient limiter
+  source_regions_ = SourceRegionContainer(
+    negroups_, is_linear, is_linear && source_gradient_limiter_);
 
   // Initialize tally volumes
   if (volume_normalized_flux_tallies_) {

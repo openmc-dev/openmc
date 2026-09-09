@@ -1,6 +1,8 @@
 #ifndef OPENMC_RANDOM_RAY_SOURCE_REGION_H
 #define OPENMC_RANDOM_RAY_SOURCE_REGION_H
 
+#include <algorithm>
+
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 #include "openmc/random_ray/moment_matrix.h"
@@ -165,6 +167,10 @@ public:
   Position* centroid_t_;
   MomentMatrix* mom_matrix_;
   MomentMatrix* mom_matrix_t_;
+  // Bounding box of the ray segment endpoints sampled in this region, kept
+  // only when the source gradient limiter is enabled (see SourceRegion).
+  Position* extent_min_;
+  Position* extent_max_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
@@ -253,6 +259,20 @@ public:
 
   MomentMatrix& mom_matrix_t() { return *mom_matrix_t_; }
   const MomentMatrix mom_matrix_t() const { return *mom_matrix_t_; }
+
+  const Position extent_min() const { return *extent_min_; }
+  const Position extent_max() const { return *extent_max_; }
+
+  // Grows the sampled bounding box to include a point
+  void expand_extent(const Position& p)
+  {
+    extent_min_->x = std::min(extent_min_->x, p.x);
+    extent_min_->y = std::min(extent_min_->y, p.y);
+    extent_min_->z = std::min(extent_min_->z, p.z);
+    extent_max_->x = std::max(extent_max_->x, p.x);
+    extent_max_->y = std::max(extent_max_->y, p.y);
+    extent_max_->z = std::max(extent_max_->z, p.z);
+  }
 
   std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()
   {
@@ -356,6 +376,14 @@ public:
   MomentMatrix mom_matrix_t_ {0.0, 0.0, 0.0, 0.0, 0.0,
     0.0}; //!< The spatial moment matrix accumulated over all iterations
 
+  // Bounding box of the ray segment endpoints sampled in this region. Segment
+  // endpoints lie on the region boundary, so the box converges to the
+  // region's true extent. It is accumulated only when the source gradient
+  // limiter is enabled, which bounds the linear source over it. The empty
+  // box has its minimum above its maximum.
+  Position extent_min_ {INFTY, INFTY, INFTY};
+  Position extent_max_ {-INFTY, -INFTY, -INFTY};
+
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
@@ -395,8 +423,8 @@ class SourceRegionContainer {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegionContainer(int negroups, bool is_linear)
-    : negroups_(negroups), is_linear_(is_linear)
+  SourceRegionContainer(int negroups, bool is_linear, bool track_extents)
+    : negroups_(negroups), is_linear_(is_linear), track_extents_(track_extents)
   {}
   SourceRegionContainer() = default;
 
@@ -473,6 +501,12 @@ public:
   {
     return mom_matrix_t_[sr];
   }
+
+  Position& extent_min(int64_t sr) { return extent_min_[sr]; }
+  const Position extent_min(int64_t sr) const { return extent_min_[sr]; }
+
+  Position& extent_max(int64_t sr) { return extent_max_[sr]; }
+  const Position extent_max(int64_t sr) const { return extent_max_[sr]; }
 
   MomentArray& source_gradients(int64_t sr, int g)
   {
@@ -630,6 +664,7 @@ public:
   const int negroups() const { return negroups_; }
   bool& is_linear() { return is_linear_; }
   const bool is_linear() const { return is_linear_; }
+  const bool track_extents() const { return track_extents_; }
   SourceRegionHandle get_source_region_handle(int64_t sr);
   void adjoint_reset();
 
@@ -639,6 +674,9 @@ private:
   int64_t n_source_regions_ {0};
   int negroups_ {0};
   bool is_linear_ {false};
+  // Whether the sampled bounding boxes are stored (linear source with the
+  // source gradient limiter enabled)
+  bool track_extents_ {false};
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;
@@ -662,6 +700,8 @@ private:
   vector<Position> centroid_t_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;
+  vector<Position> extent_min_;
+  vector<Position> extent_max_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.

@@ -117,27 +117,26 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
 
   // If enabled by the user, limit the source gradients so the modeled local
   // source q(r) = q_flat + (r - centroid) . q_gradient stays non-negative
-  // within sqrt(3) standard deviations of the centroid along the gradient,
-  // the half-extent of a uniform slab with the region's second moment,
-  // where the linear term reaches sqrt(3 g^T M g). Real regions extend
-  // further along some directions (a sphere to sqrt(5) standard
-  // deviations, a cube's corner to three), so the limiter reduces negative
-  // sources rather than eliminating them. Rescaling the gradient preserves
-  // the region's mean emission, since the linear term integrates to zero
-  // over the region, and gradients that pass are left untouched. A
-  // non-positive flat source leaves no shape to keep, so its cap is zero
-  // and its gradient is scaled away.
-  if (source_gradient_limiter_ && material != MATERIAL_VOID) {
-    const MomentMatrix& m = srh.mom_matrix();
+  // over the region's bounding box as sampled by the ray segment endpoints.
+  // The largest value the linear term can take over the box is the sum,
+  // over the three axes, of the gradient component times the box half-extent
+  // on the side that component points to. The box contains the region, so
+  // the modeled source is non-negative throughout it once the boundary has
+  // been sampled. Rescaling the gradient preserves the region's mean
+  // emission, since the linear term integrates to zero over the region, and
+  // gradients that pass are left untouched. A non-positive flat source
+  // leaves no shape to keep, so its cap is zero and its gradient is scaled
+  // away. A region with no sampled box yet carries no gradient to limit.
+  if (source_gradient_limiter_ && material != MATERIAL_VOID &&
+      srh.extent_min().x <= srh.extent_max().x) {
+    Position lo = srh.extent_min() - srh.centroid();
+    Position hi = srh.extent_max() - srh.centroid();
     for (int g = 0; g < negroups_; g++) {
       MomentArray& gradient = srh.source_gradients(g);
       double cap = std::max<double>(srh.source(g), 0.0);
-      double quad =
-        m.a * gradient.x * gradient.x + m.d * gradient.y * gradient.y +
-        m.f * gradient.z * gradient.z +
-        2.0 * (m.b * gradient.x * gradient.y + m.c * gradient.x * gradient.z +
-                m.e * gradient.y * gradient.z);
-      double overshoot = std::sqrt(3.0 * std::max(quad, 0.0));
+      double overshoot = std::max(gradient.x * hi.x, gradient.x * lo.x) +
+                         std::max(gradient.y * hi.y, gradient.y * lo.y) +
+                         std::max(gradient.z * hi.z, gradient.z * lo.z);
       if (overshoot > cap) {
         gradient *= cap / overshoot;
       }

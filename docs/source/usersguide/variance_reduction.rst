@@ -227,6 +227,83 @@ mesh does not need to be redefined. Monte Carlo solves that load a weight window
 file as above will utilize weight windows to reduce the variance of the
 simulation.
 
+------------------------------------------------------------
+Generating Weight Windows from an Exodus II Adjoint Solution
+------------------------------------------------------------
+
+Weight windows can be directly generated from a multigroup adjoint flux
+solution stored as elemental data (as CONSTANT MONOMIAL) in an Exodus II file. 
+This provides a convenient workflow for generating CADIS or FW-CADIS weight windows when the
+adjoint problem is solved using an external deterministic transport solver
+that produces Exodus II output, such as Griffin or any other MOOSE-based solver.
+
+In this workflow, the deterministic solver is used to solve the adjoint
+problem and write the resulting multigroup adjoint flux to an Exodus II
+file. OpenMC then reads the mesh and adjoint flux directly from the Exodus
+II file and constructs the corresponding weight windows during simulation
+initialization. No intermediate mesh or flux conversion is required.
+
+The Exodus II file must contain one elemental variable for each energy group,
+representing the adjoint flux for that group. The variables are specified
+using the ``adjoint_flux_variables`` input and must be listed in the same
+order as the energy groups specified by ``energy_bounds``. The energy bounds
+must be given in ascending order. Therefore, if the deterministic solver
+numbers its energy groups from the highest energy to the lowest energy
+(e.g., group 0 is the fastest group), the adjoint flux variables should be
+listed in the opposite order, from the lowest-energy group to the
+highest-energy group.
+
+The following example reads a two-group adjoint solution from
+``adjoint.e`` and generates neutron weight windows using the FW-CADIS
+normalization:
+
+.. code-block:: xml
+
+   <weight_windows_exodus>
+     <file>adjoint.e</file>
+     <adjoint_flux_variables>flux_g1 flux_g2</adjoint_flux_variables>
+     <energy_bounds>0.0 1.0e5 2.0e7</energy_bounds>
+   </weight_windows_exodus>
+
+The optional ``timestep``, ``particle_type``, ``survival_ratio``,
+``upper_bound_ratio``, and ``max_split`` elements can be used to control
+the resulting weight windows. If these elements are omitted, their default
+values are used.
+
+The same functionality is available through the Python API using
+:class:`openmc.WeightWindowsExodus`:
+
+.. code-block:: python
+
+   import openmc
+
+   settings = openmc.Settings()
+   settings.weight_windows_exodus = openmc.WeightWindowsExodus(
+       file='adjoint.e',
+       adjoint_flux_variables=['flux_g1', 'flux_g2'],
+       energy_bounds=[0.0, 1.0e5, 2.0e7],
+   )
+
+The ``energy_bounds`` argument may also be specified using an
+:class:`openmc.mgxs.EnergyGroups` object.
+
+This capability can be used as part of both CADIS and FW-CADIS variance
+reduction workflows. For CADIS, the adjoint solution represents the
+importance of particles with respect to a specified tally response. For
+FW-CADIS, the adjoint solution can be used to construct weight windows that
+account for the desired spatial and energy-dependent importance distribution.
+In either case, the adjoint calculation can be performed by an external
+deterministic solver, while OpenMC uses the resulting adjoint flux to
+construct the Monte Carlo weight windows.
+
+.. warning::
+
+   When ``<weight_windows_exodus>`` is specified, it cannot be used together
+   with other weight-window specifications. OpenMC will use the weight
+   windows generated from the Exodus II adjoint solution by default.
+   Other weight-window inputs should not be provided when using
+   ``<weight_windows_exodus>``.
+
 .. _source_biasing:
 
 --------------

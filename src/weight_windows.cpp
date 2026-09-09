@@ -30,6 +30,17 @@
 
 #include <fmt/core.h>
 
+#ifdef OPENMC_LIBMESH_ENABLED
+#include "libmesh/dof_map.h"
+#include "libmesh/elem.h"
+#include "libmesh/equation_systems.h"
+#include "libmesh/exodusII_io.h"
+#include "libmesh/explicit_system.h"
+#include "libmesh/mesh_communication.h"
+#include "libmesh/numeric_vector.h"
+#include "libmesh/replicated_mesh.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -929,6 +940,275 @@ void WeightWindowsGenerator::update() const
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+//! Compute FW-CADIS weight window bounds from multigroup adjoint flux
+//
+//! Mirrors the FW_CADIS branch of WeightWindows::update_weights(): positive
+//! flux values are inverted and normalized by twice the global maximum of the
+//! inverted values. Elements with non-positive flux keep the sentinel -1.0.
+//! \param[in] flux flux[g][e]: adjoint flux for group g, element e
+//! \param[in] upper_bound_ratio ratio of upper to lower ww bounds
+//! \param[out] flat_lower lower bounds, flat layout [g * n_elem + e]
+//! \param[out] flat_upper upper bounds, same layout
+//! \return false if no positive flux value exists anywhere
+static bool fw_cadis_bounds(const vector<vector<double>>& flux,
+  double upper_bound_ratio, vector<double>& flat_lower,
+  vector<double>& flat_upper)
+{
+  const size_t n_groups = flux.size();
+  const size_t n_elem = n_groups ? flux[0].size() : 0;
+
+  flat_lower.assign(n_groups * n_elem, -1.0);
+  flat_upper.assign(n_groups * n_elem, -1.0);
+
+  // Invert positive flux values and track the global maximum
+  double inv_max = 0.0;
+  for (size_t g = 0; g < n_groups; ++g) {
+    for (size_t e = 0; e < n_elem; ++e) {
+      if (flux[g][e] > 0.0) {
+        double inv = 1.0 / flux[g][e];
+        flat_lower[g * n_elem + e] = inv;
+        inv_max = std::max(inv_max, inv);
+      }
+    }
+  }
+
+  if (inv_max <= 0.0)
+    return false;
+
+  const double norm_factor = 1.0 / (2.0 * inv_max);
+  for (size_t i = 0; i < n_groups * n_elem; ++i) {
+    if (flat_lower[i] >= 0.0) {
+      flat_lower[i] *= norm_factor;
+      flat_upper[i] = flat_lower[i] * upper_bound_ratio;
+    }
+  }
+  return true;
+}
+
+void read_weight_windows_exodus(pugi::xml_node node)
+{
+#ifndef OPENMC_LIBMESH_ENABLED
+  (void)node;
+  fatal_error("<weight_windows_exodus> requires OpenMC to be compiled "
+              "with libMesh support (-DOPENMC_USE_LIBMESH=on).");
+#else
+  // Make sure required elements are present
+  const vector<std::string> required_elems {
+    "file", "adjoint_flux_variables", "energy_bounds"};
+  for (const auto& elem : required_elems) {
+    if (!check_for_node(node, elem.c_str())) {
+      fatal_error(
+        fmt::format("Must specify <{}> for <weight_windows_exodus>.", elem));
+    }
+  }
+
+  const std::string file = get_node_value(node, "file", true);
+  if (!file_exists(file))
+    fatal_error(fmt::format(
+      "<weight_windows_exodus>: mesh file '{}' does not exist.", file));
+
+  // One elemental variable per energy group, ordered by ascending energy
+  // consistently with <energy_bounds>
+  const vector<std::string> flux_vars =
+    get_node_array<std::string>(node, "adjoint_flux_variables");
+  if (flux_vars.empty())
+    fatal_error("<weight_windows_exodus>: <adjoint_flux_variables> must "
+                "list at least one variable.");
+  const int n_groups = static_cast<int>(flux_vars.size());
+
+  const vector<double> e_bounds = get_node_array<double>(node, "energy_bounds");
+  if (static_cast<int>(e_bounds.size()) != n_groups + 1)
+    fatal_error(fmt::format(
+      "<weight_windows_exodus>: <energy_bounds> must have exactly {} values "
+      "for {} group(s), but {} were provided.",
+      n_groups + 1, n_groups, e_bounds.size()));
+  for (int g = 0; g < n_groups; ++g) {
+    if (e_bounds[g] >= e_bounds[g + 1])
+      fatal_error(
+        fmt::format("<weight_windows_exodus>: <energy_bounds> must be strictly "
+                    "increasing; bounds[{}] = {} >= bounds[{}] = {}.",
+          g, e_bounds[g], g + 1, e_bounds[g + 1]));
+  }
+
+  // <timestep> is 0-based; default -1 selects the last step in the file
+  const int ts_user = check_for_node(node, "timestep")
+                        ? std::stoi(get_node_value(node, "timestep", true))
+                        : -1;
+
+  const std::string p_type_str = check_for_node(node, "particle_type")
+                                   ? get_node_value(node, "particle_type", true)
+                                   : "neutron";
+
+  const double survival_ratio =
+    check_for_node(node, "survival_ratio")
+      ? std::stod(get_node_value(node, "survival_ratio", true))
+      : 3.0;
+  if (survival_ratio <= 1)
+    fatal_error("Survival to lower weight window ratio must bigger than 1 "
+                "and less than the upper to lower weight window ratio.");
+
+  const double upper_bound_ratio =
+    check_for_node(node, "upper_bound_ratio")
+      ? std::stod(get_node_value(node, "upper_bound_ratio", true))
+      : 5.0;
+  if (upper_bound_ratio <= survival_ratio)
+    fatal_error(fmt::format(
+      "<weight_windows_exodus>: <upper_bound_ratio> ({}) must be larger "
+      "than <survival_ratio> ({}).",
+      upper_bound_ratio, survival_ratio));
+
+  const int max_split = check_for_node(node, "max_split")
+                          ? std::stoi(get_node_value(node, "max_split", true))
+                          : 10;
+  if (max_split <= 1)
+    fatal_error("max split must be larger than 1");
+
+  // Read the mesh and all group flux variables in a single pass. Note that
+  // copy_elemental_solution() must be called on the same ExodusII_IO object
+  // that performed read(), and allow_renumbering(false) must be set before
+  // read() so that element IDs match the Exodus element block entries.
+  if (!settings::libmesh_comm)
+    fatal_error("<weight_windows_exodus>: no libMesh communicator is "
+                "initialized.");
+
+  auto mesh = make_unique<libMesh::ReplicatedMesh>(*settings::libmesh_comm, 3);
+  mesh->allow_renumbering(false);
+
+  libMesh::ExodusII_IO exo(*mesh);
+  exo.read(file);
+
+  // The reader only populates rank 0, so replicate the mesh to the other MPI
+  // ranks before use (no-op in serial)
+  libMesh::MeshCommunication().broadcast(*mesh);
+  mesh->prepare_for_use();
+
+  const int n_elem = static_cast<int>(mesh->n_active_elem());
+  if (n_elem == 0)
+    fatal_error(fmt::format(
+      "<weight_windows_exodus>: mesh file '{}' has no elements.", file));
+
+  // Resolve the requested time step (Exodus steps are 1-based internally).
+  // The file is only open on rank 0, so query metadata there and broadcast.
+  const auto& comm = mesh->comm();
+  int n_steps = 0;
+  if (comm.rank() == 0)
+    n_steps = static_cast<int>(exo.get_time_steps().size());
+  comm.broadcast(n_steps);
+
+  const int ts_1based = (ts_user < 0) ? n_steps : (ts_user + 1);
+  if (ts_1based < 1 || ts_1based > n_steps)
+    fatal_error(fmt::format(
+      "<weight_windows_exodus>: requested timestep {} is out of range "
+      "[0, {}) for file '{}'.",
+      (ts_user < 0 ? n_steps - 1 : ts_user), n_steps, file));
+
+  // Verify every requested variable exists before reading any of them
+  if (comm.rank() == 0) {
+    const auto& exo_elem_vars = exo.get_elem_var_names();
+    for (const auto& vname : flux_vars) {
+      if (std::find(exo_elem_vars.begin(), exo_elem_vars.end(), vname) ==
+          exo_elem_vars.end()) {
+        std::string available;
+        for (size_t vi = 0; vi < exo_elem_vars.size(); ++vi) {
+          if (vi)
+            available += ", ";
+          available += exo_elem_vars[vi];
+        }
+        fatal_error(fmt::format(
+          "<weight_windows_exodus>: variable '{}' not found in '{}'.\n"
+          "  Available element variables: [{}]",
+          vname, file, available));
+      }
+    }
+  }
+
+  // Index flux arrays by elem->id() - first_id so that the flux index matches
+  // the mesh bin computed by LibMesh::get_bin_from_element()
+  const auto first_id = (*mesh->elements_begin())->id();
+
+  // flux[g][e] matches the (n_energy_bins, n_mesh_bins) layout of lower_ww_
+  vector<vector<double>> flux(n_groups);
+
+  for (int g = 0; g < n_groups; ++g) {
+    // Use a fresh EquationSystems per group to avoid DOF conflicts from
+    // multiple active variables
+    libMesh::EquationSystems eq_sys(*mesh);
+    auto& sys = eq_sys.add_system<libMesh::ExplicitSystem>("adjoint_ww");
+    sys.add_variable(flux_vars[g], libMesh::CONSTANT, libMesh::MONOMIAL);
+    eq_sys.init();
+
+    exo.copy_elemental_solution(sys, flux_vars[g], flux_vars[g], ts_1based);
+
+    // Under MPI the solution vector is distributed; gather the full vector
+    // onto every rank (collective, no-op in serial)
+    std::vector<libMesh::Number> soln_local;
+    sys.solution->localize(soln_local);
+
+    const libMesh::DofMap& dof_map = sys.get_dof_map();
+    flux[g].assign(n_elem, 0.0);
+    for (const auto* elem : mesh->active_element_ptr_range()) {
+      std::vector<libMesh::dof_id_type> dofs;
+      dof_map.dof_indices(elem, dofs);
+      if (dofs.size() != 1)
+        fatal_error(fmt::format(
+          "<weight_windows_exodus>: expected one DOF per element but found "
+          "{} for element {}.",
+          dofs.size(), elem->id()));
+      const auto bin = elem->id() - first_id;
+      if (bin >= static_cast<libMesh::dof_id_type>(n_elem))
+        fatal_error(fmt::format(
+          "<weight_windows_exodus>: element IDs in '{}' are not contiguous "
+          "(element {} with first ID {}).",
+          file, elem->id(), first_id));
+      flux[g][bin] = soln_local[dofs[0]];
+    }
+  }
+
+  // Register the mesh with OpenMC, transferring ownership
+  int32_t mesh_id = 1;
+  for (const auto& m : model::meshes)
+    mesh_id = std::max(mesh_id, m->id_ + 1);
+
+  model::meshes.push_back(make_unique<LibMesh>(std::move(mesh), 1.0, file));
+  model::meshes.back()->set_id(mesh_id);
+
+  // Normalize (FW-CADIS) and build the WeightWindows object
+  vector<double> flat_lower;
+  vector<double> flat_upper;
+  if (!fw_cadis_bounds(flux, upper_bound_ratio, flat_lower, flat_upper))
+    fatal_error(fmt::format(
+      "<weight_windows_exodus>: all adjoint flux values across all {} "
+      "group(s) in '{}' are zero or negative -- cannot compute FW-CADIS "
+      "weight windows.",
+      n_groups, file));
+
+  // set_mesh() and set_energy_bounds() must precede set_bounds() since both
+  // trigger allocate_ww_bounds()
+  WeightWindows* wws = WeightWindows::create();
+  wws->set_mesh(model::mesh_map.at(mesh_id));
+  wws->set_particle_type(ParticleType {p_type_str});
+  wws->set_energy_bounds(span<const double>(e_bounds.data(), e_bounds.size()));
+  wws->survival_ratio() = survival_ratio;
+  wws->max_split() = max_split;
+  wws->set_bounds(span<const double>(flat_lower.data(), flat_lower.size()),
+    span<const double>(flat_upper.data(), flat_upper.size()));
+
+  std::string varlist;
+  for (int g = 0; g < n_groups; ++g) {
+    if (g)
+      varlist += ", ";
+    varlist += flux_vars[g];
+  }
+  write_message(
+    fmt::format("Loaded {}-group adjoint weight windows from '{}':\n"
+                "  {} elements, variables [{}], timestep {}, "
+                "upper_bound_ratio {:g}.",
+      n_groups, file, n_elem, varlist, (ts_user < 0 ? n_steps - 1 : ts_user),
+      upper_bound_ratio),
+    5);
+#endif // OPENMC_LIBMESH_ENABLED
+}
 
 std::pair<bool, WeightWindow> search_weight_window(const Particle& p)
 {

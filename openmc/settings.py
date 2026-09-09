@@ -17,18 +17,23 @@ from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
 from .utility_funcs import input_path, set_xml_input_path
 from .volume import VolumeCalculation
-from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
+from .weight_windows import (
+    WeightWindows,
+    WeightWindowGenerator,
+    WeightWindowsList,
+    WeightWindowsExodus,
+)
 
 
 class RunMode(Enum):
-    EIGENVALUE = 'eigenvalue'
-    FIXED_SOURCE = 'fixed source'
-    PLOT = 'plot'
-    VOLUME = 'volume'
-    PARTICLE_RESTART = 'particle restart'
+    EIGENVALUE = "eigenvalue"
+    FIXED_SOURCE = "fixed source"
+    PLOT = "plot"
+    VOLUME = "volume"
+    PARTICLE_RESTART = "particle restart"
 
 
-_RES_SCAT_METHODS = {'dbrc', 'rvs'}
+_RES_SCAT_METHODS = {"dbrc", "rvs"}
 
 
 class Settings:
@@ -395,6 +400,12 @@ class Settings:
         Path to a weight window file to load during simulation initialization
 
         .. versionadded::0.14.0
+    weight_windows_exodus : openmc.WeightWindowsExodus
+        Specification for building weight windows from multigroup adjoint flux
+        stored as elemental data in an Exodus file. Requires OpenMC to be
+        built with libMesh support.
+
+        .. versionadded:: 0.15.4
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
     """
@@ -415,7 +426,7 @@ class Settings:
         self._max_order = None
 
         # Source subelement
-        self._source = cv.CheckedList(SourceBase, 'source distributions')
+        self._source = cv.CheckedList(SourceBase, "source distributions")
         self._source_rejection_fraction = None
 
         self._confidence_intervals = None
@@ -475,7 +486,8 @@ class Settings:
 
         self._resonance_scattering = {}
         self._volume_calculations = cv.CheckedList(
-            VolumeCalculation, 'volume calculations')
+            VolumeCalculation, "volume calculations"
+        )
 
         self._create_fission_neutrons = None
         self._create_delayed_neutrons = None
@@ -489,10 +501,12 @@ class Settings:
         self._write_initial_source = None
         self._weight_windows = WeightWindowsList()
         self._weight_window_generators = cv.CheckedList(
-            WeightWindowGenerator, 'weight window generators')
+            WeightWindowGenerator, "weight window generators"
+        )
         self._weight_windows_on = None
         self._shared_secondary_bank = None
         self._weight_windows_file = None
+        self._weight_windows_exodus = None
         self._weight_window_checkpoints = {}
         self._max_history_splits = None
         self._max_tracks = None
@@ -505,11 +519,11 @@ class Settings:
             setattr(self, key, value)
 
     def __setattr__(self, name: str, value):
-        if not name.startswith('_'):
+        if not name.startswith("_"):
             try:
                 getattr(self, name)
             except AttributeError as e:
-                msg, = traceback.format_exception_only(e)
+                (msg,) = traceback.format_exception_only(e)
                 msg = msg.strip().split(maxsplit=1)[-1]
                 warnings.warn(msg, stacklevel=2)
         super().__setattr__(name, value)
@@ -520,7 +534,7 @@ class Settings:
 
     @run_mode.setter
     def run_mode(self, run_mode: str):
-        cv.check_value('run mode', run_mode, {x.value for x in RunMode})
+        cv.check_value("run mode", run_mode, {x.value for x in RunMode})
         for mode in RunMode:
             if mode.value == run_mode:
                 self._run_mode = mode
@@ -531,8 +545,8 @@ class Settings:
 
     @batches.setter
     def batches(self, batches: int):
-        cv.check_type('batches', batches, Integral)
-        cv.check_greater_than('batches', batches, 0)
+        cv.check_type("batches", batches, Integral)
+        cv.check_greater_than("batches", batches, 0)
         self._batches = batches
 
     @property
@@ -541,9 +555,8 @@ class Settings:
 
     @generations_per_batch.setter
     def generations_per_batch(self, generations_per_batch: int):
-        cv.check_type('generations per batch', generations_per_batch, Integral)
-        cv.check_greater_than('generations per batch',
-                              generations_per_batch, 0)
+        cv.check_type("generations per batch", generations_per_batch, Integral)
+        cv.check_greater_than("generations per batch", generations_per_batch, 0)
         self._generations_per_batch = generations_per_batch
 
     @property
@@ -552,8 +565,8 @@ class Settings:
 
     @inactive.setter
     def inactive(self, inactive: int):
-        cv.check_type('inactive batches', inactive, Integral)
-        cv.check_greater_than('inactive batches', inactive, 0, True)
+        cv.check_type("inactive batches", inactive, Integral)
+        cv.check_greater_than("inactive batches", inactive, 0, True)
         self._inactive = inactive
 
     @property
@@ -562,8 +575,8 @@ class Settings:
 
     @max_lost_particles.setter
     def max_lost_particles(self, max_lost_particles: int):
-        cv.check_type('max_lost_particles', max_lost_particles, Integral)
-        cv.check_greater_than('max_lost_particles', max_lost_particles, 0)
+        cv.check_type("max_lost_particles", max_lost_particles, Integral)
+        cv.check_greater_than("max_lost_particles", max_lost_particles, 0)
         self._max_lost_particles = max_lost_particles
 
     @property
@@ -572,10 +585,9 @@ class Settings:
 
     @rel_max_lost_particles.setter
     def rel_max_lost_particles(self, rel_max_lost_particles: float):
-        cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
-        cv.check_greater_than('rel_max_lost_particles',
-                              rel_max_lost_particles, 0)
-        cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
+        cv.check_type("rel_max_lost_particles", rel_max_lost_particles, Real)
+        cv.check_greater_than("rel_max_lost_particles", rel_max_lost_particles, 0)
+        cv.check_less_than("rel_max_lost_particles", rel_max_lost_particles, 1)
         self._rel_max_lost_particles = rel_max_lost_particles
 
     @property
@@ -584,10 +596,8 @@ class Settings:
 
     @max_write_lost_particles.setter
     def max_write_lost_particles(self, max_write_lost_particles: int):
-        cv.check_type('max_write_lost_particles',
-                      max_write_lost_particles, Integral)
-        cv.check_greater_than('max_write_lost_particles',
-                              max_write_lost_particles, 0)
+        cv.check_type("max_write_lost_particles", max_write_lost_particles, Integral)
+        cv.check_greater_than("max_write_lost_particles", max_write_lost_particles, 0)
         self._max_write_lost_particles = max_write_lost_particles
 
     @property
@@ -596,8 +606,8 @@ class Settings:
 
     @particles.setter
     def particles(self, particles: int):
-        cv.check_type('particles', particles, Integral)
-        cv.check_greater_than('particles', particles, 0)
+        cv.check_type("particles", particles, Integral)
+        cv.check_greater_than("particles", particles, 0)
         self._particles = particles
 
     @property
@@ -607,28 +617,36 @@ class Settings:
     @keff_trigger.setter
     def keff_trigger(self, keff_trigger: dict):
         if not isinstance(keff_trigger, dict):
-            msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
-                'which is not a Python dictionary'
+            msg = (
+                f'Unable to set a trigger on keff from "{keff_trigger}" '
+                "which is not a Python dictionary"
+            )
             raise ValueError(msg)
 
-        elif 'type' not in keff_trigger:
-            msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
+        elif "type" not in keff_trigger:
+            msg = (
+                f'Unable to set a trigger on keff from "{keff_trigger}" '
                 'which does not have a "type" key'
+            )
             raise ValueError(msg)
 
-        elif keff_trigger['type'] not in ['variance', 'std_dev', 'rel_err']:
-            msg = 'Unable to set a trigger on keff with ' \
-                  'type "{0}"'.format(keff_trigger['type'])
+        elif keff_trigger["type"] not in ["variance", "std_dev", "rel_err"]:
+            msg = "Unable to set a trigger on keff with " 'type "{0}"'.format(
+                keff_trigger["type"]
+            )
             raise ValueError(msg)
 
-        elif 'threshold' not in keff_trigger:
-            msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
+        elif "threshold" not in keff_trigger:
+            msg = (
+                f'Unable to set a trigger on keff from "{keff_trigger}" '
                 'which does not have a "threshold" key'
+            )
             raise ValueError(msg)
 
-        elif not isinstance(keff_trigger['threshold'], Real):
-            msg = 'Unable to set a trigger on keff with ' \
-                  'threshold "{0}"'.format(keff_trigger['threshold'])
+        elif not isinstance(keff_trigger["threshold"], Real):
+            msg = "Unable to set a trigger on keff with " 'threshold "{0}"'.format(
+                keff_trigger["threshold"]
+            )
             raise ValueError(msg)
 
         self._keff_trigger = keff_trigger
@@ -639,8 +657,7 @@ class Settings:
 
     @energy_mode.setter
     def energy_mode(self, energy_mode: str):
-        cv.check_value('energy mode', energy_mode,
-                       ['continuous-energy', 'multi-group'])
+        cv.check_value("energy mode", energy_mode, ["continuous-energy", "multi-group"])
         self._energy_mode = energy_mode
 
     @property
@@ -650,9 +667,8 @@ class Settings:
     @max_order.setter
     def max_order(self, max_order: int | None):
         if max_order is not None:
-            cv.check_type('maximum scattering order', max_order, Integral)
-            cv.check_greater_than('maximum scattering order', max_order, 0,
-                                  True)
+            cv.check_type("maximum scattering order", max_order, Integral)
+            cv.check_greater_than("maximum scattering order", max_order, 0, True)
         self._max_order = max_order
 
     @property
@@ -663,8 +679,7 @@ class Settings:
     def source(self, source: SourceBase | Iterable[SourceBase]):
         if not isinstance(source, MutableSequence):
             source = [source]
-        self._source = cv.CheckedList(
-            SourceBase, 'source distributions', source)
+        self._source = cv.CheckedList(SourceBase, "source distributions", source)
 
     @property
     def confidence_intervals(self) -> bool:
@@ -672,7 +687,7 @@ class Settings:
 
     @confidence_intervals.setter
     def confidence_intervals(self, confidence_intervals: bool):
-        cv.check_type('confidence interval', confidence_intervals, bool)
+        cv.check_type("confidence interval", confidence_intervals, bool)
         self._confidence_intervals = confidence_intervals
 
     @property
@@ -681,8 +696,7 @@ class Settings:
 
     @electron_treatment.setter
     def electron_treatment(self, electron_treatment: str):
-        cv.check_value('electron treatment',
-                       electron_treatment, ['led', 'ttb'])
+        cv.check_value("electron treatment", electron_treatment, ["led", "ttb"])
         self._electron_treatment = electron_treatment
 
     @property
@@ -691,7 +705,7 @@ class Settings:
 
     @atomic_relaxation.setter
     def atomic_relaxation(self, atomic_relaxation: bool):
-        cv.check_type('atomic relaxation', atomic_relaxation, bool)
+        cv.check_type("atomic relaxation", atomic_relaxation, bool)
         self._atomic_relaxation = atomic_relaxation
 
     @property
@@ -700,7 +714,7 @@ class Settings:
 
     @ptables.setter
     def ptables(self, ptables: bool):
-        cv.check_type('probability tables', ptables, bool)
+        cv.check_type("probability tables", ptables, bool)
         self._ptables = ptables
 
     @property
@@ -709,7 +723,7 @@ class Settings:
 
     @photon_transport.setter
     def photon_transport(self, photon_transport: bool):
-        cv.check_type('photon transport', photon_transport, bool)
+        cv.check_type("photon transport", photon_transport, bool)
         self._photon_transport = photon_transport
 
     @property
@@ -718,7 +732,7 @@ class Settings:
 
     @uniform_source_sampling.setter
     def uniform_source_sampling(self, uniform_source_sampling: bool):
-        cv.check_type('strength as weights', uniform_source_sampling, bool)
+        cv.check_type("strength as weights", uniform_source_sampling, bool)
         self._uniform_source_sampling = uniform_source_sampling
 
     @property
@@ -727,8 +741,8 @@ class Settings:
 
     @plot_seed.setter
     def plot_seed(self, seed):
-        cv.check_type('random plot color seed', seed, Integral)
-        cv.check_greater_than('random plot color seed', seed, 0)
+        cv.check_type("random plot color seed", seed, Integral)
+        cv.check_greater_than("random plot color seed", seed, 0)
         self._plot_seed = seed
 
     @property
@@ -737,8 +751,8 @@ class Settings:
 
     @seed.setter
     def seed(self, seed: int):
-        cv.check_type('random number generator seed', seed, Integral)
-        cv.check_greater_than('random number generator seed', seed, 0)
+        cv.check_type("random number generator seed", seed, Integral)
+        cv.check_greater_than("random number generator seed", seed, 0)
         self._seed = seed
 
     @property
@@ -747,8 +761,8 @@ class Settings:
 
     @stride.setter
     def stride(self, stride: int):
-        cv.check_type('random number generator stride', stride, Integral)
-        cv.check_greater_than('random number generator stride', stride, 0)
+        cv.check_type("random number generator stride", stride, Integral)
+        cv.check_greater_than("random number generator stride", stride, 0)
         self._stride = stride
 
     @property
@@ -757,9 +771,9 @@ class Settings:
 
     @surface_grazing_cutoff.setter
     def surface_grazing_cutoff(self, surface_grazing_cutoff: float):
-        cv.check_type('surface grazing cutoff', surface_grazing_cutoff, float)
-        cv.check_greater_than('surface grazing cutoff', surface_grazing_cutoff, 0.0)
-        cv.check_less_than('surface grazing cutoff', surface_grazing_cutoff, 1.0)
+        cv.check_type("surface grazing cutoff", surface_grazing_cutoff, float)
+        cv.check_greater_than("surface grazing cutoff", surface_grazing_cutoff, 0.0)
+        cv.check_less_than("surface grazing cutoff", surface_grazing_cutoff, 1.0)
         self._surface_grazing_cutoff = surface_grazing_cutoff
 
     @property
@@ -768,8 +782,8 @@ class Settings:
 
     @surface_grazing_ratio.setter
     def surface_grazing_ratio(self, surface_grazing_ratio: float):
-        cv.check_type('surface grazing ratio', surface_grazing_ratio, float)
-        cv.check_greater_than('surface grazing ratio', surface_grazing_ratio, 0.0)
+        cv.check_type("surface grazing ratio", surface_grazing_ratio, float)
+        cv.check_greater_than("surface grazing ratio", surface_grazing_ratio, 0.0)
         self._surface_grazing_ratio = surface_grazing_ratio
 
     @property
@@ -778,7 +792,7 @@ class Settings:
 
     @survival_biasing.setter
     def survival_biasing(self, survival_biasing: bool):
-        cv.check_type('survival biasing', survival_biasing, bool)
+        cv.check_type("survival biasing", survival_biasing, bool)
         self._survival_biasing = survival_biasing
 
     @property
@@ -787,7 +801,7 @@ class Settings:
 
     @entropy_mesh.setter
     def entropy_mesh(self, entropy: RegularMesh):
-        cv.check_type('entropy mesh', entropy, RegularMesh)
+        cv.check_type("entropy mesh", entropy, RegularMesh)
         self._entropy_mesh = entropy
 
     @property
@@ -796,7 +810,7 @@ class Settings:
 
     @trigger_active.setter
     def trigger_active(self, trigger_active: bool):
-        cv.check_type('trigger active', trigger_active, bool)
+        cv.check_type("trigger active", trigger_active, bool)
         self._trigger_active = trigger_active
 
     @property
@@ -805,9 +819,8 @@ class Settings:
 
     @trigger_max_batches.setter
     def trigger_max_batches(self, trigger_max_batches: int):
-        cv.check_type('trigger maximum batches', trigger_max_batches, Integral)
-        cv.check_greater_than('trigger maximum batches',
-                              trigger_max_batches, 0)
+        cv.check_type("trigger maximum batches", trigger_max_batches, Integral)
+        cv.check_greater_than("trigger maximum batches", trigger_max_batches, 0)
         self._trigger_max_batches = trigger_max_batches
 
     @property
@@ -816,10 +829,8 @@ class Settings:
 
     @trigger_batch_interval.setter
     def trigger_batch_interval(self, trigger_batch_interval: int):
-        cv.check_type('trigger batch interval',
-                      trigger_batch_interval, Integral)
-        cv.check_greater_than('trigger batch interval',
-                              trigger_batch_interval, 0)
+        cv.check_type("trigger batch interval", trigger_batch_interval, Integral)
+        cv.check_greater_than("trigger batch interval", trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
 
     @property
@@ -828,10 +839,10 @@ class Settings:
 
     @output.setter
     def output(self, output: dict):
-        cv.check_type('output', output, Mapping)
+        cv.check_type("output", output, Mapping)
         for key, value in output.items():
-            cv.check_value('output key', key, ('summary', 'tallies', 'path'))
-            if key in ('summary', 'tallies'):
+            cv.check_value("output key", key, ("summary", "tallies", "path"))
+            if key in ("summary", "tallies"):
                 cv.check_type(f"output['{key}']", value, bool)
             else:
                 cv.check_type("output['path']", value, str)
@@ -843,23 +854,25 @@ class Settings:
 
     @sourcepoint.setter
     def sourcepoint(self, sourcepoint: dict):
-        cv.check_type('sourcepoint options', sourcepoint, Mapping)
+        cv.check_type("sourcepoint options", sourcepoint, Mapping)
         for key, value in sourcepoint.items():
-            if key == 'batches':
-                cv.check_type('sourcepoint batches', value, Iterable, Integral)
+            if key == "batches":
+                cv.check_type("sourcepoint batches", value, Iterable, Integral)
                 for batch in value:
-                    cv.check_greater_than('sourcepoint batch', batch, 0)
-            elif key == 'separate':
-                cv.check_type('sourcepoint separate', value, bool)
-            elif key == 'write':
-                cv.check_type('sourcepoint write', value, bool)
-            elif key == 'overwrite':
-                cv.check_type('sourcepoint overwrite', value, bool)
-            elif key == 'mcpl':
-                cv.check_type('sourcepoint mcpl', value, bool)
+                    cv.check_greater_than("sourcepoint batch", batch, 0)
+            elif key == "separate":
+                cv.check_type("sourcepoint separate", value, bool)
+            elif key == "write":
+                cv.check_type("sourcepoint write", value, bool)
+            elif key == "overwrite":
+                cv.check_type("sourcepoint overwrite", value, bool)
+            elif key == "mcpl":
+                cv.check_type("sourcepoint mcpl", value, bool)
             else:
-                raise ValueError(f"Unknown key '{key}' encountered when "
-                                 "setting sourcepoint options.")
+                raise ValueError(
+                    f"Unknown key '{key}' encountered when "
+                    "setting sourcepoint options."
+                )
         self._sourcepoint = sourcepoint
 
     @property
@@ -868,15 +881,17 @@ class Settings:
 
     @statepoint.setter
     def statepoint(self, statepoint: dict):
-        cv.check_type('statepoint options', statepoint, Mapping)
+        cv.check_type("statepoint options", statepoint, Mapping)
         for key, value in statepoint.items():
-            if key == 'batches':
-                cv.check_type('statepoint batches', value, Iterable, Integral)
+            if key == "batches":
+                cv.check_type("statepoint batches", value, Iterable, Integral)
                 for batch in value:
-                    cv.check_greater_than('statepoint batch', batch, 0)
+                    cv.check_greater_than("statepoint batch", batch, 0)
             else:
-                raise ValueError(f"Unknown key '{key}' encountered when "
-                                 "setting statepoint options.")
+                raise ValueError(
+                    f"Unknown key '{key}' encountered when "
+                    "setting statepoint options."
+                )
         self._statepoint = statepoint
 
     @property
@@ -885,17 +900,16 @@ class Settings:
 
     @surf_source_read.setter
     def surf_source_read(self, ssr: dict):
-        cv.check_type('surface source reading options', ssr, Mapping)
+        cv.check_type("surface source reading options", ssr, Mapping)
         for key, value in ssr.items():
-            cv.check_value('surface source reading key', key,
-                           ('path'))
-            if key == 'path':
-                cv.check_type('path to surface source file', value, PathLike)
+            cv.check_value("surface source reading key", key, ("path"))
+            if key == "path":
+                cv.check_type("path to surface source file", value, PathLike)
         self._surf_source_read = dict(ssr)
 
         # Resolve path to surface source file
-        if 'path' in ssr:
-            self._surf_source_read['path'] = input_path(ssr['path'])
+        if "path" in ssr:
+            self._surf_source_read["path"] = input_path(ssr["path"])
 
     @property
     def surf_source_write(self) -> dict:
@@ -903,26 +917,37 @@ class Settings:
 
     @surf_source_write.setter
     def surf_source_write(self, surf_source_write: dict):
-        cv.check_type("surface source writing options",
-                      surf_source_write, Mapping)
+        cv.check_type("surface source writing options", surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value(
                 "surface source writing key",
                 key,
-                ("surface_ids", "max_particles", "max_source_files",
-                 "mcpl", "cell", "cellfrom", "cellto"),
+                (
+                    "surface_ids",
+                    "max_particles",
+                    "max_source_files",
+                    "mcpl",
+                    "cell",
+                    "cellfrom",
+                    "cellto",
+                ),
             )
             if key == "surface_ids":
                 cv.check_type(
                     "surface ids for source banking", value, Iterable, Integral
                 )
                 for surf_id in value:
-                    cv.check_greater_than(
-                        "surface id for source banking", surf_id, 0)
+                    cv.check_greater_than("surface id for source banking", surf_id, 0)
 
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
-            elif key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
+            elif key in (
+                "max_particles",
+                "max_source_files",
+                "cell",
+                "cellfrom",
+                "cellto",
+            ):
                 name = {
                     "max_particles": "maximum particle banks on surfaces per process",
                     "max_source_files": "maximun surface source files to be written",
@@ -941,24 +966,42 @@ class Settings:
 
     @collision_track.setter
     def collision_track(self, collision_track: dict):
-        cv.check_type('Collision tracking options', collision_track, Mapping)
+        cv.check_type("Collision tracking options", collision_track, Mapping)
         for key, value in collision_track.items():
-            cv.check_value('collision_track key', key,
-                           ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclides',
-                            'deposited_E_threshold', 'max_collisions', 'max_collision_track_files', 'mcpl'))
-            if key == 'cell_ids':
-                cv.check_type('cell ids for collision tracking data banking', value,
-                              Iterable, Integral)
+            cv.check_value(
+                "collision_track key",
+                key,
+                (
+                    "cell_ids",
+                    "reactions",
+                    "universe_ids",
+                    "material_ids",
+                    "nuclides",
+                    "deposited_E_threshold",
+                    "max_collisions",
+                    "max_collision_track_files",
+                    "mcpl",
+                ),
+            )
+            if key == "cell_ids":
+                cv.check_type(
+                    "cell ids for collision tracking data banking",
+                    value,
+                    Iterable,
+                    Integral,
+                )
                 for cell_id in value:
-                    cv.check_greater_than('cell id for collision tracking data banking',
-                                          cell_id, 0)
-            elif key == 'reactions':
-                cv.check_type('MT numbers for collision tracking data banking', value,
-                              Iterable)
+                    cv.check_greater_than(
+                        "cell id for collision tracking data banking", cell_id, 0
+                    )
+            elif key == "reactions":
+                cv.check_type(
+                    "MT numbers for collision tracking data banking", value, Iterable
+                )
                 for reaction in value:
                     if isinstance(reaction, int):
                         cv.check_greater_than(
-                            'MT number for collision tracking data banking', reaction, 0
+                            "MT number for collision tracking data banking", reaction, 0
                         )
                     elif isinstance(reaction, str):
                         # check against allowed strings? so far let C++ code handle it
@@ -966,45 +1009,67 @@ class Settings:
                     else:
                         raise TypeError(
                             f"MT number for collision tracking data banking must be a positive int or string, "
-                            f"got {type(reaction).__name__}")
-            elif key == 'universe_ids':
-                cv.check_type('universe ids for collision tracking data banking', value,
-                              Iterable, Integral)
+                            f"got {type(reaction).__name__}"
+                        )
+            elif key == "universe_ids":
+                cv.check_type(
+                    "universe ids for collision tracking data banking",
+                    value,
+                    Iterable,
+                    Integral,
+                )
                 for universe_id in value:
-                    cv.check_greater_than('universe id for collision tracking data banking',
-                                          universe_id, 0)
-            elif key == 'material_ids':
-                cv.check_type('material ids for collision tracking data banking', value,
-                              Iterable, Integral)
+                    cv.check_greater_than(
+                        "universe id for collision tracking data banking",
+                        universe_id,
+                        0,
+                    )
+            elif key == "material_ids":
+                cv.check_type(
+                    "material ids for collision tracking data banking",
+                    value,
+                    Iterable,
+                    Integral,
+                )
                 for material_id in value:
-                    cv.check_greater_than('material id for collision tracking data banking',
-                                          material_id, 0)
-            elif key == 'nuclides':
-                cv.check_type('nuclides for collision tracking data banking', value,
-                              Iterable, str)
+                    cv.check_greater_than(
+                        "material id for collision tracking data banking",
+                        material_id,
+                        0,
+                    )
+            elif key == "nuclides":
+                cv.check_type(
+                    "nuclides for collision tracking data banking", value, Iterable, str
+                )
                 for nuclide in value:
                     # If nuclide name doesn't look valid, give a warning
                     try:
                         openmc.data.zam(nuclide)
                     except ValueError:
                         warnings.warn(f"Nuclide {nuclide} is not valid")
-            elif key == 'deposited_E_threshold':
-                cv.check_type('Deposited Energy Threshold for collision tracking data banking',
-                              value, Real)
-                cv.check_greater_than('Deposited Energy Threshold for collision tracking data banking',
-                                      value, 0)
-            elif key == 'max_collisions':
-                cv.check_type('maximum collisions banks per file',
-                              value, Integral)
-                cv.check_greater_than('maximum collisions banks in collision tracking',
-                                      value, 0)
-            elif key == 'max_collision_track_files':
-                cv.check_type('maximum collisions banks',
-                              value, Integral)
-                cv.check_greater_than('maximum number of collision_track files ',
-                                      value, 0)
-            elif key == 'mcpl':
-                cv.check_type('write to an MCPL-format file', value, bool)
+            elif key == "deposited_E_threshold":
+                cv.check_type(
+                    "Deposited Energy Threshold for collision tracking data banking",
+                    value,
+                    Real,
+                )
+                cv.check_greater_than(
+                    "Deposited Energy Threshold for collision tracking data banking",
+                    value,
+                    0,
+                )
+            elif key == "max_collisions":
+                cv.check_type("maximum collisions banks per file", value, Integral)
+                cv.check_greater_than(
+                    "maximum collisions banks in collision tracking", value, 0
+                )
+            elif key == "max_collision_track_files":
+                cv.check_type("maximum collisions banks", value, Integral)
+                cv.check_greater_than(
+                    "maximum number of collision_track files ", value, 0
+                )
+            elif key == "mcpl":
+                cv.check_type("write to an MCPL-format file", value, bool)
 
         self._collision_track = collision_track
 
@@ -1014,7 +1079,7 @@ class Settings:
 
     @no_reduce.setter
     def no_reduce(self, no_reduce: bool):
-        cv.check_type('no reduction option', no_reduce, bool)
+        cv.check_type("no reduction option", no_reduce, bool)
         self._no_reduce = no_reduce
 
     @property
@@ -1023,9 +1088,9 @@ class Settings:
 
     @verbosity.setter
     def verbosity(self, verbosity: int):
-        cv.check_type('verbosity', verbosity, Integral)
-        cv.check_greater_than('verbosity', verbosity, 1, True)
-        cv.check_less_than('verbosity', verbosity, 10, True)
+        cv.check_type("verbosity", verbosity, Integral)
+        cv.check_greater_than("verbosity", verbosity, 1, True)
+        cv.check_less_than("verbosity", verbosity, 10, True)
         self._verbosity = verbosity
 
     @property
@@ -1045,15 +1110,14 @@ class Settings:
 
     @tabular_legendre.setter
     def tabular_legendre(self, tabular_legendre: dict):
-        cv.check_type('tabular_legendre settings', tabular_legendre, Mapping)
+        cv.check_type("tabular_legendre settings", tabular_legendre, Mapping)
         for key, value in tabular_legendre.items():
-            cv.check_value('tabular_legendre key', key,
-                           ['enable', 'num_points'])
-            if key == 'enable':
-                cv.check_type('enable tabular_legendre', value, bool)
-            elif key == 'num_points':
-                cv.check_type('num_points tabular_legendre', value, Integral)
-                cv.check_greater_than('num_points tabular_legendre', value, 0)
+            cv.check_value("tabular_legendre key", key, ["enable", "num_points"])
+            if key == "enable":
+                cv.check_type("enable tabular_legendre", value, bool)
+            elif key == "num_points":
+                cv.check_type("num_points tabular_legendre", value, Integral)
+                cv.check_greater_than("num_points tabular_legendre", value, 0)
         self._tabular_legendre = tabular_legendre
 
     @property
@@ -1063,24 +1127,27 @@ class Settings:
     @temperature.setter
     def temperature(self, temperature: dict):
 
-        cv.check_type('temperature settings', temperature, Mapping)
+        cv.check_type("temperature settings", temperature, Mapping)
         for key, value in temperature.items():
-            cv.check_value('temperature key', key,
-                           ['default', 'method', 'tolerance', 'multipole',
-                            'range'])
-            if key == 'default':
-                cv.check_type('default temperature', value, Real)
-            elif key == 'method':
-                cv.check_value('temperature method', value,
-                               ['nearest', 'interpolation'])
-            elif key == 'tolerance':
-                cv.check_type('temperature tolerance', value, Real)
-            elif key == 'multipole':
-                cv.check_type('temperature multipole', value, bool)
-            elif key == 'range':
-                cv.check_length('temperature range', value, 2)
+            cv.check_value(
+                "temperature key",
+                key,
+                ["default", "method", "tolerance", "multipole", "range"],
+            )
+            if key == "default":
+                cv.check_type("default temperature", value, Real)
+            elif key == "method":
+                cv.check_value(
+                    "temperature method", value, ["nearest", "interpolation"]
+                )
+            elif key == "tolerance":
+                cv.check_type("temperature tolerance", value, Real)
+            elif key == "multipole":
+                cv.check_type("temperature multipole", value, bool)
+            elif key == "range":
+                cv.check_length("temperature range", value, 2)
                 for T in value:
-                    cv.check_type('temperature', T, Real)
+                    cv.check_type("temperature", T, Real)
 
         self._temperature = temperature
 
@@ -1093,7 +1160,7 @@ class Settings:
         if value is None:
             self._properties_file = None
         else:
-            cv.check_type('properties file', value, PathLike)
+            cv.check_type("properties file", value, PathLike)
             self._properties_file = input_path(value)
 
     @property
@@ -1102,11 +1169,11 @@ class Settings:
 
     @trace.setter
     def trace(self, trace: Iterable):
-        cv.check_type('trace', trace, Iterable, Integral)
-        cv.check_length('trace', trace, 3)
-        cv.check_greater_than('trace batch', trace[0], 0)
-        cv.check_greater_than('trace generation', trace[1], 0)
-        cv.check_greater_than('trace particle', trace[2], 0)
+        cv.check_type("trace", trace, Iterable, Integral)
+        cv.check_length("trace", trace, 3)
+        cv.check_greater_than("trace batch", trace[0], 0)
+        cv.check_greater_than("trace generation", trace[1], 0)
+        cv.check_greater_than("trace particle", trace[2], 0)
         self._trace = trace
 
     @property
@@ -1115,17 +1182,17 @@ class Settings:
 
     @track.setter
     def track(self, track: Iterable[Iterable[int]]):
-        cv.check_type('track', track, Sequence)
+        cv.check_type("track", track, Sequence)
         for t in track:
             if len(t) != 3:
                 msg = f'Unable to set the track to "{t}" since its length is not 3'
                 raise ValueError(msg)
-            cv.check_greater_than('track batch', t[0], 0)
-            cv.check_greater_than('track generation', t[1], 0)
-            cv.check_greater_than('track particle', t[2], 0)
-            cv.check_type('track batch', t[0], Integral)
-            cv.check_type('track generation', t[1], Integral)
-            cv.check_type('track particle', t[2], Integral)
+            cv.check_greater_than("track batch", t[0], 0)
+            cv.check_greater_than("track generation", t[1], 0)
+            cv.check_greater_than("track particle", t[2], 0)
+            cv.check_type("track batch", t[0], Integral)
+            cv.check_type("track generation", t[1], Integral)
+            cv.check_type("track particle", t[2], Integral)
         self._track = track
 
     @property
@@ -1135,26 +1202,32 @@ class Settings:
     @cutoff.setter
     def cutoff(self, cutoff: dict):
         if not isinstance(cutoff, Mapping):
-            msg = f'Unable to set cutoff from "{cutoff}" which is not a '\
-                'Python dictionary'
+            msg = (
+                f'Unable to set cutoff from "{cutoff}" which is not a '
+                "Python dictionary"
+            )
             raise ValueError(msg)
         for key in cutoff:
-            if key == 'weight':
-                cv.check_type('weight cutoff', cutoff[key], Real)
-                cv.check_greater_than('weight cutoff', cutoff[key], 0.0)
-            elif key == 'weight_avg':
-                cv.check_type('average survival weight', cutoff[key], Real)
-                cv.check_greater_than('average survival weight',
-                                      cutoff[key], 0.0)
-            elif key == 'survival_normalization':
-                cv.check_type('survival normalization', cutoff[key], bool)
-            elif key in ['energy_neutron', 'energy_photon', 'energy_electron',
-                         'energy_positron']:
-                cv.check_type('energy cutoff', cutoff[key], Real)
-                cv.check_greater_than('energy cutoff', cutoff[key], 0.0)
+            if key == "weight":
+                cv.check_type("weight cutoff", cutoff[key], Real)
+                cv.check_greater_than("weight cutoff", cutoff[key], 0.0)
+            elif key == "weight_avg":
+                cv.check_type("average survival weight", cutoff[key], Real)
+                cv.check_greater_than("average survival weight", cutoff[key], 0.0)
+            elif key == "survival_normalization":
+                cv.check_type("survival normalization", cutoff[key], bool)
+            elif key in [
+                "energy_neutron",
+                "energy_photon",
+                "energy_electron",
+                "energy_positron",
+            ]:
+                cv.check_type("energy cutoff", cutoff[key], Real)
+                cv.check_greater_than("energy cutoff", cutoff[key], 0.0)
             else:
-                msg = f'Unable to set cutoff to "{key}" which is unsupported ' \
-                    'by OpenMC'
+                msg = (
+                    f'Unable to set cutoff to "{key}" which is unsupported ' "by OpenMC"
+                )
 
         self._cutoff = cutoff
 
@@ -1164,10 +1237,10 @@ class Settings:
 
     @ufs_mesh.setter
     def ufs_mesh(self, ufs_mesh: RegularMesh):
-        cv.check_type('UFS mesh', ufs_mesh, RegularMesh)
-        cv.check_length('UFS mesh dimension', ufs_mesh.dimension, 3)
-        cv.check_length('UFS mesh lower-left corner', ufs_mesh.lower_left, 3)
-        cv.check_length('UFS mesh upper-right corner', ufs_mesh.upper_right, 3)
+        cv.check_type("UFS mesh", ufs_mesh, RegularMesh)
+        cv.check_length("UFS mesh dimension", ufs_mesh.dimension, 3)
+        cv.check_length("UFS mesh lower-left corner", ufs_mesh.lower_left, 3)
+        cv.check_length("UFS mesh upper-right corner", ufs_mesh.upper_right, 3)
         self._ufs_mesh = ufs_mesh
 
     @property
@@ -1176,26 +1249,24 @@ class Settings:
 
     @resonance_scattering.setter
     def resonance_scattering(self, res: dict):
-        cv.check_type('resonance scattering settings', res, Mapping)
-        keys = ('enable', 'method', 'energy_min', 'energy_max', 'nuclides')
+        cv.check_type("resonance scattering settings", res, Mapping)
+        keys = ("enable", "method", "energy_min", "energy_max", "nuclides")
         for key, value in res.items():
-            cv.check_value('resonance scattering dictionary key', key, keys)
-            if key == 'enable':
-                cv.check_type('resonance scattering enable', value, bool)
-            elif key == 'method':
-                cv.check_value('resonance scattering method', value,
-                               _RES_SCAT_METHODS)
-            elif key == 'energy_min':
-                name = 'resonance scattering minimum energy'
+            cv.check_value("resonance scattering dictionary key", key, keys)
+            if key == "enable":
+                cv.check_type("resonance scattering enable", value, bool)
+            elif key == "method":
+                cv.check_value("resonance scattering method", value, _RES_SCAT_METHODS)
+            elif key == "energy_min":
+                name = "resonance scattering minimum energy"
                 cv.check_type(name, value, Real)
                 cv.check_greater_than(name, value, 0)
-            elif key == 'energy_max':
-                name = 'resonance scattering minimum energy'
+            elif key == "energy_max":
+                name = "resonance scattering minimum energy"
                 cv.check_type(name, value, Real)
                 cv.check_greater_than(name, value, 0)
-            elif key == 'nuclides':
-                cv.check_type('resonance scattering nuclides', value,
-                              Iterable, str)
+            elif key == "nuclides":
+                cv.check_type("resonance scattering nuclides", value, Iterable, str)
         self._resonance_scattering = res
 
     @property
@@ -1209,7 +1280,8 @@ class Settings:
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
         self._volume_calculations = cv.CheckedList(
-            VolumeCalculation, 'stochastic volume calculations', vol_calcs)
+            VolumeCalculation, "stochastic volume calculations", vol_calcs
+        )
 
     @property
     def create_fission_neutrons(self) -> bool:
@@ -1217,8 +1289,7 @@ class Settings:
 
     @create_fission_neutrons.setter
     def create_fission_neutrons(self, create_fission_neutrons: bool):
-        cv.check_type('Whether create fission neutrons',
-                      create_fission_neutrons, bool)
+        cv.check_type("Whether create fission neutrons", create_fission_neutrons, bool)
         self._create_fission_neutrons = create_fission_neutrons
 
     @property
@@ -1227,8 +1298,9 @@ class Settings:
 
     @create_delayed_neutrons.setter
     def create_delayed_neutrons(self, create_delayed_neutrons: bool):
-        cv.check_type('Whether create only prompt neutrons',
-                      create_delayed_neutrons, bool)
+        cv.check_type(
+            "Whether create only prompt neutrons", create_delayed_neutrons, bool
+        )
         self._create_delayed_neutrons = create_delayed_neutrons
 
     @property
@@ -1237,7 +1309,7 @@ class Settings:
 
     @delayed_photon_scaling.setter
     def delayed_photon_scaling(self, value: bool):
-        cv.check_type('delayed photon scaling', value, bool)
+        cv.check_type("delayed photon scaling", value, bool)
         self._delayed_photon_scaling = value
 
     @property
@@ -1246,7 +1318,7 @@ class Settings:
 
     @material_cell_offsets.setter
     def material_cell_offsets(self, value: bool):
-        cv.check_type('material cell offsets', value, bool)
+        cv.check_type("material cell offsets", value, bool)
         self._material_cell_offsets = value
 
     @property
@@ -1255,8 +1327,8 @@ class Settings:
 
     @log_grid_bins.setter
     def log_grid_bins(self, log_grid_bins: int):
-        cv.check_type('log grid bins', log_grid_bins, Real)
-        cv.check_greater_than('log grid bins', log_grid_bins, 0)
+        cv.check_type("log grid bins", log_grid_bins, Real)
+        cv.check_greater_than("log grid bins", log_grid_bins, 0)
         self._log_grid_bins = log_grid_bins
 
     @property
@@ -1265,7 +1337,7 @@ class Settings:
 
     @event_based.setter
     def event_based(self, value: bool):
-        cv.check_type('event based', value, bool)
+        cv.check_type("event based", value, bool)
         self._event_based = value
 
     @property
@@ -1274,8 +1346,8 @@ class Settings:
 
     @max_particles_in_flight.setter
     def max_particles_in_flight(self, value: int):
-        cv.check_type('max particles in flight', value, Integral)
-        cv.check_greater_than('max particles in flight', value, 0)
+        cv.check_type("max particles in flight", value, Integral)
+        cv.check_greater_than("max particles in flight", value, 0)
         self._max_particles_in_flight = value
 
     @property
@@ -1284,8 +1356,8 @@ class Settings:
 
     @max_particle_events.setter
     def max_particle_events(self, value: int):
-        cv.check_type('max particle events', value, Integral)
-        cv.check_greater_than('max particle events', value, 0)
+        cv.check_type("max particle events", value, Integral)
+        cv.check_greater_than("max particle events", value, 0)
         self._max_particle_events = value
 
     @property
@@ -1294,7 +1366,7 @@ class Settings:
 
     @write_initial_source.setter
     def write_initial_source(self, value: bool):
-        cv.check_type('write initial source', value, bool)
+        cv.check_type("write initial source", value, bool)
         self._write_initial_source = value
 
     @property
@@ -1313,7 +1385,7 @@ class Settings:
 
     @weight_windows_on.setter
     def weight_windows_on(self, value: bool):
-        cv.check_type('weight windows on', value, bool)
+        cv.check_type("weight windows on", value, bool)
         self._weight_windows_on = value
 
     @property
@@ -1322,7 +1394,7 @@ class Settings:
 
     @shared_secondary_bank.setter
     def shared_secondary_bank(self, value: bool):
-        cv.check_type('shared secondary bank', value, bool)
+        cv.check_type("shared secondary bank", value, bool)
         self._shared_secondary_bank = value
 
     @property
@@ -1332,14 +1404,14 @@ class Settings:
     @weight_window_checkpoints.setter
     def weight_window_checkpoints(self, weight_window_checkpoints: dict):
         for key in weight_window_checkpoints.keys():
-            cv.check_value('weight_window_checkpoints',
-                           key, ('collision', 'surface'))
+            cv.check_value("weight_window_checkpoints", key, ("collision", "surface"))
         self._weight_window_checkpoints = weight_window_checkpoints
 
     @property
     def max_splits(self):
         raise AttributeError(
-            'max_splits has been deprecated. Please use max_history_splits instead')
+            "max_splits has been deprecated. Please use max_history_splits instead"
+        )
 
     @property
     def max_history_splits(self) -> int:
@@ -1347,8 +1419,8 @@ class Settings:
 
     @max_history_splits.setter
     def max_history_splits(self, value: int):
-        cv.check_type('maximum particle splits', value, Integral)
-        cv.check_greater_than('max particle splits', value, 0)
+        cv.check_type("maximum particle splits", value, Integral)
+        cv.check_greater_than("max particle splits", value, 0)
         self._max_history_splits = value
 
     @property
@@ -1357,8 +1429,8 @@ class Settings:
 
     @max_secondaries.setter
     def max_secondaries(self, value: int):
-        cv.check_type('maximum secondary bank size', value, Integral)
-        cv.check_greater_than('max secondary bank size', value, 0)
+        cv.check_type("maximum secondary bank size", value, Integral)
+        cv.check_greater_than("max secondary bank size", value, 0)
         self._max_secondaries = value
 
     @property
@@ -1367,8 +1439,8 @@ class Settings:
 
     @max_tracks.setter
     def max_tracks(self, value: int):
-        cv.check_type('maximum particle tracks', value, Integral)
-        cv.check_greater_than('maximum particle tracks', value, 0, True)
+        cv.check_type("maximum particle tracks", value, Integral)
+        cv.check_greater_than("maximum particle tracks", value, 0, True)
         self._max_tracks = value
 
     @property
@@ -1380,8 +1452,18 @@ class Settings:
         if value is None:
             self._weight_windows_file = None
         else:
-            cv.check_type('weight windows file', value, PathLike)
+            cv.check_type("weight windows file", value, PathLike)
             self._weight_windows_file = input_path(value)
+
+    @property
+    def weight_windows_exodus(self) -> WeightWindowsExodus | None:
+        return self._weight_windows_exodus
+
+    @weight_windows_exodus.setter
+    def weight_windows_exodus(self, value: WeightWindowsExodus | None):
+        if value is not None:
+            cv.check_type("weight windows exodus", value, WeightWindowsExodus)
+        self._weight_windows_exodus = value
 
     @property
     def weight_window_generators(self) -> list[WeightWindowGenerator]:
@@ -1392,7 +1474,8 @@ class Settings:
         if not isinstance(wwgs, MutableSequence):
             wwgs = [wwgs]
         self._weight_window_generators = cv.CheckedList(
-            WeightWindowGenerator, 'weight window generators', wwgs)
+            WeightWindowGenerator, "weight window generators", wwgs
+        )
 
     @property
     def random_ray(self) -> dict:
@@ -1401,59 +1484,61 @@ class Settings:
     @random_ray.setter
     def random_ray(self, random_ray: dict):
         if not isinstance(random_ray, Mapping):
-            raise ValueError(f'Unable to set random_ray from "{random_ray}" '
-                             'which is not a dict.')
+            raise ValueError(
+                f'Unable to set random_ray from "{random_ray}" ' "which is not a dict."
+            )
         for key, value in random_ray.items():
-            if key == 'distance_active':
-                cv.check_type('active ray length', value, Real)
-                cv.check_greater_than('active ray length', value, 0.0)
-            elif key == 'distance_inactive':
-                cv.check_type('inactive ray length', value, Real)
-                cv.check_greater_than('inactive ray length',
-                                      value, 0.0, True)
-            elif key == 'ray_source':
-                cv.check_type('random ray source', value, SourceBase)
-            elif key == 'volume_estimator':
-                cv.check_value('volume estimator', value,
-                               ('naive', 'simulation_averaged',
-                                'hybrid'))
-            elif key == 'source_shape':
-                cv.check_value('source shape', value,
-                               ('flat', 'linear', 'linear_xy'))
-            elif key == 'volume_normalized_flux_tallies':
-                cv.check_type('volume normalized flux tallies', value, bool)
-            elif key == 'adjoint':
-                cv.check_type('adjoint', value, bool)
-            elif key == 'source_region_meshes':
-                cv.check_type('source region meshes', value, Iterable)
+            if key == "distance_active":
+                cv.check_type("active ray length", value, Real)
+                cv.check_greater_than("active ray length", value, 0.0)
+            elif key == "distance_inactive":
+                cv.check_type("inactive ray length", value, Real)
+                cv.check_greater_than("inactive ray length", value, 0.0, True)
+            elif key == "ray_source":
+                cv.check_type("random ray source", value, SourceBase)
+            elif key == "volume_estimator":
+                cv.check_value(
+                    "volume estimator",
+                    value,
+                    ("naive", "simulation_averaged", "hybrid"),
+                )
+            elif key == "source_shape":
+                cv.check_value("source shape", value, ("flat", "linear", "linear_xy"))
+            elif key == "volume_normalized_flux_tallies":
+                cv.check_type("volume normalized flux tallies", value, bool)
+            elif key == "adjoint":
+                cv.check_type("adjoint", value, bool)
+            elif key == "source_region_meshes":
+                cv.check_type("source region meshes", value, Iterable)
                 for mesh, domains in value:
-                    cv.check_type('mesh', mesh, MeshBase)
-                    cv.check_type('domains', domains, Iterable)
-                    valid_types = (openmc.Material,
-                                   openmc.Cell, openmc.Universe)
+                    cv.check_type("mesh", mesh, MeshBase)
+                    cv.check_type("domains", domains, Iterable)
+                    valid_types = (openmc.Material, openmc.Cell, openmc.Universe)
                     for domain in domains:
                         if not isinstance(domain, valid_types):
                             raise ValueError(
-                                f'Invalid domain type: {type(domain)}. Expected '
-                                'openmc.Material, openmc.Cell, or openmc.Universe.')
-            elif key == 'sample_method':
-                cv.check_value('sample method', value,
-                               ('prng', 'halton', 's2'))
-            elif key == 'diagonal_stabilization_rho':
-                cv.check_type('diagonal stabilization rho', value, Real)
-                cv.check_greater_than('diagonal stabilization rho',
-                                      value, 0.0, True)
-            elif key == 'adjoint_source':
+                                f"Invalid domain type: {type(domain)}. Expected "
+                                "openmc.Material, openmc.Cell, or openmc.Universe."
+                            )
+            elif key == "sample_method":
+                cv.check_value("sample method", value, ("prng", "halton", "s2"))
+            elif key == "diagonal_stabilization_rho":
+                cv.check_type("diagonal stabilization rho", value, Real)
+                cv.check_greater_than("diagonal stabilization rho", value, 0.0, True)
+            elif key == "adjoint_source":
                 if not isinstance(value, MutableSequence):
                     value = [value]
                 for source in value:
                     if not isinstance(source, SourceBase):
                         raise ValueError(
-                            f'Invalid adjoint source type: {type(source)}. '
-                            'Expected openmc.SourceBase.')
+                            f"Invalid adjoint source type: {type(source)}. "
+                            "Expected openmc.SourceBase."
+                        )
             else:
-                raise ValueError(f'Unable to set random ray to "{key}" which is '
-                                 'unsupported by OpenMC')
+                raise ValueError(
+                    f'Unable to set random ray to "{key}" which is '
+                    "unsupported by OpenMC"
+                )
 
         self._random_ray = random_ray
 
@@ -1463,7 +1548,7 @@ class Settings:
 
     @use_decay_photons.setter
     def use_decay_photons(self, value):
-        cv.check_type('use decay photons', value, bool)
+        cv.check_type("use decay photons", value, bool)
         self._use_decay_photons = value
 
     @property
@@ -1472,12 +1557,9 @@ class Settings:
 
     @source_rejection_fraction.setter
     def source_rejection_fraction(self, source_rejection_fraction: float):
-        cv.check_type('source_rejection_fraction',
-                      source_rejection_fraction, Real)
-        cv.check_greater_than('source_rejection_fraction',
-                              source_rejection_fraction, 0)
-        cv.check_less_than('source_rejection_fraction',
-                           source_rejection_fraction, 1)
+        cv.check_type("source_rejection_fraction", source_rejection_fraction, Real)
+        cv.check_greater_than("source_rejection_fraction", source_rejection_fraction, 0)
+        cv.check_less_than("source_rejection_fraction", source_rejection_fraction, 1)
         self._source_rejection_fraction = source_rejection_fraction
 
     @property
@@ -1487,8 +1569,8 @@ class Settings:
     @free_gas_threshold.setter
     def free_gas_threshold(self, free_gas_threshold: float | None):
         if free_gas_threshold is not None:
-            cv.check_type('free gas threshold', free_gas_threshold, Real)
-            cv.check_greater_than('free gas threshold', free_gas_threshold, 0.0)
+            cv.check_type("free gas threshold", free_gas_threshold, Real)
+            cv.check_greater_than("free gas threshold", free_gas_threshold, 0.0)
         self._free_gas_threshold = free_gas_threshold
 
     def _create_run_mode_subelement(self, root):
@@ -1550,7 +1632,9 @@ class Settings:
     def _create_source_subelement(self, root, mesh_memo=None):
         for source in self.source:
             root.append(source.to_xml_element())
-            if isinstance(source, IndependentSource) and isinstance(source.space, MeshSpatial):
+            if isinstance(source, IndependentSource) and isinstance(
+                source.space, MeshSpatial
+            ):
                 path = f"./mesh[@id='{source.space.mesh.id}']"
                 if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())
@@ -1570,7 +1654,7 @@ class Settings:
             element = ET.SubElement(root, "output")
             for key, value in sorted(self._output.items()):
                 subelement = ET.SubElement(element, key)
-                if key in ('summary', 'tallies'):
+                if key in ("summary", "tallies"):
                     subelement.text = str(value).lower()
                 else:
                     subelement.text = value
@@ -1583,10 +1667,9 @@ class Settings:
     def _create_statepoint_subelement(self, root):
         if self._statepoint:
             element = ET.SubElement(root, "state_point")
-            if 'batches' in self._statepoint:
+            if "batches" in self._statepoint:
                 subelement = ET.SubElement(element, "batches")
-                subelement.text = ' '.join(
-                    str(x) for x in self._statepoint['batches'])
+                subelement.text = " ".join(str(x) for x in self._statepoint["batches"])
 
     def _create_uniform_source_sampling_subelement(self, root):
         if self._uniform_source_sampling is not None:
@@ -1597,34 +1680,33 @@ class Settings:
         if self._sourcepoint:
             element = ET.SubElement(root, "source_point")
 
-            if 'batches' in self._sourcepoint:
+            if "batches" in self._sourcepoint:
                 subelement = ET.SubElement(element, "batches")
-                subelement.text = ' '.join(
-                    str(x) for x in self._sourcepoint['batches'])
+                subelement.text = " ".join(str(x) for x in self._sourcepoint["batches"])
 
-            if 'separate' in self._sourcepoint:
+            if "separate" in self._sourcepoint:
                 subelement = ET.SubElement(element, "separate")
-                subelement.text = str(self._sourcepoint['separate']).lower()
+                subelement.text = str(self._sourcepoint["separate"]).lower()
 
-            if 'write' in self._sourcepoint:
+            if "write" in self._sourcepoint:
                 subelement = ET.SubElement(element, "write")
-                subelement.text = str(self._sourcepoint['write']).lower()
+                subelement.text = str(self._sourcepoint["write"]).lower()
 
             # Overwrite latest subelement
-            if 'overwrite' in self._sourcepoint:
+            if "overwrite" in self._sourcepoint:
                 subelement = ET.SubElement(element, "overwrite_latest")
-                subelement.text = str(self._sourcepoint['overwrite']).lower()
+                subelement.text = str(self._sourcepoint["overwrite"]).lower()
 
-            if 'mcpl' in self._sourcepoint:
+            if "mcpl" in self._sourcepoint:
                 subelement = ET.SubElement(element, "mcpl")
-                subelement.text = str(self._sourcepoint['mcpl']).lower()
+                subelement.text = str(self._sourcepoint["mcpl"]).lower()
 
     def _create_surf_source_read_subelement(self, root):
         if self._surf_source_read:
             element = ET.SubElement(root, "surf_source_read")
-            if 'path' in self._surf_source_read:
+            if "path" in self._surf_source_read:
                 subelement = ET.SubElement(element, "path")
-                subelement.text = str(self._surf_source_read['path'])
+                subelement.text = str(self._surf_source_read["path"])
 
     def _create_surf_source_write_subelement(self, root):
         if self._surf_source_write:
@@ -1637,7 +1719,13 @@ class Settings:
             if "mcpl" in self._surf_source_write:
                 subelement = ET.SubElement(element, "mcpl")
                 subelement.text = str(self._surf_source_write["mcpl"]).lower()
-            for key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
+            for key in (
+                "max_particles",
+                "max_source_files",
+                "cell",
+                "cellfrom",
+                "cellto",
+            ):
                 if key in self._surf_source_write:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(self._surf_source_write[key])
@@ -1645,41 +1733,45 @@ class Settings:
     def _create_collision_track_subelement(self, root):
         if self._collision_track:
             element = ET.SubElement(root, "collision_track")
-            if 'cell_ids' in self._collision_track:
+            if "cell_ids" in self._collision_track:
                 subelement = ET.SubElement(element, "cell_ids")
-                subelement.text = ' '.join(
-                    str(x) for x in self._collision_track['cell_ids'])
-            if 'reactions' in self._collision_track:
+                subelement.text = " ".join(
+                    str(x) for x in self._collision_track["cell_ids"]
+                )
+            if "reactions" in self._collision_track:
                 subelement = ET.SubElement(element, "reactions")
-                subelement.text = ' '.join(
-                    str(x) for x in self._collision_track['reactions'])
-            if 'universe_ids' in self._collision_track:
+                subelement.text = " ".join(
+                    str(x) for x in self._collision_track["reactions"]
+                )
+            if "universe_ids" in self._collision_track:
                 subelement = ET.SubElement(element, "universe_ids")
-                subelement.text = ' '.join(
-                    str(x) for x in self._collision_track['universe_ids'])
-            if 'material_ids' in self._collision_track:
+                subelement.text = " ".join(
+                    str(x) for x in self._collision_track["universe_ids"]
+                )
+            if "material_ids" in self._collision_track:
                 subelement = ET.SubElement(element, "material_ids")
-                subelement.text = ' '.join(
-                    str(x) for x in self._collision_track['material_ids'])
-            if 'nuclides' in self._collision_track:
+                subelement.text = " ".join(
+                    str(x) for x in self._collision_track["material_ids"]
+                )
+            if "nuclides" in self._collision_track:
                 subelement = ET.SubElement(element, "nuclides")
-                subelement.text = ' '.join(
-                    str(x) for x in self._collision_track['nuclides'])
-            if 'deposited_E_threshold' in self._collision_track:
+                subelement.text = " ".join(
+                    str(x) for x in self._collision_track["nuclides"]
+                )
+            if "deposited_E_threshold" in self._collision_track:
                 subelement = ET.SubElement(element, "deposited_E_threshold")
-                subelement.text = str(
-                    self._collision_track['deposited_E_threshold'])
-            if 'max_collisions' in self._collision_track:
+                subelement.text = str(self._collision_track["deposited_E_threshold"])
+            if "max_collisions" in self._collision_track:
                 subelement = ET.SubElement(element, "max_collisions")
-                subelement.text = str(self._collision_track['max_collisions'])
-            if 'max_collision_track_files' in self._collision_track:
-                subelement = ET.SubElement(
-                    element, "max_collision_track_files")
+                subelement.text = str(self._collision_track["max_collisions"])
+            if "max_collision_track_files" in self._collision_track:
+                subelement = ET.SubElement(element, "max_collision_track_files")
                 subelement.text = str(
-                    self._collision_track['max_collision_track_files'])
-            if 'mcpl' in self._collision_track:
+                    self._collision_track["max_collision_track_files"]
+                )
+            if "mcpl" in self._collision_track:
                 subelement = ET.SubElement(element, "mcpl")
-                subelement.text = str(self._collision_track['mcpl']).lower()
+                subelement.text = str(self._collision_track["mcpl"]).lower()
 
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:
@@ -1741,8 +1833,11 @@ class Settings:
             element = ET.SubElement(root, "cutoff")
             for key, value in self._cutoff.items():
                 subelement = ET.SubElement(element, key)
-                subelement.text = str(value) if key != 'survival_normalization' \
+                subelement.text = (
+                    str(value)
+                    if key != "survival_normalization"
                     else str(value).lower()
+                )
 
     def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
         if self.entropy_mesh is None:
@@ -1751,12 +1846,14 @@ class Settings:
         # use default heuristic for entropy mesh if not set by user
         if self.entropy_mesh.dimension is None:
             if self.particles is None:
-                raise RuntimeError("Number of particles must be set in order to "
-                                   "use entropy mesh dimension heuristic")
+                raise RuntimeError(
+                    "Number of particles must be set in order to "
+                    "use entropy mesh dimension heuristic"
+                )
             else:
-                n = ceil((self.particles / 20.0)**(1.0 / 3.0))
+                n = ceil((self.particles / 20.0) ** (1.0 / 3.0))
                 d = len(self.entropy_mesh.lower_left)
-                self.entropy_mesh.dimension = (n,)*d
+                self.entropy_mesh.dimension = (n,) * d
 
         # add mesh ID to this element
         subelement = ET.SubElement(root, "entropy_mesh")
@@ -1802,10 +1899,10 @@ class Settings:
         if self.tabular_legendre:
             element = ET.SubElement(root, "tabular_legendre")
             subelement = ET.SubElement(element, "enable")
-            subelement.text = str(self._tabular_legendre['enable']).lower()
-            if 'num_points' in self._tabular_legendre:
+            subelement.text = str(self._tabular_legendre["enable"]).lower()
+            if "num_points" in self._tabular_legendre:
                 subelement = ET.SubElement(element, "num_points")
-                subelement.text = str(self._tabular_legendre['num_points'])
+                subelement.text = str(self._tabular_legendre["num_points"])
 
     def _create_temperature_subelements(self, root):
         if self.temperature:
@@ -1813,8 +1910,8 @@ class Settings:
                 element = ET.SubElement(root, f"temperature_{key}")
                 if isinstance(value, bool):
                     element.text = str(value).lower()
-                elif key == 'range':
-                    element.text = ' '.join(str(T) for T in value)
+                elif key == "range":
+                    element.text = " ".join(str(T) for T in value)
                 else:
                     element.text = str(value)
 
@@ -1827,12 +1924,12 @@ class Settings:
     def _create_trace_subelement(self, root):
         if self._trace is not None:
             element = ET.SubElement(root, "trace")
-            element.text = ' '.join(map(str, self._trace))
+            element.text = " ".join(map(str, self._trace))
 
     def _create_track_subelement(self, root):
         if self._track is not None:
             element = ET.SubElement(root, "track")
-            element.text = ' '.join(map(str, itertools.chain(*self._track)))
+            element.text = " ".join(map(str, itertools.chain(*self._track)))
 
     def _create_ufs_mesh_subelement(self, root, mesh_memo=None):
         if self.ufs_mesh is None:
@@ -1859,22 +1956,22 @@ class Settings:
     def _create_resonance_scattering_subelement(self, root):
         res = self.resonance_scattering
         if res:
-            elem = ET.SubElement(root, 'resonance_scattering')
-            if 'enable' in res:
-                subelem = ET.SubElement(elem, 'enable')
-                subelem.text = str(res['enable']).lower()
-            if 'method' in res:
-                subelem = ET.SubElement(elem, 'method')
-                subelem.text = res['method']
-            if 'energy_min' in res:
-                subelem = ET.SubElement(elem, 'energy_min')
-                subelem.text = str(res['energy_min'])
-            if 'energy_max' in res:
-                subelem = ET.SubElement(elem, 'energy_max')
-                subelem.text = str(res['energy_max'])
-            if 'nuclides' in res:
-                subelem = ET.SubElement(elem, 'nuclides')
-                subelem.text = ' '.join(res['nuclides'])
+            elem = ET.SubElement(root, "resonance_scattering")
+            if "enable" in res:
+                subelem = ET.SubElement(elem, "enable")
+                subelem.text = str(res["enable"]).lower()
+            if "method" in res:
+                subelem = ET.SubElement(elem, "method")
+                subelem.text = res["method"]
+            if "energy_min" in res:
+                subelem = ET.SubElement(elem, "energy_min")
+                subelem.text = str(res["energy_min"])
+            if "energy_max" in res:
+                subelem = ET.SubElement(elem, "energy_max")
+                subelem.text = str(res["energy_max"])
+            if "nuclides" in res:
+                subelem = ET.SubElement(elem, "nuclides")
+                subelem.text = " ".join(res["nuclides"])
 
     def _create_create_fission_neutrons_subelement(self, root):
         if self._create_fission_neutrons is not None:
@@ -1951,7 +2048,7 @@ class Settings:
     def _create_weight_window_generators_subelement(self, root, mesh_memo=None):
         if not self.weight_window_generators:
             return
-        elem = ET.SubElement(root, 'weight_window_generators')
+        elem = ET.SubElement(root, "weight_window_generators")
         for wwg in self.weight_window_generators:
             elem.append(wwg.to_xml_element())
 
@@ -1973,20 +2070,22 @@ class Settings:
             element.text = str(self.weight_windows_file)
             root.append(element)
 
+    def _create_weight_windows_exodus_subelement(self, root):
+        if self._weight_windows_exodus is not None:
+            root.append(self._weight_windows_exodus.to_xml_element())
+
     def _create_weight_window_checkpoints_subelement(self, root):
         if not self._weight_window_checkpoints:
             return
         element = ET.SubElement(root, "weight_window_checkpoints")
 
-        if 'collision' in self._weight_window_checkpoints:
+        if "collision" in self._weight_window_checkpoints:
             subelement = ET.SubElement(element, "collision")
-            subelement.text = str(
-                self._weight_window_checkpoints['collision']).lower()
+            subelement.text = str(self._weight_window_checkpoints["collision"]).lower()
 
-        if 'surface' in self._weight_window_checkpoints:
+        if "surface" in self._weight_window_checkpoints:
             subelement = ET.SubElement(element, "surface")
-            subelement.text = str(
-                self._weight_window_checkpoints['surface']).lower()
+            subelement.text = str(self._weight_window_checkpoints["surface"]).lower()
 
     def _create_max_history_splits_subelement(self, root):
         if self._max_history_splits is not None:
@@ -2007,34 +2106,34 @@ class Settings:
         if self._random_ray:
             element = ET.SubElement(root, "random_ray")
             for key, value in self._random_ray.items():
-                if key == 'ray_source' and isinstance(value, SourceBase):
-                    subelement = ET.SubElement(element, 'ray_source')
+                if key == "ray_source" and isinstance(value, SourceBase):
+                    subelement = ET.SubElement(element, "ray_source")
                     source_element = value.to_xml_element()
-                    if source_element.find('bias') is not None:
+                    if source_element.find("bias") is not None:
                         raise RuntimeError(
-                            "Ray source distributions should not be biased.")
+                            "Ray source distributions should not be biased."
+                        )
                     subelement.append(source_element)
 
-                elif key == 'source_region_meshes':
-                    subelement = ET.SubElement(element, 'source_region_meshes')
+                elif key == "source_region_meshes":
+                    subelement = ET.SubElement(element, "source_region_meshes")
                     for mesh, domains in value:
-                        mesh_elem = ET.SubElement(subelement, 'mesh')
-                        mesh_elem.set('id', str(mesh.id))
+                        mesh_elem = ET.SubElement(subelement, "mesh")
+                        mesh_elem.set("id", str(mesh.id))
                         for domain in domains:
-                            domain_elem = ET.SubElement(mesh_elem, 'domain')
-                            domain_elem.set('id', str(domain.id))
-                            domain_elem.set(
-                                'type', domain.__class__.__name__.lower())
+                            domain_elem = ET.SubElement(mesh_elem, "domain")
+                            domain_elem.set("id", str(domain.id))
+                            domain_elem.set("type", domain.__class__.__name__.lower())
                         if mesh_memo is not None and mesh.id not in mesh_memo:
-                            domain_elem.set('type', domain.__class__.__name__.lower())
+                            domain_elem.set("type", domain.__class__.__name__.lower())
                         # See if a <mesh> element already exists -- if not, add it
                         path = f"./mesh[@id='{mesh.id}']"
                         if root.find(path) is None:
                             root.append(mesh.to_xml_element())
                             if mesh_memo is not None:
                                 mesh_memo.add(mesh.id)
-                elif key == 'adjoint_source':
-                    subelement = ET.SubElement(element, 'adjoint_source')
+                elif key == "adjoint_source":
+                    subelement = ET.SubElement(element, "adjoint_source")
                     # Check that all entries are valid SourceBase instances, in case
                     # the random_ray setter was not used to populate dict entries.
                     if not isinstance(value, MutableSequence):
@@ -2042,8 +2141,9 @@ class Settings:
                     for source in value:
                         if not isinstance(source, SourceBase):
                             raise ValueError(
-                                f'Invalid adjoint source type: {type(source)}. '
-                                'Expected openmc.SourceBase.')
+                                f"Invalid adjoint source type: {type(source)}. "
+                                "Expected openmc.SourceBase."
+                            )
                         subelement.append(source.to_xml_element())
                 elif isinstance(value, bool):
                     subelement = ET.SubElement(element, key)
@@ -2063,7 +2163,7 @@ class Settings:
             element.text = str(self._free_gas_threshold)
 
     def _eigenvalue_from_xml_element(self, root):
-        elem = root.find('eigenvalue')
+        elem = root.find("eigenvalue")
         if elem is not None:
             self._run_mode_from_xml_element(elem)
             self._particles_from_xml_element(elem)
@@ -2075,54 +2175,54 @@ class Settings:
             self._generations_per_batch_from_xml_element(elem)
 
     def _run_mode_from_xml_element(self, root):
-        text = get_text(root, 'run_mode')
+        text = get_text(root, "run_mode")
         if text is not None:
             self.run_mode = text
 
     def _particles_from_xml_element(self, root):
-        text = get_text(root, 'particles')
+        text = get_text(root, "particles")
         if text is not None:
             self.particles = int(text)
 
     def _batches_from_xml_element(self, root):
-        text = get_text(root, 'batches')
+        text = get_text(root, "batches")
         if text is not None:
             self.batches = int(text)
 
     def _inactive_from_xml_element(self, root):
-        text = get_text(root, 'inactive')
+        text = get_text(root, "inactive")
         if text is not None:
             self.inactive = int(text)
 
     def _max_lost_particles_from_xml_element(self, root):
-        text = get_text(root, 'max_lost_particles')
+        text = get_text(root, "max_lost_particles")
         if text is not None:
             self.max_lost_particles = int(text)
 
     def _rel_max_lost_particles_from_xml_element(self, root):
-        text = get_text(root, 'rel_max_lost_particles')
+        text = get_text(root, "rel_max_lost_particles")
         if text is not None:
             self.rel_max_lost_particles = float(text)
 
     def _max_write_lost_particles_from_xml_element(self, root):
-        text = get_text(root, 'max_write_lost_particles')
+        text = get_text(root, "max_write_lost_particles")
         if text is not None:
             self.max_write_lost_particles = int(text)
 
     def _generations_per_batch_from_xml_element(self, root):
-        text = get_text(root, 'generations_per_batch')
+        text = get_text(root, "generations_per_batch")
         if text is not None:
             self.generations_per_batch = int(text)
 
     def _keff_trigger_from_xml_element(self, root):
-        elem = root.find('keff_trigger')
+        elem = root.find("keff_trigger")
         if elem is not None:
-            trigger = get_text(elem, 'type')
-            threshold = float(get_text(elem, 'threshold'))
-            self.keff_trigger = {'type': trigger, 'threshold': threshold}
+            trigger = get_text(elem, "type")
+            threshold = float(get_text(elem, "threshold"))
+            self.keff_trigger = {"type": trigger, "threshold": threshold}
 
     def _source_from_xml_element(self, root, meshes=None):
-        for elem in root.findall('source'):
+        for elem in root.findall("source"):
             src = SourceBase.from_xml_element(elem, meshes)
             # add newly constructed source object to the list
             self.source.append(src)
@@ -2130,171 +2230,204 @@ class Settings:
     def _volume_calcs_from_xml_element(self, root):
         volume_elems = root.findall("volume_calc")
         if volume_elems:
-            self.volume_calculations = [VolumeCalculation.from_xml_element(elem)
-                                        for elem in volume_elems]
+            self.volume_calculations = [
+                VolumeCalculation.from_xml_element(elem) for elem in volume_elems
+            ]
 
     def _output_from_xml_element(self, root):
-        elem = root.find('output')
+        elem = root.find("output")
         if elem is not None:
             self.output = {}
-            for key in ('summary', 'tallies', 'path'):
+            for key in ("summary", "tallies", "path"):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key in ('summary', 'tallies'):
-                        value = value in ('true', '1')
+                    if key in ("summary", "tallies"):
+                        value = value in ("true", "1")
                     self.output[key] = value
 
     def _statepoint_from_xml_element(self, root):
-        elem = root.find('state_point')
+        elem = root.find("state_point")
         if elem is not None:
             batches = get_elem_list(elem, "batches", int)
             if batches is not None:
-                self.statepoint['batches'] = batches
+                self.statepoint["batches"] = batches
 
     def _sourcepoint_from_xml_element(self, root):
-        elem = root.find('source_point')
+        elem = root.find("source_point")
         if elem is not None:
-            for key in ('separate', 'write', 'overwrite_latest', 'batches', 'mcpl'):
-                if key in ('separate', 'write', 'mcpl', 'overwrite_latest'):
-                    value = get_text(elem, key) in ('true', '1')
-                    if key == 'overwrite_latest':
-                        key = 'overwrite'
+            for key in ("separate", "write", "overwrite_latest", "batches", "mcpl"):
+                if key in ("separate", "write", "mcpl", "overwrite_latest"):
+                    value = get_text(elem, key) in ("true", "1")
+                    if key == "overwrite_latest":
+                        key = "overwrite"
                 else:
                     value = get_elem_list(elem, key, int)
                 if value is not None:
                     self.sourcepoint[key] = value
 
     def _surf_source_read_from_xml_element(self, root):
-        elem = root.find('surf_source_read')
+        elem = root.find("surf_source_read")
         if elem is not None:
             ssr = {}
-            value = get_text(elem, 'path')
+            value = get_text(elem, "path")
             if value is not None:
-                ssr['path'] = value
+                ssr["path"] = value
             self.surf_source_read = ssr
 
     def _surf_source_write_from_xml_element(self, root):
-        elem = root.find('surf_source_write')
+        elem = root.find("surf_source_write")
         if elem is None:
             return
-        for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cell', 'cellto', 'cellfrom'):
-            if key == 'surface_ids':
+        for key in (
+            "surface_ids",
+            "max_particles",
+            "max_source_files",
+            "mcpl",
+            "cell",
+            "cellto",
+            "cellfrom",
+        ):
+            if key == "surface_ids":
                 value = get_elem_list(elem, key, int)
             else:
                 value = get_text(elem, key)
             if value is not None:
-                if key == 'mcpl':
-                    value = value in ('true', '1')
-                elif key in ('max_particles', 'max_source_files', 'cell', 'cellfrom', 'cellto'):
+                if key == "mcpl":
+                    value = value in ("true", "1")
+                elif key in (
+                    "max_particles",
+                    "max_source_files",
+                    "cell",
+                    "cellfrom",
+                    "cellto",
+                ):
                     value = int(value)
                 self.surf_source_write[key] = value
 
     def _collision_track_from_xml_element(self, root):
-        elem = root.find('collision_track')
+        elem = root.find("collision_track")
         if elem is not None:
-            for key in ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclides',
-                        'deposited_E_threshold', 'max_collisions', "max_collision_track_files", 'mcpl'):
+            for key in (
+                "cell_ids",
+                "reactions",
+                "universe_ids",
+                "material_ids",
+                "nuclides",
+                "deposited_E_threshold",
+                "max_collisions",
+                "max_collision_track_files",
+                "mcpl",
+            ):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key in ('cell_ids', 'universe_ids', 'material_ids'):
+                    if key in ("cell_ids", "universe_ids", "material_ids"):
                         value = [int(x) for x in value.split()]
-                    elif key in ('reactions', 'nuclides'):
+                    elif key in ("reactions", "nuclides"):
                         value = value.split()
-                    elif key in ('max_collisions', 'max_collision_track_files'):
+                    elif key in ("max_collisions", "max_collision_track_files"):
                         value = int(value)
-                    elif key == 'deposited_E_threshold':
+                    elif key == "deposited_E_threshold":
                         value = float(value)
-                    elif key == 'mcpl':
-                        value = value in ('true', '1')
+                    elif key == "mcpl":
+                        value = value in ("true", "1")
                     self.collision_track[key] = value
 
     def _confidence_intervals_from_xml_element(self, root):
-        text = get_text(root, 'confidence_intervals')
+        text = get_text(root, "confidence_intervals")
         if text is not None:
-            self.confidence_intervals = text in ('true', '1')
+            self.confidence_intervals = text in ("true", "1")
 
     def _electron_treatment_from_xml_element(self, root):
-        text = get_text(root, 'electron_treatment')
+        text = get_text(root, "electron_treatment")
         if text is not None:
             self.electron_treatment = text
 
     def _atomic_relaxation_from_xml_element(self, root):
-        text = get_text(root, 'atomic_relaxation')
+        text = get_text(root, "atomic_relaxation")
         if text is not None:
-            self.atomic_relaxation = text in ('true', '1')
+            self.atomic_relaxation = text in ("true", "1")
 
     def _energy_mode_from_xml_element(self, root):
-        text = get_text(root, 'energy_mode')
+        text = get_text(root, "energy_mode")
         if text is not None:
             self.energy_mode = text
 
     def _max_order_from_xml_element(self, root):
-        text = get_text(root, 'max_order')
+        text = get_text(root, "max_order")
         if text is not None:
             self.max_order = int(text)
 
     def _photon_transport_from_xml_element(self, root):
-        text = get_text(root, 'photon_transport')
+        text = get_text(root, "photon_transport")
         if text is not None:
-            self.photon_transport = text in ('true', '1')
+            self.photon_transport = text in ("true", "1")
 
     def _uniform_source_sampling_from_xml_element(self, root):
-        text = get_text(root, 'uniform_source_sampling')
+        text = get_text(root, "uniform_source_sampling")
         if text is not None:
-            self.uniform_source_sampling = text in ('true', '1')
+            self.uniform_source_sampling = text in ("true", "1")
 
     def _plot_seed_from_xml_element(self, root):
-        text = get_text(root, 'plot_seed')
+        text = get_text(root, "plot_seed")
         if text is not None:
             self.plot_seed = int(text)
 
     def _ptables_from_xml_element(self, root):
-        text = get_text(root, 'ptables')
+        text = get_text(root, "ptables")
         if text is not None:
-            self.ptables = text in ('true', '1')
+            self.ptables = text in ("true", "1")
 
     def _seed_from_xml_element(self, root):
-        text = get_text(root, 'seed')
+        text = get_text(root, "seed")
         if text is not None:
             self.seed = int(text)
 
     def _stride_from_xml_element(self, root):
-        text = get_text(root, 'stride')
+        text = get_text(root, "stride")
         if text is not None:
             self.stride = int(text)
 
     def _surface_grazing_cutoff_from_xml_element(self, root):
-        text = get_text(root, 'surface_grazing_cutoff')
+        text = get_text(root, "surface_grazing_cutoff")
         if text is not None:
             self.surface_grazing_cutoff = float(text)
 
     def _surface_grazing_ratio_from_xml_element(self, root):
-        text = get_text(root, 'surface_grazing_ratio')
+        text = get_text(root, "surface_grazing_ratio")
         if text is not None:
             self.surface_grazing_ratio = float(text)
 
     def _survival_biasing_from_xml_element(self, root):
-        text = get_text(root, 'survival_biasing')
+        text = get_text(root, "survival_biasing")
         if text is not None:
-            self.survival_biasing = text in ('true', '1')
+            self.survival_biasing = text in ("true", "1")
 
     def _cutoff_from_xml_element(self, root):
-        elem = root.find('cutoff')
+        elem = root.find("cutoff")
         if elem is not None:
             self.cutoff = {}
-            for key in ('energy_neutron', 'energy_photon', 'energy_electron',
-                        'energy_positron', 'weight', 'weight_avg', 'time_neutron',
-                        'time_photon', 'time_electron', 'time_positron',
-                        'survival_normalization'):
+            for key in (
+                "energy_neutron",
+                "energy_photon",
+                "energy_electron",
+                "energy_positron",
+                "weight",
+                "weight_avg",
+                "time_neutron",
+                "time_photon",
+                "time_electron",
+                "time_positron",
+                "survival_normalization",
+            ):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key == 'survival_normalization':
-                        self.cutoff[key] = value in ('true', '1')
+                    if key == "survival_normalization":
+                        self.cutoff[key] = value in ("true", "1")
                     else:
                         self.cutoff[key] = float(value)
 
     def _entropy_mesh_from_xml_element(self, root, meshes):
-        text = get_text(root, 'entropy_mesh')
+        text = get_text(root, "entropy_mesh")
         if text is None:
             return
         mesh_id = int(text)
@@ -2303,59 +2436,59 @@ class Settings:
         self.entropy_mesh = meshes[mesh_id]
 
     def _trigger_from_xml_element(self, root):
-        elem = root.find('trigger')
+        elem = root.find("trigger")
         if elem is not None:
-            self.trigger_active = get_text(elem, 'active') in ('true', '1')
-            text = get_text(elem, 'max_batches')
+            self.trigger_active = get_text(elem, "active") in ("true", "1")
+            text = get_text(elem, "max_batches")
             if text is not None:
                 self.trigger_max_batches = int(text)
-            text = get_text(elem, 'batch_interval')
+            text = get_text(elem, "batch_interval")
             if text is not None:
                 self.trigger_batch_interval = int(text)
 
     def _no_reduce_from_xml_element(self, root):
-        text = get_text(root, 'no_reduce')
+        text = get_text(root, "no_reduce")
         if text is not None:
-            self.no_reduce = text in ('true', '1')
+            self.no_reduce = text in ("true", "1")
 
     def _verbosity_from_xml_element(self, root):
-        text = get_text(root, 'verbosity')
+        text = get_text(root, "verbosity")
         if text is not None:
             self.verbosity = int(text)
 
     def _ifp_n_generation_from_xml_element(self, root):
-        text = get_text(root, 'ifp_n_generation')
+        text = get_text(root, "ifp_n_generation")
         if text is not None:
             self.ifp_n_generation = int(text)
 
     def _tabular_legendre_from_xml_element(self, root):
-        elem = root.find('tabular_legendre')
+        elem = root.find("tabular_legendre")
         if elem is not None:
-            text = get_text(elem, 'enable')
-            self.tabular_legendre['enable'] = text in ('true', '1')
-            text = get_text(elem, 'num_points')
+            text = get_text(elem, "enable")
+            self.tabular_legendre["enable"] = text in ("true", "1")
+            text = get_text(elem, "num_points")
             if text is not None:
-                self.tabular_legendre['num_points'] = int(text)
+                self.tabular_legendre["num_points"] = int(text)
 
     def _temperature_from_xml_element(self, root):
-        text = get_text(root, 'temperature_default')
+        text = get_text(root, "temperature_default")
         if text is not None:
-            self.temperature['default'] = float(text)
-        text = get_text(root, 'temperature_tolerance')
+            self.temperature["default"] = float(text)
+        text = get_text(root, "temperature_tolerance")
         if text is not None:
-            self.temperature['tolerance'] = float(text)
-        text = get_text(root, 'temperature_method')
+            self.temperature["tolerance"] = float(text)
+        text = get_text(root, "temperature_method")
         if text is not None:
-            self.temperature['method'] = text
+            self.temperature["method"] = text
         text = get_elem_list(root, "temperature_range", float)
         if text is not None:
-            self.temperature['range'] = text
-        text = get_text(root, 'temperature_multipole')
+            self.temperature["range"] = text
+        text = get_text(root, "temperature_multipole")
         if text is not None:
-            self.temperature['multipole'] = text in ('true', '1')
+            self.temperature["multipole"] = text in ("true", "1")
 
     def _properties_file_from_xml_element(self, root):
-        text = get_text(root, 'properties_file')
+        text = get_text(root, "properties_file")
         if text is not None:
             self.properties_file = text
 
@@ -2370,7 +2503,7 @@ class Settings:
             self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
     def _ufs_mesh_from_xml_element(self, root, meshes):
-        text = get_text(root, 'ufs_mesh')
+        text = get_text(root, "ufs_mesh")
         if text is None:
             return
         mesh_id = int(text)
@@ -2379,184 +2512,192 @@ class Settings:
         self.ufs_mesh = meshes[mesh_id]
 
     def _resonance_scattering_from_xml_element(self, root):
-        elem = root.find('resonance_scattering')
+        elem = root.find("resonance_scattering")
         if elem is not None:
-            keys = ('enable', 'method', 'energy_min', 'energy_max', 'nuclides')
+            keys = ("enable", "method", "energy_min", "energy_max", "nuclides")
             for key in keys:
-                if key == 'nuclides':
+                if key == "nuclides":
                     value = get_elem_list(elem, key, str)
                 else:
                     value = get_text(elem, key)
                 if value is not None:
-                    if key == 'enable':
-                        value = value in ('true', '1')
-                    elif key in ('energy_min', 'energy_max'):
+                    if key == "enable":
+                        value = value in ("true", "1")
+                    elif key in ("energy_min", "energy_max"):
                         value = float(value)
                     self.resonance_scattering[key] = value
 
     def _create_fission_neutrons_from_xml_element(self, root):
-        text = get_text(root, 'create_fission_neutrons')
+        text = get_text(root, "create_fission_neutrons")
         if text is not None:
-            self.create_fission_neutrons = text in ('true', '1')
+            self.create_fission_neutrons = text in ("true", "1")
 
     def _create_delayed_neutrons_from_xml_element(self, root):
-        text = get_text(root, 'create_delayed_neutrons')
+        text = get_text(root, "create_delayed_neutrons")
         if text is not None:
-            self.create_delayed_neutrons = text in ('true', '1')
+            self.create_delayed_neutrons = text in ("true", "1")
 
     def _delayed_photon_scaling_from_xml_element(self, root):
-        text = get_text(root, 'delayed_photon_scaling')
+        text = get_text(root, "delayed_photon_scaling")
         if text is not None:
-            self.delayed_photon_scaling = text in ('true', '1')
+            self.delayed_photon_scaling = text in ("true", "1")
 
     def _event_based_from_xml_element(self, root):
-        text = get_text(root, 'event_based')
+        text = get_text(root, "event_based")
         if text is not None:
-            self.event_based = text in ('true', '1')
+            self.event_based = text in ("true", "1")
 
     def _max_particles_in_flight_from_xml_element(self, root):
-        text = get_text(root, 'max_particles_in_flight')
+        text = get_text(root, "max_particles_in_flight")
         if text is not None:
             self.max_particles_in_flight = int(text)
 
     def _max_particle_events_from_xml_element(self, root):
-        text = get_text(root, 'max_particle_events')
+        text = get_text(root, "max_particle_events")
         if text is not None:
             self.max_particle_events = int(text)
 
     def _material_cell_offsets_from_xml_element(self, root):
-        text = get_text(root, 'material_cell_offsets')
+        text = get_text(root, "material_cell_offsets")
         if text is not None:
-            self.material_cell_offsets = text in ('true', '1')
+            self.material_cell_offsets = text in ("true", "1")
 
     def _log_grid_bins_from_xml_element(self, root):
-        text = get_text(root, 'log_grid_bins')
+        text = get_text(root, "log_grid_bins")
         if text is not None:
             self.log_grid_bins = int(text)
 
     def _write_initial_source_from_xml_element(self, root):
-        text = get_text(root, 'write_initial_source')
+        text = get_text(root, "write_initial_source")
         if text is not None:
-            self.write_initial_source = text in ('true', '1')
+            self.write_initial_source = text in ("true", "1")
 
     def _weight_window_generators_from_xml_element(self, root, meshes=None):
-        for elem in root.iter('weight_windows_generator'):
+        for elem in root.iter("weight_windows_generator"):
             wwg = WeightWindowGenerator.from_xml_element(elem, meshes)
             self.weight_window_generators.append(wwg)
 
     def _weight_windows_from_xml_element(self, root, meshes=None):
-        for elem in root.findall('weight_windows'):
+        for elem in root.findall("weight_windows"):
             ww = WeightWindows.from_xml_element(elem, meshes)
             self.weight_windows.append(ww)
 
     def _weight_windows_on_from_xml_element(self, root):
-        text = get_text(root, 'weight_windows_on')
+        text = get_text(root, "weight_windows_on")
         if text is not None:
-            self.weight_windows_on = text in ('true', '1')
+            self.weight_windows_on = text in ("true", "1")
 
     def _shared_secondary_bank_from_xml_element(self, root):
-        text = get_text(root, 'shared_secondary_bank')
+        text = get_text(root, "shared_secondary_bank")
         if text is not None:
-            self.shared_secondary_bank = text in ('true', '1')
+            self.shared_secondary_bank = text in ("true", "1")
 
     def _weight_windows_file_from_xml_element(self, root):
-        text = get_text(root, 'weight_windows_file')
+        text = get_text(root, "weight_windows_file")
         if text is not None:
             self.weight_windows_file = text
 
+    def _weight_windows_exodus_from_xml_element(self, root):
+        elem = root.find("weight_windows_exodus")
+        if elem is not None:
+            self.weight_windows_exodus = WeightWindowsExodus.from_xml_element(elem)
+
     def _weight_window_checkpoints_from_xml_element(self, root):
-        elem = root.find('weight_window_checkpoints')
+        elem = root.find("weight_window_checkpoints")
         if elem is None:
             return
-        for key in ('collision', 'surface'):
+        for key in ("collision", "surface"):
             value = get_text(elem, key)
             if value is not None:
-                value = value in ('true', '1')
+                value = value in ("true", "1")
                 self.weight_window_checkpoints[key] = value
 
     def _max_history_splits_from_xml_element(self, root):
-        text = get_text(root, 'max_history_splits')
+        text = get_text(root, "max_history_splits")
         if text is not None:
             self.max_history_splits = int(text)
 
     def _max_secondaries_from_xml_element(self, root):
-        text = get_text(root, 'max_secondaries')
+        text = get_text(root, "max_secondaries")
         if text is not None:
             self.max_secondaries = int(text)
 
     def _max_tracks_from_xml_element(self, root):
-        text = get_text(root, 'max_tracks')
+        text = get_text(root, "max_tracks")
         if text is not None:
             self.max_tracks = int(text)
 
     def _random_ray_from_xml_element(self, root, meshes=None):
-        elem = root.find('random_ray')
+        elem = root.find("random_ray")
         if elem is not None:
             self.random_ray = {}
             for child in elem:
-                if child.tag in ('distance_inactive', 'distance_active', 'diagonal_stabilization_rho'):
+                if child.tag in (
+                    "distance_inactive",
+                    "distance_active",
+                    "diagonal_stabilization_rho",
+                ):
                     self.random_ray[child.tag] = float(child.text)
-                elif child.tag == 'ray_source':
-                    source_element = child.find('source')
+                elif child.tag == "ray_source":
+                    source_element = child.find("source")
                     source = SourceBase.from_xml_element(source_element)
-                    if child.find('bias') is not None:
+                    if child.find("bias") is not None:
                         raise RuntimeError(
-                            "Ray source distributions should not be biased.")
-                    self.random_ray['ray_source'] = source
-                elif child.tag == 'volume_estimator':
-                    self.random_ray['volume_estimator'] = child.text
-                elif child.tag == 'source_shape':
-                    self.random_ray['source_shape'] = child.text
-                elif child.tag == 'volume_normalized_flux_tallies':
-                    self.random_ray['volume_normalized_flux_tallies'] = (
-                        child.text in ('true', '1')
+                            "Ray source distributions should not be biased."
+                        )
+                    self.random_ray["ray_source"] = source
+                elif child.tag == "volume_estimator":
+                    self.random_ray["volume_estimator"] = child.text
+                elif child.tag == "source_shape":
+                    self.random_ray["source_shape"] = child.text
+                elif child.tag == "volume_normalized_flux_tallies":
+                    self.random_ray["volume_normalized_flux_tallies"] = child.text in (
+                        "true",
+                        "1",
                     )
-                elif child.tag == 'adjoint':
-                    self.random_ray['adjoint'] = (
-                        child.text in ('true', '1')
-                    )
-                elif child.tag == 'adjoint_source':
-                    self.random_ray['adjoint_source'] = []
-                    for subelem in child.findall('source'):
+                elif child.tag == "adjoint":
+                    self.random_ray["adjoint"] = child.text in ("true", "1")
+                elif child.tag == "adjoint_source":
+                    self.random_ray["adjoint_source"] = []
+                    for subelem in child.findall("source"):
                         src = SourceBase.from_xml_element(subelem)
                         # add newly constructed source object to the list
-                        self.random_ray['adjoint_source'].append(src)
-                elif child.tag == 'sample_method':
-                    self.random_ray['sample_method'] = child.text
-                elif child.tag == 'source_region_meshes':
-                    self.random_ray['source_region_meshes'] = []
-                    for mesh_elem in child.findall('mesh'):
-                        mesh_id = int(get_text(mesh_elem, 'id'))
+                        self.random_ray["adjoint_source"].append(src)
+                elif child.tag == "sample_method":
+                    self.random_ray["sample_method"] = child.text
+                elif child.tag == "source_region_meshes":
+                    self.random_ray["source_region_meshes"] = []
+                    for mesh_elem in child.findall("mesh"):
+                        mesh_id = int(get_text(mesh_elem, "id"))
                         if meshes and mesh_id in meshes:
                             mesh = meshes[mesh_id]
                         else:
                             mesh = MeshBase.from_xml_element(mesh_elem)
                         domains = []
-                        for domain_elem in mesh_elem.findall('domain'):
+                        for domain_elem in mesh_elem.findall("domain"):
                             domain_id = int(get_text(domain_elem, "id"))
                             domain_type = get_text(domain_elem, "type")
-                            if domain_type == 'material':
+                            if domain_type == "material":
                                 domain = openmc.Material(domain_id)
-                            elif domain_type == 'cell':
+                            elif domain_type == "cell":
                                 domain = openmc.Cell(domain_id)
-                            elif domain_type == 'universe':
+                            elif domain_type == "universe":
                                 domain = openmc.Universe(domain_id)
                             domains.append(domain)
-                        self.random_ray['source_region_meshes'].append(
-                            (mesh, domains))
+                        self.random_ray["source_region_meshes"].append((mesh, domains))
 
     def _use_decay_photons_from_xml_element(self, root):
-        text = get_text(root, 'use_decay_photons')
+        text = get_text(root, "use_decay_photons")
         if text is not None:
-            self.use_decay_photons = text in ('true', '1')
+            self.use_decay_photons = text in ("true", "1")
 
     def _source_rejection_fraction_from_xml_element(self, root):
-        text = get_text(root, 'source_rejection_fraction')
+        text = get_text(root, "source_rejection_fraction")
         if text is not None:
             self.source_rejection_fraction = float(text)
 
     def _free_gas_threshold_from_xml_element(self, root):
-        text = get_text(root, 'free_gas_threshold')
+        text = get_text(root, "free_gas_threshold")
         if text is not None:
             self.free_gas_threshold = float(text)
 
@@ -2629,6 +2770,7 @@ class Settings:
         self._create_shared_secondary_bank_subelement(element)
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
+        self._create_weight_windows_exodus_subelement(element)
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
@@ -2643,7 +2785,7 @@ class Settings:
 
         return element
 
-    def export_to_xml(self, path: PathLike = 'settings.xml'):
+    def export_to_xml(self, path: PathLike = "settings.xml"):
         """Export simulation settings to an XML file.
 
         Parameters
@@ -2657,11 +2799,11 @@ class Settings:
         # Check if path is a directory
         p = Path(path)
         if p.is_dir():
-            p /= 'settings.xml'
+            p /= "settings.xml"
 
         # Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(root_element)
-        tree.write(str(p), xml_declaration=True, encoding='utf-8')
+        tree.write(str(p), xml_declaration=True, encoding="utf-8")
 
     @classmethod
     def from_xml_element(cls, elem, meshes=None):
@@ -2746,6 +2888,7 @@ class Settings:
         settings._weight_windows_on_from_xml_element(elem)
         settings._shared_secondary_bank_from_xml_element(elem)
         settings._weight_windows_file_from_xml_element(elem)
+        settings._weight_windows_exodus_from_xml_element(elem)
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_history_splits_from_xml_element(elem)
@@ -2759,7 +2902,7 @@ class Settings:
         return settings
 
     @classmethod
-    def from_xml(cls, path: PathLike = 'settings.xml'):
+    def from_xml(cls, path: PathLike = "settings.xml"):
         """Generate settings from XML file
 
         .. versionadded:: 0.13.0

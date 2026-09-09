@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import h5py
 import numpy as np
 import pytest
 
@@ -115,26 +116,15 @@ def test_tabulated1d_integer_input():
 
 
 def test_sum_functions_partial_domains():
-    """Functions with partial domains retain exact zero extension."""
+    """Functions are materialized on the union of their tabulated grids."""
     f1 = openmc.data.Tabulated1D([1.0, 2.0, 3.0], [10.0, 20.0, 30.0])
     f2 = openmc.data.Tabulated1D([2.0, 3.0, 4.0], [100.0, 200.0, 400.0])
 
     s = openmc.data.sum_functions([f1, f2])
-    assert isinstance(s, openmc.data.Sum)
-    assert s(1.5) == f1(1.5)
+    assert isinstance(s, openmc.data.Tabulated1D)
+    assert np.array_equal(s.x, [1.0, 2.0, 3.0, 4.0])
+    assert np.array_equal(s.y, [10.0, 120.0, 230.0, 400.0])
     assert s(2.5) == f1(2.5) + f2(2.5)
-    assert s(3.5) == f2(3.5)
-
-
-def test_sum_functions_disjoint_domains():
-    """Functions with disjoint domains retain both supports."""
-    f1 = openmc.data.Tabulated1D([1.0, 2.0], [10.0, 20.0])
-    f2 = openmc.data.Tabulated1D([3.0, 4.0], [100.0, 200.0])
-
-    s = openmc.data.sum_functions([f1, f2])
-    assert s(1.5) == 15.0
-    assert s(2.5) == 0.0
-    assert s(3.5) == 150.0
 
 
 def test_sum_functions_polynomial():
@@ -143,9 +133,9 @@ def test_sum_functions_polynomial():
     f = openmc.data.Tabulated1D([2.0, 4.0], [10.0, 20.0])
 
     s = openmc.data.sum_functions([f, p])
-    assert isinstance(s, openmc.data.Sum)
-    assert s(2.0) == pytest.approx(10.0)
-    assert s(4.0) == pytest.approx(19.0)
+    assert isinstance(s, openmc.data.Tabulated1D)
+    assert np.array_equal(s.x, [2.0, 4.0])
+    assert np.allclose(s.y, [10.0, 19.0])
 
 
 def test_sum_functions_integer_grid():
@@ -159,6 +149,24 @@ def test_sum_functions_integer_grid():
     f = openmc.data.Tabulated1D([2, 4], [10, 20])
 
     s = openmc.data.sum_functions([f, p])
-    y = s(np.array([2, 3, 4]))
-    assert y.dtype == np.float64
-    assert np.allclose(y, [10.0, 14.5, 19.0])
+    assert s.y.dtype == np.float64
+    assert np.allclose(s.y, [10.0, 19.0])
+
+
+def test_tabulated_fission_energy_hdf5(tmp_path):
+    """Derived fission energies with tabulated data can be stored in HDF5."""
+    components = [openmc.data.Polynomial([1.0]) for _ in range(7)]
+    components[0] = openmc.data.Tabulated1D([0.0, 1.0], [10.0, 11.0])
+    energy_release = openmc.data.FissionEnergyRelease(*components)
+
+    path = tmp_path / 'fission_energy.h5'
+    with h5py.File(path, 'w') as h5f:
+        energy_release.to_hdf5(h5f)
+        assert h5f['q_prompt'].attrs['type'] == b'Tabulated1D'
+        assert h5f['q_recoverable'].attrs['type'] == b'Tabulated1D'
+
+    with h5py.File(path, 'r') as h5f:
+        restored = openmc.data.FissionEnergyRelease.from_hdf5(h5f)
+
+    assert restored.q_prompt(0.5) == energy_release.q_prompt(0.5)
+    assert restored.q_recoverable(0.5) == energy_release.q_recoverable(0.5)

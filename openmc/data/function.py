@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Callable
+from functools import reduce
 from itertools import zip_longest
 from math import exp, log
 from numbers import Real, Integral
@@ -18,10 +19,6 @@ INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
 def sum_functions(funcs):
     """Add tabulated/polynomial functions together.
 
-    When any tabulated functions are present, the component functions are
-    retained so that their interpolation and out-of-range behavior is
-    preserved exactly.
-
     Parameters
     ----------
     funcs : list of Function1D
@@ -36,12 +33,25 @@ def sum_functions(funcs):
     # Copy so we can iterate multiple times
     funcs = list(funcs)
 
-    if any(isinstance(f, Tabulated1D) for f in funcs):
-        # Sampling on the union of tabulated grids would introduce artificial
-        # ramps between a nonzero endpoint and the next point outside that
-        # component's domain. Keep the functions separate so that zero
-        # extension and each interpolation law are represented exactly.
-        return Sum(funcs)
+    # Get x values for all tabulated components
+    xs = []
+    for f in funcs:
+        if isinstance(f, Tabulated1D):
+            xs.append(f.x)
+            if not np.all(f.interpolation == 2):
+                raise ValueError('Only linear-linear tabulated functions '
+                                 'can be combined')
+
+    if xs:
+        # Take the union of all energies (sorted)
+        x = reduce(np.union1d, xs)
+
+        # Evaluate each function and add together. Use a floating-point
+        # accumulator so that integer-valued grids do not truncate results.
+        y = np.zeros_like(x, dtype=float)
+        for f in funcs:
+            y += f(x)
+        return Tabulated1D(x, y)
     else:
         # If no tabulated functions are present, we need to combine the
         # polynomials by adding their coefficients

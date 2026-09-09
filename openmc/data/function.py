@@ -17,7 +17,10 @@ INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
 
 
 def sum_functions(funcs):
-    """Add tabulated/polynomials functions together
+    """Add tabulated/polynomial functions together.
+
+    When multiple tabulated functions are present, the returned function is
+    defined on the intersection of their domains.
 
     Parameters
     ----------
@@ -28,6 +31,12 @@ def sum_functions(funcs):
     -------
     Function1D
         Sum of polynomial/tabulated functions
+
+    Raises
+    ------
+    ValueError
+        If tabulated functions do not share an interval or if any tabulated
+        function does not use linear-linear interpolation.
 
     """
     # Copy so we can iterate multiple times
@@ -43,24 +52,24 @@ def sum_functions(funcs):
                                  'can be combined')
 
     if xs:
-        # Take the union of all energies (sorted)
-        x = reduce(np.union1d, xs)
+        # Restrict the union grid to the domain shared by every tabulated
+        # function. Values outside a tabulated function's domain are undefined
+        # and therefore cannot contribute to a pointwise sum.
+        x_min = max(f.x[0] for f in funcs if isinstance(f, Tabulated1D))
+        x_max = min(f.x[-1] for f in funcs if isinstance(f, Tabulated1D))
+        if x_min >= x_max:
+            raise ValueError('Tabulated functions must have overlapping domains')
 
-        # Evaluate each function and add together.  Tabulated functions are
-        # only evaluated where they are defined; values beyond a function's
-        # tabulated range do not contribute to the sum.  The accumulator uses
-        # a floating-point dtype since the combined functions (e.g.,
-        # polynomials) may return values that cannot be represented
-        # losslessly in the dtype of an integer-valued grid.
+        x = reduce(np.union1d, xs)
+        x = x[(x >= x_min) & (x <= x_max)]
+
+        # Evaluate each function and add together. The accumulator uses a
+        # floating-point dtype since the combined functions (e.g., polynomials)
+        # may return values that cannot be represented losslessly in the dtype
+        # of an integer-valued grid.
         y = np.zeros_like(x, dtype=float)
         for f in funcs:
-            if isinstance(f, Tabulated1D):
-                within = ((x >= f.x[0]) & (x <= f.x[-1])) | \
-                    np.isclose(x, f.x[0], atol=1e-14) | \
-                    np.isclose(x, f.x[-1], atol=1e-14)
-                y[within] += f(x[within])
-            else:
-                y += f(x)
+            y += f(x)
         return Tabulated1D(x, y)
     else:
         # If no tabulated functions are present, we need to combine the
@@ -124,9 +133,8 @@ class Tabulated1D(Function1D):
     >>> [f(xi) for xi in numpy.linspace(0, 10, 5)]
     [4.0, 4.25, 4.5, 4.75, 5.0]
 
-    When evaluated outside the tabulated range, the value at the nearest
-    tabulated endpoint is returned.  This holds whether the argument is a
-    scalar or an array of values.
+    The function is defined only on its tabulated domain. Evaluation outside
+    that domain raises a :exc:`ValueError` for both scalar and array arguments.
 
     Parameters
     ----------
@@ -177,6 +185,20 @@ class Tabulated1D(Function1D):
 
         x = np.array(x)
 
+        if not np.all(np.isfinite(x)):
+            raise ValueError('Interpolation points must be finite')
+
+        close_left = np.isclose(x, self.x[0], rtol=0.0, atol=1e-14)
+        close_right = np.isclose(x, self.x[-1], rtol=0.0, atol=1e-14)
+        outside = (
+            ((x < self.x[0]) & ~close_left)
+            | ((x > self.x[-1]) & ~close_right)
+        )
+        if np.any(outside):
+            raise ValueError(
+                f'Interpolation points must be within [{self.x[0]}, '
+                f'{self.x[-1]}]')
+
         # Create output array.  Use a floating-point dtype so that
         # interpolated values are not truncated when the input is an
         # integer-valued array.
@@ -221,20 +243,25 @@ class Tabulated1D(Function1D):
                 y[contained] = (yi*np.exp(np.log(xk/xi)/np.log(xi1/xi)
                                 *np.log(yi1/yi)))
 
-        # Assign boundary values to points that lie outside the tabulated
-        # range so that array evaluation is consistent with the scalar
-        # interpolation path, which returns the value at the nearest endpoint.
-        y[idx < 0] = self.y[0]
-        y[idx > len(self.x) - 2] = self.y[-1]
-
         # In some cases, x values might be outside the tabulated region due only
         # to precision, so we check if they're close and set them equal if so.
-        y[np.isclose(x, self.x[0], atol=1e-14)] = self.y[0]
-        y[np.isclose(x, self.x[-1], atol=1e-14)] = self.y[-1]
+        y[close_left] = self.y[0]
+        y[close_right] = self.y[-1]
 
         return y
 
     def _interpolate_scalar(self, x):
+        if not np.isfinite(x):
+            raise ValueError('Interpolation point must be finite')
+
+        close_left = np.isclose(x, self.x[0], rtol=0.0, atol=1e-14)
+        close_right = np.isclose(x, self.x[-1], rtol=0.0, atol=1e-14)
+        if ((x < self._x[0] and not close_left) or
+                (x > self._x[-1] and not close_right)):
+            raise ValueError(
+                f'Interpolation point must be within [{self.x[0]}, '
+                f'{self.x[-1]}]')
+
         if x <= self._x[0]:
             return self._y[0]
         elif x >= self._x[-1]:

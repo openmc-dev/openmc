@@ -92,16 +92,14 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       srh.source(g_out) =
         (scatter_flat + fission_flat * inverse_k_eff) / sigma_t;
 
-      // Compute the linear source terms. In the first
-      // LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES iterations when the centroids
-      // and spatial moments are not well known, we will leave the source
-      // gradients as zero so as to avoid causing any numerical instability. If
-      // a negative source is encountered, this region must be very small/noisy
-      // or have poorly developed spatial moments, so we zero the source
-      // gradients (effectively making this a flat source region temporarily),
-      // so as to improve stability.
-      if (simulation::current_batch > LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES &&
-          srh.source(g_out) >= 0.0) {
+      // Compute the linear source terms. In the first 10 iterations when the
+      // centroids and spatial moments are not well known, we will leave the
+      // source gradients as zero so as to avoid causing any numerical
+      // instability. If a negative source is encountered, this region must be
+      // very small/noisy or have poorly developed spatial moments, so we zero
+      // the source gradients (effectively making this a flat source region
+      // temporarily), so as to improve stability.
+      if (simulation::current_batch > 10 && srh.source(g_out) >= 0.0) {
         srh.source_gradients(g_out) =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       } else {

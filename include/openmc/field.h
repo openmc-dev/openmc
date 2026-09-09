@@ -75,8 +75,6 @@ protected:
 template<typename T>
 class MappedField : public Field {
 public:
-  MappedField() = default;
-
   //! Construct a fully initialized MappedField.
   //
   //! \param[in] mesh_ptr Non-owning pointer to the mesh
@@ -289,7 +287,6 @@ private:
 class TemperatureField : public MappedField<double> {
 public:
   // Constructors
-  TemperatureField() : MappedField<double>() {};
   TemperatureField(
     Mesh* mesh_ptr, vector<double> values, std::string mapping = "cell")
     : MappedField<double>(mesh_ptr, values, mapping) {};
@@ -322,7 +319,6 @@ using BCMap = std::unordered_map<BCType, vector<int>>;
 class VelocityField : public MappedField<Direction> {
 public:
   // Constructors
-  VelocityField() : MappedField<Direction>() {};
   VelocityField(Mesh* mesh_ptr, vector<Direction> values, std::string mapping)
     : MappedField<Direction>(mesh_ptr, values, mapping) {};
 

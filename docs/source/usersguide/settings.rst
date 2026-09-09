@@ -662,9 +662,11 @@ The way in which OpenMC handles secondary charged particles can be specified
 with the :attr:`Settings.electron_treatment` attribute. By default, the
 :ref:`thick-target bremsstrahlung <ttb>` (TTB) approximation is used to generate
 bremsstrahlung radiation emitted by electrons and positrons created in photon
-interactions. To neglect secondary bremsstrahlung photons and instead deposit
-all energy from electrons locally, the local energy deposition option can be
-selected::
+interactions. Electron and positron secondaries created by photon interactions
+are processed at their birth site rather than transported as separate charged
+particle tracks. To neglect secondary bremsstrahlung photons and instead
+deposit all energy from electrons locally, the local energy deposition option
+can be selected::
 
   settings.electron_treatment = 'led'
 

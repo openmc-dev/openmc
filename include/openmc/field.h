@@ -38,9 +38,8 @@ enum class FieldMapping {
 
 //! Abstract base class for all fields defined on a geometric mesh.
 //
-//! Provides common metadata (ID, type string, name) and a non-owning
-//! pointer to the associated mesh. Concrete field behaviour is
-//! implemented by MappedField and its subclasses.
+//! Provides the mapping type and a non-owning pointer to the associated mesh.
+//! Concrete field behaviour is implemented by TypedField and its subclasses.
 class Field {
 public:
   explicit Field(Mesh* mesh, FieldMapping mapping)
@@ -62,7 +61,7 @@ protected:
 };
 
 // -----------------------------------------------------------
-// MappedField
+// TypedField
 // -----------------------------------------------------------
 
 //! A field that stores typed data on a mesh with a specified mapping.
@@ -73,14 +72,14 @@ protected:
 //! \tparam T Value type stored per mesh entity (e.g., double for scalar fields,
 //!           Direction for vector fields).
 template<typename T>
-class MappedField : public Field {
+class TypedField : public Field {
 public:
-  //! Construct a fully initialized MappedField.
+  //! Construct a fully initialized TypedField.
   //
   //! \param[in] mesh_ptr Non-owning pointer to the mesh
   //! \param[in] values Field values.
   //! \param[in] mapping Mapping type: 'nodal' or 'cell'
-  MappedField(Mesh* mesh_ptr, vector<T> values, FieldMapping mapping)
+  TypedField(Mesh* mesh_ptr, vector<T> values, FieldMapping mapping)
     : Field(mesh_ptr, mapping)
   {
     int expected = 0;
@@ -247,12 +246,12 @@ private:
 // TemperatureField
 // -----------------------------------------------------------
 
-class TemperatureField : public MappedField<double> {
+class TemperatureField : public TypedField<double> {
 public:
   // Constructors
   TemperatureField(
     Mesh* mesh_ptr, vector<double> values, FieldMapping mapping = FieldMapping::CELL)
-    : MappedField<double>(mesh_ptr, std::move(values), mapping) {}
+    : TypedField<double>(mesh_ptr, std::move(values), mapping) {}
 
   //! Returns the temperature in Kelvin corresponding to a given bin number
   //! relative to the mesh.
@@ -279,11 +278,11 @@ enum class BCType { NONE, INLET, OUTLET, WALL };
 // Boundary conditions map type
 using BCMap = std::unordered_map<BCType, vector<int>>;
 
-class VelocityField : public MappedField<Direction> {
+class VelocityField : public TypedField<Direction> {
 public:
   // Constructors
   VelocityField(Mesh* mesh_ptr, vector<Direction> values, FieldMapping mapping)
-    : MappedField<Direction>(mesh_ptr, std::move(values), mapping) {}
+    : TypedField<Direction>(mesh_ptr, std::move(values), mapping) {}
 
   //! Find next bin associated with a given position (r1) knowing the previous
   //! position (r0) and the previous bin (bin0). The next bin is evaluated using

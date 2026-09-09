@@ -49,7 +49,7 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test Field - regular mesh")
           {29.5, 16.5, 17.5, 25.5, 23.0, 10.0}}}));
 
   // Create a typed field
-  MappedField<double> field = MappedField<double>(&mesh, values, mapping);
+  TypedField<double> field = TypedField<double>(&mesh, values, mapping);
 
   // Assign
   double saved_value = field.value(2);

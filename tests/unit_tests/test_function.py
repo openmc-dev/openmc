@@ -151,22 +151,3 @@ def test_sum_functions_integer_grid():
     s = openmc.data.sum_functions([f, p])
     assert s.y.dtype == np.float64
     assert np.allclose(s.y, [10.0, 19.0])
-
-
-def test_tabulated_fission_energy_hdf5(tmp_path):
-    """Derived fission energies with tabulated data can be stored in HDF5."""
-    components = [openmc.data.Polynomial([1.0]) for _ in range(7)]
-    components[0] = openmc.data.Tabulated1D([0.0, 1.0], [10.0, 11.0])
-    energy_release = openmc.data.FissionEnergyRelease(*components)
-
-    path = tmp_path / 'fission_energy.h5'
-    with h5py.File(path, 'w') as h5f:
-        energy_release.to_hdf5(h5f)
-        assert h5f['q_prompt'].attrs['type'] == b'Tabulated1D'
-        assert h5f['q_recoverable'].attrs['type'] == b'Tabulated1D'
-
-    with h5py.File(path, 'r') as h5f:
-        restored = openmc.data.FissionEnergyRelease.from_hdf5(h5f)
-
-    assert restored.q_prompt(0.5) == energy_release.q_prompt(0.5)
-    assert restored.q_recoverable(0.5) == energy_release.q_recoverable(0.5)

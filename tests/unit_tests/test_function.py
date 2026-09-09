@@ -15,10 +15,8 @@ def test_tabulated1d_scalar_array_consistency():
     assert np.all(f(xs) == np.array([f(x) for x in xs]))
 
     for x in (-100.0, 0.999, 3.001, 1e300):
-        with pytest.raises(ValueError, match='must be within'):
-            f(x)
-        with pytest.raises(ValueError, match='must be within'):
-            f(np.array([x]))
+        assert f(x) == 0.0
+        assert f(np.array([x]))[0] == 0.0
 
 
 @pytest.mark.parametrize('interp', [1, 2, 3, 4, 5])
@@ -68,9 +66,10 @@ def test_tabulated1d_endpoints():
     assert f(3.0) == 6.0
 
     # Slightly beyond the upper endpoint due to floating point precision
+    assert f(3.0*(1.0 + 1e-15)) == 6.0
     assert f(np.array([3.0*(1.0 + 1e-15)]))[0] == 6.0
-    with pytest.raises(ValueError, match='must be within'):
-        f(np.array([3.0 + 1e-6]))
+    assert f(3.0 + 1e-6) == 0.0
+    assert f(np.array([3.0 + 1e-6]))[0] == 0.0
 
 
 def test_tabulated1d_multidimensional_input():
@@ -116,26 +115,26 @@ def test_tabulated1d_integer_input():
 
 
 def test_sum_functions_partial_domains():
-    """Functions are summed only on their shared tabulated domain."""
+    """Functions with partial domains retain exact zero extension."""
     f1 = openmc.data.Tabulated1D([1.0, 2.0, 3.0], [10.0, 20.0, 30.0])
     f2 = openmc.data.Tabulated1D([2.0, 3.0, 4.0], [100.0, 200.0, 400.0])
 
     s = openmc.data.sum_functions([f1, f2])
-    assert isinstance(s, openmc.data.Tabulated1D)
-    assert np.array_equal(s.x, np.array([2.0, 3.0]))
-    assert np.array_equal(s.y, np.array([120.0, 230.0]))
+    assert isinstance(s, openmc.data.Sum)
+    assert s(1.5) == f1(1.5)
     assert s(2.5) == f1(2.5) + f2(2.5)
-    with pytest.raises(ValueError, match='must be within'):
-        s(1.5)
+    assert s(3.5) == f2(3.5)
 
 
 def test_sum_functions_disjoint_domains():
-    """Functions with no shared interval cannot be summed."""
+    """Functions with disjoint domains retain both supports."""
     f1 = openmc.data.Tabulated1D([1.0, 2.0], [10.0, 20.0])
-    f2 = openmc.data.Tabulated1D([2.0, 3.0], [100.0, 200.0])
+    f2 = openmc.data.Tabulated1D([3.0, 4.0], [100.0, 200.0])
 
-    with pytest.raises(ValueError, match='overlapping domains'):
-        openmc.data.sum_functions([f1, f2])
+    s = openmc.data.sum_functions([f1, f2])
+    assert s(1.5) == 15.0
+    assert s(2.5) == 0.0
+    assert s(3.5) == 150.0
 
 
 def test_sum_functions_polynomial():
@@ -144,9 +143,9 @@ def test_sum_functions_polynomial():
     f = openmc.data.Tabulated1D([2.0, 4.0], [10.0, 20.0])
 
     s = openmc.data.sum_functions([f, p])
-    assert np.array_equal(s.x, np.array([2.0, 4.0]))
-    assert s.y[0] == pytest.approx(10.0)
-    assert s.y[1] == pytest.approx(19.0)
+    assert isinstance(s, openmc.data.Sum)
+    assert s(2.0) == pytest.approx(10.0)
+    assert s(4.0) == pytest.approx(19.0)
 
 
 def test_sum_functions_integer_grid():
@@ -160,7 +159,6 @@ def test_sum_functions_integer_grid():
     f = openmc.data.Tabulated1D([2, 4], [10, 20])
 
     s = openmc.data.sum_functions([f, p])
-    assert np.array_equal(s.x, np.array([2, 4]))
-    assert s.y.dtype == np.float64
-    assert s.y[0] == pytest.approx(10.0)
-    assert s.y[1] == pytest.approx(19.0)
+    y = s(np.array([2, 3, 4]))
+    assert y.dtype == np.float64
+    assert np.allclose(y, [10.0, 14.5, 19.0])

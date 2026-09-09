@@ -39,16 +39,16 @@ public:
 TEST_CASE_METHOD(RegularMeshFixture, "Test Field - regular mesh")
 {
   auto [mapping, values, outputs] =
-    GENERATE(table<std::string, vector<double>, vector<double>>(
-      {{"cell", {10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0},
+    GENERATE(table<FieldMapping, vector<double>, vector<double>>(
+      {{FieldMapping::CELL, {10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0},
          {80.0, 10.0, 20.0, 50.0, 10.0, 10.0}},
-        {"nodal",
+        {FieldMapping::NODAL,
           {10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0,
             21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0, 31.0,
             32.0, 33.0, 34.0, 35.0, 36.0},
           {29.5, 16.5, 17.5, 25.5, 23.0, 10.0}}}));
 
-  // Create a temperature field
+  // Create a typed field
   MappedField<double> field = MappedField<double>(&mesh, values, mapping);
 
   // Assign
@@ -73,7 +73,7 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test Field - regular mesh")
   REQUIRE(field.evaluate_in_mesh(Position(0.0, 0.0, 0.0), 0) == outputs[4]);
 
   // Trilinear interpolation
-  if (mapping == "nodal") {
+  if (mapping == FieldMapping::NODAL) {
     REQUIRE(
       field.trilinear_interpolation(Position(0.5, 0.5, 0.5), 7) == outputs[0]);
     REQUIRE(field.trilinear_interpolation(Position(-0.5, -0.5, -0.5), 0) ==
@@ -165,25 +165,27 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(RegularMeshFixture, "Test VelocityField - regular mesh")
 {
-  auto [mapping, values] = GENERATE(table<std::string, vector<Direction>>(
-    {{"cell", {Direction(10.0, 10.0, 10.0), Direction(20.0, 20.0, 20.0),
-                Direction(30.0, 30.0, 30.0), Direction(40.0, 40.0, 40.0),
-                Direction(50.0, 50.0, 50.0), Direction(60.0, 60.0, 60.0),
-                Direction(70.0, 70.0, 70.0), Direction(80.0, 80.0, 80.0)}},
-      {"nodal", {Direction(10.0, 10.0, 10.0), Direction(11.0, 11.0, 11.0),
-                  Direction(12.0, 12.0, 12.0), Direction(13.0, 13.0, 13.0),
-                  Direction(14.0, 14.0, 14.0), Direction(15.0, 15.0, 15.0),
-                  Direction(16.0, 16.0, 16.0), Direction(17.0, 17.0, 17.0),
-                  Direction(18.0, 18.0, 18.0), Direction(19.0, 19.0, 19.0),
-                  Direction(20.0, 20.0, 20.0), Direction(21.0, 21.0, 21.0),
-                  Direction(22.0, 22.0, 22.0), Direction(23.0, 23.0, 23.0),
-                  Direction(24.0, 24.0, 24.0), Direction(25.0, 25.0, 25.0),
-                  Direction(26.0, 26.0, 26.0), Direction(27.0, 27.0, 27.0),
-                  Direction(28.0, 28.0, 28.0), Direction(29.0, 29.0, 29.0),
-                  Direction(30.0, 30.0, 30.0), Direction(31.0, 31.0, 31.0),
-                  Direction(32.0, 32.0, 32.0), Direction(33.0, 33.0, 33.0),
-                  Direction(34.0, 34.0, 34.0), Direction(35.0, 35.0, 35.0),
-                  Direction(36.0, 36.0, 36.0)}}}));
+  auto [mapping, values] = GENERATE(table<FieldMapping, vector<Direction>>(
+    {{FieldMapping::CELL,
+       {Direction(10.0, 10.0, 10.0), Direction(20.0, 20.0, 20.0),
+         Direction(30.0, 30.0, 30.0), Direction(40.0, 40.0, 40.0),
+         Direction(50.0, 50.0, 50.0), Direction(60.0, 60.0, 60.0),
+         Direction(70.0, 70.0, 70.0), Direction(80.0, 80.0, 80.0)}},
+      {FieldMapping::NODAL,
+        {Direction(10.0, 10.0, 10.0), Direction(11.0, 11.0, 11.0),
+          Direction(12.0, 12.0, 12.0), Direction(13.0, 13.0, 13.0),
+          Direction(14.0, 14.0, 14.0), Direction(15.0, 15.0, 15.0),
+          Direction(16.0, 16.0, 16.0), Direction(17.0, 17.0, 17.0),
+          Direction(18.0, 18.0, 18.0), Direction(19.0, 19.0, 19.0),
+          Direction(20.0, 20.0, 20.0), Direction(21.0, 21.0, 21.0),
+          Direction(22.0, 22.0, 22.0), Direction(23.0, 23.0, 23.0),
+          Direction(24.0, 24.0, 24.0), Direction(25.0, 25.0, 25.0),
+          Direction(26.0, 26.0, 26.0), Direction(27.0, 27.0, 27.0),
+          Direction(28.0, 28.0, 28.0), Direction(29.0, 29.0, 29.0),
+          Direction(30.0, 30.0, 30.0), Direction(31.0, 31.0, 31.0),
+          Direction(32.0, 32.0, 32.0), Direction(33.0, 33.0, 33.0),
+          Direction(34.0, 34.0, 34.0), Direction(35.0, 35.0, 35.0),
+          Direction(36.0, 36.0, 36.0)}}}));
 
   // Add physical group map
   mesh.pg_map() = {{1, {0, 24, 12, 36}}, {2, {7, 31, 19, 43}},

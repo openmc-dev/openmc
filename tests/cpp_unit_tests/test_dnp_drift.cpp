@@ -58,7 +58,8 @@ protected:
     site.u = u;
   }
 
-  void set_velocity_field(const Direction& v, const std::string& type = "cell")
+  void set_velocity_field(
+    const Direction& v, FieldMapping type = FieldMapping::CELL)
   {
     vector<Direction> velocities(8, v);
     simulation::velocity_field = new VelocityField(&mesh, velocities, type);

@@ -177,21 +177,25 @@ void read_fields(const pugi::xml_node& root)
     auto raw_values = get_node_array<double>(node, "values");
 
     // Mapping (optional, default "cell")
-    std::string mapping = "cell";
+    FieldMapping mapping = FieldMapping::CELL;
     if (check_for_node(node, "mapping")) {
-      mapping = get_node_value(node, "mapping");
-    }
-    if (mapping != "cell" && mapping != "nodal") {
-      throw std::runtime_error(fmt::format(
-        "Field id={}: unknown mapping '{}'. Must be 'cell' or 'nodal'.", id,
-        mapping));
+      std::string m = get_node_value(node, "mapping");
+      if (m == "cell") {
+        mapping = FieldMapping::CELL;
+      } else if (m == "nodal") {
+        mapping = FieldMapping::NODAL;
+      } else {
+        throw std::runtime_error(fmt::format(
+          "Field id={}: unknown mapping '{}'. Must be 'cell' or 'nodal'.", id,
+          m));
+      }
     }
 
     // Create a field
     std::unique_ptr<Field> field;
-    std::string entity_name = (mapping == "cell") ? "element" : "node";
+    std::string entity_name = (mapping == FieldMapping::CELL) ? "element" : "node";
     size_t n_entities =
-      (mapping == "cell") ? mesh_ptr->n_bins() : mesh_ptr->n_vertices();
+      (mapping == FieldMapping::CELL) ? mesh_ptr->n_bins() : mesh_ptr->n_vertices();
 
     // Temperature field
     if (type == "temperature") {

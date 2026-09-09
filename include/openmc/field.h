@@ -135,21 +135,17 @@ public:
   //! \return Value corresponding to r
   T evaluate_in_mesh(const Position& r, int bin) const
   {
-    if (bin != C_NONE) {
-      switch (mapping()) {
-      case FieldMapping::NODAL:
-        // TODO: implement other interpolation techniques
-        return trilinear_interpolation(r, bin);
-        break;
-      case FieldMapping::CELL:
-        return value(bin);
-        break;
-      default:
-        fatal_error("Not implemented for this mapping type!");
-        break;
-      }
-    } else {
+    if (bin == C_NONE)
       fatal_error("Bin outside the mesh.");
+
+    switch (mapping()) {
+    case FieldMapping::NODAL:
+      return trilinear_interpolation(r, bin);
+    case FieldMapping::CELL:
+      return value(bin);
+    default:
+      fatal_error("Not implemented for this mapping type!");
+      break;
     }
   }
 

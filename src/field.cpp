@@ -193,9 +193,11 @@ void read_fields(const pugi::xml_node& root)
 
     // Create a field
     std::unique_ptr<Field> field;
-    std::string entity_name = (mapping == FieldMapping::CELL) ? "element" : "node";
-    size_t n_entities =
-      (mapping == FieldMapping::CELL) ? mesh_ptr->n_bins() : mesh_ptr->n_vertices();
+    std::string entity_name =
+      (mapping == FieldMapping::CELL) ? "element" : "node";
+    size_t n_entities = (mapping == FieldMapping::CELL)
+                          ? mesh_ptr->n_bins()
+                          : mesh_ptr->n_vertices();
 
     // Temperature field
     if (type == "temperature") {

@@ -224,15 +224,15 @@ public:
   double distance_to_next_boundary(
     int current_bin, const Position& r, const Direction& u, int& bin_next) const
   {
-    return mesh_ptr()->distance_to_next_boundary(
-      current_bin, r, u, bin_next);
+    return mesh_ptr()->distance_to_next_boundary(current_bin, r, u, bin_next);
   }
 
   // Data field value accessors
-  T value(int i) const {
+  T value(int i) const
+  {
     if (i < 0 || i >= static_cast<int>(data_.size())) {
-      fatal_error(fmt::format(
-        "Data index {} is out of range [0, {}].", i, data_.size()));
+      fatal_error(
+        fmt::format("Data index {} is out of range [0, {}].", i, data_.size()));
     }
     return data_[i];
   }
@@ -249,9 +249,10 @@ private:
 class TemperatureField : public TypedField<double> {
 public:
   // Constructors
-  TemperatureField(
-    Mesh* mesh_ptr, vector<double> values, FieldMapping mapping = FieldMapping::CELL)
-    : TypedField<double>(mesh_ptr, std::move(values), mapping) {}
+  TemperatureField(Mesh* mesh_ptr, vector<double> values,
+    FieldMapping mapping = FieldMapping::CELL)
+    : TypedField<double>(mesh_ptr, std::move(values), mapping)
+  {}
 
   //! Returns the temperature in Kelvin corresponding to a given bin number
   //! relative to the mesh.
@@ -282,7 +283,8 @@ class VelocityField : public TypedField<Direction> {
 public:
   // Constructors
   VelocityField(Mesh* mesh_ptr, vector<Direction> values, FieldMapping mapping)
-    : TypedField<Direction>(mesh_ptr, std::move(values), mapping) {}
+    : TypedField<Direction>(mesh_ptr, std::move(values), mapping)
+  {}
 
   //! Find next bin associated with a given position (r1) knowing the previous
   //! position (r0) and the previous bin (bin0). The next bin is evaluated using

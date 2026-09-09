@@ -259,14 +259,14 @@ broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 _TEMPLATE_HEATR = """
 heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 {nendf} {nheatr_in} {nheatr} /
-{mat} 4 0 0 0 /
+{mat} 4 0 0 0 0 {ed}/
 302 318 402 444 /
 """
 
 _TEMPLATE_HEATR_LOCAL = """
 heatr / %%%%%%%%%%%%%%%%% Add heating kerma (local photons) %%%%%%%%%%%%%%%%%%%%
 {nendf} {nheatr_in} {nheatr_local} /
-{mat} 4 0 0 1 /
+{mat} 4 0 0 1 0 {ed}/
 302 318 402 444 /
 """
 
@@ -411,7 +411,7 @@ def make_pendf(filename, pendf='pendf', **kwargs):
 def make_ace(filename, temperatures=None, acer=True, xsdir=None,
              output_dir=None, pendf=False, error=0.001, broadr=True,
              heatr=True, gaspr=True, purr=True, evaluation=None,
-             smoothing=True, **kwargs):
+             smoothing=True, displacement_energy=None, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     File names can be passed to
@@ -463,6 +463,9 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
         indicates which evaluation should be used.
     smoothing : bool, optional
         If the smoothing option (ACER card 6) is on (True) or off (False).
+    displacement_energy : float, optional
+        Threshold displacement energy in [eV]. Used in HEATR to calculate
+        damage-energy cross section. When None, use NJOY defaults.
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -515,6 +518,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 
     # heatr
     if heatr:
+        ed = displacement_energy if displacement_energy is not None else 0
         nheatr_in = nlast
         nheatr_local = nheatr_in + 1
         tapeout[nheatr_local] = (output_dir / "heatr_local") if heatr is True \

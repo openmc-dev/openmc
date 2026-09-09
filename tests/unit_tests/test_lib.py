@@ -314,6 +314,55 @@ def test_settings(lib_init):
     assert settings.event_based is False
     settings.seed = 11
 
+    new_values = {
+        'cmfd_run': not settings.cmfd_run,
+        'entropy_on': not settings.entropy_on,
+        'generations_per_batch': settings.generations_per_batch + 1,
+        'inactive': settings.inactive + 1,
+        'max_lost_particles': settings.max_lost_particles + 1,
+        'max_write_lost_particles': settings.max_write_lost_particles + 1,
+        'need_depletion_rx': not settings.need_depletion_rx,
+        'output_summary': not settings.output_summary,
+        'particles': settings.particles + 1,
+        'photon_transport': not settings.photon_transport,
+        'rel_max_lost_particles': settings.rel_max_lost_particles + 0.01,
+        'reduce_tallies': not settings.reduce_tallies,
+        'restart_run': not settings.restart_run,
+        'run_CE': not settings.run_CE,
+        'trigger_on': not settings.trigger_on,
+        'verbosity': settings.verbosity + 1,
+        'event_based': not settings.event_based,
+        'weight_windows_on': not settings.weight_windows_on,
+    }
+    original_values = {
+        name: getattr(settings, name) for name in new_values
+    }
+    original_run_mode = settings.run_mode
+
+    try:
+        for name, value in new_values.items():
+            setattr(settings, name, value)
+            assert getattr(settings, name) == value
+
+        settings.run_mode = 'plot'
+        assert settings.run_mode == 'plot'
+        assert isinstance(settings.path_statepoint, str)
+    finally:
+        for name, value in original_values.items():
+            setattr(settings, name, value)
+        settings.run_mode = original_run_mode
+
+    assert isinstance(openmc.lib._coord_levels(), int)
+
+
+def test_feature_enabled():
+    assert isinstance(openmc.lib.feature_enabled('dagmc'), bool)
+    assert isinstance(openmc.lib.feature_enabled('libmesh'), bool)
+    assert isinstance(openmc.lib.feature_enabled('strict_fp'), bool)
+    assert isinstance(openmc.lib.feature_enabled('uwuw'), bool)
+    with pytest.raises(exc.InvalidArgumentError, match="Unknown build feature"):
+        openmc.lib.feature_enabled('not-a-feature')
+
 
 def test_tally_mapping(lib_init):
     tallies = openmc.lib.tallies
@@ -652,13 +701,16 @@ def test_regular_mesh(lib_init):
         elem_vols = vols.by_element(i)
         assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26 / 4)
 
-    # If the mesh extends beyond the boundaries of the model, we should get a
-    # GeometryError
+    # If the mesh extends beyond the boundaries of the model, outside regions
+    # should be treated as void.
     mesh.dimension = (1, 1, 1)
     mesh.set_parameters(lower_left=(-1.0, -1.0, -0.5),
                         upper_right=(1.0, 1.0, 0.5))
-    with pytest.raises(exc.GeometryError, match="not fully contained"):
-        vols = mesh.material_volumes()
+    vols = mesh.material_volumes()
+    assert vols.num_elements == 1
+    elem_vols = vols.by_element(0)
+    assert any(mat_id is None for mat_id, _ in elem_vols)
+    assert sum(f[1] for f in elem_vols) == pytest.approx(4.0)
 
 
 def test_regular_mesh_get_plot_bins(lib_init):
@@ -923,6 +975,22 @@ def test_property_map(lib_init):
 
     with pytest.warns(FutureWarning, match="deprecated"):
         properties = openmc.lib.property_map(LegacySlicePlot())
+    assert np.allclose(expected_properties, properties, atol=1e-04)
+
+
+def test_slice_data(lib_init):
+    expected_properties = np.array(
+        [[(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)],
+         [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
+         [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
+    origin = (0.0, 0.0, 0.0)
+    _, properties = openmc.lib.slice_data(
+        origin,
+        width=(1.26, 1.26),
+        basis='xy',
+        pixels=(3, 3),
+        include_properties=True
+    )
     assert np.allclose(expected_properties, properties, atol=1e-04)
 
 

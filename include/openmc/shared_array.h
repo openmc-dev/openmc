@@ -114,6 +114,32 @@ public:
     data_[size_++] = value;
   }
 
+  //! Increase the size of the container by count elements without assigning
+  //! values to the new elements. Existing elements are preserved if the
+  //! container needs to grow. This does not perform any thread safety checks.
+  //
+  //! \param count The number of elements to append
+  //! \return The starting index of the appended range
+  int64_t extend_uninitialized(int64_t count)
+  {
+    int64_t offset = size_;
+    int64_t new_size = size_ + count;
+    if (new_size > capacity_) {
+      int64_t new_capacity = capacity_ == 0 ? 8 : capacity_;
+      while (new_capacity < new_size) {
+        new_capacity *= 2;
+      }
+      unique_ptr<T[]> new_data = make_unique<T[]>(new_capacity);
+      if (size_ > 0) {
+        std::copy_n(data_.get(), size_, new_data.get());
+      }
+      data_ = std::move(new_data);
+      capacity_ = new_capacity;
+    }
+    size_ = new_size;
+    return offset;
+  }
+
   //! Return the number of elements in the container
   int64_t size() { return size_; }
   int64_t size() const { return size_; }

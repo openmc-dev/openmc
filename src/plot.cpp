@@ -1,7 +1,6 @@
 #include "openmc/plot.h"
 
 #include <algorithm>
-#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
 #include <cmath>
 #include <cstdio>
 #include <fstream>
@@ -88,10 +87,7 @@ void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level,
 {
   Cell* c = model::cells.at(p.lowest_coord().cell()).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
-  if (c->type_ != Fill::UNIVERSE && p.material() != MATERIAL_VOID) {
-    Material* m = model::materials.at(p.material()).get();
-    data_(y, x, 1) = m->density_gpcc_;
-  }
+  data_(y, x, 1) = c->density(p.cell_instance());
 }
 
 void PropertyData::set_overlap(size_t y, size_t x, int /*overlap_idx*/)
@@ -150,7 +146,7 @@ void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
   // set density (g/cm³)
   if (c->type_ != Fill::UNIVERSE && p.material() != MATERIAL_VOID) {
     Material* m = model::materials.at(p.material()).get();
-    property_data_(y, x, 1) = m->density_gpcc_;
+    property_data_(y, x, 1) = c->density(p.cell_instance());
   }
 }
 
@@ -1331,7 +1327,7 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   int horiz, int vert) const
 {
   // Compute field of view in radians
-  constexpr double DEGREE_TO_RADIAN = M_PI / 180.0;
+  constexpr double DEGREE_TO_RADIAN = PI / 180.0;
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
   double p0 = static_cast<double>(pixels()[0]);
   double p1 = static_cast<double>(pixels()[1]);
@@ -1521,8 +1517,8 @@ ImageData WireframeRayTracePlot::create_image() const
             if (i * i + j * j < wireframe_thickness_ * wireframe_thickness_) {
 
               // Check if wireframe pixel is out of bounds
-              int w_i = std::max(std::min(horiz + i, pixels()[0] - 1), 0);
-              int w_j = std::max(std::min(vert + j, pixels()[1] - 1), 0);
+              int w_i = std::clamp(horiz + i, 0, pixels()[0] - 1);
+              int w_j = std::clamp(vert + j, 0, pixels()[1] - 1);
               data(w_i, w_j) = wireframe_color_;
             }
       }
@@ -1820,7 +1816,7 @@ void PhongRay::on_intersection()
     // calculation
     int surf_level = boundary().coord_level() - 1;
     // ensure surface level is within bounds of current coordinate stack
-    surf_level = std::max(0, std::min(surf_level, n_coord() - 1));
+    surf_level = std::clamp(surf_level, 0, n_coord() - 1);
 
     Position r_hit_level =
       coord(surf_level).r() - TINY_BIT * coord(surf_level).u();

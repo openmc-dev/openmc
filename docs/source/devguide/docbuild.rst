@@ -14,6 +14,11 @@ Python API. That is, from the root directory of the OpenMC repository:
 
     python -m pip install ".[docs]"
 
+The OpenMC documentation also uses Doxygen to automatically generate its
+C/C++ API documentation directly from the docstrings available in the source
+code. You will need to have a working installation of Doxygen to generate the
+documentation locally.
+
 -----------------------------------
 Building Documentation as a Webpage
 -----------------------------------

@@ -613,7 +613,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         continue;
 
       // Score inverse velocity in units of s/cm.
-      score = flux / p.speed();
+      score = flux / p.speed(E);
       break;
 
     case SCORE_SCATTER:
@@ -941,9 +941,9 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_IFP_TIME_NUM:
-      if (settings::ifp_on) {
+      if (settings::ifp_on()) {
         if (p.type().is_neutron() && p.fission()) {
-          if (is_generation_time_or_both()) {
+          if (settings::ifp_lifetime_on) {
             const auto& lifetimes =
               simulation::ifp_source_lifetime_bank[p.current_work()];
             if (lifetimes.size() == settings::ifp_n_generation) {
@@ -955,9 +955,9 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_IFP_BETA_NUM:
-      if (settings::ifp_on) {
+      if (settings::ifp_on()) {
         if (p.type().is_neutron() && p.fission()) {
-          if (is_beta_effective_or_both()) {
+          if (settings::ifp_delayed_group_on) {
             const auto& delayed_groups =
               simulation::ifp_source_delayed_group_bank[p.current_work()];
             if (delayed_groups.size() == settings::ifp_n_generation) {
@@ -968,8 +968,13 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
                   const DelayedGroupFilter& filt {
                     *dynamic_cast<DelayedGroupFilter*>(
                       model::tally_filters[i_dg_filt].get())};
-                  score_fission_delayed_dg(i_tally, delayed_groups[0] - 1,
-                    score, score_index, p.filter_matches());
+                  for (int d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
+                    if (filt.groups()[d_bin] == delayed_groups[0]) {
+                      score_fission_delayed_dg(
+                        i_tally, d_bin, score, score_index, p.filter_matches());
+                      break;
+                    }
+                  }
                   continue;
                 }
               }
@@ -980,10 +985,10 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_IFP_DENOM:
-      if (settings::ifp_on) {
+      if (settings::ifp_on()) {
         if (p.type().is_neutron() && p.fission()) {
           int ifp_data_size;
-          if (is_beta_effective_or_both()) {
+          if (settings::ifp_delayed_group_on) {
             ifp_data_size = static_cast<int>(
               simulation::ifp_source_delayed_group_bank[p.current_work()]
                 .size());
@@ -1157,7 +1162,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       // All events score to an inverse velocity bin. We actually use a
       // collision estimator in place of an analog one since there is no way
       // to count 'events' exactly for the inverse velocity
-      score = flux * p.wgt_last() / (p.macro_xs().total * p.speed());
+      score = flux * p.wgt_last() / (p.macro_xs().total * p.speed(E));
       break;
 
     case SCORE_SCATTER:
@@ -2730,6 +2735,9 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   int orig_cell = p.coord(0).cell();
   double orig_E_last = p.E_last();
 
+  // Set particle in top level
+  p.n_coord() = 1;
+
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
@@ -2740,7 +2748,6 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
     for (auto cell_id : cells) {
       // Temporarily change cell of particle
-      p.n_coord() = 1;
       p.coord(0).cell() = cell_id;
 
       // Determine index of cell in model::pulse_height_cells
@@ -2756,20 +2763,20 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       // we skip the assume_separate break below.
       auto filter_iter = FilterBinIter(tally, p);
       auto end = FilterBinIter(tally, true, &p.filter_matches());
-      if (filter_iter == end)
-        continue;
+      if (filter_iter != end) {
 
-      // Loop over filter bins.
-      for (; filter_iter != end; ++filter_iter) {
-        auto filter_index = filter_iter.index_;
-        auto filter_weight = filter_iter.weight_;
+        // Loop over filter bins.
+        for (; filter_iter != end; ++filter_iter) {
+          auto filter_index = filter_iter.index_;
+          auto filter_weight = filter_iter.weight_;
 
-        // Loop over scores.
-        for (auto score_index = 0; score_index < tally.scores_.size();
-             ++score_index) {
+          // Loop over scores.
+          for (auto score_index = 0; score_index < tally.scores_.size();
+               ++score_index) {
 #pragma omp atomic
-          tally.results_(filter_index, score_index, TallyResult::VALUE) +=
-            filter_weight;
+            tally.results_(filter_index, score_index, TallyResult::VALUE) +=
+              filter_weight;
+          }
         }
       }
 
@@ -2777,10 +2784,10 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       for (auto& match : p.filter_matches())
         match.bins_present_ = false;
     }
-    // Restore cell/energy
-    p.n_coord() = orig_n_coord;
-    p.coord(0).cell() = orig_cell;
-    p.E_last() = orig_E_last;
   }
+  // Restore cell/energy
+  p.n_coord() = orig_n_coord;
+  p.coord(0).cell() = orig_cell;
+  p.E_last() = orig_E_last;
 }
 } // namespace openmc

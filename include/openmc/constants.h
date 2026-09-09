@@ -61,6 +61,19 @@ constexpr double RADIAL_MESH_TOL {1e-10};
 // Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
 
+// Relative dead band applied to weight window comparisons: particles split
+// only above upper * (1 + tol) and roulette only below lower * (1 - tol).
+// Weight window arithmetic can land a particle's weight exactly back on a
+// bound value (e.g., a roulette survivor is assigned survival_ratio * lower
+// and a later split divides that back down), in which case the branch taken
+// would be decided by the last ulp of the bound. Since window data carries
+// ulp-level noise from non-associative parallel reductions in the solver that
+// generated it, transport results would otherwise be chaotically sensitive to
+// bit-level differences in the weight window file. Treating weights within
+// the band as inside the window is statistically negligible, and weight
+// window games are unbiased regardless of where the thresholds sit.
+constexpr double WEIGHT_WINDOW_REL_TOL {1e-9};
+
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 

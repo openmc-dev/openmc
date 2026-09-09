@@ -111,6 +111,28 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       srh.source(g) += srh.external_source(g);
     }
   }
+
+  // Under the adaptive volume estimator, demoted regions also fall back to a
+  // flat source representation, extending the flat-source fallback already
+  // applied to hit-starved (small) regions so that demotion is uniform in
+  // effect. For strong-source regions the reduced source greatly exceeds the
+  // scalar flux, so the flat-source cancellation must be exact, while the
+  // gradient terms attenuate segments against the local rather than the flat
+  // source, introducing per-iteration noise at the gradient scale that the
+  // volume choice cannot cancel. The same reasoning applies to regions
+  // demoted from the accumulated flux (converged_negative > 0). A negative
+  // accumulated flux means the fitted gradients carry no meaningful shape
+  // information, and a latched strong feed is the gradient-scale noise
+  // hazard the strong-source fallback above exists for.
+  if (is_adaptive_family(resolved_volume_estimator_) &&
+      material != MATERIAL_VOID &&
+      (srh.converged_negative() > 0 ||
+        region_has_strong_source(&srh.source(0), &srh.scalar_flux_old(0),
+          simulation::current_batch <= settings::n_inactive))) {
+    for (int g = 0; g < negroups_; g++) {
+      srh.source_gradients(g) = {0.0, 0.0, 0.0};
+    }
+  }
 }
 
 void LinearSourceDomain::normalize_scalar_flux_and_volumes(

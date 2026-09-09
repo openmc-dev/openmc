@@ -626,7 +626,11 @@ found in the :ref:`random ray user guide <random_ray>`.
 
   :volume_estimator:
     Specifies choice of volume estimator for the random ray solver. Options
-    are 'naive', 'simulation_averaged', or 'hybrid'. The default is 'hybrid'.
+    are 'naive', 'simulation_averaged', 'hybrid', 'adaptive',
+    'strict_adaptive', or 'auto'. The default is 'auto', which selects
+    'adaptive' for standard solves and 'strict_adaptive' for solves whose
+    results feed variance reduction (weight window generation and adjoint
+    workflows).
 
     *Default*: None
 
@@ -1648,6 +1652,7 @@ and 10. The verbosity levels are defined as follows:
   :5: all of the above + file I/O
   :6: all of the above + timing statistics and initialization messages
   :7: all of the above + :math:`k` by generation
+  :8: all of the above + random ray volume-estimator diagnostics
   :9: all of the above + indicate when each particle starts
   :10: all of the above + event information
 

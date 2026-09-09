@@ -61,20 +61,6 @@ constexpr double RADIAL_MESH_TOL {1e-10};
 // Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
 
-// Avg. number of hits per batch to be defined as a "small"
-// source region in the random ray solver
-constexpr double MIN_HITS_PER_BATCH {1.5};
-
-// The minimum flux value to be considered non-zero when computing adjoint
-// sources. Positive values below this cutoff will be treated as zero, so as to
-// prevent extremely large adjoint source terms from being generated.
-constexpr double ZERO_FLUX_CUTOFF {1e-22};
-
-// The minimum macroscopic cross section value considered non-void for the
-// random ray solver. Materials with any group with a cross section below this
-// value will be converted to pure void.
-constexpr double MINIMUM_MACRO_XS {1e-6};
-
 // Relative dead band applied to weight window comparisons: particles split
 // only above upper * (1 + tol) and roulette only below lower * (1 - tol).
 // Weight window arithmetic can land a particle's weight exactly back on a
@@ -378,7 +364,14 @@ enum class RunMode {
 
 enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
-enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
+enum class RandomRayVolumeEstimator {
+  NAIVE,
+  SIMULATION_AVERAGED,
+  HYBRID,
+  ADAPTIVE,
+  STRICT_ADAPTIVE,
+  AUTO
+};
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
 enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };

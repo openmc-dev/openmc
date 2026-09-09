@@ -202,8 +202,11 @@ class Settings:
             specified by a :class:`openmc.SourceBase` object.
         :volume_estimator:
             Choice of volume estimator for the random ray solver. Options are
-            'naive', 'simulation_averaged', or 'hybrid'.
-            The default is 'hybrid'.
+            'naive', 'simulation_averaged', 'hybrid', 'adaptive',
+            'strict_adaptive', or 'auto'. The default is 'auto', which
+            selects 'adaptive' for standard solves and 'strict_adaptive' for
+            solves whose results feed variance reduction (weight window
+            generation and adjoint workflows).
         :source_shape:
             Assumed shape of the source distribution within each source region.
             Options are 'flat' (default), 'linear', or 'linear_xy'.
@@ -1416,7 +1419,8 @@ class Settings:
             elif key == 'volume_estimator':
                 cv.check_value('volume estimator', value,
                                ('naive', 'simulation_averaged',
-                                'hybrid'))
+                                'hybrid', 'adaptive', 'strict_adaptive',
+                                'auto'))
             elif key == 'source_shape':
                 cv.check_value('source shape', value,
                                ('flat', 'linear', 'linear_xy'))

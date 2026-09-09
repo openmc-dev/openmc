@@ -669,7 +669,6 @@ public:
   const int negroups() const { return negroups_; }
   bool& is_linear() { return is_linear_; }
   const bool is_linear() const { return is_linear_; }
-  const bool track_extents() const { return track_extents_; }
   SourceRegionHandle get_source_region_handle(int64_t sr);
   void adjoint_reset();
 

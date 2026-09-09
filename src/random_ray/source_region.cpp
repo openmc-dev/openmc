@@ -261,6 +261,11 @@ void SourceRegionContainer::adjoint_reset()
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  // The sampled bounding boxes are re-accumulated alongside the centroids
+  std::fill(
+    extent_min_.begin(), extent_min_.end(), Position {INFTY, INFTY, INFTY});
+  std::fill(
+    extent_max_.begin(), extent_max_.end(), Position {-INFTY, -INFTY, -INFTY});
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
   } else {

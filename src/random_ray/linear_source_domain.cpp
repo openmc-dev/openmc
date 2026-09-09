@@ -119,18 +119,20 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   // over the region's bounding box as sampled by the ray segment endpoints.
   // The linear term is lowest at the box corner each gradient component
   // points away from, so its minimum is the sum, over the three axes, of the
-  // gradient component times the offset from the centroid to that face. The
-  // box contains the region, so once the boundary has been sampled the
-  // modeled source is non-negative throughout the region whenever the flat
-  // source covers the dip. When it does not, the gradient is scaled by their
-  // ratio, which preserves the region's mean emission, since the linear term
-  // integrates to zero over the region; gradients that pass are left
-  // untouched. A non-positive flat source leaves no shape to keep, so its
-  // cap is zero and its gradient is scaled away. A region with no sampled
-  // box yet carries no gradient to limit.
+  // gradient component times the offset from the centroid to that face.
+  // Once the region's extreme points along each axis have been sampled the
+  // box contains the region, and the modeled source is non-negative
+  // throughout it whenever the flat source covers the dip. When it does not,
+  // the gradient is scaled by their ratio, which preserves the region's mean
+  // emission, since the linear term integrates to zero over the region;
+  // gradients that pass are left untouched. A non-positive flat source
+  // leaves no shape to keep, so its cap is zero and its gradient is scaled
+  // away. A region with no sampled box yet carries no gradient to limit.
   if (source_gradient_limiter_ && material != MATERIAL_VOID &&
       srh.extent_min().x <= srh.extent_max().x) {
-    // Offsets from the centroid to the box faces, lo <= 0 <= hi
+    // Offsets from the centroid to the box faces. The centroid is the
+    // length-weighted mean of segment midpoints, all of which lie in the
+    // box, so lo <= 0 <= hi and the dip below is non-negative.
     Position lo = srh.extent_min() - srh.centroid();
     Position hi = srh.extent_max() - srh.centroid();
     for (int g = 0; g < negroups_; g++) {

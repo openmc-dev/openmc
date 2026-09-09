@@ -15,15 +15,15 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
 
 
 def test_random_ray_linear_source_stability():
-    # A linear source run with the gradient limiter enabled, in the regime
-    # that stresses it: the naive volume estimator, an overlay source-region
-    # mesh whose cells receive modest per-batch hit counts, and the example's
-    # optically thin scattering-dominated interior combine to produce the
-    # noisy fitted gradients the limiter exists to bound. The example's
-    # three cubic regions are replaced by spherical ones so that the curved
-    # boundaries cut the mesh cells into pieces whose centroids sit
-    # off-center in their bounding boxes, which is where the limiter's bound
-    # differs from a symmetric one.
+    # A linear source run with the gradient limiter enabled and firing in
+    # both of its regimes: the naive volume estimator and an overlay
+    # source-region mesh leave the example's optically thin interior with
+    # noisy fitted gradients, and the absorber's steep attenuation over
+    # regions a few mean free paths thick gives physically steep ones, which
+    # the limiter clips as well. The example's three cubic regions are
+    # replaced by spherical ones so that the curved boundaries cut the mesh
+    # cells into pieces whose centroids sit off-center in their bounding
+    # boxes, which is where the limiter's bound differs from a symmetric one.
     openmc.reset_auto_ids()
     model = random_ray_three_region_cube()
     source_mat, void_mat, absorber_mat = model.materials

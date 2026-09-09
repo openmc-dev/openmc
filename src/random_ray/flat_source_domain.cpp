@@ -339,6 +339,24 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
   }
 }
 
+// The additive term of the flux update for a source region and group. A
+// material region adds its reduced source q/Sigma_t. A void region has no
+// such term and instead adds a bounded contribution from its external
+// source, which is nonzero only in fixed source mode. The same term is used
+// by the strict estimator's rescue, which rescales only the transport part
+// of an update, so the two cannot drift apart.
+double FlatSourceDomain::flux_additive_term(int64_t sr, int g) const
+{
+  if (source_regions_.material(sr) == MATERIAL_VOID) {
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      return 0.5f * source_regions_.external_source(sr, g) *
+             source_regions_.volume_sq(sr);
+    }
+    return 0.0;
+  }
+  return source_regions_.source(sr, g);
+}
+
 void FlatSourceDomain::set_flux_to_flux_plus_source(
   int64_t sr, double volume, int g)
 {
@@ -346,18 +364,72 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
   int temp = source_regions_.temperature_idx(sr);
   if (material == MATERIAL_VOID) {
     source_regions_.scalar_flux_new(sr, g) /= volume;
-    if (settings::run_mode == RunMode::FIXED_SOURCE) {
-      source_regions_.scalar_flux_new(sr, g) +=
-        0.5f * source_regions_.external_source(sr, g) *
-        source_regions_.volume_sq(sr);
-    }
   } else {
     double sigma_t =
       sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
       source_regions_.density_mult(sr);
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
-    source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
   }
+  source_regions_.scalar_flux_new(sr, g) += flux_additive_term(sr, g);
+}
+
+// Applies the "diagonal stabilization" technique developed by Gunow et al.
+// to one flux iterate:
+//
+// Geoffrey Gunow, Benoit Forget, Kord Smith, Stabilization of multi-group
+// neutron transport with transport-corrected cross-sections, Annals of Nuclear
+// Energy, Volume 126, 2019, Pages 211-219, ISSN 0306-4549,
+// https://doi.org/10.1016/j.anucene.2018.10.036.
+//
+// Returns the given iterate unchanged unless the region's within-group
+// scattering cross section for the group is negative, in which case the
+// stabilized iterate is returned. The stabilization is part of the flux
+// update rather than a separate pass, so that every candidate value the
+// update considers, including the strict estimator's rescued and floored
+// candidates, is assessed in stabilized form. With transport-corrected
+// cross sections a raw iterate can legitimately be negative and stabilize
+// to a positive value, and a positivity fixup applied to the raw value
+// would instead freeze the iteration, since the previous iterate is a
+// fixed point of the stabilization.
+double FlatSourceDomain::stabilized_flux(
+  int64_t sr, int g, double phi_new) const
+{
+  // Nothing to do if all in-group scattering cross sections are positive
+  if (!is_transport_stabilization_needed_) {
+    return phi_new;
+  }
+  int material = source_regions_.material(sr);
+  if (material == MATERIAL_VOID) {
+    return phi_new;
+  }
+  int temp = source_regions_.temperature_idx(sr);
+  double density_mult = source_regions_.density_mult(sr);
+
+  // Only apply stabilization if the diagonal (in-group) scattering XS is
+  // negative
+  double sigma_s =
+    sigma_s_[((material * ntemperature_ + temp) * negroups_ + g) * negroups_ +
+             g] *
+    density_mult;
+  if (sigma_s >= 0.0) {
+    return phi_new;
+  }
+  double sigma_t =
+    sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] * density_mult;
+  double phi_old = source_regions_.scalar_flux_old(sr, g);
+
+  // Equation 18 in the above Gunow et al. 2019 paper. For a default
+  // rho of 1.0, this ensures there are no negative diagonal elements
+  // in the iteration matrix. A lesser rho could be used (or exposed
+  // as a user input parameter) to reduce the negative impact on
+  // convergence rate though would need to be experimentally tested to see
+  // if it doesn't become unstable. rho = 1.0 is good as it gives the
+  // highest assurance of stability, and the impacts on convergence rate
+  // are pretty mild.
+  double D = diagonal_stabilization_rho_ * sigma_s / sigma_t;
+
+  // Equation 16 in the above Gunow et al. 2019 paper
+  return (phi_new - D * phi_old) / (1.0 - D);
 }
 
 void FlatSourceDomain::set_flux_to_old_flux(int64_t sr, int g)
@@ -569,14 +641,18 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       if (volume_iteration > 0.0) {
         // Hit this iteration: the flat source from the previous iteration plus
         // this iteration's transport contribution, normalized by the chosen
-        // volume.
+        // volume, then stabilized.
         set_flux_to_flux_plus_source(sr, volume, g);
+        double raw = source_regions_.scalar_flux_new(sr, g);
+        double phi = stabilized_flux(sr, g, raw);
         // The strict adaptive estimator applies a per-batch fixup to
-        // negative flux iterates. First the flux is rescued by rescaling the
-        // transport term from the volume used to the batch's own volume,
-        // algebraically reproducing the naive-volume update. If it is still
-        // negative (or the region already used the batch volume), it is
-        // floored at the previous iterate. A value-level fixup is needed
+        // negative flux iterates, assessed on the stabilized value. First
+        // the flux is rescued by rescaling the transport term from the
+        // volume used to the batch's own volume, algebraically reproducing
+        // the naive-volume update, with the rescued candidate stabilized in
+        // turn. If it is still negative (or the region already used the
+        // batch volume), it is floored at the previous iterate, which the
+        // stabilization leaves unchanged. A value-level fixup is needed
         // here because demotion alone cannot prevent a region from
         // inheriting a negative excursion through in-scatter from
         // not-yet-demoted neighbors. The price is a small conservative
@@ -584,29 +660,36 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // the standard-solve default. Linear-source flux moments are left
         // untouched, as demoted and hit-starved regions already fall back to
         // flat shapes.
-        if (is_strict && source_regions_.scalar_flux_new(sr, g) < 0.0) {
+        if (is_strict && phi < 0.0) {
           if (volume != volume_iteration) {
-            double src = source_regions_.source(sr, g);
-            source_regions_.scalar_flux_new(sr, g) =
-              (source_regions_.scalar_flux_new(sr, g) - src) *
-                (volume / volume_iteration) +
-              src;
+            double additive = flux_additive_term(sr, g);
+            double rescued =
+              (raw - additive) * (volume / volume_iteration) + additive;
+            phi = stabilized_flux(sr, g, rescued);
             region_rescued = true;
           }
-          if (source_regions_.scalar_flux_new(sr, g) < 0.0) {
-            source_regions_.scalar_flux_new(sr, g) =
-              source_regions_.scalar_flux_old(sr, g);
+          if (phi < 0.0) {
+            phi = source_regions_.scalar_flux_old(sr, g);
             region_floored = true;
           }
         }
+        source_regions_.scalar_flux_new(sr, g) = phi;
       } else if (volume_simulation_avg > 0.0) {
         // Missed this iteration but hit previously: substitute per the miss
-        // policy decided above (the previous iterate, or the reduced source).
+        // policy decided above (the previous iterate, or the reduced source),
+        // then stabilize.
         if (use_old_flux_on_miss) {
           set_flux_to_old_flux(sr, g);
         } else {
           set_flux_to_source(sr, g);
         }
+        source_regions_.scalar_flux_new(sr, g) =
+          stabilized_flux(sr, g, source_regions_.scalar_flux_new(sr, g));
+      } else {
+        // Never hit: the iterate stays at its reset value, stabilized like
+        // every other element.
+        source_regions_.scalar_flux_new(sr, g) =
+          stabilized_flux(sr, g, source_regions_.scalar_flux_new(sr, g));
       }
       // Halt if NaN implosion is detected
       if (!std::isfinite(source_regions_.scalar_flux_new(sr, g))) {
@@ -2086,62 +2169,6 @@ void FlatSourceDomain::finalize_discovered_source_regions()
   }
 
   discovered_source_regions_.clear();
-}
-
-// This is the "diagonal stabilization" technique developed by Gunow et al. in:
-//
-// Geoffrey Gunow, Benoit Forget, Kord Smith, Stabilization of multi-group
-// neutron transport with transport-corrected cross-sections, Annals of Nuclear
-// Energy, Volume 126, 2019, Pages 211-219, ISSN 0306-4549,
-// https://doi.org/10.1016/j.anucene.2018.10.036.
-void FlatSourceDomain::apply_transport_stabilization()
-{
-  // Don't do anything if all in-group scattering
-  // cross sections are positive
-  if (!is_transport_stabilization_needed_) {
-    return;
-  }
-
-  // Apply the stabilization factor to all source elements
-#pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-    int material = source_regions_.material(sr);
-    int temp = source_regions_.temperature_idx(sr);
-    double density_mult = source_regions_.density_mult(sr);
-    if (material == MATERIAL_VOID) {
-      continue;
-    }
-    for (int g = 0; g < negroups_; g++) {
-      // Only apply stabilization if the diagonal (in-group) scattering XS is
-      // negative
-      double sigma_s =
-        sigma_s_[((material * ntemperature_ + temp) * negroups_ + g) *
-                   negroups_ +
-                 g] *
-        density_mult;
-      if (sigma_s < 0.0) {
-        double sigma_t =
-          sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
-          density_mult;
-        double phi_new = source_regions_.scalar_flux_new(sr, g);
-        double phi_old = source_regions_.scalar_flux_old(sr, g);
-
-        // Equation 18 in the above Gunow et al. 2019 paper. For a default
-        // rho of 1.0, this ensures there are no negative diagonal elements
-        // in the iteration matrix. A lesser rho could be used (or exposed
-        // as a user input parameter) to reduce the negative impact on
-        // convergence rate though would need to be experimentally tested to see
-        // if it doesn't become unstable. rho = 1.0 is good as it gives the
-        // highest assurance of stability, and the impacts on convergence rate
-        // are pretty mild.
-        double D = diagonal_stabilization_rho_ * sigma_s / sigma_t;
-
-        // Equation 16 in the above Gunow et al. 2019 paper
-        source_regions_.scalar_flux_new(sr, g) =
-          (phi_new - D * phi_old) / (1.0 - D);
-      }
-    }
-  }
 }
 
 // Determines the base source region index (i.e., a material filled cell

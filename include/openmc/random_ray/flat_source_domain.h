@@ -104,7 +104,6 @@ public:
   SourceRegionHandle get_subdivided_source_region_handle(
     SourceRegionKey sr_key, Position r, Direction u);
   void finalize_discovered_source_regions();
-  void apply_transport_stabilization();
   int64_t n_source_regions() const
   {
     return source_regions_.n_source_regions();
@@ -243,6 +242,8 @@ protected:
   virtual void set_flux_to_flux_plus_source(int64_t sr, double volume, int g);
   void set_flux_to_source(int64_t sr, int g);
   virtual void set_flux_to_old_flux(int64_t sr, int g);
+  double flux_additive_term(int64_t sr, int g) const;
+  double stabilized_flux(int64_t sr, int g, double phi_new) const;
 
   //! Adaptive-estimator "strong source" test. Returns true if, in any group,
   //! the region's reduced source q/Sigma_t is negative (with a non-negative

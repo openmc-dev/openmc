@@ -1,6 +1,8 @@
 import os
 
+import numpy as np
 import openmc
+import openmc.mgxs
 from openmc.examples import pwr_pin_cell
 from openmc.utility_funcs import change_directory
 from openmc import RegularMesh
@@ -79,4 +81,76 @@ def test_random_ray_diagonal_stabilization_adaptive():
         model = _build_model()
         model.settings.random_ray['volume_estimator'] = 'adaptive'
         harness = MGXSTestHarness('statepoint.20.h5', model)
+        harness.main()
+
+
+def _build_homogeneous_model():
+    # A homogeneous two-group eigenvalue problem with a negative within-group
+    # scattering cross section in the fast group, as a transport correction
+    # produces. With chi = (1, 0) and no upscatter the infinite-medium
+    # eigenvalue is
+    #     k = nu_sigma_f2 * sigma_s12 / ((sigma_t2 - sigma_s22) *
+    #                                    (sigma_t1 - sigma_s11))
+    #       = 0.375 * 1.0 / (0.5 * 1.5) = 0.5
+    # exactly, and the iteration approaches it geometrically from above
+    # (1.5, 1.0, 0.75, 0.625, ...). Only a few batches are run, enough for
+    # the stored reference to pin that direction.
+    groups = openmc.mgxs.EnergyGroups(group_edges=[1e-5, 1.0e3, 20.0e6])
+    xs = openmc.XSdata('mat', groups)
+    xs.order = 0
+    xs.set_total([1.0, 1.0])
+    xs.set_absorption([0.5, 0.5])
+    xs.set_scatter_matrix(np.array([[[-0.5], [1.0]],
+                                    [[0.0], [0.5]]]))
+    xs.set_fission([0.0, 0.15])
+    xs.set_nu_fission([0.0, 0.375])
+    xs.set_chi([1.0, 0.0])
+    lib = openmc.MGXSLibrary(groups)
+    lib.add_xsdatas([xs])
+    lib.export_to_hdf5('mgxs.h5')
+
+    mat = openmc.Material(name='mat')
+    mat.set_density('macro', 1.0)
+    mat.add_macroscopic(openmc.Macroscopic('mat'))
+    model = openmc.Model()
+    model.materials = openmc.Materials([mat])
+    model.materials.cross_sections = 'mgxs.h5'
+    box = openmc.model.RectangularParallelepiped(
+        0.0, 10.0, 0.0, 10.0, 0.0, 10.0, boundary_type='reflective')
+    cell = openmc.Cell(fill=mat, region=-box)
+    model.geometry = openmc.Geometry([cell])
+
+    mesh = RegularMesh()
+    mesh.lower_left = (0.0, 0.0, 0.0)
+    mesh.upper_right = (10.0, 10.0, 10.0)
+    mesh.dimension = (4, 4, 4)
+
+    settings = model.settings
+    settings.energy_mode = 'multi-group'
+    settings.run_mode = 'eigenvalue'
+    settings.particles = 100
+    settings.inactive = 3
+    settings.batches = 8
+    settings.random_ray = {
+        'distance_inactive': 30.0,
+        'distance_active': 200.0,
+        'ray_source': openmc.IndependentSource(
+            space=openmc.stats.Box((0.0, 0.0, 0.0), (10.0, 10.0, 10.0))),
+        'source_region_meshes': [(mesh, [model.geometry.root_universe])],
+    }
+    return model
+
+
+def test_random_ray_diagonal_stabilization_strict_adaptive():
+    # The strict estimator's non-negativity fixup must assess the stabilized
+    # flux iterate. The negative within-group scattering drives the raw
+    # fast-group iterate negative early on, which the stabilization maps to
+    # a positive value. Flooring the raw value first would freeze the
+    # iteration at the previous iterate, and this problem then climbs toward
+    # a spurious k of 2.0 instead of descending toward the analytic 0.5.
+    with change_directory('strict_adaptive'):
+        openmc.reset_auto_ids()
+        model = _build_homogeneous_model()
+        model.settings.random_ray['volume_estimator'] = 'strict_adaptive'
+        harness = MGXSTestHarness('statepoint.8.h5', model)
         harness.main()

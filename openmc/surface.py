@@ -566,10 +566,9 @@ class PlaneMixin:
         aligned = np.isclose(np.abs(nhat), 1., rtol=0., atol=self._atol)
         if aligned.any():
             axis = int(np.argmax(aligned))
-            sign = nhat.sum()
             coeffs = self._get_base_coeffs()
             intercept = coeffs[3]/coeffs[axis]
-            if (side == '+') == (sign > 0):
+            if (side == '+') == (coeffs[axis] > 0):
                 ll[axis] = intercept
             else:
                 ur[axis] = intercept

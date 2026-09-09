@@ -365,12 +365,11 @@ BoundingBox SurfacePlane::bounding_box(bool pos_side) const
     return {};
 
   int axis = -1;
-  double sign = 0.0;
   for (int i = 0; i < 3; ++i) {
-    const double n = coeffs[i] / norm;
-    sign += n;
-    if (axis == -1 && std::abs(std::abs(n) - 1.0) <= PLANE_ALIGNMENT_TOL)
+    if (std::abs(std::abs(coeffs[i] / norm) - 1.0) <= PLANE_ALIGNMENT_TOL) {
       axis = i;
+      break;
+    }
   }
   if (axis == -1)
     return {};
@@ -379,7 +378,7 @@ BoundingBox SurfacePlane::bounding_box(bool pos_side) const
   // positive axis direction and we are on the positive side, or vice versa.
   BoundingBox bbox;
   const double intercept = D_ / coeffs[axis];
-  if (pos_side == (sign > 0.0)) {
+  if (pos_side == (coeffs[axis] > 0.0)) {
     bbox.min[axis] = intercept;
   } else {
     bbox.max[axis] = intercept;

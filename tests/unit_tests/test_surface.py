@@ -72,6 +72,44 @@ def test_plane_from_points():
     assert s.d == 1.0
 
 
+def test_plane_bounding_box():
+    # A plane written by a rotation has roundoff in the off-axis slots but is
+    # still a y-plane and should bound the half-space along y alone (#2632)
+    eps = math.cos(math.pi/2)
+    s = openmc.Plane(eps, 1., eps, -1.3)
+    ll, ur = (+s).bounding_box
+    assert ll == pytest.approx((-np.inf, -1.3, -np.inf))
+    assert np.all(np.isinf(ur))
+    ll, ur = (-s).bounding_box
+    assert ur == pytest.approx((np.inf, -1.3, np.inf))
+    assert np.all(np.isinf(ll))
+
+    # The intercept comes from the raw coefficients, which need not be
+    # normalized: 4z - 10 = 0 is the plane z = 2.5
+    s = openmc.Plane(0., 0., 4., 10.)
+    assert (+s).bounding_box[0] == pytest.approx((-np.inf, -np.inf, 2.5))
+    assert (-s).bounding_box[1] == pytest.approx((np.inf, np.inf, 2.5))
+
+    # The sense of the bound flips with the sign of the normal
+    s = openmc.Plane(0., -1., 0., 3.)
+    assert (+s).bounding_box[1] == pytest.approx((np.inf, -3., np.inf))
+    assert (-s).bounding_box[0] == pytest.approx((-np.inf, -3., -np.inf))
+
+    # An off-axis coefficient that is small enough to leave the plane axis
+    # aligned must not bound the off-axis directions, or the box would exclude
+    # points that lie inside the half-space it describes
+    s = openmc.Plane(1., 1.e-11, 0., 5.)
+    ll, ur = (+s).bounding_box
+    assert ll == pytest.approx((5., -np.inf, -np.inf))
+    assert np.all(np.isinf(ur))
+    p = (5., 1.e6, 0.)
+    assert p in +s
+    assert np.all(ll <= p) and np.all(p <= ur)
+
+    # A plane tilted well beyond the alignment tolerance bounds nothing
+    assert_infinite_bb(openmc.Plane(1., 1.e-5, 0., 5.))
+
+
 def test_xplane():
     s = openmc.XPlane(3., boundary_type='reflective')
     assert s.x0 == 3.

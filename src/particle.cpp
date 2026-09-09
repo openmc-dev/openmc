@@ -344,31 +344,53 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
+  // The surface or lattice being crossed belongs to the universe at the lowest
+  // coordinate level, so its normal is reported in that level's local frame
+  // while the particle direction used to score surface tallies lives in the
+  // root frame. The normal therefore has to be evaluated at the local position
+  // and rotated up into the root frame, and that has to happen before the
+  // crossing is carried out, since crossing invalidates the coordinate levels.
+  int i_surf_level = n_coord() - 1;
+
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
 
-    int i_lattice = coord(boundary().coord_level() - 1).lattice();
+    int i_lattice = coord(i_surf_level).lattice();
+
+    // Determine the lattice boundary normal in the root frame before crossing
+    bool normal_is_valid = false;
+    Direction normal;
+    if (!model::active_surface_tallies.empty()) {
+      auto& lat {*model::lattices[i_lattice]};
+      bool is_valid;
+      normal = lat.get_normal(boundary().lattice_translation(), is_valid);
+      if (is_valid) {
+        normal = rotate_to_root(*this, i_surf_level, normal / normal.norm());
+        normal_is_valid = true;
+      }
+    }
+
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
 
     // Score cell to cell partial currents
-    if (!model::active_surface_tallies.empty()) {
-      auto& lat {*model::lattices[i_lattice]};
-      bool is_valid;
-      Direction normal =
-        lat.get_normal(boundary().lattice_translation(), is_valid);
-      if (is_valid) {
-        normal /= normal.norm();
-        score_surface_tally(*this, model::active_surface_tallies, normal);
-      }
+    if (normal_is_valid) {
+      score_surface_tally(*this, model::active_surface_tallies, normal);
     }
 
   } else {
 
     const auto& surf {*model::surfaces[surface_index()].get()};
+
+    // Determine the surface normal in the root frame before crossing
+    Direction normal;
+    if (!model::active_surface_tallies.empty()) {
+      normal = surf.normal(r_local());
+      normal = rotate_to_root(*this, i_surf_level, normal / normal.norm());
+    }
 
     // Particle crosses surface
     // If BC, add particle to surface source before crossing surface
@@ -387,8 +409,6 @@ void Particle::event_cross_surface()
 
     // Score cell to cell partial currents
     if (!model::active_surface_tallies.empty()) {
-      Direction normal = surf.normal(r());
-      normal /= normal.norm();
       score_surface_tally(*this, model::active_surface_tallies, normal);
     }
   }

@@ -3,7 +3,6 @@
 #include <cmath> // for abs, copysign
 
 #include "openmc/search.h"
-#include "openmc/surface.h"
 #include "openmc/tallies/tally_scoring.h"
 
 namespace openmc {
@@ -11,10 +10,11 @@ namespace openmc {
 void MuSurfaceFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  // Get surface normal (and make sure it is a unit vector)
-  const auto surf {model::surfaces[p.surface_index()].get()};
-  auto n = surf->normal(p.r());
-  n /= n.norm();
+  // Use the normal recorded for the crossing being scored. It is already a
+  // unit vector expressed in the root coordinate frame, which is the frame
+  // p.u() is in -- recomputing it here from the surface would give the normal
+  // in the local frame of whichever universe holds the surface.
+  Direction n = p.surface_normal();
 
   // Determine whether normal should be pointing in or out
   if (p.surface() < 0)

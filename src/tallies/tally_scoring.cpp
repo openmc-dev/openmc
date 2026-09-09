@@ -2662,6 +2662,11 @@ void score_surface_tally(
 {
   double wgt = p.wgt_last();
 
+  // Make the normal available to filters (e.g. MuSurfaceFilter) that need it.
+  // The caller is responsible for supplying it in the root coordinate frame so
+  // that it can be compared directly against p.u().
+  p.surface_normal() = normal;
+
   double mu = std::clamp(p.u().dot(normal), -1.0, 1.0);
 
   // Sign for net current: +1 if crossing outward (in direction of normal),

@@ -42,6 +42,8 @@ _dll.openmc_get_feature_enabled.argtypes = [c_char_p, POINTER(c_bool)]
 _dll.openmc_get_feature_enabled.restype = c_int
 _dll.openmc_get_feature_enabled.errcheck = _error_handler
 
+_dll.openmc_get_n_coord_levels.restype = c_int
+
 def feature_enabled(feature: str) -> bool:
     """Return whether OpenMC was built with an optional feature.
 
@@ -67,7 +69,7 @@ def feature_enabled(feature: str) -> bool:
 
 
 def _coord_levels():
-    return c_int.in_dll(_dll, "n_coord_levels").value
+    return _dll.openmc_get_n_coord_levels()
 
 
 from .error import *

@@ -46,7 +46,7 @@ def test_from_array():
                      [0., 0.],
                      [0., 0.1],
                      [0., 0.1]])
-    data.shape = (12, 2, 1)
+    data = data.reshape(12, 2, 1)
 
     MicroXS(data, nuclides, reactions)
     with pytest.raises(ValueError, match='Data array must be 3D'):

@@ -92,18 +92,16 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       srh.source(g_out) =
         (scatter_flat + fission_flat * inverse_k_eff) / sigma_t;
 
-      // Compute the linear source terms. During the first
-      // LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES iterations, when the centroids
-      // and spatial moments are not well known, the source gradients are
-      // left at zero to avoid numerical instability. If a negative source is
-      // encountered, this region must be very small/noisy or have poorly
-      // developed spatial moments, so we zero the source gradients
-      // (effectively making this a flat source region temporarily), so as to
-      // improve stability. With the gradient limiter enabled, negative and
-      // excessively steep sources are instead handled by the limiter below,
-      // after the external source (which carries no gradient) is added.
+      // Compute the linear source terms. In the first
+      // LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES iterations when the centroids
+      // and spatial moments are not well known, we will leave the source
+      // gradients as zero so as to avoid causing any numerical instability. If
+      // a negative source is encountered, this region must be very small/noisy
+      // or have poorly developed spatial moments, so we zero the source
+      // gradients (effectively making this a flat source region temporarily),
+      // so as to improve stability.
       if (simulation::current_batch > LINEAR_SOURCE_GRADIENT_WARMUP_BATCHES &&
-          (source_gradient_limiter_ || srh.source(g_out) >= 0.0)) {
+          srh.source(g_out) >= 0.0) {
         srh.source_gradients(g_out) =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       } else {
@@ -131,30 +129,26 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   // ellipsoid is sqrt(3 g^T M g). The bound is exact for the ellipsoid the
   // moments describe, but a real region's shape can have corners that
   // extend beyond it, so the limiter reduces rather than eliminates
-  // modeled-source negativity. Rescaling
-  // the gradient to cap the overshoot at the flat source preserves the
-  // region's mean emission exactly, since the linear term integrates to
-  // zero over the region, and gradients that pass the test are left
-  // bit-identical. A group whose flat source is negative
-  // has its gradient zeroed, as no meaningful shape information exists in
-  // that state. See the methods documentation for the derivation.
+  // modeled-source negativity. Rescaling the gradient to cap the overshoot
+  // at the flat source preserves the region's mean emission exactly, since
+  // the linear term integrates to zero over the region, and gradients that
+  // pass the test are left bit-identical. A group whose flat source is
+  // negative after the external source is added (as an adjoint source can
+  // be) has no meaningful shape, so its cap is zero and its gradient is
+  // scaled away. See the methods documentation for the derivation.
   if (source_gradient_limiter_ && material != MATERIAL_VOID) {
     const MomentMatrix& m = srh.mom_matrix();
     for (int g = 0; g < negroups_; g++) {
       MomentArray& gradient = srh.source_gradients(g);
-      double flat = srh.source(g);
-      if (flat < 0.0) {
-        gradient = {0.0, 0.0, 0.0};
-        continue;
-      }
+      double cap = std::max<double>(srh.source(g), 0.0);
       double quad =
         m.a * gradient.x * gradient.x + m.d * gradient.y * gradient.y +
         m.f * gradient.z * gradient.z +
         2.0 * (m.b * gradient.x * gradient.y + m.c * gradient.x * gradient.z +
                 m.e * gradient.y * gradient.z);
       double overshoot = std::sqrt(3.0 * std::max(quad, 0.0));
-      if (overshoot > flat) {
-        gradient *= flat / overshoot;
+      if (overshoot > cap) {
+        gradient *= cap / overshoot;
       }
     }
   }

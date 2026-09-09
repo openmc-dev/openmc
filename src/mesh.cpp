@@ -2581,24 +2581,28 @@ extern "C" int openmc_extend_meshes(
   return 0;
 }
 
-//! Adds a new unstructured mesh to OpenMC
-extern "C" int openmc_add_unstructured_mesh(
-  const char filename[], const char library[], int* id)
+//! Adds a new unstructured mesh to OpenMC with all supported properties
+extern "C" int openmc_add_unstructured_mesh(const char filename[],
+  const char library[], double length_multiplier, const char options[],
+  int32_t id, int32_t* index)
 {
   std::string lib_name(library);
   std::string mesh_file(filename);
+  std::string mesh_options(options ? options : "");
   bool valid_lib = false;
 
 #ifdef OPENMC_DAGMC_ENABLED
   if (lib_name == MOABMesh::mesh_lib_type) {
-    model::meshes.push_back(std::move(make_unique<MOABMesh>(mesh_file)));
+    model::meshes.push_back(
+      make_unique<MOABMesh>(mesh_file, length_multiplier, mesh_options));
     valid_lib = true;
   }
 #endif
 
 #ifdef OPENMC_LIBMESH_ENABLED
   if (lib_name == LibMesh::mesh_lib_type) {
-    model::meshes.push_back(std::move(make_unique<LibMesh>(mesh_file)));
+    model::meshes.push_back(
+      make_unique<LibMesh>(mesh_file, length_multiplier, mesh_options));
     valid_lib = true;
   }
 #endif
@@ -2610,9 +2614,8 @@ extern "C" int openmc_add_unstructured_mesh(
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  // auto-assign new ID
-  model::meshes.back()->set_id(-1);
-  *id = model::meshes.back()->id_;
+  model::meshes.back()->set_id(id);
+  *index = model::meshes.size() - 1;
 
   return 0;
 }
@@ -2643,8 +2646,25 @@ extern "C" int openmc_mesh_set_id(int32_t index, int32_t id)
 {
   if (int err = check_mesh(index))
     return err;
-  model::meshes[index]->id_ = id;
-  model::mesh_map[id] = index;
+  model::meshes[index]->set_id(id);
+  return 0;
+}
+
+//! Return the name of a mesh
+extern "C" int openmc_mesh_get_name(int32_t index, const char** name)
+{
+  if (int err = check_mesh(index))
+    return err;
+  *name = model::meshes[index]->name().c_str();
+  return 0;
+}
+
+//! Set the name of a mesh
+extern "C" int openmc_mesh_set_name(int32_t index, const char* name)
+{
+  if (int err = check_mesh(index))
+    return err;
+  model::meshes[index]->set_name(name);
   return 0;
 }
 
@@ -2964,6 +2984,59 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
     index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
+template<class T>
+int openmc_periodic_mesh_get_origin_impl(int32_t index, double origin[3])
+{
+  if (int err = check_mesh(index))
+    return err;
+  T* mesh = dynamic_cast<T*>(model::meshes[index].get());
+  if (!mesh) {
+    set_errmsg("This mesh is not of the expected type.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+  const auto& mesh_origin = mesh->origin();
+  origin[0] = mesh_origin.x;
+  origin[1] = mesh_origin.y;
+  origin[2] = mesh_origin.z;
+  return 0;
+}
+
+template<class T>
+int openmc_periodic_mesh_set_origin_impl(int32_t index, const double origin[3])
+{
+  if (int err = check_mesh(index))
+    return err;
+  T* mesh = dynamic_cast<T*>(model::meshes[index].get());
+  if (!mesh) {
+    set_errmsg("This mesh is not of the expected type.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+  return mesh->set_origin({origin[0], origin[1], origin[2]});
+}
+
+extern "C" int openmc_cylindrical_mesh_get_origin(
+  int32_t index, double origin[3])
+{
+  return openmc_periodic_mesh_get_origin_impl<CylindricalMesh>(index, origin);
+}
+
+extern "C" int openmc_cylindrical_mesh_set_origin(
+  int32_t index, const double origin[3])
+{
+  return openmc_periodic_mesh_set_origin_impl<CylindricalMesh>(index, origin);
+}
+
+extern "C" int openmc_spherical_mesh_get_origin(int32_t index, double origin[3])
+{
+  return openmc_periodic_mesh_get_origin_impl<SphericalMesh>(index, origin);
+}
+
+extern "C" int openmc_spherical_mesh_set_origin(
+  int32_t index, const double origin[3])
+{
+  return openmc_periodic_mesh_set_origin_impl<SphericalMesh>(index, origin);
+}
+
 #ifdef OPENMC_DAGMC_ENABLED
 
 const std::string MOABMesh::mesh_lib_type = "moab";
@@ -2978,11 +3051,13 @@ MOABMesh::MOABMesh(hid_t group) : UnstructuredMesh(group)
   initialize();
 }
 
-MOABMesh::MOABMesh(const std::string& filename, double length_multiplier)
+MOABMesh::MOABMesh(const std::string& filename, double length_multiplier,
+  const std::string& options)
   : UnstructuredMesh()
 {
   n_dimension_ = 3;
   filename_ = filename;
+  options_ = options;
   set_length_multiplier(length_multiplier);
   initialize();
 }
@@ -3709,9 +3784,11 @@ LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 }
 
 // create the mesh from an input file
-LibMesh::LibMesh(const std::string& filename, double length_multiplier)
+LibMesh::LibMesh(const std::string& filename, double length_multiplier,
+  const std::string& options)
 {
   n_dimension_ = 3;
+  options_ = options;
   set_mesh_pointer_from_filename(filename);
   set_length_multiplier(length_multiplier);
   initialize();

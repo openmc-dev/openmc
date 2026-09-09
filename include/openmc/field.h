@@ -232,6 +232,11 @@ public:
 
     // Retrieve vertices
     vector<int> v = mesh_ptr()->connectivity(bin);
+    if (v.size() != 8) {
+      fatal_error(fmt::format(
+        "Trilinear interpolation requires 8 vertices per cell, got {}",
+        v.size()));
+    }
 
     // Interpolate along x
     T c00 = value(v[0]) * (1 - n_r[0]) + value(v[1]) * n_r[0];

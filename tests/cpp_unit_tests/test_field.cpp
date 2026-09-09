@@ -52,10 +52,10 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test Field - regular mesh")
   MappedField<double> field = MappedField<double>(&mesh, values, mapping);
 
   // Assign
-  double saved_value = field.data().values()[2];
+  double saved_value = field.value(2);
   field.assign(2, 150.0);
-  REQUIRE(field.data().values()[2] == 150.0);
-  field.data().values()[2] = saved_value; // Reassign back
+  REQUIRE(field.value(2) == 150.0);
+  field.assign(2, saved_value); // Reassign back
 
   // Get bin
   REQUIRE(field.get_bin(Position(0.5, 0.5, 0.5)) == 7);

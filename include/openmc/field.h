@@ -27,46 +27,6 @@ extern std::unordered_map<int, int> field_map;
 } // namespace model
 
 // -----------------------------------------------------------
-// FieldData
-// -----------------------------------------------------------
-
-//! Container for field data values defined in a mesh.
-//!
-//! Wraps a flat vector of values and provides element-wise access.
-//! \tparam T Value type (e.g., double for scalar fields, Direction for vector
-//!           fields)
-template<typename T>
-class FieldData {
-public:
-  // Constructor
-  FieldData(vector<T> values) : values_(std::move(values)) {}
-
-  //! Get the value for a given index.
-  //
-  //! \param[in] idx Index
-  //! \return Associated value
-  T evaluate(int idx) const { return values_[idx]; }
-
-  //! Assign a value at a given index.
-  //
-  //! \param[in] idx Index
-  //! \param[in] value Value to store
-  void assign(int idx, T value) { values_[idx] = value; }
-
-  //! Return the size of the data field.
-  //
-  //! \return Number of values
-  int size() const { return values_.size(); }
-
-  // Values accessors
-  vector<T>& values() { return values_; }
-  const vector<T>& values() const { return values_; }
-
-private:
-  vector<T> values_; //!< Stored data
-};
-
-// -----------------------------------------------------------
 // Field
 // -----------------------------------------------------------
 
@@ -188,7 +148,14 @@ public:
   //
   //! \param[in] bin Bin number
   //! \param[in] value Value to store
-  void assign(int bin, T value) { data().assign(bin, value); }
+  void assign(int bin, T value)
+  {
+    if (bin < 0 || bin >= static_cast<int>(data_.size())) {
+      fatal_error(fmt::format(
+        "Bin index {} is out of range [0, {}].", bin, data_.size()));
+    }
+    data_[bin] = value;
+  }
 
   //! Return the mesh bin associated with a given position.
   //
@@ -297,22 +264,18 @@ public:
       current_bin, r, u, bin_next);
   }
 
-  // Data field accessor
-  FieldData<T>& data() const
-  {
-    if (data_ == nullptr) {
-      fatal_error("No data found for this field!");
-    } else {
-      return *data_;
-    }
-  }
-
   // Data field value accessors
-  const T value(int i) const { return data().evaluate(i); }
-  const vector<T> values() const { return data().values(); }
+  T value(int i) const {
+    if (i < 0 || i >= static_cast<int>(data_.size())) {
+      fatal_error(fmt::format(
+        "Data index {} is out of range [0, {}].", i, data_.size()));
+    }
+    return data_[i];
+  }
+  const vector<T>& values() const { return data_; }
 
 private:
-  std::unique_ptr<FieldData<T>> data_; //!< Data associated with the mesh
+  vector<T> data_; //!< Data associated with the mesh
 };
 
 // -----------------------------------------------------------

@@ -118,24 +118,17 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   }
 
   // If enabled by the user, limit the source gradients so the modeled local
-  // source
-  // q(r) = q_flat + (r - centroid) . q_gradient
-  // stays non-negative over the region as described by its spatial moments.
-  // Noisy fitted moments can produce spuriously steep gradients (the
-  // inverted moment matrix amplifies noise along any thin extent of the
-  // region), and a region whose modeled source goes negative over part of
-  // its extent drives crossing rays negative and exports the contamination
-  // downstream. The worst-case overshoot of the linear term over the moment
-  // ellipsoid is sqrt(3 g^T M g). The bound is exact for the ellipsoid the
-  // moments describe, but a real region's shape can have corners that
-  // extend beyond it, so the limiter reduces rather than eliminates
-  // modeled-source negativity. Rescaling the gradient to cap the overshoot
-  // at the flat source preserves the region's mean emission exactly, since
-  // the linear term integrates to zero over the region, and gradients that
-  // pass the test are left bit-identical. A group whose flat source is
-  // negative after the external source is added (as an adjoint source can
-  // be) has no meaningful shape, so its cap is zero and its gradient is
-  // scaled away. See the methods documentation for the derivation.
+  // source q(r) = q_flat + (r - centroid) . q_gradient stays non-negative
+  // over the ellipsoid described by the region's spatial moments, over
+  // which the linear term reaches at most sqrt(3 g^T M g). This treats the
+  // region as if it were shaped like its moment representation, which an
+  // arbitrary CSG region essentially never is, so the limiter reduces
+  // negative sources rather than eliminating them. Rescaling the gradient
+  // preserves the region's mean emission, since the linear term integrates
+  // to zero over the region, and gradients that pass are left untouched. A
+  // group whose flat source is negative after the external source is added
+  // (as an adjoint source can be) carries no meaningful shape, so its cap
+  // is zero and its gradient is scaled away.
   if (source_gradient_limiter_ && material != MATERIAL_VOID) {
     const MomentMatrix& m = srh.mom_matrix();
     for (int g = 0; g < negroups_; g++) {

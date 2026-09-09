@@ -988,12 +988,12 @@ enabled as::
 
 The limiter rescales a region's gradient as needed so that the modeled
 source stays non-negative over the shape described by the region's spatial
-moments, preserving the region's mean emission. Real region shapes can
-have corners that extend beyond what the moments describe, so some
-negativity may remain. The limiter is off by default, as limiting also
-clips physically steep source shapes such as those found in optically
-thick regions of deep-penetration problems; see the :ref:`methods
-documentation <methods_random_ray>` for details.
+moments, preserving the region's mean emission. Since a real region is
+essentially never shaped like its moment representation, some negativity
+may remain. The limiter is off by default, as limiting also clips
+physically steep source shapes such as those found in optically thick
+regions of deep-penetration problems; see the :ref:`methods documentation
+<methods_random_ray>` for details.
 
 While OpenMC has no specific mode for 2D simulations, such simulations can be
 performed implicitly by leaving one of the dimensions of the geometry unbounded

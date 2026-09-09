@@ -1004,52 +1004,36 @@ Source Gradient Limiting
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 The fitted source gradient :math:`\vec{Q}_i = M_i^{-1} \vec{q}_i` amplifies
-noise in the fitted source moments along any thin extent of the region,
-where the moment matrix :math:`M_i` is nearly singular, so a poorly sampled
-region can carry a spurious gradient arbitrarily steep relative to its mean
-source. Such a region emits a negative source over part of its extent, and
-rays crossing the negative lobe carry negative angular flux downstream. In
-optically thin media with scattering ratios near one (for example, the
-air-filled regions of shielding problems), the in-group feedback can then
-amplify the exported negativity without bound.
+noise in the fitted moments along any thin extent of a region, so a poorly
+sampled region can carry a spuriously steep gradient and emit a negative
+source over part of its extent. Rays crossing that part carry negative
+angular flux downstream, which optically thin media with scattering ratios
+near one can amplify.
 
-When the user enables the source gradient limiter, OpenMC limits each
-group's source gradient so the modeled source stays non-negative over the
-region as described by its spatial moments. The
-worst-case overshoot of the linear term over the moment ellipsoid is
-:math:`\sqrt{3 \vec{Q}_i^T M_i \vec{Q}_i}`, where the factor of three
-scales the moments up to physical extents (a uniform interval of length
-:math:`L` has :math:`\langle x^2 \rangle = L^2/12`, and :math:`\sqrt{3
-\langle x^2 \rangle} = L/2`). If the overshoot exceeds the flat source,
-the gradient vector is rescaled so the two are equal. The bound is exact
-for the ellipsoid the moments describe, but OpenMC supports arbitrarily
-complex region shapes, and a real region can have corners that extend
-beyond its moment ellipsoid. The limiter therefore reduces rather than
-eliminates modeled-source negativity. Because the linear term
-integrates to zero over the region, the rescaling preserves the region's
-mean emission exactly, and gradients that pass the test are left
-untouched. A group whose flat source is negative has its gradient zeroed,
-as no meaningful shape information exists in that state.
+When the source gradient limiter is enabled, each group's gradient is
+rescaled so that the modeled source stays non-negative over the ellipsoid
+described by the region's spatial moments, over which the linear term
+reaches at most :math:`\sqrt{3 \vec{Q}_i^T M_i \vec{Q}_i}`. This treats
+the region as if it were shaped like its moment representation, which an
+arbitrary CSG region essentially never is, so the limiter reduces negative
+sources rather than eliminating them. Because the linear term integrates
+to zero over the region, the rescaling preserves the region's mean
+emission, and gradients that pass the test are left untouched. A group
+whose flat source is negative has its gradient zeroed.
 
 This is the treatment `MPACT <Choi-2024_>`_ applies in its limited linear
-source approximation, which reduces the gradient by the same
-mean-preserving factor. MPACT finds each region's minimum source exactly,
-as the minimum of the modeled source over the entrance and exit points of
-every segment crossing the region, which requires the fixed set of tracks
-that deterministic MOC lays down once and reuses every sweep. Random ray
-samples new rays every batch, so no segment set exists when the source is
-built, and the moment ellipsoid bound takes the place of the exact minimum
-as a bound that holds for whatever rays the batch draws.
+source approximation, with the same mean-preserving factor. MPACT finds
+the minimum source exactly, over the entrance and exit points of every
+segment crossing the region, which requires the fixed set of tracks that
+deterministic MOC lays down once. Random ray samples new rays every batch,
+so no such segment set exists when the source is built, and the moment
+ellipsoid takes its place.
 
-The limiter is disabled by default because a steep fit can also be
-physical. A linear fit to a sharply attenuated flux legitimately crosses
-zero near the edge of an optically thick region, and clipping such fits
-discards real shape information. In problems like deep penetration, where
-every steep gradient is physical, the limiter has nothing to fix and
-alters the solution at depth. Random ray is also often run with
-deliberately coarse source regions in which the linear fit carries the
-accuracy. The limiter is therefore left as a user choice, best reserved for
-simulations that negative sources destabilize.
+The limiter is off by default because a steep fit can also be physical, as
+in the optically thick regions of deep-penetration problems, where
+limiting discards real shape information and alters the solution at
+depth. It is best reserved for simulations that negative sources
+destabilize.
 
 .. _methods-shannon-entropy-random-ray:
 

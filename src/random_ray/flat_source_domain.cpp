@@ -59,7 +59,10 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   // Initialize source regions.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
   bool is_adaptive = is_adaptive_family(resolved_volume_estimator_);
-  source_regions_ = SourceRegionContainer(negroups_, is_linear, is_adaptive);
+  bool is_strict_adaptive =
+    resolved_volume_estimator_ == RandomRayVolumeEstimator::STRICT_ADAPTIVE;
+  source_regions_ = SourceRegionContainer(
+    negroups_, is_linear, is_adaptive, is_strict_adaptive);
 
   // Initialize tally volumes
   if (volume_normalized_flux_tallies_) {
@@ -576,7 +579,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     // its external term being folded into q/Sigma_t.
     bool external = source_regions_.external_source_present(sr);
     bool small = source_regions_.is_small(sr);
-    int conv_flag = source_regions_.converged_negative(sr);
+    int conv_flag = is_adaptive ? source_regions_.converged_negative(sr) : 0;
     bool converged_neg = conv_flag > 0;
 
     // Every estimator reduces to two g-independent per-region decisions:

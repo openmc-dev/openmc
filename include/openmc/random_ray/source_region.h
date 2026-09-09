@@ -411,8 +411,10 @@ class SourceRegionContainer {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegionContainer(int negroups, bool is_linear, bool is_adaptive)
-    : negroups_(negroups), is_linear_(is_linear), is_adaptive_(is_adaptive)
+  SourceRegionContainer(
+    int negroups, bool is_linear, bool is_adaptive, bool is_strict_adaptive)
+    : negroups_(negroups), is_linear_(is_linear), is_adaptive_(is_adaptive),
+      is_strict_adaptive_(is_strict_adaptive)
   {}
   SourceRegionContainer() = default;
 
@@ -673,6 +675,7 @@ private:
   int negroups_ {0};
   bool is_linear_ {false};
   bool is_adaptive_ {false};
+  bool is_strict_adaptive_ {false};
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;

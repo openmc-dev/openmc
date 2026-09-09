@@ -75,8 +75,12 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   temperature_idx_.push_back(sr.temperature_idx_);
   density_mult_.push_back(sr.density_mult_);
   is_small_.push_back(sr.is_small_);
-  n_negative_batches_.push_back(sr.n_negative_batches_);
-  converged_negative_.push_back(sr.converged_negative_);
+  if (is_strict_adaptive_) {
+    n_negative_batches_.push_back(sr.n_negative_batches_);
+  }
+  if (is_adaptive_) {
+    converged_negative_.push_back(sr.converged_negative_);
+  }
   n_hits_.push_back(sr.n_hits_);
   lock_.push_back(sr.lock_);
   volume_.push_back(sr.volume_);
@@ -198,8 +202,9 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.temperature_idx_ = &temperature_idx(sr);
   handle.density_mult_ = &density_mult(sr);
   handle.is_small_ = &is_small(sr);
-  handle.n_negative_batches_ = &n_negative_batches(sr);
-  handle.converged_negative_ = &converged_negative(sr);
+  handle.n_negative_batches_ =
+    is_strict_adaptive_ ? &n_negative_batches(sr) : nullptr;
+  handle.converged_negative_ = is_adaptive_ ? &converged_negative(sr) : nullptr;
   handle.n_hits_ = &n_hits(sr);
   handle.is_linear_ = is_linear();
   handle.lock_ = &lock(sr);

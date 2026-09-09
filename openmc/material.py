@@ -1670,6 +1670,7 @@ class Material(IDManagerMixin):
         limits: str | dict[str, float] = 'Fetter',
         metal: bool = False,
         by_nuclide: bool = False,
+        chain=None,
     ) -> float | dict[str, float]:
         """Return the waste disposal rating for the material.
 
@@ -1703,6 +1704,37 @@ class Material(IDManagerMixin):
               short-lived radionuclides
             - 'NRC_short_C': Uses the 10 CFR 61.55 class C limits for
               short-lived radionuclides
+            The following options use clearance values from the German
+            Strahlenschutzverordnung (StrlSchV) 2018, Anlage 4, Tabelle 1.
+            These limits are in [Bq/g] and the material activity will be
+            compared using the same units.
+
+            - 'StrlSchV_unrestricted': Unrestricted clearance of solid and
+              liquid substances (column 3)
+            - 'StrlSchV_metal_recycling': Metal scrap recycling (column 14)
+            - 'StrlSchV_landfill_100': Landfill disposal for facilities
+              receiving ≤100 Mg/a (column 8)
+            - 'StrlSchV_landfill_1000': Landfill disposal for facilities
+              receiving ≤1000 Mg/a (column 10)
+            - 'StrlSchV_incineration_100': Incineration for facilities
+              receiving ≤100 Mg/a (column 9)
+            - 'StrlSchV_incineration_1000': Incineration for facilities
+              receiving ≤1000 Mg/a (column 11)
+            - 'StrlSchV_soil': Soil surface clearance (column 7)
+            - 'StrlSchV_rubble': Building rubble clearance for >1000 Mg/a
+              (column 6)
+
+            .. note::
+                Some nuclides in Anlage 4 are listed with a '+' suffix,
+                indicating that their clearance value includes daughter
+                nuclides in secular equilibrium. When a depletion chain is
+                provided via the ``chain`` parameter, daughters in secular
+                equilibrium are automatically excluded from the
+                sum-of-fractions to avoid double-counting. Without a
+                chain, all nuclides with clearance entries are counted
+                individually, which may overestimate the rating for some
+                decay chains.
+
         metal : bool, optional
             Whether or not the material is in metal form (only applicable for
             NRC based limits)
@@ -1712,6 +1744,11 @@ class Material(IDManagerMixin):
             nuclide names and the values are the waste disposal ratings for each
             nuclide. If False, a single float value is returned that represents
             the overall waste disposal rating for the material.
+        chain : openmc.deplete.Chain, optional
+            Depletion chain used to identify daughter nuclides in secular
+            equilibrium for StrlSchV limits. When provided, daughters
+            covered by a parent's '+' clearance value are excluded from
+            the sum-of-fractions to avoid double-counting.
 
         Returns
         -------
@@ -1724,7 +1761,7 @@ class Material(IDManagerMixin):
         Material.waste_classification()
 
         """
-        return waste._waste_disposal_rating(self, limits, metal, by_nuclide)
+        return waste._waste_disposal_rating(self, limits, metal, by_nuclide, chain)
 
     def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.

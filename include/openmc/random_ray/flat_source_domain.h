@@ -12,6 +12,40 @@
 
 namespace openmc {
 
+// Avg. number of hits per batch to be defined as a "small" source region.
+constexpr double MIN_HITS_PER_BATCH {1.5};
+
+// Strong-source ratio threshold for the adaptive volume estimator. A source
+// region is treated as having a "strong" inhomogeneous source in any group
+// where the reduced source q/Sigma_t exceeds this multiple of the region's
+// scalar flux, indicating a source sustained by an external or in-scatter
+// contribution rather than by the local flux. Such regions are given the
+// naive volume and previous-flux miss treatment. The value sits well inside
+// the range over which benign problems remain untriggered while pathological
+// cells are still caught.
+constexpr double ADAPTIVE_VOLUME_KAPPA {4.0};
+
+// Chronic-negativity demotion thresholds for the strict adaptive volume
+// estimator. A region whose flux has gone negative (before the fixup) in at
+// least max(MIN_COUNT, RATE * current_batch) batches is demoted to the naive
+// volume and previous-flux miss treatment. Without this channel the
+// non-negativity floor would mask the accumulated-flux sign signal that the
+// adaptive demotion relies on, leaving noisy regions to be clipped every
+// batch and biasing their fluxes upward. Demotion instead moves such regions
+// onto an estimator that does not need clipping.
+constexpr int NEGATIVE_FLUX_DEMOTION_MIN_COUNT {3};
+constexpr double NEGATIVE_FLUX_DEMOTION_RATE {0.005};
+
+// The minimum flux value to be considered non-zero when computing adjoint
+// sources. Positive values below this cutoff will be treated as zero, so as to
+// prevent extremely large adjoint source terms from being generated.
+constexpr double ZERO_FLUX_CUTOFF {1e-22};
+
+// The minimum macroscopic cross section value considered non-void for the
+// random ray solver. Materials with any group with a cross section below this
+// value will be converted to pure void.
+constexpr double MINIMUM_MACRO_XS {1e-6};
+
 // True for the members of the adaptive volume estimator family: the
 // adaptive estimator, and the strict adaptive estimator, which runs the
 // same machinery plus a per-batch non-negativity enforcement on the flux

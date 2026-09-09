@@ -1012,25 +1012,39 @@ angular flux downstream, which optically thin media with scattering ratios
 near one can amplify.
 
 When the source gradient limiter is enabled, each group's gradient is
-rescaled so that the modeled source stays non-negative within
-:math:`\sqrt{3}` standard deviations of the centroid along the gradient,
-the half-extent of a uniform slab with the region's second moment, where
-the linear term reaches :math:`\sqrt{3 \boldsymbol{\vec{Q}}_{i,g}^T
-\mathbf{M}_i \boldsymbol{\vec{Q}}_{i,g}}`. Real regions extend further
-along some directions (a uniform sphere reaches :math:`\sqrt{5}` standard
-deviations, and the corner of a cube three), so the limiter reduces
-negative sources rather than eliminating them. Because the linear term integrates
-to zero over the region, the rescaling preserves the region's mean
-emission, and gradients that pass the test are left untouched. A group
-whose flat source is negative has its gradient zeroed.
+rescaled so that the modeled source stays non-negative over the region's
+axis-aligned bounding box. The box is accumulated from the endpoints of
+every ray segment that has crossed the region, which lie on the region's
+boundary except where a ray starts or ends inside it. The linear term is
+largest at a corner of the box, where it reaches
+
+.. math::
+    :label: gradient-limiter-bound
+
+    \sum_{d \in \{x, y, z\}} \; \max_{x_d \in \{x^{\min}_{i,d},\,
+    x^{\max}_{i,d}\}} \left(\boldsymbol{\vec{Q}}_{i,g}\right)_d \left(x_d -
+    r_{\mathrm{c},i,d}\right),
+
+where :math:`x^{\min}_{i}` and :math:`x^{\max}_{i}` are the box bounds,
+:math:`\mathbf{r}_{\mathrm{c},i}` is the centroid, and :math:`d` indexes
+their components. Whenever this exceeds the flat source :math:`Q_{i,g}`, the
+gradient is scaled by the ratio of the two. Because the linear term
+integrates to zero over the region, the rescaling preserves the region's
+mean emission, and gradients that pass the test are left untouched. A group
+whose flat source is not positive has its gradient zeroed. The box contains
+the region, so once its boundary has been sampled the modeled source is
+non-negative throughout. The bound is exact for box-shaped regions and
+conservative for others, so rounded or diagonally oriented regions are
+limited somewhat more than necessary (by up to a factor of
+:math:`\sqrt{3}` for a sphere).
 
 This is the treatment `MPACT <Choi-2024_>`_ applies in its limited linear
 source approximation, with the same mean-preserving factor. MPACT finds
 the minimum source exactly, over the entrance and exit points of every
 segment crossing the region, which requires the fixed set of tracks that
 deterministic MOC lays down once. Random ray samples new rays every batch,
-so no such segment set exists when the source is built, and the moment
-ellipsoid takes its place.
+so no such segment set exists when the source is built, and the sampled
+bounding box takes its place.
 
 The limiter is off by default because a steep fit can also be physical, as
 in the optically thick regions of deep-penetration problems, where

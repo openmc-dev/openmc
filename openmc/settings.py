@@ -210,9 +210,9 @@ class Settings:
         :source_gradient_limiter:
             Whether to rescale linear source gradients as needed so that the
             source shape modeled within each source region remains
-            non-negative over the extent inferred from the region's spatial
-            moments (bool). The default is 'False'. Only used when the
-            source shape is 'linear' or 'linear_xy'.
+            non-negative over the region's bounding box, as sampled by the
+            rays that have crossed it (bool). The default is 'False'. Only
+            used when the source shape is 'linear' or 'linear_xy'.
         :volume_normalized_flux_tallies:
             Whether to normalize flux tallies by volume (bool). The default is
             'False'. When enabled, flux tallies will be reported in units of

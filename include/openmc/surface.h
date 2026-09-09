@@ -41,6 +41,15 @@ public:
   unique_ptr<BoundaryCondition> bc_; //!< Boundary condition
   bool surf_source_ {false}; //!< Activate source banking for the surface?
 
+  //! Is this surface used only by cells in the root universe?
+  //!
+  //! evaluate() and normal() work in the local coordinate frame of the
+  //! universe holding the surface. That frame coincides with the root (lab)
+  //! frame only for surfaces in the root universe, so this flag marks the
+  //! surfaces for which a lab-frame position may be passed to them directly.
+  //! Set by finalize_geometry().
+  bool root_frame_ {true};
+
   explicit Surface(pugi::xml_node surf_node);
   Surface();
 

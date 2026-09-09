@@ -117,28 +117,30 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   // If enabled by the user, limit the source gradients so the modeled local
   // source q(r) = q_flat + (r - centroid) . q_gradient stays non-negative
   // over the region's bounding box as sampled by the ray segment endpoints.
-  // The largest value the linear term can take over the box is the sum,
-  // over the three axes, of the gradient component times the distance from
-  // the centroid to the box face that component points to. The box contains
-  // the region, so the modeled source is non-negative throughout it once
-  // the boundary has been sampled. Rescaling the gradient preserves the
-  // region's mean emission, since the linear term integrates to zero over
-  // the region, and gradients that pass are left untouched. A non-positive
-  // flat source leaves no shape to keep, so its cap is zero and its gradient
-  // is scaled away. A region with no sampled box yet carries no gradient to
-  // limit.
+  // The linear term is lowest at the box corner each gradient component
+  // points away from, so its minimum is the sum, over the three axes, of the
+  // gradient component times the offset from the centroid to that face. The
+  // box contains the region, so once the boundary has been sampled the
+  // modeled source is non-negative throughout the region whenever the flat
+  // source covers the dip. When it does not, the gradient is scaled by their
+  // ratio, which preserves the region's mean emission, since the linear term
+  // integrates to zero over the region; gradients that pass are left
+  // untouched. A non-positive flat source leaves no shape to keep, so its
+  // cap is zero and its gradient is scaled away. A region with no sampled
+  // box yet carries no gradient to limit.
   if (source_gradient_limiter_ && material != MATERIAL_VOID &&
       srh.extent_min().x <= srh.extent_max().x) {
+    // Offsets from the centroid to the box faces, lo <= 0 <= hi
     Position lo = srh.extent_min() - srh.centroid();
     Position hi = srh.extent_max() - srh.centroid();
     for (int g = 0; g < negroups_; g++) {
       MomentArray& gradient = srh.source_gradients(g);
       double cap = std::max<double>(srh.source(g), 0.0);
-      double overshoot = std::max(gradient.x * hi.x, gradient.x * lo.x) +
-                         std::max(gradient.y * hi.y, gradient.y * lo.y) +
-                         std::max(gradient.z * hi.z, gradient.z * lo.z);
-      if (overshoot > cap) {
-        gradient *= cap / overshoot;
+      double dip = std::max(-gradient.x * lo.x, -gradient.x * hi.x) +
+                   std::max(-gradient.y * lo.y, -gradient.y * hi.y) +
+                   std::max(-gradient.z * lo.z, -gradient.z * hi.z);
+      if (dip > cap) {
+        gradient *= cap / dip;
       }
     }
   }

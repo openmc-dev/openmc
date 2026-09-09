@@ -16,18 +16,40 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
 
 def test_random_ray_linear_source_stability():
     # A linear source run with the gradient limiter enabled, in the regime
-    # that stresses it. The naive volume estimator, an overlay source-region
+    # that stresses it: the naive volume estimator, an overlay source-region
     # mesh whose cells receive modest per-batch hit counts, and the example's
     # optically thin scattering-dominated interior combine to produce the
-    # noisy fitted gradients the limiter exists to bound.
+    # noisy fitted gradients the limiter exists to bound. The example's
+    # three cubic regions are replaced by spherical ones so that the curved
+    # boundaries cut the mesh cells into pieces whose centroids sit
+    # off-center in their bounding boxes, which is where the limiter's bound
+    # differs from a symmetric one.
     openmc.reset_auto_ids()
     model = random_ray_three_region_cube()
+    source_mat, void_mat, absorber_mat = model.materials
+    width = 30.0
+    x0 = openmc.XPlane(0.0, boundary_type='reflective')
+    y0 = openmc.YPlane(0.0, boundary_type='reflective')
+    z0 = openmc.ZPlane(0.0, boundary_type='reflective')
+    x1 = openmc.XPlane(width, boundary_type='vacuum')
+    y1 = openmc.YPlane(width, boundary_type='vacuum')
+    z1 = openmc.ZPlane(width, boundary_type='vacuum')
+    domain = +x0 & -x1 & +y0 & -y1 & +z0 & -z1
+    source_sphere = openmc.Sphere(r=5.0)
+    void_sphere = openmc.Sphere(r=12.5)
+    model.geometry = openmc.Geometry([
+        openmc.Cell(fill=source_mat, region=-source_sphere & domain),
+        openmc.Cell(fill=void_mat,
+                    region=+source_sphere & -void_sphere & domain),
+        openmc.Cell(fill=absorber_mat, region=+void_sphere & domain),
+    ])
+    model.settings.source[0].constraints = {'domains': [source_mat]}
     model.settings.random_ray['source_shape'] = 'linear'
     model.settings.random_ray['source_gradient_limiter'] = True
     model.settings.random_ray['volume_estimator'] = 'naive'
     mesh = openmc.RegularMesh()
     mesh.lower_left = (0.0, 0.0, 0.0)
-    mesh.upper_right = (30.0, 30.0, 30.0)
+    mesh.upper_right = (width, width, width)
     mesh.dimension = (12, 12, 12)
     model.settings.random_ray['source_region_meshes'] = [
         (mesh, [model.geometry.root_universe])]

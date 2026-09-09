@@ -80,65 +80,32 @@ public:
   //! \param[in] mesh_ptr Non-owning pointer to the mesh
   //! \param[in] values Field values.
   //! \param[in] mapping Mapping type: 'nodal' or 'cell'
-  MappedField(Mesh* mesh_ptr, vector<T> values, std::string mapping)
+  MappedField(Mesh* mesh_ptr, vector<T> values, FieldMapping mapping)
+    : Field(mesh_ptr, mapping)
   {
-    set_mesh(mesh_ptr);
-    set_mapping(mapping);
-
-    std::unique_ptr<FieldData<T>> data =
-      std::make_unique<FieldData<T>>(std::move(values));
-    set_data(std::move(data));
-  }
-
-  //! Set the mesh pointer.
-  //! Returns an error if the mesh pointer is not valid.
-  //
-  //! \param[in] value Mesh pointer
-  void set_mesh(Mesh* value)
-  {
-    if (value != nullptr) {
-      mesh_ = value;
-    } else {
-      fatal_error("No mesh found for this field!");
-    }
-  }
-
-  //! Set the mapping type.
-  //! Returns an error if the mapping type is not valid.
-  //
-  //! \param[in] value Mapping type
-  void set_mapping(std::string value)
-  {
-    if (value == "nodal") {
-      mapping_ = FieldMapping::NODAL;
-    } else if (value == "cell") {
-      mapping_ = FieldMapping::CELL;
-    } else {
-      fatal_error(fmt::format("Unrecognized mapping type: {}", value));
-    }
-  }
-
-  //! Set data field.
-  //! Returns an error if the size of the data field is not consistent with its
-  //! mapping type.
-  //
-  //! \param[in] data Data field
-  void set_data(std::unique_ptr<FieldData<T>> data)
-  {
-    // Values/mesh size consistency check
-    if (mapping() == FieldMapping::NODAL) {
-      if (mesh_ptr()->n_vertices() != data->size()) {
-        fatal_error("The number of bins in the mesh is not consistent with the "
-                    "number of values declared for this field!");
-      }
-    } else if (mapping() == FieldMapping::CELL) {
-      if (mesh_ptr()->n_bins() != data->size()) {
-        fatal_error("The number of bins in the mesh is not consistent with the "
-                    "number of values declared for this field!");
-      }
+    int expected = 0;
+    std::string element_type;
+    switch (mapping_) {
+    case FieldMapping::NODAL:
+      expected = mesh_->n_vertices();
+      element_type = "unique vertices";
+      break;
+    case FieldMapping::CELL:
+      expected = mesh_->n_bins();
+      element_type = "elements";
+      break;
+    default:
+      fatal_error("Logic not implemented!");
     }
 
-    data_ = std::move(data);
+    if (static_cast<size_t>(expected) != values.size()) {
+      fatal_error(fmt::format(
+        "The number of {} in the mesh ({}) is not consistent with the "
+        "number of values declared for this field ({})!",
+        element_type, expected, values.size()));
+    }
+
+    data_ = std::move(values);
   }
 
   //! Assign a value to a bin.

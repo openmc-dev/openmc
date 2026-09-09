@@ -255,8 +255,8 @@ class TemperatureField : public MappedField<double> {
 public:
   // Constructors
   TemperatureField(
-    Mesh* mesh_ptr, vector<double> values, std::string mapping = "cell")
-    : MappedField<double>(mesh_ptr, values, mapping) {};
+    Mesh* mesh_ptr, vector<double> values, FieldMapping mapping = FieldMapping::CELL)
+    : MappedField<double>(mesh_ptr, std::move(values), mapping) {}
 
   //! Returns the temperature in Kelvin corresponding to a given bin number
   //! relative to the mesh.
@@ -286,8 +286,8 @@ using BCMap = std::unordered_map<BCType, vector<int>>;
 class VelocityField : public MappedField<Direction> {
 public:
   // Constructors
-  VelocityField(Mesh* mesh_ptr, vector<Direction> values, std::string mapping)
-    : MappedField<Direction>(mesh_ptr, values, mapping) {};
+  VelocityField(Mesh* mesh_ptr, vector<Direction> values, FieldMapping mapping)
+    : MappedField<Direction>(mesh_ptr, std::move(values), mapping) {}
 
   //! Find next bin associated with a given position (r1) knowing the previous
   //! position (r0) and the previous bin (bin0). The next bin is evaluated using

@@ -590,6 +590,8 @@ void Particle::event_death()
     if (k_tracklength != 0.0) {
 #pragma omp atomic
       global_tally_tracklength += k_tracklength;
+#pragma omp atomic
+      global_tally_tracklength_sq += k_tracklength * k_tracklength;
     }
   }
   if (leakage != 0.0) {

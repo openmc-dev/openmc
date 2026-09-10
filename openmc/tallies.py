@@ -17,16 +17,16 @@ from scipy.stats import chi2, norm
 import openmc
 import openmc.checkvalue as cv
 from openmc.filter import (
-    Filter, 
-    DistribcellFilter, 
-    EnergyFunctionFilter, 
-    DelayedGroupFilter, 
-    FilterMeta, 
+    Filter,
+    DistribcellFilter,
+    EnergyFunctionFilter,
+    DelayedGroupFilter,
+    FilterMeta,
     MeshFilter,
     MeshBornFilter,
 )
 from openmc.arithmetic import (
-    CrossFilter, 
+    CrossFilter,
     AggregateFilter,
     CrossScore,
     AggregateScore,
@@ -36,6 +36,7 @@ from openmc.arithmetic import (
 from ._sparse_compat import lil_array
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
+from .utility_funcs import set_xml_input_path
 from .mesh import MeshBase
 
 
@@ -479,10 +480,12 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
-                self._sum = lil_array(self._sum.flatten(), self._sum.shape)
-                self._sum_sq = lil_array(self._sum_sq.flatten(), self._sum_sq.shape)
-                self._sum_third = lil_array(self._sum_third.flatten(), self._sum_third.shape)
-                self._sum_fourth = lil_array(self._sum_fourth.flatten(), self._sum_fourth.shape)
+                self._sum = lil_array(self._sum.reshape(1, -1))
+                self._sum_sq = lil_array(self._sum_sq.reshape(1, -1))
+                if self._sum_third is not None:
+                    self._sum_third = lil_array(self._sum_third.reshape(1, -1))
+                if self._sum_fourth is not None:
+                    self._sum_fourth = lil_array(self._sum_fourth.reshape(1, -1))
 
             # Read simulation time (needed for figure of merit)
             self._simulation_time = f["runtime"]["simulation"][()]
@@ -578,7 +581,7 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._mean = lil_array(self._mean.flatten(), self._mean.shape)
+                self._mean = lil_array(self._mean.reshape(1, -1))
 
         if self.sparse:
             return np.reshape(self._mean.toarray(), self.shape)
@@ -599,7 +602,7 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = lil_array(self._std_dev.flatten(), self._std_dev.shape)
+                self._std_dev = lil_array(self._std_dev.reshape(1, -1))
 
             self.with_batch_statistics = True
 
@@ -630,7 +633,7 @@ class Tally(IDManagerMixin):
             self._vov[mask] = numerator[mask]/denominator[mask] - 1.0/n
 
             if self.sparse:
-                self._vov = lil_array(self._vov.flatten(), self._vov.shape)
+                self._vov = lil_array(self._vov.reshape(1, -1))
 
         if self.sparse:
             return np.reshape(self._vov.toarray(), self.shape)
@@ -1005,17 +1008,19 @@ class Tally(IDManagerMixin):
         # Convert NumPy arrays to SciPy sparse LIL matrices
         if sparse and not self.sparse:
             if self._sum is not None:
-                self._sum = lil_array(self._sum.flatten(), self._sum.shape)
+                self._sum = lil_array(self._sum.reshape(1, -1))
             if self._sum_sq is not None:
-                self._sum_sq = lil_array(self._sum_sq.flatten(), self._sum_sq.shape)
+                self._sum_sq = lil_array(self._sum_sq.reshape(1, -1))
             if self._sum_third is not None:
-                self._sum_third = lil_array(self._sum_third.flatten(), self._sum_third.shape)
+                self._sum_third = lil_array(self._sum_third.reshape(1, -1))
             if self._sum_fourth is not None:
-                self._sum_fourth = lil_array(self._sum_fourth.flatten(), self._sum_fourth.shape)
+                self._sum_fourth = lil_array(self._sum_fourth.reshape(1, -1))
             if self._mean is not None:
-                self._mean = lil_array(self._mean.flatten(), self._mean.shape)
+                self._mean = lil_array(self._mean.reshape(1, -1))
             if self._std_dev is not None:
-                self._std_dev = lil_array(self._std_dev.flatten(), self._std_dev.shape)
+                self._std_dev = lil_array(self._std_dev.reshape(1, -1))
+            if self._vov is not None:
+                self._vov = lil_array(self._vov.reshape(1, -1))
 
             self._sparse = True
 
@@ -1033,6 +1038,8 @@ class Tally(IDManagerMixin):
                 self._mean = np.reshape(self._mean.toarray(), self.shape)
             if self._std_dev is not None:
                 self._std_dev = np.reshape(self._std_dev.toarray(), self.shape)
+            if self._vov is not None:
+                self._vov = np.reshape(self._vov.toarray(), self.shape)
             self._sparse = False
 
     def remove_score(self, score):
@@ -1511,6 +1518,64 @@ class Tally(IDManagerMixin):
         self._higher_moments = False
         self._num_realizations = 0
         self._results_read = False
+
+    def apply_virtual_material(self, material: openmc.Material) -> None:
+        """Apply nuclide densities from a material to tally results.
+
+        This method multiplies each nuclide bin in the tally by the
+        corresponding atom density in ``material``. Nuclides that are not
+        present in the material are multiplied by zero. The operation is
+        performed in place and the nuclide dimension is preserved.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        material : openmc.Material
+            Material whose nuclide atom densities are to be applied
+
+        Raises
+        ------
+        ValueError
+            If ``multiply_density`` is ``True``, the tally has no results, or
+            the tally contains a nuclide bin that does not represent a single
+            nuclide.
+
+        """
+        cv.check_type('virtual material', material, openmc.Material)
+
+        if self.multiply_density:
+            raise ValueError('Unable to apply a virtual material when '
+                             'multiply_density is True.')
+
+        # Accessing sum ensures that results are read from the statepoint before
+        # inspecting nuclide bins or modifying the underlying moments
+        if self.sum is None:
+            raise ValueError('Unable to apply a virtual material since the '
+                             'tally does not contain any results.')
+
+        if any(not isinstance(n, str) or n == 'total' for n in self.nuclides):
+            raise ValueError('Unable to apply a virtual material unless every '
+                             'nuclide bin represents a single nuclide.')
+
+        # Get the matching nuclide atom densities in [atom/b-cm]
+        densities = material.get_nuclide_atom_densities()
+        factors = np.array(
+            [densities.get(nuclide, 0.0) for nuclide in self.nuclides]
+        )[np.newaxis, :, np.newaxis]
+
+        # Scale the raw moments by the atom densities
+        self._sum *= factors
+        self._sum_sq *= factors**2
+        if self._sum_third is not None:
+            self._sum_third *= factors**3
+        if self._sum_fourth is not None:
+            self._sum_fourth *= factors**4
+
+        # Recompute derived statistics from the scaled raw moments on demand
+        self._mean = None
+        self._std_dev = None
+        self._vov = None
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
@@ -3932,7 +3997,8 @@ class Tallies(cv.CheckedList):
             Tallies object
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
-        return cls.from_xml_element(root)
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
+            return cls.from_xml_element(root)

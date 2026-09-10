@@ -38,6 +38,7 @@
 #include "openmc/simulation.h"
 #include "openmc/state_point.h"
 #include "openmc/string_utils.h"
+#include "openmc/surface.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -547,7 +548,28 @@ SourceSite FileSource::sample(uint64_t* seed) const
 {
   // Sample a particle randomly from list
   size_t i_site = sites_.size() * prn(seed);
-  return sites_[i_site];
+  SourceSite site = sites_[i_site];
+
+  // Surface source files store unsigned surface IDs. If the ID refers to a CSG
+  // surface containing the source site, determine the signed half-space from
+  // the particle direction. Otherwise, ignore the surface ID and allow the
+  // normal cell search to locate the particle.
+  if (site.surf_id != SURFACE_NONE) {
+    auto it = model::surface_map.find(std::abs(site.surf_id));
+    if (it != model::surface_map.end()) {
+      const auto& surf = *model::surfaces[it->second];
+      if (surf.geom_type() == GeometryType::CSG &&
+          std::abs(surf.evaluate(site.r)) < FP_COINCIDENT) {
+        int surf_id = std::abs(site.surf_id);
+        site.surf_id =
+          (site.u.dot(surf.normal(site.r)) > 0.0) ? surf_id : -surf_id;
+        return site;
+      }
+    }
+    site.surf_id = SURFACE_NONE;
+  }
+
+  return site;
 }
 
 //==============================================================================

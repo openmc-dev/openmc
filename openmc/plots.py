@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from numbers import Integral, Real
 from pathlib import Path
@@ -14,6 +15,7 @@ from openmc.checkvalue import PathLike
 
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
+from .utility_funcs import set_xml_input_path
 
 _BASES = {'xy', 'xz', 'yz'}
 
@@ -355,7 +357,7 @@ def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
     return output
 
 
-def id_map_to_rgb(
+def _id_map_to_rgb(
     id_map: np.ndarray,
     color_by: str = 'cell',
     colors: dict | None = None,
@@ -714,7 +716,7 @@ class SlicePlot(PlotBase):
     (255, 255, 255) would be white, or by a string indicating a
     valid `SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------
@@ -1138,7 +1140,7 @@ class VoxelPlot(PlotBase):
     (255, 255, 255) would be white, or by a string indicating a
     valid `SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
 
-    .. versionadded:: 0.15.1
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------
@@ -1380,7 +1382,7 @@ class VoxelPlot(PlotBase):
 def Plot(plot_id=None, name=''):
     """Legacy Plot class for backward compatibility.
 
-    .. deprecated:: 0.15.4
+    .. deprecated:: 0.16.0
         Use :class:`SlicePlot` for 2D slice plots or :class:`VoxelPlot` for 3D voxel plots.
 
     """
@@ -2190,7 +2192,7 @@ class Plots(cv.CheckedList):
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem) -> Plots:
         """Generate plots collection from XML file
 
         Parameters
@@ -2224,7 +2226,7 @@ class Plots(cv.CheckedList):
         return plots
 
     @classmethod
-    def from_xml(cls, path='plots.xml'):
+    def from_xml(cls, path: PathLike = 'plots.xml') -> Plots:
         """Generate plots collection from XML file
 
         Parameters
@@ -2238,7 +2240,8 @@ class Plots(cv.CheckedList):
             Plots collection
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
-        return cls.from_xml_element(root)
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
+            return cls.from_xml_element(root)

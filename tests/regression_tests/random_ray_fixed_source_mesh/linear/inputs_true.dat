@@ -227,6 +227,7 @@
         </mesh>
       </source_region_meshes>
       <source_shape>linear</source_shape>
+      <volume_estimator>hybrid</volume_estimator>
     </random_ray>
     <mesh id="1">
       <dimension>24 24 24</dimension>

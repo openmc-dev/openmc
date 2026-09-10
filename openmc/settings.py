@@ -15,7 +15,7 @@ from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
-from .utility_funcs import input_path
+from .utility_funcs import input_path, set_xml_input_path
 from .volume import VolumeCalculation
 from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
 
@@ -202,8 +202,11 @@ class Settings:
             specified by a :class:`openmc.SourceBase` object.
         :volume_estimator:
             Choice of volume estimator for the random ray solver. Options are
-            'naive', 'simulation_averaged', or 'hybrid'.
-            The default is 'hybrid'.
+            'naive', 'simulation_averaged', 'hybrid', 'adaptive',
+            'strict_adaptive', or 'auto'. The default is 'auto', which
+            selects 'adaptive' for standard solves and 'strict_adaptive' for
+            solves whose results feed variance reduction (weight window
+            generation and adjoint workflows).
         :source_shape:
             Assumed shape of the source distribution within each source region.
             Options are 'flat' (default), 'linear', or 'linear_xy'.
@@ -268,7 +271,7 @@ class Settings:
         enabled automatically for fixed-source simulations with weight
         windows active, and disabled otherwise.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     source_rejection_fraction : float
@@ -294,6 +297,9 @@ class Settings:
         Options for reading surface source points. Acceptable keys are:
 
         :path: Path to surface source file (str).
+
+        .. deprecated:: 0.17.0
+            Use :class:`openmc.FileSource` as a source distribution instead.
     surf_source_write : dict
         Options for writing surface source points. Acceptable keys are:
 
@@ -885,6 +891,13 @@ class Settings:
 
     @surf_source_read.setter
     def surf_source_read(self, ssr: dict):
+        warnings.warn(
+            "The surf_source_read attribute has been deprecated. Use a "
+            "FileSource as a source distribution instead, i.e., "
+            "settings.source = openmc.FileSource('surface_source.h5'), which "
+            "additionally supports a source strength and source constraints.",
+            FutureWarning, stacklevel=2
+        )
         cv.check_type('surface source reading options', ssr, Mapping)
         for key, value in ssr.items():
             cv.check_value('surface source reading key', key,
@@ -1416,7 +1429,8 @@ class Settings:
             elif key == 'volume_estimator':
                 cv.check_value('volume estimator', value,
                                ('naive', 'simulation_averaged',
-                                'hybrid'))
+                                'hybrid', 'adaptive', 'strict_adaptive',
+                                'auto'))
             elif key == 'source_shape':
                 cv.check_value('source shape', value,
                                ('flat', 'linear', 'linear_xy'))
@@ -2775,8 +2789,9 @@ class Settings:
             Settings object
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
-        meshes = _read_meshes(root)
-        return cls.from_xml_element(root, meshes)
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
+            meshes = _read_meshes(root)
+            return cls.from_xml_element(root, meshes)

@@ -535,7 +535,7 @@ private:
   bool write_track_ {false};
 
   uint64_t seeds_[N_STREAMS];
-  int stream_;
+  int stream_ {STREAM_TRACKING};
 
   vector<SourceSite> local_secondary_bank_;
 
@@ -573,6 +573,11 @@ private:
   double ww_factor_ {0.0};
 
   int64_t n_progeny_ {0};
+
+  //! Flag to indicate whether or not delta tracking is active.
+  bool delta_tracking_ {false};
+  //! Most recent value of the majorant cross section.
+  double majorant_ {0.0};
 
 public:
   //----------------------------------------------------------------------------
@@ -765,6 +770,14 @@ public:
 
   // Number of progeny produced by this particle
   int64_t& n_progeny() { return n_progeny_; }
+
+  //! Gets whether the particle is being tracked with delta tracking or not.
+  bool& delta_tracking() { return delta_tracking_; }
+  const bool& delta_tracking() const { return delta_tracking_; }
+
+  //! Gets the majorant cross section.
+  double& majorant() { return majorant_; }
+  const double& majorant() const { return majorant_; }
 
   //! Gets the pointer to the particle's current PRN seed
   uint64_t* current_seed() { return seeds_ + stream_; }

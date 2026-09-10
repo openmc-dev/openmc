@@ -270,6 +270,34 @@ void get_temperatures(
 
 //==============================================================================
 
+void detect_boundary_surfaces()
+{
+  for (int i = 0; i < model::surfaces.size(); i++) {
+    // if the surface has a non-transmission boundary condition,
+    // add it to the list of surfaces to track during delta tracking
+    const auto& s = model::surfaces[i];
+    if (s->bc_) {
+      // A bug in MOAB causes ray_fire to fail on surface primatives in
+      // DAGSurface. This prevents us from tracking the distance to the closest
+      // boundary for DAGMC geometry, and so we need to avoid applying BCs with
+      // DAGMC. This doesn't happen in surface tracking as ray_fire is called on
+      // a volume primative through DAGCell.
+      if (settings::delta_tracking && s->geom_type() == GeometryType::DAG) {
+        fatal_error(
+          "At present, the application of boundary conditions to "
+          "DAGMC surfaces is not supported when running with delta "
+          "tracking. If you wish to use DAGMC models with delta "
+          "tracking, please remove all boundary conditions from the "
+          "DAGMC universe (including the graveyard) and instead apply "
+          "them with CSG cells filled with the DAGMC universe.");
+      }
+      model::boundary_surfaces.push_back(i);
+    }
+  }
+}
+
+//==============================================================================
+
 void finalize_geometry()
 {
   // Perform some final operations to set up the geometry
@@ -279,6 +307,10 @@ void finalize_geometry()
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();
+
+  // Find all boundary surfaces. Used in delta tracking to trace through the
+  // geometry.
+  detect_boundary_surfaces();
 
   // Determine number of nested coordinate levels in the geometry
   model::n_coord_levels = maximum_levels(model::root_universe);

@@ -28,6 +28,10 @@ The current version of the statepoint file format is 18.2.
              'continuous-energy' or 'multi-group'.
            - **run_mode** (*char[]*) -- Run mode used, either 'eigenvalue' or
              'fixed source'.
+           - **photon_transport** (*bool*) -- Whether photon transport was enabled
+             or not.
+           - **delta_tracking** (*bool*) -- Whether delta tracking was enabled
+             or not.
            - **n_particles** (*int8_t*) -- Number of particles used per generation.
            - **n_batches** (*int*) -- Number of batches to simulate.
            - **current_batch** (*int*) -- The number of batches already simulated.
@@ -178,6 +182,8 @@ All values are given in seconds and are measured on the master process.
              allocating arrays, etc.
            - **reading cross sections** (*double*) -- Time spent loading cross
              section libraries (this is a subset of initialization).
+           - **build majorant** (*double*) -- Time spent constructing the majorant
+             cross sections. This is only saved if running with delta tracking.
            - **simulation** (*double*) -- Time spent between initialization and
              finalization.
            - **transport** (*double*) -- Time spent transporting particles.

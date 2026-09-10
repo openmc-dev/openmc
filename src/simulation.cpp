@@ -9,6 +9,7 @@
 #include "openmc/event.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
+#include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
@@ -86,6 +87,11 @@ int openmc_simulation_init()
   // Initialize nuclear data (energy limits, log grid)
   if (settings::run_CE) {
     initialize_data();
+  }
+
+  // Create the majorant cross sections for delta tracking.
+  if (settings::delta_tracking) {
+    create_majorants();
   }
 
   // Determine how much work each process should do
@@ -244,6 +250,9 @@ int openmc_simulation_finalize()
   }
   if (settings::check_overlaps)
     print_overlap_check();
+
+  // Clear majorants as they could change if OpenMC is run again.
+  reset_majorants();
 
   // Reset flags
   simulation::initialized = false;
@@ -633,8 +642,13 @@ void initialize_generation()
       ufs_count_sites();
 
     // Store current value of tracklength k
-    simulation::keff_generation = simulation::global_tallies(
-      GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+    if (settings::delta_tracking) {
+      simulation::keff_generation = simulation::global_tallies(
+        GlobalTally::K_COLLISION, TallyResult::VALUE);
+    } else {
+      simulation::keff_generation = simulation::global_tallies(
+        GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+    }
   }
 }
 
@@ -765,6 +779,12 @@ void initialize_particle_track(
     write_message("Simulating Particle {}", p.id());
   }
 
+  // Compute the majorant and set the delta tracking flag.
+  if (settings::delta_tracking) {
+    p.delta_tracking() = true;
+    p.update_majorant();
+  }
+
   // Add particle's starting weight to count for normalizing tallies later
   if (!is_secondary) {
 #pragma omp atomic
@@ -838,10 +858,13 @@ void initialize_data()
   // Determine minimum/maximum energy for incident neutron/photon data
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};
+  int neutron = ParticleType::neutron().transport_index();
+  int photon = ParticleType::photon().transport_index();
+  int electron = ParticleType::electron().transport_index();
+  int positron = ParticleType::positron().transport_index();
 
   for (const auto& nuc : data::nuclides) {
     if (nuc->grid_.size() >= 1) {
-      int neutron = ParticleType::neutron().transport_index();
       data::energy_min[neutron] =
         std::max(data::energy_min[neutron], nuc->grid_[0].energy.front());
       data::energy_max[neutron] =
@@ -852,7 +875,6 @@ void initialize_data()
   if (settings::photon_transport) {
     for (const auto& elem : data::elements) {
       if (elem->energy_.size() >= 1) {
-        int photon = ParticleType::photon().transport_index();
         int n = elem->energy_.size();
         data::energy_min[photon] =
           std::max(data::energy_min[photon], std::exp(elem->energy_(1)));
@@ -865,9 +887,6 @@ void initialize_data()
       // Determine if minimum/maximum energy for bremsstrahlung is greater/less
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
-        int photon = ParticleType::photon().transport_index();
-        int electron = ParticleType::electron().transport_index();
-        int positron = ParticleType::positron().transport_index();
         int n_e = data::ttb_e_grid.size();
 
         const std::vector<int> charged = {electron, positron};
@@ -891,7 +910,6 @@ void initialize_data()
     // grid has not been allocated
     if (nuc->grid_.size() > 0) {
       double max_E = nuc->grid_[0].energy.back();
-      int neutron = ParticleType::neutron().transport_index();
       if (max_E == data::energy_max[neutron]) {
         write_message(7, "Maximum neutron transport energy: {} eV for {}",
           data::energy_max[neutron], nuc->name_);
@@ -908,7 +926,6 @@ void initialize_data()
   for (auto& nuc : data::nuclides) {
     nuc->init_grid();
   }
-  int neutron = ParticleType::neutron().transport_index();
   simulation::log_spacing =
     std::log(data::energy_max[neutron] / data::energy_min[neutron]) /
     settings::n_log_bins;
@@ -974,6 +991,32 @@ void transport_history_based_single_particle(Particle& p)
   p.event_death();
 }
 
+void transport_delta_history_based_single_particle(Particle& p)
+{
+  while (p.alive()) {
+    p.event_delta_advance();
+
+    if (p.alive() && p.collision_distance() < p.boundary().distance()) {
+      // Collided before hitting an external boundary. Rejection sample the
+      // majorant.
+      p.event_calculate_xs();
+      if (p.kill_invalid_maj()) {
+        break;
+      }
+      if (p.alive() &&
+          (prn(p.current_seed()) < (p.macro_xs().total / p.majorant()))) {
+        p.event_collide();
+      }
+    } else if (p.alive()) {
+      // Crossed an external boundary before colliding.
+      p.event_cross_surface();
+    }
+
+    p.event_check_limit_and_revive();
+  }
+  p.event_death();
+}
+
 void transport_history_based()
 {
 #pragma omp parallel
@@ -982,7 +1025,11 @@ void transport_history_based()
 #pragma omp for schedule(runtime)
     for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       initialize_particle_track(p, i_work, false);
-      transport_history_based_single_particle(p);
+      if (settings::delta_tracking) {
+        transport_delta_history_based_single_particle(p);
+      } else {
+        transport_history_based_single_particle(p);
+      }
     }
   }
 }
@@ -1023,7 +1070,11 @@ void transport_history_based_shared_secondary()
 #pragma omp for schedule(runtime)
     for (int64_t i = 1; i <= simulation::work_per_rank; i++) {
       initialize_particle_track(p, i, false);
-      transport_history_based_single_particle(p);
+      if (settings::delta_tracking) {
+        transport_delta_history_based_single_particle(p);
+      } else {
+        transport_history_based_single_particle(p);
+      }
       for (auto& site : p.local_secondary_bank()) {
         thread_bank.push_back(site);
       }
@@ -1083,7 +1134,11 @@ void transport_history_based_shared_secondary()
         initialize_particle_track(p, i, true);
         SourceSite& site = simulation::shared_secondary_bank_read[i - 1];
         p.event_revive_from_secondary(site);
-        transport_history_based_single_particle(p);
+        if (settings::delta_tracking) {
+          transport_delta_history_based_single_particle(p);
+        } else {
+          transport_history_based_single_particle(p);
+        }
         for (auto& secondary_site : p.local_secondary_bank()) {
           thread_bank.push_back(secondary_site);
         }
@@ -1119,8 +1174,13 @@ void transport_event_based()
       std::min(remaining_work, settings::max_particles_in_flight);
 
     // Initialize all particle histories for this subiteration
-    process_init_events(n_particles, source_offset);
-    process_transport_events();
+    if (settings::delta_tracking) {
+      process_delta_init_events(n_particles, source_offset);
+      process_delta_transport_events();
+    } else {
+      process_init_events(n_particles, source_offset);
+      process_transport_events();
+    }
     process_death_events(n_particles);
 
     // Adjust remaining work and source offset variables
@@ -1154,8 +1214,13 @@ void transport_event_based_shared_secondary()
     int64_t n_particles =
       std::min(remaining_work, settings::max_particles_in_flight);
 
-    process_init_events(n_particles, source_offset);
-    process_transport_events();
+    if (settings::delta_tracking) {
+      process_delta_init_events(n_particles, source_offset);
+      process_delta_transport_events();
+    } else {
+      process_init_events(n_particles, source_offset);
+      process_transport_events();
+    }
     process_death_events(n_particles);
 
     collect_event_secondary_banks(n_particles);
@@ -1217,9 +1282,15 @@ void transport_event_based_shared_secondary()
       int64_t n_particles =
         std::min(sec_remaining, settings::max_particles_in_flight);
 
-      process_init_secondary_events(
-        n_particles, sec_offset, simulation::shared_secondary_bank_read);
-      process_transport_events();
+      if (settings::delta_tracking) {
+        process_delta_init_secondary_events(
+          n_particles, sec_offset, simulation::shared_secondary_bank_read);
+        process_delta_transport_events();
+      } else {
+        process_init_secondary_events(
+          n_particles, sec_offset, simulation::shared_secondary_bank_read);
+        process_transport_events();
+      }
       process_death_events(n_particles);
 
       collect_event_secondary_banks(n_particles);

@@ -493,7 +493,7 @@ void Nuclide::create_derived(
   }
 }
 
-void Nuclide::init_grid()
+void Nuclide::EnergyGrid::init()
 {
   int neutron = ParticleType::neutron().transport_index();
   double E_min = data::energy_min[neutron];
@@ -506,23 +506,27 @@ void Nuclide::init_grid()
   // Create equally log-spaced energy grid
   auto umesh = tensor::linspace(0.0, M * spacing, M + 1);
 
-  for (auto& grid : grid_) {
-    // Resize array for storing grid indices
-    grid.grid_index.resize(M + 1);
+  grid_index.resize(M + 1);
 
-    // Determine corresponding indices in nuclide grid to energies on
-    // equal-logarithmic grid
-    int j = 0;
-    for (int k = 0; k <= M; ++k) {
-      while (std::log(grid.energy[j + 1] / E_min) <= umesh(k)) {
-        // Ensure that for isotopes where maxval(grid.energy) << E_max that
-        // there are no out-of-bounds issues.
-        if (j + 2 == grid.energy.size())
-          break;
-        ++j;
-      }
-      grid.grid_index[k] = j;
+  // Determine corresponding indices in nuclide grid to energies on
+  // equal-logarithmic grid
+  int j = 0;
+  for (int k = 0; k <= M; ++k) {
+    while (std::log(energy[j + 1] / E_min) <= umesh(k)) {
+      // Ensure that for isotopes where maxval(grid.energy) << E_max that
+      // there are no out-of-bounds issues.
+      if (j + 2 == energy.size())
+        break;
+      ++j;
     }
+    grid_index[k] = j;
+  }
+}
+
+void Nuclide::init_grid()
+{
+  for (auto& grid : grid_) {
+    grid.init();
   }
 }
 

@@ -146,16 +146,20 @@ TEST_CASE("General plane bounding box")
     CHECK(bb.min.y == -INFTY);
   }
 
-  SECTION("An almost-aligned plane bounds only the aligned axis")
+  SECTION("An off-axis coefficient above tolerance bounds nothing")
   {
-    // The off-axis coefficient is above PLANE_ALIGNMENT_TOL while the
-    // normalized normal is still within it. Only x may be bounded; a spurious
-    // y bound here would exclude points that lie inside the half-space.
+    // Although the x component of the normalized normal is within
+    // PLANE_ALIGNMENT_TOL of one, the y component is above the tolerance.
     auto p = make_surface<SurfacePlane>(doc, 7, "plane", "1.0 1e-11 0.0 5.0");
-    BoundingBox bb = p->bounding_box(true);
-    CHECK(bb.min.x == Catch::Approx(5.0));
-    CHECK(bb.min.y == -INFTY);
-    CHECK(bb.min.z == -INFTY);
+    for (bool side : {false, true}) {
+      BoundingBox bb = p->bounding_box(side);
+      CHECK(bb.min.x == -INFTY);
+      CHECK(bb.min.y == -INFTY);
+      CHECK(bb.min.z == -INFTY);
+      CHECK(bb.max.x == INFTY);
+      CHECK(bb.max.y == INFTY);
+      CHECK(bb.max.z == INFTY);
+    }
   }
 
   SECTION("A degenerate plane bounds nothing")

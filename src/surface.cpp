@@ -364,9 +364,21 @@ BoundingBox SurfacePlane::bounding_box(bool pos_side) const
   if (norm == 0.0)
     return {};
 
+  const array<double, 3> normal {
+    coeffs[0] / norm, coeffs[1] / norm, coeffs[2] / norm};
   int axis = -1;
   for (int i = 0; i < 3; ++i) {
-    if (std::abs(std::abs(coeffs[i] / norm) - 1.0) <= PLANE_ALIGNMENT_TOL) {
+    if (std::abs(std::abs(normal[i]) - 1.0) > PLANE_ALIGNMENT_TOL)
+      continue;
+
+    bool aligned = true;
+    for (int j = 0; j < 3; ++j) {
+      if (j != i && std::abs(normal[j]) > PLANE_ALIGNMENT_TOL) {
+        aligned = false;
+        break;
+      }
+    }
+    if (aligned) {
       axis = i;
       break;
     }

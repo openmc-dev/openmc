@@ -563,9 +563,10 @@ class PlaneMixin:
         ur = np.array([np.inf, np.inf, np.inf])
         # A plane only bounds a half-space when its normal is parallel to a
         # coordinate axis, in which case it bounds it along that axis alone.
-        aligned = np.isclose(np.abs(nhat), 1., rtol=0., atol=self._atol)
-        if aligned.any():
-            axis = int(np.argmax(aligned))
+        axis = int(np.argmax(np.abs(nhat)))
+        on_axis = np.isclose(abs(nhat[axis]), 1., rtol=0., atol=self._atol)
+        off_axis = np.delete(nhat, axis)
+        if on_axis and np.all(np.isclose(off_axis, 0., rtol=0., atol=self._atol)):
             coeffs = self._get_base_coeffs()
             intercept = coeffs[3]/coeffs[axis]
             if (side == '+') == (coeffs[axis] > 0):

@@ -95,16 +95,12 @@ def test_plane_bounding_box():
     assert (+s).bounding_box[1] == pytest.approx((np.inf, -3., np.inf))
     assert (-s).bounding_box[0] == pytest.approx((-np.inf, -3., -np.inf))
 
-    # An off-axis coefficient that is small enough to leave the plane axis
-    # aligned must not bound the off-axis directions, or the box would exclude
-    # points that lie inside the half-space it describes
+    # An off-axis normalized coefficient above the alignment tolerance makes
+    # the half-space unbounded along every axis
     s = openmc.Plane(1., 1.e-11, 0., 5.)
-    ll, ur = (+s).bounding_box
-    assert ll == pytest.approx((5., -np.inf, -np.inf))
-    assert np.all(np.isinf(ur))
-    p = (5., 1.e6, 0.)
+    assert_infinite_bb(s)
+    p = (4., 2.e11, 0.)
     assert p in +s
-    assert np.all(ll <= p) and np.all(p <= ur)
 
     # A plane tilted well beyond the alignment tolerance bounds nothing
     assert_infinite_bb(openmc.Plane(1., 1.e-5, 0., 5.))

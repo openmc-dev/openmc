@@ -1329,6 +1329,13 @@ attributes/sub-elements:
 
     *Default*: ``surface_source.h5`` in current working directory
 
+.. deprecated::
+  The ``<surf_source_read>`` element is deprecated and will be removed in a
+  future release. A deprecation warning is emitted when it is present. Use a
+  file source instead, e.g. ``<source type="file" file="surface_source.h5"/>``,
+  which is equivalent but additionally supports a source strength and source
+  constraints.
+
 -------------------------------
 ``<surf_source_write>`` Element
 -------------------------------

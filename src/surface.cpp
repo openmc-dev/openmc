@@ -359,21 +359,19 @@ BoundingBox SurfacePlane::bounding_box(bool pos_side) const
   // along every axis. This mirrors PlaneMixin.bounding_box on the Python side,
   // so that a plane whose off-axis coefficients are rotation-matrix roundoff
   // (e.g. B = 1 with A = C = 6.1e-17) yields the same box through both APIs.
-  const array<double, 3> coeffs {A_, B_, C_};
-  const double norm = std::sqrt(A_ * A_ + B_ * B_ + C_ * C_);
+  const Direction n = normal({});
+  const double norm = n.norm();
   if (norm == 0.0)
     return {};
 
-  const array<double, 3> normal {
-    coeffs[0] / norm, coeffs[1] / norm, coeffs[2] / norm};
   int axis = -1;
   for (int i = 0; i < 3; ++i) {
-    if (std::abs(std::abs(normal[i]) - 1.0) > PLANE_ALIGNMENT_TOL)
+    if (std::abs(std::abs(n[i] / norm) - 1.0) > PLANE_ALIGNMENT_TOL)
       continue;
 
     bool aligned = true;
     for (int j = 0; j < 3; ++j) {
-      if (j != i && std::abs(normal[j]) > PLANE_ALIGNMENT_TOL) {
+      if (j != i && std::abs(n[j] / norm) > PLANE_ALIGNMENT_TOL) {
         aligned = false;
         break;
       }
@@ -389,8 +387,8 @@ BoundingBox SurfacePlane::bounding_box(bool pos_side) const
   // The half-space is bounded below when the outward normal points along the
   // positive axis direction and we are on the positive side, or vice versa.
   BoundingBox bbox;
-  const double intercept = D_ / coeffs[axis];
-  if (pos_side == (coeffs[axis] > 0.0)) {
+  const double intercept = D_ / n[axis];
+  if (pos_side == (n[axis] > 0.0)) {
     bbox.min[axis] = intercept;
   } else {
     bbox.max[axis] = intercept;

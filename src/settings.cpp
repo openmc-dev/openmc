@@ -668,7 +668,7 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "surf_source_read")) {
     if (mpi::master)
       warning("The <surf_source_read> element has been deprecated. Use a file "
-              "source instead, e.g. <source type=\"file\" "
+              "source instead, i.e., <source type=\"file\" "
               "file=\"surface_source.h5\"/>, which additionally supports a "
               "source strength and source constraints.");
 

@@ -893,7 +893,7 @@ class Settings:
     def surf_source_read(self, ssr: dict):
         warnings.warn(
             "The surf_source_read attribute has been deprecated. Use a "
-            "FileSource as a source distribution instead, e.g. "
+            "FileSource as a source distribution instead, i.e., "
             "settings.source = openmc.FileSource('surface_source.h5'), which "
             "additionally supports a source strength and source constraints.",
             FutureWarning, stacklevel=2

@@ -180,8 +180,19 @@ Fields
    :nosignatures:
    :template: myclassinherit.rst
 
-   openmc.ScalarField
+   openmc.FieldBase
+   openmc.VelocityField
    openmc.TemperatureField
+
+DNP drift
+---------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.DNPDrift
 
 Geometry Plotting
 -----------------

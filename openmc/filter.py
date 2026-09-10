@@ -86,7 +86,7 @@ class FilterMeta(ABCMeta):
 
 
 def _repeat_and_tile(bins, repeat_factor, data_size):
-    filter_bins = np.repeat(bins, repeat_factor)
+    filter_bins = np.repeat(bins, repeat_factor, axis=0)
     tile_factor = data_size // len(filter_bins)
     return np.tile(filter_bins, tile_factor)
 
@@ -979,22 +979,13 @@ class MeshFilter(Filter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-        # Initialize dictionary to build Pandas Multi-index column
-        filter_dict = {}
-
         # Append mesh ID as outermost index of multi-index
         mesh_key = f'mesh {self.mesh.id}'
 
-        # Determine index base (0-based for unstructured, 1-based otherwise)
-        idx_start = 0 if isinstance(self.mesh, openmc.UnstructuredMesh) else 1
-
-        # Generate a multi-index sub-column for each axis
-        for label, dim_size in zip(self.mesh.axis_labels, self.mesh.dimension):
-            filter_dict[mesh_key, label] = _repeat_and_tile(
-                np.arange(idx_start, idx_start + dim_size), stride, data_size)
-            stride *= dim_size
-
-        return pd.DataFrame(filter_dict)
+        # Take the element indices from the mesh itself.
+        columns = [(mesh_key, label) for label in self.mesh.axis_labels]
+        indices = _repeat_and_tile(list(self.mesh.indices), stride, data_size)
+        return pd.DataFrame(indices, columns=columns)
 
     def to_xml_element(self):
         """Return XML Element representing the Filter.
@@ -1318,36 +1309,23 @@ class MeshSurfaceFilter(MeshFilter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
-        # Initialize dictionary to build Pandas Multi-index column
-        filter_dict = {}
-
         # Append mesh ID as outermost index of multi-index
         mesh_key = f'mesh {self.mesh.id}'
 
-        # Number of surface-crossing bins per mesh element
-        dims = self.mesh.dimension
-        n_surfs = 4 * len(dims)
-
         # Surface-crossing names derived from the mesh's axis labels
         current_names = _mesh_current_names(self.mesh)
+        n_surfs = len(current_names)
 
-        # Generate a multi-index sub-column for each axis, using the mesh's own
-        # axis labels so curvilinear meshes are labeled correctly.
-        axis_stride = n_surfs * stride
-        for label, dim_size in zip(self.mesh.axis_labels, dims):
-            filter_dict[mesh_key, label] = _repeat_and_tile(
-                np.arange(1, dim_size + 1), axis_stride, data_size)
-            axis_stride *= dim_size
-
-        # Generate multi-index sub-column for surface
+        # Take the element indices from the mesh itself, repeated once per
+        # surface-crossing bin, then append the surface column
+        columns = [(mesh_key, label) for label in self.mesh.axis_labels]
+        indices = _repeat_and_tile(
+            list(self.mesh.indices), stride * n_surfs, data_size)
+        filter_dict = dict(zip(columns, indices.T))
         filter_dict[mesh_key, 'surf'] = _repeat_and_tile(
-            current_names[:n_surfs], stride, data_size)
+            current_names, stride, data_size)
 
-        # Initialize a Pandas DataFrame from the mesh dictionary
-        return pd.concat([df, pd.DataFrame(filter_dict)])
+        return pd.DataFrame(filter_dict)
 
 
 class CollisionFilter(Filter):

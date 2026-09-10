@@ -157,9 +157,9 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
     // the transport sweep evaluated the linear source against (the value
     // held here before this batch is folded in). The flux update uses it to
     // add back the source as actually sampled by this batch's tracks (see
-    // set_flux_to_flux_plus_source). Regions with no prior accumulated
-    // volume used per-segment midpoints in place of a centroid, for which
-    // the batch offset is identically zero.
+    // flux_additive_term). Regions with no prior accumulated volume used
+    // per-segment midpoints in place of a centroid, for which the batch
+    // offset is identically zero.
     if (source_regions_.volume_t(sr) > 0.0 &&
         source_regions_.volume(sr) > 0.0) {
       source_regions_.centroid_offset(sr) =
@@ -203,20 +203,20 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 // itself and ignite self-sustaining negativity.
 //
 // A region updated with the simulation-averaged volume keeps the original
-// form with no added term. The omitted term cannot bias the accumulated
-// result, since the accumulated centroid is built from the same batch
-// centroids and the deviations sum to exactly zero. The original form
-// samples the residual between the angular flux and the linear source
-// model, whose noise is smaller than the direct form's wherever the model
-// tracks the field. Each volume treatment is thus paired with the update
-// form that is exact or optimal for it. Void regions have no gradient term
-// and take the flat source treatment.
+// form with no added term. Each batch's centroid scatters about the
+// accumulated centroid it feeds, so the omitted term has no persistent
+// sign and its contribution to the accumulated flux shrinks with the
+// number of batches, while the original form samples the residual between
+// the angular flux and the linear source model, whose noise is smaller
+// than the direct form's wherever the model tracks the field. Each volume
+// treatment is thus paired with the update form that is exact or better
+// for it. Void regions have no gradient term and take the flat source
+// treatment.
 double LinearSourceDomain::flux_additive_term(
-  int64_t sr, int g, double volume) const
+  int64_t sr, int g, bool batch_volume) const
 {
-  double term = FlatSourceDomain::flux_additive_term(sr, g, volume);
-  if (source_regions_.material(sr) != MATERIAL_VOID &&
-      volume == source_regions_.volume_naive(sr)) {
+  double term = FlatSourceDomain::flux_additive_term(sr, g, batch_volume);
+  if (batch_volume && source_regions_.material(sr) != MATERIAL_VOID) {
     term += source_regions_.source_gradients(sr, g).dot(
       source_regions_.centroid_offset(sr));
   }
@@ -224,14 +224,15 @@ double LinearSourceDomain::flux_additive_term(
 }
 
 void LinearSourceDomain::set_flux_to_flux_plus_source(
-  int64_t sr, double volume, int g)
+  int64_t sr, double volume, bool batch_volume, int g)
 {
   int material = source_regions_.material(sr);
   if (material == MATERIAL_VOID) {
-    FlatSourceDomain::set_flux_to_flux_plus_source(sr, volume, g);
+    FlatSourceDomain::set_flux_to_flux_plus_source(sr, volume, batch_volume, g);
   } else {
     source_regions_.scalar_flux_new(sr, g) /= volume;
-    source_regions_.scalar_flux_new(sr, g) += flux_additive_term(sr, g, volume);
+    source_regions_.scalar_flux_new(sr, g) +=
+      flux_additive_term(sr, g, batch_volume);
   }
   // If a source region is small, then the moments are likely noisy, so we zero
   // them. This is reasonable, given that small regions can get by with a flat

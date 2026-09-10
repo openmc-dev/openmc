@@ -32,9 +32,11 @@ public:
 protected:
   //----------------------------------------------------------------------------
   // Methods
-  void set_flux_to_flux_plus_source(int64_t sr, double volume, int g) override;
+  void set_flux_to_flux_plus_source(
+    int64_t sr, double volume, bool batch_volume, int g) override;
   void set_flux_to_old_flux(int64_t sr, int g) override;
-  double flux_additive_term(int64_t sr, int g, double volume) const override;
+  double flux_additive_term(
+    int64_t sr, int g, bool batch_volume) const override;
 
 }; // class LinearSourceDomain
 

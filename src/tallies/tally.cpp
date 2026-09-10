@@ -7,6 +7,7 @@
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/ifp.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -211,7 +212,7 @@ Tally::Tally(pugi::xml_node node)
 
   if (wants_lifetime || wants_delayed_group) {
     // Validate once, when the first IFP tally is encountered
-    if (!settings::ifp_on()) {
+    if (!ifp_on()) {
       if (settings::run_mode == RunMode::FIXED_SOURCE) {
         fatal_error(
           "Iterated Fission Probability can only be used in an eigenvalue "
@@ -234,8 +235,10 @@ Tally::Tally(pugi::xml_node node)
 
     // Only enable in eigenvalue mode; fixed source has already errored above
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      settings::ifp_lifetime_on |= wants_lifetime;
-      settings::ifp_delayed_group_on |= wants_delayed_group;
+      if (wants_lifetime)
+        simulation::ifp_lifetime.enable();
+      if (wants_delayed_group)
+        simulation::ifp_delayed_group.enable();
     }
   }
 
@@ -691,13 +694,21 @@ void Tally::set_scores(const vector<std::string>& scores)
     }
   }
 
-  // Make sure all scores are compatible with multigroup mode.
+  // Make sure all scores are compatible with multigroup mode. IFP scores have
+  // no case in score_general_mg, so without an explicit check they reach its
+  // default block and tally zero with no indication that they were not scored.
   if (!settings::run_CE) {
-    for (auto sc : scores_)
-      if (sc > 0)
+    for (auto sc : scores_) {
+      if (sc > 0) {
         fatal_error("Cannot tally " + reaction_name(sc) +
                     " reaction rate "
                     "in multi-group mode");
+      } else if (sc == SCORE_IFP_TIME_NUM || sc == SCORE_IFP_BETA_NUM ||
+                 sc == SCORE_IFP_DENOM) {
+        fatal_error(
+          "Cannot tally " + reaction_name(sc) + " in multi-group mode");
+      }
+    }
   }
 
   // Make sure mesh surface tallies contain only current score.
@@ -1162,6 +1173,22 @@ void add_to_time_grid(vector<double> grid)
   model::time_grid.swap(merged);
 }
 
+//! Check that a tally carrying an IFP score can estimate it.
+//
+//! IFP scores are only implemented in score_general_ce_nonanalog, so they need
+//! a collision estimator. set_scores selects one, but that choice is not final
+//! while scores are being processed: other scores in the same tally can change
+//! it, and an explicit estimator element is read afterwards. Without this check
+//! an analog estimator reaches score_general_ce_analog, which has no case for
+//! these scores, and the tally silently reports zero.
+void validate_ifp_tally(const Tally& tally)
+{
+  if (tally.estimator_ != TallyEstimator::COLLISION)
+    fatal_error(fmt::format("IFP scores can only be tallied with a collision "
+                            "estimator, but tally {} does not use one.",
+      tally.id()));
+}
+
 void setup_active_tallies()
 {
   model::active_tallies.clear();
@@ -1179,6 +1206,13 @@ void setup_active_tallies()
 
     if (tally.active_) {
       model::active_tallies.push_back(i);
+      for (auto score : tally.scores_) {
+        if (score == SCORE_IFP_TIME_NUM || score == SCORE_IFP_BETA_NUM ||
+            score == SCORE_IFP_DENOM) {
+          validate_ifp_tally(tally);
+          break;
+        }
+      }
       bool mesh_present = (tally.get_filter<MeshFilter>() ||
                            tally.get_filter<MeshMaterialFilter>());
       auto time_filter = tally.get_filter<TimeFilter>();

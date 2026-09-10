@@ -10,22 +10,6 @@
 
 namespace openmc {
 
-//! Resize IFP vectors
-//!
-//! \param[in,out] delayed_groups List of delayed group numbers
-//! \param[in,out] lifetimes List of lifetimes
-//! \param[in] n  Dimension to resize vectors
-template<typename T, typename U>
-void resize_ifp_data(vector<T>& delayed_groups, vector<U>& lifetimes, int64_t n)
-{
-  if (settings::ifp_delayed_group_on) {
-    delayed_groups.resize(n);
-  }
-  if (settings::ifp_lifetime_on) {
-    lifetimes.resize(n);
-  }
-}
-
 //! Update a list of values by adding a new value if the size
 //! of the list can accomodate the new value or by shifting all
 //! values to the left (removing the first value of the list
@@ -56,12 +40,129 @@ vector<T> _ifp(const T& value, const vector<T>& data)
   return updated;
 }
 
+//==============================================================================
+//! One stream of Iterated Fission Probability history data.
+//
+//! IFP tracks two quantities with identical bookkeeping: the delayed group
+//! number of the ancestor neutron (an int) and its lifetime (a double). Each is
+//! a per-particle list of the last ifp_n_generation values, held in a source
+//! bank and a fission bank, and each is maintained only if a tally asked for
+//! it.
+//!
+//! Bundling the flag with the two banks it governs means every operation is a
+//! no-op when the stream is off, so callers do not branch, and the banks cannot
+//! be resized independently of the flag.
+//==============================================================================
+
+template<typename T>
+class IFPStream {
+public:
+  //! Whether this stream is being maintained
+  bool enabled() const { return enabled_; }
+
+  //! Begin maintaining this stream, when a tally requests a dependent score
+  void enable() { enabled_ = true; }
+
+  //! Clear the stream, including the flag. Derived from the tallies present in
+  //! the model, so it must not persist into the next model in this process.
+  void reset()
+  {
+    enabled_ = false;
+    source_bank_.clear();
+    fission_bank_.clear();
+  }
+
+  vector<vector<T>>& source_bank() { return source_bank_; }
+  const vector<vector<T>>& source_bank() const { return source_bank_; }
+  vector<vector<T>>& fission_bank() { return fission_bank_; }
+
+  //! Resize both banks
+  void resize_banks(int64_t n_source, int64_t n_fission)
+  {
+    if (!enabled_)
+      return;
+    source_bank_.resize(n_source);
+    fission_bank_.resize(n_fission);
+  }
+
+  //! Append a value to the ancestor history of a new fission site
+  void store(int64_t i_source, int64_t i_fission, const T& value)
+  {
+    if (!enabled_)
+      return;
+    fission_bank_[i_fission] = _ifp(value, source_bank_[i_source]);
+  }
+
+  //! Resize a caller-owned buffer for this stream, if it is enabled.
+  //
+  //! Templated on the container because callers pass both the per-particle
+  //! banks (`vector<vector<T>>`) and the flat MPI serialization buffers
+  //! (`vector<T>`).
+  template<typename V>
+  void resize_temp(V& temp, int64_t n) const
+  {
+    if (enabled_)
+      temp.resize(n);
+  }
+
+  //! Copy one entry of the fission bank into a caller-owned buffer
+  //
+  //! \param[in] i_fission Index in this stream's fission bank
+  //! \param[in] i_temp Index in the destination buffer
+  //! \param[out] out Destination buffer
+  void copy_from_fission(
+    int64_t i_fission, int64_t i_temp, vector<vector<T>>& out) const
+  {
+    if (enabled_)
+      out[i_temp] = fission_bank_[i_fission];
+  }
+
+  //! Copy a temporary buffer into the fission bank
+  void copy_temp_to_fission(const vector<T>* temp, size_t n)
+  {
+    if (enabled_)
+      std::copy(temp, temp + n, fission_bank_.data());
+  }
+
+  //! Copy a run of a temporary buffer into the source bank
+  void copy_temp_to_source(
+    int64_t i_temp, int64_t n, int64_t i_source, const vector<vector<T>>& temp)
+  {
+    if (enabled_)
+      std::copy(&temp[i_temp], &temp[i_temp + n], &source_bank_[i_source]);
+  }
+
+  //! Copy a whole temporary buffer into the source bank
+  void copy_all_temp_to_source(const vector<vector<T>>& temp, int64_t n)
+  {
+    if (enabled_)
+      std::copy(temp.data(), temp.data() + n, source_bank_.begin());
+  }
+
+private:
+  bool enabled_ {false};
+  vector<vector<T>> source_bank_;
+  vector<vector<T>> fission_bank_;
+};
+
+namespace simulation {
+
+extern IFPStream<int> ifp_delayed_group; //!< Delayed group numbers
+extern IFPStream<double> ifp_lifetime;   //!< Neutron lifetimes
+
+} // namespace simulation
+
+//! Whether Iterated Fission Probability is in use at all
+inline bool ifp_on()
+{
+  return simulation::ifp_delayed_group.enabled() ||
+         simulation::ifp_lifetime.enabled();
+}
+
 //! \brief Iterated Fission Probability (IFP) method.
 //!
 //! Add the IFP information in the IFP banks using the same index
 //! as the one used to append the fission site to the fission bank.
-//! The information stored are the delayed group number and lifetime
-//! of the neutron that created the fission event.
 //! Multithreading protection is guaranteed by the index returned by the
 //! thread_safe_append call in physics.cpp.
 //!
@@ -72,14 +173,8 @@ void ifp(const Particle& p, int64_t idx);
 //! Resize the IFP banks used in the simulation
 void resize_simulation_ifp_banks();
 
-//! Retrieve IFP data from the IFP fission banks.
-//!
-//! \param[in] i_bank Index in the fission banks
-//! \param[in] i_temp Index in the temporary bank vectors
-//! \param[in,out] delayed_groups Delayed group numbers
-//! \param[in,out] lifetimes Lifetimes lists
-void copy_ifp_data_from_fission_banks(int64_t i_bank, int64_t i_temp,
-  vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes);
+//! Clear both streams, including their flags
+void reset_ifp_streams();
 
 #ifdef OPENMC_MPI
 
@@ -89,10 +184,10 @@ struct DeserializationInfo {
   int64_t n;           //!< number of sites sent
 };
 
-//! Broadcast the number of generation determined by the size of the first
-//! element on the first processor.
+//! Broadcast the number of generations, determined from the first element on
+//! the first processor of whichever stream is enabled.
 //!
-//! \param[in] n_generation Number of generations
+//! \param[in,out] n_generation Number of generations
 //! \param[in] delayed_groups List of delayed group numbers lists
 //! \param[in] lifetimes List of lifetimes lists
 void broadcast_ifp_n_generation(int& n_generation,
@@ -150,28 +245,20 @@ void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
   deserialization.push_back(info);
 }
 
-//! Copy partial IFP data from local lists to source banks.
-//!
-//! \param[in] idx Index of the first site
-//! \param[in] n Number of sites to copy
-//! \param[in] i_bank Index in the IFP source banks
-//! \param[in] delayed_groups List of delayed group numbers lists
-//! \param[in] lifetimes List of lifetimes lists
-void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
-  const vector<vector<int>>& delayed_groups,
-  const vector<vector<double>>& lifetimes);
-
-//! Deserialize IFP information received using MPI and store it in
-//! the IFP source banks.
+//! Deserialize IFP information received using MPI into a stream's source bank.
 //!
 //! \param[in] n_generation Number of generations
 //! \param[in] data data to deserialize
-//! \param[in] bank bank to store data
-//! \param[out] deserialization Information to deserialize the received data
+//! \param[in,out] stream Stream whose source bank receives the data
+//! \param[in] deserialization Information to deserialize the received data
 template<typename T>
 void deserialize_ifp_info(int n_generation, const vector<T>& data,
-  vector<vector<T>>& bank, const vector<DeserializationInfo>& deserialization)
+  IFPStream<T>& stream, const vector<DeserializationInfo>& deserialization)
 {
+  if (!stream.enabled())
+    return;
+
+  auto& bank = stream.source_bank();
   for (auto info : deserialization) {
     int64_t index_local = info.index_local;
     int64_t n = info.n;
@@ -185,28 +272,6 @@ void deserialize_ifp_info(int n_generation, const vector<T>& data,
 }
 
 #endif
-
-//! Copy IFP temporary vectors to source banks.
-//!
-//! \param[in] delayed_groups List of delayed group numbers lists
-//! \param[in] lifetimes List of lifetimes lists
-void copy_complete_ifp_data_to_source_banks(
-  const vector<vector<int>>& delayed_groups,
-  const vector<vector<double>>& lifetimes);
-
-//! Allocate temporary vectors for IFP data.
-//!
-//! \param[in,out] delayed_groups List of delayed group numbers lists
-//! \param[in,out] lifetimes List of delayed group numbers lists
-void allocate_temporary_vector_ifp(
-  vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes);
-
-//! Copy local IFP data to IFP fission banks.
-//!
-//! \param[in] delayed_groups_ptr Pointer to delayed group numbers
-//! \param[in] lifetimes_ptr Pointer to lifetimes
-void copy_ifp_data_to_fission_banks(
-  const vector<int>* delayed_groups_ptr, const vector<double>* lifetimes_ptr);
 
 } // namespace openmc
 

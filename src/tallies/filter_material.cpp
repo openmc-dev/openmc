@@ -15,6 +15,10 @@ void MaterialFilter::from_xml(pugi::xml_node node)
   // Get material IDs and convert to indices in the global materials vector
   auto mats = get_node_array<int32_t>(node, "bins");
   for (auto& m : mats) {
+    // If void material skip check
+    if (m == MATERIAL_VOID)
+      continue;
+
     auto search = model::material_map.find(m);
     if (search == model::material_map.end()) {
       throw std::runtime_error {fmt::format(
@@ -33,10 +37,12 @@ void MaterialFilter::set_materials(span<const int32_t> materials)
   materials_.reserve(materials.size());
   map_.clear();
 
+  int32_t size = model::materials.size();
+
   // Update materials and mapping
   for (auto& index : materials) {
-    assert(index >= 0);
-    assert(index < model::materials.size());
+    assert(index >= MATERIAL_VOID);
+    assert(index < size);
     materials_.push_back(index);
     map_[index] = materials_.size() - 1;
   }
@@ -58,14 +64,21 @@ void MaterialFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   vector<int32_t> material_ids;
-  for (auto c : materials_)
-    material_ids.push_back(model::materials[c]->id_);
+  for (auto c : materials_) {
+    auto id = MATERIAL_VOID;
+    if (c != MATERIAL_VOID)
+      id = model::materials[c]->id_;
+    material_ids.push_back(id);
+  }
   write_dataset(filter_group, "bins", material_ids);
 }
 
 std::string MaterialFilter::text_label(int bin) const
 {
-  return fmt::format("Material {}", model::materials[materials_[bin]]->id_);
+  std::string label = "Material Void";
+  if (materials_[bin] != MATERIAL_VOID)
+    label = fmt::format("Material {}", model::materials[materials_[bin]]->id_);
+  return label;
 }
 
 //==============================================================================

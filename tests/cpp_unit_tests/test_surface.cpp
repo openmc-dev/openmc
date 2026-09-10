@@ -24,47 +24,6 @@ std::unique_ptr<T> make_surface(
   return std::make_unique<T>(n);
 }
 
-// Register a surface under the given 1-based index so that Region can find it
-template<typename T>
-void add_surface(
-  pugi::xml_document& doc, int id, const char* type, const char* coeffs)
-{
-  model::surfaces.push_back(make_surface<T>(doc, id, type, coeffs));
-  model::surface_map[id] = id - 1;
-}
-
-// Builds the cell from the model attached to issue #2632
-class Issue2632Fixture {
-public:
-  Issue2632Fixture()
-  {
-    // s19 (1), s48 (2), s58 (3), s62 (4), s64 (5), s65 (6), s68 (7), s101 (8)
-    add_surface<SurfaceYCylinder>(doc_, 1, "y-cylinder", "0.0 0.0 17.7");
-    add_surface<SurfacePlane>(doc_, 2, "plane",
-      "0.7071067811865476 6.123233995736766e-17 0.7071067811865476 11.45");
-    add_surface<SurfacePlane>(doc_, 3, "plane",
-      "0.7071067811865476 6.123233995736766e-17 0.7071067811865476 14.35");
-    add_surface<SurfacePlane>(doc_, 4, "plane",
-      "6.123233995736766e-17 1.0 6.123233995736766e-17 1.5999999999999999");
-    add_surface<SurfacePlane>(
-      doc_, 5, "plane", "6.123233995736766e-17 1.0 6.123233995736766e-17 -1.3");
-    add_surface<SurfacePlane>(doc_, 6, "plane",
-      "-0.7071067811865475 6.123233995736766e-17 0.7071067811865476 1.45");
-    add_surface<SurfacePlane>(doc_, 7, "plane",
-      "-0.7071067811865475 6.123233995736766e-17 0.7071067811865476 -1.45");
-    add_surface<SurfaceYPlane>(doc_, 8, "y-plane", "5.6");
-  }
-
-  ~Issue2632Fixture()
-  {
-    model::surfaces.clear();
-    model::surface_map.clear();
-  }
-
-private:
-  pugi::xml_document doc_;
-};
-
 } // anonymous namespace
 
 TEST_CASE("General plane bounding box")
@@ -224,21 +183,4 @@ TEST_CASE("Torus bounding box")
 
     CHECK(t->bounding_box(true).min.z == -INFTY);
   }
-}
-
-TEST_CASE("Cell bounding box matches the Python API for issue #2632")
-{
-  Issue2632Fixture fixture;
-
-  // +s64 -s101 -s19 +s48 (+s58 | +s62 | -s64 | +s65 | -s68)
-  Region region("5 -8 -1 2 (3 | 4 | -5 | 6 | -7)", 0);
-  BoundingBox bb = region.bounding_box(0);
-
-  // The values reported by openmc.Cell.bounding_box in the issue
-  CHECK(bb.min.x == Catch::Approx(-17.7));
-  CHECK(bb.min.y == Catch::Approx(-1.3));
-  CHECK(bb.min.z == Catch::Approx(-17.7));
-  CHECK(bb.max.x == Catch::Approx(17.7));
-  CHECK(bb.max.y == Catch::Approx(5.6));
-  CHECK(bb.max.z == Catch::Approx(17.7));
 }

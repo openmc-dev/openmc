@@ -407,6 +407,24 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     assert umesh.id == xml_mesh.id
 
 
+def test_umesh_from_hdf5_without_filename(run_in_tmpdir):
+    """An in-memory unstructured mesh has no source filename."""
+    with h5py.File('mesh.h5', 'w') as f:
+        group = f.create_group('mesh 1')
+        group['type'] = np.bytes_('unstructured')
+        group['library'] = np.bytes_('libmesh')
+        group['volumes'] = [1.0]
+        group['vertices'] = np.zeros((4, 3))
+        group['connectivity'] = np.zeros((1, 8), dtype=int)
+        group['element_types'] = [0]
+
+        mesh = openmc.MeshBase.from_hdf5(group)
+
+    assert mesh.filename == Path()
+    assert mesh.has_statepoint_data
+    assert mesh.n_elements == 1
+
+
 @pytest.fixture(scope='module')
 def simple_umesh(request):
     """Fixture returning UnstructuredMesh with all attributes"""

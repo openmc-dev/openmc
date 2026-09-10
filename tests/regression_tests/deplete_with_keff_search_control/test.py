@@ -138,3 +138,9 @@ def test_keff_search_control(run_in_tmpdir, model, function, x0, x1, bracket, re
 
     # Use high tolerance here
     assert res_test[0].keff_search_root == pytest.approx(res_ref[0].keff_search_root, rel=2)
+
+    # The keff search must not clobber the depleted compositions. If the search
+    # runs against the previous step's materials, the depletion vector is
+    # reverted to its beginning-of-step values and no fission products appear.
+    _, xe135 = res_test.get_atoms(model.materials[0], 'Xe135')
+    assert xe135[-1] > 0.0

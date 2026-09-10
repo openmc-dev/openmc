@@ -73,7 +73,6 @@ bool source_write {true};
 bool source_mcpl_write {false};
 bool surf_source_write {false};
 bool surf_mcpl_write {false};
-bool surf_source_read {false};
 bool survival_biasing {false};
 bool survival_normalization {false};
 bool temperature_multipole {false};
@@ -219,6 +218,15 @@ void get_run_parameters(pugi::xml_node node_base)
     if (check_for_node(node_base, "generations_per_batch")) {
       gen_per_batch =
         std::stoi(get_node_value(node_base, "generations_per_batch"));
+
+      // The random ray solver runs a single generation per batch. The rest of
+      // the code has to see that, since overall_generation() strides by
+      // gen_per_batch while only one generation per batch is ever recorded.
+      if (gen_per_batch != 1 && solver_type == SolverType::RANDOM_RAY) {
+        warning("The 'generations_per_batch' setting does not apply to the "
+                "random ray solver and is ignored.");
+        gen_per_batch = 1;
+      }
     }
 
     // Preallocate space for keff and entropy by generation
@@ -298,6 +306,14 @@ void get_run_parameters(pugi::xml_node node_base)
         FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::NAIVE;
       } else if (temp_str == "hybrid") {
         FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
+      } else if (temp_str == "adaptive") {
+        FlatSourceDomain::volume_estimator_ =
+          RandomRayVolumeEstimator::ADAPTIVE;
+      } else if (temp_str == "strict_adaptive") {
+        FlatSourceDomain::volume_estimator_ =
+          RandomRayVolumeEstimator::STRICT_ADAPTIVE;
+      } else if (temp_str == "auto") {
+        FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::AUTO;
       } else {
         fatal_error("Unrecognized volume estimator: " + temp_str);
       }
@@ -648,7 +664,12 @@ void read_settings_xml(pugi::xml_node root)
 
   // Check if the user has specified to read surface source
   if (check_for_node(root, "surf_source_read")) {
-    surf_source_read = true;
+    if (mpi::master)
+      warning("The <surf_source_read> element has been deprecated. Use a file "
+              "source instead, i.e., <source type=\"file\" "
+              "file=\"surface_source.h5\"/>, which additionally supports a "
+              "source strength and source constraints.");
+
     // Get surface source read node
     xml_node node_ssr = root.child("surf_source_read");
 
@@ -1349,6 +1370,7 @@ void free_memory_settings()
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
+  settings::track_identifiers.clear();
 }
 
 //==============================================================================

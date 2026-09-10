@@ -116,6 +116,33 @@ def test_multigroup_flux_same():
     assert microxs_4g.data == pytest.approx(microxs_2g.data)
 
 
+def test_from_multigroup_flux_nu_fission():
+    chain_file = Path(__file__).parents[1] / 'chain_simple.xml'
+    energies = [0., 6.25e-1, 5.53e3, 8.21e5, 2.e7]
+
+    # For a thermal flux, the average number of neutrons per U235 fission
+    # (including delayed neutrons) should be about 2.43
+    flux = [1.0, 0., 0., 0.]
+    microxs = MicroXS.from_multigroup_flux(
+        energies=energies, multigroup_flux=flux, chain_file=chain_file,
+        nuclides=['U235', 'O16'], reactions=['fission', 'nu-fission'])
+    assert microxs.reactions == ['fission', 'nu-fission']
+    nu_bar = microxs['U235', 'nu-fission'][0] / microxs['U235', 'fission'][0]
+    assert nu_bar == pytest.approx(2.43, abs=0.05)
+
+    # Nuclides without fission data have zero nu-fission
+    assert microxs['O16', 'nu-fission'][0] == 0.0
+
+    # A fast flux should produce a larger nu-bar
+    flux = [0., 0., 0., 1.0]
+    microxs_fast = MicroXS.from_multigroup_flux(
+        energies=energies, multigroup_flux=flux, chain_file=chain_file,
+        nuclides=['U235'], reactions=['fission', 'nu-fission'])
+    nu_bar_fast = (microxs_fast['U235', 'nu-fission'][0]
+                   / microxs_fast['U235', 'fission'][0])
+    assert nu_bar_fast > nu_bar
+
+
 def test_microxs_zero_flux():
     chain_file = Path(__file__).parents[1] / 'chain_simple.xml'
 

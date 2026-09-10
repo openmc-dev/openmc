@@ -242,7 +242,7 @@ protected:
   virtual void set_flux_to_flux_plus_source(int64_t sr, double volume, int g);
   void set_flux_to_source(int64_t sr, int g);
   virtual void set_flux_to_old_flux(int64_t sr, int g);
-  double flux_additive_term(int64_t sr, int g) const;
+  virtual double flux_additive_term(int64_t sr, int g, double volume) const;
   double stabilized_flux(int64_t sr, int g, double phi_new) const;
 
   //! Adaptive-estimator "strong source" test. Returns true if, in any group,

@@ -342,13 +342,16 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
   }
 }
 
-// The additive term of the flux update for a source region and group. A
-// material region adds its reduced source q/Sigma_t. A void region has no
-// such term and instead adds a bounded contribution from its external
-// source, which is nonzero only in fixed source mode. The same term is used
-// by the strict estimator's rescue, which rescales only the transport part
-// of an update, so the two cannot drift apart.
-double FlatSourceDomain::flux_additive_term(int64_t sr, int g) const
+// The additive term of the flux update for a source region and group,
+// given the volume the update divides the transport term by. A material
+// region adds its reduced source q/Sigma_t. A void region has no such term
+// and instead adds a bounded contribution from its external source, which
+// is nonzero only in fixed source mode. The same term is used by the strict
+// estimator's rescue, which rescales only the transport part of an update,
+// so the two cannot drift apart. The linear source solver's term depends on
+// the volume (see its override); the flat source term does not.
+double FlatSourceDomain::flux_additive_term(
+  int64_t sr, int g, double volume) const
 {
   if (source_regions_.material(sr) == MATERIAL_VOID) {
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -373,7 +376,7 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
       source_regions_.density_mult(sr);
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
   }
-  source_regions_.scalar_flux_new(sr, g) += flux_additive_term(sr, g);
+  source_regions_.scalar_flux_new(sr, g) += flux_additive_term(sr, g, volume);
 }
 
 // Applies the "diagonal stabilization" technique developed by Gunow et al.
@@ -665,9 +668,9 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // flat shapes.
         if (is_strict && phi < 0.0) {
           if (volume != volume_iteration) {
-            double additive = flux_additive_term(sr, g);
-            double rescued =
-              (raw - additive) * (volume / volume_iteration) + additive;
+            double rescued = (raw - flux_additive_term(sr, g, volume)) *
+                               (volume / volume_iteration) +
+                             flux_additive_term(sr, g, volume_iteration);
             phi = stabilized_flux(sr, g, rescued);
             region_rescued = true;
           }

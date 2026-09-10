@@ -297,6 +297,9 @@ class Settings:
         Options for reading surface source points. Acceptable keys are:
 
         :path: Path to surface source file (str).
+
+        .. deprecated:: 0.17.0
+            Use :class:`openmc.FileSource` as a source distribution instead.
     surf_source_write : dict
         Options for writing surface source points. Acceptable keys are:
 
@@ -888,6 +891,13 @@ class Settings:
 
     @surf_source_read.setter
     def surf_source_read(self, ssr: dict):
+        warnings.warn(
+            "The surf_source_read attribute has been deprecated. Use a "
+            "FileSource as a source distribution instead, i.e., "
+            "settings.source = openmc.FileSource('surface_source.h5'), which "
+            "additionally supports a source strength and source constraints.",
+            FutureWarning, stacklevel=2
+        )
         cv.check_type('surface source reading options', ssr, Mapping)
         for key, value in ssr.items():
             cv.check_value('surface source reading key', key,

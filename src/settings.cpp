@@ -75,7 +75,6 @@ bool source_write {true};
 bool source_mcpl_write {false};
 bool surf_source_write {false};
 bool surf_mcpl_write {false};
-bool surf_source_read {false};
 bool survival_biasing {false};
 bool survival_normalization {false};
 bool temperature_multipole {false};
@@ -667,7 +666,12 @@ void read_settings_xml(pugi::xml_node root)
 
   // Check if the user has specified to read surface source
   if (check_for_node(root, "surf_source_read")) {
-    surf_source_read = true;
+    if (mpi::master)
+      warning("The <surf_source_read> element has been deprecated. Use a file "
+              "source instead, i.e., <source type=\"file\" "
+              "file=\"surface_source.h5\"/>, which additionally supports a "
+              "source strength and source constraints.");
+
     // Get surface source read node
     xml_node node_ssr = root.child("surf_source_read");
 

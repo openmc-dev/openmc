@@ -344,13 +344,19 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
-  // The surface or lattice being crossed belongs to the universe at the lowest
-  // coordinate level, so its normal is reported in that level's local frame
-  // while the particle direction used to score surface tallies lives in the
-  // root frame. The normal therefore has to be evaluated at the local position
-  // and rotated up into the root frame, and that has to happen before the
-  // crossing is carried out, since crossing invalidates the coordinate levels.
-  int i_surf_level = n_coord() - 1;
+  // The surface or lattice being crossed belongs to the universe at the
+  // coordinate level the boundary search found it on, so its normal is
+  // reported in that level's local frame while the particle direction used to
+  // score surface tallies lives in the root frame. The normal therefore has to
+  // be evaluated at the local position and rotated up into the root frame, and
+  // that has to happen before the crossing is carried out, since crossing
+  // invalidates the coordinate levels.
+  //
+  // Take the level from the boundary rather than from n_coord(). The two are
+  // equal here because of the assignment just above, but reading it from the
+  // boundary keeps this independent of that, and matches where the level came
+  // from originally.
+  int i_surf_level = boundary().coord_level() - 1;
 
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
@@ -388,7 +394,7 @@ void Particle::event_cross_surface()
     // Determine the surface normal in the root frame before crossing
     Direction normal;
     if (!model::active_surface_tallies.empty()) {
-      normal = surf.normal(r_local());
+      normal = surf.normal(coord(i_surf_level).r());
       normal = rotate_to_root(*this, i_surf_level, normal / normal.norm());
     }
 

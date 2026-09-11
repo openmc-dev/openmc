@@ -342,13 +342,17 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
   }
 }
 
-// The additive term of the flux update for a source region and group. A
-// material region adds its reduced source q/Sigma_t. A void region has no
-// such term and instead adds a bounded contribution from its external
-// source, which is nonzero only in fixed source mode. The same term is used
-// by the strict estimator's rescue, which rescales only the transport part
-// of an update, so the two cannot drift apart.
-double FlatSourceDomain::flux_additive_term(int64_t sr, int g) const
+// The additive term of the flux update for a source region and group,
+// given whether the update divides the transport term by the region's own
+// batch volume (as opposed to its simulation-averaged volume). A material
+// region adds its reduced source q/Sigma_t. A void region has no such term
+// and instead adds a bounded contribution from its external source, which
+// is nonzero only in fixed source mode. The same term is used by the strict
+// estimator's rescue, which rescales only the transport part of an update,
+// so the two cannot drift apart. The linear source solver's term depends on
+// the volume choice (see its override); the flat source term does not.
+double FlatSourceDomain::flux_additive_term(
+  int64_t sr, int g, bool batch_volume) const
 {
   if (source_regions_.material(sr) == MATERIAL_VOID) {
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -361,7 +365,7 @@ double FlatSourceDomain::flux_additive_term(int64_t sr, int g) const
 }
 
 void FlatSourceDomain::set_flux_to_flux_plus_source(
-  int64_t sr, double volume, int g)
+  int64_t sr, double volume, bool batch_volume, int g)
 {
   int material = source_regions_.material(sr);
   int temp = source_regions_.temperature_idx(sr);
@@ -373,7 +377,8 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
       source_regions_.density_mult(sr);
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
   }
-  source_regions_.scalar_flux_new(sr, g) += flux_additive_term(sr, g);
+  source_regions_.scalar_flux_new(sr, g) +=
+    flux_additive_term(sr, g, batch_volume);
 }
 
 // Applies the "diagonal stabilization" technique developed by Gunow et al.
@@ -645,7 +650,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // Hit this iteration: the flat source from the previous iteration plus
         // this iteration's transport contribution, normalized by the chosen
         // volume, then stabilized.
-        set_flux_to_flux_plus_source(sr, volume, g);
+        set_flux_to_flux_plus_source(sr, volume, use_naive_volume, g);
         double raw = source_regions_.scalar_flux_new(sr, g);
         double phi = stabilized_flux(sr, g, raw);
         // The strict adaptive estimator applies a per-batch fixup to
@@ -665,9 +670,9 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // flat shapes.
         if (is_strict && phi < 0.0) {
           if (volume != volume_iteration) {
-            double additive = flux_additive_term(sr, g);
-            double rescued =
-              (raw - additive) * (volume / volume_iteration) + additive;
+            double rescued = (raw - flux_additive_term(sr, g, false)) *
+                               (volume / volume_iteration) +
+                             flux_additive_term(sr, g, true);
             phi = stabilized_flux(sr, g, rescued);
             region_rescued = true;
           }

@@ -1,5 +1,7 @@
 #include "openmc/random_ray/linear_source_domain.h"
 
+#include <algorithm>
+
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
 #include "openmc/material.h"
@@ -131,6 +133,40 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
           simulation::current_batch <= settings::n_inactive))) {
     for (int g = 0; g < negroups_; g++) {
       srh.source_gradients(g) = {0.0, 0.0, 0.0};
+    }
+  }
+
+  // If enabled by the user, limit the source gradients so the modeled local
+  // source q(r) = q_flat + (r - centroid) . q_gradient stays non-negative
+  // over the region's bounding box as sampled by the ray segment endpoints.
+  // The linear term is lowest at the box corner each gradient component
+  // points away from, so its minimum is the sum, over the three axes, of the
+  // gradient component times the offset from the centroid to that face.
+  // Once the region's extreme points along each axis have been sampled the
+  // box contains the region, and the modeled source is non-negative
+  // throughout it whenever the flat source covers the dip. When it does not,
+  // the gradient is scaled by their ratio, which preserves the region's mean
+  // emission, since the linear term integrates to zero over the region;
+  // gradients that pass are left untouched. A non-positive flat source
+  // leaves no shape to keep, so its cap is zero and its gradient is scaled
+  // away. A region with no sampled box yet carries no gradient to limit.
+  if (source_gradient_limiter_ && material != MATERIAL_VOID &&
+      srh.extent().min.x <= srh.extent().max.x) {
+    // Offsets from the centroid to the box faces. The centroid is the
+    // length-weighted mean of segment midpoints, all of which lie in the
+    // box, so lo <= 0 <= hi and the dip below is non-negative.
+    const BoundingBox& extent = srh.extent();
+    Position lo = extent.min - srh.centroid();
+    Position hi = extent.max - srh.centroid();
+    for (int g = 0; g < negroups_; g++) {
+      MomentArray& gradient = srh.source_gradients(g);
+      double cap = std::max<double>(srh.source(g), 0.0);
+      double dip = std::max(-gradient.x * lo.x, -gradient.x * hi.x) +
+                   std::max(-gradient.y * lo.y, -gradient.y * hi.y) +
+                   std::max(-gradient.z * lo.z, -gradient.z * hi.z);
+      if (dip > cap) {
+        gradient *= cap / dip;
+      }
     }
   }
 }

@@ -33,6 +33,7 @@ RandomRayVolumeEstimator FlatSourceDomain::resolved_volume_estimator_ {
   RandomRayVolumeEstimator::AUTO};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 bool FlatSourceDomain::adjoint_requested_ {false};
+bool FlatSourceDomain::source_gradient_limiter_ {false};
 RandomRaySolve FlatSourceDomain::solve_ {RandomRaySolve::FORWARD};
 bool FlatSourceDomain::fw_cadis_local_ {false};
 double FlatSourceDomain::diagonal_stabilization_rho_ {1.0};
@@ -61,8 +62,9 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   bool is_adaptive = is_adaptive_family(resolved_volume_estimator_);
   bool is_strict_adaptive =
     resolved_volume_estimator_ == RandomRayVolumeEstimator::STRICT_ADAPTIVE;
-  source_regions_ = SourceRegionContainer(
-    negroups_, is_linear, is_adaptive, is_strict_adaptive);
+  // The sampled bounding boxes exist only for the source gradient limiter
+  source_regions_ = SourceRegionContainer(negroups_, is_linear, is_adaptive,
+    is_strict_adaptive, is_linear && source_gradient_limiter_);
 
   // Initialize tally volumes
   if (volume_normalized_flux_tallies_) {

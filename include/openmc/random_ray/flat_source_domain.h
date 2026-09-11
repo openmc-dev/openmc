@@ -122,6 +122,9 @@ public:
   static bool volume_normalized_flux_tallies_;
   // If the user wants outputs based on the adjoint flux
   static bool adjoint_requested_;
+  // If the user wants linear source gradients rescaled so the modeled source
+  // stays non-negative over each source region
+  static bool source_gradient_limiter_;
   // The solve currently being executed
   static RandomRaySolve solve_;
   static bool fw_cadis_local_;

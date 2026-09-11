@@ -1,6 +1,7 @@
 #ifndef OPENMC_RANDOM_RAY_SOURCE_REGION_H
 #define OPENMC_RANDOM_RAY_SOURCE_REGION_H
 
+#include "openmc/bounding_box.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 #include "openmc/random_ray/moment_matrix.h"
@@ -167,6 +168,9 @@ public:
   Position* centroid_t_;
   MomentMatrix* mom_matrix_;
   MomentMatrix* mom_matrix_t_;
+  // Bounding box of the ray segment endpoints sampled in this region, kept
+  // only when the source gradient limiter is enabled (see SourceRegion).
+  BoundingBox* extent_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
@@ -258,6 +262,9 @@ public:
 
   MomentMatrix& mom_matrix_t() { return *mom_matrix_t_; }
   const MomentMatrix mom_matrix_t() const { return *mom_matrix_t_; }
+
+  BoundingBox& extent() { return *extent_; }
+  const BoundingBox& extent() const { return *extent_; }
 
   std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()
   {
@@ -372,6 +379,14 @@ public:
   MomentMatrix mom_matrix_t_ {0.0, 0.0, 0.0, 0.0, 0.0,
     0.0}; //!< The spatial moment matrix accumulated over all iterations
 
+  // Bounding box of the ray segment endpoints sampled in this region. Segment
+  // endpoints lie on the region boundary, so the box converges to the
+  // region's true extent. It is accumulated only when the source gradient
+  // limiter is enabled, which bounds the linear source over it. It starts
+  // inverted (minimum above maximum), the empty box, rather than at the
+  // default infinite box.
+  BoundingBox extent_ {BoundingBox::inverted()};
+
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
@@ -411,10 +426,10 @@ class SourceRegionContainer {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegionContainer(
-    int negroups, bool is_linear, bool is_adaptive, bool is_strict_adaptive)
+  SourceRegionContainer(int negroups, bool is_linear, bool is_adaptive,
+    bool is_strict_adaptive, bool track_extents)
     : negroups_(negroups), is_linear_(is_linear), is_adaptive_(is_adaptive),
-      is_strict_adaptive_(is_strict_adaptive)
+      is_strict_adaptive_(is_strict_adaptive), track_extents_(track_extents)
   {}
   SourceRegionContainer() = default;
 
@@ -503,6 +518,9 @@ public:
   {
     return mom_matrix_t_[sr];
   }
+
+  BoundingBox& extent(int64_t sr) { return extents_[sr]; }
+  const BoundingBox& extent(int64_t sr) const { return extents_[sr]; }
 
   MomentArray& source_gradients(int64_t sr, int g)
   {
@@ -682,6 +700,9 @@ private:
   bool is_linear_ {false};
   bool is_adaptive_ {false};
   bool is_strict_adaptive_ {false};
+  // Whether the sampled bounding boxes are stored (linear source with the
+  // source gradient limiter enabled)
+  bool track_extents_ {false};
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;
@@ -712,6 +733,9 @@ private:
   vector<Position> centroid_offset_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;
+  // One box per region rather than separate minimum and maximum arrays: the
+  // two corners are always read, grown, and reset together.
+  vector<BoundingBox> extents_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.

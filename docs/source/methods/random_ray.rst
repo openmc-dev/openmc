@@ -1067,6 +1067,64 @@ accumulated centroid it feeds, so the omitted term has no persistent sign
 and its contribution to the accumulated flux shrinks with the number of
 batches, while the original form carries less variance there.
 
+.. _methods_random_ray_gradient_limiter:
+
+~~~~~~~~~~~~~~~~~~~~~~~~
+Source Gradient Limiting
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The fitted source gradient :math:`\boldsymbol{\vec{Q}}_{i,g} =
+\mathbf{M}_i^{-1} \boldsymbol{\vec{q}}_{i,g}` amplifies noise in the fitted
+moments along any thin extent of a region, so a poorly sampled region can
+carry a spuriously steep gradient and emit a negative source over part of
+its extent. Rays crossing that part can carry negative angular flux
+downstream, which optically thin media with scattering ratios near one can
+amplify.
+
+When the source gradient limiter is enabled, each group's gradient is
+rescaled so that the modeled source stays non-negative over the region's
+axis-aligned bounding box. The box is accumulated from the endpoints of
+every ray segment that has crossed the region past the ray's inactive
+length. These lie on the region's boundary except where a ray starts or
+ends inside it. The linear term is lowest at a corner of the box, where it
+reaches
+
+.. math::
+    :label: gradient-limiter-bound
+
+    \sum_{d \in \{x, y, z\}} \; \min_{x_d \in \{x^{\min}_{i,d},\,
+    x^{\max}_{i,d}\}} \left(\boldsymbol{\vec{Q}}_{i,g}\right)_d \left(x_d -
+    r_{\mathrm{c},i,d}\right),
+
+where :math:`x^{\min}_{i}` and :math:`x^{\max}_{i}` are the box bounds,
+:math:`\mathbf{r}_{\mathrm{c},i}` is the centroid, and :math:`d` indexes
+their components. Whenever the flat source :math:`Q_{i,g}` plus this
+minimum is negative, the gradient is scaled by the ratio of the flat source
+to the magnitude of the minimum, so that the modeled source reaches zero at
+that corner. Because the linear term integrates to zero over the region,
+the rescaling preserves the region's mean emission, and gradients that pass
+the test are left untouched. A group whose flat source is not positive has
+its gradient zeroed. Once the region's extreme points along each axis have
+been sampled, the box contains the region and the modeled source is
+non-negative throughout it. The bound is exact for axis-aligned box regions
+and conservative for others: a sphere is limited by up to a factor of
+:math:`\sqrt{3}` more than necessary, and a thin region lying diagonally to
+the axes by much more, as its bounding box is far larger than the region.
+
+This is the treatment `MPACT <Choi-2024_>`_ applies in its limited linear
+source approximation, with the same mean-preserving factor. MPACT finds
+the minimum source exactly, over the entrance and exit points of every
+segment crossing the region, which requires the fixed set of tracks that
+deterministic MOC lays down once. Random ray samples new rays every batch,
+so no such segment set exists when the source is built, and the sampled
+bounding box takes its place.
+
+The limiter is off by default because a steep fit can also be physical, as
+in the optically thick regions of deep-penetration problems, where
+limiting discards real shape information and alters the solution at
+depth. It is best reserved for simulations that negative sources
+destabilize.
+
 .. _methods-shannon-entropy-random-ray:
 
 -----------------------------
@@ -1229,6 +1287,7 @@ in random ray particle transport are:
 .. _Tramm-2020: https://doi.org/10.1051/EPJCONF/202124703021
 .. _Cosgrove-2023: https://doi.org/10.1080/00295639.2023.2270618
 .. _Ferrer-2016: https://doi.org/10.13182/NSE15-6
+.. _Choi-2024: https://doi.org/10.1080/00295639.2023.2224234
 .. _Gunow-2018: https://dspace.mit.edu/handle/1721.1/119030
 
 .. only:: html

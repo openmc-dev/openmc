@@ -22,7 +22,7 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     position_(&sr.position_), centroid_(&sr.centroid_),
     centroid_iteration_(&sr.centroid_iteration_), centroid_t_(&sr.centroid_t_),
     mom_matrix_(&sr.mom_matrix_), mom_matrix_t_(&sr.mom_matrix_t_),
-    volume_task_(&sr.volume_task_), mesh_(&sr.mesh_),
+    extent_(&sr.extent_), volume_task_(&sr.volume_task_), mesh_(&sr.mesh_),
     parent_sr_(&sr.parent_sr_), scalar_flux_old_(sr.scalar_flux_old_.data()),
     scalar_flux_new_(sr.scalar_flux_new_.data()), source_(sr.source_.data()),
     external_source_(sr.external_source_.data()),
@@ -104,6 +104,9 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
     mom_matrix_.push_back(sr.mom_matrix_);
     mom_matrix_t_.push_back(sr.mom_matrix_t_);
   }
+  if (track_extents_) {
+    extents_.push_back(sr.extent_);
+  }
 
   // Energy-dependent fields
   for (int g = 0; g < negroups_; ++g) {
@@ -164,6 +167,7 @@ void SourceRegionContainer::assign(
     mom_matrix_.clear();
     mom_matrix_t_.clear();
   }
+  extents_.clear();
 
   scalar_flux_old_.clear();
   scalar_flux_new_.clear();
@@ -238,6 +242,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
     handle.centroid_t_ = &centroid_t(sr);
     handle.mom_matrix_ = &mom_matrix(sr);
     handle.mom_matrix_t_ = &mom_matrix_t(sr);
+    handle.extent_ = track_extents_ ? &extent(sr) : nullptr;
     handle.source_gradients_ = &source_gradients(sr, 0);
     handle.flux_moments_old_ = &flux_moments_old(sr, 0);
     handle.flux_moments_new_ = &flux_moments_new(sr, 0);
@@ -270,6 +275,8 @@ void SourceRegionContainer::adjoint_reset()
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  // The sampled bounding boxes are re-accumulated alongside the centroids
+  std::fill(extents_.begin(), extents_.end(), BoundingBox::inverted());
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
   } else {

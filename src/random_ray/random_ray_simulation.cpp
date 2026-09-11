@@ -291,6 +291,7 @@ void openmc_finalize_random_ray()
   FlatSourceDomain::resolved_volume_estimator_ = RandomRayVolumeEstimator::AUTO;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   FlatSourceDomain::adjoint_requested_ = false;
+  FlatSourceDomain::source_gradient_limiter_ = false;
   FlatSourceDomain::solve_ = RandomRaySolve::FORWARD;
   FlatSourceDomain::fw_cadis_local_ = false;
   FlatSourceDomain::fw_cadis_local_targets_.clear();
@@ -693,6 +694,10 @@ void RandomRaySimulation::print_results_random_ray(
       fatal_error("Invalid random ray source shape");
     }
     fmt::print(" Source Shape                      = {}\n", shape);
+    if (RandomRay::source_shape_ != RandomRaySourceShape::FLAT) {
+      fmt::print(" Source Gradient Limiter           = {}\n",
+        FlatSourceDomain::source_gradient_limiter_ ? "ON" : "OFF");
+    }
     std::string sample_method;
     switch (RandomRay::sample_method_) {
     case RandomRaySampleMethod::PRNG:

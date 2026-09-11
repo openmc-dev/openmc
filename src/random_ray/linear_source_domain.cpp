@@ -151,12 +151,13 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   // leaves no shape to keep, so its cap is zero and its gradient is scaled
   // away. A region with no sampled box yet carries no gradient to limit.
   if (source_gradient_limiter_ && material != MATERIAL_VOID &&
-      srh.extent_min().x <= srh.extent_max().x) {
+      srh.extent().min.x <= srh.extent().max.x) {
     // Offsets from the centroid to the box faces. The centroid is the
     // length-weighted mean of segment midpoints, all of which lie in the
     // box, so lo <= 0 <= hi and the dip below is non-negative.
-    Position lo = srh.extent_min() - srh.centroid();
-    Position hi = srh.extent_max() - srh.centroid();
+    const BoundingBox& extent = srh.extent();
+    Position lo = extent.min - srh.centroid();
+    Position hi = extent.max - srh.centroid();
     for (int g = 0; g < negroups_; g++) {
       MomentArray& gradient = srh.source_gradients(g);
       double cap = std::max<double>(srh.source(g), 0.0);

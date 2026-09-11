@@ -1,6 +1,7 @@
 #ifndef OPENMC_RANDOM_RAY_SOURCE_REGION_H
 #define OPENMC_RANDOM_RAY_SOURCE_REGION_H
 
+#include "openmc/bounding_box.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 #include "openmc/random_ray/moment_matrix.h"
@@ -169,8 +170,7 @@ public:
   MomentMatrix* mom_matrix_t_;
   // Bounding box of the ray segment endpoints sampled in this region, kept
   // only when the source gradient limiter is enabled (see SourceRegion).
-  Position* extent_min_;
-  Position* extent_max_;
+  BoundingBox* extent_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
@@ -263,25 +263,25 @@ public:
   MomentMatrix& mom_matrix_t() { return *mom_matrix_t_; }
   const MomentMatrix mom_matrix_t() const { return *mom_matrix_t_; }
 
-  const Position extent_min() const { return *extent_min_; }
-  const Position extent_max() const { return *extent_max_; }
+  const BoundingBox& extent() const { return *extent_; }
 
-  // Grows the sampled bounding box to include a point
+  // Grows the sampled bounding box to include a point. Unlike the box union
+  // operator, the stores are conditional, so that a converged box generates
+  // no writes inside the locked transport loop.
   void expand_extent(const Position& p)
   {
-    // Conditional stores: once the box has converged, no write is made
-    if (p.x < extent_min_->x)
-      extent_min_->x = p.x;
-    if (p.y < extent_min_->y)
-      extent_min_->y = p.y;
-    if (p.z < extent_min_->z)
-      extent_min_->z = p.z;
-    if (p.x > extent_max_->x)
-      extent_max_->x = p.x;
-    if (p.y > extent_max_->y)
-      extent_max_->y = p.y;
-    if (p.z > extent_max_->z)
-      extent_max_->z = p.z;
+    if (p.x < extent_->min.x)
+      extent_->min.x = p.x;
+    if (p.y < extent_->min.y)
+      extent_->min.y = p.y;
+    if (p.z < extent_->min.z)
+      extent_->min.z = p.z;
+    if (p.x > extent_->max.x)
+      extent_->max.x = p.x;
+    if (p.y > extent_->max.y)
+      extent_->max.y = p.y;
+    if (p.z > extent_->max.z)
+      extent_->max.z = p.z;
   }
 
   std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()
@@ -400,10 +400,10 @@ public:
   // Bounding box of the ray segment endpoints sampled in this region. Segment
   // endpoints lie on the region boundary, so the box converges to the
   // region's true extent. It is accumulated only when the source gradient
-  // limiter is enabled, which bounds the linear source over it. The empty
-  // box has its minimum above its maximum.
-  Position extent_min_ {INFTY, INFTY, INFTY};
-  Position extent_max_ {-INFTY, -INFTY, -INFTY};
+  // limiter is enabled, which bounds the linear source over it. It starts
+  // inverted (minimum above maximum), the empty box, rather than at the
+  // default infinite box.
+  BoundingBox extent_ {BoundingBox::inverted()};
 
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
@@ -531,11 +531,8 @@ public:
     return mom_matrix_t_[sr];
   }
 
-  Position& extent_min(int64_t sr) { return extent_min_[sr]; }
-  const Position extent_min(int64_t sr) const { return extent_min_[sr]; }
-
-  Position& extent_max(int64_t sr) { return extent_max_[sr]; }
-  const Position extent_max(int64_t sr) const { return extent_max_[sr]; }
+  BoundingBox& extent(int64_t sr) { return extents_[sr]; }
+  const BoundingBox& extent(int64_t sr) const { return extents_[sr]; }
 
   MomentArray& source_gradients(int64_t sr, int g)
   {
@@ -743,8 +740,9 @@ private:
   vector<Position> centroid_t_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;
-  vector<Position> extent_min_;
-  vector<Position> extent_max_;
+  // One box per region rather than separate minimum and maximum arrays: the
+  // two corners are always read, grown, and reset together.
+  vector<BoundingBox> extents_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.

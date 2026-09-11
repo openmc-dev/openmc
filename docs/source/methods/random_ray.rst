@@ -511,18 +511,53 @@ when using the naive estimator, though at the cost of a notable increase in
 variance. Empirical testing reveals that on most eigenvalue problems, the
 simulation averaged estimator does win out overall in numerical performance, as
 a much coarser quadrature can be used resulting in faster runtimes overall.
-Thus, OpenMC uses the simulation averaged estimator as default in its random ray
-mode for eigenvalue solves.
+Thus, the simulation averaged estimator is generally preferred over the naive
+estimator for eigenvalue solves.
 
 OpenMC also features a "hybrid" volume estimator that uses the naive estimator
 for all regions containing an external (fixed) source term. For all other
 source regions, the "simulation averaged" estimator is used. This typically achieves
-a best of both worlds result, with the benefits of the low bias simulation averaged
+a best of both worlds result, with the benefits of the unbiased simulation averaged
 estimator in most regions, while preventing instability and/or large biases in regions
-with external source terms via use of the naive estimator. In general, it is
-recommended to use the "hybrid" estimator, which is the default method used
-in OpenMC. If instability is encountered despite high ray densities, then
-the naive estimator may be preferable.
+with external source terms via use of the naive estimator. If instability is
+encountered despite high ray densities, then the naive estimator may be
+preferable.
+
+OpenMC also features an "adaptive" volume estimator that generalizes the
+hybrid estimator. It uses the simulation averaged estimator by default and
+automatically demotes individual cells to the naive treatment (the naive
+volume and the previous-flux miss treatment) when they show signs of
+instability. The most important case this adds over the hybrid estimator is
+a cell fed almost entirely by in-scatter from other groups, as in the
+optically thin air regions common to shielding problems, where the reduced
+source dwarfs the flux even though no external source is present.
+
+A cell is demoted when it is hit-starved or when its reduced source is
+negative. During the inactive batches, a cell whose reduced source is much
+larger than its scalar flux is also demoted. Finally, beginning at the end
+of the inactive batches and re-evaluated throughout the active phase, a
+cell is demoted permanently if its flux accumulated over the simulation is
+negative or is dominated by sources that do not derive from its own flux.
+Because these last decisions are made from accumulated statistics and are
+never reversed, the estimator choice does not churn with iteration noise
+during the tallied batches. When a linear source shape is in use, demoted
+cells also revert to a flat source representation.
+
+A "strict adaptive" variant is provided for solves whose results feed
+variance reduction, where even a small number of slightly negative flux
+estimates can degrade the adjoint solve and the quality of generated weight
+windows. It runs the same machinery and additionally repairs any negative
+flux estimate each batch, first by recomputing it with the batch's own
+volume and then, if it is still negative, by falling back on the previous
+iterate. A cell that needs the repair repeatedly is demoted outright, which
+keeps the one-sided repair from biasing its flux upward. The repair
+introduces a small conservative bias overall (several hundred pcm on
+typical eigenvalue problems), so the strict variant is not used for
+standard solves.
+
+By default, OpenMC selects the volume estimator automatically ("auto").
+Weight window generation and adjoint solves receive the strict adaptive
+estimator, and all other solves receive the adaptive estimator.
 
 A table that summarizes the pros and cons, as well as recommendations for
 different use cases, is given in the :ref:`volume
@@ -998,6 +1033,39 @@ The new exponentials introduced, again for simplicity, are simply:
 The contents of this section, alongside the equations for the flat source and
 scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively,
 completes the set of equations for LS.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Consistency of the Scalar Flux Estimate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One subtlety of the linear source scheme deserves note. Intuitively, the
+issue is a mismatch of statistics: the naive volume treatment of Equation
+:eq:`phi_naive` updates the flux from a single batch's rays, while the
+linear source is anchored to the simulation-averaged centroid, so the two
+halves of the update describe different sets of tracks and the exactness
+the naive treatment promises is quietly broken. Concretely, the transport
+sweep evaluates each region's linear source of Equation :eq:`region_source`
+against the accumulated centroid :math:`\mathbf{r}_{\mathrm{c}}`, but a
+batch's tracks average that source at their own track-length-weighted
+centroid :math:`\mathbf{r}_{\mathrm{c},b}`, so the mean source the batch
+actually integrates is
+
+.. math::
+    :label: batch_sampled_source
+
+    Q_{i,g} + \boldsymbol{\vec{Q}}_{i,g} \cdot \left(\mathbf{r}_{\mathrm{c},b}
+    - \mathbf{r}_{\mathrm{c}}\right)\;.
+
+A flux update that adds back only :math:`Q_{i,g} / \Sigma_{t,i,g}` absorbs
+the difference as gradient-scale noise, which in optically thin scatter-fed
+regions can ignite self-sustaining negative fluxes. OpenMC therefore adds
+back the full batch-sampled source (divided by :math:`\Sigma_{t,i,g}`)
+whenever a region updates with its own batch volume, making that update
+exact for the batch's tracks. Regions updating with the simulation-averaged
+volume keep the original form: each batch's centroid scatters about the
+accumulated centroid it feeds, so the omitted term has no persistent sign
+and its contribution to the accumulated flux shrinks with the number of
+batches, while the original form carries less variance there.
 
 .. _methods-shannon-entropy-random-ray:
 

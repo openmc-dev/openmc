@@ -47,5 +47,6 @@ def test_random_ray_fixed_source(domain_type):
                     constraints['domain_type'] = 'universe'
                     constraints['domain_ids'] = [universe.id]
 
+        model.settings.random_ray['volume_estimator'] = 'hybrid'
         harness = MGXSTestHarness('statepoint.10.h5', model)
         harness.main()

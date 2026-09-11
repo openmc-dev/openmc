@@ -1242,4 +1242,9 @@ void transport_event_based_shared_secondary()
   calculate_work(settings::n_particles);
 }
 
+extern "C" int openmc_get_current_batch()
+{
+  return simulation::current_batch;
+}
+
 } // namespace openmc

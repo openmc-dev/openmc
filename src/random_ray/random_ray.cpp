@@ -646,8 +646,8 @@ void RandomRay::attenuate_flux_linear_source(
     // bounding box with this segment's endpoints, which lie on the region
     // boundary (or inside it, where the ray starts or ends).
     if (FlatSourceDomain::source_gradient_limiter_) {
-      srh.expand_extent(r);
-      srh.expand_extent(r + distance * u());
+      srh.extent().expand(r);
+      srh.extent().expand(r + distance * u());
     }
 
     srh.n_hits() += 1;

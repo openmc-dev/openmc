@@ -26,6 +26,27 @@ std::unique_ptr<T> make_surface(
 
 } // anonymous namespace
 
+TEST_CASE("Expand bounding box to include points")
+{
+  BoundingBox bbox = BoundingBox::inverted();
+
+  bbox.expand({1.0, -2.0, 3.0});
+  CHECK(bbox.min.x == 1.0);
+  CHECK(bbox.min.y == -2.0);
+  CHECK(bbox.min.z == 3.0);
+  CHECK(bbox.max.x == 1.0);
+  CHECK(bbox.max.y == -2.0);
+  CHECK(bbox.max.z == 3.0);
+
+  bbox.expand({-4.0, 0.0, 2.0});
+  CHECK(bbox.min.x == -4.0);
+  CHECK(bbox.min.y == -2.0);
+  CHECK(bbox.min.z == 2.0);
+  CHECK(bbox.max.x == 1.0);
+  CHECK(bbox.max.y == 0.0);
+  CHECK(bbox.max.z == 3.0);
+}
+
 TEST_CASE("General plane bounding box")
 {
   pugi::xml_document doc;

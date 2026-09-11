@@ -263,26 +263,8 @@ public:
   MomentMatrix& mom_matrix_t() { return *mom_matrix_t_; }
   const MomentMatrix mom_matrix_t() const { return *mom_matrix_t_; }
 
+  BoundingBox& extent() { return *extent_; }
   const BoundingBox& extent() const { return *extent_; }
-
-  // Grows the sampled bounding box to include a point. Unlike the box union
-  // operator, the stores are conditional, so that a converged box generates
-  // no writes inside the locked transport loop.
-  void expand_extent(const Position& p)
-  {
-    if (p.x < extent_->min.x)
-      extent_->min.x = p.x;
-    if (p.y < extent_->min.y)
-      extent_->min.y = p.y;
-    if (p.z < extent_->min.z)
-      extent_->min.z = p.z;
-    if (p.x > extent_->max.x)
-      extent_->max.x = p.x;
-    if (p.y > extent_->max.y)
-      extent_->max.y = p.y;
-    if (p.z > extent_->max.z)
-      extent_->max.z = p.z;
-  }
 
   std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()
   {

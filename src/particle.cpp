@@ -534,6 +534,7 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
         cell_last(j) = coord(j).cell();
       }
       n_coord_last() = n_coord();
+      cell_instance_last() = cell_instance();
     }
     pht_secondary_particles();
   }

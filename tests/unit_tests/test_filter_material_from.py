@@ -84,7 +84,7 @@ def test_material_from_matches_cell_from(model, run_in_tmpdir):
 def test_from_bin_survives_repeated_collisions(model, run_in_tmpdir):
     """The 'from inner' bin holds all of the outer cell's reaction rate.
 
-    A particle that has crossed from the inner cell keeps `cell_last` 
+    A particle that has crossed from the inner cell keeps `cell_last`
     pointing at that cell for as long as it stays in the outer one,
     however many times it collides. The 'from outer' bin can only be
     populated by a particle that leaves the outer cell and comes back, which
@@ -196,7 +196,8 @@ def test_partial_current_decompositions_agree(model, run_in_tmpdir):
     volumetric flux: it is scored in event_cross_surface() right after the
     crossing.
     """
-    inner, outer = model.geometry.get_all_cells().values()
+    cells = {c.name: c for c in model.geometry.get_all_cells().values()}
+    inner, outer = cells['inner'], cells['outer']
     water = inner.fill
     in_outer = openmc.CellFilter([outer])
 
@@ -218,3 +219,74 @@ def test_partial_current_decompositions_agree(model, run_in_tmpdir):
     # cell, so this is not a vacuous comparison of two zeros
     assert by_cell.sum() > 0.0
     np.testing.assert_allclose(by_material, by_cell, rtol=1e-9)
+
+
+def test_secondary_particles_resolve_per_instance(run_in_tmpdir):
+    """Secondary particles get their instance set when they are revived.
+
+    Secondaries are born mid-history, so their "from" attributes are
+    initialised on revival rather than at the start of a history. With a
+    pulse-height tally present that initialisation happens on a separate code
+    path, which must set the distribcell instance too -- otherwise every
+    secondary is attributed to instance 0 until its first surface crossing.
+
+    The photons here are born in the fuel and scored there, before they have
+    crossed anything, so this is exactly that window.
+    """
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+
+    def fuel():
+        m = openmc.Material()
+        m.set_density('g/cm3', 7.87)
+        m.add_nuclide('Fe56', 1.0)
+        return m
+
+    fuels = [fuel() for _ in range(4)]
+
+    pin = openmc.Cell(name='pin', fill=fuels)
+    pin_universe = openmc.Universe(cells=[pin])
+
+    lattice = openmc.RectLattice()
+    lattice.lower_left = (-2.0, -2.0)
+    lattice.pitch = (2.0, 2.0)
+    lattice.universes = [[pin_universe, pin_universe],
+                         [pin_universe, pin_universe]]
+
+    box = openmc.model.RectangularPrism(4.0, 4.0, boundary_type='vacuum')
+    lattice_cell = openmc.Cell(name='lattice', fill=lattice, region=-box)
+    model.geometry = openmc.Geometry([lattice_cell])
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 10
+    model.settings.particles = 1000
+    # Neutrons produce the secondary photons that this test is about
+    model.settings.photon_transport = True
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box((-2.0, -2.0, -1.0), (2.0, 2.0, 1.0)),
+        energy=openmc.stats.delta_function(2.0e6),
+        particle='neutron',
+    )
+
+    photons = openmc.ParticleFilter(['photon'])
+
+    by_material = openmc.Tally(name='photons by material')
+    by_material.filters = [openmc.CellFilter([pin]),
+                           openmc.MaterialFromFilter(fuels), photons]
+    by_material.scores = ['total']
+
+    # Only present to exercise the revival path taken when pulse-height
+    # tallies are active; its own results are not checked
+    pulse_height = openmc.Tally(name='pulse height')
+    pulse_height.filters = [openmc.CellFilter([pin])]
+    pulse_height.scores = ['pulse-height']
+
+    model.tallies = openmc.Tallies([by_material, pulse_height])
+
+    with openmc.StatePoint(model.run()) as sp:
+        by_material = sp.get_tally(name='photons by material').mean.ravel()
+
+    # The four instances are equivalent, so the bins should be comparable.
+    # Without the instance the whole total lands in the first bin.
+    assert (by_material > 0.0).all()
+    assert by_material.max() < 1.5 * by_material.min()

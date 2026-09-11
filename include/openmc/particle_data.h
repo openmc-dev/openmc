@@ -344,8 +344,12 @@ public:
   LocalCoord& lowest_coord() { return coord_[n_coord_ - 1]; }
   const LocalCoord& lowest_coord() const { return coord_[n_coord_ - 1]; }
 
+  //! Number of nesting levels valid in cell_last()
+  int& n_coord_last() { return n_coord_last_; }
+  const int& n_coord_last() const { return n_coord_last_; }
+
   //! Cells occupied at each nesting level before the last cell change.
-  //
+  //!
   //! These record where the particle came from, not where it is. They are
   //! written when the particle enters a new cell -- at birth, and on each
   //! surface or lattice crossing -- and are deliberately NOT updated on
@@ -355,14 +359,12 @@ public:
   //! particle arrived from. At birth they are set to the particle's own cells,
   //! so a particle that has not yet crossed anything counts as coming from
   //! where it started.
-  int& n_coord_last() { return n_coord_last_; }
-  const int& n_coord_last() const { return n_coord_last_; }
   int& cell_last(int i) { return cell_last_[i]; }
   const int& cell_last(int i) const { return cell_last_[i]; }
 
   //! Distribcell instance the particle occupied in cell_last() at the lowest
   //! coordinate level.
-  //
+  //!
   //! Maintained alongside cell_last() and on the same cadence. Needed because
   //! a cell with distributed materials or temperatures resolves those per
   //! instance, so the cell index alone does not determine which material the

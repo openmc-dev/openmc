@@ -362,6 +362,16 @@ public:
   int& cell_last(int i) { return cell_last_[i]; }
   const int& cell_last(int i) const { return cell_last_[i]; }
 
+  //! Save the current cell coordinates for later use as "from" attributes.
+  void save_current_cells_as_last()
+  {
+    for (int i = 0; i < n_coord_; ++i) {
+      cell_last_[i] = coord_[i].cell();
+    }
+    n_coord_last_ = n_coord_;
+    cell_instance_last_ = cell_instance_;
+  }
+
   //! Distribcell instance the particle occupied in cell_last() at the lowest
   //! coordinate level.
   //!

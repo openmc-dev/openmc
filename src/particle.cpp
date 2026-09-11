@@ -232,11 +232,7 @@ void Particle::event_calculate_xs()
       cell_born() = lowest_coord().cell();
 
     // Initialize last cells from current cell
-    for (int j = 0; j < n_coord(); ++j) {
-      cell_last(j) = coord(j).cell();
-    }
-    n_coord_last() = n_coord();
-    cell_instance_last() = cell_instance();
+    this->save_current_cells_as_last();
   }
 
   // Write particle track.
@@ -335,12 +331,8 @@ void Particle::event_advance()
 
 void Particle::event_cross_surface()
 {
-  // Saving previous cell data
-  for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell();
-  }
-  n_coord_last() = n_coord();
-  cell_instance_last() = cell_instance();
+  // Save previous cell data
+  this->save_current_cells_as_last();
 
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface();
@@ -530,11 +522,7 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
         cell_born() = lowest_coord().cell();
 
       // Initialize last cells from current cell
-      for (int j = 0; j < n_coord(); ++j) {
-        cell_last(j) = coord(j).cell();
-      }
-      n_coord_last() = n_coord();
-      cell_instance_last() = cell_instance();
+      this->save_current_cells_as_last();
     }
     pht_secondary_particles();
   }

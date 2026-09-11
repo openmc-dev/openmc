@@ -544,10 +544,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
             p.cell_born() = p.lowest_coord().cell();
 
           // Initialize last cells from current cell
-          for (int j = 0; j < p.n_coord(); ++j) {
-            p.cell_last(j) = p.coord(j).cell();
-          }
-          p.n_coord_last() = p.n_coord();
+          p.save_current_cells_as_last();
 
           while (true) {
             // Ray trace from r_start to r_end
@@ -607,10 +604,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               break;
 
             // cross next geometric surface
-            for (int j = 0; j < p.n_coord(); ++j) {
-              p.cell_last(j) = p.coord(j).cell();
-            }
-            p.n_coord_last() = p.n_coord();
+            p.save_current_cells_as_last();
 
             // Set surface that particle is on and adjust coordinate levels
             p.surface() = boundary.surface();

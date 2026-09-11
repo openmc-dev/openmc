@@ -287,23 +287,31 @@ if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
   endif()
 endif()
 
-# Check to see if submodules exist (by checking one)
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/pugixml/CMakeLists.txt")
-  message(FATAL_ERROR "The git submodules were not downloaded! GIT_SUBMODULE was \
-    turned off or failed. Please update submodules and try again.")
-endif()
+# Vendored dependencies are only required when no suitable system library is
+# found, so check for their sources at the point of use rather than up front.
+# The sources are absent both when GIT_SUBMODULE is turned off and when a
+# release tarball (which ships no submodules) is used.
+macro(add_vendored_subdirectory name)
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/${name}/CMakeLists.txt")
+    message(FATAL_ERROR "The vendored copy of ${name} is required but was not \
+found in vendor/${name}. In a git checkout, run 'git submodule update --init \
+--recursive'. In a release tarball, which does not ship submodule sources, \
+install ${name} separately so that it can be found by find_package.")
+  endif()
+  add_subdirectory("vendor/${name}" ${ARGN})
+endmacro()
 
 #===============================================================================
 # pugixml library
 #===============================================================================
 
 if(OPENMC_FORCE_VENDORED_LIBS)
-  add_subdirectory(vendor/pugixml)
+  add_vendored_subdirectory(pugixml)
   set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
 else()
   find_package_write_status(pugixml)
   if (NOT pugixml_FOUND)
-    add_subdirectory(vendor/pugixml)
+    add_vendored_subdirectory(pugixml)
     set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
   endif()
 endif()
@@ -314,12 +322,12 @@ endif()
 
 if(OPENMC_FORCE_VENDORED_LIBS)
   set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
-  add_subdirectory(vendor/fmt)
+  add_vendored_subdirectory(fmt)
 else()
   find_package_write_status(fmt)
   if (NOT fmt_FOUND)
     set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
-    add_subdirectory(vendor/fmt)
+    add_vendored_subdirectory(fmt)
   endif()
 endif()
 
@@ -329,11 +337,11 @@ endif()
 
 if(OPENMC_BUILD_TESTS)
   if (OPENMC_FORCE_VENDORED_LIBS)
-    add_subdirectory(vendor/Catch2)
+    add_vendored_subdirectory(Catch2)
   else()
     find_package_write_status(Catch2)
     if (NOT Catch2_FOUND)
-      add_subdirectory(vendor/Catch2)
+      add_vendored_subdirectory(Catch2)
     endif()
   endif()
 endif()

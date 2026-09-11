@@ -9,6 +9,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
+#include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -1076,6 +1077,15 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
     default:
     default_case:
 
+      // Pseudo-scores are negative and each needs an explicit case above.
+      // Reaching the default block means this score has no implementation for
+      // this estimator, which would otherwise be silently skipped.
+      if (score_bin < 0)
+        fatal_error("Score " + reaction_name(score_bin) +
+                    " is not implemented "
+                    "for the estimator used by tally " +
+                    std::to_string(tally.id_));
+
       // The default block is really only meant for redundant neutron reactions
       // (e.g. 444, 901)
       if (!p.type().is_neutron())
@@ -1589,6 +1599,15 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
 
     default:
     default_case:
+
+      // Pseudo-scores are negative and each needs an explicit case above.
+      // Reaching the default block means this score has no implementation for
+      // this estimator, which would otherwise be silently skipped.
+      if (score_bin < 0)
+        fatal_error("Score " + reaction_name(score_bin) +
+                    " is not implemented "
+                    "for the estimator used by tally " +
+                    std::to_string(tally.id_));
 
       // The default block is really only meant for redundant neutron reactions
       // (e.g. 444, 901)
@@ -2300,6 +2319,13 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
       break;
 
     default:
+      // Pseudo-scores are negative and each needs an explicit case above.
+      // Reaching the default block means this score has no multigroup
+      // implementation, which would otherwise be silently skipped.
+      if (score_bin < 0)
+        fatal_error("Score " + reaction_name(score_bin) +
+                    " is not implemented in multigroup mode (tally " +
+                    std::to_string(tally.id_) + ")");
       continue;
     }
 

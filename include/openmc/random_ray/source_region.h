@@ -513,6 +513,12 @@ public:
   Position& centroid(int64_t sr) { return centroid_[sr]; }
   const Position centroid(int64_t sr) const { return centroid_[sr]; }
 
+  Position& centroid_offset(int64_t sr) { return centroid_offset_[sr]; }
+  const Position centroid_offset(int64_t sr) const
+  {
+    return centroid_offset_[sr];
+  }
+
   Position& centroid_iteration(int64_t sr) { return centroid_iteration_[sr]; }
   const Position centroid_iteration(int64_t sr) const
   {
@@ -738,6 +744,11 @@ private:
   vector<Position> centroid_;
   vector<Position> centroid_iteration_;
   vector<Position> centroid_t_;
+  // Offset of this batch's track-length-weighted centroid from the
+  // accumulated centroid the transport sweep evaluated the linear source
+  // against, used by the batch-consistent flux update (linear source solver
+  // only)
+  vector<Position> centroid_offset_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;
   // One box per region rather than separate minimum and maximum arrays: the

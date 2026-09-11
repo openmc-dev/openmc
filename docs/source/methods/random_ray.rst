@@ -1034,6 +1034,39 @@ The contents of this section, alongside the equations for the flat source and
 scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively,
 completes the set of equations for LS.
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Consistency of the Scalar Flux Estimate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One subtlety of the linear source scheme deserves note. Intuitively, the
+issue is a mismatch of statistics: the naive volume treatment of Equation
+:eq:`phi_naive` updates the flux from a single batch's rays, while the
+linear source is anchored to the simulation-averaged centroid, so the two
+halves of the update describe different sets of tracks and the exactness
+the naive treatment promises is quietly broken. Concretely, the transport
+sweep evaluates each region's linear source of Equation :eq:`region_source`
+against the accumulated centroid :math:`\mathbf{r}_{\mathrm{c}}`, but a
+batch's tracks average that source at their own track-length-weighted
+centroid :math:`\mathbf{r}_{\mathrm{c},b}`, so the mean source the batch
+actually integrates is
+
+.. math::
+    :label: batch_sampled_source
+
+    Q_{i,g} + \boldsymbol{\vec{Q}}_{i,g} \cdot \left(\mathbf{r}_{\mathrm{c},b}
+    - \mathbf{r}_{\mathrm{c}}\right)\;.
+
+A flux update that adds back only :math:`Q_{i,g} / \Sigma_{t,i,g}` absorbs
+the difference as gradient-scale noise, which in optically thin scatter-fed
+regions can ignite self-sustaining negative fluxes. OpenMC therefore adds
+back the full batch-sampled source (divided by :math:`\Sigma_{t,i,g}`)
+whenever a region updates with its own batch volume, making that update
+exact for the batch's tracks. Regions updating with the simulation-averaged
+volume keep the original form: each batch's centroid scatters about the
+accumulated centroid it feeds, so the omitted term has no persistent sign
+and its contribution to the accumulated flux shrinks with the number of
+batches, while the original form carries less variance there.
+
 .. _methods_random_ray_gradient_limiter:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~

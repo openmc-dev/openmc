@@ -16,21 +16,182 @@
     </material>
   </materials>
   <geometry>
-    <cell id="6" material="1" region="-13 7 -10 8 -11 9 -12" universe="7"/>
-    <cell id="7" material="2" region="13 -14 7 -10 8 -11 9 -12" universe="7"/>
-    <cell id="8" material="3" region="14 7 -10 8 -11 9 -12" universe="7"/>
-    <surface id="7" type="x-plane" boundary="reflective" coeffs="0.0"/>
-    <surface id="8" type="y-plane" boundary="reflective" coeffs="0.0"/>
-    <surface id="9" type="z-plane" boundary="reflective" coeffs="0.0"/>
-    <surface id="10" type="x-plane" boundary="vacuum" coeffs="30.0"/>
-    <surface id="11" type="y-plane" boundary="vacuum" coeffs="30.0"/>
-    <surface id="12" type="z-plane" boundary="vacuum" coeffs="30.0"/>
-    <surface id="13" type="sphere" coeffs="0.0 0.0 0.0 5.0"/>
-    <surface id="14" type="sphere" coeffs="0.0 0.0 0.0 12.5"/>
+    <cell id="1" name="infinite source region" material="1" universe="1"/>
+    <cell id="2" name="infinite void region" material="2" universe="2"/>
+    <cell id="3" name="infinite absorber region" material="3" universe="3"/>
+    <cell id="4" fill="4" universe="5"/>
+    <cell id="5" name="full domain" fill="5" region="1 -2 3 -4 5 -6" universe="6"/>
+    <lattice id="4">
+      <pitch>2.5 2.5 2.5</pitch>
+      <dimension>12 12 12</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <universes>
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 </universes>
+    </lattice>
+    <surface id="1" type="x-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="30.0"/>
+    <surface id="3" type="y-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="4" type="y-plane" boundary="vacuum" coeffs="30.0"/>
+    <surface id="5" type="z-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="6" type="z-plane" boundary="vacuum" coeffs="30.0"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>90</particles>
+    <particles>20</particles>
     <batches>60</batches>
     <inactive>30</inactive>
     <source type="independent" strength="3.14" particle="neutron">
@@ -38,7 +199,7 @@
         <parameters>100.0 1.0</parameters>
       </energy>
       <constraints>
-        <domain_type>material</domain_type>
+        <domain_type>universe</domain_type>
         <domain_ids>1</domain_ids>
       </constraints>
     </source>
@@ -55,19 +216,8 @@
       </ray_source>
       <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
       <source_shape>linear</source_shape>
-      <source_gradient_limiter>true</source_gradient_limiter>
       <volume_estimator>naive</volume_estimator>
-      <source_region_meshes>
-        <mesh id="1">
-          <domain id="7" type="universe"/>
-        </mesh>
-      </source_region_meshes>
     </random_ray>
-    <mesh id="1">
-      <dimension>12 12 12</dimension>
-      <lower_left>0.0 0.0 0.0</lower_left>
-      <upper_right>30.0 30.0 30.0</upper_right>
-    </mesh>
   </settings>
   <tallies>
     <filter id="3" type="material">

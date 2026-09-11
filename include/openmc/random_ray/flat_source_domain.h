@@ -242,10 +242,11 @@ protected:
     int target_material_id, const vector<int32_t>& instances);
   void apply_external_source_to_cell_and_children(
     int32_t i_cell, int src_idx, int32_t target_material_id);
-  virtual void set_flux_to_flux_plus_source(int64_t sr, double volume, int g);
+  virtual void set_flux_to_flux_plus_source(
+    int64_t sr, double volume, bool batch_volume, int g);
   void set_flux_to_source(int64_t sr, int g);
   virtual void set_flux_to_old_flux(int64_t sr, int g);
-  double flux_additive_term(int64_t sr, int g) const;
+  virtual double flux_additive_term(int64_t sr, int g, bool batch_volume) const;
   double stabilized_flux(int64_t sr, int g, double phi_new) const;
 
   //! Adaptive-estimator "strong source" test. Returns true if, in any group,

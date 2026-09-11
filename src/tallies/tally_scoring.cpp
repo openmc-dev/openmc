@@ -1663,6 +1663,41 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
     p_g = p.g();
   }
 
+  // A particle in a void region has no material, so macro_xs_ cannot be indexed
+  // with it. Every reaction rate vanishes without a material, but three scores
+  // stay defined and are still accumulated: the flux, which depends only on the
+  // track length; the inverse velocity, which depends only on the particle's
+  // speed; and the event count, which involves no material data at all. OpenMC
+  // already describes the speed of a multigroup particle in a void with the
+  // approximate group-average inverse velocity in default_inverse_velocity_
+  // (see Particle::speed), so the same data is used here. Only a tracklength
+  // estimator can reach a void, as the analog and collision estimators score at
+  // collisions, which need a material.
+  if (p.material() == MATERIAL_VOID) {
+    if (tally.estimator_ == TallyEstimator::TRACKLENGTH) {
+      for (auto i = 0; i < tally.scores_.size(); ++i) {
+        double score;
+        switch (tally.scores_[i]) {
+        case SCORE_FLUX:
+          score = flux;
+          break;
+        case SCORE_INVERSE_VELOCITY:
+          score = flux * data::mg.default_inverse_velocity_[p_g];
+          break;
+        case SCORE_EVENTS:
+          score = 1.0;
+          break;
+        default:
+          continue;
+        }
+#pragma omp atomic
+        tally.results_(filter_index, start_index + i, TallyResult::VALUE) +=
+          score * filter_weight;
+      }
+    }
+    return;
+  }
+
   // For shorthand, assign pointers to the material and nuclide xs set
   auto& nuc_xs = (i_nuclide >= 0) ? data::mg.nuclides_[i_nuclide]
                                   : data::mg.macro_xs_[p.material()];

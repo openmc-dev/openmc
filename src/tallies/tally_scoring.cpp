@@ -2720,7 +2720,8 @@ void score_surface_tally(
     match.bins_present_ = false;
 }
 
-void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
+void score_pulse_height_tally(
+  Particle& p, const vector<double>& pht, const vector<int>& tallies)
 {
   // The pulse height tally in OpenMC hijacks the logic of CellFilter and
   // EnergyFilter to score specific quantities related to particle pulse height.
@@ -2756,7 +2757,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       int index = std::distance(model::pulse_height_cells.begin(), it);
 
       // Temporarily change energy of particle to pulse-height value
-      p.E_last() = p.pht_storage()[index];
+      p.E_last() = pht[index];
 
       // Initialize an iterator over valid filter bin combinations. If
       // there are no valid combinations, use a continue statement to ensure

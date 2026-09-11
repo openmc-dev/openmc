@@ -7,25 +7,14 @@ namespace openmc {
 void RK4StreamlineIntegrator::next_step(
   double& tn, Position& yn, int cell_n, VelocityField* field)
 {
-  int datacell_id;
-
-  // Calculate k1
-  Direction k1 = field->evaluate_in_mesh(yn, cell_n) * dt();
-
-  // Calculate k2
-  Position p2 = yn + k1 / 2.;
-  Direction k2 = field->evaluate_clamped(yn, p2, cell_n) * dt();
-
-  // Calculate k3
-  Position p3 = yn + k2 / 2.;
-  Direction k3 = field->evaluate_clamped(yn, p3, cell_n) * dt();
-
-  // Calculate k4
-  Position p4 = yn + k3;
-  Direction k4 = field->evaluate_clamped(yn, p4, cell_n) * dt();
+  // Intermediate velocity estimates
+  Direction k1 = field->evaluate_in_mesh(yn, cell_n);
+  Direction k2 = field->evaluate_clamped(yn, yn + dt() / 2. * k1, cell_n);
+  Direction k3 = field->evaluate_clamped(yn, yn + dt() / 2. * k2, cell_n);
+  Direction k4 = field->evaluate_clamped(yn, yn + dt() * k3, cell_n);
 
   // Step forward
-  yn += (k1 + k2 * 2 + k3 * 2 + k4) / 6.;
+  yn += dt() / 6. * (k1 + 2 * k2 + 2 * k3 + k4);
   tn += dt();
 }
 

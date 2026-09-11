@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="mat">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="mat"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-2 1 -4 3 -6 5" universe="1"/>
+    <surface id="1" type="x-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="2" type="x-plane" boundary="reflective" coeffs="10.0"/>
+    <surface id="3" type="y-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="4" type="y-plane" boundary="reflective" coeffs="10.0"/>
+    <surface id="5" type="z-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="6" type="z-plane" boundary="reflective" coeffs="10.0"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>8</batches>
+    <inactive>3</inactive>
+    <energy_mode>multi-group</energy_mode>
+    <random_ray>
+      <distance_inactive>30.0</distance_inactive>
+      <distance_active>200.0</distance_active>
+      <ray_source>
+        <source type="independent" strength="1.0" particle="neutron">
+          <space type="box">
+            <parameters>0.0 0.0 0.0 10.0 10.0 10.0</parameters>
+          </space>
+        </source>
+      </ray_source>
+      <source_region_meshes>
+        <mesh id="1">
+          <domain id="1" type="universe"/>
+        </mesh>
+      </source_region_meshes>
+      <volume_estimator>adaptive</volume_estimator>
+    </random_ray>
+    <mesh id="1">
+      <dimension>4 4 4</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <upper_right>10.0 10.0 10.0</upper_right>
+    </mesh>
+  </settings>
+  </model>

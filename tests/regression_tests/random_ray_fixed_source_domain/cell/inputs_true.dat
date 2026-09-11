@@ -215,6 +215,7 @@
         </source>
       </ray_source>
       <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
+      <volume_estimator>hybrid</volume_estimator>
     </random_ray>
   </settings>
   <tallies>

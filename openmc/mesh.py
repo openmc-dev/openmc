@@ -3297,7 +3297,7 @@ class UnstructuredMesh(MeshBase):
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
-        filename = group["filename"][()].decode()
+        filename = group["filename"][()].decode() if "filename" in group else ""
         library = group["library"][()].decode()
         if "options" in group.attrs:
             options = group.attrs['options'].decode()

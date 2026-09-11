@@ -451,7 +451,10 @@ class MeshBase(IDManagerMixin, ABC):
         This method works by raytracing repeatedly through the mesh to count the
         estimated volume of each material in all mesh elements. Three sets of
         rays are used: one set parallel to the x-axis, one parallel to the
-        y-axis, and one parallel to the z-axis.
+        y-axis, and one parallel to the z-axis. Regions of the mesh that are
+        outside the model geometry are treated as void, equivalent to a cell
+        with no material. Universe fills within the model must still define all
+        enclosed space.
 
         .. versionadded:: 0.15.1
 
@@ -3276,7 +3279,7 @@ class UnstructuredMesh(MeshBase):
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
-        filename = group["filename"][()].decode()
+        filename = group["filename"][()].decode() if "filename" in group else ""
         library = group["library"][()].decode()
         if "options" in group.attrs:
             options = group.attrs['options'].decode()

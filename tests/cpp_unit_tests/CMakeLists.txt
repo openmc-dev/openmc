@@ -9,6 +9,7 @@ set(TEST_NAMES
   test_photon
   test_ray
   test_region
+  test_surface
   test_tensor
   test_geometry
   # Add additional unit test files here

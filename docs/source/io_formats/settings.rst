@@ -236,6 +236,70 @@ from MF=1, MT=458 on an ENDF evaluation.
 
   *Default*: true
 
+.. _dnp_drift_element:
+
+-----------------------
+``<dnp_drift>`` Element
+-----------------------
+
+The ``<dnp_drift>`` element configures the delayed neutron precursor (DNP) drift
+feature, which models the transport of precursors along fluid velocity streamlines
+in liquid-fueled systems (see :ref:`dnp_drift` for a detailed description of the
+underlying methodology). It has the following sub-elements:
+
+  :velocity_field:
+    The integer ID of a 3D vector field (defined via a :ref:`field_element`) that
+    provides the fluid velocity used to transport precursor sites. The referenced
+    field must be of type **velocity** and its values must have three components
+    per node or element (:math:`v_x, v_y, v_z`).
+
+  :boundary_map:
+    A group of sub-elements that assigns physical group numbers to boundary
+    types. Each sub-element contains a whitespace-separated list of integer
+    physical group numbers: The following sub-elements are recognized:
+
+    :inlet:
+      Physical group numbers corresponding to inlet boundaries.
+
+    :outlet:
+      Physical group numbers corresponding to outlet boundaries.
+
+    :wall:
+      Physical group numbers corresponding to wall boundaries.
+
+  :physical_group_map:
+    A group of sub-elements that maps individual boundary faces on the velocity
+    mesh to their physical group number. Because the DNP drift feature is currently
+    limited to OpenMC regular meshes, this mapping must be provided explicitly
+    by the user. It contains two sub-elements:
+
+    :face_ids:
+      A whitespace-separated list of integer face IDs identifying each boundary
+      face on the mesh.
+
+    :physical_groups:
+      A whitespace-separated list of integer physical group numbers, one per face,
+      in the same order as ``face_ids``. Each entry assigns the corresponding face to
+      a physical group.
+
+    The two lists must have the same length.
+
+  :integrator:
+    The time integration scheme used to transport precursors along streamlines.
+    Currently, only **RK4** (fourth-order Runge-Kutta) is supported.
+
+  :integrator_dt:
+    The time step size (in seconds) used by the integrator.
+
+  :recycling:
+    Whether to enable precursor recycling. If **true**, precursors that exit through
+    an outlet can be re-injected at an inlet if they do not decay during the external
+    transit. If **false**, precursors leaving through an outlet are immediately discarded.
+
+  :external_travel_time:
+    The average time (in seconds) for a precursor to transit out of the modeled system
+    before re-entering. Only used when recycling is set to **true**.
+
 --------------------------------
 ``<electron_treatment>`` Element
 --------------------------------
@@ -274,6 +338,51 @@ Determines whether to use event-based parallelism instead of the default
 history-based parallelism.
 
   *Default*: false
+
+.. _field_element:
+
+-------------------------------
+``<field>`` Element
+-------------------------------
+
+The ``<field>`` element describes a field combining a geometric mesh with values
+for each node or element depending on the type of mapping. Fields are currently
+used for the delayed neutron precursor drift feature (velocity field) and to
+declare temperature using a mesh (temperature field). It has the following
+attributes/sub-elements:
+
+  :id:
+    A unique integer that is used to identify the field.
+
+  :type:
+    The type of field. Currently, **temperature** and **velocity** are the two
+    field types supported.
+
+  :mesh:
+    The integer ID used to identify the associated mesh.
+
+  :mapping:
+    The type of mapping between the mesh and the values. Mapping can be either
+    **nodal** (values defined at mesh nodes) or **cell** (values defined per mesh
+    element and assumed constant within each element).
+
+    *Default*: 'cell'
+
+  :values:
+    A whitespace-separated list of floating point numbers specifying the field
+    data. Values are listed sequentially, with all components of a given node
+    or element grouped together before moving to the next (e.g., for a
+    three-component field:
+    :math:`[v_{1,1}, v_{1,2}, v_{1,3}, v_{2,1}, v_{2,2}, v_{2,3}, \ldots]`,
+    where the first index identifies the node/element and the second identifies
+    the component). The total number of values must equal
+    :math:`N_{\text{c}} \cdot N_{\text{l}}`, where
+    :math:`N_{\text{c}}` is the number of components per location
+    (e.g., 1 for a scalar field, 3 for a vector field) and
+    :math:`N_{\text{l}}` is the number of mesh nodes (for nodal mapping)
+    or mesh elements (for cell mapping). For a regular mesh with dimensions
+    :math:`(n_x, n_y, n_z)`, the number of nodes is :math:`(n_x+1)(n_y+1)(n_z+1)`
+    and the number of elements is :math:`n_x\cdot n_y\cdot n_z`.
 
 --------------------------------
 ``<free_gas_threshold>`` Element
@@ -1479,6 +1588,18 @@ that is to be applied to cells in the absence of an explicit cell temperature or
 a material default temperature.
 
   *Default*: 293.6 K
+
+.. _temperature_field:
+
+-------------------------------
+``<temperature_field>`` Element
+-------------------------------
+
+The ``<temperature_field>`` element specifies the ID of a scalar field (defined via
+a :ref:`field_element`) that provides temperatures on a geometric mesh. The referenced
+field must be of type **temperature** and its values must be scalar (one component per
+node or element) and given in Kelvin. When a temperature field is provided, it is used
+to assign temperatures in the model based on the underlying mesh.
 
 .. _temperature_method:
 

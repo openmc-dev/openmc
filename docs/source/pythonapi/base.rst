@@ -172,6 +172,28 @@ Meshes
    openmc.SphericalMesh
    openmc.UnstructuredMesh
 
+Fields
+------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclassinherit.rst
+
+   openmc.FieldBase
+   openmc.VelocityField
+   openmc.TemperatureField
+
+DNP drift
+---------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.DNPDrift
+
 Geometry Plotting
 -----------------
 

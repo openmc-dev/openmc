@@ -845,6 +845,35 @@ void Mesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
+int Mesh::get_physical_group(int face_id) const
+{
+  if (!pg_map().empty()) {
+    for (auto& pair : pg_map()) {
+      const std::vector<int>& vec = pair.second;
+      if (std::find(vec.begin(), vec.end(), face_id) != vec.end()) {
+        return pair.first;
+      }
+    }
+    fatal_error("Not found!");
+  } else {
+    fatal_error("Empty map for physical groups!");
+  }
+}
+
+const std::vector<int>& Mesh::get_face_ids(int group) const
+{
+  if (!pg_map().empty()) {
+    auto it = pg_map().find(group);
+    if (it != pg_map().end()) {
+      return it->second;
+    } else {
+      fatal_error("Key not found!");
+    }
+  } else {
+    fatal_error("Empty map for physical groups!");
+  }
+}
+
 //==============================================================================
 // Structured Mesh implementation
 //==============================================================================
@@ -965,6 +994,13 @@ UnstructuredMesh::UnstructuredMesh(hid_t group) : Mesh(group)
   if (attribute_exists(group, "output")) {
     read_attribute(group, "output", output_);
   }
+}
+
+double UnstructuredMesh::distance_to_next_boundary(
+  int current_bin, Position r, Direction u, int& bin_next) const
+{
+  fatal_error("Not implemented");
+  return -1.0;
 }
 
 void UnstructuredMesh::determine_bounds()
@@ -1428,6 +1464,149 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
+void StructuredMesh::bins_and_surface_bins_crossed(Position r0, Position r1,
+  vector<int>& leaving_surface_ids, vector<int>& entering_surface_ids,
+  vector<int>& bins, vector<double>& length_fractions) const
+{
+  // TODO: can reconstruct bins and surface_ids instead of explicitly tracking
+  // them
+
+  // Helper tally class.
+  struct CompleteAggregator {
+    CompleteAggregator(const StructuredMesh* _mesh,
+      vector<int>& _leaving_surface_ids, vector<int>& _entering_surface_ids,
+      vector<int>& _bins, vector<double>& _length_fractions)
+      : mesh(_mesh), leaving_surface_ids(_leaving_surface_ids),
+        entering_surface_ids(_entering_surface_ids), bins(_bins),
+        length_fractions(_length_fractions)
+    {}
+    // Returns surface ID without the inward information
+    // This is different from the other representation with the inward
+    // information
+    void surface(const MeshIndex& ijk, int k, bool max, bool inward) const
+    {
+      int surface_id =
+        2 * mesh->n_dimension_ * mesh->get_bin_from_indices(ijk) + 2 * k;
+      if (max)
+        surface_id += 1;
+
+      if (inward) {
+        entering_surface_ids.push_back(surface_id);
+      } else {
+        leaving_surface_ids.push_back(surface_id);
+      }
+    }
+    void track(const MeshIndex& ijk, double l) const
+    {
+      bins.push_back(mesh->get_bin_from_indices(ijk));
+      length_fractions.push_back(l);
+    }
+
+    const StructuredMesh* mesh;
+    vector<int>& leaving_surface_ids;
+    vector<int>& entering_surface_ids;
+    vector<int>& bins;
+    vector<double>& length_fractions;
+  };
+
+  // Determine direction
+  Direction u = (r1 - r0) / (r1 - r0).norm();
+
+  // Perform the mesh raytrace with the helper class.
+  raytrace_mesh(r0, r1, u,
+    CompleteAggregator(
+      this, leaving_surface_ids, entering_surface_ids, bins, length_fractions));
+}
+
+double StructuredMesh::distance_to_next_boundary(
+  int current_bin, Position r, Direction u, int& bin_next) const
+{
+  Position global_r = r;
+  Position local_r = local_coords(r);
+
+  double distance;
+  bool in_mesh;
+
+  // Find the cell indices
+  StructuredMesh::MeshIndex ijk;
+  if (current_bin >= 0) {
+
+    ijk = get_indices_from_bin(current_bin);
+
+    // Calculate initial distances to next surfaces in all three dimensions
+    std::array<StructuredMesh::MeshDistance, 3> distances;
+    for (int k = 0; k < n_dimension_; ++k) {
+      distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
+    }
+
+    // Find next ijk
+    auto k_min =
+      std::min_element(distances.begin(), distances.end()) - distances.begin();
+    distance = distances[k_min].distance;
+    ijk[k_min] = distances[k_min].next_index;
+
+    // If the particle is on a surface, test using the next index
+    if (distance <= FP_COINCIDENT) {
+
+      // Update distances
+      for (int k = 0; k < n_dimension_; ++k) {
+        distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
+      }
+
+      k_min = std::min_element(distances.begin(), distances.end()) -
+              distances.begin();
+      distance = distances[k_min].distance;
+      ijk[k_min] = distances[k_min].next_index;
+    }
+
+    // Determine next bin
+    in_mesh = true;
+    for (int k = 0; k < n_dimension_; ++k) {
+      if ((ijk[k] < 1) || (ijk[k] > shape_[k])) {
+        in_mesh = false;
+      }
+    }
+    if (in_mesh) {
+      bin_next = get_bin_from_indices(ijk);
+    } else {
+      bin_next = C_NONE;
+    }
+
+  } else { // Outside mesh
+
+    // Calculate distance to mesh from outside
+    distance = INFTY;
+    for (int k = 0; k < n_dimension_; k++) {
+      double d = distance_to_mesh_boundary_from_outside(k, r, u);
+      if (d < INFTY) {
+        distance = d;
+      }
+    }
+
+    // Determine next bin
+    if (distance < INFTY) {
+      ijk = get_indices(global_r + (distance + TINY_BIT) * u, in_mesh);
+      bin_next = get_bin_from_indices(ijk);
+    } else {
+      bin_next = C_NONE;
+    }
+  }
+
+  return distance;
+}
+
+int StructuredMesh::get_bin_clamped(Position r0, Position r1, int bin0) const
+{
+  vector<int> bins;
+  vector<double> lengths;
+  bins_crossed(r0, r1, (r1 - r0) / (r1 - r0).norm(), bins, lengths);
+  if (!bins.empty()) {
+    return bins.back();
+  } else {
+    return bin0;
+  }
+}
+
 //==============================================================================
 // RegularMesh implementation
 //==============================================================================
@@ -1577,6 +1756,15 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
   }
 }
 
+int RegularMesh::n_vertices() const
+{
+  int n_vertices = 1;
+  for (int i = 0; i < n_dimension_; i++) {
+    n_vertices *= shape_[i] + 1;
+  }
+  return n_vertices;
+}
+
 int RegularMesh::get_index_in_direction(double r, int i) const
 {
   if (r <= lower_left_[i])
@@ -1623,6 +1811,34 @@ StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
   }
 
   return d;
+}
+
+double RegularMesh::distance_to_mesh_boundary_from_outside(
+  int k, const Position& r, const Direction& u) const
+{
+  double t;
+  double distance = INFTY;
+
+  if (u[k] > 0.0) {
+    t = (lower_left_[k] - r[k]) / u[k];
+  } else {
+    t = (upper_right_[k] - r[k]) / u[k];
+  }
+
+  if (t > FP_COINCIDENT) {
+    bool reenter = true;
+    for (int i = 0; i < n_dimension_; i++) {
+      if (i != k) {
+        double a = r[i] + u[i] * t;
+        reenter &= (a >= lower_left_[i]);
+        reenter &= (a <= upper_right_[i]);
+      }
+    }
+    if (reenter) {
+      distance = t;
+    }
+  }
+  return distance;
 }
 
 std::pair<vector<double>, vector<double>> RegularMesh::plot(
@@ -1727,6 +1943,209 @@ double RegularMesh::volume(const MeshIndex& ijk) const
   return element_volume_;
 }
 
+double RegularMesh::face_area(int face_id)
+{
+  if (n_dimension_ != 3) {
+    fatal_error("Only implemented in 3D!");
+  }
+
+  if ((face_id < 0) || (face_id >= (n_bins() * 2 * n_dimension_))) {
+    fatal_error("Face ID out of bounds!");
+  }
+
+  int face_local_id = face_id % 6;
+  int normal_id = face_local_id / 2;
+
+  double area = 0.;
+  if (normal_id == 0) {
+    area = width_[1] * width_[2];
+  } else if (normal_id == 1) {
+    area = width_[0] * width_[2];
+  } else if (normal_id == 2) {
+    area = width_[0] * width_[1];
+  }
+
+  return area;
+}
+
+void RegularMesh::sample_on_physical_groups(
+  Position& p, int& bin, uint64_t* seed, vector<int> physical_groups)
+{
+  // Only implemented in 3D
+  if (n_dimension_ != 3) {
+    fatal_error("Only implemented in 3D!");
+  }
+
+  // Retrieve the face IDs from physical groups
+  vector<int> face_ids;
+  for (auto g : physical_groups) {
+    vector<int> temp = get_face_ids(g);
+    face_ids.insert(face_ids.end(), temp.begin(), temp.end());
+  }
+
+  // Remove any duplicates to avoid sampling bias
+  std::sort(face_ids.begin(), face_ids.end());
+  face_ids.erase(std::unique(face_ids.begin(), face_ids.end()), face_ids.end());
+
+  // Retrieve the face area of each face and calculate the total
+  double total_area = 0.;
+  vector<double> areas;
+  for (auto s : face_ids) {
+    double area = face_area(s);
+    areas.push_back(area);
+    total_area += area;
+  }
+
+  // Randomly select a face (weighted by surface area)
+  int selected_face_id;
+  double random_limit = total_area * prn(seed);
+  double incremental_area = 0.;
+  for (int i = 0; i < face_ids.size(); i++) {
+    incremental_area += areas[i];
+    if ((random_limit - incremental_area) <= 1.0E-13) {
+      selected_face_id = face_ids[i];
+      break;
+    }
+  }
+
+  // Sample a new position on the selected face
+  p = sample_on_face(selected_face_id, seed);
+
+  // Returns bin as well
+  bin = selected_face_id / (2 * n_dimension_);
+}
+
+Position RegularMesh::sample_on_face(int face_id, uint64_t* seed)
+{
+  if (n_dimension_ != 3) {
+    fatal_error("Only implemented in 3D!");
+  }
+
+  if ((face_id < 0) || (face_id >= (n_bins() * 2 * n_dimension_))) {
+    fatal_error("Face ID out of bounds!");
+  }
+
+  int bin_id = face_id / (2 * n_dimension_);
+  MeshIndex ijk = get_indices_from_bin(bin_id);
+
+  int face_local_id = face_id % (2 * n_dimension_);
+  int normal_id = face_local_id / 2;
+  int max_value = face_local_id % 2;
+
+  Position p = Position();
+
+  int dimensions[] = {0, 1, 2};
+
+  for (int i : dimensions) {
+    if (i == normal_id) {
+      if (max_value) {
+        p[i] = positive_grid_boundary(ijk, i);
+      } else {
+        p[i] = negative_grid_boundary(ijk, i);
+      }
+    } else {
+      p[i] = negative_grid_boundary(ijk, i) + width_(i) * prn(seed);
+    }
+  }
+
+  return p;
+}
+
+int RegularMesh::return_vertex_unique_id(
+  MeshIndex ijk, int local_vertex_idx) const
+{
+  if (n_dimension_ != 3) {
+    fatal_error("Only implemented in 3D!");
+  }
+
+  for (int k = 0; k < n_dimension_; ++k) {
+    if ((ijk[k] < 1) || (ijk[k] > shape_[k])) {
+      fatal_error("Indices out of bounds!");
+    }
+  }
+
+  switch (local_vertex_idx) {
+  case 0:
+    ijk[0]--;
+    ijk[1]--;
+    ijk[2]--;
+    break;
+  case 1:
+    ijk[1]--;
+    ijk[2]--;
+    break;
+  case 2:
+    ijk[0]--;
+    ijk[2]--;
+    break;
+  case 3:
+    ijk[2]--;
+    break;
+  case 4:
+    ijk[0]--;
+    ijk[1]--;
+    break;
+  case 5:
+    ijk[1]--;
+    break;
+  case 6:
+    ijk[0]--;
+    break;
+  case 7:
+    break;
+  default:
+    fatal_error("Local vertex index out of bounds!");
+  }
+
+  return ijk[0] + ijk[1] * (shape_[0] + 1) +
+         ijk[2] * (shape_[0] + 1) * (shape_[1] + 1);
+}
+
+std::vector<int> RegularMesh::connectivity(int id) const
+{
+  if (n_dimension_ != 3) {
+    fatal_error("Only implemented in 3D!");
+  }
+
+  if ((id < 0) || (id >= n_bins())) {
+    fatal_error("Element ID out of bounds!");
+  }
+
+  MeshIndex ijk = get_indices_from_bin(id);
+
+  vector<int> v;
+  for (int i = 0; i < 8; i++) {
+    v.push_back(return_vertex_unique_id(ijk, i));
+  }
+
+  return v;
+}
+
+Position RegularMesh::normalize_coordinates(const Position& r, int bin)
+{
+  // Only implemented in 3D
+  if (n_dimension_ != 3) {
+    fatal_error("Only implemented in 3D!");
+  }
+
+  MeshIndex ijk = get_indices_from_bin(bin);
+
+  // Retrieve dimensions
+  double xmin = negative_grid_boundary(ijk, 0);
+  double xmax = positive_grid_boundary(ijk, 0);
+  double ymin = negative_grid_boundary(ijk, 1);
+  double ymax = positive_grid_boundary(ijk, 1);
+  double zmin = negative_grid_boundary(ijk, 2);
+  double zmax = positive_grid_boundary(ijk, 2);
+
+  // Normalize and restrict normalized values between 0.0 and 1.0
+  double p_x = std::clamp((r[0] - xmin) / (xmax - xmin), 0.0, 1.0);
+  double p_y = std::clamp((r[1] - ymin) / (ymax - ymin), 0.0, 1.0);
+  double p_z = std::clamp((r[2] - zmin) / (zmax - zmin), 0.0, 1.0);
+
+  return Position(p_x, p_y, p_z);
+}
+
 //==============================================================================
 // RectilinearMesh implementation
 //==============================================================================
@@ -1794,6 +2213,34 @@ StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(
     d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
   }
   return d;
+}
+
+double RectilinearMesh::distance_to_mesh_boundary_from_outside(
+  int k, const Position& r, const Direction& u) const
+{
+  double t;
+  double distance = INFTY;
+
+  if (u[k] > 0.0) {
+    t = (lower_left_[k] - r[k]) / u[k];
+  } else {
+    t = (upper_right_[k] - r[k]) / u[k];
+  }
+
+  if (t > FP_COINCIDENT) {
+    bool reenter = true;
+    for (int i = 0; i < n_dimension_; i++) {
+      if (i != k) {
+        double a = r[i] + u[i] * t;
+        reenter &= (a >= lower_left_[i]);
+        reenter &= (a <= upper_right_[i]);
+      }
+    }
+    if (reenter) {
+      distance = t;
+    }
+  }
+  return distance;
 }
 
 int RectilinearMesh::set_grid()

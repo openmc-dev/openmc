@@ -387,10 +387,12 @@ list(APPEND libopenmc_SOURCES
   src/distribution_energy.cpp
   src/distribution_multi.cpp
   src/distribution_spatial.cpp
+  src/dnp_drift.cpp
   src/eigenvalue.cpp
   src/endf.cpp
   src/error.cpp
   src/event.cpp
+  src/field.cpp
   src/file_utils.cpp
   src/finalize.cpp
   src/geometry.cpp
@@ -443,6 +445,7 @@ list(APPEND libopenmc_SOURCES
   src/simulation.cpp
   src/source.cpp
   src/state_point.cpp
+  src/streamline_integrator.cpp
   src/string_utils.cpp
   src/summary.cpp
   src/surface.cpp

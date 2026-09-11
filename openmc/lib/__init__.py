@@ -68,6 +68,9 @@ def feature_enabled(feature: str) -> bool:
     return enabled.value
 
 
+def _xdg_enabled():
+    return c_bool.in_dll(_dll, "XDG_ENABLED").value
+
 def _coord_levels():
     return _dll.openmc_get_n_coord_levels()
 

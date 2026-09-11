@@ -3,7 +3,8 @@ import shutil
 import subprocess
 
 
-def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
+def install(omp=False, mpi=False, phdf5=False, dagmc=False, xdg=False,
+            libmesh=False):
     # Create build directory and change to it
     shutil.rmtree('build', ignore_errors=True)
     os.mkdir('build')
@@ -29,16 +30,26 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     else:
         cmake_cmd.append('-DHDF5_PREFER_PARALLEL=OFF')
 
+    prefix_paths = []
+
     if dagmc:
         cmake_cmd.append('-DOPENMC_USE_DAGMC=ON')
         cmake_cmd.append('-DOPENMC_USE_UWUW=ON')
         dagmc_path = os.environ.get('HOME') + '/DAGMC'
-        cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + dagmc_path)
+        prefix_paths.append(dagmc_path)
 
-    if libmesh:
+    if xdg:
+        cmake_cmd.append('-DOPENMC_USE_XDG=ON')
+        xdg_path = os.environ.get('HOME') + '/XDG'
+        prefix_paths.append(xdg_path)
+
+    if libmesh or xdg:
         cmake_cmd.append('-DOPENMC_USE_LIBMESH=ON')
         libmesh_path = os.environ.get('HOME') + '/LIBMESH'
-        cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + libmesh_path)
+        prefix_paths.append(libmesh_path)
+
+    if prefix_paths:
+        cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + ';'.join(prefix_paths))
 
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
@@ -59,10 +70,11 @@ def main():
     mpi = (os.environ.get('MPI') == 'y')
     phdf5 = (os.environ.get('PHDF5') == 'y')
     dagmc = (os.environ.get('DAGMC') == 'y')
+    xdg = (os.environ.get('XDG') == 'y')
     libmesh = (os.environ.get('LIBMESH') == 'y')
 
     # Build and install
-    install(omp, mpi, phdf5, dagmc, libmesh)
+    install(omp, mpi, phdf5, dagmc, xdg, libmesh)
 
 if __name__ == '__main__':
     main()

@@ -147,6 +147,7 @@ int openmc_finalize()
   settings::survival_biasing = false;
   settings::survival_normalization = false;
   settings::temperature_default = 293.6;
+  settings::temperature_field_on = false;
   settings::temperature_method = TemperatureMethod::NEAREST;
   settings::temperature_multipole = false;
   settings::temperature_range = {0.0, 0.0};
@@ -180,6 +181,8 @@ int openmc_finalize()
 
   simulation::entropy_mesh = nullptr;
   simulation::ufs_mesh = nullptr;
+
+  simulation::temperature_field = TemperatureField();
 
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};

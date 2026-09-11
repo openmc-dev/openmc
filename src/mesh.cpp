@@ -967,6 +967,13 @@ UnstructuredMesh::UnstructuredMesh(hid_t group) : Mesh(group)
   }
 }
 
+MeshCrossing UnstructuredMesh::next_mesh_crossing(
+  int current_bin, Position r, Direction u) const
+{
+  fatal_error("Not implemented");
+  return {INFTY, C_NONE};
+}
+
 void UnstructuredMesh::determine_bounds()
 {
   double xmin = INFTY;
@@ -1426,6 +1433,50 @@ void StructuredMesh::surface_bins_crossed(
 
   // Perform the mesh raytrace with the helper class.
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
+}
+
+MeshCrossing StructuredMesh::next_mesh_crossing(
+  int current_bin, Position r, Direction u) const
+{
+  bool in_mesh;
+  MeshIndex ijk = get_indices(r + TINY_BIT * u, in_mesh);
+
+  if (current_bin != C_NONE) {
+    if (!in_mesh)
+      return {0.0, C_NONE};
+  } else if (in_mesh) {
+    return {0.0, get_bin_from_indices(ijk)};
+  }
+
+  const bool started_in_mesh = in_mesh;
+  Position local_r = local_coords(r);
+  std::array<MeshDistance, 3> distances;
+  for (int k = 0; k < n_dimension_; ++k)
+    distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
+
+  double distance;
+  if (in_mesh) {
+    auto first = distances.begin();
+    auto last = first + n_dimension_;
+    distance = std::min_element(first, last)->distance;
+  } else {
+    // For a Cartesian mesh, the latest entry among the out-of-range
+    // directions is the point at which the ray first enters the mesh.
+    distance = 0.0;
+    for (int k = 0; k < n_dimension_; ++k) {
+      if (ijk[k] < 1 || ijk[k] > shape_[k])
+        distance = std::max(distance, distances[k].distance);
+    }
+  }
+
+  if (distance >= INFTY)
+    return {INFTY, C_NONE};
+
+  MeshIndex next_ijk = get_indices(r + (distance + TINY_BIT) * u, in_mesh);
+  if (!in_mesh)
+    return {started_in_mesh ? distance : INFTY, C_NONE};
+
+  return {distance, get_bin_from_indices(next_ijk)};
 }
 
 //==============================================================================

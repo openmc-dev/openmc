@@ -20,6 +20,11 @@ namespace openmc {
 // Forward declare the Surface class for use in Particle::cross_vacuum_bc, etc.
 class Surface;
 
+struct AdvanceResult {
+  bool temperature_field_crossing {false};
+  int next_temperature_field_bin {C_NONE};
+};
+
 /*
  * The Particle class encompasses data and methods for transporting particles
  * through their lifecycle. Its base class defines particle data layout in
@@ -70,7 +75,8 @@ public:
 
   // Coarse-grained particle events
   void event_calculate_xs();
-  void event_advance();
+  AdvanceResult event_advance();
+  void event_cross_temperature_field(int next_bin);
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary(const SourceSite& site);

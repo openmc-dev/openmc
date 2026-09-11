@@ -163,4 +163,9 @@ extern "C" int openmc_temperature_field_get_temperature(
   return 0;
 }
 
+extern "C" size_t openmc_temperature_field_size()
+{
+  return simulation::temperature_field.values().size();
+}
+
 } // namespace openmc

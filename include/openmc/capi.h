@@ -299,6 +299,11 @@ int openmc_get_weight_windows_index(int32_t id, int32_t* idx);
 int openmc_weight_windows_get_id(int32_t index, int32_t* id);
 int openmc_weight_windows_set_id(int32_t index, int32_t id);
 
+//! Return the temperature field size (number of values)
+//
+//! \return Number of values in the temperature field
+size_t openmc_temperature_field_size();
+
 //! Updates weight window values using the specified tally
 //! \param[in] ww_idx Index of the weight window object
 //! \param[in] tally_idx Index of the tally to use for the update

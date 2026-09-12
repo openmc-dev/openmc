@@ -301,6 +301,9 @@ void RandomRay::event_advance_ray()
     int64_t sr = domain_->lookup_base_source_region_idx(*this);
     for (int i = 0; i < n_coord(); i++) {
       Cell& c {*model::cells[coord(i).cell()]};
+      // Threads routinely transport rays through the same base source region,
+      // so this counter is shared and must be updated atomically
+#pragma omp atomic
       mpi::decomp_map.num_base_source_region_RT_[sr] += c.n_surfaces();
     }
   }
@@ -405,6 +408,8 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 
 #ifdef OPENMC_MPI
       if (mpi::n_procs > 1) {
+        // Shared across threads; see the note in event_advance_ray()
+#pragma omp atomic
         mpi::decomp_map.num_mesh_bin_RT_[sr] += 1;
       }
 #endif

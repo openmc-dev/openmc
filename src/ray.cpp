@@ -8,15 +8,16 @@
 
 namespace openmc {
 
-void Ray::compute_distance()
-{
-  boundary() = distance_to_boundary(*this);
-}
+namespace {
+// Max intersections before we assume ray tracing is caught in an infinite loop
+constexpr int MAX_INTERSECTIONS = 1000000;
+} // namespace
 
-void Ray::trace(double max_distance)
+template<typename RayT>
+void trace_ray(RayT& ray, double max_distance)
 {
   // Clear anything left over from a previous trace on this object.
-  reset_trace_state();
+  ray.reset_trace_state();
 
   // To trace the ray from its origin all the way through the model, we have
   // to proceed in two phases. In the first, the ray may or may not be found
@@ -34,13 +35,13 @@ void Ray::trace(double max_distance)
 
   bool inside_cell;
   // Check for location if the particle is already known
-  if (lowest_coord().cell() == C_NONE) {
+  if (ray.lowest_coord().cell() == C_NONE) {
     // The geometry position of the particle is either unknown or outside of the
     // edge of the model.
-    if (lowest_coord().universe() == C_NONE) {
+    if (ray.lowest_coord().universe() == C_NONE) {
       // Attempt to initialize the particle. We may have to
       // enter a loop to move it up to the edge of the model.
-      inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+      inside_cell = exhaustive_find_cell(ray, settings::verbosity >= 10);
     } else {
       // It has been already calculated that the current position is outside of
       // the edge of the model.
@@ -54,37 +55,38 @@ void Ray::trace(double max_distance)
 
   // Advance to the boundary of the model
   while (!inside_cell) {
-    advance_to_boundary_from_void();
+    ray.advance_to_boundary_from_void();
 
     // Flight through void is real flight: it has to be charged against the
     // distance budget, otherwise max_distance ends up being measured from the
     // point where the ray entered the model rather than from its origin. It
     // is accumulated into total_distance_ only -- traversal_distance_ stays
     // zero until the model is reached.
-    if (boundary().surface() != SURFACE_NONE && boundary().distance() < INFTY) {
+    if (ray.boundary().surface() != SURFACE_NONE &&
+        ray.boundary().distance() < INFTY) {
       // advance_to_boundary_from_void() has already moved the ray to the
       // boundary plus the TINY_BIT of padding, so that is the distance to
       // account for.
-      double advance = boundary().distance() + TINY_BIT;
+      double advance = ray.boundary().distance() + TINY_BIT;
 
       if (advance >= max) {
         // The budget runs out before the ray even reaches the model. Back it
         // up so the net movement is exactly max.
-        move_distance(max - advance);
-        update_distance(max);
-        completed_ = true;
+        ray.move_distance(max - advance);
+        ray.update_distance(max);
+        ray.completed_ = true;
         return;
       }
-      update_distance(advance);
+      ray.update_distance(advance);
       max -= advance;
     }
 
-    inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+    inside_cell = exhaustive_find_cell(ray, settings::verbosity >= 10);
 
     // If true this means no surface was intersected. See cell.cpp and search
     // for numeric_limits to see where we return it.
-    if (surface() == std::numeric_limits<int>::max()) {
-      warning(fmt::format("Lost a ray, r = {}, u = {}", r(), u()));
+    if (ray.surface() == std::numeric_limits<int>::max()) {
+      warning(fmt::format("Lost a ray, r = {}, u = {}", ray.r(), ray.u()));
       return;
     }
 
@@ -94,11 +96,11 @@ void Ray::trace(double max_distance)
       break;
 
     // if there is no intersection with the model, we're done
-    if (boundary().surface() == SURFACE_NONE)
+    if (ray.boundary().surface() == SURFACE_NONE)
       return;
 
-    event_counter_++;
-    if (event_counter_ > MAX_INTERSECTIONS) {
+    ray.event_counter_++;
+    if (ray.event_counter_ > MAX_INTERSECTIONS) {
       warning("Likely infinite loop while ray tracing");
       return;
     }
@@ -106,22 +108,22 @@ void Ray::trace(double max_distance)
 
   // From here on the ray is inside the model, so its flight counts toward
   // traversal_distance_ as well as total_distance_.
-  in_model_ = true;
+  ray.in_model_ = true;
 
   // Call the specialized logic for this type of ray. This is for the
   // intersection for the first intersection if we had one.
-  if (boundary().surface() != SURFACE_NONE) {
+  if (ray.boundary().surface() != SURFACE_NONE) {
     // set the geometry state's surface attribute to be used for
     // surface normal computation
-    surface() = boundary().surface();
-    on_intersection();
-    if (stop_)
+    ray.surface() = ray.boundary().surface();
+    ray.on_intersection();
+    if (ray.stop_)
       return;
   }
 
   // reset surface attribute to zero after the first intersection so that it
   // doesn't perturb surface crossing logic from here on out
-  surface() = 0;
+  ray.surface() = 0;
 
   // This is the ray tracing loop within the model. It exits after exiting
   // the model, which is equivalent to assuming that the model is convex.
@@ -132,19 +134,20 @@ void Ray::trace(double max_distance)
   // fine.
   while (true) {
 
-    compute_distance();
+    ray.boundary() = distance_to_boundary(ray);
 
     // There are no more intersections to process
     // if we hit the edge of the model, so stop
     // the particle in that case. Also, just exit
     // if a negative distance was somehow computed.
-    if (boundary().distance() == INFTY || boundary().distance() == INFINITY ||
-        boundary().distance() < 0) {
+    if (ray.boundary().distance() == INFTY ||
+        ray.boundary().distance() == INFINITY ||
+        ray.boundary().distance() < 0) {
       return;
     }
 
     // Distance from the ray's current position to the next surface.
-    const double surface_distance = boundary().distance();
+    const double surface_distance = ray.boundary().distance();
 
     // See below comment where call_on_intersection is checked in an
     // if statement for an explanation of this.
@@ -157,35 +160,35 @@ void Ray::trace(double max_distance)
     if (advance >= max) {
       // The ray runs out of budget inside this cell, so no surface is
       // crossed. Only the truncated distance was actually travelled.
-      move_distance(max);
-      update_distance(max);
-      completed_ = true;
+      ray.move_distance(max);
+      ray.update_distance(max);
+      ray.completed_ = true;
       return;
     }
 
-    move_distance(advance);
+    ray.move_distance(advance);
 
     max -= advance;
 
-    surface() = boundary().surface();
+    ray.surface() = ray.boundary().surface();
     // Initialize last cells from the current cell, because the cell() variable
     // does not contain the data for the case of a single-segment ray
-    for (int j = 0; j < n_coord(); ++j) {
-      cell_last(j) = coord(j).cell();
+    for (int j = 0; j < ray.n_coord(); ++j) {
+      ray.cell_last(j) = ray.coord(j).cell();
     }
-    n_coord_last() = n_coord();
-    n_coord() = boundary().coord_level();
-    if (boundary().lattice_translation()[0] != 0 ||
-        boundary().lattice_translation()[1] != 0 ||
-        boundary().lattice_translation()[2] != 0) {
-      cross_lattice(*this, boundary(), settings::verbosity >= 10);
+    ray.n_coord_last() = ray.n_coord();
+    ray.n_coord() = ray.boundary().coord_level();
+    if (ray.boundary().lattice_translation()[0] != 0 ||
+        ray.boundary().lattice_translation()[1] != 0 ||
+        ray.boundary().lattice_translation()[2] != 0) {
+      cross_lattice(ray, ray.boundary(), settings::verbosity >= 10);
     }
 
     // Accumulate before the cell search, while material() still refers to the
     // cell the ray just crossed.
-    update_distance(advance);
+    ray.update_distance(advance);
 
-    inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
+    inside_cell = neighbor_list_find_cell(ray, settings::verbosity >= 10);
 
     // Call the specialized logic for this type of ray. Note that we do not
     // call this if the advance distance is very small. Unfortunately, it seems
@@ -196,28 +199,38 @@ void Ray::trace(double max_distance)
     // threshold 10x larger than the scoot distance used to advance up to the
     // model boundary, we can avoid that situation.
     if (call_on_intersection) {
-      on_intersection();
-      if (stop_)
+      ray.on_intersection();
+      if (ray.stop_)
         return;
     }
 
     if (!inside_cell)
       return;
 
-    event_counter_++;
-    if (event_counter_ > MAX_INTERSECTIONS) {
+    ray.event_counter_++;
+    if (ray.event_counter_ > MAX_INTERSECTIONS) {
       warning("Likely infinite loop while ray tracing");
       return;
     }
   }
 }
 
-void Ray::update_distance(double distance)
+void RayState::accumulate_distance(double distance)
 {
   total_distance_ += distance;
   if (in_model_) {
     traversal_distance_ += distance;
   }
+}
+
+void Ray::trace(double max_distance)
+{
+  trace_ray(*this, max_distance);
+}
+
+void ParticleRay::trace(double max_distance)
+{
+  trace_ray(*this, max_distance);
 }
 
 void ParticleRay::init_physics(ParticleType type_, double time_, double E_)
@@ -253,11 +266,9 @@ void ParticleRay::mark_as_lost(const char* message)
   stop();
 }
 
-void ParticleRay::on_intersection() {}
-
 void ParticleRay::update_distance(double distance)
 {
-  Ray::update_distance(distance);
+  accumulate_distance(distance);
 
   time() += distance / speed();
 
@@ -286,5 +297,9 @@ void ParticleRay::update_distance(double distance)
 
   traversal_mfp_ += macro_xs().total * distance;
 }
+
+// Explicit instantiations: the two kinds of ray that share the tracing loop
+template void trace_ray<Ray>(Ray&, double);
+template void trace_ray<ParticleRay>(ParticleRay&, double);
 
 } // namespace openmc

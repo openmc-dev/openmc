@@ -3,6 +3,7 @@
 
 #include <algorithm> // for copy
 
+#include "openmc/geometry.h"
 #include "openmc/particle.h"
 #include "openmc/particle_type.h"
 #include "openmc/position.h"
@@ -10,41 +11,27 @@
 
 namespace openmc {
 
-// Base class that implements ray tracing logic, not necessarily through
-// defined regions of the geometry but also outside of it.
-class Ray : virtual public GeometryState {
+//==============================================================================
+//! Per-flight bookkeeping, kept separate from any geometry or physics state.
+//!
+//! This lives in its own class so that ParticleRay can be both a Particle and
+//! a ray without the two meeting at a *virtual* GeometryState base. A virtual
+//! base would put a vtable indirection in front of every geometry access --
+//! r(), u(), coord(), material() -- throughout the transport loop, which is
+//! far too high a price to pay across all of OpenMC for one kind of ray.
+//!
+//! Members are public because trace_ray() drives them directly.
+//==============================================================================
 
+class RayState {
 public:
-  // Initialize from location and direction
-  Ray(Position r, Direction u) { init_from_r_u(r, u); }
-
-  //! Initialize from a known geometry state.
-  explicit Ray(const GeometryState& p)
-  {
-    static_cast<GeometryState&>(*this) = p;
-  }
-
-  virtual ~Ray() = default;
-
-  // Called at every surface intersection within the model
-  virtual void on_intersection() = 0;
-
-  /*
-   * Traces the ray through the geometry, calling on_intersection
-   * at every surface boundary. All per-trace accumulators are reset on
-   * entry, so a Ray may be traced more than once.
-   */
-  void trace(double max_distance = INFTY);
+  //! Accumulate a segment of flight path, splitting it between the distance
+  //! travelled overall and the distance travelled inside the model.
+  //! \param distance true geometric length of the segment
+  void accumulate_distance(double distance);
 
   // Stops the ray and exits tracing when called from on_intersection
   void stop() { stop_ = true; }
-
-  // Sets the dist_ variable
-  void compute_distance();
-
-  //! Accumulate a segment of flight path.
-  //! \param distance true geometric length of the segment
-  virtual void update_distance(double distance);
 
   //! Whether the ray travelled the full max_distance passed to trace().
   //! False if it left the model (or hit a dead end) beforehand. This is an
@@ -62,19 +49,8 @@ public:
   //! against.
   double total_distance() const { return total_distance_; }
 
-protected:
-  //! Reset everything trace() accumulates. Derived classes that add their own
-  //! accumulators must override this and call the base version first.
-  virtual void reset_trace_state()
-  {
-    traversal_distance_ = 0.0;
-    total_distance_ = 0.0;
-    in_model_ = false;
-    completed_ = false;
-    stop_ = false;
-    event_counter_ = 0;
-    boundary().reset();
-  }
+  //! Reset everything a flight accumulates.
+  void reset_ray_state() { *this = RayState {}; }
 
   // Records how far the ray has traveled inside the model
   double traversal_distance_ {0.0};
@@ -90,19 +66,92 @@ protected:
   // Set when trace() consumed the whole max_distance it was given
   bool completed_ {false};
 
-private:
-  // Max intersections before we assume ray tracing is caught in an infinite
-  // loop:
-  static constexpr int MAX_INTERSECTIONS = 1000000;
-
   bool stop_ {false};
 
   unsigned event_counter_ {0};
 };
 
-class ParticleRay : public Ray, public Particle {
+//! Trace a ray through the geometry, calling ray.on_intersection() at every
+//! surface boundary. All per-flight accumulators are reset on entry, so a ray
+//! may be traced more than once.
+//!
+//! RayT must be a GeometryState that also carries a RayState and supplies
+//! on_intersection(), update_distance(double) and reset_trace_state().
+//! Explicitly instantiated in ray.cpp for Ray and ParticleRay; being a
+//! template rather than a virtual method is what lets the two share this
+//! logic without sharing a base class.
+template<typename RayT>
+void trace_ray(RayT& ray, double max_distance);
+
+// Base class that implements ray tracing logic, not necessarily through
+// defined regions of the geometry but also outside of it.
+class Ray : public GeometryState, public RayState {
 
 public:
+  Ray() = default;
+
+  // Initialize from location and direction
+  Ray(Position r, Direction u) { init_from_r_u(r, u); }
+
+  //! Initialize from a known geometry state.
+  explicit Ray(const GeometryState& p)
+  {
+    static_cast<GeometryState&>(*this) = p;
+  }
+
+  virtual ~Ray() = default;
+
+  // Called at every surface intersection within the model
+  virtual void on_intersection() = 0;
+
+  void trace(double max_distance = INFTY);
+
+  //! Recompute the distance to the next surface, e.g. after a direction change
+  void compute_distance() { boundary() = distance_to_boundary(*this); }
+
+  //! Accumulate a segment of flight path.
+  //! \param distance true geometric length of the segment
+  virtual void update_distance(double distance)
+  {
+    accumulate_distance(distance);
+  }
+
+  //! Reset everything trace() accumulates. Derived classes that add their own
+  //! accumulators must override this and call the base version first.
+  virtual void reset_trace_state()
+  {
+    reset_ray_state();
+    boundary().reset();
+  }
+};
+
+class ParticleRay : public Particle, public RayState {
+
+public:
+  ParticleRay() = default;
+
+  //! Re-initialize an existing ray for a new flight.
+  //!
+  //! Everything trace() accumulates is reset, but the heap buffers that
+  //! ParticleData's constructor sizes from the loaded model -- the
+  //! microscopic cross section caches, the filter matches, the flux
+  //! derivatives -- are left allocated so they can be reused. That is the
+  //! point of resetting rather than constructing: a caller that launches many
+  //! rays would otherwise allocate and zero tens of kilobytes apiece, which is
+  //! not affordable anywhere near the transport loop.
+  //!
+  //! Note that init_from_r_u() clears material(), so the first segment of the
+  //! new flight always recomputes cross sections rather than reusing whatever
+  //! the previous flight happened to leave cached.
+  void reset(
+    Position r, Direction u, ParticleType type_, double time_, double E_)
+  {
+    init_from_r_u(r, u);
+    reset_trace_state();
+    init_physics(type_, time_, E_);
+    zero_flux_derivs();
+  }
+
   //! Construct a free-standing ray with an explicitly chosen RNG seed.
   //
   //! \param seed_id value used to stride the ray's RNG seeds. Rays that are
@@ -110,8 +159,8 @@ public:
   //!   below instead; this one is for rays with no parent.
   ParticleRay(Position r, Direction u, ParticleType type_, double time_,
     double E_, int64_t seed_id = 0)
-    : Ray(r, u)
   {
+    init_from_r_u(r, u);
     init_seeds(seed_id);
     init_physics(type_, time_, E_);
   }
@@ -127,20 +176,24 @@ public:
   //! have, which preserves the correlation of the resonance structure along
   //! the flight path.
   ParticleRay(const Particle& parent, Direction u, double E_)
+  {
     // The direction differs from the parent's, so the cached coordinate
     // levels are no longer valid and the cell has to be found again. Starting
     // from r/u rather than copying the parent's GeometryState keeps this
     // correct at the cost of one exhaustive cell search.
-    : Ray(parent.r(), u)
-  {
+    init_from_r_u(parent.r(), u);
     std::copy(parent.seeds(), parent.seeds() + N_STREAMS, seeds());
     stream() = STREAM_TRACKING;
     init_physics(parent.type(), parent.time(), E_);
   }
 
-  void on_intersection() override;
+  void trace(double max_distance = INFTY);
 
-  void update_distance(double distance) override;
+  //! No-op: a ParticleRay has nothing to do at a surface crossing, since the
+  //! optical depth is accumulated in update_distance() instead.
+  void on_intersection() {}
+
+  void update_distance(double distance);
 
   //! A ray that cannot be located is not a lost particle.
   //
@@ -157,14 +210,15 @@ public:
   // Records how many mean free paths the ray traveled
   double traversal_mfp() const { return traversal_mfp_; }
 
-protected:
-  void reset_trace_state() override
+  void reset_trace_state()
   {
-    Ray::reset_trace_state();
+    reset_ray_state();
+    boundary().reset();
     traversal_mfp_ = 0.0;
     time() = time_start_;
   }
 
+protected:
   // Records how much mean free paths the ray traveled
   double traversal_mfp_ {0.0};
 

@@ -53,11 +53,16 @@ void CoherentElasticAE::sample(
   mu = 1.0 - 2.0 * energies[k] / E_in;
 }
 
-double CoherentElasticAE::sample_energy_and_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+double CoherentElasticAE::sample_energy_and_pdf(double E_in, double mu,
+  double& E_out, uint64_t* seed, bool is_com, double awr) const
 {
   // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
   E_out = E_in;
+
+  double jac = 1.0;
+  if (is_com)
+    jac = get_jac_and_transform(E_in, mu, E_out, seed, awr);
+
   const auto& factors = xs_.factors();
 
   if (E_in < bragg_edges_.front())
@@ -68,8 +73,9 @@ double CoherentElasticAE::sample_energy_and_pdf(
   double E = 0.5 * (1 - mu) * E_in;
   double C = 0.5 * E_in / factors[i];
 
-  return C * get_pdf_discrete(bragg_edges_.slice(tensor::range(i + 1)),
-               factors_diff_.slice(tensor::range(i + 1)), E, 0.0, E_in);
+  return jac * C *
+         get_pdf_discrete(bragg_edges_.slice(tensor::range(i + 1)),
+           factors_diff_.slice(tensor::range(i + 1)), E, 0.0, E_in);
 }
 
 //==============================================================================
@@ -90,15 +96,20 @@ void IncoherentElasticAE::sample(
   double c = 2 * E_in * debye_waller_;
   mu = std::log(1.0 + prn(seed) * (std::exp(2.0 * c) - 1)) / c - 1.0;
 }
-double IncoherentElasticAE::sample_energy_and_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+
+double IncoherentElasticAE::sample_energy_and_pdf(double E_in, double mu,
+  double& E_out, uint64_t* seed, bool is_com, double awr) const
 {
   E_out = E_in;
+
+  double jac = 1.0;
+  if (is_com)
+    jac = get_jac_and_transform(E_in, mu, E_out, seed, awr);
 
   // Sample angle by inverting the distribution in ENDF-102, Eq. 7.4
   double c = 2 * E_in * debye_waller_;
   double A = c / (1 - std::exp(-2.0 * c)); // normalization factor
-  return A * std::exp(-c * (1 - mu));
+  return jac * A * std::exp(-c * (1 - mu));
 }
 
 //==============================================================================
@@ -155,8 +166,8 @@ void IncoherentElasticAEDiscrete::sample(
   E_out = E_in;
 }
 
-double IncoherentElasticAEDiscrete::sample_energy_and_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+double IncoherentElasticAEDiscrete::sample_energy_and_pdf(double E_in,
+  double mu, double& E_out, uint64_t* seed, bool is_com, double awr) const
 {
   // Get index and interpolation factor for elastic grid
   int i;
@@ -165,8 +176,12 @@ double IncoherentElasticAEDiscrete::sample_energy_and_pdf(
   // Energy doesn't change in elastic scattering
   E_out = E_in;
 
-  return get_pdf_discrete_interpolated(
-    mu_out_.slice(i, tensor::all), mu_out_.slice(i + 1, tensor::all), f, mu);
+  double jac = 1.0;
+  if (is_com)
+    jac = get_jac_and_transform(E_in, mu, E_out, seed, awr);
+
+  return jac * get_pdf_discrete_interpolated(mu_out_.slice(i, tensor::all),
+                 mu_out_.slice(i + 1, tensor::all), f, mu);
 }
 
 //==============================================================================
@@ -253,8 +268,8 @@ void IncoherentInelasticAEDiscrete::sample(
   mu = (1 - f) * mu_ijk + f * mu_i1jk;
 }
 
-double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(double E_in,
+  double mu, double& E_out, uint64_t* seed, bool is_com, double awr) const
 {
   // Get index and interpolation factor for inelastic grid
   int i;
@@ -263,8 +278,12 @@ double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(
   int j;
   sample_params(E_in, E_out, j, seed);
 
-  return get_pdf_discrete_interpolated(mu_out_.slice(i, j, tensor::all),
-    mu_out_.slice(i + 1, j, tensor::all), f, mu);
+  double jac = 1.0;
+  if (is_com)
+    jac = get_jac_and_transform(E_in, mu, E_out, seed, awr);
+
+  return jac * get_pdf_discrete_interpolated(mu_out_.slice(i, j, tensor::all),
+                 mu_out_.slice(i + 1, j, tensor::all), f, mu);
 }
 
 //==============================================================================
@@ -403,8 +422,8 @@ void IncoherentInelasticAE::sample(
   mu += std::min(mu - mu_left, mu_right - mu) * (prn(seed) - 0.5);
 }
 
-double IncoherentInelasticAE::sample_energy_and_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+double IncoherentInelasticAE::sample_energy_and_pdf(double E_in, double mu,
+  double& E_out, uint64_t* seed, bool is_com, double awr) const
 {
   double f;
   int l, j;
@@ -412,8 +431,12 @@ double IncoherentInelasticAE::sample_energy_and_pdf(
 
   const auto& mu_l = distribution_[l].mu;
 
-  return get_pdf_discrete_interpolated(
-    mu_l.slice(j, tensor::all), mu_l.slice(j + 1, tensor::all), f, mu);
+  double jac = 1.0;
+  if (is_com)
+    jac = get_jac_and_transform(E_in, mu, E_out, seed, awr);
+
+  return jac * get_pdf_discrete_interpolated(mu_l.slice(j, tensor::all),
+                 mu_l.slice(j + 1, tensor::all), f, mu);
 }
 
 //==============================================================================
@@ -458,10 +481,11 @@ void MixedElasticAE::sample(
   sample_dist(E_in, seed).sample(E_in, E_out, mu, seed);
 }
 
-double MixedElasticAE::sample_energy_and_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+double MixedElasticAE::sample_energy_and_pdf(double E_in, double mu,
+  double& E_out, uint64_t* seed, bool is_com, double awr) const
 {
-  return sample_dist(E_in, seed).sample_energy_and_pdf(E_in, mu, E_out, seed);
+  return sample_dist(E_in, seed)
+    .sample_energy_and_pdf(E_in, mu, E_out, seed, is_com, awr);
 }
 
 } // namespace openmc

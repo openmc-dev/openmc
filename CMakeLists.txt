@@ -310,6 +310,7 @@ endif()
 #===============================================================================
 
 list(APPEND libopenmc_SOURCES
+  src/angle_energy.cpp
   src/atomic_mass.cpp
   src/bank.cpp
   src/boundary_condition.cpp
@@ -408,6 +409,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_parent_nuclide.cpp
   src/tallies/filter_particle.cpp
   src/tallies/filter_particle_production.cpp
+  src/tallies/filter_point.cpp
   src/tallies/filter_polar.cpp
   src/tallies/filter_reaction.cpp
   src/tallies/filter_sph_harm.cpp
@@ -417,6 +419,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_universe.cpp
   src/tallies/filter_weight.cpp
   src/tallies/filter_zernike.cpp
+  src/tallies/next_event_scoring.cpp
   src/tallies/tally.cpp
   src/tallies/tally_scoring.cpp
   src/tallies/trigger.cpp

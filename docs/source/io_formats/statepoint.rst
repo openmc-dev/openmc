@@ -139,7 +139,7 @@ The current version of the statepoint file format is 18.2.
            - **material** (*int*) -- ID of the perturbed material.
            - **nuclide** (*char[]*) -- Alias of the perturbed nuclide.
            - **estimator** (*char[]*) -- Type of tally estimator, either
-             'analog', 'tracklength', or 'collision'.
+             'analog', 'tracklength', 'collision', or 'next-event'.
 
 **/tallies/tally <uid>/**
 

@@ -1266,20 +1266,6 @@ with that source region and the Voronoi region centroid
 The initial weight is zero and subsequently changed for load balancing. This
 approach yields compact MPI rank subdomains. 
 
-.. figure:: ../_images/c5g7_geometry.png
-    :width: 48%
-    :align: center
-    :figclass: align-center
-
-    C5G7 geometry.
-
-.. figure:: ../_images/c5g7_voronoi.png
-    :width: 48%
-    :align: center
-    :figclass: align-center
-    
-    Voronoi decomposition of C5G7 source regions.
-
 In the OpenMC random ray implementation, the algorithm is not aware of the
 source regions in the geometry a priori. Instead, source regions are discovered
 dynamically as rays travel through the geometry and, once discovered, they get

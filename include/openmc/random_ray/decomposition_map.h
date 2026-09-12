@@ -124,6 +124,7 @@ private:
   int negroups_;
   double max_domain_length_;
   bool is_linear_;
+  bool is_adaptive_;
 
 }; // class DecompositionMap
 

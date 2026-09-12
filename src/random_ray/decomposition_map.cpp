@@ -55,6 +55,8 @@ void DecompositionMap::initialize()
     sqrt(x_length * x_length + y_length * y_length + z_length * z_length);
 
   is_linear_ = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
+  is_adaptive_ =
+    is_adaptive_family(FlatSourceDomain::resolved_volume_estimator_);
 
   // Count the number of source regions in the model
   n_base_sr_ = 0;
@@ -537,6 +539,11 @@ void DecompositionMap::send_sr_data(
   if (send_extent) {
     num_vector_messages += 1;
   }
+  // The adaptive estimator's running flux sum is energy-dependent, so unlike
+  // the rest of its state it does not ride along in ScalarSourceRegionFields
+  if (is_adaptive_) {
+    num_vector_messages += 1;
+  }
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     num_vector_messages += 1;
   }
@@ -598,6 +605,12 @@ void DecompositionMap::send_sr_data(
     req_idx++;
   }
 
+  if (is_adaptive_) {
+    MPI_Isend(sr_send.scalar_flux_t_.data(), negroups_, MPI_DOUBLE, receiver,
+      12, mpi::intracomm, &requests[req_idx]);
+    req_idx++;
+  }
+
   if (req_idx != num_requests) {
     fatal_error(fmt::format(
       "Number of MPI requests does not match number of messages sent."
@@ -651,6 +664,11 @@ void DecompositionMap::receive_sr_data(int sender, SourceRegion& sr_recv)
 
   if (is_linear_ && FlatSourceDomain::source_gradient_limiter_) {
     MPI_Recv(&sr_recv.extent_, sizeof(BoundingBox), MPI_BYTE, sender, 11,
+      mpi::intracomm, MPI_STATUS_IGNORE);
+  }
+
+  if (is_adaptive_) {
+    MPI_Recv(sr_recv.scalar_flux_t_.data(), negroups_, MPI_DOUBLE, sender, 12,
       mpi::intracomm, MPI_STATUS_IGNORE);
   }
 }

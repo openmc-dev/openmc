@@ -2,6 +2,7 @@
 
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/simulation.h"
 
 namespace openmc {
@@ -39,7 +40,13 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     flux_moments_new_(sr.flux_moments_new_.data()),
     flux_moments_t_(sr.flux_moments_t_.data()),
     tally_task_(sr.tally_task_.data()), key_(&sr.scalars_.key_)
-{}
+{
+  centroid_offset_ = &sr.scalars_.centroid_offset_;
+  // data() on an unallocated vector is null in practice but not by contract,
+  // and this pointer is null-tested to mean "field absent"
+  scalar_flux_t_ =
+    sr.scalar_flux_t_.empty() ? nullptr : sr.scalar_flux_t_.data();
+}
 
 //==============================================================================
 // SourceRegion implementation
@@ -59,6 +66,12 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   scalar_flux_new_.assign(negroups, 0.0);
   source_.assign(negroups, 0.0);
   scalar_flux_final_.assign(negroups, 0.0);
+  // Only the adaptive estimator family reads this, and this constructor runs
+  // on the transport path for every newly discovered region, so do not pay
+  // the allocation when the estimator will never look at it.
+  if (is_adaptive_family(FlatSourceDomain::resolved_volume_estimator_)) {
+    scalar_flux_t_.assign(negroups, 0.0);
+  }
 
   tally_task_.resize(negroups);
   if (is_linear) {
@@ -88,6 +101,22 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
   scalars_.centroid_iteration_ = handle.centroid_iteration();
   scalars_.centroid_t_ = handle.centroid_t();
   scalars_.key_ = handle.key();
+
+  // These are wired on the handle only when the corresponding feature is
+  // enabled, so they have to be null-checked. Missing any of them here
+  // silently resets it whenever load balancing rebuilds the container.
+  if (handle.n_negative_batches_) {
+    scalars_.n_negative_batches_ = *handle.n_negative_batches_;
+  }
+  if (handle.converged_negative_) {
+    scalars_.converged_negative_ = *handle.converged_negative_;
+  }
+  if (handle.extent_) {
+    extent_ = *handle.extent_;
+  }
+  if (handle.centroid_offset_) {
+    scalars_.centroid_offset_ = *handle.centroid_offset_;
+  }
   scalars_.mesh_ = handle.mesh();
   scalars_.parent_sr_ = handle.parent_sr();
 
@@ -101,6 +130,9 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
     scalar_flux_new_[g] = handle.scalar_flux_new(g);
     source_[g] = handle.source(g);
     scalar_flux_final_[g] = handle.scalar_flux_final(g);
+    if (handle.scalar_flux_t_) {
+      scalar_flux_t_[g] = handle.scalar_flux_t_[g];
+    }
     if (handle.is_linear_) {
       source_gradients_[g] = handle.source_gradients(g);
       flux_moments_old_[g] = handle.flux_moments_old(g);
@@ -139,6 +171,10 @@ void SourceRegion::merge(SourceRegion& sr_add, bool is_linear)
   // Both ranks sampled part of the same region, so the sampled extent used by
   // the source gradient limiter is the union of the two boxes
   extent_ |= sr_add.extent_;
+
+  // Both copies were discovered during the current batch, so the accumulated
+  // quantities (volume_t_, centroid_t_, scalar_flux_t_, the _t_ moments and
+  // the demotion counters) are still zero on both sides and need no combining.
 
   // Accumulated (tallied) vector fields. Note that external_source_ is
   // deliberately not merged: it is a fixed property of the region that both
@@ -195,7 +231,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
 
   // Only store these fields if is_linear_ is true
   if (is_linear_) {
-    centroid_offset_.push_back({0.0, 0.0, 0.0});
+    centroid_offset_.push_back(sr.scalars_.centroid_offset_);
     mom_matrix_.push_back(sr.scalars_.mom_matrix_);
     mom_matrix_t_.push_back(sr.scalars_.mom_matrix_t_);
   }
@@ -208,9 +244,10 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
     scalar_flux_old_.push_back(sr.scalar_flux_old_[g]);
     scalar_flux_new_.push_back(sr.scalar_flux_new_[g]);
     scalar_flux_final_.push_back(sr.scalar_flux_final_[g]);
-    // A newly discovered region starts with nothing accumulated
+    // Zero for a newly discovered region, carried over for one rebuilt from
+    // an existing region during load balancing
     if (is_adaptive_) {
-      scalar_flux_t_.push_back(0.0);
+      scalar_flux_t_.push_back(sr.scalar_flux_t_[g]);
     }
     source_.push_back(sr.source_[g]);
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -335,6 +372,8 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.centroid_iteration_ = &centroid_iteration(sr);
   handle.centroid_t_ = &centroid_t(sr);
   handle.key_ = &key(sr);
+  handle.centroid_offset_ = is_linear_ ? &centroid_offset(sr) : nullptr;
+  handle.scalar_flux_t_ = is_adaptive_ ? &scalar_flux_t(sr, 0) : nullptr;
 
   if (handle.is_linear_) {
     handle.mom_matrix_ = &mom_matrix(sr);

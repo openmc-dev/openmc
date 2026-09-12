@@ -2,6 +2,7 @@ import copy
 
 import numpy as np
 import openmc
+import pytest
 
 
 def _add_tally_data(mgxs):
@@ -9,6 +10,31 @@ def _add_tally_data(mgxs):
         tally._derived = True
         tally._mean = np.ones(tally.shape)
         tally._std_dev = np.zeros(tally.shape)
+
+
+@pytest.mark.parametrize('mgxs_type', [
+    'transport',
+    'nu-transport',
+    'diffusion-coefficient',
+    'nu-diffusion-coefficient',
+    'consistent scatter matrix',
+    'consistent nu-scatter matrix',
+])
+def test_explicit_neutron_particle_filter(mgxs_type):
+    material = openmc.Material()
+    groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0])
+    mgxs = openmc.mgxs.MGXS.get_mgxs(
+        mgxs_type, material, 'material', groups,
+        particle_type='neutron')
+    _add_tally_data(mgxs)
+    if 'total' in mgxs.tallies:
+        mgxs.tallies['total']._mean.fill(2.0)
+
+    for tally in mgxs.tallies.values():
+        particle_filter = tally.find_filter(openmc.ParticleFilter)
+        assert particle_filter.bins == ['neutron']
+
+    assert np.all(np.isfinite(mgxs.get_xs()))
 
 
 def test_photon_production_matrix_tallies():

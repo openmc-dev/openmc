@@ -87,6 +87,14 @@ _DOMAINS = (
     openmc.RegularMesh
 )
 
+
+def _replace_filter(tally, filter_type, new_filter):
+    """Replace the filter of an exact type on a tally."""
+    old_filter = tally.find_filter(filter_type)
+    index = tally.filters.index(old_filter)
+    tally.filters[index] = new_filter
+
+
 # Supported ScatterMatrixXS angular distribution types. Note that 'histogram' is
 # defined here and used in mgxs_library.py, but it is not used for the current
 # module
@@ -2810,9 +2818,10 @@ class TransportXS(MGXS):
         if self._rxn_rate_tally is None:
             # Switch EnergyoutFilter to EnergyFilter.
             p1_tally = self.tallies['scatter-1']
-            old_filt = p1_tally.filters[-2]
+            old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
-            p1_tally.filters[-2] = new_filt
+            _replace_filter(
+                p1_tally, openmc.EnergyoutFilter, new_filt)
 
             # Slice Legendre expansion filter and change name of score
             p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
@@ -2835,9 +2844,10 @@ class TransportXS(MGXS):
 
             # Switch EnergyoutFilter to EnergyFilter.
             p1_tally = self.tallies['scatter-1']
-            old_filt = p1_tally.filters[-2]
+            old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
-            p1_tally.filters[-2] = new_filt
+            _replace_filter(
+                p1_tally, openmc.EnergyoutFilter, new_filt)
 
             # Slice Legendre expansion filter and change name of score
             p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
@@ -3024,9 +3034,10 @@ class DiffusionCoefficient(TransportXS):
         if self._rxn_rate_tally is None:
             # Switch EnergyoutFilter to EnergyFilter.
             p1_tally = self.tallies['scatter-1']
-            old_filt = p1_tally.filters[-2]
+            old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
-            p1_tally.filters[-2] = new_filt
+            _replace_filter(
+                p1_tally, openmc.EnergyoutFilter, new_filt)
 
             # Slice Legendre expansion filter and change name of score
             p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
@@ -3053,9 +3064,10 @@ class DiffusionCoefficient(TransportXS):
             # already occurred on this MGXS in another function or in a previous call to this function.
             if 'scatter-1' in self.tallies:
                 p1_tally = self.tallies['scatter-1']
-                old_filt = p1_tally.filters[-2]
+                old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
                 new_filt = openmc.EnergyFilter(old_filt.values)
-                p1_tally.filters[-2] = new_filt
+                _replace_filter(
+                    p1_tally, openmc.EnergyoutFilter, new_filt)
 
                 p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
                     filter_bins=[('P1',)],squeeze=True)
@@ -3103,9 +3115,10 @@ class DiffusionCoefficient(TransportXS):
         # already occurred on this MGXS in another function or in a previous call to this function.
         if 'scatter-1' in self.tallies:
             p1_tally = self.tallies['scatter-1']
-            old_filt = p1_tally.filters[-2]
+            old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
-            p1_tally.filters[-2] = new_filt
+            _replace_filter(
+                p1_tally, openmc.EnergyoutFilter, new_filt)
             p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
                                           filter_bins=[('P1',)],
                                           squeeze=True)
@@ -4287,8 +4300,10 @@ class ScatterMatrixXS(MatrixMGXS):
                         # Set the Legendre order of these tallies to be 0
                         # so they can be subtracted
                         legendre = openmc.LegendreFilter(order=0)
-                        scatter_p0.filters[-1] = legendre
-                        scatter_p1.filters[-1] = legendre
+                        _replace_filter(
+                            scatter_p0, openmc.LegendreFilter, legendre)
+                        _replace_filter(scatter_p1, openmc.LegendreFilter,
+                                        copy.deepcopy(legendre))
 
                         scatter_p1 = scatter_p1.summation(
                             filter_type=openmc.EnergyFilter,
@@ -4391,7 +4406,8 @@ class ScatterMatrixXS(MatrixMGXS):
                     # Set the Legendre order of the P1 tally to be P0
                     # so it can be subtracted
                     legendre = openmc.LegendreFilter(order=0)
-                    scatter_p1.filters[-1] = legendre
+                    _replace_filter(
+                        scatter_p1, openmc.LegendreFilter, legendre)
 
                     # Transform scatter-p1 tally into an energyin/out matrix
                     # to match scattering matrix shape for tally arithmetic

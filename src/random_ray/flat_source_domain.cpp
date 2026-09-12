@@ -2197,6 +2197,18 @@ void FlatSourceDomain::set_fw_adjoint_sources()
     }
   }
 
+#ifdef OPENMC_MPI
+  // The cutoff below is a fraction of the maximum flux anywhere in the
+  // problem, so under domain decomposition the maximum has to be taken over
+  // all subdomains. A per-rank maximum would give every rank but one a lower
+  // threshold, screening out fewer regions and reintroducing exactly the
+  // enormous adjoint sources this cutoff exists to suppress.
+  if (mpi::n_procs > 1) {
+    MPI_Allreduce(
+      MPI_IN_PLACE, &max_flux, 1, MPI_DOUBLE, MPI_MAX, mpi::intracomm);
+  }
+#endif
+
   // Then, compute the adjoint source for each source region
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {

@@ -1,6 +1,7 @@
 #include "openmc/random_ray/ray_bank.h"
 
 #include <cstring>
+#include <limits>
 
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
@@ -31,9 +32,12 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain)
   int rank = ray.owner_rank_;
 
   if (rank == mpi::rank) {
-    warning(fmt::format("Ray {} at position ({:.5e}, {:.5e}, {:.5e})"
-                        "is being sent to the same rank {}. This may indicate "
-                        "an error in the decomposition map.",
+    // Buffering a ray back to its own rank would send it straight back
+    // unchanged on the next round and loop forever, emitting one warning per
+    // round from inside the transport loop. Fail loudly instead.
+    fatal_error(fmt::format("Ray {} at position ({:.5e}, {:.5e}, {:.5e}) is "
+                            "being sent to the same rank {}. This indicates "
+                            "an error in the decomposition map.",
       ray.exchange_data_.ray_id, ray.exchange_data_.position.x,
       ray.exchange_data_.position.y, ray.exchange_data_.position.z, rank));
   }
@@ -147,10 +151,14 @@ void RayBank::communicate_rays()
   const int n_coord_max = model::n_coord_levels;
 
   // Allocate receiving buffers
-  received_ray_data_.resize(total_receiving_rays_);
-  received_angular_flux_data_.resize(total_receiving_rays_ * negroups_);
-  received_coord_.resize(total_receiving_rays_ * n_coord_max);
-  received_cell_last_.resize(total_receiving_rays_ * n_coord_max);
+  // int64_t intermediates: the products below overflow int well before the
+  // ray counts themselves do, which would under-size the receive buffers and
+  // let the MPI_Irecv calls write past their end
+  int64_t n_recv = total_receiving_rays_;
+  received_ray_data_.resize(n_recv);
+  received_angular_flux_data_.resize(n_recv * negroups_);
+  received_coord_.resize(n_recv * n_coord_max);
+  received_cell_last_.resize(n_recv * n_coord_max);
 
   // Calculate total number of MPI requests needed
   // 4 messages per sending rank + 4 messages per receiving rank
@@ -161,13 +169,35 @@ void RayBank::communicate_rays()
       num_recv_ranks++;
   }
 
+  // MPI counts are int. The byte products below are computed in size_t and
+  // narrowed at the call, and because sender and receiver narrow identically
+  // a wrapped count matches on both sides: MPI transfers the truncated
+  // payload without error and the restarted rays read stale buffer contents.
+  // Fail loudly instead.
+  auto check_count = [](int64_t count, const char* what) {
+    if (count > std::numeric_limits<int>::max()) {
+      fatal_error(fmt::format("Random ray domain decomposition: {} message of "
+                              "{} elements exceeds the maximum MPI count. Use "
+                              "more MPI ranks or fewer rays per batch.",
+        what, count));
+    }
+  };
+  for (int r = 0; r < mpi::n_procs; r++) {
+    int64_t n = num_messages_receiving_[r];
+    check_count(n * static_cast<int64_t>(sizeof(RayExchangeData)), "ray data");
+    check_count(n * negroups_, "angular flux");
+    check_count(
+      n * n_coord_max * static_cast<int64_t>(sizeof(LocalCoord)), "coord");
+    check_count(n * n_coord_max, "cell_last");
+  }
+
   int total_requests = num_send_ranks * 4 + num_recv_ranks * 4;
   vector<MPI_Request> requests(total_requests);
   int req_idx = 0;
 
   // Post all non-blocking receives first to allow for potential overlap
   // of communication and packing of send buffers
-  int recv_offset = 0;
+  int64_t recv_offset = 0;
   for (int sending_rank = 0; sending_rank < mpi::n_procs; sending_rank++) {
     int num_rays_receiving = num_messages_receiving_[sending_rank];
     if (num_rays_receiving == 0)
@@ -240,7 +270,7 @@ void RayBank::update_my_ray_list(FlatSourceDomain* domain)
 
 // Add re-initialized random ray objects to my_ray_list
 #pragma omp parallel for
-  for (int i = 0; i < received_ray_data_.size(); i++) {
+  for (int64_t i = 0; i < received_ray_data_.size(); i++) {
 
     // Re-initialize rays with received data, including full geometry state
     my_ray_list_[i].restart_ray(domain, received_ray_data_[i],

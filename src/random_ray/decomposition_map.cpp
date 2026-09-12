@@ -123,6 +123,15 @@ void DecompositionMap::generate_rank_centers()
     it++;
   }
 
+  // The centers must be bitwise identical on every rank: find_closest_rank()
+  // is evaluated independently on different ranks for the same physical
+  // point and they have to agree, or ownership diverges and a ray can
+  // ping-pong forever. The Lloyd accumulation above uses omp atomic on
+  // doubles, whose summation order is not reproducible, so broadcast rank
+  // 0's result rather than relying on every rank landing on the same bits.
+  MPI_Bcast(rank_centers_.data(), rank_centers_.size() * sizeof(Position),
+    MPI_BYTE, 0, mpi::intracomm);
+
   if (mpi::master) {
     if (it == max_iterations) {
       warning("Lloyd's algorithm did not converge within the maximum number of "
@@ -337,7 +346,7 @@ void DecompositionMap::calculate_voronoi(
       }
     }
 
-    if (mpi::master && closest_rank == C_NONE) {
+    if (closest_rank == C_NONE) {
       fatal_error("Could not find closest rank for Voronoi cell point " +
                   std::to_string(p) + ".");
     }
@@ -728,7 +737,7 @@ int DecompositionMap::find_closest_rank(Position r, bool test_all_ranks)
     test_rank(mpi::rank);
   }
 
-  if (mpi::master && closest_rank == C_NONE) {
+  if (closest_rank == C_NONE) {
     fatal_error(
       "Could not find closest rank for new source region at position (" +
       std::to_string(r.x) + ", " + std::to_string(r.y) + ", " +

@@ -344,7 +344,7 @@ class StatePoint:
 
     @property
     def path(self):
-        return self._f.attrs['path'].decode()
+        return self._f.attrs.get('path', b'').decode()
 
     @property
     def photon_transport(self):

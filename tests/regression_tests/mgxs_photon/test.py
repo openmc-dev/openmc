@@ -74,10 +74,10 @@ class PhotonMGXSTestHarness(PyAPITestHarness):
             # workflows.
             mg_library = self.mgxs_lib.create_mg_library()
             xsdata = mg_library.xsdatas[0]
-            if xsdata.multiplicity_matrix[0] is not None:
+            multiplicity = xsdata.multiplicity_matrix[0]
+            if multiplicity is None:
                 raise AssertionError(
-                    'Photon production should not create a multiplicity '
-                    'matrix')
+                    'Photon production should create a multiplicity matrix')
             if not np.allclose(
                     xsdata.scatter_matrix[0][:, :, 0], production_xs):
                 raise AssertionError('Photon production matrix was not '
@@ -85,6 +85,11 @@ class PhotonMGXSTestHarness(PyAPITestHarness):
             if not np.allclose(xsdata.absorption[0], absorption_xs):
                 raise AssertionError('Photon absorption was changed during '
                                      'export')
+            physical_scatter = xsdata.total[0] - xsdata.absorption[0]
+            scatter = xsdata.scatter_matrix[0][:, :, 0] / multiplicity
+            if not np.allclose(np.sum(scatter, axis=1), physical_scatter):
+                raise AssertionError(
+                    'Photon multiplicity does not recover physical scatter')
 
         output = [
             f'primary photons: {primary:.8e}',

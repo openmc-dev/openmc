@@ -18,6 +18,10 @@ struct RayBufferContainer {
   Position position;
   Direction direction;
   double distance_travelled;
+  // Distance the ray still has to advance from the buffered geometry state to
+  // reach `position`. Applied on the receiving rank via move_distance(), which
+  // uses each coordinate level's own direction.
+  double advance_distance;
   vector<float> angular_flux;
   int surface;
   bool is_active;
@@ -54,6 +58,7 @@ struct RayExchangeData {
   Position position;
   Direction direction;
   double distance_travelled;
+  double advance_distance;
   int surface;
   bool is_active;
   uint64_t ray_id;
@@ -117,7 +122,7 @@ public:
   SourceSite sample_s2();
 
   bool has_left_subdomain();
-  void pack_ray_for_buffer(double distance_buffer, Position position_buffer);
+  void pack_ray_for_buffer(double distance_buffer, double advance_distance);
 
   //----------------------------------------------------------------------------
   // Static data members

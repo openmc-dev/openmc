@@ -65,6 +65,7 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain)
   rd.position = rbc.position;
   rd.direction = rbc.direction;
   rd.distance_travelled = rbc.distance_travelled;
+  rd.advance_distance = rbc.advance_distance;
   rd.surface = rbc.surface;
   rd.is_active = rbc.is_active;
   rd.ray_id = rbc.ray_id;

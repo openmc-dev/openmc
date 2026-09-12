@@ -453,13 +453,13 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 
   // If ray has left my subdomain, buffer ray state
   if (has_left_subdomain()) {
-    Position position_buffer = r() + (offset + mesh_partial_length) * u();
+    double advance_distance = offset + mesh_partial_length;
     double distance_buffer = distance_travelled_ + mesh_partial_length;
 
 #ifdef OPENMC_DAGMC_ENABLED
     history().rollback_last_intersection();
 #endif
-    pack_ray_for_buffer(distance_buffer, position_buffer);
+    pack_ray_for_buffer(distance_buffer, advance_distance);
     wgt() = 0.0;
   }
 }
@@ -918,16 +918,15 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
     cell_last(i) = cell_last_data[i];
   }
 
-  // Override the position and direction at ALL coordinate levels with the
-  // buffered values These may have been adjusted when the ray left the previous
-  // subdomain We need to update all levels to maintain consistency in the
-  // coordinate hierarchy
-  Position delta_r = data.position - r();
-  for (int i = 0; i < n_coord(); i++) {
-    this->coord(i).r() += delta_r;
-  }
-
   u() = data.direction;
+
+  // The buffered coordinate levels hold the ray's state at the last geometry
+  // update, so the ray still has to be advanced to the point at which it left
+  // the previous subdomain. Use move_distance() rather than adding a single
+  // top-level displacement to every level: a rotated universe or lattice fill
+  // gives each level its own direction, and translating a lower level by the
+  // top-level displacement would put it somewhere else entirely.
+  move_distance(data.advance_distance);
 
 #ifdef OPENMC_DAGMC_ENABLED
   // Restore DAGMC fields
@@ -1034,7 +1033,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       for (int g = 0; g < negroups_; g++) {
         angular_flux_[g] = 0.0;
       }
-      pack_ray_for_buffer(0.0, r());
+      pack_ray_for_buffer(0.0, 0.0);
       is_local_ = false;
       return;
     }
@@ -1107,9 +1106,12 @@ bool RandomRay::has_left_subdomain()
 }
 
 void RandomRay::pack_ray_for_buffer(
-  double distance_buffer, Position position_buffer)
+  double distance_buffer, double advance_distance)
 {
-  exchange_data_.position = position_buffer;
+  // Recorded for diagnostics only; the receiving rank reconstructs the
+  // position by advancing the buffered geometry state (see restart_ray)
+  exchange_data_.position = r() + advance_distance * u();
+  exchange_data_.advance_distance = advance_distance;
   exchange_data_.direction = u();
   exchange_data_.angular_flux = angular_flux_;
   exchange_data_.distance_travelled = distance_buffer;

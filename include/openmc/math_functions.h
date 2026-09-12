@@ -237,6 +237,15 @@ double cyl_bessel_j(int n, double x);
 void get_energy_index(
   const vector<double>& energies, double E, int& i, double& f);
 
+//! Upper index of the interval located by get_energy_index. Normally i + 1,
+//! but a distribution tabulated at a single incident energy has no upper
+//! point; the interpolation factor is zero there, so returning i makes
+//! interpolating between the two indices a no-op.
+inline int upper_energy_index(const vector<double>& energies, int i)
+{
+  return (i + 1 < static_cast<int>(energies.size())) ? i + 1 : i;
+}
+
 //==============================================================================
 //! Calculate the cumulative distribution function of the standard normal
 //! distribution at a given value.

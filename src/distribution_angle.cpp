@@ -71,7 +71,7 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
 
   // Sample between the ith and (i+1)th bin
   if (r > prn(seed))
-    ++i;
+    i = upper_energy_index(energy_, i);
 
   // Sample i-th distribution
   double mu = distribution_[i]->sample(seed).first;
@@ -88,7 +88,8 @@ double AngleDistribution::evaluate(double E, double mu) const
   int i;
   double r;
   get_energy_index(energy_, E, i, r);
-  return r * distribution_[i + 1]->evaluate(mu) +
+  const int i1 = upper_energy_index(energy_, i);
+  return r * distribution_[i1]->evaluate(mu) +
          (1.0 - r) * distribution_[i]->evaluate(mu);
 }
 

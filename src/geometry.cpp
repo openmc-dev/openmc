@@ -198,7 +198,7 @@ bool find_cell_inner(
       }
 
       // Set the material, temperature and density multiplier.
-      p.material_last() = p.material();
+      p.material_xs_cache() = p.material();
       p.material() = c.material(p.cell_instance());
       p.sqrtkT_last() = p.sqrtkT();
       p.sqrtkT() = c.sqrtkT(p.cell_instance());

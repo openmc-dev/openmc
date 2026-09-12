@@ -232,10 +232,7 @@ void Particle::event_calculate_xs()
       cell_born() = lowest_coord().cell();
 
     // Initialize last cells from current cell
-    for (int j = 0; j < n_coord(); ++j) {
-      cell_last(j) = coord(j).cell();
-    }
-    n_coord_last() = n_coord();
+    this->save_current_cells_as_last();
   }
 
   // Write particle track.
@@ -248,7 +245,7 @@ void Particle::event_calculate_xs()
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
-      if (material() != material_last() || sqrtkT() != sqrtkT_last() ||
+      if (material() != material_xs_cache() || sqrtkT() != sqrtkT_last() ||
           density_mult() != density_mult_last()) {
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
@@ -334,11 +331,8 @@ void Particle::event_advance()
 
 void Particle::event_cross_surface()
 {
-  // Saving previous cell data
-  for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell();
-  }
-  n_coord_last() = n_coord();
+  // Save previous cell data
+  this->save_current_cells_as_last();
 
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface();
@@ -461,9 +455,9 @@ void Particle::event_collide()
   // Save coordinates for tallying purposes
   r_last_current() = r();
 
-  // Set last material to none since cross sections will need to be
-  // re-evaluated
-  material_last() = C_NONE;
+  // Invalidate the cross section cache, since the particle's energy has
+  // changed and cross sections must be re-evaluated.
+  material_xs_cache() = C_NONE;
 
   // Set all directions to base level -- right now, after a collision, only
   // the base level directions are changed
@@ -528,10 +522,7 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
         cell_born() = lowest_coord().cell();
 
       // Initialize last cells from current cell
-      for (int j = 0; j < n_coord(); ++j) {
-        cell_last(j) = coord(j).cell();
-      }
-      n_coord_last() = n_coord();
+      this->save_current_cells_as_last();
     }
     pht_secondary_particles();
   }
@@ -680,7 +671,7 @@ void Particle::cross_surface(const Surface& surf)
                        lowest_coord().universe()) -
                      1;
     // save material, temperature, and density multiplier
-    material_last() = material();
+    material_xs_cache() = material();
     sqrtkT_last() = sqrtkT();
     density_mult_last() = density_mult();
     // set new cell value

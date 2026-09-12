@@ -495,20 +495,12 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
     bool verbose = settings::verbosity >= 10;
 
-    // Save the cells occupied immediately before a boundary crossing.
-    auto save_cell_state = [&p]() {
-      for (int j = 0; j < p.n_coord(); ++j) {
-        p.cell_last(j) = p.coord(j).cell();
-      }
-      p.n_coord_last() = p.n_coord();
-    };
-
     // Initialize cell history after locating a ray inside the model.
-    auto initialize_cell_state = [&p, &save_cell_state]() {
+    auto initialize_cell_state = [&p]() {
       if (p.cell_born() == C_NONE)
         p.cell_born() = p.lowest_coord().cell();
 
-      save_cell_state();
+      p.save_current_cells_as_last();
     };
 
     // Reset a failed coordinate search while preserving position and direction.
@@ -683,7 +675,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
             // and neighbor-list search mirror Ray::trace, allowing a failed
             // search to mean that the ray has left the model rather than that
             // a transport particle has been lost.
-            save_cell_state();
+            p.save_current_cells_as_last();
 
             // Move just beyond the surface to make the next search robust.
             p.move_distance(boundary.distance() + TINY_BIT);

@@ -676,28 +676,29 @@ int DecompositionMap::find_closest_rank(Position r, bool test_all_ranks)
 
   int closest_rank = C_NONE;
   double min_distance = INFTY;
-  vector<int> test_ranks;
 
-  if (test_all_ranks) {
-    test_ranks.resize(mpi::n_procs);
-    std::iota(test_ranks.begin(), test_ranks.end(),
-      0); // fill with 0, 1, ..., n_procs-1
-  } else {
-    // convert unordered set of neighboring ranks to vector and add self rank
-    test_ranks = vector<int>(mpi::decomp_map.my_neighbors_.begin(),
-      mpi::decomp_map.my_neighbors_.end());
-    test_ranks.push_back(mpi::rank);
-  }
-
-  // Find closest rank center
-  for (int rank : test_ranks) {
+  // Distance function corresponding to weighted power Voronoi diagram. This
+  // runs inside the transport loop (via find_owner) and inside the load
+  // balancing iteration, so it deliberately allocates nothing.
+  auto test_rank = [&](int rank) {
     double dist = (r - rank_centers_[rank]).norm();
-    // Distance function corresponding to weighted power Voronoi diagram
     dist = dist * dist - rank_weights_[rank];
     if (dist < min_distance) {
       min_distance = dist;
       closest_rank = rank;
     }
+  };
+
+  if (test_all_ranks) {
+    for (int rank = 0; rank < mpi::n_procs; rank++) {
+      test_rank(rank);
+    }
+  } else {
+    // Only the recorded neighbors, plus this rank itself
+    for (int rank : mpi::decomp_map.my_neighbors_) {
+      test_rank(rank);
+    }
+    test_rank(mpi::rank);
   }
 
   if (mpi::master && closest_rank == C_NONE) {

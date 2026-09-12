@@ -7,6 +7,7 @@ from math import sqrt, log
 from numbers import Integral, Real
 import operator
 from pathlib import Path
+import warnings
 import lxml.etree as ET
 
 import h5py
@@ -597,8 +598,24 @@ class Tally(IDManagerMixin):
             n = self.num_realizations
             nonzero = np.abs(self.mean) > 0
             self._std_dev = np.zeros_like(self.mean)
-            self._std_dev[nonzero] = np.sqrt((self.sum_sq[nonzero]/n -
-                                              self.mean[nonzero]**2)/(n - 1))
+            if n > 1:
+                # The variance is formed from accumulated sums, so rounding can
+                # push it slightly below zero when the realizations are nearly
+                # identical (a monoenergetic, monodirectional source in a single
+                # material, for example). Taking the square root of that gives
+                # NaN, so clamp at zero as mean_stdev() in src/output.cpp does.
+                variance = (self.sum_sq[nonzero]/n -
+                            self.mean[nonzero]**2)/(n - 1)
+                self._std_dev[nonzero] = np.sqrt(np.maximum(variance, 0.0))
+            elif nonzero.any():
+                # A single realization supports no uncertainty estimate. Keep
+                # reporting it as undefined, but say so directly rather than
+                # leaving the user with a bare numpy warning from dividing by
+                # n - 1 == 0.
+                warnings.warn(
+                    'Standard deviation is undefined for a tally with a single '
+                    'realization; reporting it as NaN.')
+                self._std_dev[nonzero] = np.nan
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:

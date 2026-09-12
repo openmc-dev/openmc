@@ -511,7 +511,8 @@ void DecompositionMap::exchange_sr_info(
   }
 }
 
-void DecompositionMap::send_sr_data(int receiver, SourceRegion& sr_send)
+void DecompositionMap::send_sr_data(
+  int receiver, SourceRegion& sr_send, vector<MPI_Request>* pending)
 {
 
   int num_scalar_messages = 1;
@@ -595,7 +596,13 @@ void DecompositionMap::send_sr_data(int receiver, SourceRegion& sr_send)
       "vectors."));
   }
 
-  // Wait for all communication to complete
+  // Hand the requests to the caller if it wants to overlap sends and receives,
+  // otherwise wait for them here
+  if (pending) {
+    pending->insert(pending->end(), requests.begin(), requests.end());
+    return;
+  }
+
   MPI_Waitall(num_requests, requests.data(), MPI_STATUSES_IGNORE);
 }
 
@@ -1100,18 +1107,32 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
   // Clear source_region_map_
   domain->source_region_map_.clear();
 
-  // Send source region data to new owner
+  // Send source region data to new owner. The sends are posted without waiting
+  // on them so that the receives below can be posted while they are still in
+  // flight: every rank reaches its send loop before any rank reaches its
+  // receive loop, so blocking here would deadlock as soon as a message exceeds
+  // the MPI implementation's eager threshold.
+  //
+  // The staging vector keeps the outgoing SourceRegion objects (and therefore
+  // the buffers the MPI_Isend calls point at) alive until the final Waitall.
+  vector<MPI_Request> pending_sends;
+  vector<SourceRegion> outgoing;
+  int64_t n_outgoing = 0;
+  for (const auto& pair : sr_send_list) {
+    n_outgoing += pair.second.size();
+  }
+  outgoing.reserve(n_outgoing);
+
   for (auto& pair : sr_send_list) {
     int receiver = pair.first;             // destination rank
     vector<int>& sr_indices = pair.second; // vector of source region indices
 
     // Iterate through all source regions for this key
     for (int sr_idx : sr_indices) {
-      SourceRegionKey sr_key = domain->source_regions_.key(sr_idx);
       SourceRegionHandle srh =
         domain->source_regions_.get_source_region_handle(sr_idx);
-      SourceRegion sr(srh);
-      send_sr_data(receiver, sr);
+      outgoing.emplace_back(srh);
+      send_sr_data(receiver, outgoing.back(), &pending_sends);
     }
   }
 
@@ -1135,6 +1156,12 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
       receive_sr_data(sender, sr_recv);
       source_regions_new.push_back(sr_recv);
     }
+  }
+
+  // All incoming data has arrived; now drain the outgoing sends
+  if (!pending_sends.empty()) {
+    MPI_Waitall(static_cast<int>(pending_sends.size()), pending_sends.data(),
+      MPI_STATUSES_IGNORE);
   }
 
   // Update source regions in domain to new container

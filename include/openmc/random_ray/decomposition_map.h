@@ -4,6 +4,9 @@
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/random_ray/source_region.h"
 #include "openmc/vector.h"
+#ifdef OPENMC_MPI
+#include <mpi.h>
+#endif
 
 namespace openmc {
 
@@ -40,7 +43,11 @@ public:
   bool any_discovered_source_regions(
     ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
       discovered_source_regions);
-  void send_sr_data(int receiver, SourceRegion& sr_send);
+  // Post the sends for one source region. If `pending` is given, the requests
+  // are appended to it and the caller is responsible for waiting on them;
+  // otherwise this call blocks until the sends complete locally.
+  void send_sr_data(int receiver, SourceRegion& sr_send,
+    vector<MPI_Request>* pending = nullptr);
   void receive_sr_data(int sender, SourceRegion& sr_recv);
 
   // Methods for balancing the load between ranks

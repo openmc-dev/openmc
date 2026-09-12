@@ -143,7 +143,7 @@ download and install OpenMC by entering the following commands in a terminal:
 
 .. code-block:: sh
 
-    git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
+    git clone https://github.com/openmc-dev/openmc.git
     cd openmc
     mkdir build && cd build
     cmake ..

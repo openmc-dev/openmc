@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 project(openmc C CXX)
 
 # Set module path
@@ -25,11 +25,6 @@ if("${CMAKE_EXPORT_COMPILE_COMMANDS}" STREQUAL "")
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
-# Enable correct usage of CXX_EXTENSIONS
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
-  cmake_policy(SET CMP0128 NEW)
-endif()
-
 #===============================================================================
 # Command line options
 #===============================================================================
@@ -42,7 +37,7 @@ option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"         
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
-option(OPENMC_FORCE_VENDORED_LIBS "Explicitly use submodules defined in 'vendor'"    OFF)
+option(OPENMC_FORCE_FETCHCONTENT "Fetch dependencies instead of finding packages"  OFF)
 option(OPENMC_ENABLE_STRICT_FP "Enable strict FP flags to improve test portability"  OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
@@ -53,8 +48,26 @@ message(STATUS "OPENMC_USE_DAGMC ${OPENMC_USE_DAGMC}")
 message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
-message(STATUS "OPENMC_FORCE_VENDORED_LIBS ${OPENMC_FORCE_VENDORED_LIBS}")
+message(STATUS "OPENMC_FORCE_FETCHCONTENT ${OPENMC_FORCE_FETCHCONTENT}")
 message(STATUS "OPENMC_ENABLE_STRICT_FP ${OPENMC_ENABLE_STRICT_FP}")
+
+# Warnings for options removed along with the vendored git submodules
+if(DEFINED OPENMC_FORCE_VENDORED_LIBS)
+  message(WARNING "The OpenMC CMake option 'OPENMC_FORCE_VENDORED_LIBS' has "
+    "been deprecated. Its value will be ignored. Dependencies are no longer "
+    "vendored as git submodules. "
+    "Please use '-DOPENMC_FORCE_FETCHCONTENT=${OPENMC_FORCE_VENDORED_LIBS}' "
+    "instead.")
+  unset(OPENMC_FORCE_VENDORED_LIBS CACHE)
+endif()
+
+if(DEFINED GIT_SUBMODULE)
+  message(WARNING "The OpenMC CMake option 'GIT_SUBMODULE' has been "
+    "deprecated. Its value (${GIT_SUBMODULE}) will be ignored. OpenMC no "
+    "longer uses git submodules for its dependencies, so they are never "
+    "checked out during configuration.")
+  unset(GIT_SUBMODULE CACHE)
+endif()
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -123,20 +136,24 @@ endif()
 
 if(OPENMC_USE_MPI)
   find_package(MPI REQUIRED)
+
+  include(CMakePushCheckState)
+  include(CheckCXXSourceCompiles)
+  cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_LIBRARIES MPI::MPI_CXX)
+  check_cxx_source_compiles(
+    "#include <mpi.h>
+    int main()
+    {
+      double value = 0.0;
+      MPI_Count count = 1;
+      return MPI_Reduce_c(
+        &value, &value, count, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    }"
+    OPENMC_HAVE_MPI_REDUCE_C
+  )
+  cmake_pop_check_state()
 endif()
-
-#===============================================================================
-# Helper macro for finding a dependency
-#===============================================================================
-
-macro(find_package_write_status pkg)
-  find_package(${pkg} QUIET NO_SYSTEM_ENVIRONMENT_PATH)
-  if(${pkg}_FOUND)
-    message(STATUS "Found ${pkg}: ${${pkg}_DIR} (version ${${pkg}_VERSION})")
-  else()
-    message(STATUS "Did not find ${pkg}, will use submodule instead")
-  endif()
-endmacro()
 
 #===============================================================================
 # DAGMC Geometry Support - need DAGMC/MOAB
@@ -254,72 +271,10 @@ message(STATUS "OpenMC Linker flags: ${ldflags}")
 endif()
 
 #===============================================================================
-# Update git submodules as needed
-#===============================================================================
-if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
-  option(GIT_SUBMODULE "Check submodules during build" ON)
-  if(GIT_SUBMODULE)
-    message(STATUS "Submodule update")
-    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                    RESULT_VARIABLE GIT_SUBMOD_RESULT)
-    if(NOT GIT_SUBMOD_RESULT EQUAL 0)
-      message(FATAL_ERROR "git submodule update --init failed with \
-        ${GIT_SUBMOD_RESULT}, please checkout submodules")
-    endif()
-  endif()
-endif()
-
-# Check to see if submodules exist (by checking one)
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/pugixml/CMakeLists.txt")
-  message(FATAL_ERROR "The git submodules were not downloaded! GIT_SUBMODULE was \
-    turned off or failed. Please update submodules and try again.")
-endif()
-
-#===============================================================================
-# pugixml library
+# CMake dependencies
 #===============================================================================
 
-if(OPENMC_FORCE_VENDORED_LIBS)
-  add_subdirectory(vendor/pugixml)
-  set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
-else()
-  find_package_write_status(pugixml)
-  if (NOT pugixml_FOUND)
-    add_subdirectory(vendor/pugixml)
-    set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
-  endif()
-endif()
-
-#===============================================================================
-# {fmt} library
-#===============================================================================
-
-if(OPENMC_FORCE_VENDORED_LIBS)
-  set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
-  add_subdirectory(vendor/fmt)
-else()
-  find_package_write_status(fmt)
-  if (NOT fmt_FOUND)
-    set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
-    add_subdirectory(vendor/fmt)
-  endif()
-endif()
-
-#===============================================================================
-# Catch2 library
-#===============================================================================
-
-if(OPENMC_BUILD_TESTS)
-  if (OPENMC_FORCE_VENDORED_LIBS)
-    add_subdirectory(vendor/Catch2)
-  else()
-    find_package_write_status(Catch2)
-    if (NOT Catch2_FOUND)
-      add_subdirectory(vendor/Catch2)
-    endif()
-  endif()
-endif()
+include(cmake/Dependencies.cmake)
 
 #===============================================================================
 # RPATH information
@@ -392,6 +347,7 @@ list(APPEND libopenmc_SOURCES
   src/ncrystal_interface.cpp
   src/ncrystal_load.cpp
   src/nuclide.cpp
+  src/openmc.cpp
   src/output.cpp
   src/particle.cpp
   src/particle_data.cpp
@@ -482,16 +438,28 @@ list(APPEND libopenmc_SOURCES
   src/external/quartic_solver.cpp
   src/external/Faddeeva.cc)
 
+# Compile the OpenMC sources once so that they can be used by both the
+# production library and the static library used by the C++ unit tests.
+add_library(libopenmc_objects OBJECT ${libopenmc_SOURCES})
+set_target_properties(libopenmc_objects PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # For Visual Studio compilers
 if(MSVC)
   # Use static library (otherwise explicit symbol portings are needed)
-  add_library(libopenmc STATIC ${libopenmc_SOURCES})
+  add_library(libopenmc STATIC)
 
   # To use the shared HDF5 libraries on Windows, the H5_BUILT_AS_DYNAMIC_LIB
   # compile definition must be specified.
-  target_compile_definitions(libopenmc PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
+  target_compile_definitions(libopenmc_objects PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
 else()
-  add_library(libopenmc SHARED ${libopenmc_SOURCES})
+  add_library(libopenmc SHARED)
+endif()
+target_link_libraries(libopenmc PUBLIC libopenmc_objects)
+
+if(OPENMC_BUILD_TESTS)
+  add_library(libopenmc_test STATIC)
+  set_target_properties(libopenmc_test PROPERTIES OUTPUT_NAME openmc_test)
+  target_link_libraries(libopenmc_test PUBLIC libopenmc_objects)
 endif()
 
 add_library(OpenMC::libopenmc ALIAS libopenmc)
@@ -501,45 +469,48 @@ if(NOT MSVC)
   set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 endif()
 
-target_include_directories(libopenmc
+target_include_directories(libopenmc_objects
   PUBLIC
     $<INSTALL_INTERFACE:include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${HDF5_INCLUDE_DIRS}
 )
 
-# Set compile flags
-target_compile_options(libopenmc PRIVATE ${cxxflags})
-
 # Add include directory for configured version file
-target_include_directories(libopenmc
+target_include_directories(libopenmc_objects
   PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 
+# Ensure C++17 standard is used and turn off GNU extensions
+target_compile_features(libopenmc_objects PUBLIC cxx_std_17)
+set_target_properties(libopenmc_objects PROPERTIES CXX_EXTENSIONS OFF)
+
+# Set compile flags
+target_compile_options(libopenmc_objects PRIVATE ${cxxflags})
+
 if (HDF5_IS_PARALLEL)
-  target_compile_definitions(libopenmc PRIVATE -DPHDF5)
+  target_compile_definitions(libopenmc_objects PRIVATE -DPHDF5)
 endif()
 if (OPENMC_USE_MPI)
-  target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
+  target_compile_definitions(libopenmc_objects PUBLIC -DOPENMC_MPI)
+  if (OPENMC_HAVE_MPI_REDUCE_C)
+    target_compile_definitions(libopenmc_objects PRIVATE -DOPENMC_HAVE_MPI_REDUCE_C)
+  endif()
 endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      fmt::fmt ${CMAKE_DL_LIBS})
+target_link_libraries(libopenmc_objects PUBLIC ${ldflags} ${HDF5_LIBRARIES}
+                      ${HDF5_HL_LIBRARIES} fmt::fmt ${CMAKE_DL_LIBS})
 
-if(TARGET pugixml::pugixml)
-  target_link_libraries(libopenmc pugixml::pugixml)
-else()
-  target_link_libraries(libopenmc pugixml)
-endif()
+target_link_libraries(libopenmc_objects PUBLIC pugixml::pugixml)
 
 if(OPENMC_USE_DAGMC)
-  target_compile_definitions(libopenmc PUBLIC OPENMC_DAGMC_ENABLED)
-  target_link_libraries(libopenmc dagmc-shared)
+  target_compile_definitions(libopenmc_objects PUBLIC OPENMC_DAGMC_ENABLED)
+  target_link_libraries(libopenmc_objects PUBLIC dagmc-shared)
 
   if(OPENMC_USE_UWUW)
-    target_compile_definitions(libopenmc PRIVATE OPENMC_UWUW_ENABLED)
-    target_link_libraries(libopenmc uwuw-shared)
+    target_compile_definitions(libopenmc_objects PRIVATE OPENMC_UWUW_ENABLED)
+    target_link_libraries(libopenmc_objects PUBLIC uwuw-shared)
   endif()
 elseif(OPENMC_USE_UWUW)
   set(OPENMC_USE_UWUW OFF)
@@ -547,43 +518,43 @@ elseif(OPENMC_USE_UWUW)
 endif()
 
 if(OPENMC_USE_LIBMESH)
-  target_compile_definitions(libopenmc PRIVATE OPENMC_LIBMESH_ENABLED)
-  target_link_libraries(libopenmc PkgConfig::LIBMESH)
+  target_compile_definitions(libopenmc_objects PRIVATE OPENMC_LIBMESH_ENABLED)
+  target_link_libraries(libopenmc_objects PUBLIC PkgConfig::LIBMESH)
 endif()
 
 if (PNG_FOUND)
-  target_compile_definitions(libopenmc PRIVATE USE_LIBPNG)
-  target_link_libraries(libopenmc PNG::PNG)
+  target_compile_definitions(libopenmc_objects PRIVATE USE_LIBPNG)
+  target_link_libraries(libopenmc_objects PUBLIC PNG::PNG)
 endif()
 
 if (OPENMC_USE_OPENMP)
-  target_link_libraries(libopenmc OpenMP::OpenMP_CXX)
+  target_link_libraries(libopenmc_objects PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
 if (OPENMC_USE_MPI)
-  target_link_libraries(libopenmc MPI::MPI_CXX)
-endif()
-
-if (OPENMC_BUILD_TESTS)
-  # Add cpp tests directory
-  include(CTest)
-  add_subdirectory(tests/cpp_unit_tests)
+  target_link_libraries(libopenmc_objects PUBLIC MPI::MPI_CXX)
 endif()
 
 #===============================================================================
 # Log build info that this executable can report later
 #===============================================================================
-target_compile_definitions(libopenmc PRIVATE BUILD_TYPE=${CMAKE_BUILD_TYPE})
-target_compile_definitions(libopenmc PRIVATE COMPILER_ID=${CMAKE_CXX_COMPILER_ID})
-target_compile_definitions(libopenmc PRIVATE COMPILER_VERSION=${CMAKE_CXX_COMPILER_VERSION})
+target_compile_definitions(libopenmc_objects PRIVATE BUILD_TYPE=${CMAKE_BUILD_TYPE})
+target_compile_definitions(libopenmc_objects PRIVATE COMPILER_ID=${CMAKE_CXX_COMPILER_ID})
+target_compile_definitions(libopenmc_objects PRIVATE COMPILER_VERSION=${CMAKE_CXX_COMPILER_VERSION})
 if (OPENMC_ENABLE_PROFILE)
-  target_compile_definitions(libopenmc PRIVATE PROFILINGBUILD)
+  target_compile_definitions(libopenmc_objects PRIVATE PROFILINGBUILD)
 endif()
 if (OPENMC_ENABLE_COVERAGE)
-  target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
+  target_compile_definitions(libopenmc_objects PRIVATE COVERAGEBUILD)
 endif()
 if (OPENMC_ENABLE_STRICT_FP)
-  target_compile_definitions(libopenmc PRIVATE OPENMC_ENABLE_STRICT_FP)
+  target_compile_definitions(libopenmc_objects PRIVATE OPENMC_ENABLE_STRICT_FP)
+endif()
+
+if(OPENMC_BUILD_TESTS)
+  # Add cpp tests directory
+  include(CTest)
+  add_subdirectory(tests/cpp_unit_tests)
 endif()
 
 #===============================================================================
@@ -595,10 +566,8 @@ target_compile_options(openmc PRIVATE ${cxxflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)
 
-# Ensure C++17 standard is used and turn off GNU extensions
 target_compile_features(openmc PUBLIC cxx_std_17)
-target_compile_features(libopenmc PUBLIC cxx_std_17)
-set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
+set_target_properties(openmc PROPERTIES CXX_EXTENSIONS OFF)
 
 #===============================================================================
 # Python package
@@ -616,7 +585,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 include(CMakePackageConfigHelpers)
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
-install(TARGETS openmc libopenmc
+install(TARGETS openmc libopenmc libopenmc_objects
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

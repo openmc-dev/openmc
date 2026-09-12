@@ -4,6 +4,8 @@
 //! \file event.h
 //! \brief Event-based data structures and methods
 
+#include <tuple> // for tie
+
 #include "openmc/particle.h"
 #include "openmc/shared_array.h"
 

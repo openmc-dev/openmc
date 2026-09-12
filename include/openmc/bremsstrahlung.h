@@ -43,7 +43,9 @@ extern tensor::Tensor<double>
 // Global variables
 //==============================================================================
 
-void thick_target_bremsstrahlung(Particle& p, double* E_lost);
+void thick_target_bremsstrahlung(Particle& p);
+void thick_target_bremsstrahlung(
+  Particle& p, ParticleType type, Direction u, double E);
 
 } // namespace openmc
 

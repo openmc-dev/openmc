@@ -739,6 +739,14 @@ void RandomRay::attenuate_flux_linear_source(
     moment_matrix_estimate *= distance;
     srh.mom_matrix() += moment_matrix_estimate;
 
+    // With the source gradient limiter enabled, grow the region's sampled
+    // bounding box with this segment's endpoints, which lie on the region
+    // boundary (or inside it, where the ray starts or ends).
+    if (FlatSourceDomain::source_gradient_limiter_) {
+      srh.extent().expand(r);
+      srh.extent().expand(r + distance * u());
+    }
+
     srh.n_hits() += 1;
   }
 

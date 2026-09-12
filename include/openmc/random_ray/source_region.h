@@ -1,6 +1,7 @@
 #ifndef OPENMC_RANDOM_RAY_SOURCE_REGION_H
 #define OPENMC_RANDOM_RAY_SOURCE_REGION_H
 
+#include "openmc/bounding_box.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 #include "openmc/random_ray/moment_matrix.h"
@@ -149,6 +150,8 @@ public:
   int* temperature_idx_;
   double* density_mult_;
   int* is_small_;
+  int* n_negative_batches_;
+  int* converged_negative_;
   int* n_hits_;
   int* birthday_;
   OpenMPMutex* lock_;
@@ -166,6 +169,9 @@ public:
   MomentMatrix* mom_matrix_;
   MomentMatrix* mom_matrix_t_;
   SourceRegionKey* key_;
+  // Bounding box of the ray segment endpoints sampled in this region, kept
+  // only when the source gradient limiter is enabled (see SourceRegion).
+  BoundingBox* extent_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
@@ -205,7 +211,10 @@ public:
   const int temperature_idx() const { return *temperature_idx_; }
 
   int& is_small() { return *is_small_; }
+  int& n_negative_batches() { return *n_negative_batches_; }
   const int is_small() const { return *is_small_; }
+  int& converged_negative() { return *converged_negative_; }
+  const int converged_negative() const { return *converged_negative_; }
 
   int& n_hits() { return *n_hits_; }
   const int n_hits() const { return *n_hits_; }
@@ -257,6 +266,8 @@ public:
 
   SourceRegionKey& key() { return *key_; }
   const SourceRegionKey key() const { return *key_; }
+  BoundingBox& extent() { return *extent_; }
+  const BoundingBox& extent() const { return *extent_; }
 
   std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()
   {
@@ -330,8 +341,19 @@ public:
   double volume_naive_ {0.0}; //!< Volume as integrated from this iteration only
   int position_recorded_ {0}; //!< Has the position been recorded yet?
   int external_source_present_ {
-    0};               //!< Is an external source present in this region?
-  int is_small_ {0};  //!< Is it "small", receiving < 1.5 hits per iteration?
+    0};              //!< Is an external source present in this region?
+  int is_small_ {0}; //!< Is it "small", receiving < 1.5 hits per iteration?
+  int n_negative_batches_ {
+    0}; //!< Number of batches in which this region's flux went negative
+        //!< before the strict adaptive estimator's non-negativity
+        //!< enforcement (drives the chronic-negativity demotion)
+  int converged_negative_ {
+    0}; //!< Demote-only flag (adaptive estimator only), evaluated from the
+        //!< running accumulated flux at the inactive->active transition and
+        //!< re-evaluated every active batch. 1 = accumulated flux negative
+        //!< in some group, 2 = strong accumulated feed (latch). Any value
+        //!< > 0 demotes the region to the naive volume estimator, and once
+        //!< set the flag is never released.
   int n_hits_ {0};    //!< Number of total hits (ray crossings)
                       // Mesh that subdivides this source region
   int mesh_ {C_NONE}; //!< Index in openmc::model::meshes array that subdivides
@@ -374,6 +396,14 @@ public:
   // Container with all scalar fields of a source region
   ScalarSourceRegionFields scalars_;
 
+  // Bounding box of the ray segment endpoints sampled in this region. Segment
+  // endpoints lie on the region boundary, so the box converges to the
+  // region's true extent. It is accumulated only when the source gradient
+  // limiter is enabled, which bounds the linear source over it. It starts
+  // inverted (minimum above maximum), the empty box, rather than at the
+  // default infinite box.
+  BoundingBox extent_ {BoundingBox::inverted()};
+
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
@@ -413,10 +443,21 @@ class SourceRegionContainer {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegionContainer(int negroups, bool is_linear)
-    : negroups_(negroups), is_linear_(is_linear)
+  SourceRegionContainer(int negroups, bool is_linear, bool is_adaptive,
+    bool is_strict_adaptive, bool track_extents)
+    : negroups_(negroups), is_linear_(is_linear), is_adaptive_(is_adaptive),
+      is_strict_adaptive_(is_strict_adaptive), track_extents_(track_extents)
   {}
   SourceRegionContainer() = default;
+
+  //! Return an empty container carrying the same configuration as this one.
+  //! Used under domain decomposition, where a rank rebuilds its source region
+  //! container from scratch after load balancing.
+  SourceRegionContainer empty_like() const
+  {
+    return SourceRegionContainer(
+      negroups_, is_linear_, is_adaptive_, is_strict_adaptive_, track_extents_);
+  }
 
   //----------------------------------------------------------------------------
   // Public Accessors
@@ -430,7 +471,13 @@ public:
   const double density_mult(int64_t sr) const { return density_mult_[sr]; }
 
   int& is_small(int64_t sr) { return is_small_[sr]; }
+  int& n_negative_batches(int64_t sr) { return n_negative_batches_[sr]; }
   const int is_small(int64_t sr) const { return is_small_[sr]; }
+  int& converged_negative(int64_t sr) { return converged_negative_[sr]; }
+  const int converged_negative(int64_t sr) const
+  {
+    return converged_negative_[sr];
+  }
 
   int& n_hits(int64_t sr) { return n_hits_[sr]; }
   const int n_hits(int64_t sr) const { return n_hits_[sr]; }
@@ -474,6 +521,12 @@ public:
   Position& centroid(int64_t sr) { return centroid_[sr]; }
   const Position centroid(int64_t sr) const { return centroid_[sr]; }
 
+  Position& centroid_offset(int64_t sr) { return centroid_offset_[sr]; }
+  const Position centroid_offset(int64_t sr) const
+  {
+    return centroid_offset_[sr];
+  }
+
   Position& centroid_iteration(int64_t sr) { return centroid_iteration_[sr]; }
   const Position centroid_iteration(int64_t sr) const
   {
@@ -494,6 +547,8 @@ public:
 
   SourceRegionKey& key(int64_t sr) { return key_[sr]; }
   const SourceRegionKey key(int64_t sr) const { return key_[sr]; }
+  BoundingBox& extent(int64_t sr) { return extents_[sr]; }
+  const BoundingBox& extent(int64_t sr) const { return extents_[sr]; }
 
   MomentArray& source_gradients(int64_t sr, int g)
   {
@@ -593,6 +648,17 @@ public:
     return scalar_flux_final_[se];
   }
 
+  double& scalar_flux_t(int64_t sr, int g)
+  {
+    return scalar_flux_t_[index(sr, g)];
+  }
+  const double scalar_flux_t(int64_t sr, int g) const
+  {
+    return scalar_flux_t_[index(sr, g)];
+  }
+  double& scalar_flux_t(int64_t se) { return scalar_flux_t_[se]; }
+  const double scalar_flux_t(int64_t se) const { return scalar_flux_t_[se]; }
+
   float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
   const float source(int64_t sr, int g) const { return source_[index(sr, g)]; }
   float& source(int64_t se) { return source_[se]; }
@@ -660,12 +726,19 @@ private:
   int64_t n_source_regions_ {0};
   int negroups_ {0};
   bool is_linear_ {false};
+  bool is_adaptive_ {false};
+  bool is_strict_adaptive_ {false};
+  // Whether the sampled bounding boxes are stored (linear source with the
+  // source gradient limiter enabled)
+  bool track_extents_ {false};
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;
   vector<int> temperature_idx_;
   vector<double> density_mult_;
   vector<int> is_small_;
+  vector<int> n_negative_batches_;
+  vector<int> converged_negative_;
   vector<int> n_hits_;
   vector<int> mesh_;
   vector<int64_t> parent_sr_;
@@ -681,9 +754,17 @@ private:
   vector<Position> centroid_;
   vector<Position> centroid_iteration_;
   vector<Position> centroid_t_;
+  // Offset of this batch's track-length-weighted centroid from the
+  // accumulated centroid the transport sweep evaluated the linear source
+  // against, used by the batch-consistent flux update (linear source solver
+  // only)
+  vector<Position> centroid_offset_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;
   vector<SourceRegionKey> key_;
+  // One box per region rather than separate minimum and maximum arrays: the
+  // two corners are always read, grown, and reset together.
+  vector<BoundingBox> extents_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
@@ -693,6 +774,12 @@ private:
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
   vector<double> scalar_flux_final_;
+  // Running sum of the scalar flux over every batch of the current solve,
+  // inactive and active. Unlike scalar_flux_final, which holds only the
+  // active-batch accumulation used for tallies, it is never reset within a
+  // solve. Allocated only for the adaptive volume estimator, which makes its
+  // demotion decisions from it.
+  vector<double> scalar_flux_t_;
   vector<float> source_;
   vector<float> external_source_;
 

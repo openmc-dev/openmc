@@ -998,7 +998,7 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
   vector<int> num_sr_receiving(mpi::n_procs, 0);
 
   // Local source region container that contains updated list
-  SourceRegionContainer source_regions_new(negroups_, is_linear_);
+  SourceRegionContainer source_regions_new = domain->source_regions_.empty_like();
 
   // Each rank identifies source regions that need to be transferred to new
   // owner and updates subdomain map accordingly

@@ -132,7 +132,9 @@ bool find_cell_inner(
   bool found = false;
   int32_t i_cell = C_NONE;
   if (neighbor_list) {
-    for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
+    // Take one snapshot of the list rather than re-reading it each iteration
+    auto neighbors = neighbor_list->view();
+    for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
       i_cell = *it;
 
       // Make sure the search cell is in the same universe.

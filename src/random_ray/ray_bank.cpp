@@ -51,11 +51,6 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain)
     buffers.angular_flux.reserve(reserved_buffer_size_ * negroups_);
     buffers.coord.reserve(reserved_buffer_size_ * n_coord_max);
     buffers.cell_last.reserve(reserved_buffer_size_ * n_coord_max);
-
-    buffers.ray_data.reserve(32);
-    buffers.angular_flux.reserve(32 * negroups_);
-    buffers.coord.reserve(32 * n_coord_max);
-    buffers.cell_last.reserve(32 * n_coord_max);
   }
 
   // Pack RayExchangeData directly into send buffer

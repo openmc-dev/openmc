@@ -1302,7 +1302,6 @@ void FlatSourceDomain::output_to_vtk() const
 
     // Relate voxel spatial locations to random ray source regions
     vector<int> voxel_indices(Nx * Ny * Nz);
-    vector<SourceRegionKey> voxel_indices_key(Nx * Ny * Nz);
     vector<Position> voxel_positions(Nx * Ny * Nz);
     vector<double> weight_windows(Nx * Ny * Nz);
     float min_weight = 1e20;
@@ -1323,7 +1322,6 @@ void FlatSourceDomain::output_to_vtk() const
 
           bool found = exhaustive_find_cell(p);
           if (!found) {
-            voxel_indices_key[z * Ny * Nx + y * Nx + x] = {-1, -1};
             voxel_indices[z * Ny * Nx + y * Nx + x] = -1;
             voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
             weight_windows[z * Ny * Nx + y * Nx + x] = 0.0;
@@ -1337,7 +1335,6 @@ void FlatSourceDomain::output_to_vtk() const
             sr = it->second;
           }
 
-          voxel_indices_key[z * Ny * Nx + y * Nx + x] = sr_key;
           voxel_indices[z * Ny * Nx + y * Nx + x] = sr;
           voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
 
@@ -1684,20 +1681,15 @@ void FlatSourceDomain::output_to_vtk_decomp() const
         vector_out_float[voxel_id] = flux;
       }
 
+      // Note that the flux statistics are accumulated locally over all
+      // groups and reduced once after the loop; reducing them here would
+      // fold each group's running totals back in on every subsequent group.
       if (mpi::master) {
         MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size,
           MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-        MPI_Reduce(
-          MPI_IN_PLACE, &num_neg, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
-        MPI_Reduce(MPI_IN_PLACE, &num_samples, 1, MPI_INT64_T, MPI_SUM, 0,
-          mpi::intracomm);
       } else {
         MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT,
           MPI_SUM, 0, mpi::intracomm);
-        MPI_Reduce(
-          &num_neg, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
-        MPI_Reduce(
-          &num_samples, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
       }
 
       if (mpi::master) {
@@ -1710,6 +1702,24 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       }
 
       fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
+    }
+
+    // Combine the flux statistics from every rank's subdomain
+    if (mpi::master) {
+      MPI_Reduce(
+        MPI_IN_PLACE, &num_neg, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(
+        MPI_IN_PLACE, &num_samples, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(
+        MPI_IN_PLACE, &min_flux, 1, MPI_FLOAT, MPI_MIN, 0, mpi::intracomm);
+      MPI_Reduce(
+        MPI_IN_PLACE, &max_flux, 1, MPI_FLOAT, MPI_MAX, 0, mpi::intracomm);
+    } else {
+      MPI_Reduce(&num_neg, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(
+        &num_samples, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(&min_flux, nullptr, 1, MPI_FLOAT, MPI_MIN, 0, mpi::intracomm);
+      MPI_Reduce(&max_flux, nullptr, 1, MPI_FLOAT, MPI_MAX, 0, mpi::intracomm);
     }
 
     // Slightly negative fluxes can be normal when sampling corners of linear
@@ -1854,10 +1864,10 @@ void FlatSourceDomain::output_to_vtk_decomp() const
     } else {
       for (int voxel_id : my_voxel_ids) {
         int64_t fsr = voxel_indices[voxel_id];
-        int mat = source_regions_.material(fsr);
-        int temp = source_regions_.temperature_idx(fsr);
         float total_external = 0.0f;
         if (fsr >= 0) {
+          int mat = source_regions_.material(fsr);
+          int temp = source_regions_.temperature_idx(fsr);
           for (int g = 0; g < negroups_; g++) {
             // External sources are already divided by sigma_t, so we need to
             // multiply it back to get the true external source.
@@ -2723,8 +2733,15 @@ int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
 bool FlatSourceDomain::is_geometry_3D()
 {
   // Get spatial box of ray_source_
-  SpatialBox* sb = dynamic_cast<SpatialBox*>(
-    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space());
+  auto* independent_source =
+    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
+  SpatialBox* sb = independent_source
+                     ? dynamic_cast<SpatialBox*>(independent_source->space())
+                     : nullptr;
+  if (!sb) {
+    fatal_error("Random ray requires the ray source to be an independent "
+                "source with a box spatial distribution.");
+  }
 
   double x_length = sb->upper_right().x - sb->lower_left().x;
   double y_length = sb->upper_right().y - sb->lower_left().y;

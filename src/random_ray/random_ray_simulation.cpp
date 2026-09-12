@@ -20,8 +20,6 @@
 #include "openmc/timer.h"
 #include "openmc/weight_windows.h"
 #include <numeric>
-// #include <thread>
-// #include <chrono>
 
 namespace openmc {
 

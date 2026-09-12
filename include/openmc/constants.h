@@ -84,8 +84,9 @@ constexpr double WEIGHT_WINDOW_REL_TOL {1e-9};
 // variable-length vectors.
 constexpr int MAX_N_HANDLES {5};
 
-// Maximum number of load optimization iterations to perform to balance
-// the load between MPI ranks during random ray transport.
+// Number of initial batches over which the load is rebalanced between MPI
+// ranks during random ray transport. (The iteration cap within a single
+// rebalancing pass is a local in DecompositionMap::balance_load.)
 constexpr int ITER_LOAD_BALANCE {5};
 
 // ============================================================================

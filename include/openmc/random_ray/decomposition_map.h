@@ -43,11 +43,13 @@ public:
   bool any_discovered_source_regions(
     ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
       discovered_source_regions);
+#ifdef OPENMC_MPI
   // Post the sends for one source region. If `pending` is given, the requests
   // are appended to it and the caller is responsible for waiting on them;
   // otherwise this call blocks until the sends complete locally.
   void send_sr_data(int receiver, SourceRegion& sr_send,
     vector<MPI_Request>* pending = nullptr);
+#endif
   void receive_sr_data(int sender, SourceRegion& sr_recv);
 
   // Methods for balancing the load between ranks

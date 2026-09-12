@@ -1825,12 +1825,7 @@ void PhongRay::on_intersection()
 
     // Need to apply rotations to find the normal vector in
     // the base level universe's coordinate system.
-    for (int lev = surf_level - 1; lev >= 0; --lev) {
-      if (coord(lev + 1).rotated()) {
-        const Cell& c {*model::cells[coord(lev).cell()]};
-        normal = normal.inverse_rotate(c.rotation_);
-      }
-    }
+    normal = rotate_to_root(*this, surf_level, normal);
 
     // use the normal opposed to the ray direction
     if (normal.dot(u()) > 0.0) {

@@ -16,13 +16,13 @@ constexpr int32_t nuclear_pdg_code(int Z, int A)
   return 1000000000 + Z * 10000 + A * 10;
 }
 
-int32_t normalized_nuclear_pdg(int32_t pdg)
+int32_t normalized_particle_pdg(int32_t pdg)
 {
   pdg = std::abs(pdg);
   if (pdg == PDG_PROTON)
     return 1000010010;
   if (pdg < 1000000000)
-    return 0;
+    return pdg;
 
   // The mass table contains ground states only.
   pdg -= pdg % 10;
@@ -3597,11 +3597,11 @@ const std::unordered_map<int32_t, double> ATOMIC_MASS = {
 
 double atomic_mass_from_pdg(int32_t pdg)
 {
-  int32_t nuclide = normalized_nuclear_pdg(pdg);
-  if (nuclide == 0)
+  int32_t particle = normalized_particle_pdg(pdg);
+  if (particle < 1000000000)
     return 0.0;
 
-  auto it = ATOMIC_MASS.find(nuclide);
+  auto it = ATOMIC_MASS.find(particle);
   return it == ATOMIC_MASS.end() ? 0.0 : it->second;
 }
 
@@ -3612,33 +3612,35 @@ double atomic_mass(int Z, int A)
 
 double nuclear_mass_from_pdg(int32_t pdg)
 {
-  int32_t particle = std::abs(pdg);
-  if (particle == PDG_PHOTON)
+  int32_t particle = normalized_particle_pdg(pdg);
+  switch (particle) {
+  case PDG_PHOTON:
     return 0.0;
-  if (particle == PDG_ELECTRON)
+  case PDG_ELECTRON:
     return MASS_ELECTRON;
-  if (particle == PDG_NEUTRON)
+  case PDG_NEUTRON:
     return MASS_NEUTRON;
-  if (particle == PDG_PROTON)
+  case 1000010010:
     return MASS_PROTON;
-
-  int32_t nuclide = normalized_nuclear_pdg(particle);
-  if (nuclide == 1000010010)
-    return MASS_PROTON;
-  if (nuclide == PDG_DEUTERON)
+  case PDG_DEUTERON:
     return MASS_DEUTRON;
-  if (nuclide == PDG_TRITON)
+  case PDG_TRITON:
     return MASS_TRITON;
-  if (nuclide == 1000020030)
+  case 1000020030:
     return MASS_HELION;
-  if (nuclide == PDG_ALPHA)
+  case PDG_ALPHA:
     return MASS_ALPHA;
-  if (nuclide == 0)
+  }
+
+  if (particle < 1000000000)
     return 0.0;
 
-  double mass = atomic_mass_from_pdg(nuclide);
-  int Z = (nuclide / 10000) % 1000;
-  return mass == 0.0 ? 0.0 : mass - Z * MASS_ELECTRON;
+  auto it = ATOMIC_MASS.find(particle);
+  if (it == ATOMIC_MASS.end())
+    return 0.0;
+
+  int Z = (particle / 10000) % 1000;
+  return it->second - Z * MASS_ELECTRON;
 }
 
 double nuclear_mass(int Z, int A)

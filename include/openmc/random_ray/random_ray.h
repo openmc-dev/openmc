@@ -22,6 +22,10 @@ struct RayBufferContainer {
   // reach `position`. Applied on the receiving rank via move_distance(), which
   // uses each coordinate level's own direction.
   double advance_distance;
+  // Number of times this ray has been handed to another rank. The ownership
+  // early-return in attenuate_flux_inner() happens before n_event() is
+  // incremented, so max_particle_events cannot bound a forwarding loop.
+  int n_transfers;
   vector<float> angular_flux;
   int surface;
   bool is_active;
@@ -59,6 +63,7 @@ struct RayExchangeData {
   Direction direction;
   double distance_travelled;
   double advance_distance;
+  int n_transfers;
   int surface;
   bool is_active;
   uint64_t ray_id;
@@ -140,6 +145,7 @@ public:
 
   bool ray_trace_only_ {false}; // If true, only perform geometry operations
   int owner_rank_ {C_NONE};     // Rank that owns this ray based on its position
+  int n_transfers_ {0};         // Subdomain handoffs this ray has undergone
 
 private:
   //----------------------------------------------------------------------------

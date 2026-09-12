@@ -89,6 +89,11 @@ constexpr int MAX_N_HANDLES {5};
 // rebalancing pass is a local in DecompositionMap::balance_load.)
 constexpr int ITER_LOAD_BALANCE {5};
 
+// Maximum number of times a random ray may be handed to another MPI rank
+// before it is terminated. Bounds a ray ping-ponging across a subdomain
+// boundary, which would otherwise hang every rank in the job.
+constexpr int MAX_RAY_TRANSFERS {10000};
+
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 

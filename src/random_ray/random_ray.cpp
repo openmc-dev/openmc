@@ -295,7 +295,10 @@ void RandomRay::event_advance_ray()
   double distance = boundary().distance();
 
 #ifdef OPENMC_MPI
-  if (mpi::n_procs > 1) {
+  // Only consumed by calculate_rank_load(), which runs during the load
+  // balancing window; past it these atomics would be pure contention on a
+  // counter nobody reads.
+  if (mpi::n_procs > 1 && simulation::current_batch <= ITER_LOAD_BALANCE) {
     // If domain decomposition is being used, update counter for
     // ray trace operations in source region for load estimation
     int64_t sr = domain_->lookup_base_source_region_idx(*this);
@@ -407,7 +410,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       double physical_length = reduced_distance * mesh_fractional_lengths_[b];
 
 #ifdef OPENMC_MPI
-      if (mpi::n_procs > 1) {
+      if (mpi::n_procs > 1 && simulation::current_batch <= ITER_LOAD_BALANCE) {
         // Shared across threads; see the note in event_advance_ray()
 #pragma omp atomic
         mpi::decomp_map.num_mesh_bin_RT_[sr] += 1;
@@ -417,8 +420,11 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       // Very flat angles can result in very small physical lengths,
       // despite the TINY_BIT adjustment for Position start. If this happens at
       // an MPI boundary, this can cause rays to bounce back and forth
-      // indefinitely. Very small lengths are therefore skipped.
-      if (physical_length <= TINY_BIT) {
+      // indefinitely. Very small lengths are therefore skipped. This is a
+      // domain decomposition workaround, so it is gated on being decomposed:
+      // applying it unconditionally would silently drop these segments (and
+      // their volume contribution) for every existing serial user.
+      if (mpi::n_procs > 1 && physical_length <= TINY_BIT) {
         start += physical_length * u();
         continue;
       }
@@ -727,7 +733,7 @@ void RandomRay::attenuate_flux_linear_source(
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
 
-  if (is_active_) {
+  if (is_active) {
     // Accumulate deltas into the new estimate of source region flux for this
     // iteration
     for (int g = 0; g < negroups_; g++) {
@@ -830,7 +836,7 @@ void RandomRay::attenuate_flux_linear_source_void(
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
-  if (is_active_) {
+  if (is_active) {
     // Compute an estimate of the spatial moments matrix for the source
     // region based on parameters from this ray's crossing
     MomentMatrix moment_matrix_estimate;
@@ -885,6 +891,25 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
   domain_ = domain;
   distance_travelled_ = data.distance_travelled;
   owner_rank_ = mpi::rank;
+  n_transfers_ = data.n_transfers;
+
+  // A restarted ray is local again. This is correct today only because
+  // RayBank rebuilds my_ray_list_ from value-initialized objects every
+  // round; set it explicitly so that reusing the list in place cannot
+  // silently re-buffer the ray immediately.
+  is_local_ = true;
+
+  // A ray that keeps being handed between ranks without ever depositing is
+  // a sign that two ranks disagree about who owns a region. Terminate it
+  // rather than letting it hang every rank in the job.
+  if (n_transfers_ > MAX_RAY_TRANSFERS) {
+    warning("Ray " + std::to_string(data.ray_id) +
+            " was transferred between "
+            "MPI ranks " +
+            std::to_string(n_transfers_) + " times, terminating ray.");
+    wgt() = 0.0;
+    return;
+  }
   ntemperature_ = domain->ntemperature_;
 
   // Restore particle event counter from the transmitted ray
@@ -982,6 +1007,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 
   // Reset particle event counter
   n_event() = 0;
+  n_transfers_ = 0;
 
   is_active_ = (distance_inactive_ <= 0.0);
 
@@ -1112,6 +1138,7 @@ void RandomRay::pack_ray_for_buffer(
   // position by advancing the buffered geometry state (see restart_ray)
   exchange_data_.position = r() + advance_distance * u();
   exchange_data_.advance_distance = advance_distance;
+  exchange_data_.n_transfers = ++n_transfers_;
   exchange_data_.direction = u();
   exchange_data_.angular_flux = angular_flux_;
   exchange_data_.distance_travelled = distance_buffer;

@@ -205,6 +205,131 @@ had a collision at every event. Thus, for tallies with outgoing-energy filters
 or for tallies of scattering moments (which require the scattering cosine of
 the change-in-angle), we must use an analog estimator.
 
+.. _methods_next_event_estimator:
+
+--------------------------------------
+Flux at a Point (Next-Event Estimator)
+--------------------------------------
+
+The estimators above all measure a quantity integrated over a finite volume. A
+flux at a single point cannot be estimated that way: the probability that a
+simulated particle passes exactly through a point is zero, so no track or
+collision ever scores there. Instead, the flux at a point is estimated
+deterministically. At every event that emits a particle --- a source site, or a
+scattering or fission collision --- one asks what contribution that emission
+*would* make at the detector if the particle happened to travel straight there
+without colliding on the way. This is the next-event estimator, also known as a
+point detector.
+
+Consider an event at :math:`\mathbf{r}_i` that emits a particle of weight
+:math:`w_i`, and a detector at :math:`\mathbf{r}_d`. Write
+:math:`R_i = |\mathbf{r}_d - \mathbf{r}_i|` for the distance between them and
+:math:`\mathbf{\hat{\Omega}}_i` for the unit vector pointing from the event to
+the detector. The particle reaches the detector only if it is emitted into the
+solid angle subtended by it and then survives the flight. Collecting those two
+factors, the estimate of the scalar flux at the detector is
+
+.. math::
+    :label: next-event-estimator
+
+    \phi(\mathbf{r}_d) = \frac{1}{W} \sum_{i \in E} w_i \,
+    p_i(\mathbf{\hat{\Omega}}_i) \, \frac{e^{-\tau_i}}{R_i^2}
+
+where :math:`E` is the set of all emission events,
+:math:`p_i(\mathbf{\hat{\Omega}})` is the probability density per steradian for
+emitting in direction :math:`\mathbf{\hat{\Omega}}`, and
+
+.. math::
+    :label: next-event-optical-depth
+
+    \tau_i = \int_0^{R_i} \Sigma_t(\mathbf{r}_i + s
+    \mathbf{\hat{\Omega}}_i, E_{out}) \, ds
+
+is the optical depth along the straight line from the event to the detector,
+evaluated at the outgoing energy. The :math:`1/R_i^2` is the usual spreading of
+an isotropic emission over a sphere of radius :math:`R_i`, and
+:math:`e^{-\tau_i}` is the probability of flying the whole distance uncollided.
+Computing :math:`\tau_i` requires tracing a ray from every emission event to
+every detector, which is what makes the estimator expensive: its cost grows
+with the number of detectors and with the number of collisions.
+
+The emission density :math:`p_i` depends on what kind of event it is. For a
+source site it is the angular distribution of the source. For a collision it is
+the scattering probability density into the direction of the detector, which for
+data given in the center-of-mass frame must be transformed into the laboratory
+frame along with the outgoing energy; see :ref:`methods_neutron_physics`.
+
+The Exclusion Sphere
+--------------------
+
+Equation :eq:`next-event-estimator` diverges as an emission event approaches the
+detector. The contribution grows without bound as :math:`R_i \rightarrow 0`,
+and while the *mean* remains finite, the variance does not: the estimator has
+an infinite second moment, so its sample variance is unbounded and the usual
+confidence intervals do not apply. In practice a single very close collision
+can dominate the tally.
+
+The standard remedy is to place a small sphere of radius :math:`R_0` around the
+detector and treat events inside it differently. Within the sphere, rather than
+using the actual distance, the kernel is replaced by its average over a source
+distributed uniformly and isotropically throughout the sphere. Taking the
+material inside the sphere to be uniform, the probability density of the
+distance to the detector for a uniform source is :math:`3R^2/R_0^3`, and so
+
+.. math::
+    :label: next-event-exclusion-sphere
+
+    \left\langle \frac{e^{-\Sigma_t R}}{R^2} \right\rangle =
+    \int_0^{R_0} \frac{3R^2}{R_0^3} \frac{e^{-\Sigma_t R}}{R^2} \, dR =
+    \frac{3 \left( 1 - e^{-\Sigma_t R_0} \right)}{\Sigma_t R_0^3}
+
+which is finite, and tends to :math:`3/R_0^2` as
+:math:`\Sigma_t R_0 \rightarrow 0`. The result is a biased but bounded estimate
+for events near the detector; the bias shrinks with :math:`R_0`, while the
+variance grows, so :math:`R_0` trades one against the other. Keeping
+:math:`R_0` small compared with a mean free path of the surrounding material
+keeps the bias small, and :math:`R_0 = 0` recovers the unmodified estimator.
+
+Equation :eq:`next-event-exclusion-sphere` assumes a single :math:`\Sigma_t`
+across the sphere; OpenMC uses its value in the cell containing the detector.
+A sphere that spans a material boundary is therefore characterised by whichever
+material the detector itself sits in, and the treatment is correspondingly
+biased. How much this matters depends on the optical thickness of the sphere:
+for :math:`\Sigma_t R_0` around :math:`0.1` even a large error in
+:math:`\Sigma_t` moves the weight by a few percent, whereas at
+:math:`\Sigma_t R_0 \approx 1` a factor of two in :math:`\Sigma_t` moves it by
+about a third. Keeping the sphere optically thin, and within a single material,
+is the remedy; there is no way to repair it after the fact from a single
+contribution, since a contribution only samples the medium along its own flight
+and not across the whole sphere.
+
+The assumption that emission sites are distributed *uniformly* through the
+sphere is left untouched by this, and is generally the larger of the two
+approximations: emission actually follows the collision density, which is not
+uniform.
+
+Applicability
+-------------
+
+Because a next-event contribution travels in a straight line from the event to
+the detector, the estimator cannot represent a particle that reaches the
+detector any other way. It is therefore restricted to models whose outer
+boundaries are all vacuum: a reflective, white, or periodic boundary would
+require contributions along the reflected paths as well, which is conventionally
+handled by adding image detectors and is not done here.
+
+For the same reason the estimator needs an emission density that can actually be
+evaluated toward the detector. A monodirectional source has a delta-function
+angular distribution, for which that density does not exist; the contribution
+would instead have to be obtained by resolving the delta against the spatial
+distribution of the source, giving a line integral of the source density back
+along the beam. That is not currently implemented.
+
+Contributions are made from the external source and from neutron elastic,
+inelastic, :math:`S(\alpha,\beta)` and fission events. Photon physics has no
+next-event scoring, so a detector response for photons would be missing every
+collided contribution.
+
 -----------------------------------
 Surface-Integrated Flux and Current
 -----------------------------------

@@ -1,6 +1,37 @@
 #include "openmc/atomic_mass.h"
 
+#include <cstdlib>
+
+#include "openmc/particle_type.h"
+
 namespace openmc {
+namespace {
+
+constexpr int32_t nuclear_pdg_code(int Z, int A)
+{
+  if (Z == 0 && A == 1)
+    return PDG_NEUTRON;
+  if (Z <= 0 || A <= 0 || Z > A)
+    return 0;
+  return 1000000000 + Z * 10000 + A * 10;
+}
+
+int32_t normalized_nuclear_pdg(int32_t pdg)
+{
+  pdg = std::abs(pdg);
+  if (pdg == PDG_PROTON)
+    return 1000010010;
+  if (pdg < 1000000000)
+    return 0;
+
+  // The mass table contains ground states only.
+  pdg -= pdg % 10;
+  int Z = (pdg / 10000) % 1000;
+  int A = (pdg / 10) % 1000;
+  return Z > 0 && A > 0 && Z <= A ? pdg : 0;
+}
+
+} // namespace
 
 // Neutral ground-state atomic masses in [u] from AME2020. Entries use the
 // 10-digit nuclear PDG code 100ZZZAAAI with I = 0.
@@ -3564,33 +3595,55 @@ const std::unordered_map<int32_t, double> ATOMIC_MASS = {
   {1001182950, 295.216178},
 };
 
-double atomic_mass(int Z, int A)
+double atomic_mass_from_pdg(int32_t pdg)
 {
-  if (Z <= 0 || A <= 0 || Z > A)
+  int32_t nuclide = normalized_nuclear_pdg(pdg);
+  if (nuclide == 0)
     return 0.0;
 
-  int32_t pdg = 1000000000 + Z * 10000 + A * 10;
-  auto it = ATOMIC_MASS.find(pdg);
+  auto it = ATOMIC_MASS.find(nuclide);
   return it == ATOMIC_MASS.end() ? 0.0 : it->second;
+}
+
+double atomic_mass(int Z, int A)
+{
+  return atomic_mass_from_pdg(nuclear_pdg_code(Z, A));
+}
+
+double nuclear_mass_from_pdg(int32_t pdg)
+{
+  int32_t particle = std::abs(pdg);
+  if (particle == PDG_PHOTON)
+    return 0.0;
+  if (particle == PDG_ELECTRON)
+    return MASS_ELECTRON;
+  if (particle == PDG_NEUTRON)
+    return MASS_NEUTRON;
+  if (particle == PDG_PROTON)
+    return MASS_PROTON;
+
+  int32_t nuclide = normalized_nuclear_pdg(particle);
+  if (nuclide == 1000010010)
+    return MASS_PROTON;
+  if (nuclide == PDG_DEUTERON)
+    return MASS_DEUTRON;
+  if (nuclide == PDG_TRITON)
+    return MASS_TRITON;
+  if (nuclide == 1000020030)
+    return MASS_HELION;
+  if (nuclide == PDG_ALPHA)
+    return MASS_ALPHA;
+  if (nuclide == 0)
+    return 0.0;
+
+  double mass = atomic_mass_from_pdg(nuclide);
+  int Z = (nuclide / 10000) % 1000;
+  return mass == 0.0 ? 0.0 : mass - Z * MASS_ELECTRON;
 }
 
 double nuclear_mass(int Z, int A)
 {
-  if (Z == 0 && A == 1)
-    return MASS_NEUTRON;
-  if (Z == 1 && A == 1)
-    return MASS_PROTON;
-  if (Z == 1 && A == 2)
-    return MASS_DEUTRON;
-  if (Z == 1 && A == 3)
-    return MASS_TRITON;
-  if (Z == 2 && A == 3)
-    return MASS_HELION;
-  if (Z == 2 && A == 4)
-    return MASS_ALPHA;
-
-  double mass = atomic_mass(Z, A);
-  return mass == 0.0 ? 0.0 : mass - Z * MASS_ELECTRON;
+  return nuclear_mass_from_pdg(nuclear_pdg_code(Z, A));
 }
 
 } // namespace openmc

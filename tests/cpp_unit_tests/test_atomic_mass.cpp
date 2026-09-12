@@ -19,6 +19,9 @@ TEST_CASE("Atomic and nuclear mass conventions")
     REQUIRE(atomic_mass(1, 3) == Approx(3.01604928132));
     REQUIRE(atomic_mass(2, 3) == Approx(3.01602932197));
     REQUIRE(atomic_mass(2, 4) == Approx(4.00260325413));
+    REQUIRE(atomic_mass_from_pdg(PDG_PROTON) == atomic_mass(1, 1));
+    REQUIRE(atomic_mass_from_pdg(1000010010) == atomic_mass(1, 1));
+    REQUIRE(atomic_mass_from_pdg(1000260561) == atomic_mass(26, 56));
   }
 
   SECTION("light nuclei have CODATA bare-particle masses")
@@ -29,6 +32,9 @@ TEST_CASE("Atomic and nuclear mass conventions")
     REQUIRE(nuclear_mass(1, 3) == MASS_TRITON);
     REQUIRE(nuclear_mass(2, 3) == MASS_HELION);
     REQUIRE(nuclear_mass(2, 4) == MASS_ALPHA);
+    REQUIRE(nuclear_mass_from_pdg(PDG_PROTON) == MASS_PROTON);
+    REQUIRE(nuclear_mass_from_pdg(1000010010) == MASS_PROTON);
+    REQUIRE(nuclear_mass_from_pdg(1000260561) == nuclear_mass(26, 56));
   }
 
   SECTION("heavier nuclear masses subtract the atomic electrons")

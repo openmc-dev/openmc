@@ -25,10 +25,24 @@ constexpr double MASS_ALPHA {4.001506179127};      // mass of an alpha in amu
 //! Neutral ground-state atomic masses in [u], indexed by nuclear PDG code
 extern const std::unordered_map<int32_t, double> ATOMIC_MASS;
 
+//! Return the neutral ground-state atomic mass for a PDG code in [u]
+//!
+//! Nuclear isomer codes are normalized to the ground state, and the proton
+//! code is treated as an alias for H-1. Returns zero if the code does not
+//! identify a nuclide or its mass is not tabulated.
+double atomic_mass_from_pdg(int32_t pdg);
+
 //! Return the neutral ground-state atomic mass of a nuclide in [u]
 //!
 //! Returns zero if the nuclide is invalid or its mass is not tabulated.
 double atomic_mass(int Z, int A);
+
+//! Return the bare-particle rest mass for a PDG code in [u]
+//!
+//! Elementary particles and light nuclei use their CODATA masses. Other
+//! nuclei are derived from the corresponding neutral atomic mass. Returns zero
+//! for a photon or if the particle mass is not available.
+double nuclear_mass_from_pdg(int32_t pdg);
 
 //! Return the nuclear mass of a nuclide in [u]
 //!

@@ -91,6 +91,8 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
                 include_properties=True):
     """Generate a 2D raster of geometry and property data for plotting.
 
+    .. versionadded:: 0.16.0
+
     Parameters
     ----------
     origin : sequence of float
@@ -274,6 +276,8 @@ _dll.openmc_slice_data_overlap_info.errcheck = _error_handler
 def slice_data_overlap_count() -> int:
     """Return the number of unique overlaps from the last slice plot.
 
+    .. versionadded:: 0.16.0
+
     Returns
     -------
     int
@@ -287,6 +291,8 @@ def slice_data_overlap_count() -> int:
 
 def slice_data_overlap_info() -> np.ndarray:
     """Return identifying information for overlaps from the last slice plot.
+
+    .. versionadded:: 0.16.0
 
     Returns
     -------
@@ -431,6 +437,8 @@ class SolidRayTracePlot(_FortranObjectWithID):
     This class exposes a solid ray-traced plot that is stored internally in
     the OpenMC library. To obtain a view of an existing plot with a given ID,
     use the :data:`openmc.lib.plots` mapping.
+
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------

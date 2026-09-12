@@ -51,8 +51,6 @@ enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 // Global variables
 //==============================================================================
 
-extern "C" const bool LIBMESH_ENABLED;
-
 class Mesh;
 
 namespace model {
@@ -209,6 +207,8 @@ public:
 
   const std::string& name() const { return name_; }
 
+  void set_name(const std::string& name) { name_ = name; }
+
   //! Set the mesh ID
   void set_id(int32_t id = -1);
 
@@ -254,6 +254,9 @@ public:
   virtual std::string get_mesh_type() const = 0;
 
   //! Determine volume of materials within each mesh element
+  //!
+  //! Portions of mesh elements outside the model geometry are treated as void.
+  //! Universe fills within the model must still define all enclosed space.
   //
   //! \param[in] nx Number of samples in x direction
   //! \param[in] ny Number of samples in y direction
@@ -266,6 +269,9 @@ public:
     int32_t* materials, double* volumes) const;
 
   //! Determine volume and bounding boxes of materials within each mesh element
+  //!
+  //! Portions of mesh elements outside the model geometry are treated as void.
+  //! Universe fills within the model must still define all enclosed space.
   //
   //! \param[in] nx Number of samples in x direction
   //! \param[in] ny Number of samples in y direction
@@ -380,6 +386,9 @@ public:
   //!
   //! \param[in] r Coordinate to get index for
   //! \param[in] i Direction index
+  //! \return Mesh index in [0, shape[i] + 1]. The external boundaries are
+  //! included in the mesh, and interior boundaries belong to the lower-index
+  //! mesh cell.
   virtual int get_index_in_direction(double r, int i) const = 0;
 
   //! Get the coordinate for the mesh grid boundary in the positive direction
@@ -473,6 +482,16 @@ public:
   {
     return r - origin_;
   };
+
+  const Position& origin() const { return origin_; }
+
+  virtual int set_grid() = 0;
+
+  int set_origin(Position origin)
+  {
+    origin_ = origin;
+    return set_grid();
+  }
 
   // Data members
   Position origin_ {0.0, 0.0, 0.0}; //!< Origin of the mesh
@@ -630,7 +649,7 @@ private:
 
   inline int sanitize_angular_index(int idx, bool full, int N) const
   {
-    if ((idx > 0) and (idx <= N)) {
+    if ((idx > 0) && (idx <= N)) {
       return idx;
     } else if (full) {
       return (idx + N - 1) % N + 1;
@@ -695,7 +714,7 @@ private:
 
   inline int sanitize_angular_index(int idx, bool full, int N) const
   {
-    if ((idx > 0) and (idx <= N)) {
+    if ((idx > 0) && (idx <= N)) {
       return idx;
     } else if (full) {
       return (idx + N - 1) % N + 1;
@@ -831,7 +850,8 @@ public:
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
   MOABMesh(hid_t group);
-  MOABMesh(const std::string& filename, double length_multiplier = 1.0);
+  MOABMesh(const std::string& filename, double length_multiplier = 1.0,
+    const std::string& options = {});
   MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
 
   static const std::string mesh_lib_type;
@@ -1001,7 +1021,8 @@ public:
   // Constructors
   LibMesh(pugi::xml_node node);
   LibMesh(hid_t group);
-  LibMesh(const std::string& filename, double length_multiplier = 1.0);
+  LibMesh(const std::string& filename, double length_multiplier = 1.0,
+    const std::string& options = {});
   LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
   static const std::string mesh_lib_type;

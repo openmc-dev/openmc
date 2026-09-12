@@ -12,7 +12,8 @@ namespace openmc {
 SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
   : negroups_(sr.scalar_flux_old_.size()), material_(&sr.material_),
     temperature_idx_(&sr.temperature_idx_), density_mult_(&sr.density_mult_),
-    is_small_(&sr.is_small_), n_hits_(&sr.n_hits_),
+    is_small_(&sr.is_small_), n_negative_batches_(&sr.n_negative_batches_),
+    converged_negative_(&sr.converged_negative_), n_hits_(&sr.n_hits_),
     is_linear_(sr.source_gradients_.size() > 0), lock_(&sr.lock_),
     volume_(&sr.volume_), volume_t_(&sr.volume_t_), volume_sq_(&sr.volume_sq_),
     volume_sq_t_(&sr.volume_sq_t_), volume_naive_(&sr.volume_naive_),
@@ -21,7 +22,7 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     position_(&sr.position_), centroid_(&sr.centroid_),
     centroid_iteration_(&sr.centroid_iteration_), centroid_t_(&sr.centroid_t_),
     mom_matrix_(&sr.mom_matrix_), mom_matrix_t_(&sr.mom_matrix_t_),
-    volume_task_(&sr.volume_task_), mesh_(&sr.mesh_),
+    extent_(&sr.extent_), volume_task_(&sr.volume_task_), mesh_(&sr.mesh_),
     parent_sr_(&sr.parent_sr_), scalar_flux_old_(sr.scalar_flux_old_.data()),
     scalar_flux_new_(sr.scalar_flux_new_.data()), source_(sr.source_.data()),
     external_source_(sr.external_source_.data()),
@@ -74,6 +75,12 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   temperature_idx_.push_back(sr.temperature_idx_);
   density_mult_.push_back(sr.density_mult_);
   is_small_.push_back(sr.is_small_);
+  if (is_strict_adaptive_) {
+    n_negative_batches_.push_back(sr.n_negative_batches_);
+  }
+  if (is_adaptive_) {
+    converged_negative_.push_back(sr.converged_negative_);
+  }
   n_hits_.push_back(sr.n_hits_);
   lock_.push_back(sr.lock_);
   volume_.push_back(sr.volume_);
@@ -93,8 +100,12 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
     centroid_.push_back(sr.centroid_);
     centroid_iteration_.push_back(sr.centroid_iteration_);
     centroid_t_.push_back(sr.centroid_t_);
+    centroid_offset_.push_back({0.0, 0.0, 0.0});
     mom_matrix_.push_back(sr.mom_matrix_);
     mom_matrix_t_.push_back(sr.mom_matrix_t_);
+  }
+  if (track_extents_) {
+    extents_.push_back(sr.extent_);
   }
 
   // Energy-dependent fields
@@ -102,6 +113,10 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
     scalar_flux_old_.push_back(sr.scalar_flux_old_[g]);
     scalar_flux_new_.push_back(sr.scalar_flux_new_[g]);
     scalar_flux_final_.push_back(sr.scalar_flux_final_[g]);
+    // A newly discovered region starts with nothing accumulated
+    if (is_adaptive_) {
+      scalar_flux_t_.push_back(0.0);
+    }
     source_.push_back(sr.source_[g]);
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       external_source_.push_back(sr.external_source_[g]);
@@ -129,6 +144,8 @@ void SourceRegionContainer::assign(
   temperature_idx_.clear();
   density_mult_.clear();
   is_small_.clear();
+  n_negative_batches_.clear();
+  converged_negative_.clear();
   n_hits_.clear();
   lock_.clear();
   volume_.clear();
@@ -146,13 +163,16 @@ void SourceRegionContainer::assign(
     centroid_.clear();
     centroid_iteration_.clear();
     centroid_t_.clear();
+    centroid_offset_.clear();
     mom_matrix_.clear();
     mom_matrix_t_.clear();
   }
+  extents_.clear();
 
   scalar_flux_old_.clear();
   scalar_flux_new_.clear();
   scalar_flux_final_.clear();
+  scalar_flux_t_.clear();
   source_.clear();
   external_source_.clear();
 
@@ -188,6 +208,9 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.temperature_idx_ = &temperature_idx(sr);
   handle.density_mult_ = &density_mult(sr);
   handle.is_small_ = &is_small(sr);
+  handle.n_negative_batches_ =
+    is_strict_adaptive_ ? &n_negative_batches(sr) : nullptr;
+  handle.converged_negative_ = is_adaptive_ ? &converged_negative(sr) : nullptr;
   handle.n_hits_ = &n_hits(sr);
   handle.is_linear_ = is_linear();
   handle.lock_ = &lock(sr);
@@ -219,6 +242,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
     handle.centroid_t_ = &centroid_t(sr);
     handle.mom_matrix_ = &mom_matrix(sr);
     handle.mom_matrix_t_ = &mom_matrix_t(sr);
+    handle.extent_ = track_extents_ ? &extent(sr) : nullptr;
     handle.source_gradients_ = &source_gradients(sr, 0);
     handle.flux_moments_old_ = &flux_moments_old(sr, 0);
     handle.flux_moments_new_ = &flux_moments_new(sr, 0);
@@ -231,6 +255,8 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
 void SourceRegionContainer::adjoint_reset()
 {
   std::fill(n_hits_.begin(), n_hits_.end(), 0);
+  std::fill(converged_negative_.begin(), converged_negative_.end(), 0);
+  std::fill(n_negative_batches_.begin(), n_negative_batches_.end(), 0);
   std::fill(volume_.begin(), volume_.end(), 0.0);
   std::fill(volume_t_.begin(), volume_t_.end(), 0.0);
   std::fill(volume_sq_.begin(), volume_sq_.end(), 0.0);
@@ -243,16 +269,21 @@ void SourceRegionContainer::adjoint_reset()
   std::fill(centroid_iteration_.begin(), centroid_iteration_.end(),
     Position {0.0, 0.0, 0.0});
   std::fill(centroid_t_.begin(), centroid_t_.end(), Position {0.0, 0.0, 0.0});
+  std::fill(
+    centroid_offset_.begin(), centroid_offset_.end(), Position {0.0, 0.0, 0.0});
   std::fill(mom_matrix_.begin(), mom_matrix_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  // The sampled bounding boxes are re-accumulated alongside the centroids
+  std::fill(extents_.begin(), extents_.end(), BoundingBox::inverted());
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
   } else {
     std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 1.0);
   }
   std::fill(scalar_flux_new_.begin(), scalar_flux_new_.end(), 0.0);
+  std::fill(scalar_flux_t_.begin(), scalar_flux_t_.end(), 0.0);
   std::fill(source_.begin(), source_.end(), 0.0f);
   std::fill(external_source_.begin(), external_source_.end(), 0.0f);
   std::fill(source_gradients_.begin(), source_gradients_.end(),

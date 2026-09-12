@@ -202,11 +202,20 @@ class Settings:
             specified by a :class:`openmc.SourceBase` object.
         :volume_estimator:
             Choice of volume estimator for the random ray solver. Options are
-            'naive', 'simulation_averaged', or 'hybrid'.
-            The default is 'hybrid'.
+            'naive', 'simulation_averaged', 'hybrid', 'adaptive',
+            'strict_adaptive', or 'auto'. The default is 'auto', which
+            selects 'adaptive' for standard solves and 'strict_adaptive' for
+            solves whose results feed variance reduction (weight window
+            generation and adjoint workflows).
         :source_shape:
             Assumed shape of the source distribution within each source region.
             Options are 'flat' (default), 'linear', or 'linear_xy'.
+        :source_gradient_limiter:
+            Whether to rescale linear source gradients as needed so that the
+            source shape modeled within each source region remains
+            non-negative over the region's bounding box, as sampled by the
+            rays that have crossed it (bool). The default is 'False'. Only
+            used when the source shape is 'linear' or 'linear_xy'.
         :volume_normalized_flux_tallies:
             Whether to normalize flux tallies by volume (bool). The default is
             'False'. When enabled, flux tallies will be reported in units of
@@ -268,7 +277,7 @@ class Settings:
         enabled automatically for fixed-source simulations with weight
         windows active, and disabled otherwise.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     source_rejection_fraction : float
@@ -294,6 +303,9 @@ class Settings:
         Options for reading surface source points. Acceptable keys are:
 
         :path: Path to surface source file (str).
+
+        .. deprecated:: 0.17.0
+            Use :class:`openmc.FileSource` as a source distribution instead.
     surf_source_write : dict
         Options for writing surface source points. Acceptable keys are:
 
@@ -885,6 +897,13 @@ class Settings:
 
     @surf_source_read.setter
     def surf_source_read(self, ssr: dict):
+        warnings.warn(
+            "The surf_source_read attribute has been deprecated. Use a "
+            "FileSource as a source distribution instead, i.e., "
+            "settings.source = openmc.FileSource('surface_source.h5'), which "
+            "additionally supports a source strength and source constraints.",
+            FutureWarning, stacklevel=2
+        )
         cv.check_type('surface source reading options', ssr, Mapping)
         for key, value in ssr.items():
             cv.check_value('surface source reading key', key,
@@ -1416,12 +1435,15 @@ class Settings:
             elif key == 'volume_estimator':
                 cv.check_value('volume estimator', value,
                                ('naive', 'simulation_averaged',
-                                'hybrid'))
+                                'hybrid', 'adaptive', 'strict_adaptive',
+                                'auto'))
             elif key == 'source_shape':
                 cv.check_value('source shape', value,
                                ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
                 cv.check_type('volume normalized flux tallies', value, bool)
+            elif key == 'source_gradient_limiter':
+                cv.check_type('source gradient limiter', value, bool)
             elif key == 'adjoint':
                 cv.check_type('adjoint', value, bool)
             elif key == 'source_region_meshes':
@@ -2513,6 +2535,10 @@ class Settings:
                     )
                 elif child.tag == 'adjoint':
                     self.random_ray['adjoint'] = (
+                        child.text in ('true', '1')
+                    )
+                elif child.tag == 'source_gradient_limiter':
+                    self.random_ray['source_gradient_limiter'] = (
                         child.text in ('true', '1')
                     )
                 elif child.tag == 'adjoint_source':

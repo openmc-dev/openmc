@@ -161,7 +161,10 @@ Incident Photon Data
            - **num_electrons** (*double[]*) -- Number of electrons in each subshell
            - **pz** (*double[]*) -- Projection of the electron momentum on the
              scattering vector in units of :math:`me^2 / \hbar` where :math:`m`
-             is the electron rest mass and :math:`e` is the electron charge
+             is the electron rest mass and :math:`e` is the electron charge.
+             These are atomic momentum units, equivalent to
+             :math:`\alpha m_e c`, where :math:`\alpha` is the fine structure
+             constant
            - **J** (*double[][]*) -- Compton profile for each subshell in units
              of :math:`\hbar / (me^2)`
 

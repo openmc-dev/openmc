@@ -219,6 +219,7 @@
           <domain id="6" type="universe"/>
         </mesh>
       </source_region_meshes>
+      <volume_estimator>hybrid</volume_estimator>
     </random_ray>
     <mesh id="1">
       <dimension>30 30 30</dimension>

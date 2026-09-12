@@ -1406,9 +1406,13 @@ class MGXS:
                 elif not np.allclose(tally_filter.bins[:, 0], fine_edges[:-1]):
                     continue
                 else:
+                    # Other tallies may share this filter. Replace it before
+                    # changing its bins so their fine-group data stay valid.
+                    tally_filter = copy.deepcopy(tally_filter)
                     cedge = coarse_groups.group_edges
                     tally_filter.values = cedge
                     tally_filter.bins = np.vstack((cedge[:-1], cedge[1:])).T
+                    tally.filters[i] = tally_filter
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
                     std_dev = np.add.reduceat(std_dev**2, energy_indices,
                                               axis=i)
@@ -1617,10 +1621,9 @@ class MGXS:
         filter_bins = []
 
         if len(groups) != 0:
-            energy_bins = []
-            for group in groups:
-                group_bounds = self.energy_groups.get_group_bounds(group)
-                energy_bins.append(group_bounds)
+            energy_bins = [self.energy_groups.get_group_bounds(group)
+                           for group in groups]
+            energy_bins.sort()
             filter_bins.append(tuple(energy_bins))
             filters.append(openmc.EnergyFilter)
 
@@ -2324,18 +2327,19 @@ class MatrixMGXS(MGXS):
         if not isinstance(in_groups, str):
             cv.check_iterable_type('groups', in_groups, Integral)
             filters.append(openmc.EnergyFilter)
-            energy_bins = []
-            for group in in_groups:
-                energy_bins.append((self.energy_groups.get_group_bounds(group),))
+            energy_bins = [self.energy_groups.get_group_bounds(group)
+                           for group in in_groups]
+            energy_bins.sort()
             filter_bins.append(tuple(energy_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(out_groups, str):
             cv.check_iterable_type('groups', out_groups, Integral)
-            for group in out_groups:
-                filters.append(openmc.EnergyoutFilter)
-                filter_bins.append((
-                    self.energy_groups.get_group_bounds(group),))
+            filters.append(openmc.EnergyoutFilter)
+            energyout_bins = [self.energy_groups.get_group_bounds(group)
+                              for group in out_groups]
+            energyout_bins.sort()
+            filter_bins.append(tuple(energyout_bins))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
@@ -2346,15 +2350,17 @@ class MatrixMGXS(MGXS):
         else:
             query_nuclides = ['total']
 
+        xs_tally = self.xs_tally
+
         # Use tally summation if user requested the sum for all nuclides
         if nuclides == 'sum' or nuclides == ['sum']:
-            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            xs_tally = xs_tally.summation(nuclides=query_nuclides)
             xs = xs_tally.get_values(filters=filters, filter_bins=filter_bins,
                                      value=value)
         else:
-            xs = self.xs_tally.get_values(filters=filters,
-                                          filter_bins=filter_bins,
-                                          nuclides=query_nuclides, value=value)
+            xs = xs_tally.get_values(filters=filters,
+                                     filter_bins=filter_bins,
+                                     nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
         if xs_type == 'micro' and self._divide_by_density:
@@ -2370,12 +2376,14 @@ class MatrixMGXS(MGXS):
         xs = np.nan_to_num(xs)
 
         if in_groups == 'all':
-            num_in_groups = self.num_groups
+            energy_filter = xs_tally.find_filter(openmc.EnergyFilter)
+            num_in_groups = energy_filter.num_bins
         else:
             num_in_groups = len(in_groups)
 
         if out_groups == 'all':
-            num_out_groups = self.num_groups
+            energyout_filter = xs_tally.find_filter(openmc.EnergyoutFilter)
+            num_out_groups = energyout_filter.num_bins
         else:
             num_out_groups = len(out_groups)
 
@@ -2451,10 +2459,9 @@ class MatrixMGXS(MGXS):
 
         # Slice outgoing energy groups if needed
         if len(out_groups) != 0:
-            filter_bins = []
-            for group in out_groups:
-                group_bounds = self.energy_groups.get_group_bounds(group)
-                filter_bins.append(group_bounds)
+            filter_bins = [self.energy_groups.get_group_bounds(group)
+                           for group in out_groups]
+            filter_bins.sort()
             filter_bins = [tuple(filter_bins)]
 
             # Slice each of the tallies across energyout groups
@@ -3174,9 +3181,13 @@ class DiffusionCoefficient(TransportXS):
                 elif not np.allclose(tally_filter.bins[:, 0], fine_edges[:-1]):
                     continue
                 else:
+                    # Other tallies may share this filter. Replace it before
+                    # changing its bins so their fine-group data stay valid.
+                    tally_filter = copy.deepcopy(tally_filter)
                     cedge = coarse_groups.group_edges
                     tally_filter.values = cedge
                     tally_filter.bins = np.vstack((cedge[:-1], cedge[1:])).T
+                    tally.filters[i] = tally_filter
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
                     std_dev = np.add.reduceat(std_dev**2, energy_indices,
                                               axis=i)

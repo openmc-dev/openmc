@@ -160,16 +160,30 @@ def test_photon_production_matrix_group_transformations():
     groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0, 1000.0])
     production = openmc.mgxs.PhotonTransferMatrixXS(
         material, 'material', groups)
-    _add_tally_data(production)
+    for tally in production.tallies.values():
+        tally._derived = True
+        tally._mean = np.zeros(tally.shape)
+        tally._std_dev = np.zeros(tally.shape)
+    production.tallies['flux']._mean.fill(1.0)
+    production.tallies[
+        'primary photon production']._mean[:, 0, 0] = np.arange(1.0, 10.0)
+
+    energy = production.tallies['flux'].find_filter(openmc.EnergyFilter)
+    assert all(tally.find_filter(openmc.EnergyFilter) is energy
+               for tally in production.tallies.values())
 
     coarse_groups = openmc.mgxs.EnergyGroups([1.0, 100.0, 1000.0])
     condensed = production.get_condensed_xs(coarse_groups)
-    assert condensed.get_xs().shape == (2, 2)
+    assert np.array_equal(condensed.get_xs(), [[9.0, 15.0], [4.5, 6.0]])
     assert condensed.tallies['secondary photon production'].contains_filter(
         openmc.EnergyoutFilter)
+    assert np.array_equal(energy.values, groups.group_edges)
+    assert np.array_equal(
+        production.get_xs(), [[9.0, 8.0, 7.0], [6.0, 5.0, 4.0],
+                              [3.0, 2.0, 1.0]])
 
     sliced = production.get_slice(in_groups=[1, 2], out_groups=[1, 2])
-    assert sliced.get_xs().shape == (2, 2)
+    assert np.array_equal(sliced.get_xs(), [[9.0, 8.0], [6.0, 5.0]])
     assert sliced.tallies['secondary photon production'].contains_filter(
         openmc.EnergyoutFilter)
     assert production.tallies[
@@ -177,4 +191,26 @@ def test_photon_production_matrix_group_transformations():
             openmc.ParticleProductionFilter)
 
     resliced = sliced.get_slice(in_groups=[1], out_groups=[1])
-    assert resliced.get_xs().shape == (1, 1)
+    assert np.array_equal(resliced.get_xs(), [[9.0]])
+
+    in_sliced = production.get_slice(in_groups=[1])
+    assert np.array_equal(in_sliced.get_xs(), [[9.0, 8.0, 7.0]])
+
+    out_sliced = production.get_slice(out_groups=[2, 3])
+    assert np.array_equal(
+        out_sliced.get_xs(), [[8.0, 7.0], [5.0, 4.0], [2.0, 1.0]])
+
+    assert np.array_equal(
+        production.get_xs(in_groups=[1], out_groups=[2, 3]),
+        [[8.0, 7.0]])
+
+
+def test_vector_mgxs_slice_order():
+    material = openmc.Material()
+    groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0, 1000.0])
+    total = openmc.mgxs.TotalXS(material, 'material', groups)
+    _add_tally_data(total)
+    total.tallies['total']._mean[:, 0, 0] = [1.0, 2.0, 3.0]
+
+    sliced = total.get_slice(groups=[1, 2])
+    assert np.array_equal(sliced.get_xs(), [3.0, 2.0])

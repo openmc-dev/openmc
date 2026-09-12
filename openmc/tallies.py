@@ -22,6 +22,7 @@ from openmc.filter import (
     EnergyFunctionFilter,
     DelayedGroupFilter,
     FilterMeta,
+    RealFilter,
     MeshFilter,
     MeshBornFilter,
 )
@@ -3371,11 +3372,17 @@ class Tally(IDManagerMixin):
                 # Remove and/or reorder filter bins to user specifications
                 bin_indices = [f.get_bin_index(b)
                                for b in filter_bins[i]]
-                bin_indices = np.unique(bin_indices)
 
                 # Set bins for sliced filter
                 new_filter = copy.copy(f)
-                new_filter.bins = [f.bins[i] for i in bin_indices]
+                bins = [f.bins[i] for i in bin_indices]
+                if isinstance(new_filter, RealFilter):
+                    # RealFilter validates that bins are monotonically
+                    # increasing when users define a filter. A derived tally
+                    # slice may intentionally request a different order.
+                    new_filter._bins = np.asarray(bins)
+                else:
+                    new_filter.bins = bins
 
                 # Set number of bins manually for mesh/distribcell filters
                 if filter_type is DistribcellFilter:

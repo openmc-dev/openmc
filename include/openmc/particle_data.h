@@ -534,8 +534,11 @@ private:
 
   bool write_track_ {false};
 
-  uint64_t seeds_[N_STREAMS];
-  int stream_;
+  // Default-initialized: ParticleRay and any other ParticleData built outside
+  // init_particle_seeds() would otherwise carry indeterminate values, and
+  // current_seed() indexes seeds_ with stream_
+  uint64_t seeds_[N_STREAMS] {};
+  int stream_ {STREAM_TRACKING};
 
   vector<SourceSite> local_secondary_bank_;
 
@@ -693,8 +696,11 @@ public:
 
   // RNG state
   uint64_t& seeds(int i) { return seeds_[i]; }
+  const uint64_t& seeds(int i) const { return seeds_[i]; }
   uint64_t* seeds() { return seeds_; }
+  const uint64_t* seeds() const { return seeds_; }
   int& stream() { return stream_; }
+  int stream() const { return stream_; }
 
   // secondary particle bank
   SourceSite& local_secondary_bank(int i) { return local_secondary_bank_[i]; }

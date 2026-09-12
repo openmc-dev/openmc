@@ -137,15 +137,20 @@ void SourceRegion::merge(SourceRegion& sr_add, bool is_linear)
     scalars_.mom_matrix_ += sr_add.scalars_.mom_matrix_;
   }
 
-// vector fields
+  // Both ranks sampled part of the same region, so the sampled extent used by
+  // the source gradient limiter is the union of the two boxes
+  extent_ |= sr_add.extent_;
+
+  // Accumulated (tallied) vector fields. Note that external_source_ is
+  // deliberately not merged: it is a fixed property of the region that both
+  // ranks already applied in full when they independently discovered it (see
+  // FlatSourceDomain::get_subdivided_source_region_handle), so summing it
+  // would double the external source in every contested region.
 #pragma omp simd
   for (int g = 0; g < scalar_flux_new_.size(); g++) {
     scalar_flux_new_[g] += sr_add.scalar_flux_new_[g];
     scalar_flux_final_[g] += sr_add.scalar_flux_final_[g];
 
-    if (settings::run_mode == RunMode::FIXED_SOURCE) {
-      external_source_[g] += sr_add.external_source_[g];
-    }
     if (is_linear) {
       flux_moments_new_[g] += sr_add.flux_moments_new_[g];
     }

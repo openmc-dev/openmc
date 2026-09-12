@@ -521,6 +521,12 @@ void DecompositionMap::send_sr_data(int receiver, SourceRegion& sr_send)
   if (is_linear_) {
     num_vector_messages += 4;
   }
+  // The sampled bounding box lives outside ScalarSourceRegionFields, so it
+  // needs a message of its own when the source gradient limiter is enabled
+  bool send_extent = is_linear_ && FlatSourceDomain::source_gradient_limiter_;
+  if (send_extent) {
+    num_vector_messages += 1;
+  }
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     num_vector_messages += 1;
   }
@@ -576,6 +582,12 @@ void DecompositionMap::send_sr_data(int receiver, SourceRegion& sr_send)
     req_idx++;
   }
 
+  if (send_extent) {
+    MPI_Isend(&sr_send.extent_, sizeof(BoundingBox), MPI_BYTE, receiver, 11,
+      mpi::intracomm, &requests[req_idx]);
+    req_idx++;
+  }
+
   if (req_idx != num_requests) {
     fatal_error(fmt::format(
       "Number of MPI requests does not match number of messages sent."
@@ -619,6 +631,11 @@ void DecompositionMap::receive_sr_data(int sender, SourceRegion& sr_recv)
       sender, 9, mpi::intracomm, MPI_STATUS_IGNORE);
     MPI_Recv(sr_recv.flux_moments_t_.data(), 3 * negroups_, MPI_DOUBLE, sender,
       10, mpi::intracomm, MPI_STATUS_IGNORE);
+  }
+
+  if (is_linear_ && FlatSourceDomain::source_gradient_limiter_) {
+    MPI_Recv(&sr_recv.extent_, sizeof(BoundingBox), MPI_BYTE, sender, 11,
+      mpi::intracomm, MPI_STATUS_IGNORE);
   }
 }
 

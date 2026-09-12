@@ -1,6 +1,7 @@
 #include "openmc/tallies/tally.h"
 
 #include "openmc/array.h"
+#include "openmc/boundary_condition.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/constants.h"
@@ -17,6 +18,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
+#include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
@@ -31,9 +33,11 @@
 #include "openmc/tallies/filter_meshmaterial.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_particle.h"
+#include "openmc/tallies/filter_point.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_time.h"
+#include "openmc/tallies/next_event_scoring.h"
 #include "openmc/xml_interface.h"
 
 #include "openmc/tensor.h"
@@ -46,6 +50,31 @@
 #include <string>
 
 namespace openmc {
+
+namespace {
+
+//! Whether the model has any boundary condition other than vacuum.
+//!
+//! A next-event estimator draws a straight line from the emitting event to the
+//! detector, so it cannot account for particles that reach the detector after
+//! reflecting, crossing a periodic boundary, or being re-emitted by a white
+//! boundary -- representing those would require image detectors.
+//!
+//! This is scanned from the loaded surfaces rather than recorded while reading
+//! surfaces.xml, so that it also covers geometries whose boundary conditions
+//! do not come from that file at all, such as DAGMC models that take them from
+//! CAD metadata. A surface with no boundary condition is a transmission
+//! surface, which is harmless here.
+bool has_nonvacuum_boundary()
+{
+  for (const auto& surf : model::surfaces) {
+    if (surf->bc_ && surf->bc_->type() != "vacuum")
+      return true;
+  }
+  return false;
+}
+
+} // namespace
 
 //==============================================================================
 // Global variable definitions
@@ -60,16 +89,19 @@ vector<int> active_analog_tallies;
 vector<int> active_tracklength_tallies;
 vector<int> active_timed_tracklength_tallies;
 vector<int> active_collision_tallies;
+vector<int> active_point_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int32_t> pulse_height_cells;
 vector<double> time_grid;
+vector<Position> active_point_detectors;
 } // namespace model
 
 namespace simulation {
 tensor::StaticTensor2D<double, N_GLOBAL_TALLIES, 3> global_tallies;
 int32_t n_realizations {0};
+vector<ParticleRay> point_detector_rays;
 } // namespace simulation
 
 double global_tally_absorption;
@@ -528,13 +560,22 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool legendre_present = false;
   bool cell_present = false;
   bool cellfrom_present = false;
+  bool point_present = false;
   bool material_present = false;
   bool materialfrom_present = false;
   bool surface_present = false;
   bool meshsurface_present = false;
   bool non_cell_energy_present = false;
+  bool neutrons_only = false;
   for (auto i_filt : filters_) {
     const auto* filt {model::tally_filters[i_filt].get()};
+    if (const auto* pf {dynamic_cast<const ParticleFilter*>(filt)}) {
+      const auto& particles {pf->particles()};
+      neutrons_only =
+        !particles.empty() &&
+        std::all_of(particles.begin(), particles.end(),
+          [](ParticleType t) { return t == ParticleType::neutron(); });
+    }
     // Checking for only cell and energy filters for pulse-height tally
     if (!(filt->type() == FilterType::CELL ||
           filt->type() == FilterType::ENERGY)) {
@@ -550,6 +591,10 @@ void Tally::set_scores(const vector<std::string>& scores)
       materialfrom_present = true;
     } else if (filt->type() == FilterType::MATERIAL) {
       material_present = true;
+    } else if (filt->type() == FilterType::POINT) {
+      point_present = true;
+      type_ = TallyType::POINT;
+      estimator_ = TallyEstimator::NEXT_EVENT;
     } else if (filt->type() == FilterType::SURFACE) {
       surface_present = true;
     } else if (filt->type() == FilterType::MESH_SURFACE) {
@@ -561,6 +606,58 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool non_meshsurface_types_present =
     (surface_present || cell_present || cellfrom_present || material_present ||
       materialfrom_present);
+
+  if (point_present) {
+    if (!settings::run_CE)
+      fatal_error("Cannot use point detectors in multi-group mode.");
+    if (has_nonvacuum_boundary())
+      fatal_error(
+        "Cannot use point detectors with non-vacuum boundary conditions.");
+    // The estimator has scoring hooks in the neutron collision physics only,
+    // so nothing a photon does on its way to a detector is ever counted. A
+    // tally restricted to neutrons is still correct -- enabling photon
+    // transport does not change the neutron random walk -- so only reject the
+    // cases whose results would be silently incomplete.
+    if (settings::photon_transport && !neutrons_only)
+      fatal_error("Cannot use point detectors with photon transport unless the "
+                  "tally is restricted to neutrons with a ParticleFilter. The "
+                  "next-event estimator does not score photon collisions or "
+                  "secondary photon production, so photon results would be "
+                  "silently incomplete.");
+    for (const auto& src : model::external_sources) {
+      const auto* indep {dynamic_cast<const IndependentSource*>(src.get())};
+      if (!indep)
+        fatal_error("Point detectors require independent sources. The "
+                    "next-event estimator needs to evaluate the source angular "
+                    "density toward each detector, which is only available for "
+                    "an independent source.");
+
+      // A monodirectional source has a delta-function angular distribution, so
+      // there is no angular density to evaluate: sampling a position and then
+      // asking for the density toward the detector returns zero for almost
+      // every history, while the true uncollided flux is not zero. Getting it
+      // right means resolving the delta against the spatial distribution
+      // instead -- substituting r = D - s*u0 turns the contribution into
+      // integral ds f(D - s*u0) exp(-tau(s)), a line integral of the spatial
+      // source density back along the beam, in which the 1/distance^2 has
+      // cancelled against the volume element. That is not implemented, so
+      // refuse rather than quietly drop the uncollided term.
+      if (dynamic_cast<const Monodirectional*>(indep->angle()))
+        fatal_error(
+          "Point detectors do not support monodirectional sources. Such a "
+          "source has a delta-function angular distribution, whose "
+          "contribution has to be found by integrating the spatial source "
+          "density along the line back from the detector rather than by "
+          "evaluating an angular density, which is not implemented.");
+    }
+    if (legendre_present)
+      fatal_error("Cannot use LegendreFilter with PointFilter.");
+    if (energyout_present)
+      fatal_error("Cannot use EnergyoutFilter with PointFilter.");
+    if (surface_present || meshsurface_present)
+      fatal_error(
+        "Cannot use surface or mesh-surface filters with PointFilter.");
+  }
 
   // Iterate over the given scores.
   for (auto score_str : scores) {
@@ -611,6 +708,9 @@ void Tally::set_scores(const vector<std::string>& scores)
 
     case SCORE_NU_SCATTER:
       if (settings::run_CE) {
+        if (point_present)
+          fatal_error("Cannot use nu-scatter score with PointFilter in "
+                      "continuous energy mode.");
         estimator_ = TallyEstimator::ANALOG;
       } else {
         if (energyout_present || legendre_present)
@@ -619,6 +719,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case SCORE_CURRENT:
+      if (point_present)
+        fatal_error("Cannot use current score with PointFilter.");
       // Check which type of current is desired: mesh or surface currents.
       if (meshsurface_present) {
         if (non_meshsurface_types_present)
@@ -632,6 +734,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case HEATING:
+      if (point_present)
+        fatal_error("Cannot use heating score with PointFilter.");
       if (settings::photon_transport) {
         // Photon heating requires a collision estimator (analog energy
         // balance). However, if the tally only scores neutrons, we can keep the
@@ -653,6 +757,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case SCORE_PULSE_HEIGHT: {
+      if (point_present)
+        fatal_error("Cannot use pulse-height score with PointFilter.");
       if (non_cell_energy_present) {
         fatal_error("Pulse-height tallies are not compatible with filters "
                     "other than CellFilter and EnergyFilter");
@@ -674,6 +780,8 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_IFP_TIME_NUM:
     case SCORE_IFP_BETA_NUM:
     case SCORE_IFP_DENOM:
+      if (point_present)
+        fatal_error("Cannot use ifp scores with PointFilter.");
       estimator_ = TallyEstimator::COLLISION;
       break;
     }
@@ -1172,6 +1280,8 @@ void setup_active_tallies()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::active_point_tallies.clear();
+  model::active_point_detectors.clear();
   model::time_grid.clear();
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
@@ -1213,8 +1323,42 @@ void setup_active_tallies()
       case TallyType::PULSE_HEIGHT:
         model::active_pulse_height_tallies.push_back(i);
         break;
+
+      case TallyType::POINT:
+        model::active_point_tallies.push_back(i);
+        // Populate the set of unique detector positions from PointFilter
+        if (auto pf = tally.get_filter<PointFilter>()) {
+          for (const auto& [pos, r0] : pf->detectors()) {
+            model::active_point_detectors.push_back(pos);
+          }
+        }
+        break;
       }
     }
+  }
+
+  // Reduce the detectors collected above to a sorted, unique list. Sorting
+  // gives every detector an index that does not depend on the order the
+  // tallies happened to be declared in, and each point filter is then told
+  // which of those indices map onto its own bins.
+  if (!model::active_point_detectors.empty()) {
+    auto& dets = model::active_point_detectors;
+    std::sort(dets.begin(), dets.end());
+    dets.erase(std::unique(dets.begin(), dets.end()), dets.end());
+    for (auto& filt : model::tally_filters) {
+      if (auto* pf = dynamic_cast<PointFilter*>(filt.get()))
+        pf->build_detector_bins();
+    }
+  }
+
+  // Give each thread a scratch ray to trace toward the detectors with. They
+  // are rebuilt rather than kept, because ParticleData's constructor sizes its
+  // caches from the model that is loaded now -- nuclide and filter counts can
+  // both differ from the previous simulation in the same process. Building
+  // them once per batch is irrelevant next to allocating one per contribution.
+  simulation::point_detector_rays.clear();
+  if (!model::active_point_tallies.empty()) {
+    simulation::point_detector_rays.resize(num_threads());
   }
 }
 
@@ -1236,7 +1380,10 @@ void free_memory_tally()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::active_point_tallies.clear();
+  model::active_point_detectors.clear();
   model::time_grid.clear();
+  simulation::point_detector_rays.clear();
 
   model::tally_map.clear();
 }

@@ -210,6 +210,12 @@ public:
   // Records how many mean free paths the ray traveled
   double traversal_mfp() const { return traversal_mfp_; }
 
+  //! Which entry of model::active_point_detectors this flight is aimed at, or
+  //! C_NONE for a ray that is not headed for a detector. PointFilter uses it
+  //! to pick the bin without having to recognise the detector by position.
+  int detector_index() const { return detector_index_; }
+  void set_detector_index(int i) { detector_index_ = i; }
+
   void reset_trace_state()
   {
     reset_ray_state();
@@ -221,6 +227,8 @@ public:
 protected:
   // Records how much mean free paths the ray traveled
   double traversal_mfp_ {0.0};
+
+  int detector_index_ {C_NONE};
 
 private:
   //! Give the ray a deterministic, self-contained RNG state.

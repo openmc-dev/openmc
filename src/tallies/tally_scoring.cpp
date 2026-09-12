@@ -11,8 +11,10 @@
 #include "openmc/photon.h"
 #include "openmc/reaction_product.h"
 #include "openmc/search.h"
+#include "openmc/secondary_uncorrelated.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/source.h"
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
@@ -2790,4 +2792,5 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   p.coord(0).cell() = orig_cell;
   p.E_last() = orig_E_last;
 }
+
 } // namespace openmc

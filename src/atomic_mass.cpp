@@ -2,16 +2,14 @@
 
 namespace openmc {
 
-// Atomic masses in [u] from AME2020 and CODATA 2018
-std::unordered_map<int32_t, double> ATOMIC_MASS = {
-  {11, MASS_ELECTRON},
-  {22, 0.0},
-  {2112, MASS_NEUTRON},
-  {2212, MASS_PROTON},
-  {1000010020, MASS_DEUTRON},
-  {1000020030, MASS_HELION},
-  {1000020040, MASS_ALPHA},
+// Neutral ground-state atomic masses in [u] from AME2020. Entries use the
+// 10-digit nuclear PDG code 100ZZZAAAI with I = 0.
+const std::unordered_map<int32_t, double> ATOMIC_MASS = {
+  {1000010010, 1.007825031898},
+  {1000010020, 2.014101777844},
   {1000010030, 3.01604928132},
+  {1000020030, 3.01602932197},
+  {1000020040, 4.00260325413},
   {1000030030, 3.030775},
   {1000010040, 4.026431867},
   {1000030040, 4.027185561},
@@ -3565,5 +3563,34 @@ std::unordered_map<int32_t, double> ATOMIC_MASS = {
   {1001182940, 294.213979},
   {1001182950, 295.216178},
 };
+
+double atomic_mass(int Z, int A)
+{
+  if (Z <= 0 || A <= 0 || Z > A)
+    return 0.0;
+
+  int32_t pdg = 1000000000 + Z * 10000 + A * 10;
+  auto it = ATOMIC_MASS.find(pdg);
+  return it == ATOMIC_MASS.end() ? 0.0 : it->second;
+}
+
+double nuclear_mass(int Z, int A)
+{
+  if (Z == 0 && A == 1)
+    return MASS_NEUTRON;
+  if (Z == 1 && A == 1)
+    return MASS_PROTON;
+  if (Z == 1 && A == 2)
+    return MASS_DEUTRON;
+  if (Z == 1 && A == 3)
+    return MASS_TRITON;
+  if (Z == 2 && A == 3)
+    return MASS_HELION;
+  if (Z == 2 && A == 4)
+    return MASS_ALPHA;
+
+  double mass = atomic_mass(Z, A);
+  return mass == 0.0 ? 0.0 : mass - Z * MASS_ELECTRON;
+}
 
 } // namespace openmc

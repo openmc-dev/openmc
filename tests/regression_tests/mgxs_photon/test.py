@@ -24,6 +24,9 @@ def model():
     model.settings.particles = 2000
     model.settings.batches = 2
     model.settings.photon_transport = True
+    # Survival biasing applies only to neutrons and must not alter photon
+    # analog scatter or absorption scores.
+    model.settings.survival_biasing = True
     model.settings.source = openmc.IndependentSource(
         particle='photon',
         energy=openmc.stats.delta_function(1.0e6))
@@ -63,6 +66,10 @@ class PhotonMGXSTestHarness(PyAPITestHarness):
                 'primary photon production'].mean.sum()
             secondary = production.tallies[
                 'secondary photon production'].mean.sum()
+            if not all(np.all(np.isfinite(tally.mean))
+                       for tally in production.tallies.values()):
+                raise AssertionError(
+                    'Photon production tallies contain non-finite values')
             if secondary <= 0.0:
                 raise AssertionError(
                     'Photon transport did not score any secondary photons')

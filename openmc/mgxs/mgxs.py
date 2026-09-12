@@ -5115,6 +5115,15 @@ class PhotonTransferMatrixXS(MatrixMGXS):
     @property
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
+            for tally_name in ('primary photon production',
+                               'secondary photon production'):
+                tally = self.tallies[tally_name]
+                if not (np.all(np.isfinite(tally.mean)) and
+                        np.all(np.isfinite(tally.std_dev))):
+                    raise ValueError(
+                        f'{tally_name.capitalize()} tally contains '
+                        'non-finite values.')
+
             primary = copy.deepcopy(
                 self.tallies['primary photon production'])
             secondary = copy.deepcopy(

@@ -23,6 +23,7 @@
       </energy>
     </source>
     <photon_transport>true</photon_transport>
+    <survival_biasing>true</survival_biasing>
   </settings>
   <tallies>
     <filter id="1" type="material">

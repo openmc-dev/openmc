@@ -1,6 +1,7 @@
 #include "openmc/tallies/tally.h"
 
 #include "openmc/array.h"
+#include "openmc/boundary_condition.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/constants.h"
@@ -261,6 +262,7 @@ Tally::Tally(pugi::xml_node node)
         case SCORE_FLUX:
         case SCORE_TOTAL:
         case SCORE_SCATTER:
+        case SCORE_MIGRATION:
         case SCORE_NU_SCATTER:
         case SCORE_ABSORPTION:
         case SCORE_FISSION:
@@ -533,12 +535,17 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool surface_present = false;
   bool meshsurface_present = false;
   bool non_cell_energy_present = false;
+  bool non_particle_energy_present = false;
   for (auto i_filt : filters_) {
     const auto* filt {model::tally_filters[i_filt].get()};
     // Checking for only cell and energy filters for pulse-height tally
     if (!(filt->type() == FilterType::CELL ||
           filt->type() == FilterType::ENERGY)) {
       non_cell_energy_present = true;
+    }
+    if (!(filt->type() == FilterType::PARTICLE ||
+          filt->type() == FilterType::ENERGY)) {
+      non_particle_energy_present = true;
     }
     if (filt->type() == FilterType::LEGENDRE) {
       legendre_present = true;
@@ -1162,6 +1169,42 @@ void add_to_time_grid(vector<double> grid)
   model::time_grid.swap(merged);
 }
 
+//! Check that a tally carrying a migration-area score can estimate it.
+//
+//! The score accumulates the increment of squared displacement from the
+//! particle's birth point, so consecutive track segments must telescope into
+//! the total squared displacement. Only a tracklength estimator visits every
+//! segment: analog and collision estimators skip the segments that end at a
+//! surface crossing, and a boundary condition may transform the birth point in
+//! between, so the increments no longer sum to anything meaningful.
+//
+//! This runs at setup rather than in set_scores because the estimator is not
+//! final while scores are being processed. Other scores in the same tally can
+//! change it, and an explicit estimator element is read afterwards.
+void validate_migration_tally(const Tally& tally)
+{
+  if (tally.estimator_ != TallyEstimator::TRACKLENGTH)
+    fatal_error(fmt::format("Migration-area can only be tallied with a "
+                            "tracklength estimator, but tally {} does not use "
+                            "one.",
+      tally.id()));
+
+  for (auto i_filt : tally.filters()) {
+    FilterType type = model::tally_filters[i_filt]->type();
+    if (type != FilterType::ENERGY && type != FilterType::PARTICLE)
+      fatal_error(fmt::format("Cannot tally migration-area in tally {} with "
+                              "filters other than an energy filter and a "
+                              "particle filter.",
+        tally.id()));
+  }
+
+  for (auto i_nuclide : tally.nuclides_) {
+    if (i_nuclide != NUCLIDE_NONE)
+      fatal_error(fmt::format(
+        "Cannot tally migration-area in tally {} with nuclides.", tally.id()));
+  }
+}
+
 void setup_active_tallies()
 {
   model::active_tallies.clear();
@@ -1174,6 +1217,9 @@ void setup_active_tallies()
   model::active_pulse_height_tallies.clear();
   model::time_grid.clear();
 
+  bool meshborn_present = false;
+  simulation::migration_present = false;
+
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
 
@@ -1181,6 +1227,14 @@ void setup_active_tallies()
       model::active_tallies.push_back(i);
       bool mesh_present = (tally.get_filter<MeshFilter>() ||
                            tally.get_filter<MeshMaterialFilter>());
+      if (tally.get_filter<MeshBornFilter>())
+        meshborn_present = true;
+      for (auto score : tally.scores_) {
+        if (score == SCORE_MIGRATION) {
+          simulation::migration_present = true;
+          validate_migration_tally(tally);
+        }
+      }
       auto time_filter = tally.get_filter<TimeFilter>();
       switch (tally.type_) {
 
@@ -1215,6 +1269,17 @@ void setup_active_tallies()
         break;
       }
     }
+  }
+  if (simulation::migration_present) {
+    MigrationBoundaryInfo bc_info = scan_boundaries_for_migration();
+    if (!bc_info.unsupported.empty())
+      fatal_error(fmt::format("Cannot tally migration-area with {}. Use "
+                              "reflective or periodic boundary conditions "
+                              "without an albedo.",
+        bc_info.unsupported));
+    if (meshborn_present && bc_info.nonvacuum)
+      fatal_error("Cannot score migration-area in the same simulation as a "
+                  "MeshBorn filter and a non vacuum b.c.");
   }
 }
 

@@ -7,6 +7,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/random_ray/random_ray.h"
+#include "openmc/simulation.h"
 #include "openmc/surface.h"
 
 namespace openmc {
@@ -45,6 +46,15 @@ void ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);
+
+  // Handle phantom birth location if migration present
+  if (simulation::migration_present) {
+    const auto& r = p.r();
+    auto n = surf.normal(r);
+    n /= n.norm();
+    auto& r_born = p.r_born();
+    p.r_born() = r_born - 2.0 * (r_born - r).dot(n) * n;
+  }
 
   p.cross_reflective_bc(surf, u);
 }
@@ -140,6 +150,11 @@ void TranslationalPeriodicBC::handle_particle(
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);
+
+  // Handle phantom birth location if migration present
+  if (simulation::migration_present) {
+    p.r_born() += translation_;
+  }
 
   // Pass the new location and surface to the particle.
   p.cross_periodic_bc(surf, new_r, p.u(), new_surface);
@@ -254,8 +269,50 @@ void RotationalPeriodicBC::handle_particle(
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);
 
+  // Handle phantom birth location if migration present
+  if (simulation::migration_present) {
+    auto& r_born = p.r_born();
+    Position new_r_born;
+    new_r_born[zero_axis_idx_] = r_born[zero_axis_idx_];
+    new_r_born[axis_1_idx_] =
+      cos_theta * r_born[axis_1_idx_] - sin_theta * r_born[axis_2_idx_];
+    new_r_born[axis_2_idx_] =
+      sin_theta * r_born[axis_1_idx_] + cos_theta * r_born[axis_2_idx_];
+    p.r_born() = new_r_born;
+  }
+
   // Pass the new location, direction, and surface to the particle.
   p.cross_periodic_bc(surf, new_r, new_u, new_surface);
+}
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+MigrationBoundaryInfo scan_boundaries_for_migration()
+{
+  MigrationBoundaryInfo info;
+  for (const auto& surf : model::surfaces) {
+    if (!surf->bc_)
+      continue;
+
+    const std::string bc_type = surf->bc_->type();
+    if (bc_type != "vacuum")
+      info.nonvacuum = true;
+
+    if (info.unsupported.empty()) {
+      if (bc_type == "white") {
+        info.unsupported = "white boundary conditions";
+      } else if (surf->bc_->has_albedo()) {
+        info.unsupported = "a surface albedo";
+      }
+    }
+
+    // Nothing further to learn once both questions are answered
+    if (info.nonvacuum && !info.unsupported.empty())
+      break;
+  }
+  return info;
 }
 
 } // namespace openmc

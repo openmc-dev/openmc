@@ -670,6 +670,12 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       }
       break;
 
+    case SCORE_MIGRATION:
+      score = 1.0 / 6.0 * p.wgt() *
+              (p.r() - p.r_last())
+                .dot((p.r() - p.r_born()) + (p.r_last() - p.r_born()));
+      break;
+
     case SCORE_NU_FISSION:
       if (p.macro_xs().fission == 0)
         continue;
@@ -1769,6 +1775,12 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
                            &p.mu(), nullptr, macro_t, macro_a);
         }
       }
+      break;
+
+    case SCORE_MIGRATION:
+      score = 1.0 / 6.0 * p.wgt() *
+              (p.r() - p.r_last())
+                .dot((p.r() - p.r_born()) + (p.r_last() - p.r_born()));
       break;
 
     case SCORE_NU_SCATTER:

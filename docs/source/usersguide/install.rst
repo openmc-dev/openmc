@@ -327,6 +327,9 @@ Prerequisites
 
           cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation ..
 
+      Distributed memory calculations with the random ray solver require MOAB 
+      version 5.2.0 or later.
+
     * MCPL_ library for reading and writing .mcpl files
 
       This option allows OpenMC to read and write MCPL (Monte Carlo Particle

@@ -129,6 +129,12 @@ public:
 // Forward declaration of SourceRegion
 class SourceRegion;
 
+//! Every raw pointer below defaults to null. Several are wired only when the
+//! corresponding feature is enabled, and SourceRegion's handle constructor
+//! tests them to decide whether a field is present, so an unwired pointer
+//! must read as absent rather than as garbage. Defaulting them all costs
+//! nothing: the compiler drops the redundant stores for members that are
+//! then unconditionally assigned.
 class SourceRegionHandle {
 public:
   //----------------------------------------------------------------------------
@@ -146,56 +152,61 @@ public:
   bool is_linear_ {false};
 
   // Scalar fields
-  int* material_;
-  int* temperature_idx_;
-  double* density_mult_;
-  int* is_small_;
-  int* n_negative_batches_;
-  int* converged_negative_;
-  int* n_hits_;
-  int* birthday_;
-  OpenMPMutex* lock_;
-  double* volume_;
-  double* volume_t_;
-  double* volume_sq_;
-  double* volume_sq_t_;
-  double* volume_naive_;
-  int* position_recorded_;
-  int* external_source_present_;
-  Position* position_;
-  Position* centroid_;
-  Position* centroid_iteration_;
-  Position* centroid_t_;
-  MomentMatrix* mom_matrix_;
-  MomentMatrix* mom_matrix_t_;
+  int* material_ = nullptr;
+  int* temperature_idx_ = nullptr;
+  double* density_mult_ = nullptr;
+  int* is_small_ = nullptr;
+  int* n_negative_batches_ = nullptr;
+  int* converged_negative_ = nullptr;
+  int* n_hits_ = nullptr;
+  int* birthday_ = nullptr;
+  OpenMPMutex* lock_ = nullptr;
+  double* volume_ = nullptr;
+  double* volume_t_ = nullptr;
+  double* volume_sq_ = nullptr;
+  double* volume_sq_t_ = nullptr;
+  double* volume_naive_ = nullptr;
+  int* position_recorded_ = nullptr;
+  int* external_source_present_ = nullptr;
+  Position* position_ = nullptr;
+  Position* centroid_ = nullptr;
+  Position* centroid_iteration_ = nullptr;
+  Position* centroid_t_ = nullptr;
+  // Non-null only when the corresponding feature is enabled
+  Position* centroid_offset_ = nullptr;
+  MomentMatrix* mom_matrix_ = nullptr;
+  MomentMatrix* mom_matrix_t_ = nullptr;
+  SourceRegionKey* key_ = nullptr;
   // Bounding box of the ray segment endpoints sampled in this region, kept
   // only when the source gradient limiter is enabled (see SourceRegion).
-  BoundingBox* extent_;
+  BoundingBox* extent_ = nullptr;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
-  std::unordered_set<TallyTask, TallyTask::HashFunctor>* volume_task_;
+  std::unordered_set<TallyTask, TallyTask::HashFunctor>* volume_task_ = nullptr;
 
   // Mesh that subdivides this source region
-  int* mesh_;
-  int64_t* parent_sr_;
+  int* mesh_ = nullptr;
+  int64_t* parent_sr_ = nullptr;
 
   // Energy group-wise 1D arrays
-  double* scalar_flux_old_;
-  double* scalar_flux_new_;
-  float* source_;
-  float* external_source_;
-  double* scalar_flux_final_;
+  double* scalar_flux_old_ = nullptr;
+  double* scalar_flux_new_ = nullptr;
+  float* source_ = nullptr;
+  float* external_source_ = nullptr;
+  double* scalar_flux_final_ = nullptr;
+  // Non-null only for the adaptive volume estimator family
+  double* scalar_flux_t_ = nullptr;
 
-  MomentArray* source_gradients_;
-  MomentArray* flux_moments_old_;
-  MomentArray* flux_moments_new_;
-  MomentArray* flux_moments_t_;
+  MomentArray* source_gradients_ = nullptr;
+  MomentArray* flux_moments_old_ = nullptr;
+  MomentArray* flux_moments_new_ = nullptr;
+  MomentArray* flux_moments_t_ = nullptr;
 
   // 2D array representing values for all energy groups x tally
   // tasks. Each group may have a different number of tally tasks
   // associated with it, necessitating the use of a jagged array.
-  vector<TallyTask>* tally_task_;
+  vector<TallyTask>* tally_task_ = nullptr;
 
   //----------------------------------------------------------------------------
   // Public Accessors
@@ -257,12 +268,17 @@ public:
   Position& centroid_t() { return *centroid_t_; }
   const Position centroid_t() const { return *centroid_t_; }
 
+  Position& centroid_offset() { return *centroid_offset_; }
+  const Position centroid_offset() const { return *centroid_offset_; }
+
   MomentMatrix& mom_matrix() { return *mom_matrix_; }
   const MomentMatrix mom_matrix() const { return *mom_matrix_; }
 
   MomentMatrix& mom_matrix_t() { return *mom_matrix_t_; }
   const MomentMatrix mom_matrix_t() const { return *mom_matrix_t_; }
 
+  SourceRegionKey& key() { return *key_; }
+  const SourceRegionKey key() const { return *key_; }
   BoundingBox& extent() { return *extent_; }
   const BoundingBox& extent() const { return *extent_; }
 
@@ -290,6 +306,9 @@ public:
 
   double& scalar_flux_final(int g) { return scalar_flux_final_[g]; }
   const double scalar_flux_final(int g) const { return scalar_flux_final_[g]; }
+
+  double& scalar_flux_t(int g) { return scalar_flux_t_[g]; }
+  const double scalar_flux_t(int g) const { return scalar_flux_t_[g]; }
 
   float& source(int g) { return source_[g]; }
   const float source(int g) const { return source_[g]; }
@@ -323,24 +342,20 @@ public:
 
 }; // class SourceRegionHandle
 
-class SourceRegion {
+//! Every per-region scalar lives here so that it is carried automatically by
+//! the raw-byte MPI transfer in DecompositionMap::send_sr_data(). When adding
+//! a per-region field, either put it in this struct, or handle it explicitly
+//! in ALL FOUR of: send_sr_data(), receive_sr_data(),
+//! SourceRegion(const SourceRegionHandle&), and
+//! SourceRegionContainer::push_back(). Anything missed is silently reset to
+//! its default every time load balancing rebuilds a rank's container.
+class ScalarSourceRegionFields {
 public:
-  //----------------------------------------------------------------------------
-  // Constructors
-  SourceRegion(int negroups, bool is_linear);
-  SourceRegion() = default;
-
-  //----------------------------------------------------------------------------
-  // Public Data members
-
-  //---------------------------------------
-  // Scalar fields
   int material_ {0}; //!< Index in openmc::model::materials array
   int temperature_idx_ {
     0}; //!< Index into the MGXS array representing temperature
   double density_mult_ {1.0}; //!< A density multiplier queried from the cell
                               //!< corresponding to the source region.
-  OpenMPMutex lock_;
   double volume_ {
     0.0}; //!< Volume (computed from the sum of ray crossing lengths)
   double volume_t_ {0.0};     //!< Volume totaled over all iterations
@@ -366,6 +381,7 @@ public:
                       // Mesh that subdivides this source region
   int mesh_ {C_NONE}; //!< Index in openmc::model::meshes array that subdivides
                       //!< this source region
+  SourceRegionKey key_ {0, 0}; //!< The key (base source region + mesh bin)
   int64_t parent_sr_ {C_NONE}; //!< Index of a parent source region
   Position position_ {
     0.0, 0.0, 0.0}; //!< A position somewhere inside the region
@@ -374,10 +390,36 @@ public:
     0.0, 0.0, 0.0}; //!< The centroid integrated from this iteration only
   Position centroid_t_ {
     0.0, 0.0, 0.0}; //!< The centroid accumulated over all iterations
+  Position centroid_offset_ {0.0, 0.0,
+    0.0}; //!< Offset from the naive to the simulation-averaged centroid
   MomentMatrix mom_matrix_ {
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; //!< The spatial moment matrix
   MomentMatrix mom_matrix_t_ {0.0, 0.0, 0.0, 0.0, 0.0,
     0.0}; //!< The spatial moment matrix accumulated over all iterations
+};
+
+class SourceRegion {
+public:
+  //----------------------------------------------------------------------------
+  // Constructors
+  SourceRegion(int negroups, bool is_linear);
+  SourceRegion(const SourceRegionHandle& handle);
+  SourceRegion() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
+  void merge(SourceRegion& sr_add, bool is_linear);
+
+  //----------------------------------------------------------------------------
+  // Public Data members
+
+  //---------------------------------------
+  // Scalar fields
+
+  OpenMPMutex lock_;
+
+  // Container with all scalar fields of a source region
+  ScalarSourceRegionFields scalars_;
 
   // Bounding box of the ray segment endpoints sampled in this region. Segment
   // endpoints lie on the region boundary, so the box converges to the
@@ -405,6 +447,8 @@ public:
   vector<double> scalar_flux_final_; //!< The scalar flux accumulated over all
                                      //!< active iterations (used for plotting,
                                      //!< or computing adjoint sources)
+  vector<double> scalar_flux_t_;     //!< Running flux sum used by the adaptive
+                                     //!< volume estimator's demotion step
 
   vector<MomentArray> source_gradients_; //!< The linear source gradients
   vector<MomentArray>
@@ -432,6 +476,15 @@ public:
       is_strict_adaptive_(is_strict_adaptive), track_extents_(track_extents)
   {}
   SourceRegionContainer() = default;
+
+  //! Return an empty container carrying the same configuration as this one.
+  //! Used under domain decomposition, where a rank rebuilds its source region
+  //! container from scratch after load balancing.
+  SourceRegionContainer empty_like() const
+  {
+    return SourceRegionContainer(
+      negroups_, is_linear_, is_adaptive_, is_strict_adaptive_, track_extents_);
+  }
 
   //----------------------------------------------------------------------------
   // Public Accessors
@@ -519,6 +572,8 @@ public:
     return mom_matrix_t_[sr];
   }
 
+  SourceRegionKey& key(int64_t sr) { return key_[sr]; }
+  const SourceRegionKey key(int64_t sr) const { return key_[sr]; }
   BoundingBox& extent(int64_t sr) { return extents_[sr]; }
   const BoundingBox& extent(int64_t sr) const { return extents_[sr]; }
 
@@ -733,6 +788,7 @@ private:
   vector<Position> centroid_offset_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;
+  vector<SourceRegionKey> key_;
   // One box per region rather than separate minimum and maximum arrays: the
   // two corners are always read, grown, and reset together.
   vector<BoundingBox> extents_;

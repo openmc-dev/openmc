@@ -235,6 +235,40 @@ def test_explicit_neutron_mdgxs_particle_filter():
         assert tally.find_filter(openmc.ParticleFilter).bins == ['neutron']
 
 
+def test_explicit_neutron_library_matches_unfiltered_export():
+    material = openmc.Material()
+    geometry = openmc.Geometry([openmc.Cell(fill=material)])
+    groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0])
+    xsdatas = []
+
+    for particle_type in (None, 'neutron'):
+        library = openmc.mgxs.Library(
+            geometry,
+            mgxs_types=['transport', 'absorption', 'scatter matrix'],
+            particle_type=particle_type)
+        library.domain_type = 'material'
+        library.energy_groups = groups
+        library.build_library()
+        for mgxs in library.all_mgxs[material.id].values():
+            _add_tally_data(mgxs)
+            if 'total' in mgxs.tallies:
+                mgxs.tallies['total']._mean.fill(2.0)
+            for tally in mgxs.tallies.values():
+                if particle_type is None:
+                    assert not tally.contains_filter(openmc.ParticleFilter)
+                else:
+                    assert tally.find_filter(openmc.ParticleFilter).bins == [
+                        'neutron']
+        library._sp_filename = 'statepoint.h5'
+        with pytest.warns((UserWarning, RuntimeWarning)):
+            xsdatas.append(library.create_mg_library().xsdatas[0])
+
+    for attribute in ('total', 'absorption', 'scatter_matrix'):
+        assert np.array_equal(
+            getattr(xsdatas[0], attribute)[0],
+            getattr(xsdatas[1], attribute)[0])
+
+
 def test_photon_production_matrix_group_transformations():
     material = openmc.Material()
     groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0, 1000.0])

@@ -77,6 +77,8 @@ def test_photon_production_matrix_tallies():
 
     assert production.particle_type == openmc.ParticleType.PHOTON
     assert production.estimator == ['tracklength', 'analog', 'analog']
+    with pytest.raises(ValueError, match='fixed tracklength and analog'):
+        production.estimator = 'analog'
     assert production.tally_keys == [
         'flux', 'primary photon production', 'secondary photon production']
 
@@ -146,13 +148,91 @@ def test_photon_mgxs_library(tmp_path):
 
 
 def test_all_mgxs_types_respects_particle_type():
-    geometry = openmc.Geometry([openmc.Cell()])
-    photon_library = openmc.mgxs.Library(
-        geometry, mgxs_types='all', particle_type='photon')
+    material = openmc.Material()
+    geometry = openmc.Geometry([openmc.Cell(fill=material)])
+    photon_library = openmc.mgxs.Library(geometry, mgxs_types='all')
+    photon_library.particle_type = 'photon'
+    photon_library.domain_type = 'material'
+    photon_library.energy_groups = openmc.mgxs.EnergyGroups([1.0, 10.0])
+    photon_library.build_library()
 
     assert photon_library.mgxs_types == (
         'total', 'absorption', 'nu-scatter matrix')
     assert photon_library.correction is None
+
+    clone = copy.deepcopy(photon_library)
+    clone.particle_type = 'neutron'
+    assert clone.mgxs_types == (
+        openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES +
+        openmc.mgxs.ARBITRARY_VECTOR_TYPES +
+        openmc.mgxs.ARBITRARY_MATRIX_TYPES)
+
+
+@pytest.mark.parametrize('attribute, value, error', [
+    ('correction', 'P0', 'correction'),
+    ('scatter_format', 'histogram', 'scatter_format'),
+    ('legendre_order', 1, 'legendre_order'),
+    ('histogram_bins', 8, 'histogram_bins'),
+    ('estimator', 'analog', 'estimator'),
+    ('num_polar', 2, 'num_polar'),
+])
+def test_invalid_photon_library_setting(attribute, value, error):
+    material = openmc.Material()
+    geometry = openmc.Geometry([openmc.Cell(fill=material)])
+    library = openmc.mgxs.Library(
+        geometry, mgxs_types='all', particle_type='photon')
+    library.domain_type = 'material'
+    library.energy_groups = openmc.mgxs.EnergyGroups([1.0, 10.0])
+    setattr(library, attribute, value)
+
+    with pytest.raises(ValueError, match=error):
+        library.build_library()
+
+
+@pytest.mark.parametrize('mgxs_types, by_nuclide, error', [
+    (['total', 'absorption', 'scatter matrix'], False, 'unsupported'),
+    (['total', 'absorption', 'nu-scatter matrix'], True, 'by_nuclide'),
+])
+def test_invalid_photon_library_scope(mgxs_types, by_nuclide, error):
+    material = openmc.Material()
+    geometry = openmc.Geometry([openmc.Cell(fill=material)])
+    library = openmc.mgxs.Library(
+        geometry, by_nuclide=by_nuclide, mgxs_types=mgxs_types,
+        particle_type='photon')
+    library.domain_type = 'material'
+    library.energy_groups = openmc.mgxs.EnergyGroups([1.0, 10.0])
+
+    with pytest.raises(ValueError, match=error):
+        library.build_library()
+
+
+def test_photon_library_requires_complete_export_data():
+    geometry = openmc.Geometry([openmc.Cell(fill=openmc.Material())])
+    library = openmc.mgxs.Library(
+        geometry, mgxs_types=['total'], particle_type='photon')
+    library.domain_type = 'material'
+    library.energy_groups = openmc.mgxs.EnergyGroups([1.0, 10.0])
+    library.build_library()
+
+    with pytest.raises(ValueError, match='missing required'):
+        library.check_library_for_openmc_mgxs()
+
+
+def test_explicit_neutron_mdgxs_particle_filter():
+    material = openmc.Material()
+    geometry = openmc.Geometry([openmc.Cell(fill=material)])
+    groups = openmc.mgxs.EnergyGroups([1.0, 10.0])
+    library = openmc.mgxs.Library(
+        geometry, mgxs_types=['delayed-nu-fission'],
+        particle_type='neutron')
+    library.domain_type = 'material'
+    library.energy_groups = groups
+    library.build_library()
+    mdgxs = library.get_mgxs(material, 'delayed-nu-fission')
+
+    assert mdgxs.particle_type == openmc.ParticleType.NEUTRON
+    for tally in mdgxs.tallies.values():
+        assert tally.find_filter(openmc.ParticleFilter).bins == ['neutron']
 
 
 def test_photon_production_matrix_group_transformations():

@@ -57,6 +57,8 @@ class MDGXS(MGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
+    particle_type : {None, 'neutron', 'photon'}, optional
+        Particle type used by the tallies. Defaults to no particle filter.
 
     Attributes
     ----------
@@ -130,9 +132,9 @@ class MDGXS(MGXS):
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
+                 num_polar=1, num_azimuthal=1, particle_type=None):
         super().__init__(domain, domain_type, energy_groups, by_nuclide, name,
-                         num_polar, num_azimuthal)
+                         num_polar, num_azimuthal, particle_type)
 
         self._delayed_groups = None
 
@@ -148,6 +150,7 @@ class MDGXS(MGXS):
             clone._name = self.name
             clone._rxn_type = self.rxn_type
             clone._by_nuclide = self.by_nuclide
+            clone._particle_type = self.particle_type
             clone._nuclides = copy.deepcopy(self._nuclides)
             clone._domain = self.domain
             clone._domain_type = self.domain_type
@@ -227,7 +230,7 @@ class MDGXS(MGXS):
     @staticmethod
     def get_mgxs(mdgxs_type, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
+                 num_polar=1, num_azimuthal=1, particle_type=None):
         """Return a MDGXS subclass object for some energy group structure within
         some spatial domain for some reaction type.
 
@@ -259,6 +262,8 @@ class MDGXS(MGXS):
         num_azimuthal : Integral, optional
             Number of equi-width azimuthal angle bins for angle discretization;
             defaults to one bin
+        particle_type : {None, 'neutron', 'photon'}, optional
+            Particle type used by the tallies. Defaults to no particle filter.
         Returns
         -------
         openmc.mgxs.MDGXS
@@ -287,6 +292,8 @@ class MDGXS(MGXS):
         mdgxs.name = name
         mdgxs.num_polar = num_polar
         mdgxs.num_azimuthal = num_azimuthal
+        if particle_type is not None:
+            mdgxs.particle_type = particle_type
         return mdgxs
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',

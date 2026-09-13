@@ -14,11 +14,11 @@ TEST_CASE("Atomic and nuclear mass conventions")
 
   SECTION("light nuclides have AME2020 atomic masses")
   {
-    REQUIRE(atomic_mass(1, 1) == Approx(1.007825031898));
-    REQUIRE(atomic_mass(1, 2) == Approx(2.014101777844));
-    REQUIRE(atomic_mass(1, 3) == Approx(3.01604928132));
-    REQUIRE(atomic_mass(2, 3) == Approx(3.01602932197));
-    REQUIRE(atomic_mass(2, 4) == Approx(4.00260325413));
+    REQUIRE(atomic_mass(1, 1) == 1.007825031898);
+    REQUIRE(atomic_mass(1, 2) == 2.014101777844);
+    REQUIRE(atomic_mass(1, 3) == 3.01604928132);
+    REQUIRE(atomic_mass(2, 3) == 3.01602932197);
+    REQUIRE(atomic_mass(2, 4) == 4.00260325413);
     REQUIRE(atomic_mass_from_pdg(PDG_PROTON) == atomic_mass(1, 1));
     REQUIRE(atomic_mass_from_pdg(1000010010) == atomic_mass(1, 1));
     REQUIRE(atomic_mass_from_pdg(1000260561) == atomic_mass(26, 56));

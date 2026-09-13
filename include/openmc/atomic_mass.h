@@ -10,8 +10,10 @@
 
 namespace openmc {
 
-// Values here are from the Committee on Data for Science and Technology
-// (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
+// The bare-particle rest masses below are from the Committee on Data for
+// Science and Technology (CODATA) 2018 recommendation
+// (https://physics.nist.gov/cuu/Constants/). The ATOMIC_MASS table declared
+// further down holds neutral atomic masses from AME2020 instead.
 
 // Physical constants
 constexpr double MASS_ELECTRON {5.48579909065e-4}; // mass of an electron in amu
@@ -48,7 +50,10 @@ double nuclear_mass_from_pdg(int32_t pdg);
 //!
 //! For light particles, the CODATA bare-particle mass is returned. Otherwise,
 //! the mass is approximated by subtracting the masses of the atomic electrons
-//! from the tabulated atomic mass. Electron binding energy is neglected.
+//! from the tabulated atomic mass. Electron binding energy is neglected. A
+//! nuclide with Z = 0 and A = 1 is the free neutron, for which the CODATA
+//! neutron mass is returned; atomic_mass() reports zero for it instead, as
+//! there is no corresponding neutral atom.
 //! Returns zero if the nuclide is invalid or its atomic mass is not tabulated.
 double nuclear_mass(int Z, int A);
 

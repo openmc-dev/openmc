@@ -21,12 +21,38 @@ class BoundaryCondition {
 public:
   virtual ~BoundaryCondition() = default;
 
+  //! Apply the geometric transformation.
+  //! \param[in] p Particle
+  //! \param[in] surf Current surface
+  //! \param[out] new_r Transformed position
+  //! \param[out] new_u Transformed direction
+  //! \param[out] new_surface New surface index
+  virtual void transform(Particle& p, const Surface& surf, Position& new_r,
+    Direction& new_u, int& new_surface) const = 0;
+
+  //! Handle the crossing of the boundary condition by the particle
+  //! \param[inout] p Particle
+  //! \param[in] surf Current surface
+  //! \param[in] new_r Transformed position
+  //! \param[in] new_u Transformed direction
+  //! \param[in] new_surface New surface index
+  virtual void cross_bc(Particle& p, const Surface& surf, const Position& new_r,
+    const Direction& new_u, int new_surface) const = 0;
+
   //! Perform tracking operations for a particle that strikes the boundary.
   //! \param p The particle that struck the boundary.  This class is not meant
   //!   to directly modify anything about the particle, but it will do so
   //!   indirectly by calling the particle's appropriate cross_*_bc function.
   //! \param surf The specific surface on the boundary the particle struck.
-  virtual void handle_particle(Particle& p, const Surface& surf) const = 0;
+  virtual void handle_particle(Particle& p, const Surface& surf) const
+  {
+    Position new_r;
+    Direction new_u;
+    int new_surface;
+    transform(p, surf, new_r, new_u, new_surface);
+    BoundaryCondition::handle_albedo(p, surf);
+    cross_bc(p, surf, new_r, new_u, new_surface);
+  }
 
   //! Modify the incident particle's weight according to the boundary's albedo.
   //! \param p The particle that struck the boundary.  This function calculates
@@ -64,6 +90,9 @@ public:
   //! Return if this BC has an albedo.
   bool has_albedo() const { return (albedo_ > 0.0); }
 
+  //! Return albedo value.
+  double albedo() const { return albedo_; }
+
 private:
   double albedo_ = -1.0;
 };
@@ -74,6 +103,16 @@ private:
 
 class VacuumBC : public BoundaryCondition {
 public:
+  // Not used - handle_particle is fully overriden
+  void transform(Particle& p, const Surface& surf, Position& new_r,
+    Direction& new_u, int& new_surface) const override
+  {}
+
+  // Not used - handle_particle is fully overriden
+  void cross_bc(Particle& p, const Surface& surf, const Position& new_r,
+    const Direction& new_u, int new_surface) const override
+  {}
+
   void handle_particle(Particle& p, const Surface& surf) const override;
 
   std::string type() const override { return "vacuum"; }
@@ -85,7 +124,11 @@ public:
 
 class ReflectiveBC : public BoundaryCondition {
 public:
-  void handle_particle(Particle& p, const Surface& surf) const override;
+  void transform(Particle& p, const Surface& surf, Position& new_r,
+    Direction& new_u, int& new_surface) const override;
+
+  void cross_bc(Particle& p, const Surface& surf, const Position& new_r,
+    const Direction& new_u, int new_surface) const override;
 
   std::string type() const override { return "reflective"; }
 };
@@ -96,7 +139,11 @@ public:
 
 class WhiteBC : public BoundaryCondition {
 public:
-  void handle_particle(Particle& p, const Surface& surf) const override;
+  void transform(Particle& p, const Surface& surf, Position& new_r,
+    Direction& new_u, int& new_surface) const override;
+
+  void cross_bc(Particle& p, const Surface& surf, const Position& new_r,
+    const Direction& new_u, int new_surface) const override;
 
   std::string type() const override { return "white"; }
 };
@@ -128,7 +175,11 @@ class TranslationalPeriodicBC : public PeriodicBC {
 public:
   TranslationalPeriodicBC(int i_surf, int j_surf);
 
-  void handle_particle(Particle& p, const Surface& surf) const override;
+  void transform(Particle& p, const Surface& surf, Position& new_r,
+    Direction& new_u, int& new_surface) const override;
+
+  void cross_bc(Particle& p, const Surface& surf, const Position& new_r,
+    const Direction& new_u, int new_surface) const override;
 
 protected:
   //! Vector along which incident particles will be moved
@@ -145,9 +196,12 @@ class RotationalPeriodicBC : public PeriodicBC {
 public:
   enum PeriodicAxis { x, y, z };
   RotationalPeriodicBC(int i_surf, int j_surf, PeriodicAxis axis);
-  double compute_periodic_rotation(
-    double rise_1, double run_1, double rise_2, double run_2) const;
-  void handle_particle(Particle& p, const Surface& surf) const override;
+
+  void transform(Particle& p, const Surface& surf, Position& new_r,
+    Direction& new_u, int& new_surface) const override;
+
+  void cross_bc(Particle& p, const Surface& surf, const Position& new_r,
+    const Direction& new_u, int new_surface) const override;
 
 protected:
   //! Angle about the axis by which particle coordinates will be rotated

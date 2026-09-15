@@ -5,6 +5,7 @@
 #include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/distribution_multi.h"
+#include "openmc/dnp_drift.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
@@ -206,9 +207,9 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
   // Counter for the number of fission sites successfully stored to the shared
   // fission bank or the secondary particle bank
-  int n_sites_stored;
+  int n_sites_stored = 0;
 
-  for (n_sites_stored = 0; n_sites_stored < nu; n_sites_stored++) {
+  for (int i = 0; i < nu; i++) {
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
@@ -220,8 +221,23 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
 
-    // Reject site if it exceeds time cutoff
+    // If a delayed neutron is sampled
     if (site.delayed_group > 0) {
+
+      // Explicit transport of delayed neutron precursor (DNP)
+      if (settings::dnp_drift_on) {
+        double dnp_decay_time = site.time - p.time();
+
+        // Reject site if it is longer inside the model
+        if (!transport_dnp(site, dnp_decay_time, p.current_seed()))
+          continue;
+
+        // Reject site if it is not usable for the next generation
+        if (!reconcile_precursor_drift(site, p.id()))
+          continue;
+      }
+
+      // Reject site if it exceeds time cutoff
       double t_cutoff = settings::time_cutoff[site.particle.transport_index()];
       if (site.time > t_cutoff) {
         continue;
@@ -260,6 +276,8 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
       p.local_secondary_bank().push_back(site);
       p.n_secondaries()++;
     }
+
+    n_sites_stored++;
 
     // Increment the number of neutrons born delayed
     if (site.delayed_group > 0) {

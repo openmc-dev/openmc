@@ -2100,6 +2100,9 @@ void FlatSourceDomain::flatten_xs()
   // TODO: Currently assumes we are only using single angle data.
   const int a = 0;
 
+  // Fission data only exists in neutron MGXS libraries
+  const bool is_neutron = data::mg.particle_type_.is_neutron();
+
   n_materials_ = data::mg.macro_xs_.size();
   ntemperature_ = 1;
   for (int i = 0; i < n_materials_; i++) {
@@ -2125,16 +2128,19 @@ void FlatSourceDomain::flatten_xs()
               mat->name(), mat->id(), g_out, sigma_t, MINIMUM_MACRO_XS));
           }
 
-          double nu_sigma_f =
-            m.get_xs(MgxsType::NU_FISSION, g_out, NULL, NULL, NULL, t, a);
+          double nu_sigma_f = is_neutron
+            ? m.get_xs(MgxsType::NU_FISSION, g_out, NULL, NULL, NULL, t, a)
+            : 0.0;
           nu_sigma_f_.push_back(nu_sigma_f);
 
-          double sigma_f =
-            m.get_xs(MgxsType::FISSION, g_out, NULL, NULL, NULL, t, a);
+          double sigma_f = is_neutron
+            ? m.get_xs(MgxsType::FISSION, g_out, NULL, NULL, NULL, t, a)
+            : 0.0;
           sigma_f_.push_back(sigma_f);
-
-          double chi =
-            m.get_xs(MgxsType::CHI_PROMPT, g_out, &g_out, NULL, NULL, t, a);
+            
+          double chi = is_neutron
+            ? m.get_xs(MgxsType::CHI_PROMPT, g_out, &g_out, NULL, NULL, t, a)
+            : 0.0;
           if (!std::isfinite(chi)) {
             // MGXS interface may return NaN in some cases, such as when
             // material is fissionable but has very small sigma_f.
@@ -2142,8 +2148,9 @@ void FlatSourceDomain::flatten_xs()
           }
           chi_.push_back(chi);
 
-          double kappa_fission =
-            m.get_xs(MgxsType::KAPPA_FISSION, g_out, NULL, NULL, NULL, t, a);
+          double kappa_fission = is_neutron
+            ? m.get_xs(MgxsType::KAPPA_FISSION, g_out, NULL, NULL, NULL, t, a)
+            : 0.0;
           kappa_fission_.push_back(kappa_fission);
 
           for (int g_in = 0; g_in < negroups_; g_in++) {

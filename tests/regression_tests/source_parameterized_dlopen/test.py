@@ -20,7 +20,7 @@ def compile_source(request):
         f.write(textwrap.dedent("""
             cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
             project(openmc_sources CXX)
-            add_library(source SHARED parameterized_source_sampling.cpp)
+            add_library(source MODULE parameterized_source_sampling.cpp)
             find_package(OpenMC REQUIRED HINTS {})
             target_link_libraries(source OpenMC::libopenmc)
             """.format(openmc_dir)))

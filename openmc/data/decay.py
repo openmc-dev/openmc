@@ -513,11 +513,9 @@ class Decay(EqualityMixin):
                 'neutrino': 'neutrino',
             }[particle]
 
-            if particle_type not in sources:
-                sources[particle_type] = []
-
             # Create distribution for discrete
-            if spectra['continuous_flag'] in ('discrete', 'both'):
+            if (spectra['continuous_flag'] in ('discrete', 'both')
+                    and spectra['discrete']):
                 energies = []
                 intensities = []
                 for discrete_data in spectra['discrete']:
@@ -527,7 +525,7 @@ class Decay(EqualityMixin):
                 intensity = spectra['discrete_normalization'].n
                 rates = decay_constant * intensity * np.array(intensities)
                 dist_discrete = Discrete(energies, rates)
-                sources[particle_type].append(dist_discrete)
+                sources.setdefault(particle_type, []).append(dist_discrete)
 
             # Create distribution for continuous
             if spectra['continuous_flag'] in ('continuous', 'both'):
@@ -543,7 +541,7 @@ class Decay(EqualityMixin):
                 intensity = spectra['continuous_normalization'].n
                 rates = decay_constant * intensity * f.y
                 dist_continuous = Tabular(f.x, rates, interpolation)
-                sources[particle_type].append(dist_continuous)
+                sources.setdefault(particle_type, []).append(dist_continuous)
 
         # Combine discrete distributions
         merged_sources = {}

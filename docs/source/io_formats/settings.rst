@@ -626,9 +626,27 @@ found in the :ref:`random ray user guide <random_ray>`.
 
   :volume_estimator:
     Specifies choice of volume estimator for the random ray solver. Options
-    are 'naive', 'simulation_averaged', or 'hybrid'. The default is 'hybrid'.
+    are 'naive', 'simulation_averaged', 'hybrid', 'adaptive',
+    'strict_adaptive', or 'auto'. The default is 'auto', which selects
+    'adaptive' for standard solves and 'strict_adaptive' for solves whose
+    results feed variance reduction (weight window generation and adjoint
+    workflows).
 
     *Default*: None
+
+  :source_shape:
+    Specifies the assumed shape of the source distribution within each
+    source region. Options are "flat", "linear", or "linear_xy".
+
+    *Default*: flat
+
+  :source_gradient_limiter:
+    Specifies whether to rescale linear source gradients as needed so that
+    the source shape modeled within each source region remains non-negative
+    over the region's bounding box, as sampled by the rays that have crossed
+    it (bool). Only used when the source shape is "linear" or "linear_xy".
+
+    *Default*: false
 
   :volume_normalized_flux_tallies:
     Specifies whether to normalize flux tallies by volume (bool). The
@@ -777,9 +795,9 @@ attributes/sub-elements:
     *Default*: 1.0
 
   :type:
-    Indicator of source type. One of ``independent``, ``file``, ``compiled``, or
-    ``mesh``. The type of the source will be determined by this attribute if it
-    is present.
+    Indicator of source type. One of ``independent``, ``file``, ``compiled``,
+    ``mesh``, or ``tokamak``. The type of the source will be determined by this
+    attribute if it is present.
 
   :particle:
     The source particle type, specified as a PDG number or a string alias (e.g.,
@@ -1014,6 +1032,80 @@ attributes/sub-elements:
     For mesh sources, this sub-element specifies the source for an individual
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
+
+  For a source with ``type="tokamak"``, the spatial distribution is described by
+  a Miller-style flux-surface parameterization and the following sub-elements
+  are used instead of the ``space`` element:
+
+  :major_radius:
+    The major radius :math:`R_0` of the plasma in [cm].
+
+  :minor_radius:
+    The minor radius :math:`a` of the plasma in [cm]. Must be smaller than
+    ``major_radius``.
+
+  :elongation:
+    The plasma elongation :math:`\kappa` (must be > 0).
+
+  :triangularity:
+    The plasma triangularity :math:`\delta` (must be in [-1, 1]). Negative
+    values describe negative-triangularity plasmas.
+
+  :shafranov_shift:
+    The Shafranov shift :math:`\Delta` in [cm] (must be >= 0 and less than
+    ``minor_radius``/2).
+
+  :r_over_a:
+    A list of normalized minor-radius grid points :math:`r/a`. Must be strictly
+    increasing, start at 0, and end at 1.
+
+  :emission_density:
+    A list of neutron emission densities :math:`S(r)` evaluated at each
+    ``r_over_a`` grid point (arbitrary units, must be non-negative). Only the
+    shape matters, since the profile is normalized internally. Values are
+    interpolated linearly between grid points and the profile is refined on an
+    internal grid for radial sampling. Must have the same length as
+    ``r_over_a`` and contain at least one positive value.
+
+  :phi_start:
+    The starting toroidal angle in [rad].
+
+    *Default*: 0.0
+
+  :phi_extent:
+    The toroidal angle extent in [rad]. The source is sampled uniformly in
+    :math:`[\phi_\text{start},\ \phi_\text{start} + \phi_\text{extent}]`.
+
+    *Default*: :math:`2\pi`
+
+  :n_alpha:
+    The number of poloidal-angle grid points used to build the sampling CDFs
+    (must be > 2). Larger values reduce discretization bias; values below 51
+    produce a warning.
+
+    *Default*: 101
+
+  :vertical_shift:
+    A vertical shift of the plasma center in [cm].
+
+    *Default*: 0.0
+
+  :energy:
+    For a tokamak source, one or more ``energy`` sub-elements specify the
+    neutron energy distribution(s). Either a single distribution is given (used
+    at all radii) or exactly one distribution per ``r_over_a`` grid point is
+    given, in which case the energy is sampled from one of the two
+    distributions bracketing the sampled radius, selected stochastically with
+    probability proportional to the proximity of the radius to each grid point
+    (stochastic interpolation). Each follows the format of a univariate
+    probability distribution (see :ref:`univariate`).
+
+  :time:
+    An optional ``time`` sub-element specifying the time distribution of source
+    particles, following the format of a univariate probability distribution
+    (see :ref:`univariate`).
+
+    *Default*: particles are born at :math:`t=0`
 
   .. note:: Biased sampling can be applied to the spatial and energy distributions
             of a source by using the ``<bias>`` sub-element (see
@@ -1250,6 +1342,13 @@ attributes/sub-elements:
     Absolute or relative path to a surface source file to read in source bank.
 
     *Default*: ``surface_source.h5`` in current working directory
+
+.. deprecated::
+  The ``<surf_source_read>`` element is deprecated and will be removed in a
+  future release. A deprecation warning is emitted when it is present. Use a
+  file source instead, e.g. ``<source type="file" file="surface_source.h5"/>``,
+  which is equivalent but additionally supports a source strength and source
+  constraints.
 
 -------------------------------
 ``<surf_source_write>`` Element
@@ -1574,6 +1673,7 @@ and 10. The verbosity levels are defined as follows:
   :5: all of the above + file I/O
   :6: all of the above + timing statistics and initialization messages
   :7: all of the above + :math:`k` by generation
+  :8: all of the above + random ray volume-estimator diagnostics
   :9: all of the above + indicate when each particle starts
   :10: all of the above + event information
 

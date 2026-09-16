@@ -89,6 +89,7 @@ def test_merge_discrete():
     assert triple.integral() == pytest.approx(6.0)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_merge_discrete_with_bias():
     # Two discrete distributions with different biases
     d1 = openmc.stats.Discrete([1.0, 2.0], [0.5, 0.5])

@@ -1,5 +1,7 @@
 #include "openmc/math_functions.h"
 
+#include <limits> // for numeric_limits
+
 #include "openmc/external/Faddeeva.hh"
 
 #include "openmc/constants.h"
@@ -944,18 +946,67 @@ double log1prel(double x)
   }
 }
 
+double cyl_bessel_j(int n, double x)
+{
+  // Handle negative arguments via the parity relation
+  // J_n(-x) = (-1)^n J_n(x); std::cyl_bessel_j has a domain error for x < 0.
+  double sign = 1.0;
+  if (x < 0.0) {
+    x = -x;
+    if (n % 2 == 1)
+      sign = -1.0;
+  }
+
+#if defined(__cpp_lib_math_special_functions) &&                               \
+  __cpp_lib_math_special_functions >= 201603L
+  return sign * std::cyl_bessel_j(static_cast<double>(n), x);
+#else
+  // Ascending power series (e.g., Abramowitz & Stegun eq. 9.1.10):
+  //   J_n(x) = sum_{m=0}^inf (-1)^m / (m! (m+n)!) * (x/2)^(2m+n)
+  // The term ratio is -(x/2)^2 / (m*(m+n)), so for |x| <= 2 the series
+  // converges to machine precision within ~20 terms.
+  double half_x = 0.5 * x;
+
+  // First term: (x/2)^n / n!
+  double term = 1.0;
+  for (int k = 1; k <= n; ++k) {
+    term *= half_x / k;
+  }
+
+  double sum = term;
+  double neg_half_x_sq = -half_x * half_x;
+  for (int m = 1; m <= 50; ++m) {
+    term *= neg_half_x_sq / (m * (m + n));
+    sum += term;
+    if (std::abs(term) <=
+        std::numeric_limits<double>::epsilon() * std::abs(sum))
+      break;
+  }
+  return sign * sum;
+#endif
+}
+
 // Helper function to get index and interpolation function on an incident energy
 // grid
 void get_energy_index(
   const vector<double>& energies, double E, int& i, double& f)
 {
-  // Get index and interpolation factor for linear-linear energy grid
+  // Get index and interpolation factor for linear-linear energy grid. The index
+  // is kept within the topmost interval so that both energies[i] and
+  // energies[i + 1] are valid for callers.
+  const int n = energies.size();
   i = 0;
   f = 0.0;
-  if (E >= energies.front()) {
-    i = lower_bound_index(energies.begin(), energies.end(), E);
-    if (i + 1 < energies.size())
-      f = (E - energies[i]) / (energies[i + 1] - energies[i]);
+  if (n < 2 || E < energies.front())
+    return;
+
+  i = lower_bound_index(energies.begin(), energies.end(), E);
+  if (i < n - 1) {
+    f = (E - energies[i]) / (energies[i + 1] - energies[i]);
+  } else {
+    // E lies above the top of the grid; use the topmost interval
+    i = n - 2;
+    f = 1.0;
   }
 }
 

@@ -46,6 +46,21 @@ TEST_CASE("Test t_percentile")
   }
 }
 
+TEST_CASE("Test cylindrical Bessel functions")
+{
+  constexpr double x = 2.0;
+  constexpr double expected[] {0.22389077914123567, 0.57672480775687339,
+    0.35283402861563773, 0.12894324947440205};
+
+  for (int n = 0; n < 4; ++n) {
+    REQUIRE_THAT(openmc::cyl_bessel_j(n, x),
+      Catch::Matchers::WithinRel(expected[n], 1.0e-14));
+    REQUIRE_THAT(openmc::cyl_bessel_j(n, -x),
+      Catch::Matchers::WithinRel(
+        (n % 2 == 0 ? 1.0 : -1.0) * expected[n], 1.0e-14));
+  }
+}
+
 TEST_CASE("Test calc_pn")
 {
   // The reference solutions come from scipy.special.eval_legendre

@@ -1281,7 +1281,7 @@ def cylindrical_uniform(
     a flat ring (annulus) at z=0 in the local coordinate frame. Optionally, the
     range of angles can be restricted by the `phis` argument.
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------

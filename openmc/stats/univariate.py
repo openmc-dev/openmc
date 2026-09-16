@@ -17,7 +17,7 @@ import scipy
 import openmc.checkvalue as cv
 from openmc.data import atomic_mass, NEUTRON_MASS
 import openmc.data
-from .._xml import get_elem_list, get_text
+from .._xml import get_elem_list, get_text, get_elem_array
 from ..mixin import EqualityMixin
 
 _INTERPOLATION_SCHEMES = {
@@ -403,7 +403,7 @@ class Discrete(Univariate):
             Discrete distribution generated from XML element
 
         """
-        params = get_elem_list(elem, "parameters", float)
+        params = get_elem_array(elem, "parameters", float)
         x = params[:len(params)//2]
         p = params[len(params)//2:]
         bias_dist = cls._read_array_bias_from_xml(elem)
@@ -1062,7 +1062,7 @@ class Normal(Univariate):
     the distribution is renormalized so that the PDF integrates to 1 over the
     truncation interval.
 
-    .. versionchanged:: 0.15.4
+    .. versionchanged:: 0.16.0
         Added optional truncation bounds via `lower` and `upper` parameters.
 
     Parameters
@@ -1313,7 +1313,7 @@ def fusion_neutron_spectrum(
     T_i \le 40` keV and Table IV for :math:`40 < T_i < 100` keV. The returned
     distribution is a normal (Gaussian) approximation to the spectrum.
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------
@@ -1768,7 +1768,7 @@ class Tabular(Univariate):
 
         """
         interpolation = get_text(elem, 'interpolation')
-        params = get_elem_list(elem, "parameters", float)
+        params = get_elem_array(elem, "parameters", float)
         m = (len(params) + 1)//2  # +1 for when len(params) is odd
         x = params[:m]
         p = params[m:]
@@ -2212,7 +2212,7 @@ class DecaySpectrum(Univariate):
     necessary so that the C++ solver can compute the total photon emission rate
     in [photons/s], which is used as the source strength.
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------

@@ -21,11 +21,13 @@ Simulation Settings
    :nosignatures:
    :template: myclass.rst
 
+   openmc.ParticleType
    openmc.SourceBase
    openmc.IndependentSource
    openmc.FileSource
    openmc.CompiledSource
    openmc.MeshSource
+   openmc.TokamakSource
    openmc.SourceParticle
    openmc.VolumeCalculation
    openmc.Settings

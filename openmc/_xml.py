@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def clean_indentation(element, level=0, spaces_per_level=2, trailing_indent=True):
     """Set indentation of XML element and its sub-elements.
     Copied and pasted from https://effbot.org/zone/element-lib.htm#prettyprint.
@@ -84,3 +87,28 @@ def get_elem_list(elem, name, dtype=int):
     text = get_text(elem, name)
     if text is not None:
         return [dtype(x) for x in text.split()]
+
+
+def get_elem_array(elem, name, dtype=int):
+    """Helper function to get an array of values from an elem
+
+    Parameters
+    ----------
+    elem : lxml.etree._Element
+        XML element that should contain a tuple
+    name : str
+        Name of the subelement to obtain tuple from
+    dtype : data-type
+        The type of each element in the tuple
+
+    Returns
+    -------
+    numpy.ndarray
+        Data read from the list
+    """
+    text = get_text(elem, name)
+    if text is not None:
+        text = text.strip()
+        if not text:
+            return np.array([], dtype=dtype)
+        return np.fromstring(text, sep=' ', dtype=dtype)

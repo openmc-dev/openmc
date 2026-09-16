@@ -16,7 +16,7 @@ _environment_warnings = []
 
 def _check_build_environment():
     """Check STRICT_FP and cross section data, collecting any warnings."""
-    if not openmc.lib._strict_fp_enabled():
+    if not openmc.lib.feature_enabled('strict_fp'):
         _environment_warnings.append(
             "OpenMC was NOT built with -DOPENMC_ENABLE_STRICT_FP=on. "
             "Regression test results may not match reference values due to "

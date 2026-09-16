@@ -8,7 +8,7 @@ import openmc
 import openmc.lib
 
 pytestmark = pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(),
+    not openmc.lib.feature_enabled('dagmc'),
     reason="DAGMC CAD geometry is not enabled.")
 
 
@@ -45,7 +45,7 @@ def test_convert_to_multigroup_without_particles_batches(run_in_tmpdir):
     model.convert_to_multigroup(
         method='material_wise',
         groups='CASMO-2',
-        nparticles=10,
+        particles=10,
         overwrite_mgxs_library=True
     )
 

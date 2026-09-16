@@ -5,10 +5,10 @@ C/C++ API
 =========
 
 The libopenmc shared library that is built when installing OpenMC exports a
-number of C interoperable functions and global variables that can be used for
-in-memory coupling. While it is possible to directly use the C/C++ API as
-documented here for coupling, most advanced users will find it easier to work
-with the Python bindings in the :py:mod:`openmc.lib` module.
+number of C interoperable functions that can be used for in-memory coupling.
+While it is possible to directly use the C/C++ API as documented here for
+coupling, most advanced users will find it easier to work with the Python
+bindings in the :py:mod:`openmc.lib` module.
 
 .. warning:: The C/C++ API is still experimental and may undergo substantial
              changes in future releases.
@@ -46,43 +46,20 @@ Type Definitions
 Functions
 ---------
 
-.. c:function:: int openmc_calculate_volumes()
+..
+   Once documentation is complete in capi.h, use:
+   .. doxygenfile:: capi.h
+   to populate this documentation without using
+   .. doxygenfunction::
+   for every function.
 
-   Run a stochastic volume calculation
+.. doxygenfunction:: openmc_calculate_volumes
 
-   :return: Return status (negative if an error occurred)
-   :rtype: int
+.. doxygenfunction:: openmc_cell_get_fill
 
-.. c:function:: int openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
+.. doxygenfunction:: openmc_cell_get_id
 
-   Get the fill for a cell
-
-   :param int32_t index: Index in the cells array
-   :param int* type: Type of the fill
-   :param int32_t** indices: Array of material indices for cell
-   :param int32_t* n: Length of indices array
-   :return: Return status (negative if an error occurred)
-   :rtype: int
-
-.. c:function:: int openmc_cell_get_id(int32_t index, int32_t* id)
-
-   Get the ID of a cell
-
-   :param int32_t index: Index in the cells array
-   :param int32_t* id: ID of the cell
-   :return: Return status (negative if an error occurred)
-   :rtype: int
-
-.. c:function:: int openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
-
-   Get the temperature of a cell
-
-   :param int32_t index: Index in the cells array
-   :param int32_t* instance: Which instance of the cell. If a null pointer is passed, the temperature
-                             of the first instance is returned.
-   :param double* T: temperature of the cell
-   :return: Return status (negative if an error occurred)
-   :rtype: int
+.. doxygenfunction:: openmc_cell_get_temperature
 
 .. c:function:: int openmc_cell_get_density(int32_t index, const int32_t* instance, double* density)
 
@@ -351,6 +328,8 @@ Functions
    :param int n: Number of temperatures
    :return: Return status (negative if an error occurs)
    :rtype: int
+
+.. doxygenfunction:: openmc_main
 
 .. c:function:: int openmc_material_add_nuclide(int32_t index, const char name[], double density)
 
@@ -887,6 +866,24 @@ Functions
    :param bool add_statepoint_batch: Whether to add `n_batches` to `settings::statepoint_batch`
    :return: Return status (negative if an error occurred)
    :rtype: int
+
+.. doxygenfunction:: openmc_setting_get_bool
+
+.. doxygenfunction:: openmc_setting_get_double
+
+.. doxygenfunction:: openmc_setting_get_int32
+
+.. doxygenfunction:: openmc_setting_get_int64
+
+.. doxygenfunction:: openmc_setting_get_string
+
+.. doxygenfunction:: openmc_setting_set_bool
+
+.. doxygenfunction:: openmc_setting_set_double
+
+.. doxygenfunction:: openmc_setting_set_int32
+
+.. doxygenfunction:: openmc_setting_set_int64
 
 .. c:function:: int openmc_simulation_finalize()
 

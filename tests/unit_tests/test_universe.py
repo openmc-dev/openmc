@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import h5py
 import lxml.etree as ET
 import numpy as np
 import openmc
@@ -188,6 +189,23 @@ def test_get_all_universes():
     assert not (univs ^ {u1, u2, u3})
 
 
+def test_dagmc_universe_from_hdf5_without_filename(run_in_tmpdir):
+    """A DAGMC universe built from an in-memory MOAB instance has no filename."""
+    with h5py.File('summary.h5', 'w') as f:
+        group = f.create_group('universe 1')
+        group['geom_type'] = np.bytes_('dagmc')
+        group.attrs['auto_geom_ids'] = 0
+        group.attrs['auto_mat_ids'] = 1
+        group.attrs['length_multiplier'] = 1.0
+
+        univ = openmc.DAGMCUniverse.from_hdf5(group)
+
+    assert univ.id == 1
+    assert univ.filename == Path()
+    assert not univ.auto_geom_ids
+    assert univ.auto_mat_ids
+
+
 def test_clone():
 
     c1 = openmc.Cell(cell_id=1)
@@ -222,21 +240,25 @@ def test_clone():
     dagmc_u.volume = 1.
     dagmc_u.auto_geom_ids = True
     dagmc_u.auto_mat_ids = True
+    dagmc_u.length_multiplier = 0.5
     dagmc_u1 = dagmc_u.clone()
     assert dagmc_u1.name == dagmc_u.name
     assert dagmc_u1.volume == dagmc_u.volume
     assert dagmc_u1.auto_geom_ids == dagmc_u.auto_geom_ids
     assert dagmc_u1.auto_mat_ids == dagmc_u.auto_mat_ids
+    assert dagmc_u1.length_multiplier == dagmc_u.length_multiplier
 
     # Change attributes, check the clone remained intact
     dagmc_u.name = "another name"
     dagmc_u.auto_geom_ids = False
     dagmc_u.auto_mat_ids = False
+    dagmc_u.length_multiplier = 2.0
     dagmc_u.volume = 2.
     assert dagmc_u1.name != dagmc_u.name
     assert dagmc_u1.volume != dagmc_u.volume
     assert dagmc_u1.auto_geom_ids != dagmc_u.auto_geom_ids
     assert dagmc_u1.auto_mat_ids != dagmc_u.auto_mat_ids
+    assert dagmc_u1.length_multiplier != dagmc_u.length_multiplier
 
 
 def test_create_xml(cell_with_lattice):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
-from numbers import Real
+from numbers import Integral, Real
 from pathlib import Path
 import warnings
 from typing import Any
@@ -46,7 +46,7 @@ class SourceBase(ABC):
 
     Attributes
     ----------
-    type : {'independent', 'file', 'compiled', 'mesh'}
+    type : {'independent', 'file', 'compiled', 'mesh', 'tokamak'}
         Indicator of source type.
     strength : float
         Strength of the source
@@ -203,6 +203,8 @@ class SourceBase(ABC):
                 return FileSource.from_xml_element(elem)
             elif source_type == 'mesh':
                 return MeshSource.from_xml_element(elem, meshes)
+            elif source_type == 'tokamak':
+                return TokamakSource.from_xml_element(elem)
             else:
                 raise ValueError(
                     f'Source type {source_type} is not recognized')
@@ -896,6 +898,430 @@ class FileSource(SourceBase):
         return cls(**kwargs)
 
 
+class TokamakSource(SourceBase):
+    r"""A source representing neutron emission from a tokamak plasma.
+
+    This source samples neutron positions from a tokamak plasma geometry using
+    Miller-style flux surface parameterization. The user provides an emission
+    profile S(r/a) as a function of normalized minor radius, along with one or
+    more energy distributions.
+
+    The flux surface parameterization is
+
+    .. math::
+
+        \begin{aligned}
+        R &= R_0 + r \cos\left(\alpha + \delta \sin\alpha\right)
+             + \Delta \left[1 - \left(\frac{r}{a}\right)^2\right] \\
+        Z &= Z_\mathrm{shift} + \kappa r \sin\alpha
+        \end{aligned}
+
+    where :math:`R_0` is major radius, :math:`a` is minor radius,
+    :math:`\kappa` is elongation, :math:`\delta` is triangularity,
+    :math:`\Delta` is the Shafranov shift, and :math:`Z_\mathrm{shift}` is
+    the vertical shift.
+
+    .. versionadded:: 0.16.0
+
+    Parameters
+    ----------
+    major_radius : float
+        Major radius R0 in [cm]
+    minor_radius : float
+        Minor radius a in [cm]
+    elongation : float
+        Plasma elongation κ (must be > 0)
+    triangularity : float
+        Plasma triangularity δ (must be in [-1, 1])
+    shafranov_shift : float
+        Shafranov shift Δ in [cm] (must be >= 0 and < a/2)
+    r_over_a : numpy.ndarray
+        Normalized minor radius grid points, must start at 0 and end at 1
+    emission_density : numpy.ndarray
+        Emission density S(r) at each r/a point (arbitrary units, must be >= 0).
+        Values are linearly interpolated between grid points and refined on an
+        internal grid for radial sampling. Must have the same length as
+        ``r_over_a`` and contain at least one positive value.
+    energy : openmc.stats.Univariate or Sequence[openmc.stats.Univariate]
+        Energy distribution(s). Either a single distribution used at all radii,
+        or one distribution per ``r_over_a`` grid point. When one distribution
+        per grid point is given, the energy of a sampled particle is drawn from
+        one of the two distributions bracketing its sampled radius, selected
+        stochastically with probability proportional to the proximity of the
+        radius to each grid point (stochastic interpolation).
+    time : openmc.stats.Univariate, optional
+        Time distribution of the source. If None, particles are born at
+        :math:`t=0`, matching the default behavior of
+        :class:`openmc.IndependentSource`.
+    phi_start : float
+        Starting toroidal angle in [rad] (default: 0)
+    phi_extent : float
+        Toroidal angle extent in [rad] (default: 2π)
+    n_alpha : int
+        Number of poloidal angle grid points for CDF sampling (default: 101)
+    vertical_shift : float
+        Vertical shift of the plasma center in [cm] (default: 0)
+    strength : float
+        Strength of the source (default: 1.0)
+    constraints : dict
+        Constraints on sampled source particles. See :class:`SourceBase` for
+        valid keys and values.
+
+    Attributes
+    ----------
+    major_radius : float
+        Major radius R0 in [cm]
+    minor_radius : float
+        Minor radius a in [cm]
+    elongation : float
+        Plasma elongation κ
+    triangularity : float
+        Plasma triangularity δ
+    shafranov_shift : float
+        Shafranov shift Δ in [cm]
+    r_over_a : numpy.ndarray
+        Normalized minor radius grid points
+    emission_density : numpy.ndarray
+        Emission density S(r) at each r/a point
+    energy : list of openmc.stats.Univariate
+        Energy distribution(s)
+    time : openmc.stats.Univariate or None
+        Time distribution of the source
+    phi_start : float
+        Starting toroidal angle in [rad]
+    phi_extent : float
+        Toroidal angle extent in [rad]
+    n_alpha : int
+        Number of poloidal angle grid points
+    vertical_shift : float
+        Vertical shift of the plasma center in [cm]
+    strength : float
+        Strength of the source
+    type : str
+        Indicator of source type: 'tokamak'
+    constraints : dict
+        Constraints on sampled source particles
+
+    """
+
+    def __init__(
+        self,
+        major_radius: float,
+        minor_radius: float,
+        elongation: float,
+        triangularity: float,
+        shafranov_shift: float,
+        r_over_a: Sequence[float],
+        emission_density: Sequence[float],
+        energy: Univariate | Sequence[Univariate],
+        time: Univariate | None = None,
+        phi_start: float = 0.0,
+        phi_extent: float = 2.0 * np.pi,
+        n_alpha: int = 101,
+        vertical_shift: float = 0.0,
+        strength: float = 1.0,
+        constraints: dict[str, Any] | None = None
+    ):
+        super().__init__(strength=strength, constraints=constraints)
+        self.major_radius = major_radius
+        self.minor_radius = minor_radius
+        self.elongation = elongation
+        self.triangularity = triangularity
+        self.shafranov_shift = shafranov_shift
+        self.r_over_a = r_over_a
+        self.emission_density = emission_density
+        self.phi_start = phi_start
+        self.phi_extent = phi_extent
+        self.n_alpha = n_alpha
+        self.vertical_shift = vertical_shift
+        self.energy = energy
+        self.time = time
+
+        self._validate()
+
+    def _validate(self):
+        """Validate relationships between tokamak source parameters."""
+        if self.minor_radius >= self.major_radius:
+            raise ValueError(
+                f"minor_radius ({self.minor_radius}) must be smaller than "
+                f"major_radius ({self.major_radius})")
+        if self.shafranov_shift >= 0.5 * self.minor_radius:
+            raise ValueError(
+                f"shafranov_shift ({self.shafranov_shift}) must be smaller "
+                f"than half the minor_radius ({0.5 * self.minor_radius})")
+        if len(self.emission_density) != len(self.r_over_a):
+            raise ValueError(
+                f"emission_density (length {len(self.emission_density)}) must "
+                f"have the same length as r_over_a (length {len(self.r_over_a)})")
+        if not np.any(self.emission_density > 0.0):
+            raise ValueError("emission_density must contain a positive value")
+        if len(self.energy) not in (1, len(self.r_over_a)):
+            raise ValueError(
+                f"Number of energy distributions ({len(self.energy)}) must be "
+                f"either 1 or equal to the number of r_over_a grid points "
+                f"({len(self.r_over_a)})")
+
+    @property
+    def type(self) -> str:
+        return "tokamak"
+
+    @property
+    def major_radius(self) -> float:
+        return self._major_radius
+
+    @major_radius.setter
+    def major_radius(self, value: float):
+        cv.check_type('major radius', value, Real)
+        cv.check_greater_than('major radius', value, 0.0)
+        self._major_radius = value
+
+    @property
+    def minor_radius(self) -> float:
+        return self._minor_radius
+
+    @minor_radius.setter
+    def minor_radius(self, value: float):
+        cv.check_type('minor radius', value, Real)
+        cv.check_greater_than('minor radius', value, 0.0)
+        self._minor_radius = value
+
+    @property
+    def elongation(self) -> float:
+        return self._elongation
+
+    @elongation.setter
+    def elongation(self, value: float):
+        cv.check_type('elongation', value, Real)
+        cv.check_greater_than('elongation', value, 0.0)
+        self._elongation = value
+
+    @property
+    def triangularity(self) -> float:
+        return self._triangularity
+
+    @triangularity.setter
+    def triangularity(self, value: float):
+        cv.check_type('triangularity', value, Real)
+        cv.check_greater_than('triangularity', value, -1.0, equality=True)
+        cv.check_less_than('triangularity', value, 1.0, equality=True)
+        self._triangularity = value
+
+    @property
+    def shafranov_shift(self) -> float:
+        return self._shafranov_shift
+
+    @shafranov_shift.setter
+    def shafranov_shift(self, value: float):
+        cv.check_type('Shafranov shift', value, Real)
+        cv.check_greater_than('Shafranov shift', value, 0.0, equality=True)
+        self._shafranov_shift = value
+
+    @property
+    def r_over_a(self) -> np.ndarray:
+        return self._r_over_a
+
+    @r_over_a.setter
+    def r_over_a(self, value: Sequence[float]):
+        value = np.asarray(value, dtype=float)
+        if value.ndim != 1 or len(value) < 2:
+            raise ValueError("r_over_a must be a 1-D array with at least 2 points")
+        if value[0] != 0.0:
+            raise ValueError("r_over_a must start at 0")
+        if value[-1] != 1.0:
+            raise ValueError("r_over_a must end at 1")
+        if not np.all(np.diff(value) > 0):
+            raise ValueError("r_over_a must be strictly increasing")
+        self._r_over_a = value
+
+    @property
+    def emission_density(self) -> np.ndarray:
+        return self._emission_density
+
+    @emission_density.setter
+    def emission_density(self, value: Sequence[float]):
+        value = np.asarray(value, dtype=float)
+        if value.ndim != 1:
+            raise ValueError("emission_density must be a 1-D array")
+        if np.any(value < 0):
+            raise ValueError("emission_density values cannot be negative")
+        self._emission_density = value
+
+    @property
+    def energy(self) -> list[Univariate]:
+        return self._energy
+
+    @energy.setter
+    def energy(self, value: Univariate | Sequence[Univariate]):
+        if isinstance(value, Univariate):
+            self._energy = [value]
+        else:
+            cv.check_iterable_type('energy distributions', value, Univariate)
+            self._energy = list(value)
+
+    @property
+    def time(self) -> Univariate | None:
+        return self._time
+
+    @time.setter
+    def time(self, value: Univariate | None):
+        if value is not None:
+            cv.check_type('time distribution', value, Univariate)
+        self._time = value
+
+    @property
+    def phi_start(self) -> float:
+        return self._phi_start
+
+    @phi_start.setter
+    def phi_start(self, value: float):
+        cv.check_type('phi_start', value, Real)
+        self._phi_start = value
+
+    @property
+    def phi_extent(self) -> float:
+        return self._phi_extent
+
+    @phi_extent.setter
+    def phi_extent(self, value: float):
+        cv.check_type('phi_extent', value, Real)
+        cv.check_greater_than('phi_extent', value, 0.0)
+        cv.check_less_than('phi_extent', value, 2.0 * np.pi, equality=True)
+        self._phi_extent = value
+
+    @property
+    def n_alpha(self) -> int:
+        return self._n_alpha
+
+    @n_alpha.setter
+    def n_alpha(self, value: int):
+        cv.check_type('n_alpha', value, Integral)
+        cv.check_greater_than('n_alpha', value, 2)
+        if value < 51:
+            warnings.warn(
+                "n_alpha values below 51 may introduce noticeable "
+                "discretization bias in tokamak source sampling", stacklevel=2)
+        self._n_alpha = value
+
+    @property
+    def vertical_shift(self) -> float:
+        return self._vertical_shift
+
+    @vertical_shift.setter
+    def vertical_shift(self, value: float):
+        cv.check_type('vertical shift', value, Real)
+        self._vertical_shift = value
+
+    def populate_xml_element(self, element):
+        """Add necessary tokamak source information to an XML element
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
+        self._validate()
+
+        # Geometry parameters
+        ET.SubElement(element, "major_radius").text = str(self.major_radius)
+        ET.SubElement(element, "minor_radius").text = str(self.minor_radius)
+        ET.SubElement(element, "elongation").text = str(self.elongation)
+        ET.SubElement(element, "triangularity").text = str(self.triangularity)
+        ET.SubElement(element, "shafranov_shift").text = str(self.shafranov_shift)
+
+        # Toroidal angle bounds
+        ET.SubElement(element, "phi_start").text = str(self.phi_start)
+        ET.SubElement(element, "phi_extent").text = str(self.phi_extent)
+
+        # Poloidal sampling resolution
+        ET.SubElement(element, "n_alpha").text = str(self.n_alpha)
+
+        # Vertical shift
+        if self.vertical_shift != 0.0:
+            ET.SubElement(element, "vertical_shift").text = str(self.vertical_shift)
+
+        # Emission profile
+        ET.SubElement(element, "r_over_a").text = ' '.join(str(r) for r in self.r_over_a)
+        ET.SubElement(element, "emission_density").text = ' '.join(str(s) for s in self.emission_density)
+
+        # Energy distribution(s)
+        for dist in self.energy:
+            element.append(dist.to_xml_element('energy'))
+
+        # Time distribution
+        if self.time is not None:
+            element.append(self.time.to_xml_element('time'))
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element) -> TokamakSource:
+        """Generate tokamak source from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.TokamakSource
+            Source generated from XML element
+
+        """
+        # Read geometry parameters
+        major_radius = float(get_text(elem, 'major_radius'))
+        minor_radius = float(get_text(elem, 'minor_radius'))
+        elongation = float(get_text(elem, 'elongation'))
+        triangularity = float(get_text(elem, 'triangularity'))
+        shafranov_shift = float(get_text(elem, 'shafranov_shift'))
+
+        # Read optional parameters
+        phi_start_text = get_text(elem, 'phi_start')
+        phi_start = float(phi_start_text) if phi_start_text else 0.0
+
+        phi_extent_text = get_text(elem, 'phi_extent')
+        phi_extent = float(phi_extent_text) if phi_extent_text else 2.0 * np.pi
+
+        n_alpha_text = get_text(elem, 'n_alpha')
+        n_alpha = int(n_alpha_text) if n_alpha_text else 101
+
+        vertical_shift_text = get_text(elem, 'vertical_shift')
+        vertical_shift = float(vertical_shift_text) if vertical_shift_text else 0.0
+
+        # Read emission profile
+        r_over_a = np.array([float(x) for x in get_text(elem, 'r_over_a').split()])
+        emission_density = np.array([float(x) for x in get_text(elem, 'emission_density').split()])
+
+        # Read energy distributions
+        energy = [Univariate.from_xml_element(e) for e in elem.findall('energy')]
+        if len(energy) == 1:
+            energy = energy[0]
+
+        # Read time distribution
+        time_elem = elem.find('time')
+        time = Univariate.from_xml_element(time_elem) if time_elem is not None else None
+
+        # Read constraints and strength
+        constraints = cls._get_constraints(elem)
+        strength_text = get_text(elem, 'strength')
+        strength = float(strength_text) if strength_text else 1.0
+
+        return cls(
+            major_radius=major_radius,
+            minor_radius=minor_radius,
+            elongation=elongation,
+            triangularity=triangularity,
+            shafranov_shift=shafranov_shift,
+            r_over_a=r_over_a,
+            emission_density=emission_density,
+            energy=energy,
+            time=time,
+            phi_start=phi_start,
+            phi_extent=phi_extent,
+            n_alpha=n_alpha,
+            vertical_shift=vertical_shift,
+            strength=strength,
+            constraints=constraints
+        )
 
 
 class SourceParticle:

@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import h5py
 import lxml.etree as ET
 import numpy as np
 import openmc
@@ -45,6 +48,12 @@ def test_bounding_box():
 
     u = openmc.Universe()
     assert_unbounded(u)
+
+
+def test_id():
+    openmc.Universe(universe_id=0)
+    with pytest.raises(ValueError):
+        openmc.Universe(universe_id=-1)
 
 
 def test_plot(run_in_tmpdir, sphere_model):
@@ -104,6 +113,43 @@ def test_plot(run_in_tmpdir, sphere_model):
     plt.close('all')
 
 
+def test_mg_plot(run_in_tmpdir):
+    # Create a simple universe with macroscopic data
+    h2o_data = openmc.Macroscopic('LWTR')
+    water = openmc.Material(name='Water')
+    water.set_density('macro', 1.0)
+    water.add_macroscopic(h2o_data)
+    sph = openmc.Sphere(r=10, boundary_type="vacuum")
+    cell = openmc.Cell(region=-sph, fill=water)
+    univ = openmc.Universe(cells=[cell])
+
+    # Create MGXS library and export to HDF5
+    groups = openmc.mgxs.EnergyGroups([1e-5, 20.0e6])
+    h2o_xsdata = openmc.XSdata('LWTR', groups)
+    h2o_xsdata.order = 0
+    h2o_xsdata.set_total([1.0])
+    h2o_xsdata.set_absorption([0.5])
+    scatter_matrix = np.array([[[0.5]]])
+    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
+    h2o_xsdata.set_scatter_matrix(scatter_matrix)
+    mg_library = openmc.MGXSLibrary(groups)
+    mg_library.add_xsdatas([h2o_xsdata])
+    mgxs_path = Path.cwd() / 'mgxs.h5'
+    mg_library.export_to_hdf5(mgxs_path)
+
+    # Set MG cross sections in config and plot
+    with openmc.config.patch('mg_cross_sections', mgxs_path):
+        univ.plot(width=(200, 200), basis='yz', color_by='cell')
+        univ.plot(width=(200, 200), basis='yz', color_by='material')
+
+    with pytest.raises(RuntimeError):
+        univ.plot(width=(200, 200), basis='yz', color_by='cell')
+
+    # Close plots to avoid warning
+    import matplotlib.pyplot as plt
+    plt.close('all')
+
+
 def test_get_nuclides(uo2):
     c = openmc.Cell(fill=uo2)
     univ = openmc.Universe(cells=[c])
@@ -143,6 +189,23 @@ def test_get_all_universes():
     assert not (univs ^ {u1, u2, u3})
 
 
+def test_dagmc_universe_from_hdf5_without_filename(run_in_tmpdir):
+    """A DAGMC universe built from an in-memory MOAB instance has no filename."""
+    with h5py.File('summary.h5', 'w') as f:
+        group = f.create_group('universe 1')
+        group['geom_type'] = np.bytes_('dagmc')
+        group.attrs['auto_geom_ids'] = 0
+        group.attrs['auto_mat_ids'] = 1
+        group.attrs['length_multiplier'] = 1.0
+
+        univ = openmc.DAGMCUniverse.from_hdf5(group)
+
+    assert univ.id == 1
+    assert univ.filename == Path()
+    assert not univ.auto_geom_ids
+    assert univ.auto_mat_ids
+
+
 def test_clone():
 
     c1 = openmc.Cell(cell_id=1)
@@ -177,21 +240,25 @@ def test_clone():
     dagmc_u.volume = 1.
     dagmc_u.auto_geom_ids = True
     dagmc_u.auto_mat_ids = True
+    dagmc_u.length_multiplier = 0.5
     dagmc_u1 = dagmc_u.clone()
     assert dagmc_u1.name == dagmc_u.name
     assert dagmc_u1.volume == dagmc_u.volume
     assert dagmc_u1.auto_geom_ids == dagmc_u.auto_geom_ids
     assert dagmc_u1.auto_mat_ids == dagmc_u.auto_mat_ids
+    assert dagmc_u1.length_multiplier == dagmc_u.length_multiplier
 
     # Change attributes, check the clone remained intact
     dagmc_u.name = "another name"
     dagmc_u.auto_geom_ids = False
     dagmc_u.auto_mat_ids = False
+    dagmc_u.length_multiplier = 2.0
     dagmc_u.volume = 2.
     assert dagmc_u1.name != dagmc_u.name
     assert dagmc_u1.volume != dagmc_u.volume
     assert dagmc_u1.auto_geom_ids != dagmc_u.auto_geom_ids
     assert dagmc_u1.auto_mat_ids != dagmc_u.auto_mat_ids
+    assert dagmc_u1.length_multiplier != dagmc_u.length_multiplier
 
 
 def test_create_xml(cell_with_lattice):

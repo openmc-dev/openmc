@@ -9,6 +9,7 @@
 #include <fmt/core.h>
 
 #include "openmc/array.h"
+#include "openmc/cell.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/external/quartic_solver.h"
@@ -251,9 +252,9 @@ void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceXPlane::bounding_box(bool pos_side) const
 {
   if (pos_side) {
-    return {x0_, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+    return {{x0_, -INFTY, -INFTY}, {INFTY, INFTY, INFTY}};
   } else {
-    return {-INFTY, x0_, -INFTY, INFTY, -INFTY, INFTY};
+    return {{-INFTY, -INFTY, -INFTY}, {x0_, INFTY, INFTY}};
   }
 }
 
@@ -301,9 +302,9 @@ void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceYPlane::bounding_box(bool pos_side) const
 {
   if (pos_side) {
-    return {-INFTY, INFTY, y0_, INFTY, -INFTY, INFTY};
+    return {{-INFTY, y0_, -INFTY}, {INFTY, INFTY, INFTY}};
   } else {
-    return {-INFTY, INFTY, -INFTY, y0_, -INFTY, INFTY};
+    return {{-INFTY, -INFTY, -INFTY}, {INFTY, y0_, INFTY}};
   }
 }
 
@@ -345,9 +346,9 @@ void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceZPlane::bounding_box(bool pos_side) const
 {
   if (pos_side) {
-    return {-INFTY, INFTY, -INFTY, INFTY, z0_, INFTY};
+    return {{-INFTY, -INFTY, z0_}, {INFTY, INFTY, INFTY}};
   } else {
-    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, z0_};
+    return {{-INFTY, -INFTY, -INFTY}, {INFTY, INFTY, z0_}};
   }
 }
 
@@ -368,6 +369,50 @@ SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : Surface(surf_node)
 double SurfacePlane::evaluate(Position r) const
 {
   return A_ * r.x + B_ * r.y + C_ * r.z - D_;
+}
+
+BoundingBox SurfacePlane::bounding_box(bool pos_side) const
+{
+  // A general plane bounds a half-space in one direction only when its normal
+  // is parallel to a coordinate axis; otherwise both half-spaces are unbounded
+  // along every axis. This mirrors PlaneMixin.bounding_box on the Python side,
+  // so that a plane whose off-axis coefficients are rotation-matrix roundoff
+  // (e.g. B = 1 with A = C = 6.1e-17) yields the same box through both APIs.
+  const Direction n = normal({});
+  const double norm = n.norm();
+  if (norm == 0.0)
+    return {};
+
+  int axis = -1;
+  for (int i = 0; i < 3; ++i) {
+    if (std::abs(std::abs(n[i] / norm) - 1.0) > PLANE_ALIGNMENT_TOL)
+      continue;
+
+    bool aligned = true;
+    for (int j = 0; j < 3; ++j) {
+      if (j != i && std::abs(n[j] / norm) > PLANE_ALIGNMENT_TOL) {
+        aligned = false;
+        break;
+      }
+    }
+    if (aligned) {
+      axis = i;
+      break;
+    }
+  }
+  if (axis == -1)
+    return {};
+
+  // The half-space is bounded below when the outward normal points along the
+  // positive axis direction and we are on the positive side, or vice versa.
+  BoundingBox bbox;
+  const double intercept = D_ / n[axis];
+  if (pos_side == (n[axis] > 0.0)) {
+    bbox.min[axis] = intercept;
+  } else {
+    bbox.max[axis] = intercept;
+  }
+  return bbox;
 }
 
 double SurfacePlane::distance(Position r, Direction u, bool coincident) const
@@ -517,8 +562,8 @@ void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const
 {
   if (!pos_side) {
-    return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_,
-      z0_ + radius_};
+    return {{-INFTY, y0_ - radius_, z0_ - radius_},
+      {INFTY, y0_ + radius_, z0_ + radius_}};
   } else {
     return {};
   }
@@ -566,8 +611,8 @@ void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const
 {
   if (!pos_side) {
-    return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_,
-      z0_ + radius_};
+    return {{x0_ - radius_, -INFTY, z0_ - radius_},
+      {x0_ + radius_, INFTY, z0_ + radius_}};
   } else {
     return {};
   }
@@ -616,8 +661,8 @@ void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const
 {
   if (!pos_side) {
-    return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY,
-      INFTY};
+    return {{x0_ - radius_, y0_ - radius_, -INFTY},
+      {x0_ + radius_, y0_ + radius_, INFTY}};
   } else {
     return {};
   }
@@ -694,8 +739,8 @@ void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceSphere::bounding_box(bool pos_side) const
 {
   if (!pos_side) {
-    return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_,
-      z0_ - radius_, z0_ + radius_};
+    return {{x0_ - radius_, y0_ - radius_, z0_ - radius_},
+      {x0_ + radius_, y0_ + radius_, z0_ + radius_}};
   } else {
     return {};
   }
@@ -1154,6 +1199,17 @@ double SurfaceXTorus::evaluate(Position r) const
          std::pow(std::sqrt(y * y + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
+BoundingBox SurfaceXTorus::bounding_box(bool pos_side) const
+{
+  // The torus interior is compact: it extends +/-B_ along the axis of
+  // revolution and +/-(A_ + C_) in the two perpendicular directions. Mirrors
+  // XTorus.bounding_box on the Python side.
+  if (pos_side)
+    return {};
+  return {{x0_ - B_, y0_ - A_ - C_, z0_ - A_ - C_},
+    {x0_ + B_, y0_ + A_ + C_, z0_ + A_ + C_}};
+}
+
 double SurfaceXTorus::distance(Position r, Direction u, bool coincident) const
 {
   double x = r.x - x0_;
@@ -1209,6 +1265,14 @@ double SurfaceYTorus::evaluate(Position r) const
   double z = r.z - z0_;
   return (y * y) / (B_ * B_) +
          std::pow(std::sqrt(x * x + z * z) - A_, 2) / (C_ * C_) - 1.;
+}
+
+BoundingBox SurfaceYTorus::bounding_box(bool pos_side) const
+{
+  if (pos_side)
+    return {};
+  return {{x0_ - A_ - C_, y0_ - B_, z0_ - A_ - C_},
+    {x0_ + A_ + C_, y0_ + B_, z0_ + A_ + C_}};
 }
 
 double SurfaceYTorus::distance(Position r, Direction u, bool coincident) const
@@ -1269,6 +1333,14 @@ double SurfaceZTorus::evaluate(Position r) const
          std::pow(std::sqrt(x * x + y * y) - A_, 2) / (C_ * C_) - 1.;
 }
 
+BoundingBox SurfaceZTorus::bounding_box(bool pos_side) const
+{
+  if (pos_side)
+    return {};
+  return {{x0_ - A_ - C_, y0_ - A_ - C_, z0_ - B_},
+    {x0_ + A_ + C_, y0_ + A_ + C_, z0_ + B_}};
+}
+
 double SurfaceZTorus::distance(Position r, Direction u, bool coincident) const
 {
   double x = r.x - x0_;
@@ -1299,7 +1371,10 @@ Direction SurfaceZTorus::normal(Position r) const
 
 //==============================================================================
 
-void read_surfaces(pugi::xml_node node)
+void read_surfaces(pugi::xml_node node,
+  std::set<std::pair<int, int>>& periodic_pairs,
+  std::unordered_map<int, double>& albedo_map,
+  std::unordered_map<int, int>& periodic_sense_map)
 {
   // Count the number of surfaces
   int n_surfaces = 0;
@@ -1310,8 +1385,6 @@ void read_surfaces(pugi::xml_node node)
   // Loop over XML surface elements and populate the array.  Keep track of
   // periodic surfaces and their albedos.
   model::surfaces.reserve(n_surfaces);
-  std::set<std::pair<int, int>> periodic_pairs;
-  std::unordered_map<int, double> albedo_map;
   {
     pugi::xml_node surf_node;
     int i_surf;
@@ -1374,6 +1447,7 @@ void read_surfaces(pugi::xml_node node)
       if (check_for_node(surf_node, "boundary")) {
         std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
         if (surf_bc == "periodic") {
+          periodic_sense_map[model::surfaces.back()->id_] = 0;
           // Check for surface albedo. Skip sanity check as it is already done
           // in the Surface class's constructor.
           if (check_for_node(surf_node, "albedo")) {
@@ -1403,6 +1477,28 @@ void read_surfaces(pugi::xml_node node)
     } else {
       fatal_error(
         fmt::format("Two or more surfaces use the same unique ID: {}", id));
+    }
+  }
+}
+
+void prepare_boundary_conditions(std::set<std::pair<int, int>>& periodic_pairs,
+  std::unordered_map<int, double>& albedo_map,
+  std::unordered_map<int, int>& periodic_sense_map)
+{
+  // Fill the senses map for periodic surfaces
+  auto n_periodic = periodic_sense_map.size();
+  for (const auto& cell : model::cells) {
+    if (n_periodic == 0)
+      break; // Early exit once all periodic surfaces found
+
+    for (auto s : cell->surfaces()) {
+      auto surf_idx = std::abs(s) - 1;
+      auto id = model::surfaces[surf_idx]->id_;
+
+      if (periodic_sense_map.count(id)) {
+        periodic_sense_map[id] = std::copysign(1, s);
+        --n_periodic;
+      }
     }
   }
 
@@ -1462,7 +1558,7 @@ void read_surfaces(pugi::xml_node node)
     // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
       surf1.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = make_unique<TranslationalPeriodicBC>(j_surf, i_surf);
     } else {
       // check that both normals have at least one 0 component
       if (std::abs(norm1.x) > FP_PRECISION &&
@@ -1500,8 +1596,12 @@ void read_surfaces(pugi::xml_node node)
           "indicates that the two planes are not periodic about the X, Y, or Z "
           "axis, which is not supported."));
       }
-      surf1.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf, axis);
-      surf2.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf, axis);
+      auto i_sign = periodic_sense_map[periodic_pair.first];
+      auto j_sign = periodic_sense_map[periodic_pair.second];
+      surf1.bc_ = make_unique<RotationalPeriodicBC>(
+        i_sign * (i_surf + 1), j_sign * (j_surf + 1), axis);
+      surf2.bc_ = make_unique<RotationalPeriodicBC>(
+        j_sign * (j_surf + 1), i_sign * (i_surf + 1), axis);
     }
 
     // If albedo data is present in albedo map, set the boundary albedo.

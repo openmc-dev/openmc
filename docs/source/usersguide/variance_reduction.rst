@@ -4,24 +4,27 @@
 Variance Reduction
 ==================
 
-Global variance reduction in OpenMC is accomplished by weight windowing
-techniques. OpenMC is capable of generating weight windows using either the
-MAGIC or FW-CADIS methods. Both techniques will produce a ``weight_windows.h5``
-file that can be loaded and used later on. In this section, we break down the
-steps required to both generate and then apply weight windows.
+Global and local variance reduction are possible in OpenMC through both weight 
+windowing and source biasing techniques. OpenMC is capable of generating weight
+windows using either the MAGIC or FW-CADIS methods, the latter with an optional
+capability for local variance reduction. Both techniques will produce a
+``weight_windows.h5`` file that can be loaded and used later on. In
+this section, we first break down the steps required to generate and apply
+weight windows, then describe how source biasing may be applied.
 
 .. _ww_generator:
 
-------------------------------------
-Generating Weight Windows with MAGIC
-------------------------------------
+-------------------------------------------
+Generating Global Weight Windows with MAGIC
+-------------------------------------------
 
 As discussed in the :ref:`methods section <methods_variance_reduction>`, MAGIC
 is an iterative method that uses flux tally information from a Monte Carlo
-simulation to produce weight windows for a user-defined mesh. While generating
-the weight windows, OpenMC is capable of applying the weight windows generated
-from a previous batch while processing the next batch, allowing for progressive
-improvement in the weight window quality across iterations.
+simulation to produce weight windows for a user-defined mesh with the objective 
+of global variance reduction. While generating the weight windows, OpenMC is 
+capable of applying the weight windows generated from a previous batch while 
+processing the next batch, allowing for progressive improvement in the weight 
+window quality across iterations.
 
 The typical way of generating weight windows is to define a mesh and then add an
 :class:`openmc.WeightWindowGenerator` object to an :attr:`openmc.Settings`
@@ -69,15 +72,20 @@ At the end of the simulation, a ``weight_windows.h5`` file will be saved to disk
 for later use. Loading it in another subsequent simulation will be discussed in
 the "Using Weight Windows" section below.
 
-------------------------------------------------------
-Generating Weight Windows with FW-CADIS and Random Ray
-------------------------------------------------------
+.. _usersguide_fw_cadis:
+
+----------------------------------------------------------------------
+Generating Global or Local Weight Windows with FW-CADIS and Random Ray
+----------------------------------------------------------------------
 
 Weight window generation with FW-CADIS and random ray in OpenMC uses the same
-exact strategy as with MAGIC. An :class:`openmc.WeightWindowGenerator` object is
-added to the :attr:`openmc.Settings` object, and a ``weight_windows.h5`` will be
-generated at the end of the simulation. The only difference is that the code
-must be run in random ray mode. A full description of how to enable and setup
+exact strategy as with MAGIC. Using FW-CADIS, however, also enables 
+local variance reduction in fixed source problems through the :attr:`targets` 
+attribute, which is described later in this section. To enable FW-CADIS, an 
+:class:`openmc.WeightWindowGenerator` object is added to the 
+:attr:`openmc.Settings` object, and a ``weight_windows.h5`` will be generated 
+at the end of the simulation. The only procedural difference is that the code 
+must be run in random ray mode. A full description of how to enable and setup 
 random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
 
 .. note::
@@ -88,7 +96,7 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
     ray solver. A high level overview of the current workflow for generation of
     weight windows with FW-CADIS using random ray is given below.
 
-1. Begin by making a deepy copy of your continuous energy Python model and then
+1. Begin by making a deep copy of your continuous energy Python model and then
    convert the copy to be multigroup and use the random ray transport solver.
    The conversion process can largely be automated as described in more detail
    in the :ref:`random ray quick start guide <quick_start>`, summarized below::
@@ -146,7 +154,53 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
     assigning to ``model.settings.random_ray['source_region_meshes']``) and for
     weight window generation.
 
-3. When running your multigroup random ray input deck, OpenMC will automatically
+3. (Optional) If local variance reduction is desired in a fixed-source problem,  
+   populate the :attr:`targets` attribute with an :class:`openmc.Tallies` 
+   instance or an iterable of tally IDs indicating the tallies of interest for 
+   variance reduction::
+
+    # Build a new example and WWG for local variance reduction
+    from openmc.examples import random_ray_three_region_cube_with_detectors
+    new_model = random_ray_three_region_cube_with_detectors()
+
+    ww_mesh = openmc.RegularMesh()
+    n = 7
+    width = 35.0
+    ww_mesh.dimension = (n, n, n)
+    ww_mesh.lower_left = (0.0, 0.0, 0.0)
+    ww_mesh.upper_right = (width, width, width)
+
+    wwg = openmc.WeightWindowGenerator(
+        method="fw_cadis", 
+        mesh=ww_mesh, 
+        max_realizations=new_model.settings.batches
+    )
+    new_model.settings.weight_window_generators = wwg
+    new_model.settings.random_ray['volume_estimator'] = 'naive'
+
+    # Get the tallies of interest
+    target_tallies = openmc.Tallies()
+
+    for tally in list(new_model.tallies):
+        if tally.name in {"Detector 1 Tally", "Detector 2 Tally"}:
+            target_tallies.append(tally)
+    
+    # Add to WeightWindowGenerator
+    wwg.targets = target_tallies
+
+.. warning::
+    The tallies designated as FW-CADIS targets to the 
+    :class:`~openmc.WeightWindowGenerator` must be present under the
+    :class:`~openmc.model.Model.tallies` attribute of the 
+    :class:`~openmc.model.Model` as well in order to be recognized as valid 
+    local variance reduction targets. This check is performed when the 
+    :func:`openmc.model.Model.export_to_model_xml` or 
+    :func:`openmc.model.Model.export_to_xml` functions are called, meaning 
+    that the standalone :func:`openmc.Settings.export_to_xml` and 
+    :func:`openmc.Tallies.export_to_xml` methods should not be used with 
+    FW-CADIS local variance reduction.
+
+4. When running your multigroup random ray input deck, OpenMC will automatically
    run a forward solve followed by an adjoint solve, with a
    ``weight_windows.h5`` file generated at the end. The ``weight_windows.h5``
    file will contain FW-CADIS generated weight windows. This file can be used in
@@ -172,3 +226,148 @@ Weight window mesh information is embedded into the weight window file, so the
 mesh does not need to be redefined. Monte Carlo solves that load a weight window
 file as above will utilize weight windows to reduce the variance of the
 simulation.
+
+.. _source_biasing:
+
+--------------
+Source Biasing
+--------------
+
+In fixed source problems, source biasing provides a means to reduce the variance
+on global or localized responses, depending on the biasing scheme. In either
+case, the premise of the method is to sample source sites from a biased
+distribution that directs a larger fraction of the simulated histories towards
+phase space regions of interest than would be found there under analog sampling.
+In order to preserve an unbiased estimate of the tally mean, the weight of these
+with analog sampling, divided by the probability assigned by the biased
+distribution. While the assignment of statistical weights is outlined in the
+:ref:`methods section <methods_source_biasing>`, this section demonstrates the
+implementation of source biasing to problems in OpenMC.
+
+Source biasing in OpenMC is accomplished by applying a distribution to the
+:attr:`bias` attribute of one or more of the univariate or independent
+multivariate distributions which make up an :class:`~openmc.IndependentSource`
+instance as follows::
+
+    # First create the biased distribution
+    biased_dist = openmc.stats.PowerLaw(a=0, b=3, n=3)
+
+    # Construct a new distribution with the bias applied
+    dist = openmc.stats.PowerLaw(a=0, b=3, n=2, bias=biased_dist)
+
+    # The bias attribute can also be set on an existing "analog" distribution:
+    sphere_dist = openmc.stats.spherical_uniform(r_outer=3)
+    sphere_dist.r.bias = biased_dist
+
+Univariate distributions may be sampled via the Python API, returning the
+sample(s) along with the associated weight(s)::
+
+    sample_vec, wgt_vec = dist.sample(n_samples=100)
+
+Here, if the distribution is unbiased, the weight of each sample will be unity.
+Finally, :class:`~openmc.IndependentSource` instances can be constructed with
+biased distributions::
+
+    # Create a source with a biased spatial distribution
+    source = openmc.IndependentSource(space=sphere_dist)
+
+During the simulation, source sites are then sampled using the biased
+distributions where available and given starting statistical weights
+corresponding to the cumulative product of the weights assigned by each
+distribution in the source object. Hence multiple source variables (e.g.,
+direction and energy) may be biased and the resulting source sites will have
+their weights adjusted accordingly.
+
+.. note::
+    Combining source biasing with weight windows can be a powerful variance
+    reduction technique if each is constructed appropriately for the response
+    of interest. For example, if a source biasing scheme is devised for
+    variance reduction of a specific localized response, the user may be able
+    to specify their own weight window structure that results in more efficient
+    transport than if weight windows were generated by either of OpenMC's
+    automatic weight window generators, which are intended for global variance
+    reduction.
+
+Biased distributions that could result in degenerate weight mappings are not
+recommended; this is most commonly seen when biasing the :math:`\phi`-coordinate
+of spherical or cylindrical independent multivariate distributions. In such
+cases degenerate behavior will be observed at the pole about which :math:`\phi`
+is measured, with all values of :math:`\phi` (hence many possible statistical
+weights) mapping to the same point for :math:`r=0` or :math:`\mu=0`, and large
+weight gradients in the vicinity. In most cases requiring a spherical
+independent source, it would be preferable to reorient the reference vector of
+the distribution such that biasing could be applied to the
+:math:`\mu`-coordinate instead.
+
+When biasing a distribution, care should also be taken to ensure that both the
+unbiased and biased distribution share a common support---that is, every region
+of phase space mapped to a nonzero probability density by the unbiased
+distribution should likewise map to nonzero probability under the biased
+distribution, and vice versa. In OpenMC, this places restrictions on the set of
+compatible distributions that may be used to bias sampling of each distribution
+type. The following table summarizes the method for each distribution in OpenMC
+that permits biased sampling.
+
+.. list-table:: **Distributions that support biased sampling**
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Discrete Univariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.Discrete`
+     - Apply a vector of alternative probabilities to the :attr:`bias`
+       attribute
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Continuous Univariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.Uniform`,
+       :class:`openmc.stats.PowerLaw`,
+       :class:`openmc.stats.Maxwell`,
+       :class:`openmc.stats.Watt`,
+       :class:`openmc.stats.Normal`,
+       :class:`openmc.stats.Tabular`
+     - Apply a second, unbiased continous univariate PDF to the :attr:`bias`
+       attribute, ensuring that the :attr:`support` attribute of each
+       distribution is the same
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Mixed Univariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.Mixture`
+     - May be constructed from multiple biased univariate distributions, or a
+       second, unbiased continous univariate PDF may be applied to the
+       :attr:`bias` attribute
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Discrete Multivariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.PointCloud`,
+       :class:`openmc.stats.MeshSpatial`
+     - Apply a vector of the new relative probabilities of each point or mesh
+       element under biased sampling to the :attr:`bias` attribute
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Continuous Multivariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.CartesianIndependent`,
+       :class:`openmc.stats.CylindricalIndependent`,
+       :class:`openmc.stats.SphericalIndependent`,
+       :class:`openmc.stats.PolarAzimuthal`
+     - Construct from biased univariate distributions for :attr:`x`, :attr:`y`,
+       :attr:`z`, etc.
+   * - :class:`openmc.stats.Isotropic`
+     - Apply an unbiased :class:`openmc.stats.PolarAzimuthal` to the
+       :attr:`bias` attribute

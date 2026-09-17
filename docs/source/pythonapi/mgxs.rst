@@ -11,6 +11,16 @@ Module Variables
 .. autodata:: openmc.mgxs.GROUP_STRUCTURES
     :annotation:
 
+Functions 
++++++++++
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myfunction.rst
+
+    openmc.mgxs.convert_flux_groups
+
 Classes
 +++++++
 

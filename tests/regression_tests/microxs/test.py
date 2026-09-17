@@ -34,6 +34,7 @@ def model():
     [
         ("materials", "direct"),
         ("materials", "flux"),
+        ("materials", "hybrid"),
         ("mesh", "direct"),
         ("mesh", "flux"),
     ]
@@ -49,12 +50,21 @@ def test_from_model(model, domain_type, rr_mode):
         domains = mesh
     nuclides = ['U235', 'O16', 'Xe135']
     kwargs = {
-        'reaction_rate_mode': rr_mode,
         'chain_file': CHAIN_FILE,
         'path_statepoint': 'neutron_transport.h5',
     }
     if rr_mode == 'flux':
+        kwargs['reaction_rate_mode'] = 'flux'
         kwargs['energies'] = 'CASMO-40'
+    elif rr_mode == 'hybrid':
+        kwargs['reaction_rate_mode'] = 'flux'
+        kwargs['energies'] = 'CASMO-40'
+        kwargs['reaction_rate_opts'] = {
+            'nuclides': ['U235'],
+            'reactions': ['fission'],
+        }
+    else:
+        kwargs['reaction_rate_mode'] = rr_mode
     _, test_xs = get_microxs_and_flux(model, domains, nuclides, **kwargs)
     if config['update']:
         test_xs[0].to_csv(f'test_reference_{domain_type}_{rr_mode}.csv')

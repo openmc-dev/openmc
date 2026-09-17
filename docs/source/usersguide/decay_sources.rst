@@ -131,15 +131,34 @@ can be run::
 
     r2s.run(timesteps, source_rates, bounding_boxes=bounding_boxes)
 
+Neutron tally results from the transport step are available in the
+``r2s.results['neutron_tallies']`` list, in the same order as the tallies on
+``r2s.neutron_model``. Photon tally results remain available through
+``r2s.results['photon_tallies']``.
+
 If not specified otherwise, a photon transport calculation is run at each time
-in the depletion schedule. That means in the case above, we would see three
-photon transport calculations. To specify specific times at which photon
+in the depletion schedule for which a decay photon source exists. Times without
+a decay photon source, such as the initial state of a model containing only
+stable nuclides, are omitted. To specify particular times at which photon
 transport calculations should be run, pass the ``photon_time_indices`` argument.
 For example, if we wanted to run a photon transport calculation only on the last
 time (after the 5 hour decay), we would run::
 
     r2s.run(timesteps, source_rates, bounding_boxes=bounding_boxes,
             photon_time_indices=[2])
+
+To attribute photon tally results to their parent radionuclides, set
+``by_parent_nuclide=True``. This automatically adds a
+:class:`openmc.ParentNuclideFilter` to every photon tally that does not already
+have one. The filter bins are the union of radionuclides contributing to the
+prepared decay photon sources. The resulting bins can be used directly when
+inspecting the tally results::
+
+    r2s.run(timesteps, source_rates, bounding_boxes=bounding_boxes,
+            photon_time_indices=[2], by_parent_nuclide=True)
+
+    photon_tally = r2s.results['photon_tallies'][2][0]
+    tally_by_parent = photon_tally.get_pandas_dataframe()
 
 After an R2S calculation has been run, the :class:`~openmc.deplete.R2SManager`
 instance will have a ``results`` dictionary that allows you to directly access
@@ -148,12 +167,13 @@ a directory that is named "r2s_<timestamp>/". The ``output_dir`` argument to the
 :meth:`~openmc.deplete.R2SManager.run` method enables you to override the
 default output directory name if desired.
 
-The :meth:`~openmc.deplete.R2SManager.run` method actually runs three
+The :meth:`~openmc.deplete.R2SManager.run` method actually runs four
 lower-level methods under the hood::
 
     r2s.step1_neutron_transport(...)
     r2s.step2_activation(...)
-    r2s.step3_photon_transport(...)
+    r2s.step3_photon_source(...)
+    r2s.step4_photon_transport(...)
 
 For users looking for more control over the calculation, these lower-level
 methods can be used in lieu of the :meth:`openmc.deplete.R2SManager.run` method.
@@ -189,6 +209,25 @@ an example, if we wanted to run the raytracing calculation with 10 million rays,
 we would run::
 
     r2s.run(timesteps, source_rates, mat_vol_kwargs={'n_samples': 10_000_000})
+
+It is also possible to use multiple meshes by passing a list of meshes instead
+of a single mesh. This can be useful, for example, when different regions of the
+model require different mesh resolutions. The meshes are assumed to be
+**non-overlapping**; each element--material combination across all meshes is
+treated as an independent activation region, and all meshes are handled in a
+single neutron transport solve. For example::
+
+    # Fine mesh near the activation target
+    mesh_fine = openmc.RegularMesh()
+    mesh_fine.dimension = (10, 10, 10)
+    ...
+
+    # Coarse mesh for the surrounding region
+    mesh_coarse = openmc.RegularMesh()
+    mesh_coarse.dimension = (5, 5, 5)
+    ...
+
+    r2s = openmc.deplete.R2SManager(model, [mesh_fine, mesh_coarse])
 
 Direct 1-Step (D1S) Calculations
 ================================
@@ -236,4 +275,3 @@ relevant tallies. This can be done with the aid of the
 
     # Apply time correction factors
     tally = d1s.apply_time_correction(dose_tally, factors, time_index)
-

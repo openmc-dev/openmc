@@ -81,9 +81,9 @@ class UnstructuredMeshTest(PyAPITestHarness):
     def get_mesh_tally_data(self, tally, structured=False):
         data = tally.get_reshaped_data(value='mean')
         if structured:
-           data = data.reshape((-1, self.ELEM_PER_VOXEL))
+            data = data.reshape(-1, self.ELEM_PER_VOXEL)
         else:
-            data.shape = (data.size, 1)
+            data = data.reshape(-1, 1)
         return np.sum(data, axis=1)
 
     def update_results(self):
@@ -255,10 +255,10 @@ for i, (lib, estimator, ext_geom, holes) in enumerate(product(*param_values)):
 @pytest.mark.parametrize("test_opts", test_cases)
 def test_unstructured_mesh_tets(model, test_opts):
     # skip the test if the library is not enabled
-    if test_opts['library'] == 'moab' and not openmc.lib._dagmc_enabled():
+    if test_opts['library'] == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
 
-    if test_opts['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if test_opts['library'] == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh is not enabled in this build.")
 
     # skip the tracklength test for libmesh
@@ -302,7 +302,7 @@ def test_unstructured_mesh_tets(model, test_opts):
     harness.main()
 
 
-@pytest.mark.skipif(not openmc.lib._libmesh_enabled(),
+@pytest.mark.skipif(not openmc.lib.feature_enabled('libmesh'),
                     reason='LibMesh is not enabled in this build.')
 def test_unstructured_mesh_hexes(model):
     regular_mesh_tally = model.tallies[0]

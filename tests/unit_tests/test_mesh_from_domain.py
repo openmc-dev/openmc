@@ -16,6 +16,31 @@ def test_reg_mesh_from_cell():
     assert np.array_equal(mesh.upper_right, cell.bounding_box[1])
 
 
+def test_reg_mesh_from_bounding_box():
+    """Tests a RegularMesh can be made from a BoundingBox directly."""
+    bb = openmc.BoundingBox([-8, -7, -5], [12, 13, 15])
+
+    mesh = openmc.RegularMesh.from_domain(domain=bb, dimension=[7, 11, 13])
+    assert isinstance(mesh, openmc.RegularMesh)
+    assert np.array_equal(mesh.dimension, (7, 11, 13))
+    assert np.array_equal(mesh.lower_left, bb[0])
+    assert np.array_equal(mesh.upper_right, bb[1])
+
+
+def test_rectilinear_mesh_from_bounding_box():
+    """Tests a RectilinearMesh can be made from a BoundingBox directly."""
+    bb = openmc.BoundingBox([-8, -7, -5], [12, 13, 15])
+
+    mesh = openmc.RectilinearMesh.from_bounding_box(bb, dimension=[2, 4, 5])
+    assert isinstance(mesh, openmc.RectilinearMesh)
+    assert np.array_equal(mesh.dimension, (2, 4, 5))
+    assert np.array_equal(mesh.lower_left, bb[0])
+    assert np.array_equal(mesh.upper_right, bb[1])
+    assert np.array_equal(mesh.x_grid, [-8., 2., 12.])
+    assert np.array_equal(mesh.y_grid, [-7., -2., 3., 8., 13.])
+    assert np.array_equal(mesh.z_grid, [-5., -1., 3., 7., 11., 15.])
+
+
 def test_cylindrical_mesh_from_cell():
     """Tests a CylindricalMesh can be made from a Cell and the specified
     dimensions are propagated through."""

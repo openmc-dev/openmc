@@ -248,6 +248,28 @@ The classes :class:`Halfspace`, :class:`Intersection`, :class:`Union`, and
 :class:`Complement` and all instances of :class:`openmc.Region` and can be
 assigned to the :attr:`Cell.region` attribute.
 
+Cells also contain :attr:`Cell.temperature` and :attr:`Cell.density`
+attributes which override the temperature and density of the fill. These can
+be quite useful when temperatures and densities are spatially varying, as the
+alternative would be to add a unique :class:`Material` for each permutation of
+temperature, density, and composition. You can set the temperature (K) and
+density (g/cc) of a cell like so::
+
+  fuel.temperature = 800.0
+  fuel.density = 10.0
+
+The real utility of cell temperatures and densities occurs when a cell is
+replicated across the geometry, such as when a cell is the root geometric element
+in a replicated :ref:`universe<usersguide_universes>` or :ref:`lattice
+<usersguide_lattices>`. In those cases, you can provide a list of temperatures
+and densities to apply a temperature/density field to all of the distributed cells::
+
+  fuel.temperature = [800.0, 900.0, 800.0, 900.0]
+  fuel.density = [10.0, 9.0, 10.0, 9.0]
+
+In this example, the fuel cell is distributed four times in the geometry. Each
+distributed instance then receives its own temperature and density.
+
 .. _usersguide_universes:
 
 ---------
@@ -415,11 +437,11 @@ to help figure out how to place universes::
 
 
 Note that by default, hexagonal lattices are positioned such that each lattice
-element has two faces that are parallel to the :math:`y` axis. As one example,
-to create a three-ring lattice centered at the origin with a pitch of 10 cm
-where all the lattice elements centered along the :math:`y` axis are filled with
-universe ``u`` and the remainder are filled with universe ``q``, the following
-code would work::
+element has two faces that are perpendicular to the :math:`y` axis. As one
+example, to create a three-ring lattice centered at the origin with a pitch of
+10 cm where all the lattice elements centered along the :math:`y` axis are
+filled with universe ``u`` and the remainder are filled with universe ``q``, the
+following code would work::
 
   hexlat = openmc.HexLattice()
   hexlat.center = (0, 0)

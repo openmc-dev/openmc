@@ -31,11 +31,79 @@ C++17/Python codebase where:
 - **Depletion**: `openmc.deplete` implements burnup via operator-splitting with various integrators (Predictor, CECM, etc.)
 - **Nuclear Data**: `openmc.data` provides programmatic access to nuclear data files (ENDF, ACE, HDF5)
 
+## Git Branching Workflow
+
+OpenMC uses a git flow branching model with two primary branches:
+
+- **`develop` branch**: The main development branch where all ongoing development takes place. This is the **primary branch against which pull requests are submitted and merged**. This branch is not guaranteed to be stable and may contain work-in-progress features.
+- **`master` branch**: The stable release branch containing the latest stable release of OpenMC. This branch only receives merges from `develop` when the development team decides a release should occur.
+
+### Instructions for Code Review
+
+When reviewing code changes in this repository, use the `reviewing-openmc-code` skill.
+
+## Codebase Navigation Tools
+
+Two MCP tools are registered in `.mcp.json` at the repo root and appear
+automatically in any MCP-capable agent session.
+
+**`openmc_rag_search`** — Semantic search across the codebase (C++, Python, RST
+docs). Finds code by meaning, not just text match. Surfaces related code across
+subsystems even when naming differs (e.g., "particle RNG seeding" finds code
+across transport, restart, and random ray modes — files you would never find
+with `grep "particle seed"`). The index uses a small 22M-param embedding model
+(384-dim). Phrase-level natural-language queries work much better than single
+keywords or symbol names.
+
+**`openmc_rag_rebuild`** — Rebuild the RAG vector index. Call after pulling new
+code or switching branches. The first RAG search of each session will report
+the index status and ask whether to rebuild — you can also call this explicitly.
+
+### Why RAG matters
+
+OpenMC is large enough that changes in one subsystem can silently break
+invariants that distant subsystems depend on — and those distant files often
+use different naming, so grep won't find them. The RAG search finds code by
+meaning, surfacing files you wouldn't have thought to open.
+
+An agent reviewed a large OpenMC PR without RAG. It found 1 of 11 serious
+bugs. Its post-mortem:
+
+> **I treated the diff as a closed system.** I verified internal consistency of
+> the changed code obsessively, but never built a global understanding of how
+> the changed code fits into the wider codebase. The diff altered assumptions
+> that code elsewhere silently relied on — but I couldn't see that because I
+> never looked beyond the diff. I couldn't see the forest for the trees.
+>
+> **Why I resisted RAG:** Overconfidence. My internal model was "I can see the
+> diff, I understand the data structures, I can trace the logic." The diff felt
+> self-contained. RAG felt like it would return noisy results about tangentially
+> related code. But in a codebase this large, changes in one subsystem can
+> quietly break invariants that distant subsystems depend on — and you need
+> global awareness to foresee that.
+>
+> **In the post-mortem**, I re-ran the RAG queries I should have run during the
+> review. They directly surfaced the files containing the bugs I missed — files
+> I never thought to open because they weren't in the diff.
+
+The takeaway: when reviewing or modifying code, ask yourself "what else in this
+codebase might depend on the behavior I'm changing?" If you aren't sure, that's
+a good time for a RAG query. It won't replace the grep-based investigation you
+should already be doing — but it can surface files you wouldn't have thought to
+open.
+
+### Workflow for contributors
+
+1. Create a feature/bugfix branch off `develop`
+2. Make changes and commit to the feature branch
+3. Open a pull request to merge the feature branch into `develop`
+4. A committer reviews and merges the PR into `develop`
+
 ## Critical Build & Test Workflows
 
 ### Build Dependencies
 - **C++17 compiler**: GCC, Clang, or Intel
-- **CMake** (3.16+): Required for configuring and building the C++ library
+- **CMake** (3.22+): Required for configuring and building the C++ library
 - **HDF5**: Required for cross section data and output file formats
 - **libpng**: Used for generating visualization when OpenMC is run in plotting mode
 
@@ -166,7 +234,7 @@ def test_my_feature():
     harness.main()
 ```
 
-**Workflow**: Create `test.py` and `__init__.py` in `tests/regression_tests/my_test/`, run `pytest --update` to generate reference files (`inputs_true.dat`, `results_true.dat`, etc.), then verify with `pytest` without `--update`. Test results should be generated with a debug build (`-DCMAKE_BUILD_TYPE=Debug`)
+**Workflow**: Create `test.py` and `__init__.py` in `tests/regression_tests/my_test/`, run `pytest --update` to generate reference files (`inputs_true.dat`, `results_true.dat`, etc.), then verify with `pytest` without `--update`. Test results should be generated with `-DOPENMC_ENABLE_STRICT_FP=on` to ensure reproducibility across platforms and optimization levels.
 
 **Critical**: When modifying OpenMC code, regenerate affected test references with `pytest --update` and commit updated reference files.
 
@@ -211,14 +279,14 @@ When modifying C++ public APIs, update corresponding ctypes signatures in `openm
 - **Include order**: Related header first, then C/C++ stdlib, third-party libs, local headers
 - **Comments**: C++-style (`//`) only, never C-style (`/* */`)
 - **Standard**: C++17 features allowed
-- **Formatting**: Run `clang-format` (version 15) before committing; install via `tools/dev/install-commit-hooks.sh`
+- **Formatting**: Run `clang-format` (version 18) before committing; install via `tools/dev/install-commit-hooks.sh`
 
 ### Python Style
 - **PEP8** compliant
 - **Docstrings**: numpydoc format for all public functions/methods
 - **Type hints**: Use sparingly, primarily for complex signatures
 - **Path handling**: Use `pathlib.Path` for filesystem operations, accept `str | os.PathLike` in function arguments
-- **Dependencies**: Core dependencies only (numpy, scipy, h5py, pandas, matplotlib, lxml, ipython, uncertainties, setuptools, endf). Other packages must be optional
+- **Dependencies**: Core dependencies only (numpy, scipy, h5py, pandas, matplotlib, lxml, ipython, uncertainties, endf). Other packages must be optional
 - **Python version**: Minimum 3.11 (as of Nov 2025)
 
 ### ID Management Pattern (Python)
@@ -277,4 +345,4 @@ Check for optional features:
 2. **ID conflicts**: Python objects with duplicate IDs trigger `IDWarning`, use `reset_auto_ids()` between tests
 3. **MPI builds**: Code must work with and without MPI; use `#ifdef OPENMC_MPI` guards
 4. **Path handling**: Use `pathlib.Path` in new Python code, not `os.path`
-5. **Clang-format version**: CI uses version 15; other versions may produce different formatting
+5. **Clang-format version**: CI uses version 18; other versions may produce different formatting

@@ -33,22 +33,22 @@ WindowedMultipole::WindowedMultipole(hid_t group)
   // Read the "data" array.  Use its shape to figure out the number of poles
   // and residue types in this data.
   read_dataset(group, "data", data_);
-  int n_residues = data_.shape()[1] - 1;
+  int n_residues = data_.shape(1) - 1;
 
   // Check to see if this data includes fission residues.
   fissionable_ = (n_residues == 3);
 
   // Read the "windows" array and use its shape to figure out the number of
   // windows.
-  xt::xtensor<int, 2> windows;
+  tensor::Tensor<int> windows;
   read_dataset(group, "windows", windows);
-  int n_windows = windows.shape()[0];
+  int n_windows = windows.shape(0);
   windows -= 1; // Adjust to 0-based indices
 
   // Read the "broaden_poly" arrays.
-  xt::xtensor<bool, 1> broaden_poly;
+  tensor::Tensor<bool> broaden_poly;
   read_dataset(group, "broaden_poly", broaden_poly);
-  if (n_windows != broaden_poly.shape()[0]) {
+  if (n_windows != broaden_poly.shape(0)) {
     fatal_error("broaden_poly array shape is not consistent with the windows "
                 "array shape in WMP library for " +
                 name_ + ".");
@@ -56,12 +56,12 @@ WindowedMultipole::WindowedMultipole(hid_t group)
 
   // Read the "curvefit" array.
   read_dataset(group, "curvefit", curvefit_);
-  if (n_windows != curvefit_.shape()[0]) {
+  if (n_windows != curvefit_.shape(0)) {
     fatal_error("curvefit array shape is not consistent with the windows "
                 "array shape in WMP library for " +
                 name_ + ".");
   }
-  fit_order_ = curvefit_.shape()[1] - 1;
+  fit_order_ = curvefit_.shape(1) - 1;
 
   // Check the code is compiling to work with sufficiently high fit order
   if (fit_order_ + 1 > MAX_POLY_COEFFICIENTS) {

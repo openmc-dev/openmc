@@ -10,7 +10,7 @@ may also be written after each batch when multiple files are requested
 (``collision_track.N.h5``) or when the run is performed in parallel. The file
 contains the information needed to reconstruct each recorded collision.
 
-The current revision of the collision track file format is 1.0.
+The current revision of the collision track file format is 1.2.
 
 **/**
 
@@ -33,13 +33,13 @@ The current revision of the collision track file format is 1.0.
               - ``event_mt`` (*int*) -- ENDF MT number identifying the reaction.
               - ``delayed_group`` (*int*) -- Delayed neutron group index (non-zero for delayed events).
               - ``cell_id`` (*int*) -- ID of the cell in which the collision occurred.
-              - ``nuclide_id`` (*int*) -- ZA identifier of the nuclide (ZZZAAAM format).
+              - ``nuclide_id`` (*int*) -- PDG number of the nuclide (100ZZZAAAM).
               - ``material_id`` (*int*) -- ID of the material containing the collision site.
               - ``universe_id`` (*int*) -- ID of the universe containing the collision site.
               - ``n_collision`` (*int*) -- Collision counter for the particle history.
-              - ``particle`` (*int*) -- Particle type (0=neutron, 1=photon, 2=electron, 3=positron).
-              - ``parent_id`` (*int64*) -- Unique ID of the parent particle.
-              - ``progeny_id`` (*int64*) -- Progeny ID of the particle.
+              - ``particle`` (*int32_t*) -- Particle type (PDG number).
+              - ``parent_id`` (*int64_t*) -- Unique ID of the parent particle.
+              - ``progeny_id`` (*int64_t*) -- Progeny ID of the particle.
 
 In an MPI run, OpenMC writes the combined dataset by gathering collision-track
 entries from all ranks before flushing them to disk, so the final file appears

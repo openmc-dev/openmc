@@ -142,9 +142,9 @@ attributes/sub-elements:
 
   :type:
     The type of the filter. Accepted options are "cell", "cellfrom",
-    "cellborn", "surface", "material", "universe", "energy", "energyout", "mu",
-    "polar", "azimuthal", "mesh", "distribcell", "delayedgroup",
-    "energyfunction", and "particle".
+    "cellborn", "surface", "material", "universe", "energy", "energyout",
+    "mu", "polar", "azimuthal", "mesh", "distribcell", "delayedgroup",
+    "energyfunction", "particle", and "particleproduction".
 
   :bins:
      A description of the bins for each type of filter can be found in
@@ -318,8 +318,34 @@ should be set to:
   they use ``energy`` and ``y``.
 
 :particle:
-  A list of integers indicating the type of particles to tally ('neutron' = 1,
-  'photon' = 2, 'electron' = 3, 'positron' = 4).
+  A list of particle identifiers to tally, specified as strings (e.g.,
+  ``neutron``, ``photon``, ``He4``) or as integer PDG numbers.
+
+:particleproduction:
+  This filter tallies secondary particles produced in reactions, binned by
+  particle type and, optionally, by energy. Unlike other energy filters, the
+  weight applied is the weight of the secondary particle. To obtain secondary
+  particle production rates, use this filter with the ``events`` score.
+
+  The filter uses the following sub-elements instead of ``bins``:
+
+  :particles:
+    A space-separated list of secondary particle types to tally (e.g.,
+    ``photon``, ``neutron``, ``electron``).
+
+  :energies:
+    An optional monotonically increasing list of energy boundaries in [eV]
+    for binning the secondary particle energies. If omitted, total production
+    is tallied without energy binning.
+
+  For example, to tally photon and neutron production in three energy groups:
+
+  .. code-block:: xml
+
+      <filter id="1" type="particleproduction">
+        <particles>photon neutron</particles>
+        <energies>0.0 1.0e5 1.0e6 20.0e6</energies>
+      </filter>
 
 ------------------
 ``<mesh>`` Element

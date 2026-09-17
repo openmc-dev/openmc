@@ -1,0 +1,8 @@
+# MCP server
+mcp>=1.0.0
+
+# Vector database
+lancedb>=0.15.0
+
+# Embeddings (local, no API key)
+sentence-transformers>=2.7.0

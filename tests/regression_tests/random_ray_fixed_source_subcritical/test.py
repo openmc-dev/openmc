@@ -129,5 +129,6 @@ def test_random_ray_fixed_source_subcritical(shape):
         ########################################
         # Run test
 
+        model.settings.random_ray['volume_estimator'] = 'hybrid'
         harness = MGXSTestHarness('statepoint.125.h5', model)
         harness.main()

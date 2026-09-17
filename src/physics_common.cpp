@@ -18,4 +18,20 @@ void russian_roulette(Particle& p, double weight_survive)
   }
 }
 
+void apply_russian_roulette(Particle& p)
+{
+  // Exit if survival biasing is turned off
+  if (!settings::survival_biasing)
+    return;
+
+  // if survival normalization is on, use normalized weight cutoff and
+  // normalized weight survive
+  if (settings::survival_normalization) {
+    if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
+      russian_roulette(p, settings::weight_survive * p.wgt_born());
+    }
+  } else if (p.wgt() < settings::weight_cutoff) {
+    russian_roulette(p, settings::weight_survive);
+  }
+}
 } // namespace openmc

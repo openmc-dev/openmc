@@ -14,6 +14,7 @@ other related topics.
 
     contributing
     workflow
+    agentic-tools
     styleguide
     policies
     tests

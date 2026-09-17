@@ -1,9 +1,6 @@
 #include "openmc/eigenvalue.h"
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xtensor.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/array.h"
 #include "openmc/bank.h"
@@ -39,7 +36,7 @@ namespace simulation {
 double keff_generation;
 array<double, 2> k_sum;
 vector<double> entropy;
-xt::xtensor<double, 1> source_frac;
+tensor::Tensor<double> source_frac;
 
 } // namespace simulation
 
@@ -138,7 +135,7 @@ void synchronize_bank()
   // Temporary banks for IFP
   vector<vector<int>> temp_delayed_groups;
   vector<vector<double>> temp_lifetimes;
-  if (settings::ifp_on) {
+  if (settings::ifp_on()) {
     resize_ifp_data(
       temp_delayed_groups, temp_lifetimes, 3 * simulation::work_per_rank);
   }
@@ -167,9 +164,9 @@ void synchronize_bank()
   for (int64_t i = tooth_start; i < tooth_end; i++) {
     int64_t idx = std::floor(tooth) - start;
     temp_sites[index_temp] = simulation::fission_bank[idx];
-    if (settings::ifp_on) {
+    if (settings::ifp_on()) {
       copy_ifp_data_from_fission_banks(
-        idx, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
+        idx, index_temp, temp_delayed_groups, temp_lifetimes);
     }
     ++index_temp;
 
@@ -192,9 +189,9 @@ void synchronize_bank()
   // TODO: protect for MPI_Exscan at rank 0
 
   // Allocate space for bank_position if this hasn't been done yet
-  int64_t bank_position[mpi::n_procs];
-  MPI_Allgather(
-    &start, 1, MPI_INT64_T, bank_position, 1, MPI_INT64_T, mpi::intracomm);
+  std::vector<int64_t> bank_position(mpi::n_procs);
+  MPI_Allgather(&start, 1, MPI_INT64_T, bank_position.data(), 1, MPI_INT64_T,
+    mpi::intracomm);
 #else
   start = 0;
   finish = index_temp;
@@ -209,7 +206,7 @@ void synchronize_bank()
 
   // IFP number of generation
   int ifp_n_generation;
-  if (settings::ifp_on) {
+  if (settings::ifp_on()) {
     broadcast_ifp_n_generation(
       ifp_n_generation, temp_delayed_groups, temp_lifetimes);
   }
@@ -228,7 +225,7 @@ void synchronize_bank()
       simulation::work_index.begin(), simulation::work_index.end(), start);
 
     // Resize IFP send buffers
-    if (settings::ifp_on && mpi::n_procs > 1) {
+    if (settings::ifp_on() && mpi::n_procs > 1) {
       resize_ifp_data(send_delayed_groups, send_lifetimes,
         ifp_n_generation * 3 * simulation::work_per_rank);
     }
@@ -246,11 +243,14 @@ void synchronize_bank()
           mpi::source_site, neighbor, mpi::rank, mpi::intracomm,
           &requests.back());
 
-        if (settings::ifp_on) {
+        if (settings::ifp_on()) {
           // Send IFP data
-          send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
-            temp_delayed_groups, send_delayed_groups, temp_lifetimes,
-            send_lifetimes);
+          if (settings::ifp_delayed_group_on)
+            send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
+              temp_delayed_groups, send_delayed_groups);
+          if (settings::ifp_lifetime_on)
+            send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
+              temp_lifetimes, send_lifetimes);
         }
       }
 
@@ -286,11 +286,11 @@ void synchronize_bank()
     neighbor = mpi::n_procs - 1;
   } else {
     neighbor =
-      upper_bound_index(bank_position, bank_position + mpi::n_procs, start);
+      upper_bound_index(bank_position.begin(), bank_position.end(), start);
   }
 
   // Resize IFP receive buffers
-  if (settings::ifp_on && mpi::n_procs > 1) {
+  if (settings::ifp_on() && mpi::n_procs > 1) {
     resize_ifp_data(recv_delayed_groups, recv_lifetimes,
       ifp_n_generation * simulation::work_per_rank);
   }
@@ -314,10 +314,14 @@ void synchronize_bank()
       MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n),
         mpi::source_site, neighbor, neighbor, mpi::intracomm, &requests.back());
 
-      if (settings::ifp_on) {
+      if (settings::ifp_on()) {
         // Receive IFP data
-        receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
-          recv_delayed_groups, recv_lifetimes, deserialization_info);
+        if (settings::ifp_delayed_group_on)
+          receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
+            recv_delayed_groups, deserialization_info);
+        if (settings::ifp_lifetime_on)
+          receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
+            recv_lifetimes, deserialization_info);
       }
 
     } else {
@@ -328,7 +332,7 @@ void synchronize_bank()
       std::copy(&temp_sites[index_temp], &temp_sites[index_temp + n],
         &simulation::source_bank[index_local]);
 
-      if (settings::ifp_on) {
+      if (settings::ifp_on()) {
         copy_partial_ifp_data_to_source_banks(
           index_temp, n, index_local, temp_delayed_groups, temp_lifetimes);
       }
@@ -347,15 +351,19 @@ void synchronize_bank()
   int n_request = requests.size();
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
 
-  if (settings::ifp_on) {
-    deserialize_ifp_info(ifp_n_generation, deserialization_info,
-      recv_delayed_groups, recv_lifetimes);
+  if (settings::ifp_on()) {
+    if (settings::ifp_delayed_group_on)
+      deserialize_ifp_info(ifp_n_generation, recv_delayed_groups,
+        simulation::ifp_source_delayed_group_bank, deserialization_info);
+    if (settings::ifp_lifetime_on)
+      deserialize_ifp_info(ifp_n_generation, recv_lifetimes,
+        simulation::ifp_source_lifetime_bank, deserialization_info);
   }
 
 #else
   std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,
     simulation::source_bank.begin());
-  if (settings::ifp_on) {
+  if (settings::ifp_on()) {
     copy_complete_ifp_data_to_source_banks(temp_delayed_groups, temp_lifetimes);
   }
 #endif
@@ -441,7 +449,7 @@ int openmc_get_keff(double* k_combined)
   const auto& gt = simulation::global_tallies;
 
   array<double, 3> kv {};
-  xt::xtensor<double, 2> cov = xt::zeros<double>({3, 3});
+  tensor::Tensor<double> cov = tensor::zeros<double>({3, 3});
   kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
   kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
   kv[2] = gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n;
@@ -580,7 +588,7 @@ void shannon_entropy()
 {
   // Get source weight in each mesh bin
   bool sites_outside;
-  xt::xtensor<double, 1> p =
+  tensor::Tensor<double> p =
     simulation::entropy_mesh->count_sites(simulation::fission_bank.data(),
       simulation::fission_bank.size(), &sites_outside);
 
@@ -592,7 +600,7 @@ void shannon_entropy()
 
   if (mpi::master) {
     // Normalize to total weight of bank sites
-    p /= xt::sum(p);
+    p /= p.sum();
 
     // Sum values to obtain Shannon entropy
     double H = 0.0;
@@ -616,7 +624,7 @@ void ufs_count_sites()
 
     std::size_t n = simulation::ufs_mesh->n_bins();
     double vol_frac = simulation::ufs_mesh->volume_frac_;
-    simulation::source_frac = xt::xtensor<double, 1>({n}, vol_frac);
+    simulation::source_frac = tensor::Tensor<double>({n}, vol_frac);
 
   } else {
     // count number of source sites in each ufs mesh cell
@@ -638,7 +646,7 @@ void ufs_count_sites()
 #endif
 
     // Normalize to total weight to get fraction of source in each cell
-    double total = xt::sum(simulation::source_frac)();
+    double total = simulation::source_frac.sum();
     simulation::source_frac /= total;
 
     // Since the total starting weight is not equal to n_particles, we need to

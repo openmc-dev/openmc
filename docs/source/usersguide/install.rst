@@ -158,6 +158,75 @@ feature can be used to access the installed packages.
 .. _Spack: https://spack.readthedocs.io/en/latest/
 .. _setup guide: https://spack.readthedocs.io/en/latest/getting_started.html
 
+.. _install_aur:
+
+------------------------------------
+Installing on Arch Linux via the AUR
+------------------------------------
+
+On Arch Linux and Arch-based distributions, OpenMC can be installed from the
+`Arch User Repository (AUR) <https://aur.archlinux.org/>`_. An AUR package named
+``openmc-git`` is available, which builds OpenMC directly from the latest
+development sources.
+
+This package provides a full-featured OpenMC stack, including:
+
+* MPI and DAGMC-enabled OpenMC build
+* User-selected nuclear data libraries
+* The `CAD_to_OpenMC <https://github.com/united-neux/CAD_to_OpenMC>`_ meshing tool
+* All required dependencies for the above components
+
+To install the package, you will need an AUR helper such as `yay`_ or `paru`_.
+For example, using ``yay``::
+
+    yay -S openmc-git
+
+
+Alternatively, you can manually clone and build the package::
+
+    git clone https://aur.archlinux.org/openmc-git.git
+    cd openmc-git
+    makepkg -si
+
+Note, ``makepkg`` uses ``pacman`` to resolve dependencies. Therefore, AUR-based
+dependencies need to be installed separately with ``yay`` or ``paru`` before
+running ``makepkg``. The PKGBUILD will automatically handle all required
+dependencies and build OpenMC with MPI and DAGMC support enabled.
+
+.. tip::
+
+    If there are failing checks during the build process, you can bypass them
+    with the ``--nocheck`` flag::
+
+        yay -S openmc-git --mflags "--nocheck"
+
+    Or::
+
+        git clone https://aur.archlinux.org/openmc-git.git
+        cd openmc-git
+        makepkg -si --nocheck
+
+.. note::
+
+    The ``openmc-git`` package tracks the latest development version from the
+    upstream repository. As such, it may include new features and bug fixes, but
+    could also introduce instability compared to official releases.
+
+.. tip::
+
+    OpenMC is installed under ``/opt``. If you are installing and using it in
+    the same terminal session, you may need to reload your environment
+    variables::
+
+        source /etc/profile
+
+    Alternatively, start a new shell session.
+
+Once installed, the ``openmc`` executable, nuclear data libraries, and
+associated tools will be available in your system :envvar:`PATH`.
+
+.. _yay: https://github.com/Jguer/yay
+.. _paru: https://github.com/Morganamilo/paru
 
 .. _install_source:
 
@@ -258,15 +327,18 @@ Prerequisites
 
           cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation ..
 
+      Distributed memory calculations with the random ray solver require MOAB 
+      version 5.2.0 or later.
+
     * MCPL_ library for reading and writing .mcpl files
 
       This option allows OpenMC to read and write MCPL (Monte Carlo Particle
       Lists) files instead of .h5 files for sources (external source
-      distribution, k-eigenvalue source distribution, and surface sources). To
-      turn this option on in the CMake configuration step, add the following
-      option::
-
-          cmake -DOPENMC_USE_MCPL=on ..
+      distribution, k-eigenvalue source distribution, and surface sources). 
+      OpenMC does not need any particular build option to use this, but MCPL
+      must be installed on the system in order to do so. Refer to the 
+      `MCPL documentation <https://github.com/mctools/mcpl/blob/HEAD/INSTALL.md>`_
+      for instructions on how to accomplish this.
 
     * NCrystal_ library for defining materials with enhanced thermal neutron transport
 
@@ -317,7 +389,7 @@ how to set up git to work with GitHub since this involves setting up ssh_ keys.
 With git installed and setup, the following command will download the full
 source code from the GitHub repository::
 
-    git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
+    git clone https://github.com/openmc-dev/openmc.git
 
 By default, the cloned repository will be set to the development branch. To
 switch to the source of the latest stable release, run the following commands::
@@ -383,10 +455,38 @@ OPENMC_USE_MPI
   options, please see the `FindMPI.cmake documentation
   <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
-OPENMC_FORCE_VENDORED_LIBS
-  Forces OpenMC to use the submodules located in the vendor directory, as
-  opposed to searching the system for already installed versions of those
-  modules.
+.. _cmake_strict_fp:
+
+OPENMC_ENABLE_STRICT_FP
+  Disables compiler optimizations that change floating-point results relative to
+  unoptimized builds, improving cross-platform and cross-optimization-level
+  reproducibility. This disables FMA contraction (``-ffp-contract=off``) and
+  compiler builtin replacements of math functions like ``pow``, ``exp``, ``log``
+  (``-fno-builtin``). It also keeps C/C++ assertions active by removing the
+  ``-DNDEBUG`` flag from ``RelWithDebInfo`` builds. Without this flag, these
+  optimizations can produce bit-level differences across platforms, compilers,
+  and optimization levels. This option should be used when running the test
+  suite. By default (off), the compiler is free to use all optimizations for
+  best performance. (Default: off)
+
+OPENMC_FORCE_FETCHCONTENT
+  Forces OpenMC to download and build its pinned versions of fmt, pugixml, and
+  Catch2 rather than searching for installed packages. Catch2 is only needed
+  when ``OPENMC_BUILD_TESTS`` is enabled. (Default: off)
+
+OpenMC searches for installed CMake packages for fmt, pugixml, and Catch2
+before downloading pinned sources with CMake's ``FetchContent`` module. Thus,
+network access is only needed during configuration when a required package is
+not installed. For offline builds, install the dependencies ahead of time or
+provide unpacked sources through ``FETCHCONTENT_SOURCE_DIR_FMT``,
+``FETCHCONTENT_SOURCE_DIR_PUGIXML``, and ``FETCHCONTENT_SOURCE_DIR_CATCH2``.
+
+Two further ``FetchContent`` variables are useful when packaging OpenMC.
+Setting ``FETCHCONTENT_FULLY_DISCONNECTED=ON`` makes configuration fail rather
+than silently download anything, which is typically what is wanted in a
+sandboxed build that must rely only on installed packages. Setting
+``FETCHCONTENT_BASE_DIR`` to a shared location allows downloads to be reused
+across multiple build directories.
 
 To set any of these options (e.g., turning on profiling), the following form
 should be used:
@@ -415,7 +515,10 @@ Release
 
 RelWithDebInfo
   (Default if no type is specified.) Enable optimization and debug. On most
-  platforms/compilers, this is equivalent to `-O2 -g`.
+  platforms/compilers, this is equivalent to `-O2 -g`. When
+  :ref:`OPENMC_ENABLE_STRICT_FP <cmake_strict_fp>` is enabled, OpenMC removes the
+  ``-DNDEBUG`` flag that CMake normally adds for this build type, so that
+  C/C++ assertions remain active.
 
 Example of configuring for Debug mode:
 

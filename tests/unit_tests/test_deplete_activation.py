@@ -113,6 +113,11 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
     assert atoms[0] == pytest.approx(n0)
     assert atoms[1] / atoms[0] == pytest.approx(0.5, rel=tolerance)
 
+    # Check that material name is preserved in depletion results
+    step_result = results[0]
+    mat_from_results = step_result.get_material(f"{w.id}")
+    assert mat_from_results.name == 'tungsten'
+
 
 def test_decay(run_in_tmpdir):
     """Test decay-only timesteps where no transport solve is performed"""

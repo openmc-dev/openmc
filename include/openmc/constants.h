@@ -9,6 +9,7 @@
 #include <limits>
 
 #include "openmc/array.h"
+#include "openmc/atomic_mass.h"
 #include "openmc/vector.h"
 #include "openmc/version.h"
 
@@ -25,16 +26,16 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr array<int, 2> VERSION_STATEPOINT {18, 1};
-constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
-constexpr array<int, 2> VERSION_TRACK {3, 0};
+constexpr array<int, 2> VERSION_STATEPOINT {18, 2};
+constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 1};
+constexpr array<int, 2> VERSION_TRACK {3, 1};
 constexpr array<int, 2> VERSION_SUMMARY {6, 1};
 constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr array<int, 2> VERSION_PROPERTIES {1, 1};
 constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
-constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 0};
+constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 2};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -57,22 +58,41 @@ constexpr double FP_COINCIDENT {1e-12};
 constexpr double TORUS_TOL {1e-10};
 constexpr double RADIAL_MESH_TOL {1e-10};
 
+// Tolerance on the normalized normal of a general plane for treating that
+// plane as axis-aligned when computing a bounding box. Matches the value of
+// Surface._atol used by PlaneMixin.bounding_box in openmc/surface.py.
+constexpr double PLANE_ALIGNMENT_TOL {1e-12};
+
 // Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
 
-// Avg. number of hits per batch to be defined as a "small"
-// source region in the random ray solver
-constexpr double MIN_HITS_PER_BATCH {1.5};
+// Relative dead band applied to weight window comparisons: particles split
+// only above upper * (1 + tol) and roulette only below lower * (1 - tol).
+// Weight window arithmetic can land a particle's weight exactly back on a
+// bound value (e.g., a roulette survivor is assigned survival_ratio * lower
+// and a later split divides that back down), in which case the branch taken
+// would be decided by the last ulp of the bound. Since window data carries
+// ulp-level noise from non-associative parallel reductions in the solver that
+// generated it, transport results would otherwise be chaotically sensitive to
+// bit-level differences in the weight window file. Treating weights within
+// the band as inside the window is statistically negligible, and weight
+// window games are unbiased regardless of where the thresholds sit.
+constexpr double WEIGHT_WINDOW_REL_TOL {1e-9};
 
-// The minimum flux value to be considered non-zero when computing adjoint
-// sources. Positive values below this cutoff will be treated as zero, so as to
-// prevent extremely large adjoint source terms from being generated.
-constexpr double ZERO_FLUX_CUTOFF {1e-22};
+// Maximum number of DAGMC entity handles to send when exchanging rays
+// between MPI ranks. This caps the RayHistory length to avoid sending
+// variable-length vectors.
+constexpr int MAX_N_HANDLES {5};
 
-// The minimum macroscopic cross section value considered non-void for the
-// random ray solver. Materials with any group with a cross section below this
-// value will be converted to pure void.
-constexpr double MINIMUM_MACRO_XS {1e-6};
+// Number of initial batches over which the load is rebalanced between MPI
+// ranks during random ray transport. (The iteration cap within a single
+// rebalancing pass is a local in DecompositionMap::balance_load.)
+constexpr int ITER_LOAD_BALANCE {5};
+
+// Maximum number of times a random ray may be handed to another MPI rank
+// before it is terminated. Bounds a ray ping-ponging across a subdomain
+// boundary, which would otherwise hang every rank in the job.
+constexpr int MAX_RAY_TRANSFERS {10000};
 
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
@@ -86,10 +106,10 @@ constexpr double INFTY {std::numeric_limits<double>::max()};
 // (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 
 // Physical constants
-constexpr double MASS_NEUTRON {1.00866491595}; // mass of a neutron in amu
+constexpr double AMU_EV {
+  9.3149410242e8}; // atomic mass unit energy equivalent in eV/c^2
 constexpr double MASS_NEUTRON_EV {
-  939.56542052e6};                             // mass of a neutron in eV/c^2
-constexpr double MASS_PROTON {1.007276466621}; // mass of a proton in amu
+  939.56542052e6}; // neutron mass energy equivalent in eV/c^2
 constexpr double MASS_ELECTRON_EV {
   0.51099895000e6}; // electron mass energy equivalent in eV/c^2
 constexpr double FINE_STRUCTURE {
@@ -226,6 +246,7 @@ enum ReactionType {
   N_XA = 207,
   HEATING = 301,
   DAMAGE_ENERGY = 444,
+  PHOTON_TOTAL = 501,
   COHERENT = 502,
   INCOHERENT = 504,
   PAIR_PROD_ELEC = 515,
@@ -301,7 +322,7 @@ enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
 enum class TallyEvent { SURFACE, LATTICE, KILL, SCATTER, ABSORB };
 
 // Tally score type -- if you change these, make sure you also update the
-// _SCORES dictionary in openmc/capi/tally.py
+// _SCORES dictionary in openmc/lib/tally.py
 //
 // These are kept as a normal enum and made negative, since variables which
 // store one of these enum values usually also may be responsible for storing
@@ -363,9 +384,18 @@ enum class RunMode {
 
 enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
-enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
+enum class RandomRayVolumeEstimator {
+  NAIVE,
+  SIMULATION_AVERAGED,
+  HYBRID,
+  ADAPTIVE,
+  STRICT_ADAPTIVE,
+  AUTO
+};
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
-enum class RandomRaySampleMethod { PRNG, HALTON };
+enum class RandomRayGeomDim { TWO_DIM, THREE_DIM };
+enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
+enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };
 
 //==============================================================================
 // Geometry Constants

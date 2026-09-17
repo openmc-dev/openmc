@@ -5,8 +5,7 @@
 #include <iterator>  // for back_inserter
 #include <stdexcept> // for runtime_error
 
-#include "xtensor/xarray.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
@@ -88,6 +87,83 @@ bool is_inelastic_scatter(int mt)
   }
 }
 
+bool mt_matches(int event_mt, int target_mt)
+{
+  // Direct match
+  if (event_mt == target_mt)
+    return true;
+
+  // Check if event_mt is a component of target_mt summation reaction
+  switch (target_mt) {
+  case TOTAL_XS:
+    return event_mt == ELASTIC || mt_matches(event_mt, N_NONELASTIC);
+
+  case N_NONELASTIC: {
+    static constexpr int components[] = {4, 5, 11, 16, 17, 22, 23, 24, 25, 27,
+      28, 29, 30, 32, 33, 34, 35, 36, 37, 41, 42, 44, 45, 152, 153, 154, 156,
+      157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171,
+      172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 183, 184, 185, 186, 187,
+      188, 189, 190, 194, 195, 196, 198, 199, 200};
+    for (int mt : components) {
+      if (mt_matches(event_mt, mt))
+        return true;
+    }
+    return false;
+  }
+
+  case N_LEVEL:
+    // Inelastic scattering levels
+    return event_mt >= 50 && event_mt <= N_NC;
+
+  case N_2N:
+    // (n,2n) to excited states
+    return event_mt >= N_2N0 && event_mt <= N_2NC;
+
+  case N_FISSION:
+    return is_fission(event_mt);
+
+  case 27:
+    return is_fission(event_mt) || is_disappearance(event_mt);
+
+  case N_DISAPPEAR: {
+    return is_disappearance(event_mt);
+  }
+
+  case N_P:
+    // (n,p) to excited states
+    return event_mt >= N_P0 && event_mt <= N_PC;
+
+  case N_D:
+    // (n,d) to excited states
+    return event_mt >= N_D0 && event_mt <= N_DC;
+
+  case N_T:
+    // (n,t) to excited states
+    return event_mt >= N_T0 && event_mt <= N_TC;
+
+  case N_3HE:
+    // (n,3He) to excited states
+    return event_mt >= N_3HE0 && event_mt <= N_3HEC;
+
+  case N_A:
+    // (n,alpha) to excited states
+    return event_mt >= N_A0 && event_mt <= N_AC;
+
+  case 501:
+    return event_mt == 502 || event_mt == 504 || mt_matches(event_mt, 516) ||
+           mt_matches(event_mt, 522);
+
+  case PAIR_PROD:
+    return event_mt == PAIR_PROD_ELEC || event_mt == PAIR_PROD_NUC;
+
+  case PHOTOELECTRIC:
+    return event_mt >= 534 && event_mt < 573;
+
+  default:
+    return false;
+  }
+}
+
 unique_ptr<Function1D> read_function(hid_t group, const char* name)
 {
   hid_t obj_id = open_object(group, name);
@@ -153,11 +229,11 @@ Tabulated1D::Tabulated1D(hid_t dset)
   for (const auto i : int_temp)
     int_.push_back(int2interp(i));
 
-  xt::xarray<double> arr;
+  tensor::Tensor<double> arr;
   read_dataset(dset, arr);
 
-  auto xs = xt::view(arr, 0);
-  auto ys = xt::view(arr, 1);
+  tensor::View<double> xs = arr.slice(0);
+  tensor::View<double> ys = arr.slice(1);
 
   std::copy(xs.begin(), xs.end(), std::back_inserter(x_));
   std::copy(ys.begin(), ys.end(), std::back_inserter(y_));
@@ -229,12 +305,12 @@ double Tabulated1D::operator()(double x) const
 CoherentElasticXS::CoherentElasticXS(hid_t dset)
 {
   // Read 2D array from dataset
-  xt::xarray<double> arr;
+  tensor::Tensor<double> arr;
   read_dataset(dset, arr);
 
   // Get views for Bragg edges and structure factors
-  auto E = xt::view(arr, 0);
-  auto s = xt::view(arr, 1);
+  tensor::View<double> E = arr.slice(0);
+  tensor::View<double> s = arr.slice(1);
 
   // Copy Bragg edges and partial sums of structure factors
   std::copy(E.begin(), E.end(), std::back_inserter(bragg_edges_));

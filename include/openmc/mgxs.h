@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
@@ -22,7 +22,7 @@ namespace openmc {
 
 class Mgxs {
 private:
-  xt::xtensor<double, 1> kTs; // temperature in eV (k * T)
+  tensor::Tensor<double> kTs; // temperature in eV (k * T)
   AngleDistributionType
     scatter_format;       // flag for if this is legendre, histogram, or tabular
   int num_groups;         // number of energy groups
@@ -112,6 +112,11 @@ public:
   Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
     const vector<Mgxs*>& micros, const vector<double>& atom_densities,
     int num_group, int num_delay);
+
+  //! \brief Get the number of temperature data points.
+  //!
+  //! @return The number of temperature data points for this MGXS
+  inline int n_temperature_points() { return kTs.size(); }
 
   //! \brief Provides a cross section value given certain parameters
   //!

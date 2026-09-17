@@ -52,11 +52,7 @@ void SurfaceFilter::get_all_bins(
   auto search = map_.find(p.surface_index());
   if (search != map_.end()) {
     match.bins_.push_back(search->second);
-    if (p.surface() < 0) {
-      match.weights_.push_back(-1.0);
-    } else {
-      match.weights_.push_back(1.0);
-    }
+    match.weights_.push_back(1.0);
   }
 }
 

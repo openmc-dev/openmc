@@ -28,52 +28,14 @@ std::string MeshSurfaceFilter::text_label(int bin) const
   auto& mesh = *model::meshes[mesh_];
   int n_dim = mesh.n_dimension_;
 
-  // Get flattend mesh index and surface index.
+  // Get flattened mesh index and surface index.
   int i_mesh = bin / (4 * n_dim);
-  MeshDir surf_dir = static_cast<MeshDir>(bin % (4 * n_dim));
+  int surf_index = bin % (4 * n_dim);
 
-  // Get mesh index part of label.
+  // Get mesh index part of label, then append the surface part.
+  // The surface is labeled by the underlying mesh.
   std::string out = MeshFilter::text_label(i_mesh);
-
-  // Get surface part of label.
-  switch (surf_dir) {
-  case MeshDir::OUT_LEFT:
-    out += " Outgoing, x-min";
-    break;
-  case MeshDir::IN_LEFT:
-    out += " Incoming, x-min";
-    break;
-  case MeshDir::OUT_RIGHT:
-    out += " Outgoing, x-max";
-    break;
-  case MeshDir::IN_RIGHT:
-    out += " Incoming, x-max";
-    break;
-  case MeshDir::OUT_BACK:
-    out += " Outgoing, y-min";
-    break;
-  case MeshDir::IN_BACK:
-    out += " Incoming, y-min";
-    break;
-  case MeshDir::OUT_FRONT:
-    out += " Outgoing, y-max";
-    break;
-  case MeshDir::IN_FRONT:
-    out += " Incoming, y-max";
-    break;
-  case MeshDir::OUT_BOTTOM:
-    out += " Outgoing, z-min";
-    break;
-  case MeshDir::IN_BOTTOM:
-    out += " Incoming, z-min";
-    break;
-  case MeshDir::OUT_TOP:
-    out += " Outgoing, z-max";
-    break;
-  case MeshDir::IN_TOP:
-    out += " Incoming, z-max";
-    break;
-  }
+  out += mesh.surface_bin_label(surf_index);
 
   return out;
 }

@@ -47,8 +47,12 @@
     </material>
   </materials>
   <geometry>
-    <cell id="8" material="1 2 3 4" region="-6" universe="8"/>
-    <cell id="9" material="5 6 7 8" region="6" universe="8"/>
+    <cell id="8" region="-6" universe="8">
+      <material>1 2 3 4</material>
+    </cell>
+    <cell id="9" region="6" universe="8">
+      <material>5 6 7 8</material>
+    </cell>
     <cell id="10" fill="9" region="7 -8 10 -12" universe="13"/>
     <cell id="11" fill="10" region="7 -8 12 -16" universe="13"/>
     <cell id="12" fill="11" region="8 -22 10 -12" universe="13"/>

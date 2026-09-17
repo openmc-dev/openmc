@@ -5,7 +5,7 @@
 #define OPENMC_SECONDARY_CORRELATED_H
 
 #include "hdf5.h"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/angle_energy.h"
 #include "openmc/distribution.h"
@@ -25,9 +25,9 @@ public:
   struct CorrTable {
     int n_discrete;                    //!< Number of discrete lines
     Interpolation interpolation;       //!< Interpolation law
-    xt::xtensor<double, 1> e_out;      //!< Outgoing energies [eV]
-    xt::xtensor<double, 1> p;          //!< Probability density
-    xt::xtensor<double, 1> c;          //!< Cumulative distribution
+    tensor::Tensor<double> e_out;      //!< Outgoing energies [eV]
+    tensor::Tensor<double> p;          //!< Probability density
+    tensor::Tensor<double> c;          //!< Cumulative distribution
     vector<unique_ptr<Tabular>> angle; //!< Angle distribution
   };
 
@@ -40,6 +40,22 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+  //! Sample the outgoing energy and return the angular distribution
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Reference to the angular distribution at the sampled energy bin
+  Distribution& sample_dist(double E_in, double& E_out, uint64_t* seed) const;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
   // energy property
   vector<double>& energy() { return energy_; }

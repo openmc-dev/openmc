@@ -22,32 +22,33 @@ constexpr int STATUS_EXIT_ON_TRIGGER {2};
 
 namespace simulation {
 
-extern int ct_current_file;   //!< current collision track file index
-extern "C" int current_batch; //!< current batch
-extern "C" int current_gen;   //!< current fission generation
-extern "C" bool initialized;  //!< has simulation been initialized?
-extern "C" double keff;       //!< average k over batches
-extern "C" double keff_std;   //!< standard deviation of average k
-extern "C" double k_col_abs; //!< sum over batches of k_collision * k_absorption
-extern "C" double
-  k_col_tra; //!< sum over batches of k_collision * k_tracklength
-extern "C" double
-  k_abs_tra;               //!< sum over batches of k_absorption * k_tracklength
+extern int ct_current_file; //!< current collision track file index
+extern int current_batch;   //!< current batch
+extern int current_gen;     //!< current fission generation
+extern bool initialized;    //!< has simulation been initialized?
+extern double keff;         //!< average k over batches
+extern double keff_std;     //!< standard deviation of average k
+extern double k_col_abs;    //!< sum over batches of k_collision * k_absorption
+extern double k_col_tra;    //!< sum over batches of k_collision * k_tracklength
+extern double k_abs_tra;   //!< sum over batches of k_absorption * k_tracklength
 extern double log_spacing; //!< lethargy spacing for energy grid searches
-extern "C" int n_lost_particles;   //!< cumulative number of lost particles
-extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
-extern "C" int restart_batch;      //!< batch at which a restart job resumed
-extern "C" bool satisfy_triggers;  //!< have tally triggers been satisfied?
-extern int ssw_current_file;       //!< current surface source file
-extern "C" int total_gen;          //!< total number of generations simulated
-extern double total_weight;        //!< Total source weight in a batch
-extern int64_t work_per_rank;      //!< number of particles per MPI rank
+extern int n_lost_particles;   //!< cumulative number of lost particles
+extern bool need_depletion_rx; //!< need to calculate depletion rx?
+extern int restart_batch;      //!< batch at which a restart job resumed
+extern bool satisfy_triggers;  //!< have tally triggers been satisfied?
+extern int ssw_current_file;   //!< current surface source file
+extern int total_gen;          //!< total number of generations simulated
+extern double total_weight;    //!< Total source weight in a batch
+extern int64_t work_per_rank;  //!< number of particles per MPI rank
 
 extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
 
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;
+
+extern int64_t
+  simulation_tracks_completed; //!< Number of tracks completed on this rank
 
 } // namespace simulation
 
@@ -59,7 +60,7 @@ extern vector<int64_t> work_index;
 void allocate_banks();
 
 //! Determine number of particles to transport per process
-void calculate_work();
+void calculate_work(int64_t n_particles);
 
 //! Initialize nuclear data before a simulation
 void initialize_data();
@@ -70,8 +71,9 @@ void initialize_batch();
 //! Initialize a fission generation
 void initialize_generation();
 
-//! Full initialization of a particle history
-void initialize_history(Particle& p, int64_t index_source);
+//! Full initialization of a particle track
+void initialize_particle_track(
+  Particle& p, int64_t index_source, bool is_secondary);
 
 //! Finalize a batch
 //!
@@ -92,15 +94,34 @@ void broadcast_results();
 
 void free_memory_simulation();
 
-//! Simulate a single particle history (and all generated secondary particles,
-//!  if enabled), from birth to death
+//! Compute unique particle ID from a 1-based source index
+//! \param index_source 1-based source index within this rank's work
+//! \return globally unique particle ID
+int64_t compute_particle_id(int64_t index_source);
+
+//! Compute the transport RNG seed from a particle ID
+//! \param particle_id the particle's globally unique ID
+//! \return seed value passed to init_particle_seeds()
+int64_t compute_transport_seed(int64_t particle_id);
+
+//! Simulate a single particle history from birth to death, inclusive of any
+//! secondary particles. In shared secondary mode, only a single track is
+//! transported and secondaries are deposited into a shared bank instead.
 void transport_history_based_single_particle(Particle& p);
 
 //! Simulate all particle histories using history-based parallelism
 void transport_history_based();
 
+//! Simulate all particles using history-based parallelism, with a shared
+//! secondary bank
+void transport_history_based_shared_secondary();
+
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();
+
+//! Simulate all particles using event-based parallelism, with a shared
+//! secondary bank
+void transport_event_based_shared_secondary();
 
 } // namespace openmc
 

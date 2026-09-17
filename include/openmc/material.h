@@ -5,8 +5,8 @@
 #include <unordered_map>
 
 #include "openmc/span.h"
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xtensor.hpp"
 #include <hdf5.h>
 
 #include "openmc/bremsstrahlung.h"
@@ -14,6 +14,7 @@
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/ncrystal_interface.h"
 #include "openmc/particle.h"
+#include "openmc/settings.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -110,9 +111,12 @@ public:
   //! \return Density in [atom/b-cm]
   double density() const { return density_; }
 
-  //! Get density in [g/cm^3]
+  //! Get density in [g/cm^3].
   //! \return Density in [g/cm^3]
-  double density_gpcc() const { return density_gpcc_; }
+  double density_gpcc() const
+  {
+    return settings::run_CE ? density_gpcc_ : density();
+  }
 
   //! Get charge density in [e/b-cm]
   //! \return Charge density in [e/b-cm]
@@ -185,7 +189,7 @@ public:
   vector<int> nuclide_;                 //!< Indices in nuclides vector
   vector<int> element_;                 //!< Indices in elements vector
   NCrystalMat ncrystal_mat_;            //!< NCrystal material object
-  xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
+  tensor::Tensor<double> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_;                      //!< Total atom density in [atom/b-cm]
   double density_gpcc_;                 //!< Total atom density in [g/cm^3]
   double charge_density_;               //!< Total charge density in [e/b-cm]

@@ -119,7 +119,7 @@ packages should be installed, for example in Homebrew via:
 
 .. code-block:: sh
 
-   brew install llvm cmake xtensor hdf5 python libomp libpng
+   brew install llvm cmake hdf5 python libomp libpng
 
 The compiler provided by the above LLVM package should be used in place of the
 one provisioned by XCode, which does not support the multithreading library used
@@ -143,7 +143,7 @@ download and install OpenMC by entering the following commands in a terminal:
 
 .. code-block:: sh
 
-    git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
+    git clone https://github.com/openmc-dev/openmc.git
     cd openmc
     mkdir build && cd build
     cmake ..

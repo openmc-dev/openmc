@@ -5,6 +5,7 @@ import os
 import numpy as np
 import pytest
 import openmc
+from openmc.examples import random_ray_pin_cell
 import openmc.exceptions as exc
 import openmc.lib
 
@@ -84,6 +85,19 @@ def uo2_trigger_model():
 
 
 @pytest.fixture(scope='module')
+def random_ray_pincell_model():
+    """Set up a random ray model to test with and delete files when done"""
+    openmc.reset_auto_ids()
+    # Write XML and MGXS files in tmpdir
+    with cdtemp():
+        model = random_ray_pin_cell()
+        model.settings.batches = 200
+        model.settings.inactive = 50
+        model.settings.particles = 50
+        model.export_to_xml()
+        yield
+
+@pytest.fixture(scope='module')
 def lib_init(pincell_model, mpi_intracomm):
     openmc.lib.init(intracomm=mpi_intracomm)
     yield
@@ -114,6 +128,16 @@ def pincell_model_w_univ():
     with cdtemp():
         pincell.export_to_xml()
         yield
+
+
+def test_mesh_from_python_requires_init():
+    mesh = openmc.RegularMesh(mesh_id=100)
+    mesh.dimension = (1, 1)
+    mesh.lower_left = (0.0, 0.0)
+    mesh.upper_right = (1.0, 1.0)
+
+    with pytest.raises(RuntimeError, match='must be initialized'):
+        openmc.lib.Mesh.from_python(mesh)
 
 
 def test_cell_mapping(lib_init):
@@ -237,9 +261,9 @@ def test_material(lib_init):
     m.name = "Not hot borated water"
     assert m.name == "Not hot borated water"
 
-    assert m.depletable == False
+    assert not m.depletable
     m.depletable = True
-    assert m.depletable == True
+    assert m.depletable
 
 
 def test_properties_density(lib_init):
@@ -299,6 +323,55 @@ def test_settings(lib_init):
     assert settings.seed == 1
     assert settings.event_based is False
     settings.seed = 11
+
+    new_values = {
+        'cmfd_run': not settings.cmfd_run,
+        'entropy_on': not settings.entropy_on,
+        'generations_per_batch': settings.generations_per_batch + 1,
+        'inactive': settings.inactive + 1,
+        'max_lost_particles': settings.max_lost_particles + 1,
+        'max_write_lost_particles': settings.max_write_lost_particles + 1,
+        'need_depletion_rx': not settings.need_depletion_rx,
+        'output_summary': not settings.output_summary,
+        'particles': settings.particles + 1,
+        'photon_transport': not settings.photon_transport,
+        'rel_max_lost_particles': settings.rel_max_lost_particles + 0.01,
+        'reduce_tallies': not settings.reduce_tallies,
+        'restart_run': not settings.restart_run,
+        'run_CE': not settings.run_CE,
+        'trigger_on': not settings.trigger_on,
+        'verbosity': settings.verbosity + 1,
+        'event_based': not settings.event_based,
+        'weight_windows_on': not settings.weight_windows_on,
+    }
+    original_values = {
+        name: getattr(settings, name) for name in new_values
+    }
+    original_run_mode = settings.run_mode
+
+    try:
+        for name, value in new_values.items():
+            setattr(settings, name, value)
+            assert getattr(settings, name) == value
+
+        settings.run_mode = 'plot'
+        assert settings.run_mode == 'plot'
+        assert isinstance(settings.path_statepoint, str)
+    finally:
+        for name, value in original_values.items():
+            setattr(settings, name, value)
+        settings.run_mode = original_run_mode
+
+    assert isinstance(openmc.lib._coord_levels(), int)
+
+
+def test_feature_enabled():
+    assert isinstance(openmc.lib.feature_enabled('dagmc'), bool)
+    assert isinstance(openmc.lib.feature_enabled('libmesh'), bool)
+    assert isinstance(openmc.lib.feature_enabled('strict_fp'), bool)
+    assert isinstance(openmc.lib.feature_enabled('uwuw'), bool)
+    with pytest.raises(exc.InvalidArgumentError, match="Unknown build feature"):
+        openmc.lib.feature_enabled('not-a-feature')
 
 
 def test_tally_mapping(lib_init):
@@ -574,6 +647,8 @@ def test_find_material(lib_init):
 
 def test_regular_mesh(lib_init):
     mesh = openmc.lib.RegularMesh()
+    mesh.name = 'runtime mesh'
+    assert mesh.name == 'runtime mesh'
     mesh.dimension = (2, 3, 4)
     assert mesh.dimension == (2, 3, 4)
     with pytest.raises(exc.AllocationError):
@@ -608,6 +683,13 @@ def test_regular_mesh(lib_init):
         assert isinstance(mesh, openmc.lib.RegularMesh)
         assert mesh_id == mesh.id
 
+    rotation = (180.0, 0.0, 0.0)
+
+    mf = openmc.lib.MeshFilter(mesh)
+    assert mf.mesh == mesh
+    mf.rotation = rotation
+    assert np.allclose(mf.rotation, rotation)
+
     translation = (1.0, 2.0, 3.0)
 
     mf = openmc.lib.MeshFilter(mesh)
@@ -631,13 +713,16 @@ def test_regular_mesh(lib_init):
         elem_vols = vols.by_element(i)
         assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26 / 4)
 
-    # If the mesh extends beyond the boundaries of the model, we should get a
-    # GeometryError
+    # If the mesh extends beyond the boundaries of the model, outside regions
+    # should be treated as void.
     mesh.dimension = (1, 1, 1)
     mesh.set_parameters(lower_left=(-1.0, -1.0, -0.5),
                         upper_right=(1.0, 1.0, 0.5))
-    with pytest.raises(exc.GeometryError, match="not fully contained"):
-        vols = mesh.material_volumes()
+    vols = mesh.material_volumes()
+    assert vols.num_elements == 1
+    elem_vols = vols.by_element(0)
+    assert any(mat_id is None for mat_id, _ in elem_vols)
+    assert sum(f[1] for f in elem_vols) == pytest.approx(4.0)
 
 
 def test_regular_mesh_get_plot_bins(lib_init):
@@ -730,6 +815,11 @@ def test_cylindrical_mesh(lib_init):
             for k, _ in enumerate(np.diff(z_grid)):
                 assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), 10))
 
+    mesh.origin = (1.0, 2.0, 3.0)
+    np.testing.assert_allclose(mesh.origin, (1.0, 2.0, 3.0))
+    assert np.all(mesh.dimension == (2, 2, 2))
+    mesh.origin = (0.0, 0.0, 0.0)
+
     np.testing.assert_allclose(mesh.volumes[::2], 10/360 * pi * 5**2 * 10)
     np.testing.assert_allclose(mesh.volumes[1::2], 10/360 * pi * (10**2 - 5**2) * 10)
 
@@ -784,6 +874,11 @@ def test_spherical_mesh(lib_init):
             for k, _ in enumerate(np.diff(phi_grid)):
                 assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), deg2rad(10)))
 
+    mesh.origin = (-1.0, -2.0, -3.0)
+    np.testing.assert_allclose(mesh.origin, (-1.0, -2.0, -3.0))
+    assert np.all(mesh.dimension == (2, 2, 2))
+    mesh.origin = (0.0, 0.0, 0.0)
+
     dtheta = lambda d1, d2: np.cos(deg2rad(d1)) - np.cos(deg2rad(d2))
     f = 1/3 * deg2rad(10.)
     np.testing.assert_allclose(mesh.volumes[::4],  f * 5**3 * dtheta(0., 10.))
@@ -831,6 +926,87 @@ def test_spherical_mesh(lib_init):
             (0.5**3 - 0.25**3) / 3 * d_theta * d_phi * 2/pi)
 
 
+def test_mesh_from_python(lib_init):
+    regular = openmc.RegularMesh(mesh_id=101, name='regular')
+    regular.dimension = (2, 3)
+    regular.lower_left = (0.0, 1.0)
+    regular.upper_right = (2.0, 4.0)
+    lib_regular = openmc.lib.Mesh.from_python(regular)
+    assert isinstance(lib_regular, openmc.lib.RegularMesh)
+    assert lib_regular.id == regular.id
+    assert lib_regular.name == regular.name
+    assert lib_regular.dimension == regular.dimension
+    np.testing.assert_allclose(lib_regular.lower_left, regular.lower_left)
+    np.testing.assert_allclose(lib_regular.upper_right, regular.upper_right)
+
+    rectilinear = openmc.RectilinearMesh(mesh_id=102, name='rectilinear')
+    rectilinear.x_grid = (-2.0, 0.0, 3.0)
+    rectilinear.y_grid = (1.0, 4.0)
+    rectilinear.z_grid = (-5.0, 0.0, 5.0)
+    lib_rectilinear = openmc.lib.Mesh.from_python(rectilinear)
+    assert isinstance(lib_rectilinear, openmc.lib.RectilinearMesh)
+    assert lib_rectilinear.id == rectilinear.id
+    assert lib_rectilinear.name == rectilinear.name
+    assert tuple(lib_rectilinear.dimension) == rectilinear.dimension
+    np.testing.assert_allclose(
+        lib_rectilinear.lower_left, rectilinear.lower_left)
+    np.testing.assert_allclose(
+        lib_rectilinear.upper_right, rectilinear.upper_right)
+
+    cylindrical = openmc.CylindricalMesh(
+        r_grid=(0.0, 1.0, 2.0), phi_grid=(0.0, np.pi),
+        z_grid=(-1.0, 1.0), origin=(1.0, 2.0, 3.0), mesh_id=103,
+        name='cylindrical')
+    lib_cylindrical = openmc.lib.Mesh.from_python(cylindrical)
+    assert isinstance(lib_cylindrical, openmc.lib.CylindricalMesh)
+    assert lib_cylindrical.id == cylindrical.id
+    assert lib_cylindrical.name == cylindrical.name
+    assert tuple(lib_cylindrical.dimension) == cylindrical.dimension
+    np.testing.assert_allclose(lib_cylindrical.origin, cylindrical.origin)
+
+    spherical = openmc.SphericalMesh(
+        r_grid=(0.0, 1.0), theta_grid=(0.0, np.pi),
+        phi_grid=(0.0, 2.0 * np.pi), origin=(-1.0, -2.0, -3.0),
+        mesh_id=104, name='spherical')
+    lib_spherical = openmc.lib.Mesh.from_python(spherical)
+    assert isinstance(lib_spherical, openmc.lib.SphericalMesh)
+    assert lib_spherical.id == spherical.id
+    assert lib_spherical.name == spherical.name
+    assert tuple(lib_spherical.dimension) == spherical.dimension
+    np.testing.assert_allclose(lib_spherical.origin, spherical.origin)
+
+    with pytest.raises(TypeError, match='cannot convert'):
+        openmc.lib.RegularMesh.from_python(rectilinear)
+
+
+def test_weight_windows_from_python(lib_init):
+    mesh = openmc.RegularMesh(mesh_id=105, name='weight windows mesh')
+    mesh.dimension = (2, 2)
+    mesh.lower_left = (-1.0, -1.0)
+    mesh.upper_right = (1.0, 1.0)
+    lower = np.arange(1.0, 9.0)
+    ww = openmc.WeightWindows(
+        mesh, lower, upper_bound_ratio=5.0,
+        energy_bounds=(0.0, 1.0, 10.0), particle_type='photon',
+        survival_ratio=4.0, max_lower_bound_ratio=2.0, max_split=12,
+        weight_cutoff=1.0e-20, id=201)
+
+    lib_ww = openmc.lib.WeightWindows.from_python(ww)
+
+    assert lib_ww.id == ww.id
+    assert lib_ww.mesh.id == mesh.id
+    assert lib_ww.particle == openmc.ParticleType.PHOTON
+    np.testing.assert_allclose(lib_ww.energy_bounds, ww.energy_bounds)
+    np.testing.assert_allclose(
+        lib_ww.bounds[0], ww.lower_ww_bounds.ravel(order='F'))
+    np.testing.assert_allclose(
+        lib_ww.bounds[1], ww.upper_ww_bounds.ravel(order='F'))
+    assert lib_ww.survival_ratio == ww.survival_ratio
+    assert lib_ww.max_lower_bound_ratio == ww.max_lower_bound_ratio
+    assert lib_ww.max_split == ww.max_split
+    assert lib_ww.weight_cutoff == ww.weight_cutoff
+
+
 def test_restart(lib_init, mpi_intracomm):
     # Finalize and re-init to make internal state consistent with XML.
     openmc.lib.hard_reset()
@@ -874,22 +1050,23 @@ def test_load_nuclide(lib_init):
         openmc.lib.load_nuclide('Pu3')
 
 
+class LegacySlicePlot:
+    origin = (0.0, 0.0, 0.0)
+    width = 1.26
+    height = 1.26
+    basis = 'xy'
+    h_res = 3
+    v_res = 3
+    level = -1
+
+
 def test_id_map(lib_init):
     expected_ids = np.array([[(3, 0, 3), (2, 0, 2), (3, 0, 3)],
                              [(2, 0, 2), (1, 0, 1), (2, 0, 2)],
                              [(3, 0, 3), (2, 0, 2), (3, 0, 3)]], dtype='int32')
 
-    # create a plot object
-    s = openmc.lib.plot._PlotBase()
-    s.width = 1.26
-    s.height = 1.26
-    s.v_res = 3
-    s.h_res = 3
-    s.origin = (0.0, 0.0, 0.0)
-    s.basis = 'xy'
-    s.level = -1
-
-    ids = openmc.lib.plot.id_map(s)
+    with pytest.warns(FutureWarning, match="deprecated"):
+        ids = openmc.lib.id_map(LegacySlicePlot())
     assert np.array_equal(expected_ids, ids)
 
 
@@ -899,18 +1076,79 @@ def test_property_map(lib_init):
          [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
          [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
 
-    # create a plot object
-    s = openmc.lib.plot._PlotBase()
-    s.width = 1.26
-    s.height = 1.26
-    s.v_res = 3
-    s.h_res = 3
-    s.origin = (0.0, 0.0, 0.0)
-    s.basis = 'xy'
-    s.level = -1
-
-    properties = openmc.lib.plot.property_map(s)
+    with pytest.warns(FutureWarning, match="deprecated"):
+        properties = openmc.lib.property_map(LegacySlicePlot())
     assert np.allclose(expected_properties, properties, atol=1e-04)
+
+
+def test_slice_data(lib_init):
+    expected_properties = np.array(
+        [[(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)],
+         [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
+         [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
+    origin = (0.0, 0.0, 0.0)
+    _, properties = openmc.lib.slice_data(
+        origin,
+        width=(1.26, 1.26),
+        basis='xy',
+        pixels=(3, 3),
+        include_properties=True
+    )
+    assert np.allclose(expected_properties, properties, atol=1e-04)
+
+
+def test_solid_raytrace_plot(lib_init, pincell_model):
+    # Ensure plot mapping can be accessed and grows after allocation
+    n0 = len(openmc.lib.plots)
+    plot = openmc.lib.SolidRayTracePlot()
+    assert len(openmc.lib.plots) == n0 + 1
+    assert plot.id in openmc.lib.plots
+    assert openmc.lib.plots[plot.id] is plot
+
+    # Exercise plot property getters/setters
+    plot.pixels = (8, 6)
+    assert plot.pixels == (8, 6)
+
+    plot.color_by = openmc.lib.SolidRayTracePlot.COLOR_BY_MATERIAL
+    assert plot.color_by == openmc.lib.SolidRayTracePlot.COLOR_BY_MATERIAL
+
+    plot.camera_position = (2.0, 0.0, 1.0)
+    plot.look_at = (0.0, 0.0, 0.0)
+    plot.up = (0.0, 0.0, 1.0)
+    plot.light_position = (3.0, 2.0, 4.0)
+    plot.fov = 60.0
+    plot.diffuse_fraction = 0.4
+    assert plot.camera_position == pytest.approx((2.0, 0.0, 1.0))
+    assert plot.look_at == pytest.approx((0.0, 0.0, 0.0))
+    assert plot.up == pytest.approx((0.0, 0.0, 1.0))
+    assert plot.light_position == pytest.approx((3.0, 2.0, 4.0))
+    assert plot.fov == pytest.approx(60.0)
+    assert plot.diffuse_fraction == pytest.approx(0.4)
+
+    # Exercise color/visibility CAPI wrappers
+    plot.set_default_colors()
+    plot.set_color(1, (12, 34, 56))
+    assert plot.get_color(1) == (12, 34, 56)
+    plot.set_visibility(1, False)
+    plot.set_visibility(1, True)
+
+    # Confirm image creation path works and dimensions match pixels
+    plot.update_view()
+    image = plot.create_image()
+    assert image.shape == (6, 8, 3)
+    assert image.dtype == np.uint8
+
+    # Change some properties and confirm image changes
+    plot.set_color(1, (255, 0, 0))
+    plot.update_view()
+    image2 = plot.create_image()
+    assert not np.array_equal(image, image2)
+
+    # Solid raytrace uses Phong/diffuse shading, so rendered RGB values are
+    # generally modulated and need not exactly match the assigned palette.
+    changed = np.any(image != image2, axis=2)
+    assert np.any(changed)
+    assert np.mean(image2[..., 0][changed]) > np.mean(image[..., 0][changed])
 
 
 def test_position(lib_init):
@@ -1039,9 +1277,29 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
         assert p1.time == p2.time
         assert p1.wgt == p2.wgt
 
+    # as_array should return a numpy structured array with matching values
+    arr = openmc.lib.sample_external_source(10, prn_seed=3, as_array=True)
+    assert isinstance(arr, np.ndarray)
+    assert len(arr) == 10
+    for p, row in zip(particles, arr):
+        assert p.r == pytest.approx(row['r'])
+        assert p.E == pytest.approx(row['E'])
+
     openmc.lib.finalize()
 
     # Make sure sampling works in volume calculation mode
     openmc.lib.init(["-c"])
     openmc.lib.sample_external_source(100)
+    openmc.lib.finalize()
+
+
+def test_random_ray(random_ray_pincell_model, mpi_intracomm):
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.simulation_init()
+    openmc.lib.run_random_ray()
+    keff = openmc.lib.keff()
+
+    assert keff[0]==pytest.approx(1.3236826574065745)
+
     openmc.lib.finalize()

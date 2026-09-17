@@ -21,11 +21,13 @@ Simulation Settings
    :nosignatures:
    :template: myclass.rst
 
+   openmc.ParticleType
    openmc.SourceBase
    openmc.IndependentSource
    openmc.FileSource
    openmc.CompiledSource
    openmc.MeshSource
+   openmc.TokamakSource
    openmc.SourceParticle
    openmc.VolumeCalculation
    openmc.Settings
@@ -132,6 +134,7 @@ Constructing Tallies
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
+   openmc.ParticleProductionFilter
    openmc.MuFilter
    openmc.MuSurfaceFilter
    openmc.PolarFilter
@@ -148,6 +151,7 @@ Constructing Tallies
    openmc.ZernikeRadialFilter
    openmc.ParentNuclideFilter
    openmc.ParticleFilter
+   openmc.ReactionFilter
    openmc.MeshMaterialVolumes
    openmc.Trigger
    openmc.TallyDerivative

@@ -5,7 +5,7 @@
 #define OPENMC_DISTRIBUTION_ENERGY_H
 
 #include "hdf5.h"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/constants.h"
 #include "openmc/endf.h"
@@ -86,9 +86,9 @@ private:
   struct CTTable {
     Interpolation interpolation;  //!< Interpolation law
     int n_discrete;               //!< Number of of discrete energies
-    xt::xtensor<double, 1> e_out; //!< Outgoing energies in [eV]
-    xt::xtensor<double, 1> p;     //!< Probability density
-    xt::xtensor<double, 1> c;     //!< Cumulative distribution
+    tensor::Tensor<double> e_out; //!< Outgoing energies in [eV]
+    tensor::Tensor<double> p;     //!< Probability density
+    tensor::Tensor<double> c;     //!< Cumulative distribution
   };
 
   int n_region_;                        //!< Number of inteprolation regions

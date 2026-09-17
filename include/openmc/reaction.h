@@ -76,11 +76,21 @@ public:
 //! \return Name of the corresponding reaction
 std::string reaction_name(int mt);
 
-//! Return reaction type (MT value) given a reaction name
+//! Return MT value for given a reaction name (including special tally MT
+//! values)
 //
 //! \param[in] name  Reaction name
-//! \return Corresponding reaction type (MT value)
-int reaction_type(std::string name);
+//! \return Corresponding MT number or special tally score
+int reaction_tally_mt(std::string name);
+
+//! Return ENDF MT number given a reaction name
+//
+//! Unlike reaction_tally_mt(), this function always returns a positive ENDF MT
+//! number and never a special negative tally score.
+//!
+//! \param[in] name  Reaction name
+//! \return Corresponding ENDF MT number
+int reaction_mt(const std::string& name);
 
 } // namespace openmc
 

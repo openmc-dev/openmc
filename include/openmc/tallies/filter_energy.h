@@ -1,6 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_ENERGY_H
 #define OPENMC_TALLIES_FILTER_ENERGY_H
 
+#include "openmc/particle.h"
 #include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"

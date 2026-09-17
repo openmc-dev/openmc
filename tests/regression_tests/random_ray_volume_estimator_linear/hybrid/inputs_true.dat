@@ -191,7 +191,7 @@
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>90</particles>
+    <particles>10</particles>
     <batches>40</batches>
     <inactive>20</inactive>
     <source type="independent" strength="3.14" particle="neutron">
@@ -207,14 +207,16 @@
     <random_ray>
       <distance_active>500.0</distance_active>
       <distance_inactive>100.0</distance_inactive>
-      <source type="independent" strength="1.0" particle="neutron">
-        <space type="box">
-          <parameters>0.0 0.0 0.0 30.0 30.0 30.0</parameters>
-        </space>
-      </source>
+      <ray_source>
+        <source type="independent" strength="1.0" particle="neutron">
+          <space type="box">
+            <parameters>0.0 0.0 0.0 30.0 30.0 30.0</parameters>
+          </space>
+        </source>
+      </ray_source>
       <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
-      <source_shape>linear</source_shape>
       <volume_estimator>hybrid</volume_estimator>
+      <source_shape>linear</source_shape>
     </random_ray>
   </settings>
   <tallies>

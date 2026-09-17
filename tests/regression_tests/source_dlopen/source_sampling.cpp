@@ -10,7 +10,7 @@ class CustomSource : public openmc::Source {
   {
     openmc::SourceSite particle;
     // wgt
-    particle.particle = openmc::ParticleType::neutron;
+    particle.particle = openmc::ParticleType::neutron();
     particle.wgt = 1.0;
     // position
 

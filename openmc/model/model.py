@@ -16,21 +16,63 @@ import h5py
 import lxml.etree as ET
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy import ndimage
 
 import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value, PathLike
+from openmc.checkvalue import (check_type, check_value, check_greater_than,
+                               check_length, PathLike)
 from openmc.exceptions import InvalidIDError
-from openmc.plots import add_plot_params, _BASIS_INDICES
-from openmc.utility_funcs import change_directory
+from openmc.plots import add_plot_params, _BASIS_INDICES, _id_map_to_rgb
+from openmc.utility_funcs import change_directory, set_xml_input_path
 
+
+def classify_undefined_regions(cell_ids: np.ndarray) -> np.ndarray:
+    """Find internal undefined pixels in a 2D cell-ID slice.
+
+    Internal undefined pixels are those enclosed by defined pixels (i.e., holes
+    in the defined-pixel mask), as opposed to undefined pixels connected to the
+    slice boundary, which may represent void outside the model. The
+    classification is based only on connectivity within the sampled pixel grid,
+    so it does not guarantee true geometric interior classification.
+
+    Parameters
+    ----------
+    cell_ids : numpy.ndarray
+        Two-dimensional array of cell IDs for a slice, which can be obtained
+        from the :meth:`openmc.Model.slice_data` method.
+
+    Returns
+    -------
+    numpy.ndarray of bool
+        Boolean mask of undefined pixels not connected to the boundary of the
+        sampled slice, i.e., undefined interior holes in the sampled grid.
+    """
+
+    _NOT_FOUND = -2
+    if cell_ids is None:
+        raise TypeError("cell_ids must be a 2D numpy array, got None")
+
+    undefined = (cell_ids == _NOT_FOUND)
+
+    # Internal undefined pixels are holes in the defined-pixel mask.
+    return ndimage.binary_fill_holes(~undefined) & undefined
 
 # Protocol for a function that is passed to search_keff
 class ModelModifier(Protocol):
     def __call__(self, val: float, **kwargs: Any) -> None:
         ...
+
+
+def _check_pixels(pixels: int | Sequence[int]) -> None:
+    if isinstance(pixels, Integral):
+        check_greater_than('pixels', pixels, 0)
+    else:
+        check_length('pixels', pixels, 2)
+        for p in pixels:
+            check_greater_than('pixels', p, 0)
 
 
 class Model:
@@ -60,6 +102,8 @@ class Model:
         Tallies information
     plots : openmc.Plots, optional
         Plot information
+    description : str, optional
+        A description of the model
 
     Attributes
     ----------
@@ -73,6 +117,8 @@ class Model:
         Tallies information
     plots : openmc.Plots
         Plot information
+    description : str
+        A description of the model
 
     """
 
@@ -83,12 +129,14 @@ class Model:
         settings: openmc.Settings | None = None,
         tallies: openmc.Tallies | None = None,
         plots: openmc.Plots | None = None,
+        description: str = '',
     ):
         self.geometry = openmc.Geometry() if geometry is None else geometry
         self.materials = openmc.Materials() if materials is None else materials
         self.settings = openmc.Settings() if settings is None else settings
         self.tallies = openmc.Tallies() if tallies is None else tallies
         self.plots = openmc.Plots() if plots is None else plots
+        self.description = description
 
     @property
     def geometry(self) -> openmc.Geometry:
@@ -155,6 +203,15 @@ class Model:
             del self._plots[:]
             for plot in plots:
                 self._plots.append(plot)
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @description.setter
+    def description(self, description):
+        check_type('description', description, str)
+        self._description = description
 
     @property
     def bounding_box(self) -> openmc.BoundingBox:
@@ -266,6 +323,46 @@ class Model:
             denom_tally.scores = ['ifp-denominator']
             self.tallies.append(denom_tally)
 
+    # TODO: This should also be incorporated into lower-level calls in
+    # settings.py, but it requires information about the tallies currently
+    # on the active Model
+    def _assign_fw_cadis_tally_IDs(self):
+        # Verify that all tallies assigned as targets on WeightWindowGenerators
+        # exist within model.tallies. If this is the case, convert the .targets
+        # attribute of each WeightWindowGenerator to a sequence of tally IDs.
+        if len(self.settings.weight_window_generators) == 0:
+            return
+
+        # List of valid tally IDs
+        reference_tally_ids = np.asarray([tal.id for tal in self.tallies])
+
+        for wwg in self.settings.weight_window_generators:
+            # Only proceeds if the "targets" attribute is an openmc.Tallies,
+            # which means it hasn't been checked against model.tallies.
+            if isinstance(wwg.targets, openmc.Tallies):
+                id_vec = []
+                for tal in wwg.targets:
+                    # check against model tallies for equivalence
+                    id_next = None
+                    for reference_tal in self.tallies:
+                        if tal == reference_tal:
+                            id_next = reference_tal.id
+                            break
+
+                    if id_next is None:
+                        raise RuntimeError(
+                            f'Local FW-CADIS target tally {tal.id} not found on model.tallies!')
+                    else:
+                        id_vec.append(id_next)
+
+                wwg.targets = id_vec
+
+            elif isinstance(wwg.targets, np.ndarray):
+                invalid = wwg.targets[~np.isin(wwg.targets, reference_tally_ids)]
+                if len(invalid) > 0:
+                    raise RuntimeError(
+                        f'Local FW-CADIS target tally IDs {invalid} not found on model.tallies!')
+
     @classmethod
     def from_xml(
         cls,
@@ -319,26 +416,31 @@ class Model:
         path : PathLike
             Path to model.xml file
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
 
-        model = cls()
+            model = cls()
 
-        meshes = {}
-        model.settings = openmc.Settings.from_xml_element(
-            root.find('settings'), meshes)
-        model.materials = openmc.Materials.from_xml_element(
-            root.find('materials'))
-        model.geometry = openmc.Geometry.from_xml_element(
-            root.find('geometry'), model.materials)
+            desc_elem = root.find('description')
+            if desc_elem is not None and desc_elem.text:
+                model.description = desc_elem.text
 
-        if root.find('tallies') is not None:
-            model.tallies = openmc.Tallies.from_xml_element(
-                root.find('tallies'), meshes)
+            meshes = {}
+            model.settings = openmc.Settings.from_xml_element(
+                root.find('settings'), meshes)
+            model.materials = openmc.Materials.from_xml_element(
+                root.find('materials'))
+            model.geometry = openmc.Geometry.from_xml_element(
+                root.find('geometry'), model.materials)
 
-        if root.find('plots') is not None:
-            model.plots = openmc.Plots.from_xml_element(root.find('plots'))
+            if root.find('tallies') is not None:
+                model.tallies = openmc.Tallies.from_xml_element(
+                    root.find('tallies'), meshes)
+
+            if root.find('plots') is not None:
+                model.plots = openmc.Plots.from_xml_element(root.find('plots'))
 
         return model
 
@@ -427,6 +529,8 @@ class Model:
         This method iterates over all DAGMC universes in the geometry and
         synchronizes their cells with the current material assignments. Requires
         that the model has been initialized via :meth:`Model.init_lib`.
+        Synchronized DAGMC cells can then be edited and exported as nested
+        `<cell>` overrides inside each `<dagmc_universe>` element.
 
         .. versionadded:: 0.15.1
 
@@ -576,6 +680,7 @@ class Model:
         if not d.is_dir():
             d.mkdir(parents=True, exist_ok=True)
 
+        self._assign_fw_cadis_tally_IDs()
         self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
 
@@ -634,6 +739,9 @@ class Model:
                           "set the Geometry.merge_surfaces attribute instead.")
             self.geometry.merge_surfaces = True
 
+        # Link FW-CADIS WeightWindowGenerator target tallies, if present
+        self._assign_fw_cadis_tally_IDs()
+
         # provide a memo to track which meshes have been written
         mesh_memo = set()
         settings_element = self.settings.to_xml_element(mesh_memo)
@@ -655,6 +763,12 @@ class Model:
             # write the XML header
             fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
             fh.write("<model>\n")
+            if self.description:
+                description_element = ET.Element('description')
+                description_element.text = self.description
+                fh.write("  ")
+                fh.write(ET.tostring(description_element, encoding="unicode"))
+                fh.write("\n")
             # Write the materials collection to the open XML file first.
             # This will write the XML header also
             materials._write_xml(fh, False, level=1,
@@ -1004,6 +1118,8 @@ class Model:
         pixels: int | Sequence[int],
         basis: str
     ):
+        _check_pixels(pixels)
+
         x, y, _ = _BASIS_INDICES[basis]
 
         bb = self.bounding_box
@@ -1081,28 +1197,149 @@ class Model:
             array contains cell IDs, cell instances, and material IDs (in that
             order).
         """
+        ids, _ = self.slice_data(
+            origin=origin,
+            width=width,
+            pixels=pixels,
+            basis=basis,
+            show_overlaps=color_overlaps,
+            include_properties=False,
+            **init_kwargs,
+        )
+        return ids
+
+    def slice_data(
+        self,
+        origin: Sequence[float] | None = None,
+        width: Sequence[float] | None = None,
+        pixels: int | Sequence[int] = 40000,
+        basis: str = 'xy',
+        u_span: Sequence[float] | None = None,
+        v_span: Sequence[float] | None = None,
+        show_overlaps: bool = False,
+        level: int = -1,
+        filter: openmc.Filter | None = None,
+        include_properties: bool = True,
+        **init_kwargs
+    ) -> tuple[np.ndarray, np.ndarray | None]:
+        """Generate geometry and property data for a 2D plot slice.
+
+        This method combines the functionality of :meth:`id_map` and property
+        mapping into a single call, avoiding duplicate geometry lookups. It also
+        supports filter bin index lookup for tally visualization.
+
+        .. versionadded:: 0.16.0
+
+        Parameters
+        ----------
+        origin : Sequence[float], optional
+            Origin of the plot. If unspecified, this argument defaults to the
+            center of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (0.0, 0.0, 0.0).
+        width : Sequence[float], optional
+            Width of the plot. If unspecified, this argument defaults to the
+            width of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (10.0, 10.0).
+        pixels : int | Sequence[int], optional
+            If an iterable of ints is provided then this directly sets the
+            number of pixels to use in each basis direction. If a single int is
+            provided then this sets the total number of pixels in the plot and
+            the number of pixels in each basis direction is calculated from this
+            total and the image aspect ratio based on the width argument.
+        basis : {'xy', 'yz', 'xz'}, optional
+            Basis of the plot.
+        u_span : Sequence[float], optional
+            Full-width span vector for an oriented slice (3 values). Mutually
+            exclusive with width.
+        v_span : Sequence[float], optional
+            Full-height span vector for an oriented slice (3 values). Mutually
+            exclusive with width.
+        show_overlaps : bool, optional
+            Whether to identify and assign unique IDs (-3) to overlapping
+            regions. If False, overlapping regions will be assigned the ID of
+            the lowest-numbered cell that occupies that region. Defaults to
+            False.
+        level : int, optional
+            Universe level to plot (-1 for deepest). Defaults to -1.
+        filter : openmc.Filter, optional
+            If provided, the information for each pixel also includes an index
+            in the filter corresponding to the pixel position.
+        include_properties : bool, optional
+            Whether to include temperature/density data. Defaults to True.
+        **init_kwargs
+            Keyword arguments passed to :meth:`Model.init_lib`.
+
+        Returns
+        -------
+        geom_data : numpy.ndarray
+            Shape (v_res, h_res, 3) or (v_res, h_res, 4) int32 array. Contains
+            [cell_id, cell_instance, material_id] when no filter, or [cell_id,
+            cell_instance, material_id, filter_bin] with filter.
+        property_data : numpy.ndarray or None
+            Shape (v_res, h_res, 2) float64 array with [temperature, density],
+            or None if include_properties=False.
+        """
         import openmc.lib
 
-        origin, width, pixels = self._set_plot_defaults(
-            origin, width, pixels, basis)
+        _check_pixels(pixels)
 
-        # initialize the openmc.lib.plot._PlotBase object
-        plot_obj = openmc.lib.plot._PlotBase()
-        plot_obj.origin = origin
-        plot_obj.width = width[0]
-        plot_obj.height = width[1]
-        plot_obj.h_res = pixels[0]
-        plot_obj.v_res = pixels[1]
-        plot_obj.basis = basis
-        plot_obj.color_overlaps = color_overlaps
+        if width is not None and (u_span is not None or v_span is not None):
+            raise ValueError("width is mutually exclusive with u_span/v_span.")
+
+        if u_span is not None or v_span is not None:
+            if u_span is None or v_span is None:
+                raise ValueError("Both u_span and v_span must be provided.")
+            if origin is None:
+                origin = (0.0, 0.0, 0.0)
+            if isinstance(pixels, int):
+                u_norm = np.linalg.norm(u_span)
+                v_norm = np.linalg.norm(v_span)
+                aspect_ratio = u_norm / v_norm
+                pixels_y = math.sqrt(pixels / aspect_ratio)
+                pixels = (int(pixels / pixels_y), int(pixels_y))
+        else:
+            origin, width, pixels = self._set_plot_defaults(
+                origin, width, pixels, basis)
 
         # Silence output by default. Also set arguments to start in volume
         # calculation mode to avoid loading cross sections
         init_kwargs.setdefault('output', False)
         init_kwargs.setdefault('args', ['-c'])
 
+        # If filter does not already appear in the model, temporarily add a
+        # tally with the filter
+        original_length = len(self.tallies)
+        if filter is not None:
+            filter_ids = {f.id for t in self.tallies for f in t.filters}
+            if filter.id not in filter_ids:
+                # Create temporary tally while preserving ID assignment
+                next_id = openmc.Tally.next_id
+                temp_tally = openmc.Tally()
+                temp_tally.filters = [filter]
+                temp_tally.scores = ['flux']
+                self.tallies.append(temp_tally)
+                openmc.Tally.used_ids.remove(temp_tally.id)
+                openmc.Tally.next_id = next_id
+
         with openmc.lib.TemporarySession(self, **init_kwargs):
-            return openmc.lib.id_map(plot_obj)
+            geom_data, property_data = openmc.lib.slice_data(
+                origin=origin,
+                width=width,
+                basis=basis,
+                u_span=u_span,
+                v_span=v_span,
+                pixels=pixels,
+                show_overlaps=show_overlaps,
+                level=level,
+                filter=filter,
+                include_properties=include_properties,
+            )
+
+        # If filter was temporarily added, remove it
+        if len(self.tallies) > original_length:
+            self.tallies.pop()
+
+        return geom_data, property_data
 
     @add_plot_params
     def plot(
@@ -1114,13 +1351,12 @@ class Model:
         color_by: str = 'cell',
         colors: dict | None = None,
         seed: int | None = None,
-        openmc_exec: PathLike = 'openmc',
         axes=None,
         legend: bool = False,
         axis_units: str = 'cm',
         outline: bool | str = False,
         show_overlaps: bool = False,
-        overlap_color: Sequence[int] | str | None = None,
+        overlap_color: Sequence[int] | str = (255, 0, 0),
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
         legend_kwargs: dict | None = None,
@@ -1132,12 +1368,15 @@ class Model:
 
         .. versionadded:: 0.15.1
         """
-        import matplotlib.image as mpimg
         import matplotlib.patches as mpatches
         import matplotlib.pyplot as plt
 
         check_type('n_samples', n_samples, int | None)
+        if n_samples is not None:
+            check_greater_than('n_samples', n_samples, 0, equality=True)
         check_type('plane_tolerance', plane_tolerance, Real)
+        check_greater_than('plane_tolerance', plane_tolerance, 0.0)
+
         if legend_kwargs is None:
             legend_kwargs = {}
         legend_kwargs.setdefault('bbox_to_anchor', (1.05, 1))
@@ -1163,124 +1402,118 @@ class Model:
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
         # Determine whether any materials contains macroscopic data and if so,
-        # set energy mode accordingly
-        _energy_mode = self.settings._energy_mode
+        # set energy mode accordingly and check that mg cross sections path is accessible
         for mat in self.geometry.get_all_materials().values():
             if mat._macroscopic is not None:
                 self.settings.energy_mode = 'multi-group'
+                if 'mg_cross_sections' not in openmc.config:
+                    raise RuntimeError("'mg_cross_sections' path must be set in "
+                                       "openmc.config before plotting.")
                 break
 
-        with TemporaryDirectory() as tmpdir:
-            _plot_seed = self.settings.plot_seed
-            if seed is not None:
-                self.settings.plot_seed = seed
+        # Get plot IDs from the C API
+        id_map, _ = self.slice_data(
+            origin=origin,
+            width=width,
+            pixels=pixels,
+            basis=basis,
+            show_overlaps=show_overlaps,
+            include_properties=False,
+        )
 
-            # Create plot object matching passed arguments
+        # Generate colors if not provided
+        if colors is None and seed is not None:
+            # Use the colorize method to generate random colors
             plot = openmc.SlicePlot()
-            plot.origin = origin
-            plot.width = width
-            plot.pixels = pixels
-            plot.basis = basis
             plot.color_by = color_by
-            plot.show_overlaps = show_overlaps
-            if overlap_color is not None:
-                plot.overlap_color = overlap_color
-            if colors is not None:
-                plot.colors = colors
-            self.plots.append(plot)
+            plot.colorize(self.geometry, seed=seed)
+            colors = plot.colors
 
-            # Run OpenMC in geometry plotting mode
-            self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+        # Convert ID map to RGB image
+        img = _id_map_to_rgb(
+            id_map=id_map,
+            color_by=color_by,
+            colors=colors,
+            overlap_color=overlap_color
+        )
 
-            # Undo changes to model
-            self.plots.pop()
-            self.settings._plot_seed = _plot_seed
-            self.settings._energy_mode = _energy_mode
+        # Create a figure sized such that the size of the axes within
+        # exactly matches the number of pixels specified
+        if axes is None:
+            px = 1/plt.rcParams['figure.dpi']
+            fig, axes = plt.subplots()
+            axes.set_xlabel(xlabel)
+            axes.set_ylabel(ylabel)
+            params = fig.subplotpars
+            width_px = pixels[0]*px/(params.right - params.left)
+            height_px = pixels[1]*px/(params.top - params.bottom)
+            fig.set_size_inches(width_px, height_px)
 
-            # Read image from file
-            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
-            if not img_path.is_file():
-                img_path = img_path.with_suffix('.ppm')
-            img = mpimg.imread(str(img_path))
+        if outline:
+            # Combine R, G, B values into a single int for contour detection
+            rgb = (img * 256).astype(int)
+            image_value = (rgb[..., 0] << 16) + \
+                (rgb[..., 1] << 8) + (rgb[..., 2])
 
-            # Create a figure sized such that the size of the axes within
-            # exactly matches the number of pixels specified
-            if axes is None:
-                px = 1/plt.rcParams['figure.dpi']
-                fig, axes = plt.subplots()
-                axes.set_xlabel(xlabel)
-                axes.set_ylabel(ylabel)
-                params = fig.subplotpars
-                width = pixels[0]*px/(params.right - params.left)
-                height = pixels[1]*px/(params.top - params.bottom)
-                fig.set_size_inches(width, height)
+            # Set default arguments for contour()
+            if contour_kwargs is None:
+                contour_kwargs = {}
+            contour_kwargs.setdefault('colors', 'k')
+            contour_kwargs.setdefault('linestyles', 'solid')
+            contour_kwargs.setdefault('algorithm', 'serial')
 
-            if outline:
-                # Combine R, G, B values into a single int
-                rgb = (img * 256).astype(int)
-                image_value = (rgb[..., 0] << 16) + \
-                    (rgb[..., 1] << 8) + (rgb[..., 2])
+            axes.contour(
+                image_value,
+                origin="upper",
+                levels=np.unique(image_value),
+                extent=(x_min, x_max, y_min, y_max),
+                **contour_kwargs
+            )
 
-                # Set default arguments for contour()
-                if contour_kwargs is None:
-                    contour_kwargs = {}
-                contour_kwargs.setdefault('colors', 'k')
-                contour_kwargs.setdefault('linestyles', 'solid')
-                contour_kwargs.setdefault('algorithm', 'serial')
+            # If only showing outline, set the axis limits and aspect explicitly
+            if outline == 'only':
+                axes.set_xlim(x_min, x_max)
+                axes.set_ylim(y_min, y_max)
+                axes.set_aspect('equal')
 
-                axes.contour(
-                    image_value,
-                    origin="upper",
-                    levels=np.unique(image_value),
-                    extent=(x_min, x_max, y_min, y_max),
-                    **contour_kwargs
-                )
+        # Add legend showing which colors represent which material or cell
+        if legend:
+            if colors is None or len(colors) == 0:
+                raise ValueError("Must pass 'colors' dictionary if you "
+                                 "are adding a legend via legend=True.")
 
-            # add legend showing which colors represent which material
-            # or cell if that was requested
-            if legend:
-                if plot.colors == {}:
-                    raise ValueError("Must pass 'colors' dictionary if you "
-                                     "are adding a legend via legend=True.")
+            if color_by == "cell":
+                expected_key_type = openmc.Cell
+            else:
+                expected_key_type = openmc.Material
 
-                if color_by == "cell":
-                    expected_key_type = openmc.Cell
+            patches = []
+            for key, color in colors.items():
+                if isinstance(key, int):
+                    raise TypeError(
+                        "Cannot use IDs in colors dict for auto legend.")
+                elif not isinstance(key, expected_key_type):
+                    raise TypeError(
+                        "Color dict key type does not match color_by")
+
+                # this works whether we're doing cells or materials
+                label = key.name if key.name != '' else key.id
+
+                # matplotlib takes RGB on 0-1 scale rather than 0-255
+                if len(color) == 3 and not isinstance(color, str):
+                    scaled_color = (
+                        color[0]/255, color[1]/255, color[2]/255)
                 else:
-                    expected_key_type = openmc.Material
+                    scaled_color = color
 
-                patches = []
-                for key, color in plot.colors.items():
+                key_patch = mpatches.Patch(color=scaled_color, label=label)
+                patches.append(key_patch)
 
-                    if isinstance(key, int):
-                        raise TypeError(
-                            "Cannot use IDs in colors dict for auto legend.")
-                    elif not isinstance(key, expected_key_type):
-                        raise TypeError(
-                            "Color dict key type does not match color_by")
+            axes.legend(handles=patches, **legend_kwargs)
 
-                    # this works whether we're doing cells or materials
-                    label = key.name if key.name != '' else key.id
-
-                    # matplotlib takes RGB on 0-1 scale rather than 0-255. at
-                    # this point PlotBase has already checked that 3-tuple
-                    # based colors are already valid, so if the length is three
-                    # then we know it just needs to be converted to the 0-1
-                    # format.
-                    if len(color) == 3 and not isinstance(color, str):
-                        scaled_color = (
-                            color[0]/255, color[1]/255, color[2]/255)
-                    else:
-                        scaled_color = color
-
-                    key_patch = mpatches.Patch(color=scaled_color, label=label)
-                    patches.append(key_patch)
-
-                axes.legend(handles=patches, **legend_kwargs)
-
-            # Plot image and return the axes
-            if outline != 'only':
-                axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
-
+        # Plot image and return the axes
+        if outline != 'only':
+            axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
         if n_samples:
             # Sample external source particles
@@ -1303,8 +1536,9 @@ class Model:
         self,
         n_samples: int = 1000,
         prn_seed: int | None = None,
+        as_array: bool = False,
         **init_kwargs
-    ) -> openmc.ParticleList:
+    ) -> openmc.ParticleList | np.ndarray:
         """Sample external source and return source particles.
 
         .. versionadded:: 0.15.1
@@ -1316,13 +1550,17 @@ class Model:
         prn_seed : int
             Pseudorandom number generator (PRNG) seed; if None, one will be
             generated randomly.
+        as_array : bool
+            If True, return a numpy structured array instead of a
+            :class:`~openmc.ParticleList`.
         **init_kwargs
             Keyword arguments passed to :func:`openmc.lib.init`
 
         Returns
         -------
-        openmc.ParticleList
-            List of samples source particles
+        openmc.ParticleList or numpy.ndarray
+            List of sampled source particles, or a structured array when
+            *as_array* is True.
         """
         import openmc.lib
 
@@ -1333,7 +1571,7 @@ class Model:
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             return openmc.lib.sample_external_source(
-                n_samples=n_samples, prn_seed=prn_seed
+                n_samples=n_samples, prn_seed=prn_seed, as_array=as_array
             )
 
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
@@ -1704,6 +1942,85 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
+    @staticmethod
+    def _auto_generate_mgxs_lib(
+        model: openmc.model.Model,
+        groups: openmc.mgxs.EnergyGroups,
+        correction: str | None,
+        directory: PathLike,
+    ) -> openmc.mgxs.Library:
+        """
+        Automatically generate a multi-group cross section libray from a model
+        with the specified group structure.
+
+        Parameters
+        ----------
+        model : openmc.Model
+            The model to generate the MGXS library from.
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+
+        Returns
+        -------
+        mgxs_lib : openmc.mgxs.Library
+            OpenMC MGXS Library object
+        """
+
+        # Initialize MGXS library with a finished OpenMC geometry object
+        mgxs_lib = openmc.mgxs.Library(model.geometry)
+
+        # Pick energy group structure
+        mgxs_lib.energy_groups = groups
+
+        # Disable transport correction
+        mgxs_lib.correction = correction
+
+        # Specify needed cross sections for random ray
+        if correction == 'P0':
+            mgxs_lib.mgxs_types = [
+                'nu-transport', 'absorption', 'nu-fission', 'fission',
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi',
+                'kappa-fission'
+            ]
+        elif correction is None:
+            mgxs_lib.mgxs_types = [
+                'total', 'absorption', 'nu-fission', 'fission',
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi',
+                'kappa-fission'
+            ]
+
+        # Specify a "material" domain type for the cross section tally filters
+        mgxs_lib.domain_type = "material"
+
+        # Specify the domains over which to compute multi-group cross sections
+        mgxs_lib.domains = model.geometry.get_all_materials().values()
+
+        # Do not compute cross sections on a nuclide-by-nuclide basis
+        mgxs_lib.by_nuclide = False
+
+        # Check the library - if no errors are raised, then the library is satisfactory.
+        mgxs_lib.check_library_for_openmc_mgxs()
+
+        # Construct all tallies needed for the multi-group cross section library
+        mgxs_lib.build_library()
+
+        # Create a "tallies.xml" file for the MGXS Library
+        mgxs_lib.add_to_tallies(model.tallies, merge=True)
+
+        # Run
+        statepoint_filename = model.run(cwd=directory)
+
+        # Load MGXS
+        with openmc.StatePoint(statepoint_filename) as sp:
+            mgxs_lib.load_from_statepoint(sp)
+
+        return mgxs_lib
+
     def _create_mgxs_sources(
         self,
         groups: openmc.mgxs.EnergyGroups,
@@ -1789,21 +2106,92 @@ class Model:
 
         return sources
 
+    @staticmethod
+    def _isothermal_infinite_media_mgxs(
+        material: openmc.Material,
+        groups: openmc.mgxs.EnergyGroups,
+        settings: openmc.Settings,
+        correction: str | None,
+        directory: PathLike,
+        source: openmc.IndependentSource,
+        temperature: float | None = None,
+    ) -> openmc.XSdata:
+        """Generate a single MGXS set for one material, where the geometry is an
+        infinite medium composed of that material at an isothermal temperature value.
+
+        Parameters
+        ----------
+        material : openmc.Material
+            The material to generate MGXS for
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        settings : openmc.Settings
+            Settings for the generation run, used verbatim except for the
+            fields owned by the infinite medium method.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        source : openmc.IndependentSource
+            Source to use when generating MGXS.
+        temperature : float, optional
+            The isothermal temperature value to apply to the material. If not specified,
+            defaults to the temperature in the material.
+
+        Returns
+        -------
+        data : openmc.XSdata
+            The material MGXS for the given temperature isotherm.
+        """
+        model = openmc.Model()
+
+        # Set materials on the model
+        model.materials = [material]
+        if temperature is not None:
+          model.materials[-1].temperature = temperature
+
+        # The provided settings are used verbatim, except for the fields
+        # owned by the infinite medium method
+        model.settings = copy.deepcopy(settings)
+        model.settings.source = source
+
+        # Geometry
+        box = openmc.model.RectangularPrism(
+            100000.0, 100000.0, boundary_type='reflective')
+        name = material.name
+        infinite_cell = openmc.Cell(name=name, fill=model.materials[-1], region=-box)
+        infinite_universe = openmc.Universe(name=name, cells=[infinite_cell])
+        model.geometry.root_universe = infinite_universe
+
+        # Generate MGXS
+        mgxs_lib = Model._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
+
+        if temperature is not None:
+            return mgxs_lib.get_xsdata(domain=material, xsdata_name=name,
+                                       temperature=temperature)
+        else:
+            return mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
+
     def _generate_infinite_medium_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        settings: openmc.Settings,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
         source_energy: openmc.stats.Univariate | None = None,
-    ):
+        temperatures: Sequence[float] | None = None,
+    ) -> None:
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
         material. A discrete source is used to sample particles, with an equal
         strength spread across each of the energy groups. This is a highly naive
         method that ignores all spatial self shielding effects and all resonance
-        shielding effects between materials.
+        shielding effects between materials. If temperature data points are provided,
+        isothermal cross sections are generated at each temperature point for
+        each material to build a temperature interpolation table.
 
         Note that in all cases, a discrete source that is uniform over all
         energy groups is created (strength = 0.01) to ensure that total cross
@@ -1823,8 +2211,9 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        settings : openmc.Settings
+            Settings for the generation run(s), used verbatim except for the
+            fields owned by the infinite medium method.
         mgxs_path : str
             Filename for the MGXS HDF5 file.
         correction : str
@@ -1835,94 +2224,67 @@ class Model:
         source_energy : openmc.stats.Univariate, optional
             Energy distribution to use when generating MGXS data, replacing any
             existing sources in the model.
+        temperatures : Sequence[float], optional
+            A list of temperatures to generate MGXS at. Each infinite material region
+            is isothermal at a given temperature data point for cross
+            section generation.
         """
-        mgxs_sets = []
-        for material in self.materials:
-            model = openmc.Model()
 
-            # Set materials on the model
-            model.materials = [material]
+        src = self._create_mgxs_sources(
+            groups,
+            spatial_dist=openmc.stats.Point(),
+            source_energy=source_energy
+        )
 
-            # Settings
-            model.settings.batches = 100
-            model.settings.particles = nparticles
+        if temperatures is None:
+            mgxs_sets = []
+            for material in self.materials:
+                xs_data = Model._isothermal_infinite_media_mgxs(
+                    material,
+                    groups,
+                    settings,
+                    correction,
+                    directory,
+                    src
+                )
+                mgxs_sets.append(xs_data)
 
-            model.settings.source = self._create_mgxs_sources(
-                groups,
-                spatial_dist=openmc.stats.Point(),
-                source_energy=source_energy
-            )
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
+        else:
+            # Build a series of XSData objects, one for each isothermal temperature value.
+            raw_mgxs_sets = {}
+            for temperature in temperatures:
+                raw_mgxs_sets[temperature] = []
+                for material in self.materials:
+                    xs_data = Model._isothermal_infinite_media_mgxs(
+                        material,
+                        groups,
+                        settings,
+                        correction,
+                        directory,
+                        src,
+                        temperature
+                    )
+                    raw_mgxs_sets[temperature].append(xs_data)
 
-            model.settings.run_mode = 'fixed source'
-            model.settings.create_fission_neutrons = False
+            # Unpack the isothermal XSData objects and build a single XSData object per material.
+            mgxs_sets = []
+            for m in range(len(self.materials)):
+                mgxs_sets.append(openmc.XSdata(self.materials[m].name, groups,
+                                               temperatures=temperatures))
+                mgxs_sets[-1].order = 0
+                for temperature in temperatures:
+                    mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][m])
 
-            model.settings.output = {'summary': True, 'tallies': False}
-
-            # Geometry
-            box = openmc.model.RectangularPrism(
-                100000.0, 100000.0, boundary_type='reflective')
-            name = material.name
-            infinite_cell = openmc.Cell(name=name, fill=material, region=-box)
-            infinite_universe = openmc.Universe(name=name, cells=[infinite_cell])
-            model.geometry.root_universe = infinite_universe
-
-            # Add MGXS Tallies
-
-            # Initialize MGXS library with a finished OpenMC geometry object
-            mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-            # Pick energy group structure
-            mgxs_lib.energy_groups = groups
-
-            # Disable transport correction
-            mgxs_lib.correction = correction
-
-            # Specify needed cross sections for random ray
-            if correction == 'P0':
-                mgxs_lib.mgxs_types = [
-                    'nu-transport', 'absorption', 'nu-fission', 'fission',
-                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-                ]
-            elif correction is None:
-                mgxs_lib.mgxs_types = [
-                    'total', 'absorption', 'nu-fission', 'fission',
-                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-                ]
-
-            # Specify a "cell" domain type for the cross section tally filters
-            mgxs_lib.domain_type = "material"
-
-            # Specify the cell domains over which to compute multi-group cross sections
-            mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-            # Do not compute cross sections on a nuclide-by-nuclide basis
-            mgxs_lib.by_nuclide = False
-
-            # Check the library - if no errors are raised, then the library is satisfactory.
-            mgxs_lib.check_library_for_openmc_mgxs()
-
-            # Construct all tallies needed for the multi-group cross section library
-            mgxs_lib.build_library()
-
-            # Create a "tallies.xml" file for the MGXS Library
-            mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-            # Run
-            statepoint_filename = model.run(cwd=directory)
-
-            # Load MGXS
-            with openmc.StatePoint(statepoint_filename) as sp:
-                mgxs_lib.load_from_statepoint(sp)
-
-            # Create a MGXS File which can then be written to disk
-            mgxs_set = mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
-            mgxs_sets.append(mgxs_set)
-
-        # Write the file to disk
-        mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
-        for mgxs_set in mgxs_sets:
-            mgxs_file.add_xsdata(mgxs_set)
-        mgxs_file.export_to_hdf5(mgxs_path)
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
 
     @staticmethod
     def _create_stochastic_slab_geometry(
@@ -1998,14 +2360,84 @@ class Model:
 
         return geometry, box
 
+    @staticmethod
+    def _isothermal_stochastic_slab_mgxs(
+        stoch_geom: openmc.Geometry,
+        groups: openmc.mgxs.EnergyGroups,
+        settings: openmc.Settings,
+        correction: str | None,
+        directory: PathLike,
+        source: openmc.IndependentSource,
+        temperature: float | None = None,
+    ) -> dict[str, openmc.XSdata]:
+        """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
+        slab geometry. If a temperature is specified, all materials in the slab have
+        their temperatures set to be isothermal at this temperature.
+
+        Parameters
+        ----------
+        stoch_geom : openmc.Geometry
+            The stochastic slab geometry.
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        settings : openmc.Settings
+            Settings for the generation run, used verbatim except for the
+            fields owned by the stochastic slab method.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        source : openmc.IndependentSource
+            Source to use when generating MGXS.
+        temperature : float, optional
+            The isothermal temperature value to apply to the materials in the
+            slab. If not specified, defaults to the temperature in the materials.
+
+        Returns
+        -------
+        data : dict[str, openmc.XSdata]
+            A dictionary where the key is the name of the material and the value is the isothermal MGXS.
+        """
+
+        model = openmc.Model()
+        model.geometry = stoch_geom
+
+        if temperature is not None:
+            for material in model.geometry.get_all_materials().values():
+                material.temperature = temperature
+
+        # The provided settings are used verbatim, except for the fields
+        # owned by the stochastic slab method
+        model.settings = copy.deepcopy(settings)
+        model.settings.source = source
+
+        # Generate MGXS
+        mgxs_lib = Model._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
+
+        # Fetch all of the isothermal results.
+        if temperature is not None:
+            return {
+                mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name,
+                                               temperature=temperature)
+                    for mat in mgxs_lib.domains
+            }
+        else:
+            return {
+                mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name)
+                    for mat in mgxs_lib.domains
+            }
+
     def _generate_stochastic_slab_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        settings: openmc.Settings,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
         source_energy: openmc.stats.Univariate | None = None,
+        temperatures: Sequence[float] | None = None,
     ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
@@ -2015,14 +2447,17 @@ class Model:
         will generate cross sections for all materials in the problem regardless
         of type. If this is a fixed source problem, a discrete source is used to
         sample particles, with an equal strength spread across each of the
-        energy groups.
+        energy groups. If temperature data points are provided,
+        isothermal cross sections are generated at each temperature point for
+        the stochastic slab to build a temperature interpolation table.
 
         Parameters
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        settings : openmc.Settings
+            Settings for the generation run(s), used verbatim except for the
+            fields owned by the stochastic slab method.
         mgxs_path : str
             Filename for the MGXS HDF5 file.
         correction : str
@@ -2047,89 +2482,140 @@ class Model:
             no sources are defined on the model and the run mode is
             'eigenvalue', then a default Watt spectrum source (strength = 0.99)
             is added.
+        temperatures : Sequence[float], optional
+            A list of temperatures to generate MGXS at. Each infinite material region
+            is isothermal at a given temperature data point for cross
+            section generation.
         """
-        model = openmc.Model()
-        model.materials = self.materials
-
-        # Settings
-        model.settings.batches = 200
-        model.settings.inactive = 100
-        model.settings.particles = nparticles
-        model.settings.output = {'summary': True, 'tallies': False}
 
         # Stochastic slab geometry
-        model.geometry, spatial_distribution = Model._create_stochastic_slab_geometry(
-            model.materials)
+        geo, spatial_distribution = Model._create_stochastic_slab_geometry(
+            self.materials)
 
-        # Define the sources
-        model.settings.source = self._create_mgxs_sources(
+        src = self._create_mgxs_sources(
             groups,
             spatial_dist=spatial_distribution,
             source_energy=source_energy
         )
 
-        model.settings.run_mode = 'fixed source'
-        model.settings.create_fission_neutrons = False
+        if temperatures is None:
+            mgxs_sets = Model._isothermal_stochastic_slab_mgxs(
+                geo,
+                groups,
+                settings,
+                correction,
+                directory,
+                src
+            ).values()
 
-        model.settings.output = {'summary': True, 'tallies': False}
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
+        else:
+            # Build a series of XSData objects, one for each isothermal temperature value.
+            raw_mgxs_sets = {}
+            for temperature in temperatures:
+                raw_mgxs_sets[temperature] = Model._isothermal_stochastic_slab_mgxs(
+                    geo,
+                    groups,
+                    settings,
+                    correction,
+                    directory,
+                    src,
+                    temperature
+                )
 
-        # Add MGXS Tallies
+            # Unpack the isothermal XSData objects and build a single XSData object per material.
+            mgxs_sets = []
+            for mat in self.materials:
+                mgxs_sets.append(openmc.XSdata(mat.name, groups, temperatures=temperatures))
+                mgxs_sets[-1].order = 0
+                for temperature in temperatures:
+                    mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
 
-        # Initialize MGXS library with a finished OpenMC geometry object
-        mgxs_lib = openmc.mgxs.Library(model.geometry)
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
 
-        # Pick energy group structure
-        mgxs_lib.energy_groups = groups
+    @staticmethod
+    def _isothermal_materialwise_mgxs(
+        input_model: openmc.Model,
+        groups: openmc.mgxs.EnergyGroups,
+        settings: openmc.Settings,
+        correction: str | None,
+        directory: PathLike,
+        temperature: float | None = None,
+    ) -> dict[str, openmc.XSdata]:
+        """Generate a material-wise MGXS library for the model by running the
+        original continuous energy OpenMC simulation. If a temperature is
+        specified, each material in the input model is set to that temperature.
+        Otherwise, the original material temperatures are used. If temperature
+        data points are provided, isothermal cross sections are generated at
+        each temperature point for the whole model to build a temperature
+        interpolation table.
 
-        # Disable transport correction
-        mgxs_lib.correction = correction
+        Parameters
+        ----------
+        input_model : openmc.Model
+            The model to use when computing material-wise MGXS.
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        settings : openmc.Settings
+            Settings for the generation run, used verbatim.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        temperature : float, optional
+            The isothermal temperature value to apply to the materials in the
+            input model. If not specified, defaults to the temperatures in the
+            materials.
 
-       # Specify needed cross sections for random ray
-        if correction == 'P0':
-            mgxs_lib.mgxs_types = ['nu-transport', 'absorption', 'nu-fission', 'fission',
-                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
-        elif correction is None:
-            mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
-                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
+        Returns
+        -------
+        data : dict[str, openmc.XSdata]
+            A dictionary where the key is the name of the material and the value is the isothermal MGXS.
+        """
+        model = copy.deepcopy(input_model)
+        model.tallies = openmc.Tallies()
 
-        # Specify a "cell" domain type for the cross section tally filters
-        mgxs_lib.domain_type = "material"
+        if temperature is not None:
+            for material in model.geometry.get_all_materials().values():
+                material.temperature = temperature
 
-        # Specify the cell domains over which to compute multi-group cross sections
-        mgxs_lib.domains = model.geometry.get_all_materials().values()
+        # The provided settings are used verbatim
+        model.settings = copy.deepcopy(settings)
 
-        # Do not compute cross sections on a nuclide-by-nuclide basis
-        mgxs_lib.by_nuclide = False
+        # Generate MGXS
+        mgxs_lib = Model._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
 
-        # Check the library - if no errors are raised, then the library is satisfactory.
-        mgxs_lib.check_library_for_openmc_mgxs()
-
-        # Construct all tallies needed for the multi-group cross section library
-        mgxs_lib.build_library()
-
-        # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-        # Run
-        statepoint_filename = model.run(cwd=directory)
-
-        # Load MGXS
-        with openmc.StatePoint(statepoint_filename) as sp:
-            mgxs_lib.load_from_statepoint(sp)
-
-        names = [mat.name for mat in mgxs_lib.domains]
-
-        # Create a MGXS File which can then be written to disk
-        mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
-        mgxs_file.export_to_hdf5(mgxs_path)
+        # Fetch all of the isothermal results.
+        if temperature is not None:
+            return {
+                mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name,
+                                               temperature=temperature)
+                    for mat in mgxs_lib.domains
+            }
+        else:
+            return {
+                mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name)
+                    for mat in mgxs_lib.domains
+            }
 
     def _generate_material_wise_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        settings: openmc.Settings,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        temperatures: Sequence[float] | None = None,
     ) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
@@ -2145,8 +2631,8 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        settings : openmc.Settings
+            Settings for the generation run(s), used verbatim.
         mgxs_path : PathLike
             Filename for the MGXS HDF5 file.
         correction : str
@@ -2154,80 +2640,53 @@ class Model:
             "P0".
         directory : PathLike
             Directory to run the simulation in, so as to contain XML files.
+        temperatures : Sequence[float], optional
+            A list of temperatures to generate MGXS at. Each infinite material region
+            is isothermal at a given temperature data point for cross
+            section generation.
         """
-        model = copy.deepcopy(self)
-        model.tallies = openmc.Tallies()
+        if temperatures is None:
+            mgxs_sets = Model._isothermal_materialwise_mgxs(
+                self, groups, settings, correction, directory).values()
 
-        # Settings
-        model.settings.batches = 200
-        model.settings.inactive = 100
-        model.settings.particles = nparticles
-        model.settings.output = {'summary': True, 'tallies': False}
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
+        else:
+            # Build a series of XSData objects, one for each isothermal temperature value.
+            raw_mgxs_sets = {}
+            for temperature in temperatures:
+                raw_mgxs_sets[temperature] = Model._isothermal_materialwise_mgxs(
+                    self, groups, settings, correction, directory, temperature)
 
-        # Add MGXS Tallies
+            # Unpack the isothermal XSData objects and build a single XSData object per material.
+            mgxs_sets = []
+            for mat in self.materials:
+                mgxs_sets.append(openmc.XSdata(mat.name, groups, temperatures=temperatures))
+                mgxs_sets[-1].order = 0
+                for temperature in temperatures:
+                    mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
 
-        # Initialize MGXS library with a finished OpenMC geometry object
-        mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-        # Pick energy group structure
-        mgxs_lib.energy_groups = groups
-
-        # Disable transport correction
-        mgxs_lib.correction = correction
-
-        # Specify needed cross sections for random ray
-        if correction == 'P0':
-            mgxs_lib.mgxs_types = [
-                'nu-transport', 'absorption', 'nu-fission', 'fission',
-                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-            ]
-        elif correction is None:
-            mgxs_lib.mgxs_types = [
-                'total', 'absorption', 'nu-fission', 'fission',
-                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-            ]
-
-        # Specify a "cell" domain type for the cross section tally filters
-        mgxs_lib.domain_type = "material"
-
-        # Specify the cell domains over which to compute multi-group cross sections
-        mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-        # Do not compute cross sections on a nuclide-by-nuclide basis
-        mgxs_lib.by_nuclide = False
-
-        # Check the library - if no errors are raised, then the library is satisfactory.
-        mgxs_lib.check_library_for_openmc_mgxs()
-
-        # Construct all tallies needed for the multi-group cross section library
-        mgxs_lib.build_library()
-
-        # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-        # Run
-        statepoint_filename = model.run(cwd=directory)
-
-        # Load MGXS
-        with openmc.StatePoint(statepoint_filename) as sp:
-            mgxs_lib.load_from_statepoint(sp)
-
-        names = [mat.name for mat in mgxs_lib.domains]
-
-        # Create a MGXS File which can then be written to disk
-        mgxs_file = mgxs_lib.create_mg_library(
-            xs_type='macro', xsdata_names=names)
-        mgxs_file.export_to_hdf5(mgxs_path)
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
 
     def convert_to_multigroup(
         self,
         method: str = "material_wise",
-        groups: str = "CASMO-2",
-        nparticles: int = 2000,
+        groups: str | Sequence[float] | openmc.mgxs.EnergyGroups = "CASMO-2",
+        nparticles: int | None = None,
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
         source_energy: openmc.stats.Univariate | None = None,
+        temperatures: Sequence[float] | None = None,
+        temperature_settings: dict | None = None,
+        **kwargs,
     ):
         """Convert all materials from continuous energy to multigroup.
 
@@ -2238,11 +2697,19 @@ class Model:
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
             Method to generate the MGXS.
-        groups : openmc.mgxs.EnergyGroups or str, optional
-            Energy group structure for the MGXS or the name of the group
-            structure (based on keys from openmc.mgxs.GROUP_STRUCTURES).
+        groups : openmc.mgxs.EnergyGroups, str, or sequence of float, optional
+            Energy group structure for the MGXS. Can be an
+            :class:`openmc.mgxs.EnergyGroups` object, a string name of a
+            predefined group structure from :data:`openmc.mgxs.GROUP_STRUCTURES`
+            (e.g., ``"CASMO-2"``), or a sequence of floats specifying energy
+            bin boundaries in eV (e.g., ``[0.0, 1e6]`` for a single group).
+            Defaults to ``"CASMO-2"``.
         nparticles : int, optional
             Number of particles to simulate per batch when generating MGXS.
+            Defaults to 2000.
+
+            .. deprecated:: 0.16.0
+                Pass ``particles`` as a keyword argument instead.
         overwrite_mgxs_library : bool, optional
             Whether to overwrite an existing MGXS library file.
         mgxs_path : str, optional
@@ -2268,9 +2735,128 @@ class Model:
             'eigenvalue', then a default Watt spectrum source (strength = 0.99)
             is added. Note that this argument is only used when using the
             "stochastic_slab" or "infinite_medium" MGXS generation methods.
+        temperatures : Sequence[float], optional
+            A list of temperatures to generate MGXS at. Each infinite material region
+            is isothermal at a given temperature data point for cross
+            section generation.
+        temperature_settings : dict, optional
+            A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings.
+
+            .. deprecated:: 0.16.0
+                Pass ``temperature`` as a keyword argument instead.
+        **kwargs
+            :class:`openmc.Settings` attributes used to customize the continuous
+            energy simulation(s) that generate the MGXS library. Only the
+            attributes given override the generation defaults. For example,
+            ``model.convert_to_multigroup(particles=100_000)`` adjusts only the
+            particle count. The run mode cannot be overridden, as it is
+            determined by the generation method. The surrogate-geometry methods
+            also construct their own sources and always disable
+            ``create_fission_neutrons`` so that fission is treated as capture.
+            A ``weight_windows_file`` is applied during ``"material_wise"``
+            generation and ignored with a warning by the other methods; see the
+            user guide for the weight window "bootstrapping" workflow this
+            enables. Cannot be combined with the deprecated ``nparticles`` or
+            ``temperature_settings`` arguments.
+
+            .. versionadded:: 0.16.0
         """
-        if isinstance(groups, str):
+        if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)
+
+        check_value('method', method,
+                    ('material_wise', 'stochastic_slab', 'infinite_medium'))
+
+        # Keyword arguments are Settings attributes applied as overrides on
+        # the generation defaults
+        settings = openmc.Settings(**kwargs) if kwargs else None
+
+        # The model may reference its materials only through the geometry.
+        # The materials are converted in place and library-wide attributes
+        # like cross_sections must persist on the model afterwards, so
+        # populate the explicit collection if it is empty (sorted by ID for
+        # reproducibility, since geometry traversal order is arbitrary)
+        if not self.materials:
+            self.materials = openmc.Materials(sorted(
+                self.geometry.get_all_materials().values(),
+                key=lambda mat: mat.id))
+
+        if nparticles is not None or temperature_settings is not None:
+            warnings.warn(
+                'The "nparticles" and "temperature_settings" arguments are '
+                'deprecated. Pass "particles" and "temperature" as keyword '
+                'arguments instead.', FutureWarning)
+            if settings is not None:
+                raise ValueError(
+                    'The deprecated "nparticles" and "temperature_settings" '
+                    'arguments cannot be combined with Settings keyword '
+                    'arguments.')
+
+        # Resolve the settings for the MGXS generation run(s) in three layers,
+        # with later layers taking precedence: the model's own settings
+        # ("material_wise") or a fresh Settings object (surrogate methods), then
+        # the generation defaults, then the user's keyword-argument overrides.
+        user_settings = settings
+        if method == 'material_wise':
+            settings = copy.deepcopy(self.settings)
+        else:
+            settings = openmc.Settings()
+            settings.temperature = copy.deepcopy(self.settings.temperature)
+
+        settings.batches = 100 if method == 'infinite_medium' else 200
+        if method != 'infinite_medium':
+            settings.inactive = 100
+        settings.particles = 2000
+        settings.output = {'summary': True, 'tallies': False}
+        if nparticles is not None:
+            settings.particles = nparticles
+        if temperature_settings is not None:
+            settings.temperature = temperature_settings
+
+        if user_settings is not None:
+            # The surrogate-geometry methods construct their own sources
+            if method != "material_wise" and len(user_settings.source) > 0:
+                warnings.warn(
+                    'The given "source" setting is ignored by the '
+                    f'"{method}" MGXS generation method, which constructs '
+                    'its own sources.')
+            # Apply the settings attributes passed by the caller
+            for name in kwargs:
+                if hasattr(type(settings), name):
+                    setattr(settings, name, copy.deepcopy(
+                        getattr(user_settings, name)))
+
+        # The run mode is the one attribute that cannot be detected as
+        # user-populated (a fresh Settings object defaults it to 'eigenvalue'),
+        # so it is owned by the generation method: "material_wise" always takes
+        # it from the model, while the surrogate-geometry methods always run in
+        # fixed source mode. The surrogate-geometry methods also treat fission
+        # as capture (nu-fission is still tallied)
+        if method == 'material_wise':
+            settings.run_mode = self.settings.run_mode
+        else:
+            settings.run_mode = 'fixed source'
+            settings.create_fission_neutrons = False
+
+        # A weight windows file on the generation settings is loaded and
+        # applied (specifying a file turns weight windows on) during the
+        # "material_wise" method's continuous energy simulation of the
+        # original geometry, allowing materials far from the source --
+        # which an analog simulation may struggle to reach -- to still be
+        # tallied, and thus obtain nonzero cross sections. The
+        # "stochastic_slab" and "infinite_medium" methods use simplified
+        # surrogate geometries for which weight windows defined over the
+        # original geometry are neither applicable nor needed.
+        if settings.weight_windows_file is not None and \
+                method != "material_wise":
+            warnings.warn(
+                'The "weight_windows_file" setting is only applicable to '
+                'the "material_wise" MGXS generation method and will be '
+                f'ignored for the "{method}" method.'
+            )
+            settings.weight_windows_file = None
 
         # Do all work (including MGXS generation) in a temporary directory
         # to avoid polluting the working directory with residual XML files
@@ -2281,29 +2867,42 @@ class Model:
             # TODO: Can this be done without having to init/finalize?
             for univ in self.geometry.get_all_universes().values():
                 if isinstance(univ, openmc.DAGMCUniverse):
+                    # Initialize in stochastic volume mode (non-transport mode)
+                    # This mode doesn't require
+                    # valid transport settings like particles/batches
+                    original_run_mode = self.settings.run_mode
+                    self.settings.run_mode = 'volume'
                     self.init_lib(directory=tmpdir)
                     self.sync_dagmc_universes()
                     self.finalize_lib()
+                    # Restore original run mode
+                    self.settings.run_mode = original_run_mode
                     break
 
-            # Make sure all materials have a name, and that the name is a valid HDF5
-            # dataset name
+            # Temporarily replace each material's name with a unique, valid HDF5
+            # dataset name (its name plus ID) for use as its MGXS library entry
+            # and macroscopic. The ID keeps the name unique even when materials
+            # share a name; the original names are restored at the end.
+            original_names = [material.name for material in self.materials]
             for material in self.materials:
-                if not material.name or not material.name.strip():
-                    material.name = f"material {material.id}"
-                material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
+                base = material.name if material.name and material.name.strip() \
+                    else "material"
+                material.name = re.sub(r'[^a-zA-Z0-9]', '_', base) + f"_{material.id}"
 
             # If needed, generate the needed MGXS data library file
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
+                        groups, settings, mgxs_path, correction, tmpdir,
+                        source_energy, temperatures)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, settings, mgxs_path, correction, tmpdir,
+                        temperatures)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
+                        groups, settings, mgxs_path, correction, tmpdir,
+                        source_energy, temperatures)
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')
@@ -2319,6 +2918,10 @@ class Model:
                 material.add_macroscopic(material.name)
 
             self.settings.energy_mode = 'multi-group'
+
+            # Restore the user's original material names.
+            for material, name in zip(self.materials, original_names):
+                material.name = name
 
     def convert_to_random_ray(self):
         """Convert a multigroup model to use random ray.
@@ -2379,6 +2982,264 @@ class Model:
 
         # Take a wild guess as to how many rays are needed
         self.settings.particles = 2 * int(max_length)
+
+    def geometry_debug(
+        self,
+        lower_left: Sequence[float],
+        upper_right: Sequence[float],
+        n_samples: int | Sequence[int],
+        print_summary: bool = False,
+        **init_kwargs,
+    ) -> dict[str, Any]:
+        """Sample a 3D region to identify overlap and undefined locations.
+
+        The region between `lower_left` and `upper_right` is sampled on a
+        regular 3D grid by taking a sequence of 2D slices in z. Overlap and
+        undefined locations are identified from cells marked with the overlap
+        and undefined sentinels, respectively. A 3D bounding box is returned for
+        each unique overlap pair and for each distinct internal undefined region
+        (found via 3D connected-component labeling), in a summary dictionary.
+        This function is meant to be called from an input file on a 3D box
+        encapsulating the entire model.
+
+        Parameters
+        ----------
+        lower_left : Sequence[float]
+            Lower-left corner of the sampled 3D region.
+        upper_right : Sequence[float]
+            Upper-right corner of the sampled 3D region.
+        n_samples : int or Sequence[int]
+            Approximate total number of sample points when given as an integer.
+            Counts in each direction are chosen according to the bounding-box
+            aspect ratio. A sequence specifies the counts in x, y, and z
+            directly.
+        print_summary : bool, optional
+            Whether to print a summary of overlap and undefined sample results.
+        **init_kwargs
+            Keyword arguments passed to :meth:`Model.init_lib`.
+
+        Returns
+        -------
+        result : dict
+            Dictionary with the following key-value pairs:
+
+            ``"overlap_boxes"`` : list of dict
+                Detected overlap regions. Each dictionary contains ``"key"``,
+                a tuple of (universe ID, cell ID, cell ID), and ``"bbox"``, an
+                :class:`openmc.BoundingBox` enclosing the sampled voxels in
+                world coordinates [cm]. All detections of the same key are
+                combined, including spatially disconnected occurrences.
+
+            ``"undefined_boxes"`` : list of dict
+                Detected internal undefined regions. Each dictionary contains
+                ``"bbox"``, an :class:`openmc.BoundingBox` enclosing the
+                region's sampled voxels in world coordinates [cm], and
+                ``"under_resolved"``, a bool indicating whether the region
+                may be too thin for the sampling resolution.
+
+            ``"under_resolved"`` : bool
+                Whether any undefined region may be under-resolved.
+        """
+        import openmc.lib
+
+        _OVERLAP = -3
+
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
+        # Accepts 3 separate samples (for x y and z) or just one number
+        if isinstance(n_samples, int):
+            if n_samples < 1:
+                raise ValueError("n_samples must be >= 1")
+
+            lower_left_arr = np.asarray(lower_left, dtype=float)
+            upper_right_arr = np.asarray(upper_right, dtype=float)
+
+            width = upper_right_arr - lower_left_arr
+            if np.any(width <= 0.0):
+                raise ValueError("upper_right must be greater than lower_left in all dimensions")
+
+            # Choose nx, ny, nz proportional to the physical widths so that:
+            # nx * ny * nz ≈ n_samples and voxel sizes are similar in x/y/z.
+            scale = np.cbrt(n_samples / np.prod(width))
+            nx, ny, nz = np.maximum(1, np.rint(scale * width).astype(int))
+        else:
+            if len(n_samples) != 3:
+                raise ValueError("n_samples must be an int or a length-3 iterable")
+            nx, ny, nz = n_samples
+
+        nx, ny, nz = int(nx), int(ny), int(nz)
+
+        if nx <= 0 or ny <= 0 or nz <= 0:
+            raise ValueError("All n_samples values must be positive")
+
+        if len(lower_left) != 3:
+            raise ValueError("lower_left must be a length-3 iterable")
+        if len(upper_right) != 3:
+            raise ValueError("upper_right must be a length-3 iterable")
+
+        x0, y0, z0 = lower_left
+        x1, y1, z1 = upper_right
+
+        dz = (z1 - z0) / nz
+
+        u_span = (x1 - x0, 0.0, 0.0)
+        v_span = (0.0, y1 - y0, 0.0)
+
+        # Each unique overlap key (universe, cell1, cell2) gets its own bounding
+        # box, accumulated in world coordinates across all z-slices. Internal
+        # undefined pixels are stacked into a 3D volume and labeled afterwards.
+        overlap_boxes = {}
+        internal_volume = np.zeros((nz, ny, nx), dtype=bool)
+
+        with openmc.lib.TemporarySession(self, **init_kwargs):
+            for k in range(nz):
+                z = z0 + (k + 0.5) * dz
+                origin = ((x0 + x1) / 2.0, (y0 + y1) / 2.0, z)
+
+                geom_data, _ = openmc.lib.slice_data(
+                    origin=origin,
+                    u_span=u_span,
+                    v_span=v_span,
+                    pixels=(nx, ny),
+                    show_overlaps=True,
+                    include_properties=False,
+                )
+
+                cell_ids = geom_data[:, :, 0]
+
+                overlap_data = openmc.lib.slice_data_overlap_info()
+
+                # Union each overlap key's bounding box across z-slices.
+                for overlap_idx, key in enumerate(overlap_data):
+                    encoded_id = _OVERLAP - overlap_idx - 1
+                    pix = np.argwhere(cell_ids == encoded_id)
+                    if pix.size == 0:
+                        continue
+
+                    key_t = tuple(int(v) for v in key)
+                    # Enclose entire voxels, including the slice thickness.
+                    row_min, col_min = pix.min(axis=0)
+                    row_max, col_max = pix.max(axis=0)
+                    x_lo = x0 + col_min * (x1 - x0) / nx
+                    x_hi = x0 + (col_max + 1) * (x1 - x0) / nx
+                    y_lo = y1 - (row_max + 1) * (y1 - y0) / ny
+                    y_hi = y1 - row_min * (y1 - y0) / ny
+
+                    slice_box = openmc.BoundingBox(
+                        (x_lo, y_lo, z0 + k * dz),
+                        (x_hi, y_hi, z0 + (k + 1) * dz),
+                    )
+                    if key_t in overlap_boxes:
+                        overlap_boxes[key_t] |= slice_box
+                    else:
+                        overlap_boxes[key_t] = slice_box
+
+                internal_volume[k] = classify_undefined_regions(cell_ids)
+
+        overlap_boxes = [
+            {"key": key_t, "bbox": bbox} for key_t, bbox in overlap_boxes.items()
+        ]
+
+        # Overlaps are not flagged for resolution: whether an overlap exists and
+        # which cells collide is determined by the (universe, cell1, cell2) key
+
+        # Label spatially-connected undefined regions in 3D and build a
+        # world-coordinate bounding box for each connected component. A feature
+        # thinner than the sample spacing can rasterize with breaks and split
+        # into several regions, so give a suggestion to the user to increase n_samples.
+
+        undefined_boxes = []
+        if internal_volume.any():
+            structure = ndimage.generate_binary_structure(3, 1)  # face connectivity
+            labeled, _ = ndimage.label(internal_volume, structure=structure)
+            for region_id, sl in enumerate(ndimage.find_objects(labeled), start=1):
+                if sl is None:
+                    continue
+                kz, ky, kx = sl  # slice objects over the (z, y, x) index axes
+
+                # Voxel-edge world extents
+                x_lo = x0 + kx.start * (x1 - x0) / nx
+                x_hi = x0 + kx.stop * (x1 - x0) / nx
+                # The y (row) axis is flipped in world coordinates (row 0 == y1)
+                y_hi = y1 - ky.start * (y1 - y0) / ny
+                y_lo = y1 - ky.stop * (y1 - y0) / ny
+                z_lo = z0 + kz.start * dz
+                z_hi = z0 + kz.stop * dz
+
+                # Local-thickness test: a bounding box is misleading for thin
+                # curved shells (e.g. an annular gap whose bbox is large but
+                # which is only ~1 voxel thick radially). Erode the region's
+                # voxel mask; if erosion empties it, the region is nowhere
+                # thicker than ~2 voxels and is under-resolved.
+                mask = (labeled[sl] == region_id)
+                under_resolved = not ndimage.binary_erosion(mask).any()
+
+                bbox = openmc.BoundingBox(
+                    (x_lo, y_lo, z_lo),
+                    (x_hi, y_hi, z_hi),
+                )
+                undefined_boxes.append({
+                    "bbox": bbox,
+                    "under_resolved": bool(under_resolved),
+                })
+
+        under_resolved = any(b["under_resolved"] for b in undefined_boxes)
+
+        result = {
+            "overlap_boxes": overlap_boxes,
+            "undefined_boxes": undefined_boxes,
+            "under_resolved": under_resolved,
+        }
+
+        if under_resolved:
+            n_un = sum(b["under_resolved"] for b in undefined_boxes)
+            warnings.warn(
+                f"Sampling resolution may be insufficient: {n_un} undefined "
+                "region(s) are resolved by <= 2 voxels across their thinnest "
+                "dimension, so they may be fragmented. "
+                "Consider increasing n_samples."
+            )
+
+        if print_summary:
+            print("Geometry debug summary:")
+
+            if result["overlap_boxes"]:
+                print(f"  Overlaps found: {len(overlap_boxes)}")
+                for box in result["overlap_boxes"]:
+                    ll, ur = box["bbox"].lower_left, box["bbox"].upper_right
+                    print(
+                        f"    cells {box['key']}: "
+                        f"x[{ll[0]:.4g}, {ur[0]:.4g}] "
+                        f"y[{ll[1]:.4g}, {ur[1]:.4g}] "
+                        f"z[{ll[2]:.4g}, {ur[2]:.4g}]"
+                    )
+            else:
+                print("  Overlap bounding boxes: None")
+
+            if result["undefined_boxes"]:
+                print(f"  Undefined regions found: {len(undefined_boxes)}")
+                for i, box in enumerate(result["undefined_boxes"], start=1):
+                    flag = "  [under-resolved]" if box["under_resolved"] else ""
+                    ll, ur = box["bbox"].lower_left, box["bbox"].upper_right
+                    print(
+                        f"    region {i}: "
+                        f"x[{ll[0]:.4g}, {ur[0]:.4g}] "
+                        f"y[{ll[1]:.4g}, {ur[1]:.4g}] "
+                        f"z[{ll[2]:.4g}, {ur[2]:.4g}]{flag}"
+                    )
+            else:
+                print("  Undefined bounding boxes: None")
+
+            if result["under_resolved"]:
+                print(
+                    "WARNING: some undefined regions are resolved by <= 2 "
+                    "voxels across their thinnest dimension and may be "
+                    "fragmented or missed; increase n_samples so thin features "
+                    "span at least 3 voxels."
+                )
+
+        return result
 
     def keff_search(
         self,
@@ -2636,5 +3497,3 @@ class SearchResult:
     def total_batches(self) -> int:
         """Total number of active batches used across all evaluations."""
         return sum(self.batches)
-
-

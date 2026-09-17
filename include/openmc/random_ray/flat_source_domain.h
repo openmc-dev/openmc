@@ -12,6 +12,50 @@
 
 namespace openmc {
 
+// Avg. number of hits per batch to be defined as a "small" source region.
+constexpr double MIN_HITS_PER_BATCH {1.5};
+
+// Strong-source ratio threshold for the adaptive volume estimator. A source
+// region is treated as having a "strong" inhomogeneous source in any group
+// where the reduced source q/Sigma_t exceeds this multiple of the region's
+// scalar flux, indicating a source sustained by an external or in-scatter
+// contribution rather than by the local flux. Such regions are given the
+// naive volume and previous-flux miss treatment. The value sits well inside
+// the range over which benign problems remain untriggered while pathological
+// cells are still caught.
+constexpr double ADAPTIVE_VOLUME_KAPPA {4.0};
+
+// Chronic-negativity demotion thresholds for the strict adaptive volume
+// estimator. A region whose flux has gone negative (before the fixup) in at
+// least max(MIN_COUNT, RATE * current_batch) batches is demoted to the naive
+// volume and previous-flux miss treatment. Without this channel the
+// non-negativity floor would mask the accumulated-flux sign signal that the
+// adaptive demotion relies on, leaving noisy regions to be clipped every
+// batch and biasing their fluxes upward. Demotion instead moves such regions
+// onto an estimator that does not need clipping.
+constexpr int NEGATIVE_FLUX_DEMOTION_MIN_COUNT {3};
+constexpr double NEGATIVE_FLUX_DEMOTION_RATE {0.005};
+
+// The minimum flux value to be considered non-zero when computing adjoint
+// sources. Positive values below this cutoff will be treated as zero, so as to
+// prevent extremely large adjoint source terms from being generated.
+constexpr double ZERO_FLUX_CUTOFF {1e-22};
+
+// The minimum macroscopic cross section value considered non-void for the
+// random ray solver. Materials with any group with a cross section below this
+// value will be converted to pure void.
+constexpr double MINIMUM_MACRO_XS {1e-6};
+
+// True for the members of the adaptive volume estimator family: the
+// adaptive estimator, and the strict adaptive estimator, which runs the
+// same machinery plus a per-batch non-negativity enforcement on the flux
+// iterates.
+inline bool is_adaptive_family(RandomRayVolumeEstimator e)
+{
+  return e == RandomRayVolumeEstimator::ADAPTIVE ||
+         e == RandomRayVolumeEstimator::STRICT_ADAPTIVE;
+}
+
 /*
  * The FlatSourceDomain class encompasses data and methods for storing
  * scalar flux and source region for all flat source regions in a
@@ -32,6 +76,7 @@ public:
   void compute_k_eff();
   virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
+  bool is_geometry_3D();
 
   int64_t add_source_to_scalar_flux();
   virtual void batch_reset();
@@ -39,10 +84,13 @@ public:
   void reset_tally_volumes();
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
+  void demotion_step();
   void output_to_vtk() const;
-  void convert_external_sources();
+  void output_to_vtk_decomp() const;
+  void convert_external_sources(bool use_adjoint_sources);
   void count_external_source_regions();
-  void set_adjoint_sources();
+  void set_fw_adjoint_sources();
+  void set_local_adjoint_sources();
   void flux_swap();
   virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;
@@ -58,7 +106,6 @@ public:
   SourceRegionHandle get_subdivided_source_region_handle(
     SourceRegionKey sr_key, Position r, Direction u);
   void finalize_discovered_source_regions();
-  void apply_transport_stabilization();
   int64_t n_source_regions() const
   {
     return source_regions_.n_source_regions();
@@ -75,7 +122,14 @@ public:
   //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
-  static bool adjoint_; // If the user wants outputs based on the adjoint flux
+  // If the user wants outputs based on the adjoint flux
+  static bool adjoint_requested_;
+  // If the user wants linear source gradients rescaled so the modeled source
+  // stays non-negative over each source region
+  static bool source_gradient_limiter_;
+  // The solve currently being executed
+  static RandomRaySolve solve_;
+  static bool fw_cadis_local_;
   static double
     diagonal_stabilization_rho_; // Adjusts strength of diagonal stabilization
                                  // for transport corrected MGXS data
@@ -84,9 +138,18 @@ public:
   static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
     mesh_domain_map_;
 
+  static std::vector<size_t> fw_cadis_local_targets_;
+
   //----------------------------------------------------------------------------
   // Static data members
+  // The volume estimator as configured ("auto" by default). This is set when
+  // the settings are read and is never modified by the solver.
   static RandomRayVolumeEstimator volume_estimator_;
+  // The concrete estimator the solver runs with, assigned at the start of
+  // every random ray solve. It holds the configured value, or for "auto" the
+  // estimator selected for the type of simulation being performed. All
+  // solver code reads this member rather than volume_estimator_.
+  static RandomRayVolumeEstimator resolved_volume_estimator_;
 
   //----------------------------------------------------------------------------
   // Public Data members
@@ -96,20 +159,43 @@ public:
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
                                           // non-zero external source terms
 
+  // Final-batch snapshot of the naive volume treatment, partitioned by
+  // mutually exclusive cause (the cause counts sum to n_final_naive_), for
+  // end-of-simulation reporting. The two demote-only decisions made from the
+  // running accumulated flux (a strong accumulated feed and a negative
+  // accumulated flux) are counted with first priority, so their counts equal
+  // the decisions settled by the final batch. The per-batch strong-source
+  // test and hit-starved causes count the remainder.
+  int64_t n_final_naive_ {0};
+  int64_t n_final_latch_ {0};   // strong source, from the accumulated feed
+  int64_t n_final_strong_ {0};  // strong source, from the per-batch test
+  int64_t n_final_sign_ {0};    // negative accumulated flux
+  int64_t n_final_small_ {0};   // hit-starved
+  int64_t n_final_chronic_ {0}; // chronic negativity (strict adaptive)
+  // Final-batch counts of the strict adaptive estimator's non-negativity
+  // enforcement: regions whose negative batch flux was recomputed with the
+  // batch volume (rescued), and regions floored at the previous iterate
+  // after the rescue was insufficient or unavailable.
+  int64_t n_final_rescued_ {0};
+  int64_t n_final_floored_ {0};
+  bool final_stats_valid_ {false};
+
   // 1D array representing source region starting offset for each OpenMC Cell
   // in model::cells
   vector<int64_t> source_region_offsets_;
 
-  // 2D arrays stored in 1D representing values for all materials x energy
-  // groups
+  // 3D arrays stored in 1D representing values for all materials x temperature
+  // points x energy groups
   int n_materials_;
+  int ntemperature_;
   vector<double> sigma_t_;
   vector<double> nu_sigma_f_;
   vector<double> sigma_f_;
   vector<double> chi_;
+  vector<double> kappa_fission_;
 
-  // 3D arrays stored in 1D representing values for all materials x energy
-  // groups x energy groups
+  // 4D arrays stored in 1D representing values for all materials x temperature
+  // points x energy groups x energy groups
   vector<double> sigma_s_;
 
   // The abstract container holding all source region-specific data
@@ -158,9 +244,24 @@ protected:
     int target_material_id, const vector<int32_t>& instances);
   void apply_external_source_to_cell_and_children(
     int32_t i_cell, int src_idx, int32_t target_material_id);
-  virtual void set_flux_to_flux_plus_source(int64_t sr, double volume, int g);
+  virtual void set_flux_to_flux_plus_source(
+    int64_t sr, double volume, bool batch_volume, int g);
   void set_flux_to_source(int64_t sr, int g);
   virtual void set_flux_to_old_flux(int64_t sr, int g);
+  virtual double flux_additive_term(int64_t sr, int g, bool batch_volume) const;
+  double stabilized_flux(int64_t sr, int g, double phi_new) const;
+
+  //! Adaptive-estimator "strong source" test. Returns true if, in any group,
+  //! the region's reduced source q/Sigma_t is negative (with a non-negative
+  //! previous-iteration flux) or exceeds ADAPTIVE_VOLUME_KAPPA times the
+  //! (non-negative) previous-iteration scalar flux. The ratio condition is
+  //! only checked when include_ratio is set, which callers do only during
+  //! the inactive batches. The test is shared by the flat volume switch
+  //! (add_source_to_scalar_flux) and the linear gradient fallback
+  //! (update_single_neutron_source), with the region's per-group
+  //! reduced-source and previous-flux arrays passed directly.
+  bool region_has_strong_source(const float* reduced_source,
+    const double* flux_old, bool include_ratio) const;
 
   //----------------------------------------------------------------------------
   // Private data members
@@ -176,10 +277,10 @@ protected:
   // Volumes for each tally and bin/score combination. This intermediate data
   // structure is used when tallying quantities that must be normalized by
   // volume (i.e., flux). The vector is index by tally index, while the inner 2D
-  // xtensor is indexed by bin index and score index in a similar manner to the
+  // tensor is indexed by bin index and score index in a similar manner to the
   // results tensor in the Tally class, though without the third dimension, as
   // SUM and SUM_SQ do not need to be tracked.
-  vector<xt::xtensor<double, 2>> tally_volumes_;
+  vector<tensor::Tensor<double>> tally_volumes_;
 
 }; // class FlatSourceDomain
 

@@ -4,7 +4,14 @@ from random import uniform, seed
 import numpy as np
 import math
 import openmc
+import openmc.lib
 import pytest
+
+
+def test_id():
+    for i in range(-10, 1):
+        with pytest.raises(ValueError):
+            openmc.Plane(a=1, b=2, c=-1, d=3, surface_id=i)
 
 
 def assert_infinite_bb(s):
@@ -64,6 +71,60 @@ def test_plane_from_points():
     assert s.b == -1.0
     assert s.c == 0.0
     assert s.d == 1.0
+
+
+def test_plane_bounding_box():
+    # A plane written by a rotation has roundoff in the off-axis slots but is
+    # still a y-plane and should bound the half-space along y alone (#2632)
+    eps = math.cos(math.pi/2)
+    s = openmc.Plane(eps, 1., eps, -1.3)
+    ll, ur = (+s).bounding_box
+    assert ll == pytest.approx((-np.inf, -1.3, -np.inf))
+    assert np.all(np.isinf(ur))
+    ll, ur = (-s).bounding_box
+    assert ur == pytest.approx((np.inf, -1.3, np.inf))
+    assert np.all(np.isinf(ll))
+
+    # The intercept comes from the raw coefficients, which need not be
+    # normalized: 4z - 10 = 0 is the plane z = 2.5
+    s = openmc.Plane(0., 0., 4., 10.)
+    assert (+s).bounding_box[0] == pytest.approx((-np.inf, -np.inf, 2.5))
+    assert (-s).bounding_box[1] == pytest.approx((np.inf, np.inf, 2.5))
+
+    # The sense of the bound flips with the sign of the normal
+    s = openmc.Plane(0., -1., 0., 3.)
+    assert (+s).bounding_box[1] == pytest.approx((np.inf, -3., np.inf))
+    assert (-s).bounding_box[0] == pytest.approx((-np.inf, -3., -np.inf))
+
+    # An off-axis normalized coefficient above the alignment tolerance makes
+    # the half-space unbounded along every axis
+    s = openmc.Plane(1., 1.e-11, 0., 5.)
+    assert_infinite_bb(s)
+    p = (4., 2.e11, 0.)
+    assert p in +s
+
+    # A plane tilted well beyond the alignment tolerance bounds nothing
+    assert_infinite_bb(openmc.Plane(1., 1.e-5, 0., 5.))
+
+
+def test_plane_bounding_box_lib(mpi_intracomm):
+    """Check Python and C++ bounding consistency."""
+    openmc.reset_auto_ids()
+
+    cyl = openmc.YCylinder(r=17.7)
+    y_min = openmc.Plane(6.123233995736766e-17, 1., 6.123233995736766e-17, -1.3)
+    y_max = openmc.YPlane(5.6, boundary_type='vacuum')
+    cell = openmc.Cell(region=+y_min & -y_max & -cyl)
+    model = openmc.Model(geometry=openmc.Geometry([cell]))
+    model.settings.batches = 1
+    model.settings.particles = 100
+
+    python_box = cell.bounding_box
+    with openmc.lib.TemporarySession(model, intracomm=mpi_intracomm):
+        lib_box = openmc.lib.cells[cell.id].bounding_box
+
+    np.testing.assert_array_equal(python_box.lower_left, lib_box.lower_left)
+    np.testing.assert_array_equal(python_box.upper_right, lib_box.upper_right)
 
 
 def test_xplane():
@@ -190,6 +251,12 @@ def test_cylinder():
     assert s.dz == 1
     assert s.r == 2
 
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.Cylinder(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r=0.0)
+    with pytest.raises(ValueError):
+        openmc.Cylinder(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r=-1.0)
+
     # Check bounding box
     assert_infinite_bb(s)
 
@@ -239,6 +306,12 @@ def test_xcylinder():
     assert s.z0 == z
     assert s.r == r
 
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.XCylinder(y0=y, z0=z, r=0.0)
+    with pytest.raises(ValueError):
+        openmc.XCylinder(y0=y, z0=z, r=-1.0)
+
     # Check bounding box
     ll, ur = (+s).bounding_box
     assert np.all(np.isinf(ll))
@@ -285,6 +358,12 @@ def test_ycylinder():
     assert s.z0 == z
     assert s.r == r
 
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.YCylinder(x0=x, z0=z, r=0.0)
+    with pytest.raises(ValueError):
+        openmc.YCylinder(x0=x, z0=z, r=-1.0)
+
     # Check bounding box
     ll, ur = (+s).bounding_box
     assert np.all(np.isinf(ll))
@@ -321,6 +400,12 @@ def test_zcylinder():
     assert s.x0 == x
     assert s.y0 == y
     assert s.r == r
+
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.ZCylinder(x0=x, y0=y, r=0.0)
+    with pytest.raises(ValueError):
+        openmc.ZCylinder(x0=x, y0=y, r=-1.0)
 
     # Check bounding box
     ll, ur = (+s).bounding_box
@@ -359,6 +444,12 @@ def test_sphere():
     assert s.y0 == y
     assert s.z0 == z
     assert s.r == r
+
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.Sphere(x0=x, y0=y, z0=z, r=0.0)
+    with pytest.raises(ValueError):
+        openmc.Sphere(x0=x, y0=y, z0=z, r=-1.0)
 
     # Check bounding box
     ll, ur = (+s).bounding_box
@@ -399,6 +490,12 @@ def cone_common(apex, r2, cls):
     assert s.z0 == z
     assert s.r2 == r2
 
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        cls(x0=x, y0=y, z0=z, r2=0.0)
+    with pytest.raises(ValueError):
+        cls(x0=x, y0=y, z0=z, r2=-1.0)
+
     # Check bounding box
     assert_infinite_bb(s)
 
@@ -436,6 +533,12 @@ def test_cone():
     assert s.dy == -1
     assert s.dz == 1
     assert s.r2 == 4
+
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.Cone(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r2=0.0)
+    with pytest.raises(ValueError):
+        openmc.Cone(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r2=-1.0)
 
     # Check bounding box
     assert_infinite_bb(s)
@@ -616,6 +719,13 @@ def torus_common(center, R, r1, r2, cls):
     assert s.a == R
     assert s.b == r1
     assert s.c == r2
+
+    # Check radius must be positive
+    params = [(0.0, r1, r2), (R, 0.0, r2), (R, r1, 0.0),
+              (-1.0, r1, r2), (R, -1.0, r2), (R, r1, -1.0)]
+    for a,b,c in params:
+        with pytest.raises(ValueError):
+            cls(x0=x, y0=y, z0=z, a=a, b=b, c=c)
 
     # evaluate method
     assert s.evaluate((x, y, z)) > 0.0

@@ -70,7 +70,7 @@ def test_tracks(sphere_model, particle, run_in_tmpdir):
         particle_track = track.particle_tracks[0]
         assert isinstance(particle_track, openmc.ParticleTrack)
 
-        assert particle_track.particle.name.lower() == particle
+        assert str(particle_track.particle).lower() == particle
         assert isinstance(particle_track.states, np.ndarray)
 
         # Sanity checks on actual data
@@ -140,8 +140,10 @@ def test_filter(sphere_model, run_in_tmpdir):
     assert matches == tracks
     matches = tracks.filter(state_filter=lambda s: s['E'] > 0.0)
     assert matches == tracks
-    matches = tracks.filter(particle='bunnytron')
+    matches = tracks.filter(particle='proton')
     assert matches == []
+    with pytest.raises(ValueError):
+        tracks.filter(particle='bunnytron')
 
 
 def test_write_to_vtk(sphere_model):

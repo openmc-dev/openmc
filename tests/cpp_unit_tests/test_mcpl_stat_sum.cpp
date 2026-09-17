@@ -25,7 +25,7 @@ TEST_CASE("MCPL stat:sum field")
 
     // Initialize test particles
     for (int i = 0; i < 100; ++i) {
-      source_bank[i].particle = openmc::ParticleType::neutron;
+      source_bank[i].particle = openmc::ParticleType::neutron();
       source_bank[i].r = {i * 0.1, i * 0.2, i * 0.3};
       source_bank[i].u = {0.0, 0.0, 1.0};
       source_bank[i].E = 2.0e6; // 2 MeV
@@ -63,7 +63,7 @@ TEST_CASE("MCPL stat:sum field")
 
       // Initialize particles
       for (int i = 0; i < count; ++i) {
-        source_bank[i].particle = openmc::ParticleType::neutron;
+        source_bank[i].particle = openmc::ParticleType::neutron();
         source_bank[i].r = {0.0, 0.0, 0.0};
         source_bank[i].u = {0.0, 0.0, 1.0};
         source_bank[i].E = 1.0e6;

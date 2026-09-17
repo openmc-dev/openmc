@@ -19,7 +19,9 @@ public:
   virtual ~SpatialDistribution() = default;
 
   //! Sample a position from the distribution
-  virtual Position sample(uint64_t* seed) const = 0;
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled (position, importance weight)
+  virtual std::pair<Position, double> sample(uint64_t* seed) const = 0;
 
   static unique_ptr<SpatialDistribution> create(pugi::xml_node node);
 };
@@ -34,8 +36,8 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  //! \return Sampled (position, importance weight)
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   // Observer pointers
   Distribution* x() const { return x_.get(); }
@@ -58,19 +60,25 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  //! \return Sampled (position, importance weight)
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* phi() const { return phi_.get(); }
   Distribution* z() const { return z_.get(); }
   Position origin() const { return origin_; }
+  Direction r_dir() const { return r_dir_; }
+  Direction phi_dir() const { return phi_dir_; }
+  Direction z_dir() const { return z_dir_; }
 
 private:
-  UPtrDist r_;      //!< Distribution of r coordinates
-  UPtrDist phi_;    //!< Distribution of phi coordinates
-  UPtrDist z_;      //!< Distribution of z coordinates
-  Position origin_; //!< Cartesian coordinates of the cylinder center
+  UPtrDist r_;        //!< Distribution of r coordinates
+  UPtrDist phi_;      //!< Distribution of phi coordinates
+  UPtrDist z_;        //!< Distribution of z coordinates
+  Position origin_;   //!< Cartesian coordinates of the cylinder center
+  Direction r_dir_;   //!< Direction of r-axis at phi=0
+  Direction phi_dir_; //!< Direction of phi-axis at phi=0
+  Direction z_dir_;   //!< Direction of z-axis
 };
 
 //==============================================================================
@@ -83,8 +91,8 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  //! \return Sampled (position, importance weight)
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* cos_theta() const { return cos_theta_.get(); }
@@ -109,8 +117,8 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  //! \return Sampled (position, importance weight)
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   //! Sample the mesh for an element and position within that element
   //! \param seed Pseudorandom number seed pointer
@@ -133,8 +141,8 @@ public:
 
 private:
   int32_t mesh_idx_ {C_NONE};
-  DiscreteIndex elem_idx_dist_; //!< Distribution of
-                                //!< mesh element indices
+  DiscreteIndex elem_idx_dist_; //!< Distribution of mesh element indices
+  vector<double> weight_;       //!< Importance weights (empty if unbiased)
 };
 
 //==============================================================================
@@ -149,12 +157,13 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  //! \return Sampled (position, importance weight)
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
 private:
   std::vector<Position> point_cloud_;
   DiscreteIndex point_idx_dist_; //!< Distribution of Position indices
+  vector<double> weight_;        //!< Importance weights (empty if unbiased)
 };
 
 //==============================================================================
@@ -164,11 +173,12 @@ private:
 class SpatialBox : public SpatialDistribution {
 public:
   explicit SpatialBox(pugi::xml_node node, bool fission = false);
+  SpatialBox(Position lower_left, Position upper_right, bool fission = false);
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  //! \return Sampled (position, importance weight)
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   // Properties
   bool only_fissionable() const { return only_fissionable_; }
@@ -193,8 +203,8 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  //! \return Sampled (position, importance weight)
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   Position r() const { return r_; }
 

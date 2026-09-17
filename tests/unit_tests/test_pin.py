@@ -46,11 +46,6 @@ def test_failure(pin_mats, good_radii):
     with pytest.raises(ValueError, match="length"):
         pin(good_surfaces[:len(pin_mats) - 2], pin_mats)
 
-    # Non-positive radii
-    rad = [openmc.ZCylinder(r=-0.1)] + good_surfaces[1:]
-    with pytest.raises(ValueError, match="index 0"):
-        pin(rad, pin_mats)
-
     # Non-increasing radii
     surfs = tuple(reversed(good_surfaces))
     with pytest.raises(ValueError, match="index 1"):

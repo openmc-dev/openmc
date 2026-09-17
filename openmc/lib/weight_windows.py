@@ -11,8 +11,7 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .filter import EnergyFilter, MeshFilter, ParticleFilter
-from .mesh import _get_mesh
-from .mesh import meshes
+from .mesh import Mesh, _get_mesh, meshes
 
 
 __all__ = ['WeightWindows', 'weight_windows']
@@ -53,11 +52,11 @@ _dll.openmc_weight_windows_get_energy_bounds.argtypes = [c_int32, POINTER(POINTE
 _dll.openmc_weight_windows_get_energy_bounds.restype = c_int
 _dll.openmc_weight_windows_get_energy_bounds.errcheck = _error_handler
 
-_dll.openmc_weight_windows_set_particle.argtypes = [c_int32, c_int]
+_dll.openmc_weight_windows_set_particle.argtypes = [c_int32, c_int32]
 _dll.openmc_weight_windows_set_particle.restype = c_int
 _dll.openmc_weight_windows_set_particle.errcheck = _error_handler
 
-_dll.openmc_weight_windows_get_particle.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_weight_windows_get_particle.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_weight_windows_get_particle.restype = c_int
 _dll.openmc_weight_windows_get_particle.errcheck = _error_handler
 
@@ -194,23 +193,20 @@ class WeightWindows(_FortranObjectWithID):
 
     @energy_bounds.setter
     def energy_bounds(self, e_bounds):
-        e_bounds_arr = np.asarray(e_bounds, dtype=float)
+        e_bounds_arr = np.ascontiguousarray(e_bounds, dtype=np.float64)
         e_bounds_ptr = e_bounds_arr.ctypes.data_as(POINTER(c_double))
         _dll.openmc_weight_windows_set_energy_bounds(
             self._index, e_bounds_ptr, e_bounds_arr.size)
 
     @property
     def particle(self):
-        val = c_int()
+        val = c_int32()
         _dll.openmc_weight_windows_get_particle(self._index, val)
         return ParticleType(val.value)
 
     @particle.setter
     def particle(self, p):
-        if isinstance(p, str):
-            p = ParticleType.from_string(p)
-        else:
-            p = ParticleType(p)
+        p = ParticleType(p)
         _dll.openmc_weight_windows_set_particle(self._index, int(p))
 
     @property
@@ -225,8 +221,8 @@ class WeightWindows(_FortranObjectWithID):
 
     @bounds.setter
     def bounds(self, bounds):
-        lower = np.asarray(bounds[0])
-        upper = np.asarray(bounds[1])
+        lower = np.ascontiguousarray(bounds[0], dtype=np.float64)
+        upper = np.ascontiguousarray(bounds[1], dtype=np.float64)
 
         lower_p = lower.ctypes.data_as(POINTER(c_double))
         upper_p = upper.ctypes.data_as(POINTER(c_double))
@@ -297,6 +293,49 @@ class WeightWindows(_FortranObjectWithID):
                                                 ratio)
 
     @classmethod
+    def from_python(cls, weight_windows, mesh=None, base_dir=None):
+        """Create shared-library weight windows from a Python API object.
+
+        Parameters
+        ----------
+        weight_windows : openmc.WeightWindows
+            Python API weight windows to convert.
+        mesh : openmc.lib.Mesh, optional
+            Previously converted library mesh. If omitted, the mesh associated
+            with *weight_windows* is converted automatically.
+        base_dir : path-like, optional
+            Directory used to resolve relative unstructured-mesh filenames
+            when *mesh* is omitted.
+
+        Returns
+        -------
+        openmc.lib.WeightWindows
+            Corresponding weight windows in the active library session.
+
+        """
+        if mesh is None:
+            mesh = Mesh.from_python(weight_windows.mesh, base_dir=base_dir)
+
+        lib_ww = cls(weight_windows.id)
+        lib_ww.particle = weight_windows.particle_type
+        lib_ww.mesh = mesh
+        if weight_windows.energy_bounds is not None:
+            lib_ww.energy_bounds = weight_windows.energy_bounds
+
+        lower = np.ascontiguousarray(
+            weight_windows.lower_ww_bounds.ravel(order='F'), dtype=np.float64)
+        upper = np.ascontiguousarray(
+            weight_windows.upper_ww_bounds.ravel(order='F'), dtype=np.float64)
+        lib_ww.bounds = lower, upper
+
+        lib_ww.survival_ratio = weight_windows.survival_ratio
+        if weight_windows.max_lower_bound_ratio is not None:
+            lib_ww.max_lower_bound_ratio = weight_windows.max_lower_bound_ratio
+        lib_ww.max_split = weight_windows.max_split
+        lib_ww.weight_cutoff = weight_windows.weight_cutoff
+        return lib_ww
+
+    @classmethod
     def from_tally(cls, tally, particle=ParticleType.NEUTRON):
         """Create an instance of the WeightWindows class based on the specified tally.
 
@@ -304,10 +343,10 @@ class WeightWindows(_FortranObjectWithID):
         ----------
         tally : openmc.lib.Tally
             The tally used to create the WeightWindows instance.
-        particle : openmc.ParticleType or str, optional
+        particle : openmc.ParticleType or str or int, optional
             The particle type to use for the WeightWindows instance. Should be
-            specified as an instance of ParticleType or as a string with a value of
-            'neutron' or 'photon'.
+            specified as an instance of ParticleType, a PDG number, or as a
+            name.
 
         Returns
         -------
@@ -317,7 +356,8 @@ class WeightWindows(_FortranObjectWithID):
         Raises
         ------
         ValueError
-            If the particle parameter is not an instance of ParticleType or a string.
+            If the particle parameter is not an instance of ParticleType, a string,
+            or an integer PDG number.
         ValueError
             If the particle parameter is not a valid particle type (i.e., not 'neutron'
             or 'photon').
@@ -328,12 +368,13 @@ class WeightWindows(_FortranObjectWithID):
             If the tally does not have a MeshFilter.
         """
         # do some checks on particle value
-        if not isinstance(particle, (ParticleType, str)):
-            raise ValueError(f"Parameter 'particle' must be {ParticleType} or one of ('neutron', 'photon').")
+        if not isinstance(particle, (ParticleType, str, int)):
+            raise ValueError(
+                f"Parameter 'particle' must be {ParticleType} or one of ('neutron', 'photon')."
+            )
 
         # convert particle type if needed
-        if isinstance(particle, str):
-            particle = ParticleType.from_string(particle)
+        particle = ParticleType(particle)
 
         if particle not in (ParticleType.NEUTRON, ParticleType.PHOTON):
             raise ValueError('Weight windows can only be applied for neutrons or photons')

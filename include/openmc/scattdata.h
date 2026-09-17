@@ -4,7 +4,7 @@
 #ifndef OPENMC_SCATTDATA_H
 #define OPENMC_SCATTDATA_H
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/constants.h"
 #include "openmc/vector.h"
@@ -26,23 +26,23 @@ public:
 
 protected:
   //! \brief Initializes the attributes of the base class.
-  void base_init(int order, const xt::xtensor<int, 1>& in_gmin,
-    const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_energy,
+  void base_init(int order, const tensor::Tensor<int>& in_gmin,
+    const tensor::Tensor<int>& in_gmax, const double_2dvec& in_energy,
     const double_2dvec& in_mult);
 
   //! \brief Combines microscopic ScattDatas into a macroscopic one.
   void base_combine(size_t max_order, size_t order_dim,
     const vector<ScattData*>& those_scatts, const vector<double>& scalars,
-    xt::xtensor<int, 1>& in_gmin, xt::xtensor<int, 1>& in_gmax,
+    tensor::Tensor<int>& in_gmin, tensor::Tensor<int>& in_gmax,
     double_2dvec& sparse_mult, double_3dvec& sparse_scatter);
 
 public:
   double_2dvec energy;            // Normalized p0 matrix for sampling Eout
   double_2dvec mult;              // nu-scatter multiplication (nu-scatt/scatt)
   double_3dvec dist;              // Angular distribution
-  xt::xtensor<int, 1> gmin;       // minimum outgoing group
-  xt::xtensor<int, 1> gmax;       // maximum outgoing group
-  xt::xtensor<double, 1> scattxs; // Isotropic Sigma_{s,g_{in}}
+  tensor::Tensor<int> gmin;       // minimum outgoing group
+  tensor::Tensor<int> gmax;       // maximum outgoing group
+  tensor::Tensor<double> scattxs; // Isotropic Sigma_{s,g_{in}}
 
   //! \brief Calculates the value of normalized f(mu).
   //!
@@ -72,8 +72,8 @@ public:
   //! @param in_gmax List of maximum outgoing groups for every incoming group
   //! @param in_mult Input sparse multiplicity matrix
   //! @param coeffs Input sparse scattering matrix
-  virtual void init(const xt::xtensor<int, 1>& in_gmin,
-    const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
+  virtual void init(const tensor::Tensor<int>& in_gmin,
+    const tensor::Tensor<int>& in_gmax, const double_2dvec& in_mult,
     const double_3dvec& coeffs) = 0;
 
   //! \brief Combines the microscopic data.
@@ -96,7 +96,7 @@ public:
   //! @param max_order If Legendre this is the maximum value of "n" in "Pn"
   //!   requested; ignored otherwise.
   //! @return The dense scattering matrix.
-  virtual xt::xtensor<double, 3> get_matrix(size_t max_order) = 0;
+  virtual tensor::Tensor<double> get_matrix(size_t max_order) = 0;
 
   //! \brief Samples the outgoing energy from the ScattData info.
   //!
@@ -135,8 +135,8 @@ protected:
     ScattDataLegendre& leg, ScattDataTabular& tab);
 
 public:
-  void init(const xt::xtensor<int, 1>& in_gmin,
-    const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
+  void init(const tensor::Tensor<int>& in_gmin,
+    const tensor::Tensor<int>& in_gmax, const double_2dvec& in_mult,
     const double_3dvec& coeffs) override;
 
   void combine(const vector<ScattData*>& those_scatts,
@@ -153,7 +153,7 @@ public:
 
   size_t get_order() override { return dist[0][0].size() - 1; };
 
-  xt::xtensor<double, 3> get_matrix(size_t max_order) override;
+  tensor::Tensor<double> get_matrix(size_t max_order) override;
 };
 
 //==============================================================================
@@ -164,13 +164,13 @@ public:
 class ScattDataHistogram : public ScattData {
 
 protected:
-  xt::xtensor<double, 1> mu; // Angle distribution mu bin boundaries
+  tensor::Tensor<double> mu; // Angle distribution mu bin boundaries
   double dmu;                // Quick storage of the mu spacing
   double_3dvec fmu;          // The angular distribution histogram
 
 public:
-  void init(const xt::xtensor<int, 1>& in_gmin,
-    const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
+  void init(const tensor::Tensor<int>& in_gmin,
+    const tensor::Tensor<int>& in_gmax, const double_2dvec& in_mult,
     const double_3dvec& coeffs) override;
 
   void combine(const vector<ScattData*>& those_scatts,
@@ -183,7 +183,7 @@ public:
 
   size_t get_order() override { return dist[0][0].size(); };
 
-  xt::xtensor<double, 3> get_matrix(size_t max_order) override;
+  tensor::Tensor<double> get_matrix(size_t max_order) override;
 };
 
 //==============================================================================
@@ -194,7 +194,7 @@ public:
 class ScattDataTabular : public ScattData {
 
 protected:
-  xt::xtensor<double, 1> mu; // Angle distribution mu grid points
+  tensor::Tensor<double> mu; // Angle distribution mu grid points
   double dmu;                // Quick storage of the mu spacing
   double_3dvec fmu;          // The angular distribution function
 
@@ -204,8 +204,8 @@ protected:
     ScattDataLegendre& leg, ScattDataTabular& tab);
 
 public:
-  void init(const xt::xtensor<int, 1>& in_gmin,
-    const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
+  void init(const tensor::Tensor<int>& in_gmin,
+    const tensor::Tensor<int>& in_gmax, const double_2dvec& in_mult,
     const double_3dvec& coeffs) override;
 
   void combine(const vector<ScattData*>& those_scatts,
@@ -218,7 +218,7 @@ public:
 
   size_t get_order() override { return dist[0][0].size(); };
 
-  xt::xtensor<double, 3> get_matrix(size_t max_order) override;
+  tensor::Tensor<double> get_matrix(size_t max_order) override;
 };
 
 //==============================================================================

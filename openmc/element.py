@@ -184,8 +184,6 @@ class Element(str):
                 for nuclide in absent_nuclides:
                     if nuclide in ['O17', 'O18'] and 'O16' in mutual_nuclides:
                         abundances['O16'] += NATURAL_ABUNDANCE[nuclide]
-                    elif nuclide == 'Ta180_m1' and 'Ta180' in library_nuclides:
-                            abundances['Ta180'] = NATURAL_ABUNDANCE[nuclide]
                     elif nuclide == 'Ta180_m1' and 'Ta181' in mutual_nuclides:
                             abundances['Ta181'] += NATURAL_ABUNDANCE[nuclide]
                     elif nuclide == 'W180' and 'W182' in mutual_nuclides:

@@ -705,11 +705,15 @@ void Tally::set_scores(const vector<std::string>& scores)
 
   // Make sure all scores are compatible with multigroup mode.
   if (!settings::run_CE) {
-    for (auto sc : scores_)
+    for (auto sc : scores_) {
       if (sc > 0)
         fatal_error("Cannot tally " + reaction_name(sc) +
                     " reaction rate "
                     "in multi-group mode");
+      if (sc == SCORE_PULSE_HEIGHT)
+        fatal_error(
+          "Pulse-height tallies are not supported in multi-group mode.");
+    }
   }
 
   // Make sure mesh surface tallies contain only current score.

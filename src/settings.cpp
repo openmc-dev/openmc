@@ -611,11 +611,6 @@ void read_settings_xml(pugi::xml_node root)
   // Check for photon transport
   if (check_for_node(root, "photon_transport")) {
     photon_transport = get_node_value_bool(root, "photon_transport");
-
-    if (!run_CE && photon_transport) {
-      fatal_error("Photon transport is not currently supported in "
-                  "multigroup mode");
-    }
   }
 
   // Check for atomic relaxation

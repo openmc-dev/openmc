@@ -72,6 +72,7 @@ function(openmc_find_or_fetch name target)
 endfunction()
 
 openmc_find_or_fetch(pugixml pugixml::pugixml LEGACY_TARGET pugixml)
+set(FMT_INSTALL ON)
 openmc_find_or_fetch(fmt fmt::fmt)
 
 if(OPENMC_BUILD_TESTS)

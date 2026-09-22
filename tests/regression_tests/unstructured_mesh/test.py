@@ -191,7 +191,7 @@ param_values = (['libmesh', 'moab'], # mesh libraries
                 [(333, 90, 77), None]) # location of holes in the mesh
 test_cases = []
 for i, (lib, interface, estimator, ext_geom, holes) in enumerate(product(*param_values)):
-    if lib == 'libmesh' and interface == 'native' and estimator == 'tracklength':
+    if lib == 'libmesh' and estimator == 'tracklength':
         continue
     test_cases.append({'library' : lib,
                        'interface': interface,
@@ -268,7 +268,7 @@ test_cases = []
 for i, (lib, interface, estimator) in enumerate(product(*param_values)):
     if lib == 'moab' and interface != 'xdg':
         continue
-    if lib == 'libmesh' and interface == 'native' and estimator == 'tracklength':
+    if lib == 'libmesh' and estimator == 'tracklength':
         continue
     test_cases.append((lib, interface, estimator, f'inputs_hexes_true{i}.dat'))
 

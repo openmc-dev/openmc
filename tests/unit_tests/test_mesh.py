@@ -5,7 +5,6 @@ import itertools
 import random
 
 import h5py
-from lxml import etree as ET
 import numpy as np
 from scipy.stats import chi2
 import pytest
@@ -418,17 +417,6 @@ def test_umesh_interface_validation():
 
     with pytest.raises(ValueError, match='library'):
         openmc.UnstructuredMesh('mesh.h5m', 'xdg')
-
-
-def test_legacy_xdg_mesh_xml():
-    elem = ET.fromstring(
-        '<mesh id="1" type="xdg" library="moab">'
-        '<filename>mesh.h5m</filename></mesh>'
-    )
-    mesh = openmc.MeshBase.from_xml_element(elem)
-
-    assert isinstance(mesh, openmc.UnstructuredMesh)
-    assert mesh.interface == 'xdg'
 
 
 @pytest.mark.parametrize('interface', ('native', 'xdg'))

@@ -355,9 +355,6 @@ class MeshBase(IDManagerMixin, ABC):
             mesh = CylindricalMesh.from_xml_element(elem)
         elif mesh_type == 'spherical':
             mesh = SphericalMesh.from_xml_element(elem)
-        elif mesh_type == 'xdg':
-            mesh = UnstructuredMesh.from_xml_element(elem)
-            mesh.interface = 'xdg'
         elif mesh_type == 'unstructured':
             mesh = UnstructuredMesh.from_xml_element(elem)
         else:

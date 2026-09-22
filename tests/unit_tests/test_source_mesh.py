@@ -330,15 +330,12 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
 @pytest.mark.parametrize("library, interface", product(('moab', 'libmesh'), ('native', 'xdg')))
 def test_umesh_source_independent(run_in_tmpdir, request, void_model, library, interface):
     import openmc.lib
-    # skip the test if the library is not enabled
-    if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
-        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
-
-    if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
-        pytest.skip("LibMesh is not enabled in this build.")
-
     if interface == 'xdg' and not openmc.lib.feature_enabled('xdg'):
         pytest.skip("XDG mesh interface not enabled in this build.")
+    if interface == 'native' and library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
+        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
+    if interface == 'native' and library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
+        pytest.skip("LibMesh is not enabled in this build.")
 
     model = void_model
 
@@ -350,6 +347,10 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library, i
     model.settings.source = openmc.MeshSource(uscd_mesh, n_elements*[ind_source])
     model.export_to_model_xml()
     with openmc.lib.run_in_memory():
+        if interface == 'xdg':
+            ll, ur = openmc.lib.meshes[uscd_mesh.id].bounding_box
+            np.testing.assert_array_equal(ll, (-10, -10, -10))
+            np.testing.assert_array_equal(ur, (10, 10, 10))
         openmc.lib.simulation_init()
         sites = openmc.lib.sample_external_source(10)
         openmc.lib.statepoint_write('statepoint.h5')

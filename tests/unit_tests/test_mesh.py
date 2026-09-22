@@ -431,6 +431,25 @@ def test_legacy_xdg_mesh_xml():
     assert mesh.interface == 'xdg'
 
 
+@pytest.mark.parametrize('interface', ('native', 'xdg'))
+def test_umesh_interface_hdf5(tmp_path, interface):
+    with h5py.File(tmp_path / 'mesh.h5', 'w') as fh:
+        group = fh.create_group('meshes/mesh 1')
+        group['type'] = np.bytes_('unstructured')
+        group['filename'] = np.bytes_('mesh.h5m')
+        group['library'] = np.bytes_('moab')
+        if interface != 'native':
+            group['interface'] = np.bytes_(interface)
+        group['volumes'] = [1.0]
+        group['vertices'] = np.zeros((4, 3))
+        group['connectivity'] = np.array([[0, 1, 2, 3, -1, -1, -1, -1]])
+        group['element_types'] = [10]
+
+        mesh = openmc.MeshBase.from_hdf5(group)
+
+    assert mesh.interface == interface
+
+
 @pytest.fixture(scope='module')
 def simple_umesh(request):
     """Fixture returning UnstructuredMesh with all attributes"""

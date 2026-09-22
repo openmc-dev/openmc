@@ -3313,6 +3313,9 @@ class UnstructuredMesh(MeshBase):
 
         mesh = cls(**kwargs)
 
+        if "interface" in group:
+            mesh.interface = group["interface"][()].decode()
+
         mesh._has_statepoint_data = True
         vol_data = group["volumes"][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))

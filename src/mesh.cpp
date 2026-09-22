@@ -1014,6 +1014,9 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
 {
   write_dataset(mesh_group, "filename", filename_);
   write_dataset(mesh_group, "library", this->library());
+  if (interface_ != "native") {
+    write_dataset(mesh_group, "interface", interface_);
+  }
   if (!options_.empty()) {
     write_attribute(mesh_group, "options", options_);
   }

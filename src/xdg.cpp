@@ -137,6 +137,10 @@ void XDGMesh::prepare_for_point_location()
 Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
   auto vertices = xdg_->mesh_manager()->element_vertices(bin_to_mesh_id(bin));
+  if (vertices.size() != 4) {
+    fatal_error("Sampling from an XDG mesh is only supported for linear "
+                "tetrahedra.");
+  }
   Position sampled_position = this->sample_tet<xdg::Vertex>(vertices, seed);
   if (length_multiplier_ > 0.0) {
     sampled_position *= length_multiplier_;

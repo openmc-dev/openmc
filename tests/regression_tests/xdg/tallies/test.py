@@ -280,7 +280,7 @@ for i, mesh_case in enumerate(MESH_CASES):
 
 @pytest.mark.parametrize("test_opts", test_cases, ids=test_case_ids)
 def test_xdg_mesh_tallies(model, test_opts):
-    if not openmc.lib._xdg_enabled():
+    if not openmc.lib.feature_enabled('xdg'):
         pytest.skip("XDG is not enabled in this build.")
 
     # reference mesh tally

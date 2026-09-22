@@ -407,6 +407,10 @@ attributes/sub-elements:
     The mesh library used to represent an unstructured mesh. This can be either
     "moab" or "libmesh". (For unstructured mesh only.)
 
+  :interface:
+    The interface used to operate on an unstructured mesh. This can be either
+    "native" or "xdg". The default is "native". (For unstructured mesh only.)
+
   :options:
     Special options that control spatial search data structures used. (For
     unstructured mesh using MOAB only)

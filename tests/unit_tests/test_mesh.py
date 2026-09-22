@@ -5,6 +5,7 @@ import itertools
 import random
 
 import h5py
+from lxml import etree as ET
 import numpy as np
 from scipy.stats import chi2
 import pytest
@@ -389,6 +390,7 @@ def test_mesh_name_roundtrip(run_in_tmpdir):
 
 def test_umesh_roundtrip(run_in_tmpdir, request):
     umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', 'moab')
+    umesh.interface = 'xdg'
     umesh.output = True
 
     # create a tally using this mesh
@@ -405,6 +407,28 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     xml_mesh = xml_tally.filters[0].mesh
 
     assert umesh.id == xml_mesh.id
+    assert xml_mesh.interface == 'xdg'
+
+
+def test_umesh_interface_validation():
+    umesh = openmc.UnstructuredMesh('mesh.h5m', 'moab')
+
+    with pytest.raises(ValueError, match='interface'):
+        umesh.interface = 'invalid'
+
+    with pytest.raises(ValueError, match='library'):
+        openmc.UnstructuredMesh('mesh.h5m', 'xdg')
+
+
+def test_legacy_xdg_mesh_xml():
+    elem = ET.fromstring(
+        '<mesh id="1" type="xdg" library="moab">'
+        '<filename>mesh.h5m</filename></mesh>'
+    )
+    mesh = openmc.MeshBase.from_xml_element(elem)
+
+    assert isinstance(mesh, openmc.UnstructuredMesh)
+    assert mesh.interface == 'xdg'
 
 
 @pytest.fixture(scope='module')

@@ -356,7 +356,8 @@ class MeshBase(IDManagerMixin, ABC):
         elif mesh_type == 'spherical':
             mesh = SphericalMesh.from_xml_element(elem)
         elif mesh_type == 'xdg':
-            mesh = openmc.XDGMesh.from_xml_element(elem)
+            mesh = UnstructuredMesh.from_xml_element(elem)
+            mesh.interface = 'xdg'
         elif mesh_type == 'unstructured':
             mesh = UnstructuredMesh.from_xml_element(elem)
         else:
@@ -2870,8 +2871,17 @@ class UnstructuredMesh(MeshBase):
 
     @library.setter
     def library(self, lib: str):
-        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh', 'xdg'))
+        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
         self._library = lib
+
+    @property
+    def interface(self):
+        return self._interface
+
+    @interface.setter
+    def interface(self, interface: str):
+        cv.check_value('Unstructured mesh interface', interface, ('native', 'xdg'))
+        self._interface = interface
 
     @property
     def options(self) -> str | None:
@@ -3366,7 +3376,8 @@ class UnstructuredMesh(MeshBase):
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
         options = get_text(elem, "options")
         out = cls(filename, library, mesh_id, '', length_multiplier, options)
-        if interface := get_text(elem, "interface") is not None:
+        interface = get_text(elem, "interface")
+        if interface is not None:
             out.interface = interface
         return out
 

@@ -867,36 +867,39 @@ template<typename T>
 std::unique_ptr<UnstructuredMesh> UnstructuredMesh::create(T dataset)
 {
   std::string mesh_interface = read_mesh_interface(dataset);
-  std::unique_ptr<UnstructuredMesh> out {nullptr};
-
-#ifdef OPENMC_XDG_ENABLED
-  if (!out && mesh_interface == XDGMesh::mesh_interface) {
-    out = make_unique<XDGMesh>(dataset);
-  }
-#endif
-
   std::string mesh_library = read_mesh_library(dataset);
 
+  if (mesh_interface == "xdg") {
+#ifdef OPENMC_XDG_ENABLED
+    return make_unique<XDGMesh>(dataset);
+#else
+    fatal_error(fmt::format(
+      "XDG unstructured mesh interface with library '{}' is not enabled in "
+      "this build of OpenMC.",
+      mesh_library));
+#endif
+  }
+
+  if (mesh_interface != "native") {
+    fatal_error(fmt::format(
+      "Unrecognized unstructured mesh interface '{}'.", mesh_interface));
+  }
+
 #ifdef OPENMC_DAGMC_ENABLED
-  if (!out && mesh_library == MOABMesh::mesh_lib_type) {
-    out = make_unique<MOABMesh>(dataset);
+  if (mesh_library == MOABMesh::mesh_lib_type) {
+    return make_unique<MOABMesh>(dataset);
   }
 #endif
 
 #ifdef OPENMC_LIBMESH_ENABLED
-  if (!out && mesh_library == LibMesh::mesh_lib_type) {
-    out = make_unique<LibMesh>(dataset);
+  if (mesh_library == LibMesh::mesh_lib_type) {
+    return make_unique<LibMesh>(dataset);
   }
 #endif
 
-  if (!out) {
-    fatal_error(
-      fmt::format("Unstructured mesh interface '{}' and library '{}' is not "
-                  "enabled in this build of OpenMC.",
-        mesh_interface, mesh_library));
-  }
-
-  return out;
+  fatal_error(fmt::format("Native unstructured mesh library '{}' is not "
+                          "enabled in this build of OpenMC.",
+    mesh_library));
 }
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)

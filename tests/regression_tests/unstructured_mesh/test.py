@@ -139,18 +139,15 @@ def model():
 
     ### Geometry ###
     fuel_box = openmc.model.RectangularParallelepiped(-5.0, 5.0, -5.0, 5.0, -5.0, 5.0)
-    fuel_cell = openmc.Cell(name="fuel", region=-fuel_box)
-    fuel_cell.fill = fuel_mat
+    fuel_cell = openmc.Cell(name="fuel", region=-fuel_box, fill=fuel_mat)
 
     clad_box = openmc.model.RectangularParallelepiped(-6.0, 6.0, -6.0, 6.0, -6.0, 6.0)
-    clad_cell = openmc.Cell(name="clad", region=-clad_box & +fuel_box)
-    clad_cell.fill = zirc_mat
+    clad_cell = openmc.Cell(name="clad", region=-clad_box & +fuel_box, fill=zirc_mat)
 
     # set bounding cell dimension to one
     # this will be updated later according to the test case parameters
     water_box = openmc.model.RectangularParallelepiped(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0, boundary_type='vacuum')
-    water_cell = openmc.Cell(name="water", region=-water_box & +clad_box)
-    water_cell.fill = water_mat
+    water_cell = openmc.Cell(name="water", region=-water_box & +clad_box, fill=water_mat)
 
     # create a containing universe
     model.geometry = openmc.Geometry([fuel_cell, clad_cell, water_cell])
@@ -171,18 +168,15 @@ def model():
     model.tallies = openmc.Tallies([regular_mesh_tally])
 
     ### Settings ###
-    settings = openmc.Settings()
-    settings.run_mode = 'fixed source'
-    settings.particles = 1000
-    settings.batches = 10
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 1000
+    model.settings.batches = 10
 
     # source setup
-    space = openmc.stats.spherical_uniform(r_outer = 9.0)
-    energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
+    space = openmc.stats.spherical_uniform(r_outer=9.0)
+    energy = openmc.stats.delta_function(15.e6)
     source = openmc.IndependentSource(space=space, energy=energy)
-    settings.source = source
-
-    model.settings = settings
+    model.settings.source = source
 
     return model
 

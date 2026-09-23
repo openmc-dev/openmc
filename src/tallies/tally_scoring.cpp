@@ -1773,9 +1773,21 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         if (p.event() != TallyEvent::SCATTER)
           continue;
         // For scattering production, we need to use the pre-collision weight
-        // times the multiplicity as the estimate for the number of neutrons
-        // exiting a reaction with neutrons in the exit channel
+        // times the multiplicity as the estimate for the number of particles
+        // exiting a reaction with particles in the exit channel
         score = (p.wgt_last() - wgt_absorb) * flux;
+        // Apply the multiplicity of the sampled g_last -> g transfer in the
+        // material data, which is the factor scatter() applied to the weight.
+        // Use the same temperature and angle indices that scatter() used.
+        int t = p.mg_xs_cache().t;
+        int a = p.mg_xs_cache().a;
+        double scatt = macro_xs.get_xs(
+          MgxsType::SCATTER, p.g_last(), &p.g(), nullptr, nullptr, t, a);
+        if (scatt > 0.0) {
+          score *= macro_xs.get_xs(MgxsType::NU_SCATTER, p.g_last(), &p.g(),
+                     nullptr, nullptr, t, a) /
+                   scatt;
+        }
         // Since we transport based on material data, the angle selected
         // was not selected from the f(mu) for the nuclide.  Therefore
         // adjust the score by the actual probability for that nuclide.

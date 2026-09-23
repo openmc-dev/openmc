@@ -1,8 +1,7 @@
-import filecmp
 import glob
 from itertools import product
 import os
-import warnings
+from pathlib import Path
 
 import openmc
 import openmc.lib
@@ -21,10 +20,12 @@ class UnstructuredMeshTest(PyAPITestHarness):
                  model,
                  inputs_true='inputs_true.dat',
                  holes=False,
-                 scale_factor=10.0):
+                 scale_factor=10.0,
+                 mesh_filename=None):
 
         super().__init__(statepoint_name, model, inputs_true)
         self.holes = holes # holes in the test mesh
+        self.mesh_filename = mesh_filename
         self.scale_bounding_cell(scale_factor)
 
     def scale_bounding_cell(self, scale_factor):
@@ -43,6 +44,8 @@ class UnstructuredMeshTest(PyAPITestHarness):
                 if isinstance(m, openmc.UnstructuredMesh):
                     umesh = m
             assert umesh is not None
+            if self.mesh_filename is not None:
+                assert Path(umesh.filename).name == self.mesh_filename
 
             # check that the first element centroid is correct
             # this will depend on whether the tet mesh or hex mesh
@@ -83,7 +86,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
         if structured:
            data = data.reshape((-1, self.ELEM_PER_VOXEL))
         else:
-            data.shape = (data.size, 1)
+            data = data.reshape((-1, 1))
         return np.sum(data, axis=1)
 
     def update_results(self):
@@ -200,8 +203,30 @@ for i, (lib, interface, estimator, ext_geom, holes) in enumerate(product(*param_
                        'holes' : holes,
                        'inputs_true' : f'inputs_tets_true{i}.dat'})
 
+# Retain the XDG collision tests with source sites along the positive z-axis.
+# The .exo cases also exercise libMesh's alternate filename extension.
+for i, (external_geom, holes, extension) in enumerate(product(
+        (False, True), (None, (333, 90, 77)), ('e', 'exo'))):
+    stem = 'test_mesh_tets_w_holes' if holes else 'test_mesh_tets'
+    libraries = ('moab', 'libmesh') if extension == 'e' else ('libmesh',)
+    for library in libraries:
+        test_cases.append({'library': library,
+                           'interface': 'xdg',
+                           'estimator': 'collision',
+                           'external_geom': external_geom,
+                           'holes': holes,
+                           'mesh_filename': f'{stem}.{extension}',
+                           'source_kind': 'axis',
+                           'inputs_true': f'inputs_xdg_axis_true{i}_{library}.dat'})
+
 def param_ids(test_case):
-    return f"{test_case['library']}_{test_case['interface']}_{test_case['estimator']}_holes_{test_case['holes']}_external_geom_{test_case['external_geom']}"
+    case_id = (
+        f"{test_case['library']}_{test_case['interface']}_{test_case['estimator']}"
+        f"_holes_{test_case['holes']}_external_geom_{test_case['external_geom']}"
+    )
+    if test_case.get('source_kind') == 'axis':
+        case_id += f"_source_axis_file_{Path(test_case['mesh_filename']).suffix[1:]}"
+    return case_id
 
 @pytest.mark.parametrize("test_opts", test_cases, ids=param_ids)
 def test_unstructured_mesh_tets(model, test_opts):
@@ -215,10 +240,18 @@ def test_unstructured_mesh_tets(model, test_opts):
         if test_opts['library'] == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
             pytest.skip("LibMesh is not enabled in this build.")
 
-    if test_opts['holes']:
-        mesh_filename = "test_mesh_tets_w_holes.e"
-    else:
-        mesh_filename = "test_mesh_tets.e"
+    mesh_filename = test_opts.get('mesh_filename')
+    if mesh_filename is None:
+        mesh_filename = ("test_mesh_tets_w_holes.e" if test_opts['holes']
+                         else "test_mesh_tets.e")
+
+    if test_opts.get('source_kind') == 'axis':
+        r = openmc.stats.Uniform(a=0.0, b=9.0)
+        cos_theta = openmc.stats.delta_function(1.0)
+        phi = openmc.stats.delta_function(0.0)
+        space = openmc.stats.SphericalIndependent(r, cos_theta, phi)
+        energy = openmc.stats.delta_function(15e6)
+        model.settings.source = openmc.IndependentSource(space=space, energy=energy)
 
     interface = test_opts['interface']
 
@@ -251,7 +284,8 @@ def test_unstructured_mesh_tets(model, test_opts):
                                    model,
                                    test_opts['inputs_true'],
                                    test_opts['holes'],
-                                   scale_factor)
+                                   scale_factor,
+                                   mesh_filename)
     harness.main()
 
 
@@ -296,7 +330,8 @@ def test_unstructured_mesh_hexes(model, test_opts):
 
     harness = UnstructuredMeshTest('statepoint.10.h5',
                                    model,
-                                   inputs_true)
+                                   inputs_true,
+                                   mesh_filename=filename)
     harness.ELEM_PER_VOXEL = 1
 
     harness.main()

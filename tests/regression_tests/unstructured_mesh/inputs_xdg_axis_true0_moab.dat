@@ -21,8 +21,8 @@
   </materials>
   <geometry>
     <cell id="1" name="fuel" material="1" region="-2 1 -4 3 -6 5" universe="1"/>
-    <cell id="2" name="clad" material="2" region="(2 | -1 | 4 | -3 | 6 | -5) (-8 7 -10 9 -12 11)" universe="1"/>
-    <cell id="3" name="water" material="3" region="(8 | -7 | 10 | -9 | 12 | -11) (-14 13 -16 15 -18 17)" universe="1"/>
+    <cell id="2" name="clad" material="2" region="-8 7 -10 9 -12 11 (2 | -1 | 4 | -3 | 6 | -5)" universe="1"/>
+    <cell id="3" name="water" material="3" region="-14 13 -16 15 -18 17 (8 | -7 | 10 | -9 | 12 | -11)" universe="1"/>
     <surface id="1" type="x-plane" coeffs="-5.0"/>
     <surface id="2" type="x-plane" coeffs="5.0"/>
     <surface id="3" type="y-plane" coeffs="-5.0"/>
@@ -67,7 +67,7 @@
       <lower_left>-10.0 -10.0 -10.0</lower_left>
       <upper_right>10.0 10.0 10.0</upper_right>
     </mesh>
-    <mesh id="2" type="unstructured" library="moab" interface="xdg">
+    <mesh id="2" type="unstructured" library="moab" options="MAX_DEPTH=15;PLANE_SET=2" interface="xdg">
       <filename>test_mesh_tets.e</filename>
     </mesh>
     <filter id="1" type="mesh">
@@ -81,7 +81,7 @@
       <scores>flux</scores>
       <estimator>collision</estimator>
     </tally>
-    <tally id="2" name="xdg mesh tally">
+    <tally id="2" name="unstructured mesh tally">
       <filters>2</filters>
       <scores>flux</scores>
       <estimator>collision</estimator>

@@ -191,7 +191,7 @@ param_values = (['libmesh', 'moab'], # mesh libraries
                 [(333, 90, 77), None]) # location of holes in the mesh
 test_cases = []
 for i, (lib, interface, estimator, ext_geom, holes) in enumerate(product(*param_values)):
-    if lib == 'libmesh' and estimator == 'tracklength':
+    if lib == 'libmesh' and interface == 'native' and estimator == 'tracklength':
         continue
     test_cases.append({'library' : lib,
                        'interface': interface,
@@ -214,12 +214,6 @@ def test_unstructured_mesh_tets(model, test_opts):
 
         if test_opts['library'] == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
             pytest.skip("LibMesh is not enabled in this build.")
-
-    # skip the tracklength test for libmesh
-    if test_opts['library'] == 'libmesh' and \
-       test_opts['estimator'] == 'tracklength' and \
-       test_opts['interface'] != 'xdg':
-       pytest.skip("Tracklength tallies are not supported using libmesh.")
 
     if test_opts['holes']:
         mesh_filename = "test_mesh_tets_w_holes.e"
@@ -268,7 +262,7 @@ test_cases = []
 for i, (lib, interface, estimator) in enumerate(product(*param_values)):
     if lib == 'moab' and interface != 'xdg':
         continue
-    if lib == 'libmesh' and estimator == 'tracklength':
+    if lib == 'libmesh' and interface == 'native' and estimator == 'tracklength':
         continue
     test_cases.append((lib, interface, estimator, f'inputs_hexes_true{i}.dat'))
 
@@ -277,9 +271,9 @@ def test_unstructured_mesh_hexes(model, test_opts):
 
     library, interface, estimator, inputs_true = test_opts
 
-    if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
+    if library == 'libmesh' and interface == 'native' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh is not enabled in this build.")
-    if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
+    if library == 'moab' and interface == 'native' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
     if interface == 'xdg' and not openmc.lib.feature_enabled('xdg'):
         pytest.skip("XDG interface is not enabled in this build.")

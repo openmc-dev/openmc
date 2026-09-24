@@ -17,6 +17,9 @@ _PARAMS = [
     {'shape': 'x_cylinder', 'volume': 1*pi*1**2},
     {'shape': 'y_cylinder', 'volume': 1*pi*1**2},
     {'shape': 'z_cylinder', 'volume': 1*pi*1**2},
+    {'shape': 'x_cone', 'volume': 2/3*pi*(1**2 + 1*3 + 3**2)},
+    {'shape': 'y_cone', 'volume': 2/3*pi*(1**2 + 1*3 + 3**2)},
+    {'shape': 'z_cone', 'volume': 2/3*pi*(1**2 + 1*3 + 3**2)},
     {'shape': 'sphere', 'volume': 4/3*pi*1**3},
     {'shape': 'spherical_shell', 'volume': 4/3*pi*(1**3 - 0.5**3)}
 ]
@@ -71,6 +74,35 @@ def centers_z_cylinder():
     min_z = openmc.ZPlane(0)
     max_z = openmc.ZPlane(1)
     region = +min_z & -max_z & -cylinder
+    return openmc.model.pack_spheres(radius=_RADIUS, region=region,
+        pf=_PACKING_FRACTION, initial_pf=0.2)
+
+@pytest.fixture(scope='module')
+def centers_x_cone():
+    cone = openmc.XCone(x0=-2, y0=1, z0=2, r2=1)
+    min_x = openmc.XPlane(-1)
+    max_x = openmc.XPlane(1)
+    region = +min_x & -max_x & -cone
+    return openmc.model.pack_spheres(radius=_RADIUS, region=region,
+        pf=_PACKING_FRACTION, initial_pf=0.2)
+
+
+@pytest.fixture(scope='module')
+def centers_y_cone():
+    cone = openmc.YCone(x0=1, y0=-2, z0=2, r2=1)
+    min_y = openmc.YPlane(-1)
+    max_y = openmc.YPlane(1)
+    region = +min_y & -max_y & -cone
+    return openmc.model.pack_spheres(radius=_RADIUS, region=region,
+        pf=_PACKING_FRACTION, initial_pf=0.2)
+
+
+@pytest.fixture(scope='module')
+def centers_z_cone():
+    cone = openmc.ZCone(x0=1, y0=2, z0=-2, r2=1)
+    min_z = openmc.ZPlane(-1)
+    max_z = openmc.ZPlane(1)
+    region = +min_z & -max_z & -cone
     return openmc.model.pack_spheres(radius=_RADIUS, region=region,
         pf=_PACKING_FRACTION, initial_pf=0.2)
 
@@ -152,6 +184,41 @@ def test_contained_z_cylinder(centers_z_cylinder):
     assert r_max < 1 or r_max == pytest.approx(1)
     assert z_max < 1 or z_max == pytest.approx(1)
     assert z_min > 0 or z_min == pytest.approx(0)
+
+def test_contained_x_cone(centers_x_cone):
+    """Make sure all spheres are entirely contained within the domain."""
+    for p in centers_x_cone:
+        r = ((p[1] - 1)**2 + (p[2] - 2)**2)**0.5 + _RADIUS
+        rmax = p[0] + 1 - (0 - 1)
+        assert r < rmax or r == pytest.approx(rmax)
+    x_max = max(centers_x_cone[:,0]) + _RADIUS
+    x_min = min(centers_x_cone[:,0]) - _RADIUS
+    assert x_max < 1 or x_max == pytest.approx(1)
+    assert x_min > -1 or x_min == pytest.approx(-1)
+
+
+def test_contained_y_cone(centers_y_cone):
+    """Make sure all spheres are entirely contained within the domain."""
+    for p in centers_y_cone:
+        r = ((p[0] - 1)**2 + (p[2] - 2)**2)**0.5 + _RADIUS
+        rmax = p[1] + 1 - (0 - 1)
+        assert r < rmax or r == pytest.approx(rmax)
+    y_max = max(centers_y_cone[:,1]) + _RADIUS
+    y_min = min(centers_y_cone[:,1]) - _RADIUS
+    assert y_max < 1 or y_max == pytest.approx(1)
+    assert y_min > 0 or y_min == pytest.approx(-1)
+
+
+def test_contained_z_cone(centers_z_cone):
+    """Make sure all spheres are entirely contained within the domain."""
+    for p in centers_z_cone:
+        r = ((p[0] - 1)**2 + (p[1] - 2)**2)**0.5 + _RADIUS
+        rmax = p[2] + 1 - (0 - 1)
+        assert r < rmax or r == pytest.approx(rmax)
+    z_max = max(centers_z_cone[:,2]) + _RADIUS
+    z_min = min(centers_z_cone[:,2]) - _RADIUS
+    assert z_max < 1 or z_max == pytest.approx(1)
+    assert z_min > 0 or z_min == pytest.approx(-1)
 
 
 def test_contained_sphere(centers_sphere):

@@ -316,6 +316,7 @@ endif()
 #===============================================================================
 
 list(APPEND libopenmc_SOURCES
+  src/angle_energy.cpp
   src/atomic_mass.cpp
   src/bank.cpp
   src/boundary_condition.cpp

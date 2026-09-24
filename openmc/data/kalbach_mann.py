@@ -9,7 +9,7 @@ from openmc.mixin import EqualityMixin
 from openmc.stats import Tabular, Univariate, Discrete, Mixture
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy
-from .data import EV_PER_MEV
+from .data import EV_PER_MEV, NEUTRON_MASS_EV
 from .endf import get_list_record, get_tab2_record
 
 
@@ -196,7 +196,7 @@ def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
     Raises
     ------
     NotImplementedError
-        When the projectile is not a neutron
+        When the projectile is neither a neutron nor a photon
 
     Returns
     -------
@@ -204,12 +204,53 @@ def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
         Kalbach-Mann slope given with the same format as ACE file.
 
     """
-    # TODO: develop for photons as projectile
-    # TODO: test for other particles than neutron
-    if za_projectile != 1:
+
+    if za_projectile not in (0, 1):
+        # These systematics are Kalbach's, derived and tested for incident
+        # nucleons, and the za_to_M table below only carries entries for a few
+        # of them. Without this guard an unsupported projectile fails as a bare
+        # KeyError from inside a distribution reader, or silently returns a
+        # number.
         raise NotImplementedError(
-            "Developed and tested for neutron projectile only."
-        )
+            'Kalbach-Mann slope systematics are implemented for neutron '
+            f'(ZA=1) and photon (ZA=0) projectiles only, got ZA={za_projectile}.')
+
+    if za_projectile == 0:
+        # Slope for photons, Eq. 6.5 of the ENDF-6 Formats Manual
+        # (BNL-224854-2023, section 6.2), after Chadwick, Young and Chiba,
+        # doi:10.1080/18811248.1995.9731830:
+        #
+        #   a_gamma(E_gamma, E_b_cm) = a_n(E_gamma, E_b_cm)
+        #       * sqrt(E_gamma / (2 m_n)) * min(4, max(1, 9.3/sqrt(E_b_cm)))
+        #
+        # Two things about this look wrong at first reading and are not:
+        #
+        #   1. The neutron slope is evaluated by treating the photon as a
+        #      neutron of the same energy, compound nucleus target + n and
+        #      entrance separation energy included. That IS the prescription:
+        #      "The extension to incident gammas requires one to plug E_gamma
+        #      into the spot where one would use the incident neutron energy
+        #      when computing corresponding a for neutrons to obtain a_n."
+        #   2. The clipping factor takes E_b_cm, the emitted particle energy
+        #      in the center-of-mass frame, in MeV -- not the emission channel
+        #      energy epsilon_b that the rest of these systematics use. For a
+        #      LANG=2 distribution the tabulated outgoing energies are already
+        #      center-of-mass, so energy_emitted is the right quantity.
+        #
+        # The middle factor is the ratio of a photon's momentum E/c to that of
+        # a nucleon of the same kinetic energy, sqrt(2mE); the clip saturates
+        # at 4 below 5.41 MeV and at 1 above 86.5 MeV.
+        slope_n = kalbach_slope(energy_projectile, energy_emitted, 1,
+                                za_emitted, za_target)
+        # A zero outgoing energy is a normal first grid point of an ENDF
+        # LAW=1/LANG=2 table; the limit of the clipping factor there is 4.
+        emitted_mev = energy_emitted / EV_PER_MEV
+        clip = np.where(emitted_mev > 0.0,
+                        9.3 / np.sqrt(np.where(emitted_mev > 0.0,
+                                               emitted_mev, 1.0)),
+                        np.inf)
+        return slope_n * np.sqrt(0.5*energy_projectile/NEUTRON_MASS_EV) \
+            * np.minimum(4, np.maximum(1, clip))
 
     # Special handling of elemental carbon
     if za_emitted == 6000:
@@ -268,6 +309,8 @@ class KalbachMann(AngleEnergy):
     slope : Iterable of openmc.data.Tabulated1D
         Kalbach-Chadwick angular distribution slope value 'a' as a function of
         outgoing energy for each incoming energy
+    particle : {'neutron', 'photon'}
+        Incident particle type, defaults to neutron
 
     Attributes
     ----------
@@ -285,11 +328,13 @@ class KalbachMann(AngleEnergy):
     slope : Iterable of openmc.data.Tabulated1D
         Kalbach-Chadwick angular distribution slope value 'a' as a function of
         outgoing energy for each incoming energy
+    particle : {'neutron', 'photon'} 
+        incident particle type, defaults to neutron        
 
     """
 
     def __init__(self, breakpoints, interpolation, energy, energy_out,
-                 precompound, slope):
+                 precompound, slope, particle = 'neutron'):
         super().__init__()
         self.breakpoints = breakpoints
         self.interpolation = interpolation
@@ -297,6 +342,7 @@ class KalbachMann(AngleEnergy):
         self.energy_out = energy_out
         self.precompound = precompound
         self.slope = slope
+        self.particle = particle
 
     @property
     def breakpoints(self):
@@ -317,6 +363,15 @@ class KalbachMann(AngleEnergy):
         cv.check_type('Kalbach-Mann interpolation', interpolation,
                       Iterable, Integral)
         self._interpolation = interpolation
+        
+    @property
+    def particle(self):
+        return self._particle
+
+    @particle.setter
+    def particle(self, particle):
+        cv.check_value('Kalbach-Mann incident particle', particle, ['neutron', 'photon'])
+        self._particle = particle
 
     @property
     def energy(self):
@@ -367,6 +422,7 @@ class KalbachMann(AngleEnergy):
 
         """
         group.attrs['type'] = np.bytes_('kalbach-mann')
+        group.attrs['particle'] = np.bytes_(self.particle)
 
         dset = group.create_dataset('energy', data=self.energy)
         dset.attrs['interpolation'] = np.vstack((self.breakpoints,
@@ -436,6 +492,7 @@ class KalbachMann(AngleEnergy):
             Kalbach-Mann energy distribution
 
         """
+        particle = group.attrs.get("particle", b"neutron").decode()
         interp_data = group['energy'].attrs['interpolation']
         energy_breakpoints = interp_data[0, :]
         energy_interpolation = interp_data[1, :]
@@ -491,7 +548,7 @@ class KalbachMann(AngleEnergy):
             slope.append(km_a)
 
         return cls(energy_breakpoints, energy_interpolation,
-                   energy, energy_out, precompound, slope)
+                   energy, energy_out, precompound, slope, particle = particle)
 
     @classmethod
     def from_ace(cls, ace, idx, ldis):
@@ -514,6 +571,7 @@ class KalbachMann(AngleEnergy):
             Kalbach-Mann energy-angle distribution
 
         """
+        particle = {'u':'photon', 'c':'neutron'}[ace.data_type.value]
         # Read number of interpolation regions and incoming energies
         n_regions = int(ace.xss[idx])
         n_energy_in = int(ace.xss[idx + 1 + 2*n_regions])
@@ -586,10 +644,10 @@ class KalbachMann(AngleEnergy):
             km_r.append(Tabulated1D(data[0], data[3]))
             km_a.append(Tabulated1D(data[0], data[4]))
 
-        return cls(breakpoints, interpolation, energy, energy_out, km_r, km_a)
+        return cls(breakpoints, interpolation, energy, energy_out, km_r, km_a, particle = particle)
 
     @classmethod
-    def from_endf(cls, file_obj, za_emitted, za_target, projectile_mass):
+    def from_endf(cls, file_obj, za_emitted, za_target, za_projectile):
         """Generate Kalbach-Mann distribution from an ENDF evaluation.
 
         If the projectile is a neutron, the slope is calculated when it is
@@ -606,14 +664,8 @@ class KalbachMann(AngleEnergy):
             ZA identifier of the emitted particle
         za_target : int
             ZA identifier of the target
-        projectile_mass : float
-            Mass of the projectile
-
-        Warns
-        -----
-        UserWarning
-            If the mass of the projectile is not equal to 1 (other than
-            a neutron), the slope is not calculated and set to 0 if missing.
+        za_projectile : int
+            ZA identifier of the projectile
 
         Returns
         -------
@@ -621,6 +673,7 @@ class KalbachMann(AngleEnergy):
             Kalbach-Mann energy-angle distribution
 
         """
+        particle = {0: 'photon', 1: 'neutron'}.get(za_projectile, 'neutron')        
         params, tab2 = get_tab2_record(file_obj)
         lep = params[3]
         ne = params[5]
@@ -652,32 +705,26 @@ class KalbachMann(AngleEnergy):
             if n_angle == 2:
                 a_i = values[:, 3]
                 calculated_slope.append(False)
+            elif za_projectile is None:
+                # A projectile the systematics do not cover. Reading the rest
+                # of the evaluation is still useful, so fall back to isotropic
+                # emission rather than refusing the file.
+                a_i = np.zeros_like(r_i)
+                calculated_slope.append(False)
             else:
-                # Check if the projectile is not a neutron
-                if not np.isclose(projectile_mass, 1.0, atol=1.0e-12, rtol=0.):
-                    warn(
-                        "Kalbach-Mann slope calculation is only available with "
-                        "neutrons as projectile. Slope coefficients are set to 0."
-                    )
-                    a_i = np.zeros_like(r_i)
-                    calculated_slope.append(False)
-
-                else:
-                    # TODO: retrieve ZA of the projectile
-                    za_projectile = 1
-                    a_i = [kalbach_slope(energy_projectile=energy[i],
-                                         energy_emitted=e,
-                                         za_projectile=za_projectile,
-                                         za_emitted=za_emitted,
-                                         za_target=za_target)
-                           for e in eout_i]
-                    calculated_slope.append(True)
+                a_i = [kalbach_slope(energy_projectile=energy[i],
+                                     energy_emitted=e,
+                                     za_projectile=za_projectile,
+                                     za_emitted=za_emitted,
+                                     za_target=za_target)
+                       for e in eout_i]
+                calculated_slope.append(True)
 
             precompound.append(Tabulated1D(eout_i, r_i))
             slope.append(Tabulated1D(eout_i, a_i))
 
         km_distribution = cls(tab2.breakpoints, tab2.interpolation, energy,
-                              energy_out, precompound, slope)
+                              energy_out, precompound, slope, particle = particle)
 
         # List of bool to indicate slope calculation by OpenMC
         km_distribution._calculated_slope = calculated_slope

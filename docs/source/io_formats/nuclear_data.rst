@@ -418,6 +418,7 @@ Kalbach-Mann
 
 :Object type: Group
 :Attributes: - **type** (*char[]*) -- 'kalbach-mann'
+             - **particle** (*char[]*) -- Type of particle
 :Datasets: - **energy** (*double[]*) -- Incoming energies at which distributions exist
 
              :Attributes:

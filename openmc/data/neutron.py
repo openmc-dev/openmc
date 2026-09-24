@@ -109,6 +109,7 @@ class IncidentNeutron(EqualityMixin):
         self.reactions = {}
         self._urr = {}
         self._resonances = None
+        self._mg_covariance = None
 
     def __contains__(self, mt):
         return mt in self.reactions
@@ -228,6 +229,30 @@ class IncidentNeutron(EqualityMixin):
             cv.check_type('probability table temperature', key, str)
             cv.check_type('probability tables', value, ProbabilityTables)
         self._urr = urr
+
+    @property
+    def mg_covariance(self):
+        return self._mg_covariance
+
+    @mg_covariance.setter
+    def mg_covariance(self, cov):
+        if cov is None:
+            self._mg_covariance = None
+            return
+        if not hasattr(cov, 'write_mf33_group'):
+            raise TypeError(
+                "mg_covariance must provide write_mf33_group "
+                "(e.g. NeutronXSCovariances)")
+        self._mg_covariance = cov
+
+    # Optional alias if you already use `data.covariance = ...` somewhere
+    @property
+    def covariance(self):
+        return self._mg_covariance
+    
+    @covariance.setter
+    def covariance(self, cov):
+        self.mg_covariance = cov
 
     @property
     def temperatures(self):
@@ -429,7 +454,16 @@ class IncidentNeutron(EqualityMixin):
             if self.fission_energy is not None:
                 fer_group = g.create_group('fission_energy_release')
                 self.fission_energy.to_hdf5(fer_group)
+            
+            # Write covariance data (per-reaction MF=33 schema)
+            if self._mg_covariance is not None:
+                cov = self._mg_covariance
+                cov_root = g.require_group("covariance")
 
+                # Prefer the shared writer if available (NeutronXSCovariances)
+                if hasattr(cov, "write_mf33_group"):
+                    cov.write_mf33_group(cov_root)
+        
     @classmethod
     def from_hdf5(cls, group_or_filename):
         """Generate continuous-energy neutron interaction data from HDF5 group
@@ -504,7 +538,13 @@ class IncidentNeutron(EqualityMixin):
         if 'fission_energy_release' in group:
             fer_group = group['fission_energy_release']
             data.fission_energy = FissionEnergyRelease.from_hdf5(fer_group)
-
+        
+        # Read covariance data (per-reaction MF=33 schema)
+        if 'covariance' in group and 'mf33' in group['covariance']:
+            from .xs_covariance_njoy import NeutronXSCovariances
+            data._mg_covariance = NeutronXSCovariances._read_mf33_group(
+                group['covariance']['mf33'], name=name,)
+            
         return data
 
     @classmethod

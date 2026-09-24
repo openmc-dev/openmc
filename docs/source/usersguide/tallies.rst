@@ -359,6 +359,84 @@ The following tables show all valid scores:
     |                      |probability (IFP) method.                          |
     +----------------------+---------------------------------------------------+
 
+.. _usersguide_point_detectors:
+
+---------------
+Point Detectors
+---------------
+
+Every estimator described so far measures a quantity averaged over a finite
+volume, which means that resolving the flux in a small region costs
+proportionally more particles. When what you want is the flux at a *point* ---
+at a detector position, say --- a :class:`openmc.PointFilter` is usually a
+better tool. It uses a next-event estimator, which at every source emission and
+every collision adds the contribution that emission would make at the detector
+if the particle flew straight there without colliding. Because every event
+contributes, a point detector gives an answer in places where a small volume
+tally would see almost no tracks at all.
+
+A detector is given as its position together with the radius of an *exclusion
+sphere*::
+
+  detector = openmc.PointFilter([((0.0, 0.0, 250.0), 1.0)])
+
+  tally = openmc.Tally()
+  tally.filters = [detector]
+  tally.scores = ['flux']
+
+Several detectors can share one filter, in which case each becomes a bin::
+
+  detector = openmc.PointFilter([
+      ((0.0, 0.0, 250.0), 1.0),
+      ((0.0, 0.0, 500.0), 1.0),
+  ])
+
+The contribution of an emission falls off as :math:`1/R^2` with its distance
+:math:`R` from the detector, so an emission very close to the detector can
+contribute enormously. The estimator has an unbounded variance as a result, and
+a single nearby collision can dominate the tally. The exclusion sphere is what
+keeps this in check: within it, the estimator is replaced by its average over
+the sphere, which is bounded. Its radius trades variance against bias --- a
+larger sphere is better behaved but smears the result over a bigger region ---
+so keep it small compared with a mean free path of the surrounding material. A
+radius of zero disables the treatment entirely.
+
+The averaging assumes a single total cross section throughout the sphere, and
+the value used is the one in the cell holding the detector. Choose a radius
+that keeps the sphere inside a single material where you can: a sphere
+straddling a boundary is characterised by whichever material the detector
+itself is in. See :ref:`methods_next_event_estimator` for the details.
+
+Setting up a point detector also assigns the tally the ``next-event``
+estimator, which brings some restrictions with it. A point tally cannot be
+combined with an :class:`openmc.EnergyoutFilter`,
+:class:`openmc.LegendreFilter`, :class:`openmc.SurfaceFilter` or
+:class:`openmc.MeshSurfaceFilter`, nor with the ``current``, ``heating``,
+``pulse-height``, ``nu-scatter`` or IFP scores. The model itself has to satisfy
+a few conditions as well:
+
+* it must run in continuous-energy mode;
+* every outer boundary must be a vacuum boundary, since a contribution travels
+  in a straight line and cannot account for a particle arriving by way of a
+  reflective, white or periodic boundary;
+* the source must be an :class:`openmc.IndependentSource`, and must not be
+  monodirectional, because a delta-function angular distribution has no
+  angular density to evaluate toward the detector;
+* photon transport may only be enabled if the tally is restricted to neutrons
+  with a :class:`openmc.ParticleFilter`, as photon collisions make no
+  next-event contribution.
+
+All of these are checked when the model is loaded and reported with an
+explanatory error, so a configuration the estimator cannot represent fails
+rather than quietly returning a plausible-looking number. Materials using
+NCrystal are likewise rejected, at the point of first use.
+
+.. note:: Point detectors are considerably more expensive per history than a
+          volume tally: every emission event has to trace a ray to every
+          detector to accumulate the optical depth along the way. The cost
+          grows with the number of detectors, so prefer a handful of well
+          chosen positions over a dense array of them.
+
 .. _usersguide_virtual_material:
 
 -----------------

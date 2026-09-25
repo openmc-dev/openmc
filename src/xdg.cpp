@@ -118,9 +118,9 @@ void XDGMesh::initialize()
     int n_elem = xdg_->mesh_manager()->num_volume_elements(vol);
     xdg::VolumeElementType elem_type =
       xdg_->mesh_manager()->volume_element_type(vol);
-    if (elem_type == xdg::VolumeElementType::TETRAHEDRON) {
+    if (elem_type == xdg::VolumeElementType::TET) {
       n_surface_bins_ += 4 * n_elem;
-    } else if (elem_type == xdg::VolumeElementType::HEXAHEDRON) {
+    } else if (elem_type == xdg::VolumeElementType::HEX) {
       n_surface_bins_ += 6 * n_elem;
     } else {
       fatal_error(fmt::format("Unsupported volume element type {} for "

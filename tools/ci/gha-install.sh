@@ -7,11 +7,19 @@ pip install --upgrade pytest
 pip install --upgrade numpy
 
 # Install NJOY 2016
-./tools/ci/gha-install-njoy.sh
+if [[ "$NJOY_HIT" != "true" ]]; then
+    ./tools/ci/gha-install-njoy.sh
+fi
 
 # Install DAGMC if needed
-if [[ $DAGMC = 'y' ]]; then
-    ./tools/ci/gha-install-dagmc.sh
+if [[ "$DAGMC" == "y" ]]; then
+    if [[ "$MOAB_HIT" != "true" ]]; then
+        ./tools/ci/gha-install-moab.sh
+    fi
+
+    if [[ "$DAGMC_HIT" != "true" ]]; then
+        ./tools/ci/gha-install-dagmc.sh
+    fi
 fi
 
 # Install NCrystal and verify installation
@@ -19,8 +27,10 @@ pip install 'ncrystal>=4.1.0'
 nctool --test
 
 # Install libMesh if needed
-if [[ $LIBMESH = 'y' ]]; then
-    ./tools/ci/gha-install-libmesh.sh
+if [[ "$LIBMESH" == "y" ]]; then
+    if [[ "$LIBMESH_HIT" != "true" ]]; then
+        ./tools/ci/gha-install-libmesh.sh
+    fi
 fi
 
 # Install MCPL
@@ -28,7 +38,7 @@ pip install mcpl
 
 # For MPI configurations, make sure mpi4py and h5py are built against the
 # correct version of MPI
-if [[ $MPI == 'y' ]]; then
+if [[ "$MPI" == "y" ]]; then
     pip install --no-binary=mpi4py mpi4py
 
     export CC=mpicc

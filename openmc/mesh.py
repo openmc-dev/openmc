@@ -2763,10 +2763,15 @@ class UnstructuredMesh(MeshBase):
     ----------
     filename : path-like
         Location of the unstructured mesh file. Supported files for 'moab'
-        library are .h5 and .vtk. Supported files for 'libmesh' library are
-        exodus mesh files .exo.
-    library : {'moab', 'libmesh'}
-        Mesh library used for the unstructured mesh tally
+        library include .h5m, .h5, .vtk, and Exodus files. Supported files for
+        'libmesh' include Exodus files (.e, .exo, and .ex2).
+    library : {'moab', 'libmesh'}, optional
+        Mesh library used for the unstructured mesh tally. If omitted, inferred
+        from the filename extension (case-insensitive): .h5m, .h5, and .vtk
+        select 'moab'; .e, .exo, and .ex2 select 'libmesh'. Other extensions
+        require an explicit library. An explicit value overrides inference,
+        including for Exodus files that can be read by either backend. Inference
+        occurs only at construction, independently of the mesh interface.
     mesh_id : int
         Unique identifier for the mesh
     name : str
@@ -2837,11 +2842,22 @@ class UnstructuredMesh(MeshBase):
     _VTK_TET = 10
     _VTK_HEX = 12
 
-    def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
+    def __init__(self, filename: PathLike, library: str | None = None,
+                 mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
                  options: str | None = None):
         super().__init__(mesh_id, name)
         self.filename = filename
+        if library is None:
+            extension = Path(self.filename).suffix.lower()
+            if extension in {'.h5m', '.h5', '.vtk'}:
+                library = 'moab'
+            elif extension in {'.e', '.exo', '.ex2'}:
+                library = 'libmesh'
+            else:
+                raise ValueError(
+                    f"Cannot infer mesh library from filename {str(filename)!r}; "
+                    "specify library='moab' or library='libmesh'.")
         self._volumes = None
         self._n_elements = None
         self._conectivity = None

@@ -409,6 +409,25 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     assert xml_mesh.interface == 'xdg'
 
 
+@pytest.mark.parametrize('filename, library', [
+    ('mesh.h5m', 'moab'), ('mesh.h5', 'moab'), ('mesh.vtk', 'moab'),
+    ('mesh.e', 'libmesh'), ('mesh.exo', 'libmesh'), ('mesh.ex2', 'libmesh'),
+    (Path('mesh.H5M'), 'moab'), (Path('mesh.EXO'), 'libmesh'),
+])
+def test_umesh_library_inference(filename, library):
+    mesh = openmc.UnstructuredMesh(filename)
+    assert mesh.library == library
+
+
+def test_umesh_library_override():
+    mesh = openmc.UnstructuredMesh('mesh.exo', 'moab')
+    mesh.filename = 'mesh.unknown'
+    assert mesh.library == 'moab'
+    assert openmc.UnstructuredMesh('mesh.unknown', 'libmesh').library == 'libmesh'
+    with pytest.raises(ValueError, match='Cannot infer mesh library'):
+        openmc.UnstructuredMesh('mesh.unknown')
+
+
 def test_umesh_interface_validation():
     umesh = openmc.UnstructuredMesh('mesh.h5m', 'moab')
 

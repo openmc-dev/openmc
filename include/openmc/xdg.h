@@ -109,6 +109,8 @@ public:
 private:
   void initialize() override;
 
+  int n_surface_bins_ {0}; //!< Number of surface bins in the mesh
+
   //----------------------------------------------------------------------------
   // Private data members
   std::shared_ptr<xdg::XDG> xdg_; //!< XDG instance

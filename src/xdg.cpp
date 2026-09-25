@@ -112,6 +112,23 @@ void XDGMesh::initialize()
       "Mesh file \"{}\" for mesh {} does not exist", filename_, id_));
   }
 
+  // TODO: replace with direct method in XDG when available
+  n_surface_bins_ = 0;
+  for (auto vol : xdg_->mesh_manager()->volumes()) {
+    int n_elem = xdg_->mesh_manager()->num_volume_elements(vol);
+    xdg::VolumeElementType elem_type =
+      xdg_->mesh_manager()->volume_element_type(vol);
+    if (elem_type == xdg::VolumeElementType::TETRAHEDRON) {
+      n_surface_bins_ += 4 * n_elem;
+    } else if (elem_type == xdg::VolumeElementType::HEXAHEDRON) {
+      n_surface_bins_ += 6 * n_elem;
+    } else {
+      fatal_error(fmt::format("Unsupported volume element type {} for "
+                              "surface bin counting in XDGMesh.",
+        static_cast<int>(elem_type)));
+    }
+  }
+
   xdg_->mesh_manager()->load_file(filename_);
   xdg_->mesh_manager()->init();
   xdg_->mesh_manager()->parse_metadata();
@@ -186,7 +203,7 @@ int XDGMesh::n_bins() const
 
 int XDGMesh::n_surface_bins() const
 {
-  return 4 * n_bins();
+  return n_surface_bins_;
 }
 
 std::pair<vector<double>, vector<double>> XDGMesh::plot(

@@ -19,3 +19,7 @@ foreach(test ${TEST_NAMES})
   target_link_libraries(${test} Catch2::Catch2WithMain libopenmc_test)
   add_test(NAME ${test} COMMAND ${test} WORKING_DIRECTORY ${UNIT_TEST_BIN_OUTPUT_DIR})
 endforeach()
+
+if(OPENMC_USE_XDG)
+  target_compile_definitions(test_mesh PRIVATE OPENMC_XDG_ENABLED)
+endif()

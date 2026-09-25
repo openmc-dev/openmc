@@ -94,28 +94,31 @@ void XDGMesh::initialize()
 {
   interface_ = "xdg";
 
-  if (!xdg::XDGConfig::config().mesh_manager_enabled(mesh_library_)) {
-    fatal_error(fmt::format("Mesh library {} is not enabled in XDG.",
-      mesh_library_ == xdg::MeshLibrary::LIBMESH ? "libMesh" : "MOAB"));
-  }
+  // Externally supplied instances already have an initialized mesh manager.
+  if (!xdg_) {
+    if (!xdg::XDGConfig::config().mesh_manager_enabled(mesh_library_)) {
+      fatal_error(fmt::format("Mesh library {} is not enabled in XDG.",
+        mesh_library_ == xdg::MeshLibrary::LIBMESH ? "libMesh" : "MOAB"));
+    }
 
-  // the XDG instance has already been created, so no action is required
-  if (xdg_)
-    return;
+    xdg_ = xdg::XDG::create(mesh_library_);
+    if (!file_exists(filename_)) {
+      fatal_error(fmt::format(
+        "Mesh file \"{}\" for mesh {} does not exist", filename_, id_));
+    }
 
-  // create XDGMesh instance
-  xdg_ = xdg::XDG::create(mesh_library_);
-
-  // load XDGMesh file
-  if (!file_exists(filename_)) {
-    fatal_error(fmt::format(
-      "Mesh file \"{}\" for mesh {} does not exist", filename_, id_));
+    xdg_->mesh_manager()->load_file(filename_);
+    xdg_->mesh_manager()->init();
+    xdg_->mesh_manager()->parse_metadata();
   }
 
   // TODO: replace with direct method in XDG when available
   n_surface_bins_ = 0;
   for (auto vol : xdg_->mesh_manager()->volumes()) {
     int n_elem = xdg_->mesh_manager()->num_volume_elements(vol);
+    // The implicit complement has no elements or element type.
+    if (n_elem == 0)
+      continue;
     xdg::VolumeElementType elem_type =
       xdg_->mesh_manager()->get_volume_element_type(vol);
     if (elem_type == xdg::VolumeElementType::TET) {
@@ -128,10 +131,6 @@ void XDGMesh::initialize()
         static_cast<int>(elem_type)));
     }
   }
-
-  xdg_->mesh_manager()->load_file(filename_);
-  xdg_->mesh_manager()->init();
-  xdg_->mesh_manager()->parse_metadata();
 
   auto global_bbox = xdg_->mesh_manager()->global_bounding_box();
   double length_multiplier =

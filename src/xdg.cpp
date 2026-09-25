@@ -117,7 +117,7 @@ void XDGMesh::initialize()
   for (auto vol : xdg_->mesh_manager()->volumes()) {
     int n_elem = xdg_->mesh_manager()->num_volume_elements(vol);
     xdg::VolumeElementType elem_type =
-      xdg_->mesh_manager()->volume_element_type(vol);
+      xdg_->mesh_manager()->get_volume_element_type(vol);
     if (elem_type == xdg::VolumeElementType::TET) {
       n_surface_bins_ += 4 * n_elem;
     } else if (elem_type == xdg::VolumeElementType::HEX) {

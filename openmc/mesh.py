@@ -306,10 +306,7 @@ class MeshBase(IDManagerMixin, ABC):
         elif mesh_type == 'spherical':
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type in ('unstructured', 'xdg'):
-            out = UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
-            if mesh_type == 'xdg':
-                out.interface = 'xdg'
-            return out
+            return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 

@@ -1,6 +1,4 @@
-import glob
 from itertools import product
-import os
 from pathlib import Path
 
 import openmc
@@ -8,106 +6,72 @@ import openmc.lib
 import numpy as np
 
 import pytest
-from tests.testing_harness import PyAPITestHarness
+from tests.regression_tests import config
 
 
-class UnstructuredMeshTest(PyAPITestHarness):
-
-    ELEM_PER_VOXEL = 12
-
-    def __init__(self,
-                 statepoint_name,
-                 model,
-                 inputs_true='inputs_true.dat',
-                 holes=False,
-                 scale_factor=10.0,
-                 mesh_filename=None):
-
-        super().__init__(statepoint_name, model, inputs_true)
-        self.holes = holes # holes in the test mesh
-        self.mesh_filename = mesh_filename
-        self.scale_bounding_cell(scale_factor)
-
-    def scale_bounding_cell(self, scale_factor):
-        geometry = self._model.geometry
-        for surface in geometry.get_all_surfaces().values():
-            if surface.boundary_type != 'vacuum':
-                continue
+def run_and_check(model, tmp_path, mesh_filename, holes=None,
+                  scale_factor=10.0, elements_per_voxel=12):
+    """Compare unstructured tallies with a regular mesh in the same run."""
+    for surface in model.geometry.get_all_surfaces().values():
+        if surface.boundary_type == 'vacuum':
             for coeff in surface._coefficients:
                 surface._coefficients[coeff] *= scale_factor
 
-    def _compare_results(self):
-        with openmc.StatePoint(self._sp_name) as sp:
-            # check some properties of the unstructured mesh
-            umesh = None
-            for m in sp.meshes.values():
-                if isinstance(m, openmc.UnstructuredMesh):
-                    umesh = m
-            assert umesh is not None
-            if self.mesh_filename is not None:
-                assert Path(umesh.filename).name == self.mesh_filename
+    if config['build_inputs']:
+        model.export_to_model_xml(tmp_path / 'model.xml')
+        return
 
-            # check that the first element centroid is correct
-            # this will depend on whether the tet mesh or hex mesh
-            # file is being used in this test
-            if umesh.element_types[0] == umesh._LINEAR_TET:
-                exp_vertex = (-10.0, -10.0, -10.0)
-                exp_centroid = (-8.75, -9.75, -9.25)
-            else:
-                exp_vertex = (-10.0, -10.0, 10.0)
-                exp_centroid = (-9.0, -9.0, 9.0)
+    mpi_args = ([config['mpiexec'], '-n', config['mpi_np']]
+                if config['mpi'] else None)
+    statepoint = model.run(cwd=tmp_path, openmc_exec=config['exe'],
+                           mpi_args=mpi_args, event_based=config['event'])
+    with openmc.StatePoint(statepoint) as sp:
+        # check some properties of the unstructured mesh
+        umesh = None
+        for m in sp.meshes.values():
+            if isinstance(m, openmc.UnstructuredMesh):
+                umesh = m
+        assert umesh is not None
+        assert Path(umesh.filename).name == mesh_filename
 
-            np.testing.assert_array_equal(umesh.vertices[0], exp_vertex)
-            np.testing.assert_array_equal(umesh.centroid(0), exp_centroid)
-
-            # loop over the tallies and get data
-            for tally in sp.tallies.values():
-                # find the regular and unstructured meshes
-                if tally.contains_filter(openmc.MeshFilter):
-                    flt = tally.find_filter(openmc.MeshFilter)
-
-                    if isinstance(flt.mesh, openmc.RegularMesh):
-                        reg_mesh_data = self.get_mesh_tally_data(tally)
-                        if self.holes:
-                            reg_mesh_data = np.delete(reg_mesh_data, self.holes)
-                    else:
-                        umesh_tally = tally
-                        unstructured_data = self.get_mesh_tally_data(tally, True)
-
-        # we expect these results to be the same to within at least ten
-        # decimal places
-        decimals = 10 if umesh_tally.estimator == 'collision' else 6
-        np.testing.assert_array_almost_equal(np.sort(unstructured_data),
-                                            np.sort(reg_mesh_data),
-                                            decimals)
-
-    def get_mesh_tally_data(self, tally, structured=False):
-        data = tally.get_reshaped_data(value='mean')
-        if structured:
-            data = data.reshape(-1, self.ELEM_PER_VOXEL)
+        # check that the first element centroid is correct
+        # this will depend on whether the tet mesh or hex mesh
+        # file is being used in this test
+        if umesh.element_types[0] == umesh._LINEAR_TET:
+            exp_vertex = (-10.0, -10.0, -10.0)
+            exp_centroid = (-8.75, -9.75, -9.25)
         else:
-            data = data.reshape(-1, 1)
-        return np.sum(data, axis=1)
+            exp_vertex = (-10.0, -10.0, 10.0)
+            exp_centroid = (-9.0, -9.0, 9.0)
 
-    def update_results(self):
-        """Update results_true.dat and inputs_true.dat"""
-        try:
-            self._build_inputs()
-            inputs = self._get_inputs()
-            self._write_inputs(inputs)
-            self._overwrite_inputs()
-            self._run_openmc()
-            self._test_output_created()
-        finally:
-            self._cleanup()
+        np.testing.assert_array_equal(umesh.vertices[0], exp_vertex)
+        np.testing.assert_array_equal(umesh.centroid(0), exp_centroid)
 
-    def _cleanup(self):
-        super()._cleanup()
-        output = glob.glob('tally*.vtk')
-        output += glob.glob('tally*.e')
-        for f in output:
-            if os.path.exists(f):
-                os.remove(f)
+        # loop over the tallies and get data
+        for tally in sp.tallies.values():
+            # find the regular and unstructured meshes
+            if tally.contains_filter(openmc.MeshFilter):
+                flt = tally.find_filter(openmc.MeshFilter)
+
+                if isinstance(flt.mesh, openmc.RegularMesh):
+                    reg_mesh_data = get_mesh_tally_data(tally)
+                    if holes:
+                        reg_mesh_data = np.delete(reg_mesh_data, holes)
+                else:
+                    umesh_tally = tally
+                    unstructured_data = get_mesh_tally_data(
+                        tally, elements_per_voxel)
+
+    # Collision tallies agree to ten decimal places; tracklength to six.
+    decimals = 10 if umesh_tally.estimator == 'collision' else 6
+    np.testing.assert_array_almost_equal(np.sort(unstructured_data),
+                                        np.sort(reg_mesh_data),
+                                        decimals)
+
+
+def get_mesh_tally_data(tally, elements_per_voxel=1):
+    data = tally.get_reshaped_data(value='mean')
+    return data.reshape(-1, elements_per_voxel).sum(axis=1)
 
 
 @pytest.fixture
@@ -187,20 +151,19 @@ param_values = (['libmesh', 'moab'], # mesh libraries
                 [True, False], # geometry outside of the mesh
                 [(333, 90, 77), None]) # location of holes in the mesh
 test_cases = []
-for i, (lib, interface, estimator, ext_geom, holes) in enumerate(product(*param_values)):
+for lib, interface, estimator, ext_geom, holes in product(*param_values):
     if lib == 'libmesh' and interface == 'native' and estimator == 'tracklength':
         continue
     test_cases.append({'library' : lib,
                        'interface': interface,
                        'estimator' : estimator,
                        'external_geom' : ext_geom,
-                       'holes' : holes,
-                       'inputs_true' : f'inputs_tets_true{i}.dat'})
+                       'holes' : holes})
 
 # Retain the XDG collision tests with source sites along the positive z-axis.
 # The .exo cases also exercise libMesh's alternate filename extension.
-for i, (external_geom, holes, extension) in enumerate(product(
-        (False, True), (None, (333, 90, 77)), ('e', 'exo'))):
+for external_geom, holes, extension in product(
+        (False, True), (None, (333, 90, 77)), ('e', 'exo')):
     stem = 'test_mesh_tets_w_holes' if holes else 'test_mesh_tets'
     libraries = ('moab', 'libmesh') if extension == 'e' else ('libmesh',)
     for library in libraries:
@@ -210,8 +173,7 @@ for i, (external_geom, holes, extension) in enumerate(product(
                            'external_geom': external_geom,
                            'holes': holes,
                            'mesh_filename': f'{stem}.{extension}',
-                           'source_kind': 'axis',
-                           'inputs_true': f'inputs_xdg_axis_true{i}_{library}.dat'})
+                           'source_kind': 'axis'})
 
 def param_ids(test_case):
     case_id = (
@@ -223,7 +185,7 @@ def param_ids(test_case):
     return case_id
 
 @pytest.mark.parametrize("test_opts", test_cases, ids=param_ids)
-def test_unstructured_mesh_tets(model, test_opts):
+def test_unstructured_mesh_tets(model, test_opts, tmp_path):
     # skip the test if appropriate libraries or interfaces are not enabled
     if test_opts['interface'] == 'xdg' and not openmc.lib.feature_enabled('xdg'):
         pytest.skip("XDG interface is not enabled in this build.")
@@ -254,7 +216,8 @@ def test_unstructured_mesh_tets(model, test_opts):
     regular_mesh_tally.estimator = test_opts['estimator']
 
     # add analagous unstructured mesh tally
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_opts['library'])
+    uscd_mesh = openmc.UnstructuredMesh(
+        Path(__file__).with_name(mesh_filename), test_opts['library'])
     if test_opts['library'] == 'moab':
         uscd_mesh.options = 'MAX_DEPTH=15;PLANE_SET=2'
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
@@ -274,30 +237,24 @@ def test_unstructured_mesh_tets(model, test_opts):
     else:
         scale_factor = 10.0
 
-    harness = UnstructuredMeshTest('statepoint.10.h5',
-                                   model,
-                                   test_opts['inputs_true'],
-                                   test_opts['holes'],
-                                   scale_factor,
-                                   mesh_filename)
-    harness.main()
+    run_and_check(model, tmp_path, mesh_filename, test_opts['holes'], scale_factor)
 
 
 param_values = (['libmesh', 'moab'], # mesh libraries
                 ['native', 'xdg'], # mesh interfaces
                 ['collision', 'tracklength']) # estimators
 test_cases = []
-for i, (lib, interface, estimator) in enumerate(product(*param_values)):
+for lib, interface, estimator in product(*param_values):
     if lib == 'moab' and interface != 'xdg':
         continue
     if lib == 'libmesh' and interface == 'native' and estimator == 'tracklength':
         continue
-    test_cases.append((lib, interface, estimator, f'inputs_hexes_true{i}.dat'))
+    test_cases.append((lib, interface, estimator))
 
 @pytest.mark.parametrize("test_opts", test_cases, ids=lambda x: f"{x[0]}_{x[1]}_{x[2]}")
-def test_unstructured_mesh_hexes(model, test_opts):
+def test_unstructured_mesh_hexes(model, test_opts, tmp_path):
 
-    library, interface, estimator, inputs_true = test_opts
+    library, interface, estimator = test_opts
 
     if library == 'libmesh' and interface == 'native' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh is not enabled in this build.")
@@ -311,7 +268,7 @@ def test_unstructured_mesh_hexes(model, test_opts):
 
     # add analagous unstructured mesh tally
     filename = "test_mesh_hexes.e" if library == 'libmesh' else "test_mesh_hexes.exo"
-    uscd_mesh = openmc.UnstructuredMesh(filename, library)
+    uscd_mesh = openmc.UnstructuredMesh(Path(__file__).with_name(filename), library)
     uscd_mesh.interface = interface
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
@@ -322,10 +279,4 @@ def test_unstructured_mesh_hexes(model, test_opts):
     uscd_tally.estimator = estimator
     model.tallies.append(uscd_tally)
 
-    harness = UnstructuredMeshTest('statepoint.10.h5',
-                                   model,
-                                   inputs_true,
-                                   mesh_filename=filename)
-    harness.ELEM_PER_VOXEL = 1
-
-    harness.main()
+    run_and_check(model, tmp_path, filename, elements_per_voxel=1)

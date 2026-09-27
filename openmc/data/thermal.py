@@ -796,12 +796,12 @@ class ThermalScattering(EqualityMixin):
         if not continuous:
             n_mu = ace.nxs[3]
             idx = ace.jxs[3]
-            energy_out = ace.xss[idx:idx + n_energy * n_energy_out *
-                (n_mu + 2): n_mu + 2]*EV_PER_MEV
-            energy_out.shape = (n_energy, n_energy_out)
+            n_values = n_energy * n_energy_out * (n_mu + 2)
+            energy_out = ace.xss[idx:idx + n_values:n_mu + 2]*EV_PER_MEV
+            energy_out = energy_out.reshape(n_energy, n_energy_out)
 
-            mu_out = ace.xss[idx:idx + n_energy * n_energy_out * (n_mu + 2)]
-            mu_out.shape = (n_energy, n_energy_out, n_mu+2)
+            mu_out = ace.xss[idx:idx + n_values]
+            mu_out = mu_out.reshape(n_energy, n_energy_out, n_mu + 2)
             mu_out = mu_out[:, :, 1:]
             skewed = (ace.nxs[7] == 1)
             distribution = IncoherentInelasticAEDiscrete(energy_out, mu_out, skewed)
@@ -924,7 +924,7 @@ class ThermalScattering(EqualityMixin):
                 assert n_mu > 0
                 idx = ace.jxs[9] if mixed else ace.jxs[6]
                 mu_out = ace.xss[idx:idx + n_energy * n_mu]
-                mu_out.shape = (n_energy, n_mu)
+                mu_out = mu_out.reshape(n_energy, n_mu)
                 incoherent_dist = IncoherentElasticAEDiscrete(mu_out)
 
             if ace.nxs[5] == 3:

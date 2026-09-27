@@ -26,9 +26,9 @@ void write_bank_dataset(
 )
 {
   int64_t dims_size = bank_index.back();
-  int64_t count_size = bank_index[mpi::rank + 1] - bank_index[mpi::rank];
 
 #ifdef PHDF5
+  int64_t count_size = bank_index[mpi::rank + 1] - bank_index[mpi::rank];
   hsize_t dims[] {static_cast<hsize_t>(dims_size)};
   hid_t dspace = H5Screate_simple(1, dims, nullptr);
   hid_t dset = H5Dcreate(group_id, dataset_name, filebanktype, dspace,

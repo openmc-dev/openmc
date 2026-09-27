@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import h5py
 import lxml.etree as ET
 import numpy as np
 import openmc
@@ -186,6 +187,23 @@ def test_get_all_universes():
 
     univs = set(u4.get_all_universes().values())
     assert not (univs ^ {u1, u2, u3})
+
+
+def test_dagmc_universe_from_hdf5_without_filename(run_in_tmpdir):
+    """A DAGMC universe built from an in-memory MOAB instance has no filename."""
+    with h5py.File('summary.h5', 'w') as f:
+        group = f.create_group('universe 1')
+        group['geom_type'] = np.bytes_('dagmc')
+        group.attrs['auto_geom_ids'] = 0
+        group.attrs['auto_mat_ids'] = 1
+        group.attrs['length_multiplier'] = 1.0
+
+        univ = openmc.DAGMCUniverse.from_hdf5(group)
+
+    assert univ.id == 1
+    assert univ.filename == Path()
+    assert not univ.auto_geom_ids
+    assert univ.auto_mat_ids
 
 
 def test_clone():

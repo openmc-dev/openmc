@@ -1,14 +1,17 @@
 #include "openmc/random_ray/random_ray_simulation.h"
 
 #include "openmc/capi.h"
+#include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/output.h"
 #include "openmc/plot.h"
+#include "openmc/random_ray/decomposition_map.h"
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/random_ray/random_ray.h"
+#include "openmc/random_ray/ray_bank.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/tallies/filter.h"
@@ -16,6 +19,7 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
 #include "openmc/weight_windows.h"
+#include <numeric>
 
 namespace openmc {
 
@@ -261,17 +265,6 @@ void validate_random_ray_inputs()
     }
   }
 
-  // Warn about slow MPI domain replication, if detected
-  ///////////////////////////////////////////////////////////////////
-#ifdef OPENMC_MPI
-  if (mpi::n_procs > 1) {
-    warning(
-      "MPI parallelism is not supported by the random ray solver. All work "
-      "will be performed by rank 0. Domain decomposition may be implemented in "
-      "the future to provide efficient MPI scaling.");
-  }
-#endif
-
   // Warn about instability resulting from linear sources in small regions
   // when generating weight windows with FW-CADIS and an overlaid mesh.
   ///////////////////////////////////////////////////////////////////
@@ -287,15 +280,18 @@ void validate_random_ray_inputs()
 
 void openmc_finalize_random_ray()
 {
-  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
+  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::AUTO;
+  FlatSourceDomain::resolved_volume_estimator_ = RandomRayVolumeEstimator::AUTO;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   FlatSourceDomain::adjoint_requested_ = false;
+  FlatSourceDomain::source_gradient_limiter_ = false;
   FlatSourceDomain::solve_ = RandomRaySolve::FORWARD;
   FlatSourceDomain::fw_cadis_local_ = false;
   FlatSourceDomain::fw_cadis_local_targets_.clear();
   FlatSourceDomain::mesh_domain_map_.clear();
   RandomRay::ray_source_.reset();
   RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
+  RandomRay::geom_dim_ = RandomRayGeomDim::THREE_DIM;
   RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
 }
 
@@ -346,7 +342,19 @@ void RandomRaySimulation::prepare_fw_fixed_sources_adjoint()
   // Prepare adjoint fixed sources using forward flux
   domain_->source_regions_.adjoint_reset();
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    // Consumes the accumulated forward flux (and zeroes it as it goes), so
+    // the adjoint solve starts from a clean accumulator.
     domain_->set_fw_adjoint_sources();
+  } else {
+    // In eigenvalue mode there are no fixed adjoint sources to derive from
+    // the forward flux, but the accumulated forward flux must still be
+    // cleared so that the adjoint solve's active accumulation starts from a
+    // clean array. Otherwise any consumer of the final flux would mix
+    // forward and adjoint modes.
+#pragma omp parallel for
+    for (int64_t se = 0; se < domain_->n_source_elements(); se++) {
+      domain_->source_regions_.scalar_flux_final(se) = 0.0;
+    }
   }
 }
 
@@ -392,6 +400,13 @@ void RandomRaySimulation::simulate()
   // Begin main simulation timer
   simulation::time_total.start();
 
+#ifdef OPENMC_MPI
+  if (mpi::n_procs > 1) {
+    // Initialize subdomains for MPI ranks
+    mpi::decomp_map.initialize();
+  }
+#endif
+
   // Reset per-solve accumulators, as simulate() may run more than once on the
   // same object (e.g. forward then adjoint when generating weight windows)
   avg_miss_rate_ = 0.0;
@@ -403,83 +418,116 @@ void RandomRaySimulation::simulate()
     initialize_batch();
     initialize_generation();
 
-    // MPI not supported in random ray solver, so all work is done by rank 0
-    // TODO: Implement domain decomposition for MPI parallelism
-    if (mpi::master) {
+    // Reset total starting particle weight used for normalizing tallies
+    simulation::total_weight = 1.0;
 
-      // Reset total starting particle weight used for normalizing tallies
-      simulation::total_weight = 1.0;
+    // Update source term (scattering + fission)
+    domain_->update_all_neutron_sources();
 
-      // Update source term (scattering + fission)
-      domain_->update_all_neutron_sources();
+    // Reset scalar fluxes, iteration volume tallies, and region hit flags
+    // to zero
+    domain_->batch_reset();
 
-      // Reset scalar fluxes, iteration volume tallies, and region hit flags
-      // to zero
-      domain_->batch_reset();
+    // Check if geometry is 2D or 3D and generate the Voronoi cells that
+    // define each rank's subdomain. Only needed when the problem is actually
+    // decomposed, and only once for this simulation object.
+#ifdef OPENMC_MPI
+    if (mpi::n_procs > 1 && !geometry_setup_complete_) {
 
-      // At the beginning of the simulation, if mesh subdivision is in use, we
-      // need to swap the main source region container into the base container,
-      // as the main source region container will be used to hold the true
-      // subdivided source regions. The base container will therefore only
-      // contain the external source region information, the mesh indices,
-      // material properties, and initial guess values for the flux/source.
-
-      // Start timer for transport
-      simulation::time_transport.start();
-
-      // Transport sweep over all random rays for the iteration. NOTE: Naming a
-      // class member in a reduction clause is allowed as of OpenMP 5.1, but not
-      // every implementation supports it yet; accumulate into a local
-      uint64_t n_intersections = 0;
-#pragma omp parallel for schedule(dynamic) reduction(+ : n_intersections)
-      for (int i = 0; i < settings::n_particles; i++) {
-        RandomRay ray(i, domain_.get());
-        n_intersections += ray.transport_history_based_single_ray();
-      }
-      total_geometric_intersections_ += n_intersections;
-
-      simulation::time_transport.stop();
-
-      // Add any newly discovered source regions to the main source region
-      // container.
-      domain_->finalize_discovered_source_regions();
-
-      // Normalize scalar flux and update volumes
-      domain_->normalize_scalar_flux_and_volumes(
-        settings::n_particles * RandomRay::distance_active_);
-
-      // Add source to scalar flux, compute number of FSR hits
-      int64_t n_hits = domain_->add_source_to_scalar_flux();
-
-      // Apply transport stabilization factors
-      domain_->apply_transport_stabilization();
-
-      if (settings::run_mode == RunMode::EIGENVALUE) {
-        // Compute random ray k-eff
-        domain_->compute_k_eff();
-
-        // Store random ray k-eff into OpenMC's native k-eff variable
-        global_tally_tracklength = domain_->k_eff_;
+      // Check if problem is 3D. This probes the geometry with a few thousand
+      // cell lookups, so it is skipped entirely when not decomposed: geom_dim_
+      // is only read when laying out the Voronoi grid.
+      if (!domain_->is_geometry_3D()) {
+        RandomRay::geom_dim_ = RandomRayGeomDim::TWO_DIM;
       }
 
-      // Execute all tallying tasks, if this is an active batch
-      if (simulation::current_batch > settings::n_inactive) {
+      // Generate Voronoi cells, each of which corresponds to a rank subdomain
+      simulation::time_generate_voronoi_centers.start();
+      mpi::decomp_map.generate_rank_centers();
+      simulation::time_generate_voronoi_centers.stop();
 
-        // Add this iteration's scalar flux estimate to final accumulated
-        // estimate
-        domain_->accumulate_iteration_flux();
+      geometry_setup_complete_ = true;
+    }
+#endif
 
-        // Use above mapping to contribute FSR flux data to appropriate
-        // tallies
-        domain_->random_ray_tally();
+    // Transport sweep over all random rays for the iteration
+#ifdef OPENMC_MPI
+    if (mpi::n_procs > 1) {
+
+      // Create ray bank to store rays
+      RayBank RB;
+
+      transport_sweep_decomp(RB);
+
+      // Check if any new source regions discovered and if so, exchange
+      // discovered cell data between ranks
+      if (mpi::decomp_map.any_discovered_source_regions(
+            domain_->discovered_source_regions_)) {
+        simulation::time_source_region_exchange.start();
+        mpi::decomp_map.exchange_sr_info(domain_->discovered_source_regions_);
+        MPI_Barrier(mpi::intracomm);
+        simulation::time_source_region_exchange.stop();
       }
 
-      // Set phi_old = phi_new
-      domain_->flux_swap();
+    } else {
+      transport_sweep();
+    }
+#else
+    transport_sweep();
+#endif
 
-      // Check for any obvious insabilities/nans/infs
-      instability_check(n_hits, domain_->k_eff_, avg_miss_rate_);
-    } // End MPI master work
+    // Add any newly discovered source regions to the main source region
+    // container
+    domain_->finalize_discovered_source_regions();
+
+    // Normalize scalar flux and update volumes
+    domain_->normalize_scalar_flux_and_volumes(
+      settings::n_particles * RandomRay::distance_active_);
+
+#ifdef OPENMC_MPI
+    if (mpi::n_procs > 1 && simulation::current_batch <= ITER_LOAD_BALANCE) {
+      // Balance load between MPI ranks by exchanging source regions
+      simulation::time_load_balance.start();
+      mpi::decomp_map.balance_load(domain_.get());
+      MPI_Barrier(mpi::intracomm);
+      simulation::time_load_balance.stop();
+    }
+#endif
+
+    // Add source to scalar flux (applying any transport stabilization
+    // factors), compute number of FSR hits
+    int64_t n_hits = domain_->add_source_to_scalar_flux();
+
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      // Compute random ray k-eff
+      domain_->compute_k_eff();
+
+      // Store random ray k-eff into OpenMC's native k-eff variable
+      global_tally_tracklength = domain_->k_eff_;
+    }
+
+    // Execute all tallying tasks, if this is an active batch
+    if (simulation::current_batch > settings::n_inactive) {
+
+      // Add this iteration's scalar flux estimate to final accumulated
+      // estimate
+      domain_->accumulate_iteration_flux();
+
+      // Use above mapping to contribute FSR flux data to appropriate
+      // tallies
+      domain_->random_ray_tally();
+    }
+
+    // For the adaptive estimator, accumulate this batch's flux into the
+    // running sum and update (demote-only) which regions use the naive
+    // volume estimator (no-op for the other estimators).
+    domain_->demotion_step();
+
+    // Set phi_old = phi_new
+    domain_->flux_swap();
+
+    // Check for any obvious insabilities/nans/infs
+    instability_check(n_hits, domain_->k_eff_, avg_miss_rate_);
 
     // Finalize the current batch
     finalize_generation();
@@ -509,16 +557,85 @@ void RandomRaySimulation::simulate()
   output_simulation_results();
 }
 
-void RandomRaySimulation::output_simulation_results() const
+void RandomRaySimulation::output_simulation_results()
 {
+
+  // Compute values for diagnostics
+  int64_t total_n_source_regions = domain_->n_source_regions();
+  int64_t total_n_external_source_regions = domain_->n_external_source_regions_;
+  double max_load_imbalance = 0.0;
+
+#ifdef OPENMC_MPI
+  if (mpi::n_procs > 1) {
+
+    // Average number of ray communications between ranks per batch
+    avg_num_communication_rounds_ = static_cast<uint64_t>(
+      std::round(avg_num_communication_rounds_ / settings::n_batches));
+
+    // Exchange intersection data
+    if (mpi::master) {
+      MPI_Reduce(MPI_IN_PLACE, &total_geometric_intersections_, 1, MPI_UINT64_T,
+        MPI_SUM, 0, mpi::intracomm);
+    } else {
+      MPI_Reduce(&total_geometric_intersections_, nullptr, 1, MPI_UINT64_T,
+        MPI_SUM, 0, mpi::intracomm);
+    }
+
+    // Exchange source region data
+    if (mpi::master) {
+      MPI_Reduce(MPI_IN_PLACE, &total_n_source_regions, 1, MPI_INT64_T, MPI_SUM,
+        0, mpi::intracomm);
+      MPI_Reduce(MPI_IN_PLACE, &total_n_external_source_regions, 1, MPI_INT64_T,
+        MPI_SUM, 0, mpi::intracomm);
+    } else {
+      MPI_Reduce(&total_n_source_regions, nullptr, 1, MPI_INT64_T, MPI_SUM, 0,
+        mpi::intracomm);
+      MPI_Reduce(&total_n_external_source_regions, nullptr, 1, MPI_INT64_T,
+        MPI_SUM, 0, mpi::intracomm);
+    }
+
+    // Determine load imbalance based on measured transport times, every rank
+    // needs to know about this for plotting purposes
+    double time_transport_total = simulation::time_transport.elapsed() -
+                                  simulation::time_ray_buffering.elapsed();
+    MPI_Allgather(&time_transport_total, 1, MPI_DOUBLE,
+      mpi::decomp_map.measured_rank_load_fractions_.data(), 1, MPI_DOUBLE,
+      mpi::intracomm);
+    double measured_load_sum =
+      std::accumulate(mpi::decomp_map.measured_rank_load_fractions_.begin(),
+        mpi::decomp_map.measured_rank_load_fractions_.end(), 0.0);
+    for (int rank = 0; rank < mpi::n_procs; rank++) {
+      mpi::decomp_map.measured_rank_load_fractions_[rank] =
+        mpi::decomp_map.measured_rank_load_fractions_[rank] / measured_load_sum;
+    }
+    if (mpi::master) {
+      double max_load_measured =
+        *std::max_element(mpi::decomp_map.measured_rank_load_fractions_.begin(),
+          mpi::decomp_map.measured_rank_load_fractions_.end());
+      max_load_imbalance = (max_load_measured - mpi::decomp_map.target_load_) /
+                           mpi::decomp_map.target_load_;
+    }
+  }
+#endif
+
   // Print random ray results
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections_,
-      avg_miss_rate_ / settings::n_batches, negroups_,
-      domain_->n_source_regions(), domain_->n_external_source_regions_);
-    if (model::plots.size() > 0) {
+      avg_miss_rate_ / settings::n_batches, negroups_, total_n_source_regions,
+      total_n_external_source_regions, avg_num_communication_rounds_,
+      max_load_imbalance);
+  }
+
+  if (model::plots.size() > 0) {
+#ifdef OPENMC_MPI
+    if (mpi::n_procs > 1) {
+      domain_->output_to_vtk_decomp();
+    } else {
       domain_->output_to_vtk();
     }
+#else
+    domain_->output_to_vtk();
+#endif
   }
 }
 
@@ -527,12 +644,34 @@ void RandomRaySimulation::output_simulation_results() const
 void RandomRaySimulation::instability_check(
   int64_t n_hits, double k_eff, double& avg_miss_rate) const
 {
-  double percent_missed = ((domain_->n_source_regions() - n_hits) /
-                            static_cast<double>(domain_->n_source_regions())) *
-                          100.0;
-  avg_miss_rate += percent_missed;
+
+  uint64_t n_source_regions = domain_->n_source_regions();
+
+#ifdef OPENMC_MPI
+  if (mpi::n_procs > 1) {
+    // Reduce n_hits and n_source_regions on master rank to compute
+    // global miss rate
+    simulation::time_decomposition_handling.start();
+    if (mpi::master) {
+      MPI_Reduce(
+        MPI_IN_PLACE, &n_hits, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(MPI_IN_PLACE, &n_source_regions, 1, MPI_INT64_T, MPI_SUM, 0,
+        mpi::intracomm);
+    } else {
+      MPI_Reduce(&n_hits, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(
+        &n_source_regions, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+    }
+    simulation::time_decomposition_handling.stop();
+  }
+#endif
 
   if (mpi::master) {
+    double percent_missed =
+      ((n_source_regions - n_hits) / static_cast<double>(n_source_regions)) *
+      100.0;
+    avg_miss_rate += percent_missed;
+
     if (percent_missed > 10.0) {
       warning(fmt::format(
         "Very high FSR miss rate detected ({:.3f}%). Instability may occur. "
@@ -555,17 +694,30 @@ void RandomRaySimulation::instability_check(
 // Print random ray simulation results
 void RandomRaySimulation::print_results_random_ray(
   uint64_t total_geometric_intersections, double avg_miss_rate, int negroups,
-  int64_t n_source_regions, int64_t n_external_source_regions) const
+  int64_t n_source_regions, int64_t n_external_source_regions,
+  uint64_t avg_num_communication_rounds, double max_load_imbalance) const
 {
   using namespace simulation;
 
   if (settings::verbosity >= 6) {
     double total_integrations = total_geometric_intersections * negroups;
-    double time_per_integration =
-      simulation::time_transport.elapsed() / total_integrations;
+
+    // Transport time varies between ranks, so we need to compute the total
+    // transport time as the sum of the max transport time across all ranks,
+    // i.e. the transport time of the master rank plus the time the master rank
+    // spends waiting for slowest other rank to finish.
+    double time_transport_total = time_transport.elapsed() -
+                                  time_ray_buffering.elapsed() +
+                                  time_mpi_imbalance.elapsed();
+
+    double time_per_integration = time_transport_total / total_integrations;
+    double time_domain_decomposition =
+      time_decomposition_handling.elapsed() +
+      time_generate_voronoi_centers.elapsed() + time_load_balance.elapsed() +
+      time_source_region_exchange.elapsed() - time_transport_total;
     double misc_time = time_total.elapsed() - time_update_src.elapsed() -
-                       time_transport.elapsed() - time_tallies.elapsed() -
-                       time_bank_sendrecv.elapsed();
+                       time_transport_total - time_tallies.elapsed() -
+                       time_bank_sendrecv.elapsed() - time_domain_decomposition;
 
     header("Simulation Statistics", 4);
     fmt::print(
@@ -593,8 +745,16 @@ void RandomRaySimulation::print_results_random_ray(
     fmt::print("   Avg per Iteration               = {:.4e}\n",
       total_integrations / settings::n_batches);
 
+    if (mpi::n_procs > 1) {
+      fmt::print(" MPI Ranks                         = {}\n", mpi::n_procs);
+      fmt::print(" Avg Ray Subdomain Crossings       = {}\n",
+        avg_num_communication_rounds);
+      fmt::print(" Maximum Load Imbalance            = {:.2f}%\n",
+        max_load_imbalance * 100.0);
+    }
+
     std::string estimator;
-    switch (domain_->volume_estimator_) {
+    switch (FlatSourceDomain::resolved_volume_estimator_) {
     case RandomRayVolumeEstimator::SIMULATION_AVERAGED:
       estimator = "Simulation Averaged";
       break;
@@ -604,10 +764,59 @@ void RandomRaySimulation::print_results_random_ray(
     case RandomRayVolumeEstimator::HYBRID:
       estimator = "Hybrid";
       break;
+    case RandomRayVolumeEstimator::ADAPTIVE:
+      estimator = "Adaptive";
+      break;
+    case RandomRayVolumeEstimator::STRICT_ADAPTIVE:
+      estimator = "Strict Adaptive";
+      break;
     default:
       fatal_error("Invalid volume estimator type");
     }
+    if (FlatSourceDomain::volume_estimator_ == RandomRayVolumeEstimator::AUTO) {
+      estimator += " (auto)";
+    }
     fmt::print(" Volume Estimator Type             = {}\n", estimator);
+    if (domain_->final_stats_valid_) {
+      double inv = 100.0 / domain_->n_source_regions();
+      // Single summary at default verbosity: every source region that
+      // received the naive volume treatment in the final batch, for any
+      // reason (the demote-only decisions made from the accumulated flux
+      // plus that batch's per-iteration demotions).
+      fmt::print(" Number of Naive Demotions         = {} SRs ({:.4f}%)\n",
+        domain_->n_final_naive_, domain_->n_final_naive_ * inv);
+      // The per-cause diagnostic breakdown is developer-facing, so it is
+      // printed at verbosity 8, above the default (7) but below the
+      // per-particle output (9).
+      // The causes are mutually exclusive and sum to the total above:
+      // "accumulated" causes are the demote-only decisions made from the
+      // running accumulated flux (from the inactive->active transition
+      // onward), "per batch" causes are re-evaluated each batch and reported
+      // for the final batch.
+      if (settings::verbosity >= 8) {
+        fmt::print("   Strong source (accumulated)     = {} SRs ({:.4f}%)\n",
+          domain_->n_final_latch_, domain_->n_final_latch_ * inv);
+        fmt::print("   Strong source (per batch)       = {} SRs ({:.4f}%)\n",
+          domain_->n_final_strong_, domain_->n_final_strong_ * inv);
+        fmt::print("   Negative flux (accumulated)     = {} SRs ({:.4f}%)\n",
+          domain_->n_final_sign_, domain_->n_final_sign_ * inv);
+        fmt::print("   Hit-starved (per batch)         = {} SRs ({:.4f}%)\n",
+          domain_->n_final_small_, domain_->n_final_small_ * inv);
+        // The strict adaptive estimator's per-batch non-negativity
+        // enforcement, reported for the final batch. These overlap the
+        // partition above rather than extending it: a rescued or floored
+        // region may or may not also carry the naive treatment.
+        if (FlatSourceDomain::resolved_volume_estimator_ ==
+            RandomRayVolumeEstimator::STRICT_ADAPTIVE) {
+          fmt::print("   Chronic negative (per batch)    = {} SRs ({:.4f}%)\n",
+            domain_->n_final_chronic_, domain_->n_final_chronic_ * inv);
+          fmt::print("   Rescued (batch volume)          = {} SRs ({:.4f}%)\n",
+            domain_->n_final_rescued_, domain_->n_final_rescued_ * inv);
+          fmt::print("   Floored (previous flux)         = {} SRs ({:.4f}%)\n",
+            domain_->n_final_floored_, domain_->n_final_floored_ * inv);
+        }
+      }
+    }
 
     std::string adjoint_true =
       (FlatSourceDomain::solve_ == RandomRaySolve::ADJOINT) ? "ON" : "OFF";
@@ -628,6 +837,10 @@ void RandomRaySimulation::print_results_random_ray(
       fatal_error("Invalid random ray source shape");
     }
     fmt::print(" Source Shape                      = {}\n", shape);
+    if (RandomRay::source_shape_ != RandomRaySourceShape::FLAT) {
+      fmt::print(" Source Gradient Limiter           = {}\n",
+        FlatSourceDomain::source_gradient_limiter_ ? "ON" : "OFF");
+    }
     std::string sample_method;
     switch (RandomRay::sample_method_) {
     case RandomRaySampleMethod::PRNG:
@@ -653,11 +866,30 @@ void RandomRaySimulation::print_results_random_ray(
     show_time("Total time for initialization", time_initialize.elapsed());
     show_time("Reading cross sections", time_read_xs.elapsed(), 1);
     show_time("Total simulation time", time_total.elapsed());
-    show_time("Transport sweep only", time_transport.elapsed(), 1);
+    if (mpi::n_procs > 1) {
+      show_time(
+        "Transport sweep only (incl. rank wait time)", time_transport_total, 1);
+    } else {
+      show_time("Transport sweep only", time_transport_total, 1);
+    }
     show_time("Source update only", time_update_src.elapsed(), 1);
     show_time("Tally conversion only", time_tallies.elapsed(), 1);
-    show_time("MPI source reductions only", time_bank_sendrecv.elapsed(), 1);
+    if (mpi::n_procs > 1) {
+      double time_decomp_misc =
+        time_domain_decomposition - time_source_region_exchange.elapsed() -
+        time_generate_voronoi_centers.elapsed() - time_ray_comms.elapsed() -
+        time_load_balance.elapsed();
+      show_time("Decomposition handling", time_domain_decomposition, 1);
+      show_time("Ray communication", time_ray_comms.elapsed(), 2);
+      show_time(
+        "Exchanging contested SRs", time_source_region_exchange.elapsed(), 2);
+      show_time("Load balancing", time_load_balance.elapsed(), 2);
+      show_time("Generating Voronoi centers",
+        time_generate_voronoi_centers.elapsed(), 2);
+      show_time("Other decomposition routines", time_decomp_misc, 2);
+    }
     show_time("Other iteration routines", misc_time, 1);
+
     if (settings::run_mode == RunMode::EIGENVALUE) {
       show_time("Time in inactive batches", time_inactive.elapsed());
     }
@@ -674,6 +906,131 @@ void RandomRaySimulation::print_results_random_ray(
   }
 }
 
+void RandomRaySimulation::transport_sweep()
+{
+
+  // Start timer for transport
+  simulation::time_transport.start();
+
+  // Transport sweep over all random rays for the iteration. NOTE: Naming a
+  // class member in a reduction clause is allowed as of OpenMP 5.1, but not
+  // every implementation supports it yet; accumulate into a local
+  uint64_t n_intersections = 0;
+#pragma omp parallel for schedule(dynamic) reduction(+ : n_intersections)
+  for (int i = 0; i < settings::n_particles; i++) {
+    RandomRay ray(i, domain_.get());
+    n_intersections += ray.transport_history_based_single_ray();
+  }
+  total_geometric_intersections_ += n_intersections;
+
+  simulation::time_transport.stop();
+}
+
+// Transport sweep for the domain decompososition case
+#ifdef OPENMC_MPI
+void RandomRaySimulation::transport_sweep_decomp(RayBank& RB)
+{
+
+  double start_time_transport = simulation::time_transport.elapsed();
+  double start_time_ray_buffering = simulation::time_ray_buffering.elapsed();
+
+  simulation::time_decomposition_handling.start();
+
+// Create rays and add them to ray bank
+#pragma omp parallel for schedule(static)
+  for (int i = 0; i < simulation::work_per_rank; i++) {
+    uint64_t id = simulation::work_index[mpi::rank] + i;
+    RandomRay ray(id, domain_.get());
+
+    // Add ray to ray bank if it starts in my subdomain
+    if (!ray.has_left_subdomain()) {
+#pragma omp critical(raybank)
+      {
+        RB.my_ray_list_.push_back(ray);
+      }
+    }
+    // Put ray straight into buffer if it starts outside my subdomain
+    else {
+#pragma omp critical(raybuffer)
+      {
+        RB.buffer_ray_data_to_send(ray, domain_.get());
+      }
+    }
+  }
+
+  // If no ray is alive at this stage, it means that all of them have been
+  // buffered because they were sampled in foregin subdomain. This requires a
+  // ray bank update here.
+  if (!RB.is_any_ray_alive()) {
+    RB.update(domain_.get());
+  }
+
+  int num_communication_rounds = 0;
+
+  // Move rays across ranks until they are terminated
+  while (RB.is_any_ray_alive()) {
+
+    // Start timer for transport
+    simulation::time_transport.start();
+
+    // NOTE: Naming a class member in a reduction clause is allowed as of
+    // OpenMP 5.1, but not every implementation supports it yet; accumulate
+    // into a local
+    uint64_t n_intersections = 0;
+#pragma omp parallel for schedule(dynamic) reduction(+ : n_intersections)
+    for (int i = 0; i < RB.ray_bank_size(); i++) {
+      RandomRay& ray = RB.my_ray_list_[i];
+      n_intersections += ray.transport_history_based_single_ray();
+
+      // If ray has left my subdomain, buffer ray state
+      if (ray.has_left_subdomain()) {
+#pragma omp critical(raybuffer)
+        {
+          simulation::time_ray_buffering.start();
+          RB.buffer_ray_data_to_send(ray, domain_.get());
+          simulation::time_ray_buffering.stop();
+        }
+      }
+    }
+    total_geometric_intersections_ += n_intersections;
+    simulation::time_transport.stop();
+
+    // Capture wait time resulting from other transport sweeps
+    simulation::time_mpi_imbalance.start();
+    MPI_Barrier(mpi::intracomm);
+    simulation::time_mpi_imbalance.stop();
+
+    // Update ray bank by communicating rays in buffer to new owner ranks and
+    // removing terminated ranks
+    simulation::time_ray_comms.start();
+    RB.update(domain_.get());
+    MPI_Barrier(mpi::intracomm);
+    simulation::time_ray_comms.stop();
+
+    num_communication_rounds++;
+  }
+
+  // Calculate load per rank based on number of hits in each source region that
+  // a rank owns
+  double batch_ray_buffering_time =
+    simulation::time_ray_buffering.elapsed() - start_time_ray_buffering;
+  double batch_transport_time = simulation::time_transport.elapsed() -
+                                start_time_transport - batch_ray_buffering_time;
+
+  // Calculate rank load fractions for load balancing
+  if (simulation::current_batch <= ITER_LOAD_BALANCE) {
+    mpi::decomp_map.calculate_rank_load(domain_.get(), batch_transport_time);
+  }
+
+  avg_num_communication_rounds_ += num_communication_rounds;
+
+  // Reset ray bank list for next batch
+  RB.my_ray_list_.resize(0);
+
+  simulation::time_decomposition_handling.stop();
+}
+#endif // OPENMC_MPI
+
 } // namespace openmc
 
 //==============================================================================
@@ -683,6 +1040,26 @@ void RandomRaySimulation::print_results_random_ray(
 void openmc_run_random_ray()
 {
   using namespace openmc;
+
+  // Resolve the volume estimator for this solve, leaving the configured
+  // setting untouched. "Auto" (the default) maps to a concrete estimator
+  // based on the type of simulation being performed. Solves whose results
+  // feed variance reduction (weight window generation, and any adjoint
+  // workflow, including the forward solve an adjoint source is derived
+  // from) receive the strict adaptive estimator, whose per-batch fixup of
+  // negative flux iterates benefits those workflows. All other solves
+  // receive the unbiased adaptive estimator.
+  if (FlatSourceDomain::volume_estimator_ == RandomRayVolumeEstimator::AUTO) {
+    bool positivity_needed =
+      FlatSourceDomain::adjoint_requested_ ||
+      !variance_reduction::weight_windows_generators.empty();
+    FlatSourceDomain::resolved_volume_estimator_ =
+      positivity_needed ? RandomRayVolumeEstimator::STRICT_ADAPTIVE
+                        : RandomRayVolumeEstimator::ADAPTIVE;
+  } else {
+    FlatSourceDomain::resolved_volume_estimator_ =
+      FlatSourceDomain::volume_estimator_;
+  }
 
   // Determine which solves to run. If adjoint results are requested and no
   // user-defined adjoint source is present, an initial forward solve is needed

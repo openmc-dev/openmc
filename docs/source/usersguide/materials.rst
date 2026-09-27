@@ -75,13 +75,87 @@ argument `enrichment_type`. For example the following would enrich Li6 to 15wo%:
    mat.add_element('Li', 1.0, enrichment=15.0, enrichment_target='Li6',
                    enrichment_type='wo')
 
-Often, cross section libraries don't actually have all naturally-occurring
-isotopes for a given element. For example, in ENDF/B-VII.1, cross section
-evaluations are given for O16 and O17 but not for O18. If OpenMC is aware of
-what cross sections you will be using (through the
-:envvar:`OPENMC_CROSS_SECTIONS` environment variable), it will attempt to only
-put isotopes in your model for which you have cross section data. In the case of
-oxygen in ENDF/B-VII.1, the abundance of O18 would end up being lumped with O16.
+Some older cross section libraries do not have all naturally-occurring isotopes
+for a given element. For example, in ENDF/B-VII.1, cross section evaluations are
+given for O16 and O17 but not for O18. If OpenMC is aware of what cross sections
+you will be using through ``openmc.config['cross_sections']``, it will attempt
+to only put isotopes in your model for which you have cross section data. In the
+case of oxygen in ENDF/B-VII.1, the abundance of O18 would end up being lumped
+with O16.
+
+------------------
+Material Libraries
+------------------
+
+OpenMC includes material compositions from Revision 2 of the `PNNL Compendium of
+Material Composition Data for Radiation Transport Modeling
+<https://doi.org/10.2172/1782721>`_. A material can be created from this library
+with :meth:`Material.from_library`, for example::
+
+   sodium_oxide = openmc.Material.from_library('Sodium Oxide')
+
+Keyword arguments accepted by :class:`Material` can also be specified, such as
+a material ID or temperature::
+
+   salt_water = openmc.Material.from_library(
+       'Salt Water', material_id=10, temperature=293.15)
+
+Material names are case sensitive, but whitespace is normalized when looking up
+a name. The default bundled library is ``'pnnl_v2'``. Each call returns a new,
+independent material with the density and composition reported in the compendium.
+The available material names can be retrieved without creating any materials::
+
+   names = openmc.Material.get_library_material_names()
+
+Natural compositions in the PNNL library are stored as elemental atom fractions
+and expanded using :meth:`Material.add_element`. As described above, OpenMC will
+account for the nuclides available in the cross section library indicated by
+``openmc.config['cross_sections']``. Materials that are explicitly isotopic in
+the compendium, such as enriched uranium or He-3 proportional gas, retain those
+specified nuclides. OpenMC cannot substitute for a required isotope if it is
+absent from the selected nuclear data library.
+
+The compendium values are representative material definitions; actual density
+and composition can vary. Users should confirm that a library material is
+appropriate for their application.
+
+Custom libraries can be registered from local JSON files. Registration applies
+to the current Python process and cannot replace a library with the same name::
+
+   openmc.Material.register_library('custom', 'custom_materials.json')
+   names = openmc.Material.get_library_material_names('custom')
+   material = openmc.Material.from_library(
+       'My Material', library='custom', temperature=600.0)
+
+Custom files use the same schema as the bundled library. A minimal library
+containing an elemental composition is shown below:
+
+.. code-block:: json
+
+   {
+     "schema_version": 1,
+     "density_units": "g/cm3",
+     "percent_type": "ao",
+     "materials": {
+       "My Material": {
+         "density": 1.0,
+         "elements": {
+           "H": 0.666667,
+           "O": 0.333333
+         }
+       }
+     }
+   }
+
+Each material can contain ``elements``, ``nuclides``, or both. Elemental
+components are expanded using :meth:`Material.add_element` and
+``openmc.config['cross_sections']``. Nuclide components retain their explicitly
+specified isotopic composition. The top-level ``percent_type`` and
+``density_units`` values are passed to :class:`Material`, which validates them
+along with the density and components when a material is created. Component
+values can be relative amounts and do not need to sum to one. Additional
+provenance metadata, such as a top-level ``source`` or a per-material note, is
+permitted and ignored when constructing a material.
 
 -----------------------
 Thermal Scattering Data
@@ -258,4 +332,3 @@ been generated, you can tell OpenMC to use this file either by setting
    materials.cross_sections = '/path/to/cross_sections.xml'
 
 .. _MCNP: https://mcnp.lanl.gov/
-

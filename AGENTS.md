@@ -103,7 +103,7 @@ open.
 
 ### Build Dependencies
 - **C++17 compiler**: GCC, Clang, or Intel
-- **CMake** (3.16+): Required for configuring and building the C++ library
+- **CMake** (3.22+): Required for configuring and building the C++ library
 - **HDF5**: Required for cross section data and output file formats
 - **libpng**: Used for generating visualization when OpenMC is run in plotting mode
 

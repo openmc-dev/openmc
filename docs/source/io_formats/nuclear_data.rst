@@ -126,6 +126,12 @@ Incident Photon Data
 **/<element>/**
 
 :Attributes: - **Z** (*int*) -- Atomic number
+             - **source_library** (*string*) -- Photoatomic evaluation library
+               name (optional)
+             - **source_version** (*int*) -- Photoatomic evaluation library
+               version (optional)
+             - **source_release** (*int*) -- Photoatomic evaluation library
+               release (optional)
 
 :Datasets:
            - **energy** (*double[]*) -- Energies in [eV] at which cross sections
@@ -192,6 +198,12 @@ Incident Photon Data
 **/<element>/subshells/**
 
 :Attributes: - **designators** (*char[][]*) -- Designator for each shell, e.g. 'M2'
+             - **source_library** (*string*) -- Atomic-relaxation evaluation
+               library name (optional)
+             - **source_version** (*int*) -- Atomic-relaxation evaluation
+               library version (optional)
+             - **source_release** (*int*) -- Atomic-relaxation evaluation
+               library release (optional)
 
 **/<element>/subshells/<designator>/**
 

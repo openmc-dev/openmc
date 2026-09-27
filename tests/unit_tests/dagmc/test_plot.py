@@ -7,11 +7,11 @@ pytestmark = pytest.mark.skipif(
     not openmc.lib.feature_enabled('dagmc'), reason="DAGMC CAD geometry is not enabled."
 )
 
-def test_plotting_dagmc_model(request):
+def test_plotting_dagmc_model(dagmc_legacy_path):
     """Test plotting a DAGMC model with OpenMC. This is different to CSG
     model plotting as the path to the DAGMC file needs handling."""
 
-    dag_universe = openmc.DAGMCUniverse(request.path.parent / 'dagmc.h5m')
+    dag_universe = openmc.DAGMCUniverse(dagmc_legacy_path)
     csg_with_dag_inside = dag_universe.bounded_universe()
     model = openmc.Model()
     model.geometry = openmc.Geometry(csg_with_dag_inside)
@@ -32,20 +32,20 @@ def test_plotting_dagmc_model(request):
     model.plot()
 
 
-def test_plotting_dagmc_universe(request):
+def test_plotting_dagmc_universe(dagmc_legacy_path):
     """Test plotting a DAGMCUniverse with OpenMC. This is different to plotting
     UniverseBase as the materials are not defined withing the DAGMCUniverse."""
 
-    dag_universe = openmc.DAGMCUniverse(request.path.parent / 'dagmc.h5m')
+    dag_universe = openmc.DAGMCUniverse(dagmc_legacy_path)
     dag_universe.plot()
 
 
-def test_plotting_geometry_filled_with_dagmc_universe(request):
+def test_plotting_geometry_filled_with_dagmc_universe(dagmc_legacy_path):
     """Test plotting a geometry with OpenMC. This is an edge case when plotting
     geometry as often geometry objects don't include a DAGMCUniverse. The
     inclusion of a DAGMCUniverse requires special handling for the materials."""
 
-    dag_universe = openmc.DAGMCUniverse(request.path.parent / 'dagmc.h5m', auto_geom_ids=True)
+    dag_universe = openmc.DAGMCUniverse(dagmc_legacy_path, auto_geom_ids=True)
 
     sphere1 = openmc.Sphere(r=50.0)
     sphere2 = openmc.Sphere(r=60.0)

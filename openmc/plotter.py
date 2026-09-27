@@ -135,6 +135,7 @@ def plot_xs(
     orders: Iterable[int] | None = None,
     divisor_orders: Iterable[int] | None = None,
     energy_axis_units: str = "eV",
+    incident_particle: str = 'neutron',
     **kwargs,
 ) -> "plt.Figure" | None:
     """Creates a figure of continuous-energy cross sections for this item.
@@ -184,6 +185,10 @@ def plot_xs(
 
         .. versionadded:: 0.15.0
 
+    incident_particle : {'neutron', 'photon'}, optional
+        Incident particle of the library to source data from. Photon data can
+        only be requested with integer MT numbers. Defaults to 'neutron'.
+
     Returns
     -------
     fig : matplotlib.figure.Figure
@@ -216,12 +221,14 @@ def plot_xs(
             cv.check_type("this", this, (str, openmc.Material))
             # Calculate for the CE cross sections
             E, data = calculate_cexs(this, types, temperature, sab_name,
-                                    ce_cross_sections, enrichment)
+                                     ce_cross_sections, enrichment,
+                                     incident_particle=incident_particle)
             if divisor_types:
                 cv.check_length('divisor types', divisor_types, len(types))
                 Ediv, data_div = calculate_cexs(this, divisor_types, temperature,
                                                 sab_name, ce_cross_sections,
-                                                enrichment)
+                                                enrichment,
+                                                incident_particle=incident_particle)
 
                 # Create a new union grid, interpolate data and data_div on to that
                 # grid, and then do the actual division
@@ -289,7 +296,8 @@ def plot_xs(
 
 
 def calculate_cexs(this, types, temperature=294., sab_name=None,
-                   cross_sections=None, enrichment=None, ncrystal_cfg=None):
+                   cross_sections=None, enrichment=None, ncrystal_cfg=None,
+                   incident_particle='neutron'):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
@@ -314,6 +322,9 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
         (natural composition).
     ncrystal_cfg : str, optional
         Configuration string for NCrystal material.
+    incident_particle : {'neutron', 'photon'}, optional
+        Incident particle of the library to source data from. Photon data can
+        only be requested with integer MT numbers. Defaults to 'neutron'.
 
     Returns
     -------
@@ -327,6 +338,7 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
     # Check types
     cv.check_type('this', this, (str, openmc.Material))
     cv.check_type('temperature', temperature, Real)
+    cv.check_value("incident particle", incident_particle, ['neutron', 'photon'])
     if sab_name:
         cv.check_type('sab_name', sab_name, str)
     if enrichment:
@@ -335,12 +347,13 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
     if isinstance(this, str):
         if this in ELEMENT_NAMES:
             energy_grid, data = _calculate_cexs_elem_mat(
-                this, types, temperature, cross_sections, sab_name, enrichment
+                this, types, temperature, cross_sections, sab_name, enrichment,
+                incident_particle=incident_particle
             )
         else:
             energy_grid, xs = _calculate_cexs_nuclide(
                 this, types, temperature, sab_name, cross_sections,
-                ncrystal_cfg
+                ncrystal_cfg, incident_particle=incident_particle
             )
 
             # Convert xs (Iterable of Callable) to a grid of cross section values
@@ -351,13 +364,15 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
                 data[line, :] = xs[line](energy_grid)
     else:
         energy_grid, data = _calculate_cexs_elem_mat(this, types, temperature,
-                                                     cross_sections)
+                                                     cross_sections,
+                                                     incident_particle=incident_particle)
 
     return energy_grid, data
 
 
 def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
-                            cross_sections=None, ncrystal_cfg=None):
+                            cross_sections=None, ncrystal_cfg=None,
+                            incident_particle='neutron'):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
@@ -380,6 +395,9 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
         Location of cross_sections.xml file. Default is None.
     ncrystal_cfg : str, optional
         Configuration string for NCrystal material.
+    incident_particle : {'neutron', 'photon'}, optional
+        Incident particle of the library to source data from. Photon data can
+        only be requested with integer MT numbers. Defaults to 'neutron'.
 
     Returns
     -------
@@ -392,6 +410,20 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
 
     # Load the library
     library = openmc.data.DataLibrary.from_xml(cross_sections)
+    if incident_particle == 'photon':
+        try:
+            z = openmc.data.zam(this)[0]
+            nuclide = openmc.data.ATOMIC_SYMBOL[z]
+        except (ValueError, KeyError, TypeError) as e:
+            if this not in openmc.data.ELEMENT_SYMBOL.values():
+                raise ValueError(
+                    f"'{this}' is not a recognized nuclide or element.") from e
+            nuclide = this
+    else:
+        nuclide = this
+    lib = library.get_by_material(nuclide, data_type=incident_particle)
+    if lib is None:
+        raise ValueError(this + " not in library")
 
     # Convert temperature to format needed for access in the library
     strT = f"{int(round(temperature))}K"
@@ -400,8 +432,8 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
     # Now we can create the data sets to be plotted
     energy_grid = []
     xs = []
-    lib = library.get_by_material(this)
-    if lib is not None:
+
+    if incident_particle == 'neutron':
         nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
         # Obtain the nearest temperature
         if strT in nuc.temperatures:
@@ -442,135 +474,148 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                 inelastic = sab.inelastic.xs[sabT]
                 grid = np.union1d(grid, inelastic.x)
                 if inelastic.x[-1] > sab_Emax:
-                        sab_Emax = inelastic.x[-1]
+                    sab_Emax = inelastic.x[-1]
                 sab_funcs.append(inelastic)
             energy_grid = grid
         else:
             energy_grid = nuc.energy[nucT]
+    elif incident_particle == 'photon':
+        nuc = openmc.data.IncidentPhoton.from_hdf5(lib['path'])
+        if any(not isinstance(line, int) for line in types):
+            raise TypeError("Photon cross sections can only be requested "
+                            "with integer MT numbers.")
 
-        # Parse the types
-        mts = []
-        ops = []
-        yields = []
-        for line in types:
-            if line in PLOT_TYPES:
-                tmp_mts = [mtj for mti in PLOT_TYPES_MT[line] for mtj in
-                           nuc.get_reaction_components(mti)]
-                mts.append(tmp_mts)
-                if line.startswith('nu'):
-                    yields.append(True)
-                else:
-                    yields.append(False)
-                if XI_MT in tmp_mts:
-                    ops.append((np.add,) * (len(tmp_mts) - 2) + (np.multiply,))
-                else:
-                    ops.append((np.add,) * (len(tmp_mts) - 1))
-            elif line in openmc.data.REACTION_MT:
-                mt_number = openmc.data.REACTION_MT[line]
-                cv.check_type('MT in types', mt_number, Integral)
-                cv.check_greater_than('MT in types', mt_number, 0)
-                tmp_mts = nuc.get_reaction_components(mt_number)
-                mts.append(tmp_mts)
-                ops.append((np.add,) * (len(tmp_mts) - 1))
-                yields.append(False)
-            elif isinstance(line, int):
-                # Not a built-in type, we have to parse it ourselves
-                cv.check_type('MT in types', line, Integral)
-                cv.check_greater_than('MT in types', line, 0)
-                tmp_mts = nuc.get_reaction_components(line)
-                mts.append(tmp_mts)
-                ops.append((np.add,) * (len(tmp_mts) - 1))
-                yields.append(False)
+    # Parse the types
+    mts = []
+    ops = []
+    yields = []
+    for line in types:
+        if line in PLOT_TYPES:
+            tmp_mts = [mtj for mti in PLOT_TYPES_MT[line] for mtj in
+                       nuc.get_reaction_components(mti)]
+            mts.append(tmp_mts)
+            if line.startswith('nu'):
+                yields.append(True)
             else:
-                raise TypeError("Invalid type", line)
+                yields.append(False)
+            if XI_MT in tmp_mts:
+                ops.append((np.add,) * (len(tmp_mts) - 2) + (np.multiply,))
+            else:
+                ops.append((np.add,) * (len(tmp_mts) - 1))
+        elif line in openmc.data.REACTION_MT:
+            mt_number = openmc.data.REACTION_MT[line]
+            cv.check_type('MT in types', mt_number, Integral)
+            cv.check_greater_than('MT in types', mt_number, 0)
+            tmp_mts = nuc.get_reaction_components(mt_number)
+            mts.append(tmp_mts)
+            ops.append((np.add,) * (len(tmp_mts) - 1))
+            yields.append(False)
+        elif isinstance(line, int):
+            # Not a built-in type, we have to parse it ourselves
+            cv.check_type('MT in types', line, Integral)
+            cv.check_greater_than('MT in types', line, 0)
+            tmp_mts = nuc.get_reaction_components(line)
+            mts.append(tmp_mts)
+            ops.append((np.add,) * (len(tmp_mts) - 1))
+            yields.append(False)
+        else:
+            raise TypeError("Invalid type", line)
 
-        for i, mt_set in enumerate(mts):
-            # Get the reaction xs data from the nuclide
-            funcs = []
-            op = ops[i]
-            for mt in mt_set:
-                if mt == 2:
-                    if sab_name:
-                        # Then we need to do a piece-wise function of
-                        # The S(a,b) and non-thermal data
-                        sab_sum = openmc.data.Sum(sab_funcs)
-                        pw_funcs = openmc.data.Regions1D(
-                            [sab_sum, nuc[mt].xs[nucT]],
-                            [sab_Emax])
-                        funcs.append(pw_funcs)
-                    elif ncrystal_cfg:
-                        import NCrystal
-                        nc_scatter = NCrystal.createScatter(ncrystal_cfg)
-                        nc_func = nc_scatter.xsect
-                        nc_emax = 5 # eV # this should be obtained from NCRYSTAL_MAX_ENERGY
-                        energy_grid = np.union1d(np.geomspace(min(energy_grid),
-                                                              1.1*nc_emax,
-                                                              1000),energy_grid) # NCrystal does not have
-                                                                                 # an intrinsic energy grid
-                        pw_funcs = openmc.data.Regions1D(
-                            [nc_func, nuc[mt].xs[nucT]],
-                            [nc_emax])
-                        funcs.append(pw_funcs)
+    for i, mt_set in enumerate(mts):
+        # Get the reaction xs data from the nuclide
+        funcs = []
+        op = ops[i]
+        for mt in mt_set:
+            if mt == 2:
+                if sab_name:
+                    # Then we need to do a piece-wise function of
+                    # The S(a,b) and non-thermal data
+                    sab_sum = openmc.data.Sum(sab_funcs)
+                    pw_funcs = openmc.data.Regions1D(
+                        [sab_sum, nuc[mt].xs[nucT]],
+                        [sab_Emax])
+                    funcs.append(pw_funcs)
+                elif ncrystal_cfg:
+                    import NCrystal
+                    nc_scatter = NCrystal.createScatter(ncrystal_cfg)
+                    nc_func = nc_scatter.xsect
+                    nc_emax = 5 # eV # this should be obtained from NCRYSTAL_MAX_ENERGY
+                    energy_grid = np.union1d(np.geomspace(min(energy_grid),
+                                                          1.1*nc_emax,
+                                                          1000),energy_grid) # NCrystal does not have
+                                                                             # an intrinsic energy grid
+                    pw_funcs = openmc.data.Regions1D(
+                        [nc_func, nuc[mt].xs[nucT]],
+                        [nc_emax])
+                    funcs.append(pw_funcs)
+                else:
+                    funcs.append(nuc[mt].xs[nucT])
+            elif mt in nuc:
+                if yields[i]:
+                    # Get the total yield first if available. This will be
+                    # used primarily for fission.
+                    for prod in chain(nuc[mt].products,
+                                      nuc[mt].derived_products):
+                        if prod.particle == 'neutron' and \
+                            prod.emission_mode == 'total':
+                            func = openmc.data.Combination(
+                                [nuc[mt].xs[nucT], prod.yield_],
+                                [np.multiply])
+                            funcs.append(func)
+                            break
                     else:
-                        funcs.append(nuc[mt].xs[nucT])
-                elif mt in nuc:
-                    if yields[i]:
-                        # Get the total yield first if available. This will be
-                        # used primarily for fission.
+                        # Total doesn't exist so we have to create from
+                        # prompt and delayed. This is used for scatter
+                        # multiplication.
+                        func = None
                         for prod in chain(nuc[mt].products,
                                           nuc[mt].derived_products):
                             if prod.particle == 'neutron' and \
-                                prod.emission_mode == 'total':
-                                func = openmc.data.Combination(
-                                    [nuc[mt].xs[nucT], prod.yield_],
-                                    [np.multiply])
-                                funcs.append(func)
-                                break
+                                prod.emission_mode != 'total':
+                                if func:
+                                    func = openmc.data.Combination(
+                                        [prod.yield_, func], [np.add])
+                                else:
+                                    func = prod.yield_
+                        if func:
+                            funcs.append(openmc.data.Combination(
+                                [func, nuc[mt].xs[nucT]], [np.multiply]))
                         else:
-                            # Total doesn't exist so we have to create from
-                            # prompt and delayed. This is used for scatter
-                            # multiplication.
-                            func = None
-                            for prod in chain(nuc[mt].products,
-                                              nuc[mt].derived_products):
-                                if prod.particle == 'neutron' and \
-                                    prod.emission_mode != 'total':
-                                    if func:
-                                        func = openmc.data.Combination(
-                                            [prod.yield_, func], [np.add])
-                                    else:
-                                        func = prod.yield_
-                            if func:
-                                funcs.append(openmc.data.Combination(
-                                    [func, nuc[mt].xs[nucT]], [np.multiply]))
-                            else:
-                                # If func is still None, then there were no
-                                # products. In that case, assume the yield is
-                                # one as its not provided for some summed
-                                # reactions like MT=4
-                                funcs.append(nuc[mt].xs[nucT])
-                    else:
-                        funcs.append(nuc[mt].xs[nucT])
-                elif mt == UNITY_MT:
-                    funcs.append(lambda x: 1.)
-                elif mt == XI_MT:
-                    awr = nuc.atomic_weight_ratio
-                    alpha = ((awr - 1.) / (awr + 1.))**2
-                    xi = 1. + alpha * np.log(alpha) / (1. - alpha)
-                    funcs.append(lambda x: xi)
+                            # If func is still None, then there were no
+                            # products. In that case, assume the yield is
+                            # one as its not provided for some summed
+                            # reactions like MT=4
+                            funcs.append(nuc[mt].xs[nucT])
                 else:
-                    funcs.append(lambda x: 0.)
-            funcs = funcs if funcs else [lambda x: 0.]
-            xs.append(openmc.data.Combination(funcs, op))
-    else:
-        raise ValueError(this + " not in library")
+                    # General MT that can be called with either
+                    # photons or neutrons
+                    if incident_particle == 'photon':
+                        temp_xs = nuc[mt].xs
+                        energy_grid = np.union1d(energy_grid, temp_xs.x)
+                    else:
+                        temp_xs = nuc[mt].xs[nucT]
+                    funcs.append(temp_xs)
+            elif mt == UNITY_MT:
+                funcs.append(lambda x: 1.)
+            elif mt == XI_MT:
+                awr = nuc.atomic_weight_ratio
+                alpha = ((awr - 1.) / (awr + 1.))**2
+                xi = 1. + alpha * np.log(alpha) / (1. - alpha)
+                funcs.append(lambda x: xi)
+            else:
+                funcs.append(lambda x: 0.)
+        funcs = funcs if funcs else [lambda x: 0.]
+        xs.append(openmc.data.Combination(funcs, op))
+
+    if len(energy_grid) == 0:
+        energy_grid = np.array([_MIN_E, _MAX_E], dtype=float)
 
     return energy_grid, xs
 
 
 def _calculate_cexs_elem_mat(this, types, temperature=294.,
                              cross_sections=None, sab_name=None,
-                             enrichment=None):
+                             enrichment=None, incident_particle='neutron'):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
@@ -592,6 +637,9 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
         Enrichment for U235 in weight percent. For example, input 4.95 for
         4.95 weight percent enriched U. Default is None
         (natural composition).
+    incident_particle : {'neutron', 'photon'}, optional
+        Incident particle of the library to source data from. Photon data can
+        only be requested with integer MT numbers. Defaults to 'neutron'.
 
     Returns
     -------
@@ -601,6 +649,8 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
         Cross sections calculated at the energy grid described by energy_grid
 
     """
+
+    cv.check_value("incident particle", incident_particle, ['neutron', 'photon'])
 
     if isinstance(this, openmc.Material):
         if this.temperature is not None:
@@ -632,22 +682,23 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
         # with a common nuclides format between openmc.Material and Elements
         nuclides = {nuclide[0]: nuclide[0] for nuclide in nuclides}
 
-    # Identify the nuclides which have S(a,b) data
     sabs = {}
-    for nuclide in nuclides.items():
-        sabs[nuclide[0]] = None
-    if isinstance(this, openmc.Material):
-        for sab_name, _ in this._sab:
-            sab = openmc.data.ThermalScattering.from_hdf5(
-                library.get_by_material(sab_name, data_type='thermal')['path'])
-            for nuc in sab.nuclides:
-                sabs[nuc] = sab_name
-    else:
-        if sab_name:
-            sab = openmc.data.ThermalScattering.from_hdf5(
-                library.get_by_material(sab_name, data_type='thermal')['path'])
-            for nuc in sab.nuclides:
-                sabs[nuc] = sab_name
+    if incident_particle == 'neutron':
+        # Identify the nuclides which have S(a,b) data
+        for nuclide in nuclides.items():
+            sabs[nuclide[0]] = None
+        if isinstance(this, openmc.Material):
+            for mat_sab_name, _ in this._sab:
+                sab = openmc.data.ThermalScattering.from_hdf5(
+                    library.get_by_material(mat_sab_name, data_type='thermal')['path'])
+                for nuc in sab.nuclides:
+                    sabs[nuc] = mat_sab_name
+        else:
+            if sab_name:
+                sab = openmc.data.ThermalScattering.from_hdf5(
+                    library.get_by_material(sab_name, data_type='thermal')['path'])
+                for nuc in sab.nuclides:
+                    sabs[nuc] = sab_name
 
     # Now we can create the data sets to be plotted
     xs = {}
@@ -655,9 +706,11 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
     for nuclide in nuclides.items():
         name = nuclide[0]
         nuc = nuclide[1]
-        sab_name = sabs[name]
-        temp_E, temp_xs = calculate_cexs(nuc, types, T, sab_name, cross_sections,
-                                         ncrystal_cfg=ncrystal_cfg
+        nuc_sab_name = sabs.get(name)
+        temp_E, temp_xs = calculate_cexs(nuc, types, T, nuc_sab_name,
+                                         cross_sections,
+                                         ncrystal_cfg=ncrystal_cfg,
+                                         incident_particle=incident_particle
                                          )
         E.append(temp_E)
         # Since the energy grids are different, store the cross sections as

@@ -525,3 +525,75 @@ def test_high_temperature(endf_data):
 
     # Ensure that from_njoy works when given a high temperature
     openmc.data.IncidentNeutron.from_njoy(endf_file, temperatures=[123_456.0])
+
+
+def _endf_float(x):
+    """Format a float in the 11-character ENDF style, e.g. ' 1.620000-2'."""
+    if x == 0.0:
+        return ' 0.000000+0'
+    mantissa, exponent = f'{x:.6e}'.split('e')
+    e = int(exponent)
+    return f'{mantissa}{"+" if e >= 0 else "-"}{abs(e)}'.rjust(11)
+
+
+def _endf_lines(values, mf, mt):
+    """Six fields per line, integers right-justified, with MAT/MF/MT."""
+    out = []
+    for i in range(0, len(values), 6):
+        fields = ''.join(v.rjust(11) if isinstance(v, str) else
+                         (str(v).rjust(11) if isinstance(v, int) else _endf_float(v))
+                         for v in values[i:i + 6])
+        out.append(f'{fields.ljust(66)}9228{mf:2d}{mt:3d}\n')
+    return out
+
+
+def _tab1(header, pairs, mf, mt):
+    flat = [v for xy in pairs for v in xy]
+    return (_endf_lines(list(header) + [1, len(pairs)], mf, mt)
+            + _endf_lines([len(pairs), 2], mf, mt)
+            + _endf_lines(flat, mf, mt))
+
+
+@pytest.mark.parametrize('n_groups', [6, 8])
+def test_delayed_group_yields_endf(n_groups):
+    # A synthetic U-235-like evaluation with energy-independent group
+    # constants (LDG=0), a tabulated total delayed yield (LNU=2) and group
+    # probabilities in MF=5, MT=455. ENDF/B uses six groups, JEFF eight; each
+    # group's yield must be the total delayed yield times its probability.
+    from openmc.data.reaction import _get_fission_products_endf
+
+    za, awr = 92235.0, 233.0248
+    nu_p, nu_d = 2.4, 0.0162
+    decay_constants = list(np.geomspace(0.0125, 3.55, n_groups))
+    probabilities = np.linspace(1.0, 2.0, n_groups)
+    probabilities /= probabilities.sum()
+
+    mf1_456 = (_endf_lines([za, awr, 0, 2, 0, 0], 1, 456)
+               + _tab1([0.0, 0.0, 0, 0], [(1e-5, nu_p), (2e7, nu_p)], 1, 456))
+    mf1_455 = (_endf_lines([za, awr, 0, 2, 0, 0], 1, 455)
+               + _endf_lines([0.0, 0.0, 0, 0, n_groups, 0], 1, 455)
+               + _endf_lines(decay_constants, 1, 455)
+               + _tab1([0.0, 0.0, 0, 0], [(1e-5, nu_d), (2e7, nu_d)], 1, 455))
+    mf5_455 = _endf_lines([za, awr, 0, 0, n_groups, 0], 5, 455)
+    for p in probabilities:
+        # Applicability p_k(E), then an arbitrary tabulated spectrum (LF=1)
+        # at two incident energies, uniform below 1 MeV
+        mf5_455 += _tab1([0.0, 0.0, 0, 1], [(1e-5, p), (2e7, p)], 5, 455)
+        mf5_455 += (_endf_lines([0.0, 0.0, 0, 0, 1, 2], 5, 455)
+                    + _endf_lines([2, 2], 5, 455))
+        for e_in in (1e-5, 2e7):
+            mf5_455 += _tab1([0.0, e_in, 0, 0], [(0.0, 1e-6), (1e6, 1e-6)], 5, 455)
+
+    class FakeEvaluation:
+        section = {(1, 456): ''.join(mf1_456), (1, 455): ''.join(mf1_455),
+                   (5, 455): ''.join(mf5_455)}
+
+    products, derived = _get_fission_products_endf(FakeEvaluation())
+    delayed = [p for p in products if p.emission_mode == 'delayed']
+    assert len(delayed) == n_groups
+    assert [p.decay_rate for p in delayed] == pytest.approx(decay_constants)
+    yields = np.array([p.yield_(0.0253) for p in delayed])
+    assert yields == pytest.approx(nu_d * probabilities)
+    assert yields.sum() == pytest.approx(nu_d)
+    prompt = [p for p in products if p.emission_mode == 'prompt']
+    assert prompt[0].yield_(0.0253) == pytest.approx(nu_p)

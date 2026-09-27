@@ -26,3 +26,7 @@ foreach(test ${TEST_NAMES})
   # dependency is unavailable.
   set_tests_properties(${test} PROPERTIES SKIP_RETURN_CODE 4)
 endforeach()
+
+if(OPENMC_USE_XDG)
+  target_compile_definitions(test_mesh PRIVATE OPENMC_XDG_ENABLED)
+endif()

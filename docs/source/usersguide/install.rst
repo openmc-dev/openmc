@@ -364,6 +364,15 @@ Prerequisites
       Note that libMesh is most commonly compiled with MPI support. If that
       is the case, then OpenMC should be compiled with MPI support as well.
 
+    * XDG_ interface for unstructured mesh operations
+
+      XDG provides a common interface for unstructured mesh operations backed
+      by MOAB or libMesh. The desired mesh libraries must be enabled when XDG
+      is built. To enable the XDG interface in OpenMC, specify the XDG
+      installation in ``CMAKE_PREFIX_PATH``::
+
+          cmake -DOPENMC_USE_XDG=on -DCMAKE_PREFIX_PATH=/path/to/xdg/installation ..
+
 .. _gcc: https://gcc.gnu.org/
 .. _CMake: https://cmake.org
 .. _OpenMPI: https://www.open-mpi.org
@@ -372,6 +381,7 @@ Prerequisites
 .. _DAGMC: https://svalinn.github.io/DAGMC/index.html
 .. _MOAB: https://bitbucket.org/fathomteam/moab
 .. _libMesh: https://libmesh.github.io/
+.. _XDG: https://github.com/xdg-org/xdg
 .. _libpng: http://www.libpng.org/pub/png/libpng.html
 .. _MCPL: https://github.com/mctools/mcpl
 .. _NCrystal: https://github.com/mctools/ncrystal
@@ -449,6 +459,9 @@ OPENMC_USE_DAGMC
 
 OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
+
+OPENMC_USE_XDG
+  Enables the XDG_ interface for unstructured mesh tallies. (Default: off)
 
 OPENMC_USE_MPI
   Turns on compiling with MPI (Default: off). For further information on MPI

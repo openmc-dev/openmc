@@ -1,9 +1,12 @@
 import os
 from pathlib import Path
+from itertools import product
+
+import pytest
 
 import numpy as np
-import pytest
 from uncertainties import ufloat
+
 import openmc
 import openmc.lib
 from openmc.stats import Discrete, Point
@@ -347,8 +350,8 @@ def test_ww_attrs_capi(run_in_tmpdir, model):
     openmc.lib.finalize()
 
 
-@pytest.mark.parametrize('library', ('libmesh', 'moab'))
-def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
+@pytest.mark.parametrize('library, interface', product(('libmesh', 'moab'), ('native', 'xdg')))
+def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library, interface):
     """
     Ensure that weight windows on unstructured mesh work when
     they aren't part of a tally or weight window generator
@@ -358,6 +361,8 @@ def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
         pytest.skip('LibMesh not enabled in this build.')
     if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip('DAGMC (and MOAB) mesh not enabled in this build.')
+    if interface == 'xdg' and not openmc.lib.feature_enabled('xdg'):
+        pytest.skip('XDG mesh interface not enabled in this build.')
 
     water = openmc.Material(name='water')
     water.add_nuclide('H1', 2.0)
@@ -369,6 +374,7 @@ def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
     geometry = openmc.Geometry([cell])
     mesh_file = str(request.fspath.dirpath() / 'test_mesh_tets.exo')
     mesh = openmc.UnstructuredMesh(mesh_file, library)
+    mesh.interface = interface
 
     dummy_wws = np.ones((12_000,))
 

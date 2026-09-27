@@ -3383,7 +3383,7 @@ class Tally(IDManagerMixin):
 
                 # Replace existing filter with new one
                 for j, test_filter in enumerate(new_tally.filters):
-                    if isinstance(test_filter, filter_type):
+                    if type(test_filter) is filter_type:
                         new_tally.filters[j] = new_filter
 
         # If original tally was sparse, sparsify the sliced tally

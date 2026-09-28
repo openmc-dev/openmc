@@ -743,8 +743,13 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       auto search = data::nuclide_map.find(nuc);
       if (search == data::nuclide_map.end()) {
         int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
-        if (err < 0)
-          throw std::runtime_error {get_errmsg()};
+        if (err < 0) {
+          // Nothing catches this, so report it rather than terminating on an
+          // uncaught exception. Note that a tally bin names a nuclide, so an
+          // element symbol does not resolve even when the element is present.
+          fatal_error(fmt::format(
+            "Could not add nuclide '{}' to a tally: {}", nuc, get_errmsg()));
+        }
       }
       nuclides_.push_back(data::nuclide_map.at(nuc));
     }

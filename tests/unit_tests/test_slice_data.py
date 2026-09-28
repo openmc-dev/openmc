@@ -24,6 +24,21 @@ def test_slice_data_basic(run_in_tmpdir):
     assert np.any(prop_data[:, :, 0] > 0)   # Valid temperatures
 
 
+def test_slice_data_temperature_field(run_in_tmpdir):
+    """Temperature-field values should be reflected in property plots."""
+    model = pwr_pin_cell()
+    mesh = openmc.RegularMesh()
+    mesh.dimension = (1, 1, 1)
+    mesh.lower_left = (-100.0, -100.0, -100.0)
+    mesh.upper_right = (100.0, 100.0, 100.0)
+    model.settings.temperature_field = openmc.TemperatureField(mesh, [294.0])
+
+    _, prop_data = model.slice_data(
+        origin=(0, 0, 0), width=(1.0, 1.0), pixels=(5, 5))
+
+    assert np.allclose(prop_data[:, :, 0], 294.0)
+
+
 def test_slice_data_no_properties(run_in_tmpdir):
     """Test slice_data without property data."""
     model = pwr_pin_cell()

@@ -3,7 +3,7 @@
 #include <algorithm> // for remove_if
 #include <string>
 #include <unordered_map>
-#include <utility> // for move
+#include <utility> // for move, pair
 
 #include <fmt/core.h>
 
@@ -112,31 +112,33 @@ double Reaction::xs(const NuclideMicroXS& micro) const
   return this->xs(micro.index_temp, micro.index_grid, micro.interp_factor);
 }
 
-double Reaction::collapse_rate(int64_t i_temp, span<const double> energy,
-  span<const double> flux, const vector<double>& grid) const
+namespace {
+
+//! Call f(group, xs_avg, dE) for each panel (union-grid interval); returns
+//! the inclusive range of groups visited ({0, -1} if none).
+template<typename F>
+std::pair<int, int> for_each_panel(span<const double> energy,
+  const vector<double>& grid, const vector<double>& xs, int i_threshold, F&& f)
 {
   // Find index corresponding to first energy
-  const auto& xs = xs_[i_temp].value;
   int i_low = lower_bound_index(grid.cbegin(), grid.cend(), energy.front());
 
   // Check for threshold and adjust starting point if necessary
   int j_start = 0;
-  int i_threshold = xs_[i_temp].threshold;
   if (i_low < i_threshold) {
     i_low = i_threshold;
     while (energy[j_start + 1] < grid[i_low]) {
       ++j_start;
       if (j_start + 1 == energy.size())
-        return 0.0;
+        return {0, -1};
     }
   }
 
-  double xs_flux_sum = 0.0;
-
-  for (int j = j_start; j < flux.size(); ++j) {
+  int n_groups = energy.size() - 1;
+  int j = j_start;
+  for (; j < n_groups; ++j) {
     double E_group_low = energy[j];
     double E_group_high = energy[j + 1];
-    double flux_per_eV = flux[j] / (E_group_high - E_group_low);
 
     // Determine energy grid index corresponding to group high
     int i_high = i_low;
@@ -165,8 +167,7 @@ double Reaction::collapse_rate(int64_t i_temp, span<const double> energy,
       double xs_avg = 0.5 * (xs_low + xs_high);
 
       // Add contribution from segment
-      double dE = (E_high - E_low);
-      xs_flux_sum += flux_per_eV * xs_avg * dE;
+      f(j, xs_avg, E_high - E_low);
     }
 
     i_low = i_high;
@@ -175,8 +176,32 @@ double Reaction::collapse_rate(int64_t i_temp, span<const double> energy,
     if (i_low + 1 == grid.size())
       break;
   }
+  return {j_start, std::min(j, n_groups - 1)};
+}
 
+} // namespace
+
+double Reaction::collapse_rate(int64_t i_temp, span<const double> energy,
+  span<const double> flux, const vector<double>& grid) const
+{
+  double xs_flux_sum = 0.0;
+  for_each_panel(energy, grid, xs_[i_temp].value, xs_[i_temp].threshold,
+    [&](int j, double xs_avg, double dE) {
+      double flux_per_eV = flux[j] / (energy[j + 1] - energy[j]);
+      xs_flux_sum += flux_per_eV * xs_avg * dE;
+    });
   return xs_flux_sum;
+}
+
+void Reaction::group_xs(int64_t i_temp, span<const double> energy,
+  const vector<double>& grid, span<double> xs) const
+{
+  // Sum XS integrals into the zeroed output, then divide by group width
+  auto [j_first, j_last] =
+    for_each_panel(energy, grid, xs_[i_temp].value, xs_[i_temp].threshold,
+      [&](int j, double xs_avg, double dE) { xs[j] += xs_avg * dE; });
+  for (int j = j_first; j <= j_last; ++j)
+    xs[j] /= (energy[j + 1] - energy[j]);
 }
 
 //==============================================================================

@@ -14,6 +14,8 @@ from openmc.utility_funcs import change_directory
 from uncertainties.unumpy import uarray, nominal_values, std_devs
 
 
+UMESH_DIR = Path(__file__).resolve().parents[1] / 'regression_tests' / 'unstructured_mesh'
+
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
 def test_raises_error_when_flat(val_left, val_right):
     """Checks that an error is raised when a mesh is flat"""
@@ -388,7 +390,7 @@ def test_mesh_name_roundtrip(run_in_tmpdir):
 
 
 def test_umesh_roundtrip(run_in_tmpdir, request):
-    umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', 'moab')
+    umesh = openmc.UnstructuredMesh(UMESH_DIR / 'test_mesh_tets.exo', 'moab')
     umesh.interface = 'xdg'
     umesh.output = True
 
@@ -566,7 +568,7 @@ vtkhdf_tests = [
         "moab"
     ),
     (
-        Path("test_mesh_hexes.exo"),
+        UMESH_DIR / "test_mesh_hexes.exo",
         "libmesh"
     )
 ]

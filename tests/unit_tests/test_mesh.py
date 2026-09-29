@@ -564,7 +564,7 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
 
 vtkhdf_tests = [
     (
-        Path("test_mesh_dagmc_tets.vtk"),
+        UMESH_DIR / "test_mesh_dagmc_tets.vtk",
         "moab"
     ),
     (

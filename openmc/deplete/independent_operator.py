@@ -8,6 +8,7 @@ transport solver by using user-provided multigroup fluxes and cross sections.
 from __future__ import annotations
 from collections.abc import Iterable
 import copy
+from warnings import warn
 
 import numpy as np
 from uncertainties import ufloat
@@ -16,6 +17,7 @@ import openmc
 from openmc.checkvalue import check_type
 from openmc.mpi import comm
 from .abc import ReactionRateHelper, OperatorResult
+from .chain import REACTIONS
 from .openmc_operator import OpenMCOperator
 from .pool import _distribute
 from .microxs import MicroXS
@@ -54,7 +56,17 @@ class IndependentOperator(OpenMCOperator):
         Path to the depletion chain XML file or instance of openmc.deplete.Chain.
         Defaults to ``openmc.config['chain_file']``.
     keff : 2-tuple of float, optional
-       keff eigenvalue and uncertainty from transport calculation.
+       keff eigenvalue and uncertainty from transport calculation. When not
+       provided and every :class:`~openmc.deplete.MicroXS` instance contains
+       both 'fission' and 'nu-fission' cross sections as well as all
+       transmutation reactions defined by the depletion chain, the infinite
+       multiplication factor of the depletable materials is estimated
+       automatically from the material compositions and multigroup cross
+       sections at each depletion step.
+
+       .. versionchanged:: 0.16.1
+           k-infinity is now estimated automatically when ``keff`` is not
+           given and the required cross sections are present.
     prev_results : Results, optional
         Results from a previous depletion calculation.
     normalization_mode : {"fission-q", "source-rate"}
@@ -134,6 +146,15 @@ class IndependentOperator(OpenMCOperator):
 
         self._keff = keff
 
+        # Auto-detect k-infinity capability: estimate kinf when keff is not
+        # provided and every MicroXS contains fission + nu-fission data.
+        self._calculate_kinf = (
+            keff is None
+            and len(micros) > 0
+            and all('fission' in m.reactions and 'nu-fission' in m.reactions
+                    for m in micros)
+        )
+
         if fission_yield_opts is None:
             fission_yield_opts = {}
         helper_kwargs = {'normalization_mode': normalization_mode,
@@ -153,6 +174,25 @@ class IndependentOperator(OpenMCOperator):
             fission_q=fission_q,
             helper_kwargs=helper_kwargs,
             reduce_chain_level=reduce_chain_level)
+
+        # The k-infinity estimate divides the neutron production rate by the
+        # neutron loss rate, so the loss term must include every absorption
+        # channel that the depletion chain will use. If a MicroXS is missing
+        # some of the chain's transmutation reactions (e.g., only 'fission'
+        # and 'nu-fission' were tallied), the ratio would silently degenerate
+        # toward nu-bar rather than k-infinity. Note that self.chain only
+        # exists after the super().__init__() call above (which also applies
+        # any chain reduction), so this check must come here.
+        if self._calculate_kinf:
+            chain_rxns = set(self.chain.reactions)
+            for m in micros:
+                if not chain_rxns <= set(m.reactions):
+                    missing = chain_rxns - set(m.reactions)
+                    warn(f'Disabling k-infinity estimate: MicroXS is missing '
+                         f'chain reactions {missing}. The estimate requires '
+                         f'all absorption channels to be present.')
+                    self._calculate_kinf = False
+                    break
 
     @classmethod
     def from_nuclides(cls, volume, nuclides,
@@ -411,13 +451,125 @@ class IndependentOperator(OpenMCOperator):
         if source_rate == 0.0:
             rates = self.reaction_rates.copy()
             rates.fill(0.0)
-            return OperatorResult(ufloat(0.0, 0.0), rates)
+            if self._calculate_kinf:
+                keff = self._estimate_k_inf()
+            else:
+                keff = ufloat(0.0, 0.0)
+            return OperatorResult(keff, rates)
 
         rates = self._calculate_reaction_rates(source_rate)
-        keff = self._keff
+        if self._calculate_kinf:
+            keff = self._estimate_k_inf()
+        else:
+            keff = self._keff
 
         op_result = OperatorResult(keff, rates)
         return copy.deepcopy(op_result)
+
+    def _estimate_k_inf(self):
+        r"""Estimate the infinite multiplication factor of the depletable
+        materials.
+
+        The estimate is computed as the ratio of the neutron production rate
+        to the neutron loss rate summed over the *depletable materials only*:
+
+        .. math::
+            k_\infty = \frac{\displaystyle\sum_m \frac{1}{V_m} \sum_i N_{m,i}
+                             \sum_g (\nu\sigma_f)_{m,i,g}\, \phi_{m,g}}
+                            {\displaystyle\sum_m \frac{1}{V_m} \sum_i N_{m,i}
+                             \sum_j (1 - x_j) \sum_g \sigma_{m,i,j,g}\,
+                             \phi_{m,g}}
+
+        where the index :math:`m` runs over the depletable materials,
+        :math:`i` over the nuclides with cross-section data, :math:`j` over
+        the transmutation reactions, and :math:`g` over the energy groups.
+        :math:`N_{m,i}` is the number of atoms of nuclide :math:`i` in
+        material :math:`m`, :math:`V_m` is the material volume,
+        :math:`\phi_{m,g}` is the volume-integrated multigroup flux from the
+        transport run, :math:`(\nu\sigma_f)_{m,i,g}` is the fission neutron
+        production cross section, :math:`\sigma_{m,i,j,g}` is the cross
+        section of transmutation reaction :math:`j`, and :math:`x_j` is the
+        number of neutrons emitted by reaction :math:`j`.
+
+        **This is not k-eff.** The balance above contains no leakage term, so
+        it relates to the effective multiplication factor as
+        :math:`k_\infty = k_\text{eff} / (1 - L)` where :math:`L` is the
+        leakage fraction. Moreover, only depletable materials contribute to
+        the loss term: for models that also contain non-depletable materials
+        (moderator, cladding, reflector, ...), absorption in those materials
+        is not accounted for, and the estimate will be *higher* than the true
+        k-infinity of the full system. In other words, the estimate assumes
+        that all relevant absorption happens in the depletable materials.
+
+        The treatment of (n,xn) reactions follows from writing the
+        multiplication factor as
+
+        .. math::
+            k_\text{eff} = \frac{P}{A + L - X}
+
+        where :math:`P` is the fission neutron production rate, :math:`A` the
+        absorption rate, :math:`L` the leakage rate, and :math:`X` the net
+        neutron production rate from (n,xn) reactions. The denominator uses
+        "reduced absorption" :math:`A - X`, which is exactly the convention
+        used by OpenMC's k-eff estimators: neutrons produced in (n,xn)
+        reactions are not counted as production; instead each (n,xn) reaction
+        with :math:`x` neutrons out contributes :math:`(1 - x)` times its
+        rate to the loss term, giving :math:`A - X` in a single pass over the
+        reactions.
+
+        Assumptions: the multigroup fluxes are those obtained from the
+        transport run (and are not recomputed as the compositions change),
+        non-depletable materials do not deplete, and absorption outside the
+        depletable materials is ignored entirely. The bias introduced by that
+        last assumption stays roughly constant over the depletion only to the
+        extent that the background absorption itself does.
+
+        Returns
+        -------
+        uncertainties.UFloat
+            Estimated k-infinity with zero uncertainty
+
+        """
+        production = 0.0
+        loss = 0.0
+        for mat in self.local_mats:
+            i_mat = self._mat_index_map[mat]
+            flux = self.fluxes[i_mat]
+            micro_xs = self.cross_sections[i_mat]
+
+            # Convert total atoms and volume-integrated flux to rates per
+            # unit volume, consistent with _calculate_reaction_rates
+            volume_b_cm = 1e24 * self.number.get_mat_volume(mat)
+
+            for nuc in micro_xs.nuclides:
+                if nuc not in self.number.index_nuc:
+                    continue
+                atoms = self.number[mat, nuc]
+                if atoms <= 0.0:
+                    continue
+                for rxn in micro_xs.reactions:
+                    rate = (atoms * (micro_xs[nuc, rxn] * flux).sum()
+                            / volume_b_cm)
+                    if rxn == 'nu-fission':
+                        production += rate
+                    elif rxn == 'damage-energy':
+                        pass
+                    elif rxn in REACTIONS:
+                        n_out = REACTIONS[rxn].neutrons_out
+                        loss += (1 - n_out) * rate
+                    else:
+                        loss += rate
+
+        # Sum contributions over all MPI processes
+        production = comm.allreduce(production)
+        loss = comm.allreduce(loss)
+
+        if loss <= 0.0:
+            warn('Unable to estimate k-infinity because the total neutron '
+                 'loss rate is zero. Check that the supplied MicroXS data '
+                 'contains absorption reactions for the nuclides present.')
+            return ufloat(0.0, 0.0)
+        return ufloat(production / loss, 0.0)
 
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""

@@ -56,6 +56,18 @@ def cpp_driver(request):
         os.remove('CMakeLists.txt')
 
 @pytest.fixture
+def dagmc_h5m_in_cwd():
+    """Place the canonical legacy DAGMC geometry beside the C++ driver."""
+    source = Path(__file__).parent.parent / 'legacy' / 'dagmc.h5m'
+    dest = Path(__file__).parent / 'dagmc.h5m'
+    shutil.copy(source, dest)
+    try:
+        yield dest
+    finally:
+        dest.unlink(missing_ok=True)
+
+
+@pytest.fixture
 def model():
     model = openmc.model.Model()
 
@@ -123,6 +135,6 @@ class ExternalDAGMCTest(PyAPITestHarness):
             openmc.run(openmc_exec=self.executable,
                        event_based=config['event'])
 
-def test_external_dagmc(cpp_driver, model):
+def test_external_dagmc(cpp_driver, model, dagmc_h5m_in_cwd):
     harness = ExternalDAGMCTest(cpp_driver, 'statepoint.5.h5', model)
     harness.main()

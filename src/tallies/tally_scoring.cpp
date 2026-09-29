@@ -177,6 +177,33 @@ void score_fission_delayed_dg(int i_tally, int d_bin, double score,
   dg_match.bins_[i_bin] = original_bin;
 }
 
+//! Helper function to refresh the micro xs cache of an absent nuclide
+//
+//! A tally binned by nuclide with multiply_density off scores a nuclide the
+//! scoring region need not contain, and transport only evaluates the cross
+//! sections of what is actually there. Each cache is read back solely by
+//! scoring of the particle type it holds cross sections for, so there is
+//! nothing to refresh for any other kind of particle.
+//
+//! \param[in,out] p Particle being scored
+//! \param[in] i_nuclide Index in data::nuclides
+//! \param[in,out] i_log_union Index on the log union grid, or C_NONE if it has
+//!   not been determined yet
+void update_absent_nuclide_xs(Particle& p, int i_nuclide, int& i_log_union)
+{
+  if (p.type().is_neutron()) {
+    // Determine log union grid index
+    if (i_log_union == C_NONE) {
+      int neutron = ParticleType::neutron().transport_index();
+      i_log_union =
+        std::log(p.E() / data::energy_min[neutron]) / simulation::log_spacing;
+    }
+    p.update_neutron_xs(i_nuclide, i_log_union);
+  } else if (p.type().is_photon()) {
+    p.update_photon_xs(data::nuclide_to_element[i_nuclide]);
+  }
+}
+
 //! Helper function to retrieve fission q value from a nuclide
 
 double get_nuc_fission_q(const Nuclide& nuc, const Particle& p, int score_bin)
@@ -582,6 +609,13 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
   // Get the pre-collision energy of the particle.
   auto E = p.E_last();
 
+  // Photon data is tabulated per element, so the cache holding photon micro
+  // cross sections is indexed by element while i_nuclide is not. Resolve it
+  // once here; C_NONE whenever no score below can ask for one.
+  int i_element = (i_nuclide >= 0 && p.type().is_photon())
+                    ? data::nuclide_to_element[i_nuclide]
+                    : C_NONE;
+
   for (auto i = 0; i < tally.scores_.size(); ++i) {
     auto score_bin = tally.scores_[i];
     auto score_index = start_index + i;
@@ -597,7 +631,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         if (p.type().is_neutron()) {
           score = p.neutron_xs(i_nuclide).total * atom_density * flux;
         } else if (p.type().is_photon()) {
-          score = p.photon_xs(i_nuclide).total * atom_density * flux;
+          score = p.photon_xs(i_element).total * atom_density * flux;
         }
       } else {
         score = p.macro_xs().total * flux;
@@ -621,7 +655,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
           const auto& micro = p.neutron_xs(i_nuclide);
           score = (micro.total - micro.absorption) * atom_density * flux;
         } else {
-          const auto& micro = p.photon_xs(i_nuclide);
+          const auto& micro = p.photon_xs(i_element);
           score = (micro.coherent + micro.incoherent) * atom_density * flux;
         }
       } else {
@@ -641,7 +675,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         if (p.type().is_neutron()) {
           score = p.neutron_xs(i_nuclide).absorption * atom_density * flux;
         } else {
-          const auto& xs = p.photon_xs(i_nuclide);
+          const auto& xs = p.photon_xs(i_element);
           score =
             (xs.total - xs.coherent - xs.incoherent) * atom_density * flux;
         }
@@ -1048,7 +1082,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         continue;
 
       if (i_nuclide >= 0) {
-        const auto& micro = p.photon_xs(i_nuclide);
+        const auto& micro = p.photon_xs(i_element);
         double xs = (score_bin == COHERENT)        ? micro.coherent
                     : (score_bin == INCOHERENT)    ? micro.incoherent
                     : (score_bin == PHOTOELECTRIC) ? micro.photoelectric
@@ -2443,14 +2477,8 @@ void score_tracklength_tally_general(
             if (!tally.multiply_density())
               atom_density = 1.0;
           } else if (!tally.multiply_density()) {
-            // Determine log union grid index
-            if (i_log_union == C_NONE) {
-              int neutron = ParticleType::neutron().transport_index();
-              i_log_union = std::log(p.E() / data::energy_min[neutron]) /
-                            simulation::log_spacing;
-            }
             // Update micro xs cache
-            p.update_neutron_xs(i_nuclide, i_log_union);
+            update_absent_nuclide_xs(p, i_nuclide, i_log_union);
             atom_density = 1.0;
           }
         }
@@ -2573,14 +2601,8 @@ void score_collision_tally(Particle& p)
             if (!tally.multiply_density())
               atom_density = 1.0;
           } else if (!tally.multiply_density()) {
-            // Determine log union grid index
-            if (i_log_union == C_NONE) {
-              int neutron = ParticleType::neutron().transport_index();
-              i_log_union = std::log(p.E() / data::energy_min[neutron]) /
-                            simulation::log_spacing;
-            }
             // Update micro xs cache
-            p.update_neutron_xs(i_nuclide, i_log_union);
+            update_absent_nuclide_xs(p, i_nuclide, i_log_union);
             atom_density = 1.0;
           }
         }

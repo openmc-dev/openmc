@@ -185,6 +185,14 @@ extern tensor::Tensor<double>
 extern std::unordered_map<std::string, int> element_map;
 extern vector<unique_ptr<PhotonInteraction>> elements;
 
+//! Index in \ref elements of the element each nuclide belongs to
+//
+//! Photon data is tabulated per element rather than per nuclide, so the photon
+//! micro cross section cache is indexed by element while the neutron one is
+//! indexed by nuclide. Anything holding a nuclide index needs this to reach the
+//! photon data. Entries are C_NONE when photon transport is off.
+extern vector<int> nuclide_to_element;
+
 } // namespace data
 
 } // namespace openmc

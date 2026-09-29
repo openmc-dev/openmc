@@ -215,7 +215,7 @@ Material::Material(pugi::xml_node node)
   auto n = names.size();
   nuclide_.reserve(n);
   atom_density_ = tensor::Tensor<double>({n});
-  if (settings::photon_transport)
+  if (settings::photon_transport && settings::run_CE)
     element_.reserve(n);
 
   for (int i = 0; i < n; ++i) {
@@ -244,7 +244,7 @@ Material::Material(pugi::xml_node node)
 
     // If the corresponding element hasn't been encountered yet and photon
     // transport will be used, we need to add its symbol to the element_dict
-    if (settings::photon_transport) {
+    if (settings::photon_transport && settings::run_CE) {
       std::string element = to_element(name);
 
       // Make sure photon cross section data is available

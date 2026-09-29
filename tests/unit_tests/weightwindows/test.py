@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from itertools import product
 
 import pytest
@@ -15,12 +14,8 @@ from tests import cdtemp
 
 
 @pytest.fixture
-def wws():
-
-    # weight windows
-    ww_files = ('ww_n.txt', 'ww_p.txt')
-    cwd = Path(__file__).parent.absolute()
-    ww_n_file, ww_p_file = [cwd / Path(f) for f in ww_files]
+def wws(ww_files):
+    ww_n_file, ww_p_file = ww_files
 
     # load pre-generated weight windows
     # (created using the same tally as above)
@@ -126,13 +121,9 @@ def model():
 
 
 @pytest.mark.parametrize("shared_secondary", [False, True])
-def test_weightwindows(model, wws, shared_secondary):
+def test_weightwindows(model, wws, shared_secondary, ww_files):
 
-    ww_files = ('ww_n.txt', 'ww_p.txt')
-    cwd = Path(__file__).parent.absolute()
-    filepaths = [cwd / Path(f) for f in ww_files]
-
-    with cdtemp(filepaths):
+    with cdtemp(ww_files):
         # run once with variance reduction off
         model.settings.weight_windows_on = False
         model.settings.shared_secondary_bank = shared_secondary

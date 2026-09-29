@@ -23,7 +23,7 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 // VERSIONING NUMBERS
 
 // HDF5 data format
-constexpr int HDF5_VERSION[] {3, 0};
+constexpr int HDF5_VERSION[] {3, 1};
 
 // Version numbers for binary files
 constexpr array<int, 2> VERSION_STATEPOINT {18, 2};

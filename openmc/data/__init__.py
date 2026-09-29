@@ -1,6 +1,8 @@
 # Version of HDF5 nuclear data format
+# 3.1 gives a `level` energy distribution the q_value / mass / particle
+# attributes needed for a photon projectile, alongside the pre-3.1 ones.
 HDF5_VERSION_MAJOR = 3
-HDF5_VERSION_MINOR = 0
+HDF5_VERSION_MINOR = 1
 HDF5_VERSION = (HDF5_VERSION_MAJOR, HDF5_VERSION_MINOR)
 
 # Version of WMP nuclear data format

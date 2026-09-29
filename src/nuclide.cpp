@@ -1081,13 +1081,18 @@ void check_data_version(hid_t file_id)
   if (attribute_exists(file_id, "version")) {
     vector<int> version;
     read_attribute(file_id, "version", version);
-    if (version[0] != HDF5_VERSION[0]) {
+    // A newer minor version may use datasets or attributes this build does
+    // not know about, and a missing attribute is not diagnosed anywhere below
+    // -- read_attr does not check the HDF5 status -- so refuse it here rather
+    // than transport on whatever the uninitialised member happened to hold.
+    if (version[0] != HDF5_VERSION[0] || version[1] > HDF5_VERSION[1]) {
       fatal_error("HDF5 data format uses version " +
                   std::to_string(version[0]) + "." +
                   std::to_string(version[1]) +
                   " whereas your installation of "
                   "OpenMC expects version " +
-                  std::to_string(HDF5_VERSION[0]) + ".x data.");
+                  std::to_string(HDF5_VERSION[0]) + "." +
+                  std::to_string(HDF5_VERSION[1]) + " or earlier.");
     }
   } else {
     fatal_error("HDF5 data does not indicate a version. Your installation of "

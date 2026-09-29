@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from math import sqrt, isclose
 from numbers import Integral, Real
 from warnings import warn
 
@@ -8,7 +9,7 @@ import numpy as np
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from openmc.stats.univariate import Univariate, Tabular, Discrete, Mixture
-from .data import EV_PER_MEV
+from .data import EV_PER_MEV, NEUTRON_MASS_EV
 from .endf import get_tab1_record, get_tab2_record
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 
@@ -892,47 +893,121 @@ class DiscretePhoton(EnergyDistribution):
         return cls(primary_flag, energy, ace.atomic_weight_ratio)
 
 
+# Relative tolerance used when checking the target mass implied by the two XSS
+# words of an ACE LAW=3 distribution against the atomic weight ratio in the
+# table header. Recovering A from the second word inverts a quantity close to
+# unity, which amplifies its relative error by roughly (A+1)/2 for a neutron
+# projectile and A for a photon -- a few hundred for a heavy nuclide -- so a
+# perfectly consistent file still misses the default rel_tol of 1e-9.
+_LEVEL_MASS_REL_TOL = 1e-6
+
+
+def _level_params_from_ace(threshold, mass_ratio, kinematics):
+    """Recover (mass, q_value) from the two words of an ACE LAW=3 entry.
+
+    Parameters
+    ----------
+    threshold : float
+        First LAW=3 word, converted to eV
+    mass_ratio : float
+        Second LAW=3 word
+    kinematics : {'neutron', 'photon'}
+        Convention the two words were written with. For 'neutron',
+        threshold = (A + 1)/A |Q| and mass_ratio = (A/(A + 1))^2; for
+        'photon', threshold = |Q| and mass_ratio = (A - 1)/A.
+
+    Returns
+    -------
+    tuple of float or None
+        Target mass in neutron masses and Q-value in eV, or None if
+        `mass_ratio` lies outside the range this convention can produce --
+        which is what happens when a file is read with the wrong one.
+
+    """
+    if kinematics == 'neutron':
+        if not 0.0 < mass_ratio < 1.0:
+            return None
+        root = sqrt(mass_ratio)
+        return 1.0/(1.0/root - 1.0), -threshold*root
+
+    if not 0.0 <= mass_ratio < 1.0:
+        return None
+    return 1.0/(1.0 - mass_ratio), -threshold
+
+
+def _level_mass_agrees(params, atomic_weight_ratio):
+    """Check a mass recovered by :func:`_level_params_from_ace` against the
+    atomic weight ratio of the ACE table it came from."""
+    return params is not None and isclose(
+        atomic_weight_ratio, params[0], rel_tol=_LEVEL_MASS_REL_TOL)
+
+
 class LevelInelastic(EnergyDistribution):
     r"""Level inelastic scattering
 
     Parameters
     ----------
-    threshold : float
-        Energy threshold in the laboratory system, :math:`(A + 1)/A * |Q|`
-    mass_ratio : float
-        :math:`(A/(A + 1))^2`
+    q_value : float
+        Q-value of the reaction.
+    mass : float
+        mass of the nucleus in units of neutron mass.
+    particle : {'neutron', 'photon'}
+        incident particle type, defaults to neutron
 
     Attributes
     ----------
+    q_value : float
+        Q-value of the reaction.
+    mass : float
+        mass of the nucleus in units of neutron mass.
+    particle : {'neutron', 'photon'}
+        incident particle type.
     threshold : float
-        Energy threshold in the laboratory system, :math:`(A + 1)/A * |Q|`
-    mass_ratio : float
-        :math:`(A/(A + 1))^2`
-
+        Energy threshold in the laboratory system
     """
 
-    def __init__(self, threshold, mass_ratio):
+    def __init__(self, q_value, mass, particle = 'neutron'):
         super().__init__()
-        self.threshold = threshold
-        self.mass_ratio = mass_ratio
+        self.q_value = q_value
+        self.mass = mass
+        self.particle = particle
 
+    @property
+    def q_value(self):
+        return self._q_value
+
+    @q_value.setter
+    def q_value(self, q_value):
+        cv.check_type('level inelastic q_value', q_value, Real)
+        self._q_value = q_value
+
+    @property
+    def mass(self):
+        return self._mass
+
+    @mass.setter
+    def mass(self, mass):
+        cv.check_type('level inelastic mass', mass, Real)
+        self._mass = mass
+    
+    @property    
+    def particle(self):
+        return self._particle
+    
+    @particle.setter
+    def particle(self, particle):
+        cv.check_value('product particle type', particle, ['neutron', 'photon'])
+        self._particle = particle
+        
     @property
     def threshold(self):
-        return self._threshold
-
-    @threshold.setter
-    def threshold(self, threshold):
-        cv.check_type('level inelastic threhsold', threshold, Real)
-        self._threshold = threshold
-
-    @property
-    def mass_ratio(self):
-        return self._mass_ratio
-
-    @mass_ratio.setter
-    def mass_ratio(self, mass_ratio):
-        cv.check_type('level inelastic mass ratio', mass_ratio, Real)
-        self._mass_ratio = mass_ratio
+        A = self.mass
+        Q = self.q_value
+        if self.particle == 'neutron':
+            return (A+1.0)/A*abs(Q)
+        else:
+            b = NEUTRON_MASS_EV*A
+            return sqrt(b)*(sqrt(b)-sqrt(b-2*abs(Q)))
 
     def to_hdf5(self, group):
         """Write distribution to an HDF5 group
@@ -945,8 +1020,22 @@ class LevelInelastic(EnergyDistribution):
         """
 
         group.attrs['type'] = np.bytes_('level')
-        group.attrs['threshold'] = self.threshold
-        group.attrs['mass_ratio'] = self.mass_ratio
+        group.attrs['q_value'] = self.q_value
+        group.attrs['mass'] = self.mass
+        group.attrs['particle'] = np.bytes_(self.particle)
+
+        # Also write the pre-3.1 attributes for a neutron projectile. They
+        # carry exactly the same law, so an OpenMC built before the q_value /
+        # mass / particle form existed still reads a neutron library written
+        # here correctly. Without them such a reader finds no 'threshold'
+        # attribute, and because it does not check the HDF5 status it would
+        # sample from uninitialised memory rather than fail. There is no
+        # legacy form for a photon projectile, but an older reader has no
+        # photonuclear support either, so it never sees one.
+        if self.particle == 'neutron':
+            A = self.mass
+            group.attrs['threshold'] = (A + 1.0)/A*abs(self.q_value)
+            group.attrs['mass_ratio'] = (A/(A + 1.0))**2
 
     @classmethod
     def from_hdf5(cls, group):
@@ -963,9 +1052,21 @@ class LevelInelastic(EnergyDistribution):
             Level inelastic scattering distribution
 
         """
+        # Prefer the q_value / mass / particle form. A file written by this
+        # version carries the pre-3.1 attributes as well, and only that form
+        # records the projectile, so it has to be tried first.
+        if 'q_value' in group.attrs:
+            q_value = group.attrs['q_value']
+            mass = group.attrs['mass']
+            particle = group.attrs['particle'].decode()
+            return cls(q_value, mass, particle)
+
+        # Pre-3.1 file: recover the same law from the neutron-only form.
         threshold = group.attrs['threshold']
         mass_ratio = group.attrs['mass_ratio']
-        return cls(threshold, mass_ratio)
+        mass = 1.0/(1.0/sqrt(mass_ratio) - 1.0)
+        q_value = -threshold*sqrt(mass_ratio)
+        return cls(q_value, mass)
 
     @classmethod
     def from_ace(cls, ace, idx):
@@ -984,9 +1085,49 @@ class LevelInelastic(EnergyDistribution):
             Level inelastic scattering distribution
 
         """
+        particle = {'u': 'photon', 'c': 'neutron'}.get(ace.data_type.value)
+        if particle is None:
+            raise NotImplementedError(
+                'A level inelastic (LAW=3) distribution can only be read from '
+                'a continuous-energy neutron or photonuclear ACE table, not '
+                f'from a {ace.data_type} table.')
+
         threshold = ace.xss[idx]*EV_PER_MEV
         mass_ratio = ace.xss[idx + 1]
-        return cls(threshold, mass_ratio)
+        awr = ace.atomic_weight_ratio
+
+        # The mass recovered from mass_ratio has to agree with the atomic
+        # weight ratio in the table header. That is the only self-consistency
+        # check available here, and it also tells the two conventions apart.
+        params = _level_params_from_ace(threshold, mass_ratio, particle)
+
+        if particle == 'photon' and not _level_mass_agrees(params, awr):
+            # Older versions of NJOY wrote the LAW=3 parameters of a
+            # photonuclear table with neutron kinematics, which is how the
+            # photonuclear libraries in circulation are encoded. Those two
+            # words still determine |Q| exactly, so read them with the
+            # convention they were written in rather than refusing the table;
+            # the distribution built from them is a photonuclear one either
+            # way, since the projectile comes from the table type.
+            legacy = _level_params_from_ace(threshold, mass_ratio, 'neutron')
+            if _level_mass_agrees(legacy, awr):
+                warn(f'Level inelastic (LAW=3) distribution in {ace.name} '
+                     'uses neutron kinematics, as older versions of NJOY '
+                     'wrote for photonuclear tables. Interpreting its '
+                     'parameters with that convention.')
+                params = legacy
+
+        if not _level_mass_agrees(params, awr):
+            implied = 'nothing physical' if params is None else (
+                f'a target mass of {params[0]} neutron masses')
+            raise ValueError(
+                f'Level inelastic distribution in {ace.name} has a mass ratio '
+                f'of {mass_ratio}, which implies {implied}, but the table '
+                f'gives an atomic weight ratio of {awr}.')
+
+        # The header value is the authoritative one, and carries no inversion
+        # error; the two agree to _LEVEL_MASS_REL_TOL either way.
+        return cls(params[1], awr, particle=particle)
 
 
 class ContinuousTabular(EnergyDistribution):

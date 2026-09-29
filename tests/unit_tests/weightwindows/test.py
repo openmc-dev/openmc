@@ -14,6 +14,9 @@ from openmc.stats import Discrete, Point
 from tests import cdtemp
 
 
+UMESH_TETS = (Path(__file__).resolve().parents[2] / 'regression_tests' /
+              'unstructured_mesh' / 'test_mesh_tets.exo')
+
 @pytest.fixture
 def wws():
 
@@ -372,7 +375,7 @@ def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library, interfac
     cell = openmc.Cell(region=-box, fill=water)
 
     geometry = openmc.Geometry([cell])
-    mesh_file = str(request.fspath.dirpath() / 'test_mesh_tets.exo')
+    mesh_file = str(UMESH_TETS)
     mesh = openmc.UnstructuredMesh(mesh_file, library)
     mesh.interface = interface
 

@@ -17,7 +17,7 @@ from openmc.mpi import MPI, comm
 
 from .reaction_rates import ReactionRates
 
-VERSION_RESULTS = (1, 3)
+VERSION_RESULTS = (1, 4)
 
 
 __all__ = ["StepResult"]
@@ -60,6 +60,11 @@ class StepResult:
         materials and processes
     keff_search_root : float
         The root returned by the keff search control.
+    evaluated : bool
+        Whether this step's ``k`` and ``rates`` came from a real
+        transport/eigenvalue solve (``True``) or are a zero-filled
+        placeholder written when ``Integrator.integrate(final_step=False)``
+        skips the final evaluation (``False``).
 
     """
     def __init__(self):
@@ -69,6 +74,7 @@ class StepResult:
         self.rates = None
         self.volume = None
         self.proc_time = None
+        self.evaluated = None
 
         self.index_mat = None
         self.index_nuc = None
@@ -192,7 +198,8 @@ class StepResult:
 
         # Direct transfer
         direct_attrs = ("time", "k", "source_rate", "index_nuc",
-                        "mat_to_hdf5_ind", "mat_to_name", "proc_time")
+                        "mat_to_hdf5_ind", "mat_to_name", "proc_time",
+                        "evaluated")
         for attr in direct_attrs:
             setattr(new, attr, getattr(self, attr))
         # Get applicable slice of data
@@ -375,6 +382,10 @@ class StepResult:
             "keff_search_root", (1,), maxshape=(None,),
             dtype="float64")
 
+        handle.create_dataset(
+            "evaluated", (1,), maxshape=(None,),
+            dtype="bool")
+
     def _to_hdf5(self, handle, index, parallel=False, write_rates: bool = False):
         """Converts results object into an hdf5 object.
 
@@ -408,6 +419,7 @@ class StepResult:
         source_rate_dset = handle["/source_rate"]
         proc_time_dset = handle["/depletion time"]
         keff_search_root_dset = handle["/keff_search_root"]
+        evaluated_dset = handle["/evaluated"]
 
         # Get number of results stored
         number_shape = list(number_dset.shape)
@@ -445,6 +457,10 @@ class StepResult:
             keff_search_root_shape[0] = new_shape
             keff_search_root_dset.resize(keff_search_root_shape)
 
+            evaluated_shape = list(evaluated_dset.shape)
+            evaluated_shape[0] = new_shape
+            evaluated_dset.resize(evaluated_shape)
+
         # If nothing to write, just return
         if len(self.index_mat) == 0:
             return
@@ -465,6 +481,9 @@ class StepResult:
                     self.proc_time / (comm.size * self.n_hdf5_mats)
                 )
             keff_search_root_dset[index] = self.keff_search_root
+            evaluated_dset[index] = (
+                True if self.evaluated is None else self.evaluated
+            )
 
     @classmethod
     def from_hdf5(cls, handle, step):
@@ -516,6 +535,18 @@ class StepResult:
         if "keff_search_root" in handle:
             keff_search_root_dset = handle["/keff_search_root"]
             results.keff_search_root = keff_search_root_dset[step]
+
+        if "evaluated" in handle:
+            evaluated_dset = handle["/evaluated"]
+            results.evaluated = bool(evaluated_dset[step])
+        else:
+            # Older results files (pre VERSION_RESULTS (1, 4)) did not track
+            # whether a step's k/rates came from a real solve or were a
+            # final_step=False placeholder. Assume valid so that restarts
+            # against pre-existing files keep behaving as before -- this
+            # only matters for continuation runs, and files from before the
+            # continue_timesteps feature existed never hit this code path.
+            results.evaluated = True
 
         if results.proc_time is None:
             results.proc_time = np.array([np.nan])
@@ -572,7 +603,8 @@ class StepResult:
         proc_time=None,
         write_rates: bool = False,
         keff_search_root=None,
-        path: PathLike = "depletion_results.h5"
+        path: PathLike = "depletion_results.h5",
+        evaluated: bool = True,
     ):
         """Creates and writes depletion results to disk
 
@@ -602,6 +634,11 @@ class StepResult:
             Path to file to write. Defaults to 'depletion_results.h5'.
 
             .. versionadded:: 0.14.0
+        evaluated : bool, optional
+            Whether ``op_results`` came from a real transport/eigenvalue
+            solve. Should be set to ``False`` only for the zero-filled
+            placeholder written when ``final_step=False``. Defaults to
+            ``True``.
         """
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list, name_list = op.get_results_info()
@@ -626,6 +663,7 @@ class StepResult:
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
         results.keff_search_root = keff_search_root
+        results.evaluated = evaluated
 
         if not Path(path).is_file():
             Path(path).parent.mkdir(parents=True, exist_ok=True)

@@ -41,7 +41,9 @@
 #include <fmt/format.h>
 
 #include <algorithm>
+#include <climits>
 #include <cmath>
+#include <cstddef>
 #include <numeric>
 #include <string>
 
@@ -929,7 +931,21 @@ void broadcast_results()
     MPI_Datatype result_block;
     MPI_Type_contiguous(count_per_filter, MPI_DOUBLE, &result_block);
     MPI_Type_commit(&result_block);
-    MPI_Bcast(results.data(), shape[0], result_block, 0, mpi::intracomm);
+
+    // Aggregating per filter bin keeps the count well below 2**31 for all but
+    // the largest tallies, but the count is still an int. Broadcast in bounded
+    // chunks so that a tally with more filter bins than an int can represent
+    // is handled correctly rather than silently truncated.
+    const std::size_t n_filter_bins = shape[0];
+    constexpr std::size_t chunk_limit {INT_MAX};
+    double* data = results.data();
+    for (std::size_t offset = 0; offset < n_filter_bins;
+         offset += chunk_limit) {
+      const std::size_t chunk_size =
+        std::min(n_filter_bins - offset, chunk_limit);
+      MPI_Bcast(data + offset * count_per_filter, static_cast<int>(chunk_size),
+        result_block, 0, mpi::intracomm);
+    }
     MPI_Type_free(&result_block);
   }
 

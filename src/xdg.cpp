@@ -515,7 +515,7 @@ void XDGCell::to_hdf5_inner(hid_t group_id) const
 BoundingBox XDGCell::bounding_box() const
 {
   xdg::BoundingBox bbox = xdg_ptr()->mesh_manager()->volume_bounding_box(xdg_id());
-  return {bbox[0], bbox[1], bbox[2], bbox[3], bbox[4], bbox[5]};
+  return {{bbox[0], bbox[1], bbox[2]}, {bbox[3], bbox[4], bbox[5]}};
 }
 
 //==============================================================================

@@ -13,6 +13,10 @@
 #include "DagMC.hpp"
 #endif
 
+#ifdef OPENMC_XDG_ENABLED
+#include "xdg/constants.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -122,11 +126,17 @@ public:
   int& universe() { return universe_; }
   const int& universe() const { return universe_; }
 
-  int& lattice() { return lattice_; }
-  int lattice() const { return lattice_; }
+  int& mesh_cell_index() { return mesh_bin_; }
+  int mesh_cell_index() const { return mesh_bin_; }
 
-  array<int, 3>& lattice_index() { return lattice_index_; }
-  const array<int, 3>& lattice_index() const { return lattice_index_; }
+  int& lattice() { return lattice_idx_; }
+  int lattice() const { return lattice_idx_; }
+
+  array<int, 3>& mesh_index() { return lattice_or_mesh_idx_; }
+  array<int, 3> mesh_index() const { return lattice_or_mesh_idx_; }
+
+  array<int, 3>& lattice_index() { return lattice_or_mesh_idx_; }
+  array<int, 3> lattice_index() const { return lattice_or_mesh_idx_; }
 
   bool& rotated() { return rotated_; }
   const bool& rotated() const { return rotated_; }
@@ -137,8 +147,9 @@ private:
   Direction u_; //!< particle direction
   int cell_ {-1};
   int universe_ {-1};
-  int lattice_ {-1};
-  array<int, 3> lattice_index_ {{-1, -1, -1}};
+  int lattice_idx_ {-1};
+  array<int, 3> lattice_or_mesh_idx_ {{-1, -1, -1}};
+  int mesh_bin_ {-1};
   bool rotated_ {false}; //!< Is the level rotated?
 };
 
@@ -239,7 +250,7 @@ public:
     distance_ = INFINITY;
     surface_ = SURFACE_NONE;
     coord_level_ = 0;
-    lattice_translation_ = {0, 0, 0};
+    mesh_or_lattice_translation_ = {0, 0, 0};
   }
   double& distance() { return distance_; }
   const double& distance() const { return distance_; }
@@ -250,11 +261,23 @@ public:
   int coord_level() const { return coord_level_; }
   int& coord_level() { return coord_level_; }
 
-  array<int, 3>& lattice_translation() { return lattice_translation_; }
+  array<int, 3>& lattice_translation() { return mesh_or_lattice_translation_; }
   const array<int, 3>& lattice_translation() const
   {
-    return lattice_translation_;
+    return mesh_or_lattice_translation_;
   }
+
+  const array<int, 3>& mesh_translation() const
+  {
+    return mesh_or_lattice_translation_;
+  }
+
+  array<int, 3>& mesh_translation()
+  {
+    return mesh_or_lattice_translation_;
+  }
+
+  int mesh_translation(int i) const { return mesh_or_lattice_translation_[i]; }
 
   // TODO: off-by-one
   int surface_index() const { return std::abs(surface()) - 1; }
@@ -265,7 +288,7 @@ private:
   int surface_ {
     SURFACE_NONE};      //!< surface token, non-zero if boundary is surface
   int coord_level_ {0}; //!< coordinate level after crossing boundary
-  array<int, 3> lattice_translation_ {
+  array<int, 3> mesh_or_lattice_translation_ {
     0, 0, 0}; //!< which way lattice indices will change
 };
 
@@ -397,7 +420,16 @@ public:
 #ifdef OPENMC_DAGMC_ENABLED
   // DagMC state variables
   moab::DagMC::RayHistory& history() { return history_; }
+#endif
+
+#ifdef OPENMC_XDG_ENABLED
+  // Previously intersected XDG faces
+  std::vector<xdg::MeshID>& xdg_prev_elements() { return xdg_prev_elements_; }
+#endif
+
+#if defined(OPENMC_DAGMC_ENABLED) || defined(OPENMC_XDG_ENABLED)
   Direction& last_dir() { return last_dir_; }
+  const Direction& last_dir() const { return last_dir_; }
 #endif
 
   // material of current and last cell
@@ -449,8 +481,16 @@ private:
 
 #ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;
-  Direction last_dir_;
 #endif
+
+#ifdef OPENMC_XDG_ENABLED
+  std::vector<xdg::MeshID> xdg_prev_elements_;
+#endif
+
+#if defined(OPENMC_DAGMC_ENABLED) || defined(OPENMC_XDG_ENABLED)
+ Direction last_dir_;
+#endif
+
 };
 
 //============================================================================

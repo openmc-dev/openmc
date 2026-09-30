@@ -251,6 +251,11 @@ double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
   double e_p_sq, double n_conduction, double rho, double E, double tol,
   int max_iter);
 
+//! Get a material index from its name
+//! \param[in] mat_name Name of the material
+//! \return Index of the material in model::materials, or MATERIAL_INVALID if not found
+int32_t get_material_by_name(const std::string& mat_name);
+
 //! Read material data from materials.xml
 void read_materials_xml();
 

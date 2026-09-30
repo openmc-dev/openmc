@@ -1050,6 +1050,45 @@ int32_t XDGMesh::mesh_id_to_bin(xdg::MeshID id) const
   return xdg_->mesh_manager()->element_index(id);
 }
 
+NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
+{
+  const auto& coord = g.lowest_coord();
+  int bin = coord.mesh_cell_index();
+  Position r {g.r().x, g.r().y, g.r().z};
+  Direction u {g.u().x, g.u().y, g.u().z};
+  if (bin == C_NONE || bin == xdg_->mesh_manager()->implicit_complement()) {
+    auto ipc = xdg_->mesh_manager()->implicit_complement();
+    auto ipc_elem = xdg_->ray_fire(ipc, {r.x, r.y, r.z}, {u.x, u.y, u.z}, INFTY, xdg::HitOrientation::EXITING, &g.xdg_prev_elements());
+    if (ipc_elem.second == C_NONE) {
+      return {INFTY, -1, {-1, 0, 0}};
+    }
+    auto new_r = r + u * (ipc_elem.first + TINY_BIT);
+    auto next_element = xdg_->find_element({new_r.x, new_r.y, new_r.z});
+    return {ipc_elem.first, -1, {mesh_id_to_bin(next_element), 0, 0}};
+  }
+  auto mesh_id = bin_to_mesh_id(bin);
+  auto dist = xdg_->next_element(mesh_id, {r.x, r.y, r.z}, {u.x, u.y, u.z});
+  return {dist.second, -1, {mesh_id_to_bin(dist.first), 0, 0}};
+}
+
+NextMeshCell XDGMesh::distance_to_bin_boundary(int bin, const Position& r, const Direction& u) const
+{
+  if (bin == C_NONE || bin == xdg_->mesh_manager()->implicit_complement()) {
+    auto ipc = xdg_->mesh_manager()->implicit_complement();
+    auto ipc_elem = xdg_->ray_fire(ipc, {r.x, r.y, r.z}, {u.x, u.y, u.z});
+    if (ipc_elem.second == C_NONE) {
+      return {INFTY, -1, {-1, 0, 0}};
+    }
+    auto new_r = r + u * (ipc_elem.first + TINY_BIT);
+    auto next_element = xdg_->find_element({new_r.x, new_r.y, new_r.z});
+    return {ipc_elem.first, -1, {next_element, 0, 0}};
+  }
+  auto mesh_id = bin_to_mesh_id(bin);
+  auto dist = xdg_->next_element(mesh_id, {r.x, r.y, r.z}, {u.x, u.y, u.z});
+  return {dist.second, -1, {dist.first, 0, 0}};
+}
+
+
 } // namespace openmc
 
 #else

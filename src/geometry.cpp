@@ -13,6 +13,10 @@
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
 
+#ifdef OPENMC_XDG_ENABLED
+#include "openmc/xdg.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -281,13 +285,20 @@ bool find_cell_inner(
 bool neighbor_list_find_cell(GeometryState& p, bool verbose)
 {
 
-#ifdef OPENMC_DAGMC_ENABLED
   // A CSG crossing can move the particle into another instance of the same
-  // DAGMC universe, where the previous facet history is no longer valid.
+  // CAD (DAGMC/XDG) universe, where the previous facet history is no longer valid.
+#ifdef OPENMC_DAGMC_ENABLED
   if (p.surface() != SURFACE_NONE) {
     const auto& surf = model::surfaces[p.surface_index()];
     if (surf->geom_type() == GeometryType::CSG)
       p.history().reset();
+  }
+#endif
+#ifdef OPENMC_XDG_ENABLED
+  if (p.surface() != SURFACE_NONE) {
+    const auto& surf = model::surfaces[p.surface_index()];
+    if (surf->geom_type() == GeometryType::CSG)
+      p.xdg_prev_elements().clear();
   }
 #endif
 
@@ -440,6 +451,22 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
     const Position& r {coord.r()};
     const Direction& u {coord.u()};
     Cell& c {*model::cells[coord.cell()]};
+
+    // Different logic applies for a mesh-based universe
+    #ifdef OPENMC_XDG_ENABLED
+    if (model::universes[coord.universe()]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
+      const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(model::universes[coord.universe()].get());
+      auto mesh_dist = xdg_mesh_univ->xdg_mesh()->distance_to_bin_boundary(p);
+
+      if (info.distance() == INFINITY || (info.distance() - mesh_dist.distance) / info.distance() >= FP_REL_PRECISION) {
+        info.distance() = mesh_dist.distance;
+        info.mesh_translation() = mesh_dist.next_ijk;
+        info.surface() = 0;
+        info.coord_level() = i + 1;
+      }
+      return info;
+    }
+    #endif
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p.surface(), &p);

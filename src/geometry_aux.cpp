@@ -16,6 +16,7 @@
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/mesh.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/filter.h"
@@ -59,6 +60,7 @@ void read_geometry_xml(pugi::xml_node root)
   std::unordered_map<int, double> albedo_map;
   std::unordered_map<int, int> periodic_sense_map;
 
+  read_meshes(root);
   read_surfaces(root, periodic_pairs, albedo_map, periodic_sense_map);
   read_cells(root);
   prepare_boundary_conditions(periodic_pairs, albedo_map, periodic_sense_map);
@@ -431,6 +433,10 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
     auto target_univ_id = target_univ_ids[map];
     std::unordered_map<int32_t, int32_t> univ_count_memo;
     for (const auto& univ : model::universes) {
+
+      // all CAD/mesh unviverses are limited to material-filled cells
+      if (univ->geom_type() != GeometryType::CSG) continue;
+
       int32_t offset = 0;
       for (int32_t cell_indx : univ->cells_) {
         Cell& c = *model::cells[cell_indx];

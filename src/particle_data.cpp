@@ -45,7 +45,7 @@ void LocalCoord::reset()
   lattice_index()[0] = 0;
   lattice_index()[1] = 0;
   lattice_index()[2] = 0;
-  rotated_ = false;
+  rotated() = false;
 }
 
 GeometryState::GeometryState()

@@ -9,6 +9,7 @@ import lxml.etree as ET
 
 import openmc
 import openmc._xml as xml
+from .mesh import _read_meshes
 from .plots import add_plot_params
 from .checkvalue import check_type, check_less_than, check_greater_than, PathLike
 from .utility_funcs import set_xml_input_path
@@ -170,7 +171,7 @@ class Geometry:
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml_element(cls, elem, materials=None) -> Geometry:
+    def from_xml_element(cls, elem, materials=None, meshes=None) -> Geometry:
         """Generate geometry from an XML element
 
         Parameters
@@ -180,6 +181,8 @@ class Geometry:
         materials : openmc.Materials or None
             Materials used to assign to cells. If None, an attempt is made to
             generate it from the materials.xml file.
+        meshes : dict of int to openmc.Mesh or None
+            Meshes used to assign to cells.
 
         Returns
         -------
@@ -191,6 +194,11 @@ class Geometry:
         if materials is not None:
             mats.update({str(m.id): m for m in materials})
         mats['void'] = None
+
+        # Update mesh dictionary to include meshes defined in the geometry.xml file
+        if meshes is not None:
+            meshes.update(_read_meshes(elem))
+
 
         # Helper function for keeping a cache of Universe instances
         universes = {}
@@ -220,6 +228,13 @@ class Geometry:
         for e in elem.findall('dagmc_universe'):
             dag_univ = openmc.DAGMCUniverse.from_xml_element(e, mats)
             universes[dag_univ.id] = dag_univ
+
+        # Add any XDG universes
+        for (e in elem.findall('xdg_universe')):
+            if meshes is None:
+                raise ValueError('Meshes must be provided to read XDG universes.')
+            xdg_univ = openmc.XDGUniverse.from_xml_element(e, meshes)
+            universes[xdg_univ.id] = xdg_univ
 
         # Dictionary that maps each universe to a list of cells/lattices that
         # contain it (needed to determine which universe is the elem)
@@ -265,7 +280,8 @@ class Geometry:
     def from_xml(
         cls,
         path: PathLike = 'geometry.xml',
-        materials: PathLike | 'openmc.Materials' | None = 'materials.xml'
+        materials: PathLike | 'openmc.Materials' | None = 'materials.xml',
+        meshes: dict[int, 'openmc.Mesh'] | None = None
     ) -> Geometry:
         """Generate geometry from XML file
 
@@ -276,6 +292,10 @@ class Geometry:
         materials : openmc.Materials or PathLike
             Materials used to assign to cells. If PathLike, an attempt is made
             to generate materials from the provided xml file.
+        meshes : dict or None
+            A dictionary with mesh IDs as keys and mesh instances as values that
+            have already been read from XML. Pre-existing meshes are used
+            and new meshes are added to when creating tally objects.
 
         Returns
         -------
@@ -291,12 +311,16 @@ class Geometry:
         if isinstance(materials, (str, os.PathLike)):
             materials = openmc.Materials.from_xml(materials)
 
+        if meshes is None:
+            meshes = {}
+        meshes.update(_read_meshes(path))
+
         with set_xml_input_path(path):
             parser = ET.XMLParser(huge_tree=True)
             tree = ET.parse(path, parser=parser)
             root = tree.getroot()
 
-            return cls.from_xml_element(root, materials)
+            return cls.from_xml_element(root, materials, meshes)
 
     def find(self, point) -> list:
         """Find cells/universes/lattices which contain a given point

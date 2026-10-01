@@ -199,6 +199,8 @@ class Summary:
             geom_type = group.get('geom_type')
             if geom_type and geom_type[()].decode() == 'dagmc':
                 universe = openmc.DAGMCUniverse.from_hdf5(group)
+            elif geom_type and geom_type[()].decode() == 'xdg':
+                universe = openmc.XDGUniverse.from_hdf5(group)
             else:
                 universe = openmc.Universe.from_hdf5(group, self._fast_cells)
             self._fast_universes[universe.id] = universe

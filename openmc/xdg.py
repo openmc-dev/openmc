@@ -11,122 +11,10 @@ import openmc
 import openmc.checkvalue as cv
 from ._xml import get_text
 from .checkvalue import check_type, check_value, PathLike
-from .mesh import MeshBase
+from .mesh import MeshBase, UnstructuredMesh
 from .surface import _BOUNDARY_TYPES
 from .bounding_box import BoundingBox
 from .utility_funcs import input_path
-
-
-class XDGMesh(openmc.MeshBase):
-    """A 3D unstructured mesh
-
-    Parameters
-    ----------
-    filename : path-like
-        Location of the unstructured mesh file. Supported files for 'moab'
-        library are .h5 and .vtk. Supported files for 'libmesh' library are
-        exodus mesh files .exo.
-    library : {'moab', 'libmesh'}
-        Mesh library used for the unstructured mesh tally
-    mesh_id : int
-        Unique identifier for the mesh
-    name : str
-        Name of the mesh
-
-    Attributes
-    ----------
-    id : int
-        Unique identifier for the mesh
-    name : str
-        Name of the mesh
-    filename : str
-        Name of the file containing the unstructured mesh
-    library : {'moab', 'libmesh'}
-        Mesh library used for the unstructured mesh tally
-    """
-    def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
-                 name: str = ''):
-        super().__init__(mesh_id, name)
-        self.filename = filename
-        self.library = library
-
-    @property
-    def filename(self):
-        return self._filename
-
-    @filename.setter
-    def filename(self, filename):
-        cv.check_type('Unstructured Mesh filename', filename, PathLike)
-        self._filename = input_path(filename)
-
-    @property
-    def library(self):
-        return self._library
-
-    @library.setter
-    def library(self, lib: str):
-        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
-        self._library = lib
-
-    @property
-    def dimension(self):
-        return (self.n_elements,)
-
-    @property
-    def n_dimension(self):
-        return 3
-
-    @property
-    def indices(self):
-        raise NotImplementedError("XDGMesh.indices is not implemented")
-
-
-    def __repr__(self):
-        string = super().__repr__()
-        string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
-        string += '{: <16}=\t{}\n'.format('\tMesh Library', self.library)
-        return string
-
-    @classmethod
-    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
-        raise NotImplementedError("XDGMesh.from_hdf5 is not implemented")
-        # TODO: add length_multiplier
-
-    def to_xml_element(self):
-        """Return XML representation of the mesh
-
-        Returns
-        -------
-        element : lxml.etree._Element
-            XML element containing mesh data
-
-        """
-        element = super().to_xml_element()
-        element.set("type", "xdg")
-        element.set("library", self._library)
-        subelement = ET.SubElement(element, "filename")
-        subelement.text = str(self.filename)
-
-        return element
-
-    @classmethod
-    def from_xml_element(cls, elem: ET.Element):
-        """Generate unstructured mesh object from XML element
-
-        Parameters
-        ----------
-        elem : lxml.etree._Element
-            XML element
-
-        Returns
-        -------
-        openmc.UnstructuredMesh
-            UnstructuredMesh generated from an XML element
-        """
-        mesh_id = int(get_text(elem, 'id'))
-        filename = get_text(elem, 'filename')
-        library = get_text(elem, 'library')
-        return cls(filename, library, mesh_id)
 
 
 class XDGUniverse(openmc.UniverseBase):
@@ -161,7 +49,7 @@ class XDGUniverse(openmc.UniverseBase):
     """
 
     def __init__(self,
-                 mesh: XDGMesh,
+                 mesh: UnstructuredMesh,
                  universe_id=None,
                  name='',
                  auto_geom_ids=False,
@@ -204,7 +92,7 @@ class XDGUniverse(openmc.UniverseBase):
 
     @mesh.setter
     def mesh(self, val):
-        cv.check_type('XDG mesh', val, XDGMesh)
+        cv.check_type('XDG mesh', val, UnstructuredMesh)
         self._mesh = val
 
     @property

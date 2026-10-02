@@ -230,7 +230,7 @@ class Geometry:
             universes[dag_univ.id] = dag_univ
 
         # Add any XDG universes
-        for (e in elem.findall('xdg_universe')):
+        for e in elem.findall('xdg_universe'):
             if meshes is None:
                 raise ValueError('Meshes must be provided to read XDG universes.')
             xdg_univ = openmc.XDGUniverse.from_xml_element(e, meshes)

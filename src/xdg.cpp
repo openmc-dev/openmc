@@ -369,6 +369,33 @@ void XDGUniverse::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
+void XDGUniverse::next_cell(Particle& p) const
+{
+  const auto* xdg_surface = dynamic_cast<const XDGSurface*>(model::surfaces[p.surface_index()].get());
+  const auto* xdg_cell = dynamic_cast<const XDGCell*>(model::cells[p.cell_last(p.n_coord() - 1)].get());
+
+  xdg::MeshID xdg_surface_id = xdg_surface->xdg_id();
+  xdg::MeshID xdg_cell_id = xdg_cell->xdg_id();
+  xdg::MeshID next_volume = xdg_ptr()->mesh_manager()->next_volume(xdg_cell->xdg_id(), xdg_surface->xdg_id());
+  int32_t next_cell = cell_index_map_.at(next_volume);
+
+  // save material, temperature, and density multiplier
+  p.material_last() = p.material();
+  p.sqrtkT_last() = p.sqrtkT();
+  p.density_mult_last() = p.density_mult();
+  // set new cell value
+  p.lowest_coord().cell() = next_cell;
+  auto& cell = model::cells[next_cell];
+
+  p.cell_instance() = 0;
+  if (cell->distribcell_index_ >= 0)
+    p.cell_instance() = cell_instance_at_level(p, p.n_coord() - 1);
+
+  p.material() = cell->material(p.cell_instance());
+  p.sqrtkT() = cell->sqrtkT(p.cell_instance());
+  p.density_mult() = cell->density_mult(p.cell_instance());
+}
+
 void XDGUniverse::assign_material(
   std::string& mat_string, std::unique_ptr<XDGCell>& c) const
 {
@@ -377,7 +404,6 @@ void XDGUniverse::assign_material(
     c->material_.push_back(MATERIAL_VOID);
     return;
   }
-
 
   bool mat_found_by_name = false;
   // attempt to find a material with a matching name

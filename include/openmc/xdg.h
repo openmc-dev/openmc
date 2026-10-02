@@ -241,6 +241,11 @@ public:
   //! \return A string of the ID ranges for entities of dimension \p dim
   std::string xdg_ids_for_dim(int dim) const;
 
+  //! Move the particle to the next cell in the XDG universe
+  //! \param[in] p The particle to move. Particle should be on a
+  //! surface when called.
+  void next_cell(Particle& p) const;
+
   bool find_cell(GeometryState& p) const override;
 
   void to_hdf5(hid_t universes_group) const override;

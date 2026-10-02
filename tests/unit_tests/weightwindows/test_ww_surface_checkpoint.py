@@ -6,7 +6,17 @@ import pytest
 def test_ww_surface_on_mesh_boundary(run_in_tmpdir, direction):
     """Weight windows applied at a surface that coincides with a weight window
     mesh boundary must use the mesh element the particle is entering,
-    regardless of the direction of travel."""
+    regardless of the direction of travel.
+
+    At the surface checkpoint the particle sits exactly on the plane x = 0.
+    Structured mesh index lookups resolve a position exactly on an element
+    boundary to the element on the lower-coordinate side, so when the window
+    was looked up at the particle's position alone, a particle moving in +x
+    was given the window of the element it was leaving. It was then not split
+    and the +x case failed, while the -x case passed only because there the
+    lower-coordinate element happens to be the one being entered. The lookup
+    now nudges the position along the direction of travel.
+    """
 
     # Void-like one-group material so the only weight window checks happen at
     # surface crossings

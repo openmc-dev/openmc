@@ -77,6 +77,8 @@ class StepResult:
 
         self.data = None
         self.keff_search_root = None
+        self.hdf5_dtype = 'float64'
+        self.hdf5_compression = None
 
     def __repr__(self):
         t = self.time[0]
@@ -262,12 +264,19 @@ class StepResult:
         kwargs = {'mode': "w" if step == 0 else "a"}
 
         if h5py.get_config().mpi and comm.size > 1:
-            # Write results in parallel
+            # Write results in parallel — compression not supported
+            saved_compression = self.hdf5_compression
+            if self.hdf5_compression is not None:
+                if comm.rank == 0 and step == 0:
+                    warnings.warn("HDF5 compression is not supported with "
+                                  "parallel I/O; writing without compression")
+                self.hdf5_compression = None
             kwargs['driver'] = 'mpio'
             kwargs['comm'] = comm
             with h5py.File(filename, **kwargs) as handle:
                 self._to_hdf5(handle, step, parallel=True,
                               write_rates=write_rates)
+            self.hdf5_compression = saved_compression
         else:
             # Gather results at root process
             all_results = comm.gather(self)
@@ -347,17 +356,21 @@ class StepResult:
                     self.rates.index_rx[rxn])
 
         # Construct array storage
+        _dtype = self.hdf5_dtype
+        _compression = self.hdf5_compression
 
         handle.create_dataset("number", (1, n_mats, n_nuc_number),
                               maxshape=(None, n_mats, n_nuc_number),
                               chunks=True,
-                              dtype='float64')
+                              dtype=_dtype,
+                              compression=_compression)
 
         if include_rates and n_nuc_rxn > 0 and n_rxn > 0:
             handle.create_dataset(
                 "reaction rates", (1, n_mats, n_nuc_rxn, n_rxn),
                 maxshape=(None, n_mats, n_nuc_rxn, n_rxn),
-                chunks=True, dtype='float64')
+                chunks=True, dtype=_dtype,
+                compression=_compression)
 
         handle.create_dataset("eigenvalues", (1, 2),
                               maxshape=(None, 2), dtype='float64')
@@ -572,7 +585,9 @@ class StepResult:
         proc_time=None,
         write_rates: bool = False,
         keff_search_root=None,
-        path: PathLike = "depletion_results.h5"
+        path: PathLike = "depletion_results.h5",
+        hdf5_dtype: str = 'float64',
+        hdf5_compression: str = None,
     ):
         """Creates and writes depletion results to disk
 
@@ -602,12 +617,31 @@ class StepResult:
             Path to file to write. Defaults to 'depletion_results.h5'.
 
             .. versionadded:: 0.14.0
+        hdf5_dtype : str, optional
+            dtype for number and reaction rate datasets, float32 or float64
+
+            .. versionadded:: 0.15.4
+        hdf5_compression : str, optional
+            Compression for number and reaction rate datasets.
+            Accepted values are 'gzip' and 'lzf'. Ignored with parallel HDF5.
+
+            .. versionadded:: 0.15.4
         """
+        if hdf5_dtype not in ('float32', 'float64'):
+            raise ValueError(
+                f"hdf5_dtype must be 'float32' or 'float64', got '{hdf5_dtype}'")
+        if hdf5_compression is not None and hdf5_compression not in ('gzip', 'lzf'):
+            raise ValueError(
+                f"hdf5_compression must be None, 'gzip', or 'lzf', "
+                f"got '{hdf5_compression}'")
+
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list, name_list = op.get_results_info()
 
         # Create results
         results = StepResult()
+        results.hdf5_dtype = hdf5_dtype
+        results.hdf5_compression = hdf5_compression
         results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, name_list)
 
         n_mat = len(burn_list)

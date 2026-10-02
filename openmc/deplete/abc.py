@@ -904,7 +904,9 @@ class Integrator(ABC):
             final_step: bool = True,
             output: bool = True,
             path: PathLike = 'depletion_results.h5',
-            write_rates: bool = False
+            write_rates: bool = False,
+            hdf5_dtype: str = 'float64',
+            hdf5_compression: str = None,
         ):
         """Perform the entire depletion process across all steps
 
@@ -928,6 +930,15 @@ class Integrator(ABC):
             each step. Defaults to ``False`` to reduce file size.
 
             .. versionadded:: 0.15.3
+        hdf5_dtype : str, optional
+            dtype for number and reaction rate datasets, float32 or float64.
+
+            .. versionadded:: 0.15.4
+        hdf5_compression : str, optional
+            Compression for number and reaction rate datasets.
+            Accepted values are 'gzip' and 'lzf'. Ignored with parallel HDF5.
+
+            .. versionadded:: 0.15.4
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
@@ -953,7 +964,9 @@ class Integrator(ABC):
                     proc_time,
                     write_rates=write_rates,
                     keff_search_root=keff_search_root,
-                    path=path
+                    path=path,
+                    hdf5_dtype=hdf5_dtype,
+                    hdf5_compression=hdf5_compression,
                 )
 
                 # Update for next step
@@ -981,7 +994,9 @@ class Integrator(ABC):
                 proc_time,
                 write_rates=write_rates,
                 keff_search_root=keff_search_root,
-                path=path
+                path=path,
+                hdf5_dtype=hdf5_dtype,
+                hdf5_compression=hdf5_compression,
             )
             self.operator.write_bos_data(len(self) + self._i_res)
 
@@ -1371,7 +1386,9 @@ class SIIntegrator(Integrator):
         self,
         output: bool = True,
         path: PathLike = "depletion_results.h5",
-        write_rates: bool = False
+        write_rates: bool = False,
+        hdf5_dtype: str = 'float64',
+        hdf5_compression: str = None,
     ):
         """Perform the entire depletion process across all steps
 
@@ -1388,6 +1405,15 @@ class SIIntegrator(Integrator):
             each step. Defaults to ``False`` to reduce file size.
 
             .. versionadded:: 0.15.3
+        hdf5_dtype : str, optional
+            dtype for number and reaction rate datasets, float32 or float64.
+
+            .. versionadded:: 0.15.4
+        hdf5_compression : str, optional
+            Compression for number and reaction rate datasets.
+            Accepted values are 'gzip' and 'lzf'. Ignored with parallel HDF5.
+
+            .. versionadded:: 0.15.4
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
@@ -1415,7 +1441,9 @@ class SIIntegrator(Integrator):
                     self._i_res + i,
                     proc_time,
                     write_rates=write_rates,
-                    path=path
+                    path=path,
+                    hdf5_dtype=hdf5_dtype,
+                    hdf5_compression=hdf5_compression,
                 )
 
                 # Update for next step
@@ -1433,7 +1461,9 @@ class SIIntegrator(Integrator):
                 self._i_res + len(self),
                 proc_time,
                 write_rates=write_rates,
-                path=path
+                path=path,
+                hdf5_dtype=hdf5_dtype,
+                hdf5_compression=hdf5_compression,
             )
             self.operator.write_bos_data(self._i_res + len(self))
 

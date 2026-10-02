@@ -109,12 +109,17 @@ class Summary:
             self._read_materials()
 
             # Read native geometry only
-            if "dagmc" not in self._f['geometry'].attrs.keys():
-                self._read_surfaces()
-                cell_fills = self._read_cells()
-                self._read_universes()
-                self._read_lattices()
-                self._finalize_geometry(cell_fills)
+            if "dagmc" in self._f['geometry'].attrs.keys():
+                return
+
+            if "xdg" in self._f['geometry'].attrs.keys():
+                return
+
+            self._read_surfaces()
+            cell_fills = self._read_cells()
+            self._read_universes()
+            self._read_lattices()
+            self._finalize_geometry(cell_fills)
 
     def _read_materials(self):
         for group in self._f['materials'].values():

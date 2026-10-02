@@ -294,9 +294,15 @@ class XDGUniverse(openmc.UniverseBase):
         """
         id = int(group.name.split('/')[-1].lstrip('universe '))
         fname = group['filename'][()].decode()
+        library = group['library'][()].decode() if 'library' in group else None
+        mesh_id = int(group['mesh_id'][()]) if 'mesh_id' in group else None
         name = group['name'][()].decode() if 'name' in group else None
 
-        out = cls(fname, universe_id=id, name=name)
+        # TODO: Bandaid. Address reading without generating a new mesh instance.
+        mesh = openmc.UnstructuredMesh(fname, mesh_id=mesh_id, library=library)
+        mesh.interface = 'xdg'
+
+        out = cls(mesh, universe_id=id, name=name)
 
         out.auto_geom_ids = bool(group.attrs['auto_geom_ids'])
         out.auto_mat_ids = bool(group.attrs['auto_mat_ids'])

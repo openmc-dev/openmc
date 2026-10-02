@@ -361,6 +361,9 @@ void XDGUniverse::to_hdf5(hid_t universes_group) const
 
   // Write other properties of the XDG Universe
   write_string(group, "filename", filename(), false);
+  write_string(group, "library", library(), false);
+  write_string(group, "mesh_id", std::to_string(mesh()->id()), false);
+
   write_attribute(
     group, "auto_geom_ids", static_cast<int>(adjust_geometry_ids_));
   write_attribute(

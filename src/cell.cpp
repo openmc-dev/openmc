@@ -579,26 +579,147 @@ vector<int32_t>::iterator CSGCell::find_left_parenthesis(
 // Region implementation
 //==============================================================================
 
+namespace {
+
+//! Expression tree node used while parsing a region specification
+struct ParseNode {
+  enum class Type { HALFSPACE, INTERSECTION, UNION };
+  Type type;
+  int32_t halfspace {0};
+  vector<ParseNode> children;
+};
+
+//! Recursive descent parser for a tokenized region specification.
+//! Intersection has higher precedence than union, and complement applies to the
+//! half-space or parenthesized expression that follows it. Complements are
+//! removed while parsing by applying De Morgan's laws, and nested operators of
+//! the same type are merged.
+class RegionParser {
+public:
+  RegionParser(const vector<int32_t>& tokens, int32_t cell_id)
+    : tokens_(tokens), cell_id_(cell_id)
+  {}
+
+  ParseNode parse()
+  {
+    ParseNode root = parse_union(false);
+    if (pos_ != tokens_.size()) {
+      if (tokens_[pos_] == OP_RIGHT_PAREN)
+        mismatched_parentheses();
+      invalid();
+    }
+    return root;
+  }
+
+private:
+  ParseNode parse_union(bool negate)
+  {
+    ParseNode node {
+      negate ? ParseNode::Type::INTERSECTION : ParseNode::Type::UNION};
+    add_child(node, parse_intersection(negate));
+    while (pos_ < tokens_.size() && tokens_[pos_] == OP_UNION) {
+      ++pos_;
+      add_child(node, parse_intersection(negate));
+    }
+    return collapse(std::move(node));
+  }
+
+  ParseNode parse_intersection(bool negate)
+  {
+    ParseNode node {
+      negate ? ParseNode::Type::UNION : ParseNode::Type::INTERSECTION};
+    add_child(node, parse_unary(negate));
+    while (pos_ < tokens_.size() && tokens_[pos_] == OP_INTERSECTION) {
+      ++pos_;
+      add_child(node, parse_unary(negate));
+    }
+    return collapse(std::move(node));
+  }
+
+  ParseNode parse_unary(bool negate)
+  {
+    if (pos_ >= tokens_.size())
+      invalid();
+    int32_t token = tokens_[pos_++];
+    if (token == OP_COMPLEMENT) {
+      return parse_unary(!negate);
+    } else if (token == OP_LEFT_PAREN) {
+      ParseNode node = parse_union(negate);
+      if (pos_ >= tokens_.size() || tokens_[pos_] != OP_RIGHT_PAREN)
+        mismatched_parentheses();
+      ++pos_;
+      return node;
+    } else if (token < OP_UNION) {
+      ParseNode node {ParseNode::Type::HALFSPACE};
+      node.halfspace = negate ? -token : token;
+      return node;
+    } else if (token == OP_RIGHT_PAREN) {
+      mismatched_parentheses();
+    }
+    invalid();
+  }
+
+  //! Add a child to an operator node, merging it into the node if it is an
+  //! operator node of the same type
+  static void add_child(ParseNode& parent, ParseNode child)
+  {
+    if (child.type == parent.type) {
+      for (auto& grandchild : child.children)
+        parent.children.push_back(std::move(grandchild));
+    } else {
+      parent.children.push_back(std::move(child));
+    }
+  }
+
+  //! Replace an operator node with a single child by that child
+  static ParseNode collapse(ParseNode node)
+  {
+    if (node.children.size() == 1)
+      return std::move(node.children.front());
+    return node;
+  }
+
+  [[noreturn]] void mismatched_parentheses() const
+  {
+    fatal_error(fmt::format(
+      "Mismatched parentheses in region specification for cell {}", cell_id_));
+  }
+
+  [[noreturn]] void invalid() const
+  {
+    fatal_error(
+      fmt::format("Invalid region specification for cell {}", cell_id_));
+  }
+
+  const vector<int32_t>& tokens_;
+  int32_t cell_id_;
+  std::size_t pos_ {0};
+};
+
+} // namespace
+
 Region::Region(std::string region_spec, int32_t cell_id)
 {
+  vector<int32_t> tokens;
+
   // Check if region_spec is not empty.
   if (!region_spec.empty()) {
     // Parse all halfspaces and operators except for intersection (whitespace).
     for (int i = 0; i < region_spec.size();) {
       if (region_spec[i] == '(') {
-        expression_.push_back(OP_LEFT_PAREN);
+        tokens.push_back(OP_LEFT_PAREN);
         i++;
 
       } else if (region_spec[i] == ')') {
-        expression_.push_back(OP_RIGHT_PAREN);
+        tokens.push_back(OP_RIGHT_PAREN);
         i++;
 
       } else if (region_spec[i] == '|') {
-        expression_.push_back(OP_UNION);
+        tokens.push_back(OP_UNION);
         i++;
 
       } else if (region_spec[i] == '~') {
-        expression_.push_back(OP_COMPLEMENT);
+        tokens.push_back(OP_COMPLEMENT);
         i++;
 
       } else if (region_spec[i] == '-' || region_spec[i] == '+' ||
@@ -609,7 +730,7 @@ Region::Region(std::string region_spec, int32_t cell_id)
         while (j < region_spec.size() && std::isdigit(region_spec[j])) {
           j++;
         }
-        expression_.push_back(std::stoi(region_spec.substr(i, j - i)));
+        tokens.push_back(std::stoi(region_spec.substr(i, j - i)));
         i = j;
 
       } else if (std::isspace(region_spec[i])) {
@@ -625,54 +746,20 @@ Region::Region(std::string region_spec, int32_t cell_id)
 
     // Add in intersection operators where a missing operator is needed.
     int i = 0;
-    while (i < expression_.size() - 1) {
+    while (i + 1 < tokens.size()) {
       bool left_compat {
-        (expression_[i] < OP_UNION) || (expression_[i] == OP_RIGHT_PAREN)};
-      bool right_compat {(expression_[i + 1] < OP_UNION) ||
-                         (expression_[i + 1] == OP_LEFT_PAREN) ||
-                         (expression_[i + 1] == OP_COMPLEMENT)};
+        (tokens[i] < OP_UNION) || (tokens[i] == OP_RIGHT_PAREN)};
+      bool right_compat {(tokens[i + 1] < OP_UNION) ||
+                         (tokens[i + 1] == OP_LEFT_PAREN) ||
+                         (tokens[i + 1] == OP_COMPLEMENT)};
       if (left_compat && right_compat) {
-        expression_.insert(expression_.begin() + i + 1, OP_INTERSECTION);
+        tokens.insert(tokens.begin() + i + 1, OP_INTERSECTION);
       }
       i++;
     }
 
-    // Remove complement operators using DeMorgan's laws
-    auto it = std::find(expression_.begin(), expression_.end(), OP_COMPLEMENT);
-    while (it != expression_.end()) {
-      // Erase complement. Note that erase invalidates the iterator, so we have
-      // to use the iterator it returns, which points to the token that
-      // followed the complement operator.
-      it = expression_.erase(it);
-      if (it == expression_.end())
-        break;
-
-      // Define stop given left parenthesis or not
-      auto stop = it;
-      if (*it == OP_LEFT_PAREN) {
-        int depth = 1;
-        do {
-          stop++;
-          if (*stop > OP_COMPLEMENT) {
-            if (*stop == OP_RIGHT_PAREN) {
-              depth--;
-            } else {
-              depth++;
-            }
-          }
-        } while (depth > 0);
-        it++;
-      }
-
-      // apply DeMorgan's law to any surfaces/operators between these
-      // positions in the RPN
-      apply_demorgan(it, stop);
-      // update iterator position
-      it = std::find(expression_.begin(), expression_.end(), OP_COMPLEMENT);
-    }
-
     // Convert user IDs to surface indices.
-    for (auto& r : expression_) {
+    for (auto& r : tokens) {
       if (r < OP_UNION) {
         const auto& it {model::surface_map.find(abs(r))};
         if (it == model::surface_map.end()) {
@@ -683,266 +770,81 @@ Region::Region(std::string region_spec, int32_t cell_id)
         r = (r > 0) ? it->second + 1 : -(it->second + 1);
       }
     }
-
-    // Check if this is a simple cell.
-    simple_ = true;
-    for (int32_t token : expression_) {
-      if (token == OP_UNION) {
-        simple_ = false;
-        // Ensure intersections have precedence over unions
-        enforce_precedence();
-        break;
-      }
-    }
-
-    // If this cell is simple, remove all the superfluous operator tokens.
-    if (simple_) {
-      expression_.erase(std::remove_if(expression_.begin(), expression_.end(),
-                          [](int32_t token) {
-                            return token == OP_INTERSECTION ||
-                                   token > OP_COMPLEMENT;
-                          }),
-        expression_.end());
-    }
-    expression_.shrink_to_fit();
-
-  } else {
-    simple_ = true;
-  }
-}
-
-//==============================================================================
-
-void Region::apply_demorgan(
-  vector<int32_t>::iterator start, vector<int32_t>::iterator stop)
-{
-  do {
-    if (*start < OP_UNION) {
-      *start *= -1;
-    } else if (*start == OP_UNION) {
-      *start = OP_INTERSECTION;
-    } else if (*start == OP_INTERSECTION) {
-      *start = OP_UNION;
-    }
-    start++;
-  } while (start < stop);
-}
-
-//==============================================================================
-//! Add precedence for infix regions so intersections have higher
-//! precedence than unions using parentheses.
-//==============================================================================
-
-void Region::add_parentheses(int64_t start)
-{
-  int32_t start_token = expression_[start];
-  // Add left parenthesis and set new position to be after parenthesis
-  if (start_token == OP_UNION) {
-    start += 2;
-  }
-  expression_.insert(expression_.begin() + start - 1, OP_LEFT_PAREN);
-
-  // Add right parenthesis
-  // While the start iterator is within the bounds of infix
-  while (start + 1 < expression_.size()) {
-    start++;
-
-    // If the current token is an operator and is different than the start token
-    if (expression_[start] >= OP_UNION && expression_[start] != start_token) {
-      // Skip wrapped regions but save iterator position to check precedence and
-      // add right parenthesis, right parenthesis position depends on the
-      // operator, when the operator is a union then do not include the operator
-      // in the region, when the operator is an intersection then include the
-      // operator and next surface
-      if (expression_[start] == OP_LEFT_PAREN) {
-        int depth = 1;
-        do {
-          start++;
-          if (expression_[start] > OP_COMPLEMENT) {
-            if (expression_[start] == OP_RIGHT_PAREN) {
-              depth--;
-            } else {
-              depth++;
-            }
-          }
-        } while (depth > 0);
-      } else {
-        if (start_token == OP_UNION) {
-          --start;
-        }
-        expression_.insert(expression_.begin() + start, OP_RIGHT_PAREN);
-        return;
-      }
-    }
-  }
-  // If we get here a right parenthesis hasn't been placed
-  expression_.push_back(OP_RIGHT_PAREN);
-}
-
-//==============================================================================
-//! Add parentheses to enforce operator precedence in region expressions
-//!
-//! This function ensures that intersection operators have higher precedence
-//! than union operators by adding parentheses where needed. For example:
-//!   "1 2 | 3" becomes "(1 2) | 3"
-//!   "1 | 2 3" becomes "1 | (2 3)"
-//!
-//! The algorithm uses stacks to track the current operator type and its
-//! position at each parenthesis depth level. When it encounters a different
-//! operator at the same depth, it adds parentheses to group the
-//! higher-precedence operations.
-//==============================================================================
-
-void Region::enforce_precedence()
-{
-  // Stack tracking the operator type at each depth (0 = no operator seen yet)
-  vector<int32_t> op_stack = {0};
-
-  // Stack tracking where the operator sequence started at each depth
-  vector<std::size_t> pos_stack = {0};
-
-  for (int64_t i = 0; i < expression_.size(); ++i) {
-    int32_t token = expression_[i];
-
-    if (token == OP_LEFT_PAREN) {
-      // Entering a new parenthesis level - push new tracking state
-      op_stack.push_back(0);
-      pos_stack.push_back(0);
-      continue;
-    } else if (token == OP_RIGHT_PAREN) {
-      // Exiting a parenthesis level - pop tracking state (keep at least one)
-      if (op_stack.size() > 1) {
-        op_stack.pop_back();
-        pos_stack.pop_back();
-      }
-      continue;
-    }
-
-    if (token == OP_UNION || token == OP_INTERSECTION) {
-      if (op_stack.back() == 0) {
-        // First operator at this depth - record it and its position
-        op_stack.back() = token;
-        pos_stack.back() = i;
-      } else if (token != op_stack.back()) {
-        // Encountered a different operator at the same depth - need to add
-        // parentheses to enforce precedence. Intersection has higher
-        // precedence, so we parenthesize the intersection terms.
-        if (op_stack.back() == OP_INTERSECTION) {
-          add_parentheses(pos_stack.back());
-        } else {
-          add_parentheses(i);
-        }
-
-        // Restart the scan since we modified the expression
-        i = -1; // Will be incremented to 0 by the for loop
-        op_stack = {0};
-        pos_stack = {0};
-      }
-    }
-  }
-}
-
-//==============================================================================
-//! Convert infix region specification to Reverse Polish Notation (RPN)
-//!
-//! This function uses the shunting-yard algorithm.
-//==============================================================================
-
-vector<int32_t> Region::generate_postfix(int32_t cell_id) const
-{
-  vector<int32_t> rpn;
-  vector<int32_t> stack;
-
-  for (int32_t token : expression_) {
-    if (token < OP_UNION) {
-      // If token is not an operator, add it to output
-      rpn.push_back(token);
-    } else if (token < OP_RIGHT_PAREN) {
-      // Regular operators union, intersection, complement
-      while (stack.size() > 0) {
-        int32_t op = stack.back();
-
-        if (op < OP_RIGHT_PAREN && ((token == OP_COMPLEMENT && token < op) ||
-                                     (token != OP_COMPLEMENT && token <= op))) {
-          // While there is an operator, op, on top of the stack, if the token
-          // is left-associative and its precedence is less than or equal to
-          // that of op or if the token is right-associative and its precedence
-          // is less than that of op, move op to the output queue and push the
-          // token on to the stack. Note that only complement is
-          // right-associative.
-          rpn.push_back(op);
-          stack.pop_back();
-        } else {
-          break;
-        }
-      }
-
-      stack.push_back(token);
-
-    } else if (token == OP_LEFT_PAREN) {
-      // If the token is a left parenthesis, push it onto the stack
-      stack.push_back(token);
-
-    } else {
-      // If the token is a right parenthesis, move operators from the stack to
-      // the output queue until reaching the left parenthesis.
-      for (auto it = stack.rbegin(); *it != OP_LEFT_PAREN; it++) {
-        // If we run out of operators without finding a left parenthesis, it
-        // means there are mismatched parentheses.
-        if (it == stack.rend()) {
-          fatal_error(fmt::format(
-            "Mismatched parentheses in region specification for cell {}",
-            cell_id));
-        }
-        rpn.push_back(stack.back());
-        stack.pop_back();
-      }
-
-      // Pop the left parenthesis.
-      stack.pop_back();
-    }
   }
 
-  while (stack.size() > 0) {
-    int32_t op = stack.back();
+  // An empty specification is the region containing all of space
+  if (tokens.empty())
+    return;
 
-    // If the operator is a parenthesis it is mismatched.
-    if (op >= OP_RIGHT_PAREN) {
-      fatal_error(fmt::format(
-        "Mismatched parentheses in region specification for cell {}", cell_id));
+  // Parse the tokens into an expression tree and store it in pre-order
+  ParseNode root = RegionParser(tokens, cell_id).parse();
+  bool simple = true;
+  auto append = [&](const ParseNode& node, int32_t parent, auto& self) -> void {
+    int32_t i = nodes_.size();
+    Node::Type type;
+    switch (node.type) {
+    case ParseNode::Type::HALFSPACE:
+      type = Node::Type::HALFSPACE;
+      break;
+    case ParseNode::Type::INTERSECTION:
+      type = Node::Type::INTERSECTION;
+      break;
+    default:
+      type = Node::Type::UNION;
+      simple = false;
     }
+    nodes_.push_back({type, node.halfspace, 0, parent});
+    for (const auto& child : node.children)
+      self(child, i, self);
+    nodes_[i].end = nodes_.size();
+  };
+  append(root, -1, append);
 
-    rpn.push_back(stack.back());
-    stack.pop_back();
+  // Store the half-spaces in order. A simple region is just their
+  // intersection, so its expression tree is not needed.
+  for (const auto& node : nodes_) {
+    if (node.type == Node::Type::HALFSPACE)
+      halfspaces_.push_back(node.halfspace);
   }
-
-  return rpn;
+  if (simple)
+    nodes_.clear();
+  nodes_.shrink_to_fit();
 }
 
 //==============================================================================
 
 std::string Region::str() const
 {
-  std::stringstream region_spec {};
-  if (!expression_.empty()) {
-    for (int32_t token : expression_) {
-      if (token == OP_LEFT_PAREN) {
-        region_spec << " (";
-      } else if (token == OP_RIGHT_PAREN) {
-        region_spec << " )";
-      } else if (token == OP_COMPLEMENT) {
-        region_spec << " ~";
-      } else if (token == OP_INTERSECTION) {
-      } else if (token == OP_UNION) {
-        region_spec << " |";
-      } else {
-        // Note the off-by-one indexing
-        auto surf_id = model::surfaces[abs(token) - 1]->id_;
-        region_spec << " " << ((token > 0) ? surf_id : -surf_id);
-      }
+  std::string region_spec;
+  auto write = [&](int32_t i, bool parentheses, auto& self) -> void {
+    const Node& node = nodes_[i];
+    if (node.type == Node::Type::HALFSPACE) {
+      // Note the off-by-one indexing
+      auto surf_id = model::surfaces[abs(node.halfspace) - 1]->id_;
+      region_spec +=
+        fmt::format(" {}", (node.halfspace > 0) ? surf_id : -surf_id);
+      return;
+    }
+    if (parentheses)
+      region_spec += " (";
+    for (int32_t j = i + 1; j < node.end; j = nodes_[j].end) {
+      if (j > i + 1 && node.type == Node::Type::UNION)
+        region_spec += " |";
+      self(j, true, self);
+    }
+    if (parentheses)
+      region_spec += " )";
+  };
+  if (!nodes_.empty()) {
+    write(0, false, write);
+  } else {
+    for (int32_t token : halfspaces_) {
+      // Note the off-by-one indexing
+      auto surf_id = model::surfaces[abs(token) - 1]->id_;
+      region_spec += fmt::format(" {}", (token > 0) ? surf_id : -surf_id);
     }
   }
-  return region_spec.str();
+  return region_spec;
 }
 
 //==============================================================================
@@ -950,7 +852,7 @@ std::string Region::str() const
 std::pair<double, int32_t> Region::distance(
   Position r, Direction u, int32_t on_surface) const
 {
-  if (simple_) {
+  if (nodes_.empty()) {
     return distance_to_nearest_surface(r, u, on_surface, false);
   } else {
     return distance_complex(r, u, on_surface);
@@ -965,11 +867,7 @@ std::pair<double, int32_t> Region::distance_to_nearest_surface(Position r,
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
-  for (int32_t token : expression_) {
-    // Ignore this token if it corresponds to an operator rather than a region.
-    if (token >= OP_UNION)
-      continue;
-
+  for (int32_t token : halfspaces_) {
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {std::abs(token) == std::abs(on_surface)};
@@ -1034,7 +932,7 @@ std::pair<double, int32_t> Region::distance_complex(
 
 bool Region::contains(Position r, Direction u, int32_t on_surface) const
 {
-  if (simple_) {
+  if (nodes_.empty()) {
     return contains_simple(r, u, on_surface);
   } else {
     return contains_complex(r, u, on_surface);
@@ -1045,11 +943,11 @@ bool Region::contains(Position r, Direction u, int32_t on_surface) const
 
 bool Region::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
-  for (int32_t token : expression_) {
-    // Assume that no tokens are operators. Evaluate the sense of particle with
-    // respect to the surface and see if the token matches the sense. If the
-    // particle's surface attribute is set and matches the token, that
-    // overrides the determination based on sense().
+  for (int32_t token : halfspaces_) {
+    // Evaluate the sense of particle with respect to the surface and see if
+    // the token matches the sense. If the particle's surface attribute is set
+    // and matches the token, that overrides the determination based on
+    // sense().
     if (token == on_surface) {
     } else if (-token == on_surface) {
       return false;
@@ -1068,129 +966,91 @@ bool Region::contains_simple(Position r, Direction u, int32_t on_surface) const
 
 bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
-  bool in_cell = true;
-  int total_depth = 0;
+  // Evaluate the expression tree without recursion: descend to the first
+  // half-space of each operator node and, after evaluating a half-space, move
+  // up the tree until reaching an operator node whose value is not yet known.
+  // The remaining children of an operator node are skipped as soon as one of
+  // them determines its value.
+  int32_t i = 0;
+  while (true) {
+    // Descend to the first half-space in this subtree
+    while (nodes_[i].type != Node::Type::HALFSPACE)
+      ++i;
 
-  // For each token
-  for (auto it = expression_.begin(); it != expression_.end(); it++) {
-    int32_t token = *it;
+    // Evaluate the half-space
+    bool value;
+    int32_t token = nodes_[i].halfspace;
+    if (token == on_surface) {
+      value = true;
+    } else if (-token == on_surface) {
+      value = false;
+    } else {
+      // Note the off-by-one indexing
+      value = model::surfaces[abs(token) - 1]->sense(r, u) == (token > 0);
+    }
 
-    // If the token is a surface evaluate the sense
-    // If the token is a union or intersection check to
-    // short circuit
-    if (token < OP_UNION) {
-      if (token == on_surface) {
-        in_cell = true;
-      } else if (-token == on_surface) {
-        in_cell = false;
+    // Move up the tree until reaching a node with children left to evaluate
+    while (true) {
+      int32_t i_parent = nodes_[i].parent;
+      if (i_parent < 0)
+        return value;
+      const Node& parent = nodes_[i_parent];
+      bool intersection = parent.type == Node::Type::INTERSECTION;
+      int32_t next = nodes_[i].end;
+      if (value != intersection || next == parent.end) {
+        // The value of the parent is known
+        i = i_parent;
       } else {
-        // Note the off-by-one indexing
-        bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
-        in_cell = (sense == (token > 0));
+        i = next;
+        break;
       }
-    } else if ((token == OP_UNION && in_cell == true) ||
-               (token == OP_INTERSECTION && in_cell == false)) {
-      // If the total depth is zero return
-      if (total_depth == 0) {
-        return in_cell;
-      }
-
-      total_depth--;
-
-      // While the iterator is within the bounds of the vector
-      int depth = 1;
-      do {
-        // Get next token
-        it++;
-        int32_t next_token = *it;
-
-        // If the token is an a parenthesis
-        if (next_token > OP_COMPLEMENT) {
-          // Adjust depth accordingly
-          if (next_token == OP_RIGHT_PAREN) {
-            depth--;
-          } else {
-            depth++;
-          }
-        }
-      } while (depth > 0);
-    } else if (token == OP_LEFT_PAREN) {
-      total_depth++;
-    } else if (token == OP_RIGHT_PAREN) {
-      total_depth--;
     }
   }
-  return in_cell;
 }
 
 //==============================================================================
 
 BoundingBox Region::bounding_box(int32_t cell_id) const
 {
-  if (simple_) {
-    return bounding_box_simple();
-  } else {
-    auto postfix = generate_postfix(cell_id);
-    return bounding_box_complex(postfix);
-  }
-}
-
-//==============================================================================
-
-BoundingBox Region::bounding_box_simple() const
-{
-  BoundingBox bbox;
-  for (int32_t token : expression_) {
-    bbox &= model::surfaces[abs(token) - 1]->bounding_box(token > 0);
-  }
-  return bbox;
-}
-
-//==============================================================================
-
-BoundingBox Region::bounding_box_complex(vector<int32_t> postfix) const
-{
-  vector<BoundingBox> stack(postfix.size());
-  int i_stack = -1;
-
-  for (auto& token : postfix) {
-    if (token == OP_UNION) {
-      stack[i_stack - 1] = stack[i_stack - 1] | stack[i_stack];
-      i_stack--;
-    } else if (token == OP_INTERSECTION) {
-      stack[i_stack - 1] = stack[i_stack - 1] & stack[i_stack];
-      i_stack--;
-    } else {
-      i_stack++;
-      stack[i_stack] = model::surfaces[abs(token) - 1]->bounding_box(token > 0);
+  if (nodes_.empty()) {
+    BoundingBox bbox;
+    for (int32_t token : halfspaces_) {
+      bbox &= model::surfaces[abs(token) - 1]->bounding_box(token > 0);
     }
+    return bbox;
   }
 
-  assert(i_stack == 0);
-  return stack.front();
+  auto box = [&](int32_t i, auto& self) -> BoundingBox {
+    const Node& node = nodes_[i];
+    if (node.type == Node::Type::HALFSPACE) {
+      return model::surfaces[abs(node.halfspace) - 1]->bounding_box(
+        node.halfspace > 0);
+    }
+    BoundingBox bbox = self(i + 1, self);
+    for (int32_t j = nodes_[i + 1].end; j < node.end; j = nodes_[j].end) {
+      if (node.type == Node::Type::INTERSECTION) {
+        bbox &= self(j, self);
+      } else {
+        bbox = bbox | self(j, self);
+      }
+    }
+    return bbox;
+  };
+  return box(0, box);
 }
 
 //==============================================================================
 
 vector<int32_t> Region::surfaces() const
 {
-  if (simple_) {
-    return expression_;
-  }
+  return halfspaces_;
+}
 
-  vector<int32_t> surfaces = expression_;
+//==============================================================================
 
-  auto it = std::find_if(surfaces.begin(), surfaces.end(),
-    [&](const auto& value) { return value >= OP_UNION; });
-
-  while (it != surfaces.end()) {
-    surfaces.erase(it);
-
-    it = std::find_if(surfaces.begin(), surfaces.end(),
-      [&](const auto& value) { return value >= OP_UNION; });
-  }
-
-  return surfaces;
+int Region::n_surfaces() const
+{
+  return halfspaces_.size();
 }
 
 //==============================================================================

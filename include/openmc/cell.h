@@ -66,12 +66,12 @@ public:
   //! \brief Determine if a cell contains the particle at a given location.
   //!
   //! The bounds of the cell are determined by a logical expression involving
-  //! surface half-spaces. The expression used is given in infix notation
+  //! surface half-spaces, stored as an expression tree of intersections and
+  //! unions with half-spaces as leaves.
   //!
   //! The function is split into two cases, one for simple cells (those
   //! involving only the intersection of half-spaces) and one for complex cells.
-  //! Both cases use short circuiting; however, in the case fo complex cells,
-  //! the complexity increases with the binary operators involved.
+  //! Both cases use short circuiting.
   //! \param r The 3D Cartesian coordinate to check.
   //! \param u A direction used to "break ties" the coordinates are very
   //!   close to a surface.
@@ -90,24 +90,36 @@ public:
   //! Get the CSG expression as a string
   std::string str() const;
 
-  //! Get a vector containing all the surfaces in the region expression
+  //! Get a vector containing all the half-spaces in the region expression
   vector<int32_t> surfaces() const;
 
-  //! Get size of surfaces
-  int n_surfaces() const { return expression_.size(); }
+  //! Get the number of half-spaces in the region expression
+  int n_surfaces() const;
 
   //----------------------------------------------------------------------------
   // Accessors
 
   //! Get Boolean of if the cell is simple or not
-  bool is_simple() const { return simple_; }
+  bool is_simple() const { return nodes_.empty(); }
 
 private:
   //----------------------------------------------------------------------------
-  // Private Methods
+  // Types
 
-  //! Get a vector of the region expression in postfix notation
-  vector<int32_t> generate_postfix(int32_t cell_id) const;
+  //! Node of the region expression tree. Nodes are stored in pre-order, so
+  //! the children of an operator node follow it, and the subtree of a node
+  //! ends just before index end. Children of an operator node are never
+  //! operator nodes of the same type.
+  struct Node {
+    enum class Type : int8_t { HALFSPACE, INTERSECTION, UNION };
+    Type type;
+    int32_t halfspace; //!< Signed surface index + 1 for HALFSPACE nodes
+    int32_t end;       //!< Index one past the last node of the subtree
+    int32_t parent;    //!< Index of the parent node (-1 for the root)
+  };
+
+  //----------------------------------------------------------------------------
+  // Private Methods
 
   //! Determine if a particle is inside the cell for a simple cell (only
   //! intersection operators)
@@ -115,9 +127,8 @@ private:
 
   //! Determine if a particle is inside the cell for a complex cell.
   //!
-  //! Uses the combination of half-spaces and binary operators to determine
-  //! if short circuiting can be used. Short circuiting uses the relative and
-  //! absolute depth of parentheses in the expression.
+  //! Evaluates the expression tree, skipping the remaining children of an
+  //! operator node as soon as its value is known.
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the nearest intersection with any surface in the region expression.
@@ -128,32 +139,16 @@ private:
   std::pair<double, int32_t> distance_complex(
     Position r, Direction u, int32_t on_surface) const;
 
-  //! BoundingBox if the particle is in a simple cell.
-  BoundingBox bounding_box_simple() const;
-
-  //! BoundingBox if the particle is in a complex cell.
-  BoundingBox bounding_box_complex(vector<int32_t> postfix) const;
-
-  //! Enforce precedence between intersections and unions
-  void enforce_precedence();
-
-  //! Add parenthesis to enforce precedence
-  void add_parentheses(int64_t start);
-
-  //! Remove complement operators from the expression
-  void remove_complement_ops();
-
-  //! Remove complement operators by using DeMorgan's laws
-  void apply_demorgan(
-    vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
-
   //----------------------------------------------------------------------------
   // Private Data
 
-  //! Definition of spatial region as Boolean expression of half-spaces
-  // TODO: Should this be a vector of some other type
-  vector<int32_t> expression_;
-  bool simple_; //!< Does the region contain only intersections?
+  //! Signed surface indices + 1 of the half-spaces in the region expression,
+  //! in order. A simple region is the intersection of these half-spaces.
+  vector<int32_t> halfspaces_;
+
+  //! Expression tree of a complex region in pre-order (empty for a simple
+  //! region)
+  vector<Node> nodes_;
 };
 
 //==============================================================================

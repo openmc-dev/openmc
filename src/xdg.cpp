@@ -83,7 +83,8 @@ XDGMesh::XDGMesh(const std::string& filename, double length_multiplier)
   initialize();
 }
 
-XDGMesh::XDGMesh(std::shared_ptr<xdg::XDG> external_xdg, double length_multiplier)
+XDGMesh::XDGMesh(
+  std::shared_ptr<xdg::XDG> external_xdg, double length_multiplier)
 {
   xdg_ = external_xdg;
   filename_ = "unknown (external file)";

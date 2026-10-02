@@ -935,10 +935,21 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
   // Push the initial hole onto the stack
   holes[n_holes++] = i_shell;
 
+  // Fluorescent photons below the photon energy cutoff are not created, and
+  // Auger electrons below it cannot produce bremsstrahlung photons above it, so
+  // emissions below the cutoff have no effect. Since every particle emitted
+  // while filling a hole, and every hole it leaves behind, has an energy less
+  // than the binding energy of that hole, holes whose binding energy is below
+  // the cutoff can be skipped along with the rest of their cascade.
+  double E_cutoff =
+    settings::energy_cutoff[ParticleType::photon().transport_index()];
+
   while (n_holes > 0) {
     // Pop the next hole off the stack
     int i_hole = holes[--n_holes];
     const auto& shell {shells_[i_hole]};
+    if (shell.binding_energy < E_cutoff)
+      continue;
 
     // If no transitions, assume fluorescent photon from captured free electron
     if (shell.transitions.empty()) {
@@ -958,26 +969,28 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
     }
     const auto& transition = shell.transitions[i_trans];
 
-    // Sample angle isotropically
-    Direction u = isotropic_direction(p.current_seed());
-
     // Push the hole created by the electron transitioning to the photoelectron
     // hole onto the stack
     holes[n_holes++] = transition.primary_subshell;
 
-    if (transition.secondary_subshell != -1) {
-      // Non-radiative transition -- Auger/Coster-Kronig effect
-
-      // Push the hole left by emitted auger electron onto the stack
+    // Push the hole left by an emitted Auger electron onto the stack
+    bool auger = transition.secondary_subshell != -1;
+    if (auger)
       holes[n_holes++] = transition.secondary_subshell;
 
-      // Process Auger electron at the photon collision site.
+    if (transition.energy < E_cutoff)
+      continue;
+
+    // Sample angle isotropically
+    Direction u = isotropic_direction(p.current_seed());
+
+    if (auger) {
+      // Non-radiative transition -- process Auger/Coster-Kronig electron at the
+      // photon collision site
       process_charged_secondary(
         p, u, transition.energy, ParticleType::electron());
     } else {
-      // Radiative transition -- get X-ray energy
-
-      // Create fluorescent photon
+      // Radiative transition -- create fluorescent photon
       p.create_secondary(p.wgt(), u, transition.energy, ParticleType::photon());
     }
   }

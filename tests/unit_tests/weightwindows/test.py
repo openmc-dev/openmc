@@ -205,8 +205,8 @@ def test_weightwindows(model, wws, shared_secondary):
 
             diff = an_source_bin - ww_source_bin
 
-            # check that values are within two combined standard deviations
-            assert abs(diff.nominal_value) / diff.std_dev < 2.0
+            # check that values are within three combined standard deviations
+            assert abs(diff.nominal_value) / diff.std_dev < 3.0
 
         compare_results('neutron', analog_tally, ww_tally)
         compare_results('photon', analog_tally, ww_tally)

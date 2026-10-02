@@ -85,7 +85,7 @@ public:
     Position r, Direction u, int32_t on_surface) const;
 
   //! Get the BoundingBox for this cell.
-  BoundingBox bounding_box(int32_t cell_id) const;
+  BoundingBox bounding_box() const;
 
   //! Get the CSG expression as a string
   std::string str() const;
@@ -442,25 +442,13 @@ public:
     return region_.contains(r, u, on_surface);
   }
 
-  BoundingBox bounding_box() const override
-  {
-    return region_.bounding_box(id_);
-  }
+  BoundingBox bounding_box() const override { return region_.bounding_box(); }
 
   void to_hdf5_inner(hid_t group_id) const override;
 
   bool is_simple() const override { return region_.is_simple(); }
 
   virtual GeometryType geom_type() const override { return GeometryType::CSG; }
-
-protected:
-  //! Returns the beginning position of a parenthesis block (immediately before
-  //! two surface tokens) in the RPN given a starting position at the end of
-  //! that block (immediately after two surface tokens)
-  //! \param start Starting position of the search
-  //! \param rpn The rpn being searched
-  static vector<int32_t>::iterator find_left_parenthesis(
-    vector<int32_t>::iterator start, const vector<int32_t>& rpn);
 
 private:
   Region region_;

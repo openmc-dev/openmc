@@ -6,8 +6,6 @@
 #include <cctype>
 #include <cmath>
 #include <iterator>
-#include <set>
-#include <sstream>
 #include <string>
 
 #include <fmt/core.h>
@@ -541,41 +539,6 @@ void CSGCell::to_hdf5_inner(hid_t group_id) const
 }
 
 //==============================================================================
-
-vector<int32_t>::iterator CSGCell::find_left_parenthesis(
-  vector<int32_t>::iterator start, const vector<int32_t>& infix)
-{
-  // start search at zero
-  int parenthesis_level = 0;
-  auto it = start;
-  while (it != infix.begin()) {
-    // look at two tokens at a time
-    int32_t one = *it;
-    int32_t two = *(it - 1);
-
-    // decrement parenthesis level if there are two adjacent surfaces
-    if (one < OP_UNION && two < OP_UNION) {
-      parenthesis_level--;
-      // increment if there are two adjacent operators
-    } else if (one >= OP_UNION && two >= OP_UNION) {
-      parenthesis_level++;
-    }
-
-    // if the level gets to zero, return the position
-    if (parenthesis_level == 0) {
-      // move the iterator back one before leaving the loop
-      // so that all tokens in the parenthesis block are included
-      it--;
-      break;
-    }
-
-    // continue loop, one token at a time
-    it--;
-  }
-  return it;
-}
-
-//==============================================================================
 // Region implementation
 //==============================================================================
 
@@ -1010,7 +973,7 @@ bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
 
 //==============================================================================
 
-BoundingBox Region::bounding_box(int32_t cell_id) const
+BoundingBox Region::bounding_box() const
 {
   if (nodes_.empty()) {
     BoundingBox bbox;

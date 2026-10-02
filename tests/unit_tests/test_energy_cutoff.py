@@ -61,3 +61,46 @@ def test_energy_cutoff(run_in_tmpdir):
     # Despite killing particles below the cutoff, the total heating should be
     # equal to the source energy
     assert heating[0] == pytest.approx(source_energy)
+
+
+def test_positron_cutoff_annihilation(run_in_tmpdir):
+    """Positrons below the energy cutoff must still annihilate"""
+
+    def run(positron_cutoff):
+        model = openmc.Model()
+        m = openmc.Material()
+        m.add_nuclide('Pb208', 1.0)
+        m.set_density('g/cm3', 11.35)
+        sph = openmc.Sphere(r=100.0, boundary_type='reflective')
+        model.geometry = openmc.Geometry([openmc.Cell(fill=m, region=-sph)])
+
+        model.settings.run_mode = 'fixed source'
+        model.settings.source = openmc.IndependentSource(
+            particle='photon',
+            energy=openmc.stats.Discrete([10.0e6], [1.0]),
+        )
+        model.settings.particles = 100
+        model.settings.batches = 2
+        # With local energy deposition, charged particles produce no
+        # bremsstrahlung, so the positron cutoff should have no effect
+        model.settings.electron_treatment = 'led'
+        if positron_cutoff is not None:
+            model.settings.cutoff = {'energy_positron': positron_cutoff}
+
+        tally = openmc.Tally()
+        tally.filters = [
+            openmc.EnergyFilter([0.0, 0.5e6, 0.52e6, 10.0e6]),
+            openmc.ParticleFilter(['photon'])
+        ]
+        tally.scores = ['flux']
+        model.tallies = [tally]
+        model.run(apply_tally_results=True)
+        return tally.mean.ravel()
+
+    # Every positron is below a cutoff above the source energy
+    flux_ref = run(None)
+    flux_cutoff = run(20.0e6)
+
+    # Annihilation photons contribute to the bin containing 511 keV
+    assert flux_ref[1] > 0.0
+    assert flux_cutoff == pytest.approx(flux_ref)

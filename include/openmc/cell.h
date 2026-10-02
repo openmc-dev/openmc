@@ -81,8 +81,10 @@ public:
   bool contains(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
-  std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface) const;
+  //! \param p Particle whose scratch space is used for complex regions, or
+  //!   nullptr outside of transport
+  std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, GeometryState* p = nullptr) const;
 
   //! Get the BoundingBox for this cell.
   BoundingBox bounding_box() const;
@@ -113,7 +115,7 @@ private:
   struct Node {
     enum class Type : int8_t { HALFSPACE, INTERSECTION, UNION };
     Type type;
-    int32_t halfspace; //!< Signed surface index + 1 for HALFSPACE nodes
+    int32_t halfspace; //!< Signed position + 1 in surfaces (HALFSPACE nodes)
     int32_t end;       //!< Index one past the last node of the subtree
     int32_t parent;    //!< Index of the parent node (-1 for the root)
   };
@@ -131,13 +133,29 @@ private:
   //! operator node as soon as its value is known.
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 
+  //! Evaluate the expression tree of a complex region
+  //!
+  //! Operator nodes are evaluated with short circuiting, skipping their
+  //! remaining children as soon as one of them determines their value.
+  //! \param in_halfspace Callable returning whether the point is in the
+  //!   half-space of a HALFSPACE node given its halfspace value
+  template<typename F>
+  bool evaluate(F&& in_halfspace) const;
+
+  //! Signed surface index + 1 of a half-space of the expression tree
+  int32_t surface_token(int32_t halfspace) const
+  {
+    int32_t i_surf = complex_->surfaces[std::abs(halfspace) - 1];
+    return halfspace > 0 ? i_surf : -i_surf;
+  }
+
   //! Find the nearest intersection with any surface in the region expression.
   std::pair<double, int32_t> distance_to_nearest_surface(Position r,
     Direction u, int32_t on_surface, bool ignore_coincident_surfaces) const;
 
   //! Find the oncoming boundary of this cell for a complex cell.
   std::pair<double, int32_t> distance_complex(
-    Position r, Direction u, int32_t on_surface) const;
+    Position r, Direction u, int32_t on_surface, GeometryState* p) const;
 
   //----------------------------------------------------------------------------
   // Private Data
@@ -150,6 +168,9 @@ private:
   //! and the cells holding them, stay small for simple cells
   struct Complex {
     vector<Node> nodes; //!< Expression tree in pre-order
+    //! Distinct surface indices + 1 of the half-spaces, in order of first
+    //! appearance
+    vector<int32_t> surfaces;
   };
 
   //! Data of a complex region (null for a simple region)
@@ -439,7 +460,7 @@ public:
   std::pair<double, int32_t> distance(Position r, Direction u,
     int32_t on_surface, GeometryState* p) const override
   {
-    return region_.distance(r, u, on_surface);
+    return region_.distance(r, u, on_surface, p);
   }
 
   bool contains(Position r, Direction u, int32_t on_surface) const override

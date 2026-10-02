@@ -231,6 +231,16 @@ struct CacheDataMG {
 //==============================================================================
 // Information about nearest boundary crossing
 //==============================================================================
+//! State of a surface while finding the boundary of a complex region
+//==============================================================================
+
+struct SurfaceState {
+  double distance; //!< Distance along the ray to the surface
+  bool sense;      //!< Side of the surface the ray is on
+  bool stale;      //!< Whether the distance must be recomputed before use
+};
+
+//==============================================================================
 
 class BoundaryInfo {
 public:
@@ -394,6 +404,9 @@ public:
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
 
+  //! Working space used to find the next intersection in complex regions
+  vector<SurfaceState>& surface_states() { return surface_states_; }
+
 #ifdef OPENMC_DAGMC_ENABLED
   // DagMC state variables
   moab::DagMC::RayHistory& history() { return history_; }
@@ -437,6 +450,8 @@ private:
     SURFACE_NONE}; //!< surface token for surface the particle is currently on
 
   BoundaryInfo boundary_; //!< Info about the next intersection
+  //! Working space used to find the next intersection in complex regions
+  vector<SurfaceState> surface_states_;
 
   int material_ {-1};      //!< index for current material
   int material_last_ {-1}; //!< index for last material

@@ -53,6 +53,7 @@ GeometryState::GeometryState()
   // Create and clear coordinate levels
   coord_.resize(model::n_coord_levels);
   cell_last_.resize(model::n_coord_levels);
+  surface_states_.resize(model::max_region_surfaces);
   clear();
 }
 

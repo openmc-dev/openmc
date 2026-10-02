@@ -79,6 +79,21 @@ constexpr int MAX_SAMPLE {100000};
 // window games are unbiased regardless of where the thresholds sit.
 constexpr double WEIGHT_WINDOW_REL_TOL {1e-9};
 
+// Maximum number of DAGMC entity handles to send when exchanging rays
+// between MPI ranks. This caps the RayHistory length to avoid sending
+// variable-length vectors.
+constexpr int MAX_N_HANDLES {5};
+
+// Number of initial batches over which the load is rebalanced between MPI
+// ranks during random ray transport. (The iteration cap within a single
+// rebalancing pass is a local in DecompositionMap::balance_load.)
+constexpr int ITER_LOAD_BALANCE {5};
+
+// Maximum number of times a random ray may be handed to another MPI rank
+// before it is terminated. Bounds a ray ping-ponging across a subdomain
+// boundary, which would otherwise hang every rank in the job.
+constexpr int MAX_RAY_TRANSFERS {10000};
+
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 
@@ -378,6 +393,7 @@ enum class RandomRayVolumeEstimator {
   AUTO
 };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
+enum class RandomRayGeomDim { TWO_DIM, THREE_DIM };
 enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
 enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };
 

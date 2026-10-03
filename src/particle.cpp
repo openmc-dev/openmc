@@ -223,7 +223,20 @@ void Particle::event_calculate_xs()
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (lowest_coord().cell() == C_NONE) {
-    if (!exhaustive_find_cell(*this)) {
+    bool found = exhaustive_find_cell(*this);
+    if (!found && surface() != SURFACE_NONE) {
+      // A particle that starts on a surface, e.g., one split by weight windows
+      // at a surface crossing, is only known to be on that surface. If another
+      // surface coincides with it, roundoff in the particle's position may
+      // place the particle on the wrong side of the other surface so that no
+      // cell contains it. As when crossing a surface, move the particle
+      // forward a tiny bit and search again.
+      surface() = SURFACE_NONE;
+      n_coord() = 1;
+      r() += TINY_BIT * u();
+      found = exhaustive_find_cell(*this);
+    }
+    if (!found) {
       mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
       return;

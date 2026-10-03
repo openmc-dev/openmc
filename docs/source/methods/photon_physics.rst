@@ -751,6 +751,14 @@ and Auger electrons:
 
 5. Repeat from step 1 for vacancy left by the transition electron.
 
+Fluorescence photons and Auger electrons with energies below the photon energy
+cutoff are not created, since such photons would be killed immediately and
+such electrons cannot produce bremsstrahlung photons above the cutoff. Because
+every particle emitted while filling a vacancy, as well as every vacancy left
+behind, has an energy lower than the binding energy of the vacancy shell, the
+cascade is not followed for vacancies whose binding energy is below the photon
+energy cutoff.
+
 
 .. _photon_production:
 

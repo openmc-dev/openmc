@@ -8,8 +8,10 @@
 #include <complex>
 #include <cstdlib>
 
+#include "openmc/array.h"
 #include "openmc/position.h"
 #include "openmc/search.h"
+#include "openmc/tensor.h"
 
 namespace openmc {
 
@@ -258,6 +260,45 @@ double standard_normal_cdf(double z);
 //! \return true if a and b are approximately equal, false otherwise
 //==============================================================================
 bool isclose(double a, double b, double rel_tol, double abs_tol);
+
+//==============================================================================
+//! Combine three correlated estimates of the same quantity
+//!
+//! Returns the linear combination of the estimates, with weights summing to
+//! one, that has the smallest variance. The theory behind this can be found in
+//! M. Halperin, "Almost linearly-optimum combination of unbiased estimates,"
+//! J. Am. Stat. Assoc., 56, 36-43 (1961),
+//! doi:10.1080/01621459.1961.10482088. The implementation here follows that
+//! described in T. Urbatsch et al., "Estimation and interpretation of keff
+//! confidence intervals in MCNP," Nucl. Technol., 111, 169-182 (1995), whose
+//! expression for the standard deviation accounts for the weights having been
+//! estimated from the same realizations as the estimates themselves.
+//!
+//! If two of the estimates coincide the three-estimate expression is singular,
+//! and an expression derived for a combination of two estimates is used
+//! instead.
+//!
+//! \p n must be at least MIN_REALIZATIONS_TO_COMBINE; below that the
+//! covariance is singular and the expressions are undefined.
+//!
+//! \param[in] estimates The three estimates
+//! \param[in] cov Covariance of the three estimates over a single
+//!   realization, not of the mean
+//! \param[in] n Number of realizations each estimate was formed from
+//! \param[out] combined The combination and the standard deviation of its mean
+//==============================================================================
+
+//! Fewest realizations from which a combination can be formed
+//!
+//! A k by k sample covariance built from n realizations has rank at most
+//! n - 1, so it is singular unless n exceeds k. The n-3 and n-2 factors in the
+//! expressions for the standard deviation are the residual degrees of freedom
+//! and vanish at the same point.
+constexpr int64_t MIN_REALIZATIONS_TO_COMBINE {4};
+
+void combine_estimates(const array<double, 3>& estimates,
+  const tensor::StaticTensor2D<double, 3, 3>& cov, int64_t n,
+  array<double, 2>& combined);
 
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

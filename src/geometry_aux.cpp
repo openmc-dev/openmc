@@ -282,6 +282,19 @@ void finalize_geometry()
 
   // Determine number of nested coordinate levels in the geometry
   model::n_coord_levels = maximum_levels(model::root_universe);
+
+  // Flag surfaces that are used outside of the root universe. Their local
+  // coordinate frame does not coincide with the root frame, so a lab-frame
+  // position cannot be handed to Surface::evaluate() or Surface::normal().
+  // Note that DAGCell reports no surfaces, so this leaves DAGMC surfaces at
+  // their default; see the comment on Surface::root_frame_.
+  for (const auto& c : model::cells) {
+    if (c->universe_ == model::root_universe)
+      continue;
+    for (auto token : c->surfaces()) {
+      model::surfaces[std::abs(token) - 1]->root_frame_ = false;
+    }
+  }
 }
 
 //==============================================================================

@@ -73,7 +73,8 @@ def input_path(filename: PathLike) -> Path:
     # DAGMC universe read back from a summary/statepoint file that was never
     # written with a source file) and should not be resolved to the current
     # working directory.
-    if not str(filename):
+    filename = os.fspath(filename)
+    if not filename:
         return Path(filename)
 
     if openmc.config['resolve_paths']:

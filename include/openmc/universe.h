@@ -31,6 +31,13 @@ public:
   vector<int32_t> cells_; //!< Cells within this universe
   int32_t n_instances_;   //!< Number of instances of this universe
 
+  //! Sorted distributed cell maps of the universes in this universe,
+  //! including itself
+  vector<int32_t> distribcell_maps_;
+
+  //! Distributed cell offsets of the fill cells in this universe
+  vector<int32_t> offset_values_;
+
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
   virtual void to_hdf5(hid_t group_id) const;

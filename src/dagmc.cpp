@@ -821,8 +821,8 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c,
 DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx) {};
 
-std::pair<double, int32_t> DAGCell::distance(
-  Position r, Direction u, int32_t on_surface, GeometryState* p) const
+std::pair<double, int32_t> DAGCell::distance(Position r, Direction u,
+  int32_t on_surface, GeometryState* p, double /*max_distance*/) const
 {
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction

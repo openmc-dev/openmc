@@ -120,7 +120,10 @@ void cross_lattice(
 //! Find the next boundary a particle will intersect.
 //==============================================================================
 
-BoundaryInfo distance_to_boundary(GeometryState& p);
+//! \param max_distance Distance beyond which a boundary is not needed. The
+//!   distance to a farther boundary may be returned as INFTY.
+BoundaryInfo distance_to_boundary(
+  GeometryState& p, double max_distance = INFTY);
 
 } // namespace openmc
 

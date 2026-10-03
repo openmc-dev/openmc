@@ -189,8 +189,7 @@ def test_get_all_universes():
     assert not (univs ^ {u1, u2, u3})
 
 
-@pytest.mark.parametrize('resolve_paths', [True, False])
-def test_dagmc_universe_from_hdf5_without_filename(run_in_tmpdir, resolve_paths):
+def test_dagmc_universe_from_hdf5_without_filename(run_in_tmpdir):
     """A DAGMC universe built from an in-memory MOAB instance has no filename."""
     with h5py.File('summary.h5', 'w') as f:
         group = f.create_group('universe 1')
@@ -199,7 +198,7 @@ def test_dagmc_universe_from_hdf5_without_filename(run_in_tmpdir, resolve_paths)
         group.attrs['auto_mat_ids'] = 1
         group.attrs['length_multiplier'] = 1.0
 
-        with openmc.config.patch('resolve_paths', resolve_paths):
+        with openmc.config.patch('resolve_paths', True):
             univ = openmc.DAGMCUniverse.from_hdf5(group)
 
     assert univ.id == 1

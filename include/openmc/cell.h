@@ -100,7 +100,7 @@ public:
   // Accessors
 
   //! Get Boolean of if the cell is simple or not
-  bool is_simple() const { return nodes_.empty(); }
+  bool is_simple() const { return !complex_; }
 
 private:
   //----------------------------------------------------------------------------
@@ -146,9 +146,14 @@ private:
   //! in order. A simple region is the intersection of these half-spaces.
   vector<int32_t> halfspaces_;
 
-  //! Expression tree of a complex region in pre-order (empty for a simple
-  //! region)
-  vector<Node> nodes_;
+  //! Data needed only by complex regions, kept out of line so that regions,
+  //! and the cells holding them, stay small for simple cells
+  struct Complex {
+    vector<Node> nodes; //!< Expression tree in pre-order
+  };
+
+  //! Data of a complex region (null for a simple region)
+  unique_ptr<Complex> complex_;
 };
 
 //==============================================================================

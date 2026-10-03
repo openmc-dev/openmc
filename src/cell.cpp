@@ -504,8 +504,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   // Get a tokenized representation of the region specification and apply De
   // Morgans law
-  Region region(region_spec, id_);
-  region_ = region;
+  region_ = Region(region_spec, id_);
 
   // Read the translation vector.
   if (check_for_node(cell_node, "translation")) {
@@ -663,6 +662,8 @@ private:
 
 Region::Region(std::string region_spec, int32_t cell_id)
 {
+  vector<Node> nodes;
+
   vector<int32_t> tokens;
 
   // Check if region_spec is not empty.
@@ -743,7 +744,7 @@ Region::Region(std::string region_spec, int32_t cell_id)
   ParseNode root = RegionParser(tokens, cell_id).parse();
   bool simple = true;
   auto append = [&](const ParseNode& node, int32_t parent, auto& self) -> void {
-    int32_t i = nodes_.size();
+    int32_t i = nodes.size();
     Node::Type type;
     switch (node.type) {
     case ParseNode::Type::HALFSPACE:
@@ -756,22 +757,21 @@ Region::Region(std::string region_spec, int32_t cell_id)
       type = Node::Type::UNION;
       simple = false;
     }
-    nodes_.push_back({type, node.halfspace, 0, parent});
+    nodes.push_back({type, node.halfspace, 0, parent});
     for (const auto& child : node.children)
       self(child, i, self);
-    nodes_[i].end = nodes_.size();
+    nodes[i].end = nodes.size();
   };
   append(root, -1, append);
 
   // Store the half-spaces in order. A simple region is just their
   // intersection, so its expression tree is not needed.
-  for (const auto& node : nodes_) {
+  for (const auto& node : nodes) {
     if (node.type == Node::Type::HALFSPACE)
       halfspaces_.push_back(node.halfspace);
   }
-  if (simple)
-    nodes_.clear();
-  nodes_.shrink_to_fit();
+  if (!simple)
+    complex_ = make_unique<Complex>(Complex {std::move(nodes)});
 }
 
 //==============================================================================
@@ -780,7 +780,8 @@ std::string Region::str() const
 {
   std::string region_spec;
   auto write = [&](int32_t i, bool parentheses, auto& self) -> void {
-    const Node& node = nodes_[i];
+    const auto& nodes = complex_->nodes;
+    const Node& node = nodes[i];
     if (node.type == Node::Type::HALFSPACE) {
       // Note the off-by-one indexing
       auto surf_id = model::surfaces[abs(node.halfspace) - 1]->id_;
@@ -790,7 +791,7 @@ std::string Region::str() const
     }
     if (parentheses)
       region_spec += " (";
-    for (int32_t j = i + 1; j < node.end; j = nodes_[j].end) {
+    for (int32_t j = i + 1; j < node.end; j = nodes[j].end) {
       if (j > i + 1 && node.type == Node::Type::UNION)
         region_spec += " |";
       self(j, true, self);
@@ -798,7 +799,7 @@ std::string Region::str() const
     if (parentheses)
       region_spec += " )";
   };
-  if (!nodes_.empty()) {
+  if (complex_) {
     write(0, false, write);
   } else {
     for (int32_t token : halfspaces_) {
@@ -815,7 +816,7 @@ std::string Region::str() const
 std::pair<double, int32_t> Region::distance(
   Position r, Direction u, int32_t on_surface) const
 {
-  if (nodes_.empty()) {
+  if (!complex_) {
     return distance_to_nearest_surface(r, u, on_surface, false);
   } else {
     return distance_complex(r, u, on_surface);
@@ -895,7 +896,7 @@ std::pair<double, int32_t> Region::distance_complex(
 
 bool Region::contains(Position r, Direction u, int32_t on_surface) const
 {
-  if (nodes_.empty()) {
+  if (!complex_) {
     return contains_simple(r, u, on_surface);
   } else {
     return contains_complex(r, u, on_surface);
@@ -934,15 +935,16 @@ bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
   // up the tree until reaching an operator node whose value is not yet known.
   // The remaining children of an operator node are skipped as soon as one of
   // them determines its value.
+  const auto& nodes = complex_->nodes;
   int32_t i = 0;
   while (true) {
     // Descend to the first half-space in this subtree
-    while (nodes_[i].type != Node::Type::HALFSPACE)
+    while (nodes[i].type != Node::Type::HALFSPACE)
       ++i;
 
     // Evaluate the half-space
     bool value;
-    int32_t token = nodes_[i].halfspace;
+    int32_t token = nodes[i].halfspace;
     if (token == on_surface) {
       value = true;
     } else if (-token == on_surface) {
@@ -954,12 +956,12 @@ bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
 
     // Move up the tree until reaching a node with children left to evaluate
     while (true) {
-      int32_t i_parent = nodes_[i].parent;
+      int32_t i_parent = nodes[i].parent;
       if (i_parent < 0)
         return value;
-      const Node& parent = nodes_[i_parent];
+      const Node& parent = nodes[i_parent];
       bool intersection = parent.type == Node::Type::INTERSECTION;
-      int32_t next = nodes_[i].end;
+      int32_t next = nodes[i].end;
       if (value != intersection || next == parent.end) {
         // The value of the parent is known
         i = i_parent;
@@ -975,7 +977,7 @@ bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
 
 BoundingBox Region::bounding_box() const
 {
-  if (nodes_.empty()) {
+  if (!complex_) {
     BoundingBox bbox;
     for (int32_t token : halfspaces_) {
       bbox &= model::surfaces[abs(token) - 1]->bounding_box(token > 0);
@@ -983,14 +985,15 @@ BoundingBox Region::bounding_box() const
     return bbox;
   }
 
+  const auto& nodes = complex_->nodes;
   auto box = [&](int32_t i, auto& self) -> BoundingBox {
-    const Node& node = nodes_[i];
+    const Node& node = nodes[i];
     if (node.type == Node::Type::HALFSPACE) {
       return model::surfaces[abs(node.halfspace) - 1]->bounding_box(
         node.halfspace > 0);
     }
     BoundingBox bbox = self(i + 1, self);
-    for (int32_t j = nodes_[i + 1].end; j < node.end; j = nodes_[j].end) {
+    for (int32_t j = nodes[i + 1].end; j < node.end; j = nodes[j].end) {
       if (node.type == Node::Type::INTERSECTION) {
         bbox &= self(j, self);
       } else {

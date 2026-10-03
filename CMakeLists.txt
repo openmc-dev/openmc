@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 project(openmc C CXX)
 
 # Set module path
@@ -25,11 +25,6 @@ if("${CMAKE_EXPORT_COMPILE_COMMANDS}" STREQUAL "")
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
-# Enable correct usage of CXX_EXTENSIONS
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
-  cmake_policy(SET CMP0128 NEW)
-endif()
-
 #===============================================================================
 # Command line options
 #===============================================================================
@@ -39,10 +34,11 @@ option(OPENMC_BUILD_TESTS     "Build tests"                                     
 option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
 option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
+option(OPENMC_USE_XDG         "Enable support for XDG mesh interfaces"      OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
-option(OPENMC_FORCE_VENDORED_LIBS "Explicitly use submodules defined in 'vendor'"    OFF)
+option(OPENMC_FORCE_FETCHCONTENT "Fetch dependencies instead of finding packages"  OFF)
 option(OPENMC_ENABLE_STRICT_FP "Enable strict FP flags to improve test portability"  OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
@@ -53,8 +49,26 @@ message(STATUS "OPENMC_USE_DAGMC ${OPENMC_USE_DAGMC}")
 message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
-message(STATUS "OPENMC_FORCE_VENDORED_LIBS ${OPENMC_FORCE_VENDORED_LIBS}")
+message(STATUS "OPENMC_FORCE_FETCHCONTENT ${OPENMC_FORCE_FETCHCONTENT}")
 message(STATUS "OPENMC_ENABLE_STRICT_FP ${OPENMC_ENABLE_STRICT_FP}")
+
+# Warnings for options removed along with the vendored git submodules
+if(DEFINED OPENMC_FORCE_VENDORED_LIBS)
+  message(WARNING "The OpenMC CMake option 'OPENMC_FORCE_VENDORED_LIBS' has "
+    "been deprecated. Its value will be ignored. Dependencies are no longer "
+    "vendored as git submodules. "
+    "Please use '-DOPENMC_FORCE_FETCHCONTENT=${OPENMC_FORCE_VENDORED_LIBS}' "
+    "instead.")
+  unset(OPENMC_FORCE_VENDORED_LIBS CACHE)
+endif()
+
+if(DEFINED GIT_SUBMODULE)
+  message(WARNING "The OpenMC CMake option 'GIT_SUBMODULE' has been "
+    "deprecated. Its value (${GIT_SUBMODULE}) will be ignored. OpenMC no "
+    "longer uses git submodules for its dependencies, so they are never "
+    "checked out during configuration.")
+  unset(GIT_SUBMODULE CACHE)
+endif()
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -143,19 +157,6 @@ if(OPENMC_USE_MPI)
 endif()
 
 #===============================================================================
-# Helper macro for finding a dependency
-#===============================================================================
-
-macro(find_package_write_status pkg)
-  find_package(${pkg} QUIET NO_SYSTEM_ENVIRONMENT_PATH)
-  if(${pkg}_FOUND)
-    message(STATUS "Found ${pkg}: ${${pkg}_DIR} (version ${${pkg}_VERSION})")
-  else()
-    message(STATUS "Did not find ${pkg}, will use submodule instead")
-  endif()
-endmacro()
-
-#===============================================================================
 # DAGMC Geometry Support - need DAGMC/MOAB
 #===============================================================================
 
@@ -171,6 +172,15 @@ if(OPENMC_USE_DAGMC)
   if(OPENMC_USE_UWUW AND NOT DAGMC_BUILD_UWUW)
     message(FATAL_ERROR "UWUW is enabled but DAGMC was not configured with UWUW.")
   endif()
+endif()
+
+#===============================================================================
+# XDG Mesh and Geometry Support
+#===============================================================================
+
+if(OPENMC_USE_XDG)
+  find_package(XDG REQUIRED PATH_SUFFIXES lib/cmake)
+  message(STATUS "Found XDG: ${XDG_DIR} (version ${XDG_VERSION})")
 endif()
 
 #===============================================================================
@@ -230,6 +240,13 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
+# Use -Wunused-variable to catch unused variables in the code
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag(-Wunused-variable SUPPORTS_UNUSED_VARIABLE)
+if(SUPPORTS_UNUSED_VARIABLE)
+  list(APPEND cxxflags -Wunused-variable)
+endif()
+
 # When OPENMC_ENABLE_STRICT_FP is enabled, disable compiler optimizations that change
 # floating-point results relative to -O0, improving cross-platform and
 # cross-optimization-level reproducibility for regression testing:
@@ -239,7 +256,6 @@ endif()
 # By default (OFF), the compiler is free to use all optimizations for best
 # performance.
 if(OPENMC_ENABLE_STRICT_FP)
-  include(CheckCXXCompilerFlag)
   check_cxx_compiler_flag(-ffp-contract=off SUPPORTS_FP_CONTRACT_OFF)
   if(SUPPORTS_FP_CONTRACT_OFF)
     list(APPEND cxxflags -ffp-contract=off)
@@ -271,72 +287,10 @@ message(STATUS "OpenMC Linker flags: ${ldflags}")
 endif()
 
 #===============================================================================
-# Update git submodules as needed
-#===============================================================================
-if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
-  option(GIT_SUBMODULE "Check submodules during build" ON)
-  if(GIT_SUBMODULE)
-    message(STATUS "Submodule update")
-    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                    RESULT_VARIABLE GIT_SUBMOD_RESULT)
-    if(NOT GIT_SUBMOD_RESULT EQUAL 0)
-      message(FATAL_ERROR "git submodule update --init failed with \
-        ${GIT_SUBMOD_RESULT}, please checkout submodules")
-    endif()
-  endif()
-endif()
-
-# Check to see if submodules exist (by checking one)
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/pugixml/CMakeLists.txt")
-  message(FATAL_ERROR "The git submodules were not downloaded! GIT_SUBMODULE was \
-    turned off or failed. Please update submodules and try again.")
-endif()
-
-#===============================================================================
-# pugixml library
+# CMake dependencies
 #===============================================================================
 
-if(OPENMC_FORCE_VENDORED_LIBS)
-  add_subdirectory(vendor/pugixml)
-  set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
-else()
-  find_package_write_status(pugixml)
-  if (NOT pugixml_FOUND)
-    add_subdirectory(vendor/pugixml)
-    set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
-  endif()
-endif()
-
-#===============================================================================
-# {fmt} library
-#===============================================================================
-
-if(OPENMC_FORCE_VENDORED_LIBS)
-  set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
-  add_subdirectory(vendor/fmt)
-else()
-  find_package_write_status(fmt)
-  if (NOT fmt_FOUND)
-    set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
-    add_subdirectory(vendor/fmt)
-  endif()
-endif()
-
-#===============================================================================
-# Catch2 library
-#===============================================================================
-
-if(OPENMC_BUILD_TESTS)
-  if (OPENMC_FORCE_VENDORED_LIBS)
-    add_subdirectory(vendor/Catch2)
-  else()
-    find_package_write_status(Catch2)
-    if (NOT Catch2_FOUND)
-      add_subdirectory(vendor/Catch2)
-    endif()
-  endif()
-endif()
+include(cmake/Dependencies.cmake)
 
 #===============================================================================
 # RPATH information
@@ -409,6 +363,7 @@ list(APPEND libopenmc_SOURCES
   src/ncrystal_interface.cpp
   src/ncrystal_load.cpp
   src/nuclide.cpp
+  src/openmc.cpp
   src/output.cpp
   src/particle.cpp
   src/particle_data.cpp
@@ -423,6 +378,8 @@ list(APPEND libopenmc_SOURCES
   src/progress_bar.cpp
   src/random_dist.cpp
   src/random_lcg.cpp
+  src/random_ray/decomposition_map.cpp
+  src/random_ray/ray_bank.cpp
   src/random_ray/random_ray_simulation.cpp
   src/random_ray/random_ray.cpp
   src/random_ray/flat_source_domain.cpp
@@ -445,6 +402,7 @@ list(APPEND libopenmc_SOURCES
   src/string_utils.cpp
   src/summary.cpp
   src/surface.cpp
+  src/xdg.cpp
   src/tallies/derivative.cpp
   src/tallies/filter.cpp
   src/tallies/filter_azimuthal.cpp
@@ -562,11 +520,7 @@ endif()
 target_link_libraries(libopenmc_objects PUBLIC ${ldflags} ${HDF5_LIBRARIES}
                       ${HDF5_HL_LIBRARIES} fmt::fmt ${CMAKE_DL_LIBS})
 
-if(TARGET pugixml::pugixml)
-  target_link_libraries(libopenmc_objects PUBLIC pugixml::pugixml)
-else()
-  target_link_libraries(libopenmc_objects PUBLIC pugixml)
-endif()
+target_link_libraries(libopenmc_objects PUBLIC pugixml::pugixml)
 
 if(OPENMC_USE_DAGMC)
   target_compile_definitions(libopenmc_objects PUBLIC OPENMC_DAGMC_ENABLED)
@@ -579,6 +533,11 @@ if(OPENMC_USE_DAGMC)
 elseif(OPENMC_USE_UWUW)
   set(OPENMC_USE_UWUW OFF)
   message(FATAL_ERROR "DAGMC must be enabled when UWUW is enabled.")
+endif()
+
+if(OPENMC_USE_XDG)
+  target_compile_definitions(libopenmc_objects PRIVATE OPENMC_XDG_ENABLED)
+  target_link_libraries(libopenmc_objects PUBLIC xdg::xdg)
 endif()
 
 if(OPENMC_USE_LIBMESH)

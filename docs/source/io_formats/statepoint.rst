@@ -99,7 +99,11 @@ The current version of the statepoint file format is 18.2.
               - **filename** (*char[]*) -- Name of the mesh file.
               - **library** (*char[]*) -- Mesh library used to represent the
                                           mesh ("moab" or "libmesh").
-              - **length_multiplier** (*double*) Scaling factor applied to the mesh.
+              - **interface** (*char[]*) -- Interface used to operate on the
+                                            mesh ("native" or "xdg"). This
+                                            dataset is omitted for the native
+                                            interface.
+              - **length_multiplier** (*double*) -- Scaling factor applied to the mesh.
               - **options** (*char[]*) -- Special options that control spatial
                                           search data structures used.
               - **volumes** (*double[]*) -- Volume of each mesh cell.

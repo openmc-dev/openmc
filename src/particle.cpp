@@ -77,6 +77,8 @@ double Particle::mass() const
   case PDG_ELECTRON:
   case PDG_POSITRON:
     return MASS_ELECTRON_EV;
+  case PDG_PHOTON:
+    return 0.0;
   default:
     return this->type().mass() * AMU_EV;
   }
@@ -704,12 +706,6 @@ void Particle::cross_surface(const Surface& surf)
     write_message(1, "    Crossing surface {}", surf.id_);
   }
 
-// if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef OPENMC_DAGMC_ENABLED
-  if (surf.geom_type() == GeometryType::CSG)
-    history().reset();
-#endif
-
   // Handle any applicable boundary conditions.
   if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
       settings::run_mode != RunMode::VOLUME) {
@@ -1115,7 +1111,7 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   // give a site its place when a bank is collected or sorted; a surface source
   // site is never placed by either, so neither field applies to it, and nothing
   // reads them here since the surface source file format does not carry them.
-  int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+  simulation::surf_source_bank.thread_safe_append(site);
 }
 
 } // namespace openmc

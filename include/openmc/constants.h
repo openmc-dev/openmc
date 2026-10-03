@@ -58,22 +58,13 @@ constexpr double FP_COINCIDENT {1e-12};
 constexpr double TORUS_TOL {1e-10};
 constexpr double RADIAL_MESH_TOL {1e-10};
 
+// Tolerance on the normalized normal of a general plane for treating that
+// plane as axis-aligned when computing a bounding box. Matches the value of
+// Surface._atol used by PlaneMixin.bounding_box in openmc/surface.py.
+constexpr double PLANE_ALIGNMENT_TOL {1e-12};
+
 // Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
-
-// Avg. number of hits per batch to be defined as a "small"
-// source region in the random ray solver
-constexpr double MIN_HITS_PER_BATCH {1.5};
-
-// The minimum flux value to be considered non-zero when computing adjoint
-// sources. Positive values below this cutoff will be treated as zero, so as to
-// prevent extremely large adjoint source terms from being generated.
-constexpr double ZERO_FLUX_CUTOFF {1e-22};
-
-// The minimum macroscopic cross section value considered non-void for the
-// random ray solver. Materials with any group with a cross section below this
-// value will be converted to pure void.
-constexpr double MINIMUM_MACRO_XS {1e-6};
 
 // Relative dead band applied to weight window comparisons: particles split
 // only above upper * (1 + tol) and roulette only below lower * (1 - tol).
@@ -87,6 +78,21 @@ constexpr double MINIMUM_MACRO_XS {1e-6};
 // the band as inside the window is statistically negligible, and weight
 // window games are unbiased regardless of where the thresholds sit.
 constexpr double WEIGHT_WINDOW_REL_TOL {1e-9};
+
+// Maximum number of DAGMC entity handles to send when exchanging rays
+// between MPI ranks. This caps the RayHistory length to avoid sending
+// variable-length vectors.
+constexpr int MAX_N_HANDLES {5};
+
+// Number of initial batches over which the load is rebalanced between MPI
+// ranks during random ray transport. (The iteration cap within a single
+// rebalancing pass is a local in DecompositionMap::balance_load.)
+constexpr int ITER_LOAD_BALANCE {5};
+
+// Maximum number of times a random ray may be handed to another MPI rank
+// before it is terminated. Bounds a ray ping-ponging across a subdomain
+// boundary, which would otherwise hang every rank in the job.
+constexpr int MAX_RAY_TRANSFERS {10000};
 
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
@@ -378,8 +384,16 @@ enum class RunMode {
 
 enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
-enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
+enum class RandomRayVolumeEstimator {
+  NAIVE,
+  SIMULATION_AVERAGED,
+  HYBRID,
+  ADAPTIVE,
+  STRICT_ADAPTIVE,
+  AUTO
+};
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
+enum class RandomRayGeomDim { TWO_DIM, THREE_DIM };
 enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
 enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };
 

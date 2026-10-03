@@ -4,6 +4,7 @@
 #include <cctype>
 #include <stdexcept>
 
+#include "openmc/error.h"
 #include "openmc/string_utils.h"
 
 namespace openmc {
@@ -130,6 +131,18 @@ std::string nuclide_name_from_pdg(int32_t pdg)
 //==============================================================================
 // ParticleType member function implementations
 //==============================================================================
+
+double ParticleType::mass() const
+{
+  if (pdg_number_ == PDG_PHOTON)
+    return 0.0;
+
+  double mass = nuclear_mass_from_pdg(pdg_number_);
+  if (mass > 0.0)
+    return mass;
+
+  fatal_error("Unknown mass for particle " + str());
+}
 
 ParticleType::ParticleType(std::string_view str)
 {

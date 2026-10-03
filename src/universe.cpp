@@ -101,7 +101,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     for (auto token : model::cells[i_cell]->surfaces()) {
       auto i_surf = std::abs(token) - 1;
       const auto* surf = model::surfaces[i_surf].get();
-      if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf))
+      if (dynamic_cast<const SurfaceZPlane*>(surf))
         surf_set.insert(i_surf);
     }
   }

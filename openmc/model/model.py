@@ -16,6 +16,7 @@ import h5py
 import lxml.etree as ET
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy import ndimage
 
 import openmc
 import openmc._xml as xml
@@ -27,6 +28,37 @@ from openmc.exceptions import InvalidIDError
 from openmc.plots import add_plot_params, _BASIS_INDICES, _id_map_to_rgb
 from openmc.utility_funcs import change_directory, set_xml_input_path
 
+
+def classify_undefined_regions(cell_ids: np.ndarray) -> np.ndarray:
+    """Find internal undefined pixels in a 2D cell-ID slice.
+
+    Internal undefined pixels are those enclosed by defined pixels (i.e., holes
+    in the defined-pixel mask), as opposed to undefined pixels connected to the
+    slice boundary, which may represent void outside the model. The
+    classification is based only on connectivity within the sampled pixel grid,
+    so it does not guarantee true geometric interior classification.
+
+    Parameters
+    ----------
+    cell_ids : numpy.ndarray
+        Two-dimensional array of cell IDs for a slice, which can be obtained
+        from the :meth:`openmc.Model.slice_data` method.
+
+    Returns
+    -------
+    numpy.ndarray of bool
+        Boolean mask of undefined pixels not connected to the boundary of the
+        sampled slice, i.e., undefined interior holes in the sampled grid.
+    """
+
+    _NOT_FOUND = -2
+    if cell_ids is None:
+        raise TypeError("cell_ids must be a 2D numpy array, got None")
+
+    undefined = (cell_ids == _NOT_FOUND)
+
+    # Internal undefined pixels are holes in the defined-pixel mask.
+    return ndimage.binary_fill_holes(~undefined) & undefined
 
 # Protocol for a function that is passed to search_keff
 class ModelModifier(Protocol):
@@ -1171,7 +1203,6 @@ class Model:
             pixels=pixels,
             basis=basis,
             show_overlaps=color_overlaps,
-            level=-1,
             include_properties=False,
             **init_kwargs,
         )
@@ -2951,6 +2982,264 @@ class Model:
 
         # Take a wild guess as to how many rays are needed
         self.settings.particles = 2 * int(max_length)
+
+    def geometry_debug(
+        self,
+        lower_left: Sequence[float],
+        upper_right: Sequence[float],
+        n_samples: int | Sequence[int],
+        print_summary: bool = False,
+        **init_kwargs,
+    ) -> dict[str, Any]:
+        """Sample a 3D region to identify overlap and undefined locations.
+
+        The region between `lower_left` and `upper_right` is sampled on a
+        regular 3D grid by taking a sequence of 2D slices in z. Overlap and
+        undefined locations are identified from cells marked with the overlap
+        and undefined sentinels, respectively. A 3D bounding box is returned for
+        each unique overlap pair and for each distinct internal undefined region
+        (found via 3D connected-component labeling), in a summary dictionary.
+        This function is meant to be called from an input file on a 3D box
+        encapsulating the entire model.
+
+        Parameters
+        ----------
+        lower_left : Sequence[float]
+            Lower-left corner of the sampled 3D region.
+        upper_right : Sequence[float]
+            Upper-right corner of the sampled 3D region.
+        n_samples : int or Sequence[int]
+            Approximate total number of sample points when given as an integer.
+            Counts in each direction are chosen according to the bounding-box
+            aspect ratio. A sequence specifies the counts in x, y, and z
+            directly.
+        print_summary : bool, optional
+            Whether to print a summary of overlap and undefined sample results.
+        **init_kwargs
+            Keyword arguments passed to :meth:`Model.init_lib`.
+
+        Returns
+        -------
+        result : dict
+            Dictionary with the following key-value pairs:
+
+            ``"overlap_boxes"`` : list of dict
+                Detected overlap regions. Each dictionary contains ``"key"``,
+                a tuple of (universe ID, cell ID, cell ID), and ``"bbox"``, an
+                :class:`openmc.BoundingBox` enclosing the sampled voxels in
+                world coordinates [cm]. All detections of the same key are
+                combined, including spatially disconnected occurrences.
+
+            ``"undefined_boxes"`` : list of dict
+                Detected internal undefined regions. Each dictionary contains
+                ``"bbox"``, an :class:`openmc.BoundingBox` enclosing the
+                region's sampled voxels in world coordinates [cm], and
+                ``"under_resolved"``, a bool indicating whether the region
+                may be too thin for the sampling resolution.
+
+            ``"under_resolved"`` : bool
+                Whether any undefined region may be under-resolved.
+        """
+        import openmc.lib
+
+        _OVERLAP = -3
+
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
+        # Accepts 3 separate samples (for x y and z) or just one number
+        if isinstance(n_samples, int):
+            if n_samples < 1:
+                raise ValueError("n_samples must be >= 1")
+
+            lower_left_arr = np.asarray(lower_left, dtype=float)
+            upper_right_arr = np.asarray(upper_right, dtype=float)
+
+            width = upper_right_arr - lower_left_arr
+            if np.any(width <= 0.0):
+                raise ValueError("upper_right must be greater than lower_left in all dimensions")
+
+            # Choose nx, ny, nz proportional to the physical widths so that:
+            # nx * ny * nz ≈ n_samples and voxel sizes are similar in x/y/z.
+            scale = np.cbrt(n_samples / np.prod(width))
+            nx, ny, nz = np.maximum(1, np.rint(scale * width).astype(int))
+        else:
+            if len(n_samples) != 3:
+                raise ValueError("n_samples must be an int or a length-3 iterable")
+            nx, ny, nz = n_samples
+
+        nx, ny, nz = int(nx), int(ny), int(nz)
+
+        if nx <= 0 or ny <= 0 or nz <= 0:
+            raise ValueError("All n_samples values must be positive")
+
+        if len(lower_left) != 3:
+            raise ValueError("lower_left must be a length-3 iterable")
+        if len(upper_right) != 3:
+            raise ValueError("upper_right must be a length-3 iterable")
+
+        x0, y0, z0 = lower_left
+        x1, y1, z1 = upper_right
+
+        dz = (z1 - z0) / nz
+
+        u_span = (x1 - x0, 0.0, 0.0)
+        v_span = (0.0, y1 - y0, 0.0)
+
+        # Each unique overlap key (universe, cell1, cell2) gets its own bounding
+        # box, accumulated in world coordinates across all z-slices. Internal
+        # undefined pixels are stacked into a 3D volume and labeled afterwards.
+        overlap_boxes = {}
+        internal_volume = np.zeros((nz, ny, nx), dtype=bool)
+
+        with openmc.lib.TemporarySession(self, **init_kwargs):
+            for k in range(nz):
+                z = z0 + (k + 0.5) * dz
+                origin = ((x0 + x1) / 2.0, (y0 + y1) / 2.0, z)
+
+                geom_data, _ = openmc.lib.slice_data(
+                    origin=origin,
+                    u_span=u_span,
+                    v_span=v_span,
+                    pixels=(nx, ny),
+                    show_overlaps=True,
+                    include_properties=False,
+                )
+
+                cell_ids = geom_data[:, :, 0]
+
+                overlap_data = openmc.lib.slice_data_overlap_info()
+
+                # Union each overlap key's bounding box across z-slices.
+                for overlap_idx, key in enumerate(overlap_data):
+                    encoded_id = _OVERLAP - overlap_idx - 1
+                    pix = np.argwhere(cell_ids == encoded_id)
+                    if pix.size == 0:
+                        continue
+
+                    key_t = tuple(int(v) for v in key)
+                    # Enclose entire voxels, including the slice thickness.
+                    row_min, col_min = pix.min(axis=0)
+                    row_max, col_max = pix.max(axis=0)
+                    x_lo = x0 + col_min * (x1 - x0) / nx
+                    x_hi = x0 + (col_max + 1) * (x1 - x0) / nx
+                    y_lo = y1 - (row_max + 1) * (y1 - y0) / ny
+                    y_hi = y1 - row_min * (y1 - y0) / ny
+
+                    slice_box = openmc.BoundingBox(
+                        (x_lo, y_lo, z0 + k * dz),
+                        (x_hi, y_hi, z0 + (k + 1) * dz),
+                    )
+                    if key_t in overlap_boxes:
+                        overlap_boxes[key_t] |= slice_box
+                    else:
+                        overlap_boxes[key_t] = slice_box
+
+                internal_volume[k] = classify_undefined_regions(cell_ids)
+
+        overlap_boxes = [
+            {"key": key_t, "bbox": bbox} for key_t, bbox in overlap_boxes.items()
+        ]
+
+        # Overlaps are not flagged for resolution: whether an overlap exists and
+        # which cells collide is determined by the (universe, cell1, cell2) key
+
+        # Label spatially-connected undefined regions in 3D and build a
+        # world-coordinate bounding box for each connected component. A feature
+        # thinner than the sample spacing can rasterize with breaks and split
+        # into several regions, so give a suggestion to the user to increase n_samples.
+
+        undefined_boxes = []
+        if internal_volume.any():
+            structure = ndimage.generate_binary_structure(3, 1)  # face connectivity
+            labeled, _ = ndimage.label(internal_volume, structure=structure)
+            for region_id, sl in enumerate(ndimage.find_objects(labeled), start=1):
+                if sl is None:
+                    continue
+                kz, ky, kx = sl  # slice objects over the (z, y, x) index axes
+
+                # Voxel-edge world extents
+                x_lo = x0 + kx.start * (x1 - x0) / nx
+                x_hi = x0 + kx.stop * (x1 - x0) / nx
+                # The y (row) axis is flipped in world coordinates (row 0 == y1)
+                y_hi = y1 - ky.start * (y1 - y0) / ny
+                y_lo = y1 - ky.stop * (y1 - y0) / ny
+                z_lo = z0 + kz.start * dz
+                z_hi = z0 + kz.stop * dz
+
+                # Local-thickness test: a bounding box is misleading for thin
+                # curved shells (e.g. an annular gap whose bbox is large but
+                # which is only ~1 voxel thick radially). Erode the region's
+                # voxel mask; if erosion empties it, the region is nowhere
+                # thicker than ~2 voxels and is under-resolved.
+                mask = (labeled[sl] == region_id)
+                under_resolved = not ndimage.binary_erosion(mask).any()
+
+                bbox = openmc.BoundingBox(
+                    (x_lo, y_lo, z_lo),
+                    (x_hi, y_hi, z_hi),
+                )
+                undefined_boxes.append({
+                    "bbox": bbox,
+                    "under_resolved": bool(under_resolved),
+                })
+
+        under_resolved = any(b["under_resolved"] for b in undefined_boxes)
+
+        result = {
+            "overlap_boxes": overlap_boxes,
+            "undefined_boxes": undefined_boxes,
+            "under_resolved": under_resolved,
+        }
+
+        if under_resolved:
+            n_un = sum(b["under_resolved"] for b in undefined_boxes)
+            warnings.warn(
+                f"Sampling resolution may be insufficient: {n_un} undefined "
+                "region(s) are resolved by <= 2 voxels across their thinnest "
+                "dimension, so they may be fragmented. "
+                "Consider increasing n_samples."
+            )
+
+        if print_summary:
+            print("Geometry debug summary:")
+
+            if result["overlap_boxes"]:
+                print(f"  Overlaps found: {len(overlap_boxes)}")
+                for box in result["overlap_boxes"]:
+                    ll, ur = box["bbox"].lower_left, box["bbox"].upper_right
+                    print(
+                        f"    cells {box['key']}: "
+                        f"x[{ll[0]:.4g}, {ur[0]:.4g}] "
+                        f"y[{ll[1]:.4g}, {ur[1]:.4g}] "
+                        f"z[{ll[2]:.4g}, {ur[2]:.4g}]"
+                    )
+            else:
+                print("  Overlap bounding boxes: None")
+
+            if result["undefined_boxes"]:
+                print(f"  Undefined regions found: {len(undefined_boxes)}")
+                for i, box in enumerate(result["undefined_boxes"], start=1):
+                    flag = "  [under-resolved]" if box["under_resolved"] else ""
+                    ll, ur = box["bbox"].lower_left, box["bbox"].upper_right
+                    print(
+                        f"    region {i}: "
+                        f"x[{ll[0]:.4g}, {ur[0]:.4g}] "
+                        f"y[{ll[1]:.4g}, {ur[1]:.4g}] "
+                        f"z[{ll[2]:.4g}, {ur[2]:.4g}]{flag}"
+                    )
+            else:
+                print("  Undefined bounding boxes: None")
+
+            if result["under_resolved"]:
+                print(
+                    "WARNING: some undefined regions are resolved by <= 2 "
+                    "voxels across their thinnest dimension and may be "
+                    "fragmented or missed; increase n_samples so thin features "
+                    "span at least 3 voxels."
+                )
+
+        return result
 
     def keff_search(
         self,

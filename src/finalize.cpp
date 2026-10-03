@@ -34,6 +34,10 @@
 
 #include "openmc/tensor.h"
 
+#ifdef OPENMC_XDG_ENABLED
+#include "xdg/config.h"
+#endif
+
 namespace openmc {
 
 void free_memory()
@@ -81,7 +85,9 @@ int openmc_finalize()
 
   // Reset global variables
   settings::assume_separate = false;
+  settings::atomic_relaxation = true;
   settings::check_overlaps = false;
+  settings::collision_track = false;
   settings::collision_track_config = CollisionTrackConfig {};
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
@@ -105,9 +111,12 @@ int openmc_finalize()
   settings::max_history_splits = 10'000'000;
   settings::max_tracks = 1000;
   settings::max_write_lost_particles = -1;
+  settings::n_batches = 0;
+  settings::n_max_batches = 0;
   settings::n_log_bins = 8000;
   settings::n_inactive = 0;
   settings::n_particles = -1;
+  settings::ifp_n_generation = -1;
   settings::output_summary = true;
   settings::output_tallies = true;
   settings::particle_restart_run = false;
@@ -131,6 +140,7 @@ int openmc_finalize()
   settings::surface_grazing_ratio = 0.5;
   settings::solver_type = SolverType::MONTE_CARLO;
   settings::source_latest = false;
+  settings::source_mcpl_write = false;
   settings::source_rejection_fraction = 0.05;
   settings::source_separate = false;
   settings::source_write = true;
@@ -138,13 +148,19 @@ int openmc_finalize()
   settings::ssw_cell_type = SSWCellType::None;
   settings::ssw_max_particles = 0;
   settings::ssw_max_files = 1;
+  settings::surf_mcpl_write = false;
+  settings::surf_source_write = false;
   settings::survival_biasing = false;
+  settings::survival_normalization = false;
   settings::temperature_default = 293.6;
   settings::temperature_method = TemperatureMethod::NEAREST;
   settings::temperature_multipole = false;
   settings::temperature_range = {0.0, 0.0};
   settings::temperature_tolerance = 10.0;
   settings::properties_file.clear();
+  settings::trace_batch = 0;
+  settings::trace_gen = 0;
+  settings::trace_particle = 0;
   settings::trigger_on = false;
   settings::trigger_predict = false;
   settings::trigger_batch_interval = 1;
@@ -156,6 +172,8 @@ int openmc_finalize()
   settings::verbosity = -1;
   settings::weight_cutoff = 0.25;
   settings::weight_survive = 1.0;
+  settings::weight_window_checkpoint_collision = true;
+  settings::weight_window_checkpoint_surface = false;
   settings::weight_windows_file.clear();
   settings::weight_windows_on = false;
   settings::write_all_tracks = false;
@@ -171,8 +189,8 @@ int openmc_finalize()
 
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};
-  data::temperature_min = 0.0;
-  data::temperature_max = INFTY;
+  data::temperature_min = INFTY;
+  data::temperature_max = 0.0;
   data::mg = {};
   model::root_universe = -1;
   model::plotter_seed = 1;
@@ -183,7 +201,12 @@ int openmc_finalize()
   free_memory();
 
 #ifdef OPENMC_LIBMESH_ENABLED
+#if defined(OPENMC_XDG_ENABLED) && defined(XDG_ENABLE_LIBMESH)
+  xdg::config::external_libmesh_init = nullptr;
+  xdg::config::external_libmesh_comm = nullptr;
+#endif
   settings::libmesh_init.reset();
+  settings::libmesh_comm = nullptr;
 #endif
 
   // Free all MPI types

@@ -145,7 +145,6 @@ void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
 
   // set density (g/cm³)
   if (c->type_ != Fill::UNIVERSE && p.material() != MATERIAL_VOID) {
-    Material* m = model::materials.at(p.material()).get();
     property_data_(y, x, 1) = c->density(p.cell_instance());
   }
 }
@@ -1331,7 +1330,6 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
   double p0 = static_cast<double>(pixels()[0]);
   double p1 = static_cast<double>(pixels()[1]);
-  double vert_fov_radians = horiz_fov_radians * p1 / p0;
 
   // focal_plane_dist can be changed to alter the perspective distortion
   // effect. This is in units of cm. This seems to look good most of the

@@ -11,7 +11,6 @@
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
-#include "openmc/search.h"
 
 namespace openmc {
 
@@ -159,19 +158,9 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
-  auto n_energy_in = energy_.size();
   int i;
   double r;
-  if (E < energy_[0]) {
-    i = 0;
-    r = 0.0;
-  } else if (E > energy_[n_energy_in - 1]) {
-    i = n_energy_in - 2;
-    r = 1.0;
-  } else {
-    i = lower_bound_index(energy_.begin(), energy_.end(), E);
-    r = (E - energy_[i]) / (energy_[i + 1] - energy_[i]);
-  }
+  get_energy_index(energy_, E, i, r);
 
   // Sample between the ith and [i+1]th bin
   int l;

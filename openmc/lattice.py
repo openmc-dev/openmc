@@ -969,8 +969,7 @@ class RectLattice(Lattice):
         dimension = get_elem_list(elem, 'dimension', int)
         shape = np.array(dimension, dtype=int)[::-1]
         universes = get_elem_list(elem, 'universes', int)
-        uarray = np.array([get_universe(u) for u in universes])
-        uarray.shape = shape
+        uarray = np.array([get_universe(u) for u in universes]).reshape(shape)
         lat.universes = uarray
         return lat
 

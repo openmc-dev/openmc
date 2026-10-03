@@ -1582,7 +1582,7 @@ class ParticleList(list):
         kwargs.setdefault('mode', 'w')
         with h5py.File(filename, **kwargs) as fh:
             fh.attrs['filetype'] = np.bytes_("source")
-            fh.attrs['version'] = np.array([_VERSION_STATEPOINT, 2])
+            fh.attrs['version'] = np.array([_VERSION_STATEPOINT, 3])
             fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
 

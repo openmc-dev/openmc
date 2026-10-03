@@ -113,6 +113,7 @@ int max_particle_events {1000000};
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
+const Mesh* birth_mesh {nullptr};
 int ifp_n_generation {-1};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
@@ -881,6 +882,32 @@ void read_settings_xml(pugi::xml_node root)
       "it by specifying its ID in a <ufs_mesh> element.");
   }
 
+  // Fission bank birth-tag mesh: every banked fission site is tagged with the
+  // 0-based bin that a MeshFilter on this mesh gives for the birth position of
+  // the creating neutron (the binning of MeshBornFilter), or with -1 if that
+  // position is outside the mesh. Any type of mesh can be used. No translation
+  // or rotation is applied: these are attributes of a filter, not of a mesh.
+  // The mesh must be defined in settings.xml (read above).
+  if (check_for_node(root, "birth_mesh")) {
+    auto temp = std::stoi(get_node_value(root, "birth_mesh"));
+    if (model::mesh_map.find(temp) == model::mesh_map.end()) {
+      fatal_error(fmt::format("Mesh {} specified for fission bank birth "
+                              "tagging does not exist.",
+        temp));
+    }
+
+    // Only an eigenvalue calculation banks fission sites in the fission bank,
+    // so birth tagging has no effect in fixed-source mode
+    if (run_mode == RunMode::FIXED_SOURCE) {
+      warning("The <birth_mesh> element has no effect in fixed-source mode "
+              "and is ignored.");
+    } else {
+      auto& m = model::meshes[model::mesh_map.at(temp)];
+      m->prepare_for_point_location();
+      birth_mesh = m.get();
+    }
+  }
+
   // Check if the user has specified to write state points
   if (check_for_node(root, "state_point")) {
 
@@ -1379,6 +1406,7 @@ void free_memory_settings()
   settings::track_identifiers.clear();
   settings::ifp_delayed_group_on = false;
   settings::ifp_lifetime_on = false;
+  settings::birth_mesh = nullptr;
 }
 
 //==============================================================================

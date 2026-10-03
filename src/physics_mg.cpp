@@ -11,6 +11,7 @@
 #include "openmc/error.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
+#include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/particle.h"
@@ -133,6 +134,11 @@ void create_fission_sites(Particle& p)
   // fission bank or the secondary particle bank
   int n_sites_stored;
 
+  // Tag for the sites: the bin of this neutron's birth position in the birth
+  // mesh, if one was specified (no random numbers are consumed)
+  int birth_mesh_bin =
+    settings::birth_mesh ? settings::birth_mesh->get_bin(p.r_born()) : -1;
+
   for (n_sites_stored = 0; n_sites_stored < nu; n_sites_stored++) {
     // Initialize fission site object with particle data
     SourceSite site;
@@ -140,6 +146,7 @@ void create_fission_sites(Particle& p)
     site.particle = ParticleType::neutron();
     site.time = p.time();
     site.wgt = 1. / weight;
+    site.birth_mesh_bin = birth_mesh_bin;
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically

@@ -46,7 +46,13 @@ struct CollisionTrackConfig {
 // Global variable declarations
 //==============================================================================
 
+class Mesh;
+
 namespace settings {
+
+// Mesh used to tag banked fission sites (see SourceSite::birth_mesh_bin);
+// nullptr when no tagging is done, including in fixed-source mode
+extern const Mesh* birth_mesh;
 
 // Boolean flags
 extern bool assume_separate;      //!< assume tallies are spatially separate?

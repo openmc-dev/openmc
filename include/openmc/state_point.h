@@ -36,16 +36,23 @@ void load_state_point();
 //
 // The source_bank variable is used as work space if MPI is used,
 // so it cannot be given as a const span.
+//
+// If birth_mesh_tags is true, the fission bank birth tags of the sites are
+// written as a "birth_mesh_bin" dataset together with a "birth_mesh_id"
+// attribute. This should only be requested for a bank of fission sites banked
+// in an eigenvalue calculation with a <birth_mesh> (see settings::birth_mesh).
 void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index);
+  const vector<int64_t>& bank_index, bool birth_mesh_tags = false);
 
 void write_source_point(std::string, span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index, bool use_mcpl);
+  const vector<int64_t>& bank_index, bool use_mcpl,
+  bool birth_mesh_tags = false);
 
 // This appends a source bank specification to an HDF5 file
-// that's already open. It is used internally by write_source_point.
+// that's already open. It is used internally by write_source_point. If
+// birth_mesh_tags is true, the "birth_mesh_bin" dataset is also written.
 void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index);
+  const vector<int64_t>& bank_index, bool birth_mesh_tags = false);
 
 void read_source_bank(
   hid_t group_id, vector<SourceSite>& sites, bool distribute);

@@ -58,6 +58,11 @@ def test_export_to_xml(run_in_tmpdir):
     s.trace = (10, 1, 20)
     s.track = [(1, 1, 1), (2, 1, 1)]
     s.ufs_mesh = mesh
+    birth_mesh = openmc.RegularMesh()
+    birth_mesh.lower_left = (-20., -20., -5.)
+    birth_mesh.upper_right = (20., 20., 5.)
+    birth_mesh.dimension = (4, 2, 1)
+    s.birth_mesh = birth_mesh
     s.resonance_scattering = {'enable': True, 'method': 'rvs',
                               'energy_min': 1.0, 'energy_max': 1000.0,
                               'nuclides': ['U235', 'U238', 'Pu239']}
@@ -99,6 +104,10 @@ def test_export_to_xml(run_in_tmpdir):
     # Make sure exporting XML works
     s.export_to_xml()
 
+    # The birth mesh is referenced by ID and written to settings.xml
+    root = openmc.Settings.from_xml().to_xml_element()
+    assert root.find('birth_mesh').text == str(birth_mesh.id)
+    assert root.find(f"mesh[@id='{birth_mesh.id}']") is not None
 
     # Generate settings from XML
     s = openmc.Settings.from_xml()
@@ -153,6 +162,11 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.ufs_mesh.lower_left == [-10., -10., -10.]
     assert s.ufs_mesh.upper_right == [10., 10., 10.]
     assert s.ufs_mesh.dimension == (5, 5, 5)
+    assert isinstance(s.birth_mesh, openmc.RegularMesh)
+    assert s.birth_mesh.id == birth_mesh.id
+    assert s.birth_mesh.lower_left == [-20., -20., -5.]
+    assert s.birth_mesh.upper_right == [20., 20., 5.]
+    assert s.birth_mesh.dimension == (4, 2, 1)
     assert s.resonance_scattering == {'enable': True, 'method': 'rvs',
                                       'energy_min': 1.0, 'energy_max': 1000.0,
                                       'nuclides': ['U235', 'U238', 'Pu239']}
@@ -192,6 +206,49 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.max_secondaries == 1_000_000
     assert s.source_rejection_fraction == 0.01
     assert s.free_gas_threshold == 800.0
+
+
+def test_birth_mesh(run_in_tmpdir):
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-1., -1., -1.)
+    mesh.upper_right = (1., 1., 1.)
+    mesh.dimension = (2, 1, 1)
+
+    s = openmc.Settings()
+    assert s.birth_mesh is None
+    with pytest.raises(TypeError):
+        s.birth_mesh = mesh.id
+
+    # No element is written without a birth mesh
+    assert s.to_xml_element().find('birth_mesh') is None
+
+    # A mesh shared with another setting is written to settings.xml once
+    s.birth_mesh = mesh
+    s.ufs_mesh = mesh
+    s.export_to_xml()
+    root = openmc.Settings.from_xml().to_xml_element()
+    assert len(root.findall('mesh')) == 1
+    s = openmc.Settings.from_xml()
+    assert s.birth_mesh.id == mesh.id
+    assert s.birth_mesh is s.ufs_mesh
+
+    # Any type of mesh can be used
+    cyl_mesh = openmc.CylindricalMesh([0., 1., 2.], [-1., 1.])
+    s = openmc.Settings()
+    s.birth_mesh = cyl_mesh
+    s.export_to_xml()
+    s = openmc.Settings.from_xml()
+    assert isinstance(s.birth_mesh, openmc.CylindricalMesh)
+    assert s.birth_mesh.id == cyl_mesh.id
+    assert list(s.birth_mesh.r_grid) == [0., 1., 2.]
+
+    # A reference to a mesh that is not defined is an error
+    elem = openmc.Settings().to_xml_element()
+    birth = elem.makeelement('birth_mesh', {})
+    birth.text = '1234'
+    elem.append(birth)
+    with pytest.raises(ValueError, match='1234'):
+        openmc.Settings.from_xml_element(elem)
 
 
 def test_properties_file_load(tmp_path, mpi_intracomm):

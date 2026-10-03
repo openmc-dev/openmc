@@ -573,7 +573,8 @@ void finalize_batch()
         settings::path_output, simulation::current_batch, w);
       span<SourceSite> bankspan(simulation::source_bank);
       write_source_point(source_point_filename, bankspan,
-        simulation::work_index, settings::source_mcpl_write);
+        simulation::work_index, settings::source_mcpl_write,
+        settings::birth_mesh != nullptr);
     }
 
     // Write a continously-overwritten source point if requested.
@@ -581,7 +582,7 @@ void finalize_batch()
       auto filename = settings::path_output + "source";
       span<SourceSite> bankspan(simulation::source_bank);
       write_source_point(filename, bankspan, simulation::work_index,
-        settings::source_mcpl_write);
+        settings::source_mcpl_write, settings::birth_mesh != nullptr);
     }
   }
 

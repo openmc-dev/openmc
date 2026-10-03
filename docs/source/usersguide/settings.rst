@@ -718,6 +718,20 @@ As an example, to write a statepoint file every five batches::
   settings.batches = n
   settings.statepoint = {'batches': range(5, n + 5, 5)}
 
+In an eigenvalue calculation, the fission sites of the source bank can be
+tagged for fission-matrix post-processing by setting
+:attr:`Settings.birth_mesh` to a mesh, which can be of any type. Each site is
+tagged with the 0-based bin that a :class:`openmc.MeshFilter` on that mesh
+gives for the birth position of the neutron that produced the site (the binning
+of :class:`openmc.MeshBornFilter`), or with -1 if that position is outside the
+mesh. No translation or rotation is applied, since these are attributes of a
+mesh filter, not of the mesh. The tags are written as a ``birth_mesh_bin``
+dataset to the statepoint files that contain the source bank and to the source
+files ``source.<batch>.h5`` and ``source.h5``. In fixed-source mode, the
+attribute has no effect. For example::
+
+  settings.birth_mesh = mesh
+
 Particle Track Files
 --------------------
 

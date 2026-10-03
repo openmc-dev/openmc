@@ -11,6 +11,7 @@
 #include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
+#include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/ncrystal_interface.h"
 #include "openmc/nuclide.h"
@@ -208,6 +209,11 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   // fission bank or the secondary particle bank
   int n_sites_stored;
 
+  // Tag for the sites: the bin of this neutron's birth position in the birth
+  // mesh, if one was specified (no random numbers are consumed)
+  int birth_mesh_bin =
+    settings::birth_mesh ? settings::birth_mesh->get_bin(p.r_born()) : -1;
+
   for (n_sites_stored = 0; n_sites_stored < nu; n_sites_stored++) {
     // Initialize fission site object with particle data
     SourceSite site;
@@ -216,6 +222,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     site.time = p.time();
     site.wgt = 1. / weight;
     site.surf_id = 0;
+    site.birth_mesh_bin = birth_mesh_bin;
 
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);

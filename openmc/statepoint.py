@@ -36,6 +36,22 @@ class StatePoint:
 
     Attributes
     ----------
+    birth_mesh_bin : numpy.ndarray or None
+        Fission bank birth tag of each source site, aligned by index with
+        :attr:`source`: the 0-based bin, numbered as the bins of a
+        :class:`openmc.MeshFilter`, of the birth position of the neutron that
+        produced the site in the mesh given by
+        :attr:`openmc.Settings.birth_mesh`, or -1 outside the mesh. None if
+        the file contains no tags, either because tagging was not enabled or
+        because the source bank is not stored in this file.
+
+        .. versionadded:: 0.16.1
+    birth_mesh_id : int or None
+        ID of the mesh used to tag fission sites (see :attr:`birth_mesh_bin`),
+        or None if tagging was not enabled. It is also given when the source
+        bank, and with it the tags, is written to a separate source file.
+
+        .. versionadded:: 0.16.1
     cmfd_on : bool
         Indicate whether CMFD is active
     cmfd_balance : numpy.ndarray
@@ -370,6 +386,18 @@ class StatePoint:
     @property
     def source(self):
         return self._f['source_bank'][()] if self.source_present else None
+
+    @property
+    def birth_mesh_bin(self):
+        if self.source_present and 'birth_mesh_bin' in self._f:
+            return self._f['birth_mesh_bin'][()]
+        return None
+
+    @property
+    def birth_mesh_id(self):
+        if 'birth_mesh_id' in self._f.attrs:
+            return int(self._f.attrs['birth_mesh_id'])
+        return None
 
     @property
     def source_present(self):

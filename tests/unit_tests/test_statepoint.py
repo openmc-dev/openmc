@@ -1,3 +1,5 @@
+import h5py
+import numpy as np
 import openmc
 
 
@@ -65,3 +67,45 @@ def test_get_tally_filter_type(run_in_tmpdir):
 
     tally_found = sp.get_tally(id=2)
     assert tally_found.id == 2
+
+
+def _write_tagged_file(path, source_present, tags=None):
+    """Write a minimal state point file with an optional birth tag dataset."""
+    with h5py.File(path, 'w') as f:
+        f.attrs['filetype'] = np.bytes_('statepoint')
+        f.attrs['version'] = np.array(
+            [openmc.statepoint._VERSION_STATEPOINT, 0], dtype=np.int32)
+        f.attrs['source_present'] = np.int32(source_present)
+        if tags is not None:
+            f.attrs['birth_mesh_id'] = np.int32(3)
+        if source_present:
+            source = np.zeros(4, dtype=[('E', '<f8'), ('wgt', '<f8')])
+            f.create_dataset('source_bank', data=source)
+            if tags is not None:
+                f.create_dataset('birth_mesh_bin', data=tags)
+
+
+def test_birth_mesh_tags(run_in_tmpdir):
+    tags = np.array([0, 3, -1, 1], dtype=np.int32)
+
+    # Tags stored with the source bank are returned aligned with it
+    _write_tagged_file('tagged.h5', True, tags)
+    with openmc.StatePoint('tagged.h5', autolink=False) as sp:
+        assert sp.birth_mesh_id == 3
+        assert isinstance(sp.birth_mesh_id, int)
+        np.testing.assert_array_equal(sp.birth_mesh_bin, tags)
+        assert sp.birth_mesh_bin.dtype == np.int32
+        assert sp.birth_mesh_bin.shape == sp.source.shape
+
+    # A tagged run whose source bank is stored in a separate file
+    _write_tagged_file('separate.h5', False, tags)
+    with openmc.StatePoint('separate.h5', autolink=False) as sp:
+        assert sp.birth_mesh_id == 3
+        assert sp.birth_mesh_bin is None
+
+    # A run without tagging
+    _write_tagged_file('untagged.h5', True)
+    with openmc.StatePoint('untagged.h5', autolink=False) as sp:
+        assert sp.source_present
+        assert sp.birth_mesh_id is None
+        assert sp.birth_mesh_bin is None

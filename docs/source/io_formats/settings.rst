@@ -33,6 +33,42 @@ source neutrons.
 
   *Default*: None
 
+------------------------
+``<birth_mesh>`` Element
+------------------------
+
+The ``<birth_mesh>`` element indicates the ID of a mesh used to tag the fission
+sites banked in an eigenvalue calculation, for the post-processing of
+fission-matrix data. When this element is present, every site banked in the
+fission bank, in continuous-energy and in multigroup mode, is tagged with the
+bin of the mesh that contains the *birth position of the neutron that produced
+the site*, or with ``-1`` if that position is outside the mesh. Only an
+eigenvalue calculation banks fission sites, so in fixed-source mode the element
+has no effect and is ignored with a warning. Tagging consumes no random numbers
+and changes no transport or tally result.
+
+The birth position is the position at which the neutron was started from a
+site: its fission site for a neutron started from the source bank, the
+collision point for the secondary neutrons of :math:`(n,xn)` reactions, and the
+point of the split for particles created by weight-window splitting. This is
+the same notion of birth as used by :class:`openmc.MeshBornFilter`.
+
+The mesh can be of any type and must be defined in the same settings file using
+a :ref:`mesh_element`. The tags are 0-based bin indices numbered in the same
+order as the bins of a :class:`openmc.MeshFilter` on the mesh; for example, for
+a regular mesh with :math:`n_x \times n_y \times n_z` elements and 0-based
+element indices :math:`(i_x, i_y, i_z)`, the bin is
+:math:`i_x + n_x (i_y + n_y i_z)`. No translation or rotation is applied: these
+are attributes of a mesh filter, not of the mesh.
+
+The tags are written as an int32 ``birth_mesh_bin`` dataset, aligned by index
+with the ``source_bank`` dataset, in state point files that contain the source
+bank and in the source point files ``source.<batch>.h5`` and ``source.h5``,
+and the mesh ID as a ``birth_mesh_id`` attribute (see :ref:`io_statepoint` and
+:ref:`io_source`). Surface source files, the initial source file and MCPL files
+carry no tags. The tags are read back with the sites for a restart or a file
+source.
+
 -----------------------------
 ``<collision_track>`` Element
 -----------------------------

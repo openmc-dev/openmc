@@ -56,6 +56,10 @@ struct SourceSite {
   double wgt_ww_born {-1.0};
   int64_t n_split {0};
   int n_collision {0};
+  // Bin of the <birth_mesh> mesh that contains the birth position of the
+  // neutron that produced this fission site; -1 if it is outside the mesh or
+  // the site is not tagged. Not part of the HDF5 "source_bank" compound type.
+  int birth_mesh_bin {-1};
 };
 
 struct CollisionTrackSite {

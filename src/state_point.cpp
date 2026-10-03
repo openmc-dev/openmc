@@ -68,6 +68,11 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
   // Determine whether or not to write the source bank
   bool write_source_ = write_source ? *write_source : true;
 
+  // Fission bank birth tags are only defined for the source bank of an
+  // eigenvalue calculation, which consists of banked fission sites
+  bool birth_mesh_tags =
+    settings::birth_mesh && settings::run_mode == RunMode::EIGENVALUE;
+
   // Write message
   write_message("Creating state point " + filename_ + "...", 5);
 
@@ -122,6 +127,10 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
     // Indicate whether source bank is stored in statepoint
     write_attribute(file_id, "source_present", write_source_);
+
+    // Record the mesh used for fission bank birth tags, if any
+    if (birth_mesh_tags)
+      write_attribute(file_id, "birth_mesh_id", settings::birth_mesh->id());
 
     // Write out information for eigenvalue run
     if (settings::run_mode == RunMode::EIGENVALUE)
@@ -350,7 +359,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
   if (write_source_) {
     if (mpi::master || parallel)
       file_id = file_open(filename_, 'a', true);
-    write_source_bank(file_id, simulation::source_bank, simulation::work_index);
+    write_source_bank(file_id, simulation::source_bank, simulation::work_index,
+      birth_mesh_tags);
     if (mpi::master || parallel)
       file_close(file_id);
   }
@@ -596,7 +606,7 @@ hid_t h5banktype(bool memory)
 }
 
 void write_source_point(std::string filename, span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index, bool use_mcpl)
+  const vector<int64_t>& bank_index, bool use_mcpl, bool birth_mesh_tags)
 {
   std::string ext = use_mcpl ? "mcpl" : "h5";
 
@@ -616,12 +626,13 @@ void write_source_point(std::string filename, span<SourceSite> source_bank,
     write_mcpl_source_point(filename.c_str(), source_bank, bank_index);
   } else {
     filename.append(".h5");
-    write_h5_source_point(filename.c_str(), source_bank, bank_index);
+    write_h5_source_point(
+      filename.c_str(), source_bank, bank_index, birth_mesh_tags);
   }
 }
 
 void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index)
+  const vector<int64_t>& bank_index, bool birth_mesh_tags)
 {
   // When using parallel HDF5, the file is written to collectively by all
   // processes. With MPI-only, the file is opened and written by the master
@@ -648,17 +659,19 @@ void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
     file_id = file_open(filename_.c_str(), 'w', true);
     write_attribute(file_id, "filetype", "source");
     write_attribute(file_id, "version", VERSION_STATEPOINT);
+    if (birth_mesh_tags)
+      write_attribute(file_id, "birth_mesh_id", settings::birth_mesh->id());
   }
 
   // Get pointer to source bank and write to file
-  write_source_bank(file_id, source_bank, bank_index);
+  write_source_bank(file_id, source_bank, bank_index, birth_mesh_tags);
 
   if (mpi::master || parallel)
     file_close(file_id);
 }
 
 void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index)
+  const vector<int64_t>& bank_index, bool birth_mesh_tags)
 {
   hid_t membanktype = h5banktype(true);
   hid_t filebanktype = h5banktype(false);
@@ -673,6 +686,23 @@ void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
 
   H5Tclose(membanktype);
   H5Tclose(filebanktype);
+
+  // Write the fission bank birth tags as an int32 dataset aligned by index with
+  // "source_bank". The buffer has the size of the local source bank, which
+  // write_bank_dataset also uses as a receive buffer on the master process.
+  if (birth_mesh_tags) {
+    vector<int32_t> bins(source_bank.size());
+    for (size_t i = 0; i < source_bank.size(); ++i)
+      bins[i] = source_bank[i].birth_mesh_bin;
+    span<int32_t> bins_span(bins);
+#ifdef OPENMC_MPI
+    write_bank_dataset("birth_mesh_bin", group_id, bins_span, bank_index,
+      H5T_NATIVE_INT32, H5T_NATIVE_INT32, MPI_INT32_T);
+#else
+    write_bank_dataset("birth_mesh_bin", group_id, bins_span, bank_index,
+      H5T_NATIVE_INT32, H5T_NATIVE_INT32);
+#endif
+  }
 }
 
 // Determine member names of a compound HDF5 datatype
@@ -764,6 +794,66 @@ void read_source_bank(
     H5Sclose(memspace);
   H5Dclose(dset);
   H5Tclose(banktype);
+
+  // Read the birth mesh bin tag dataset, when present, to keep the tags
+  // aligned with the source sites (e.g. for restart runs). The dataset must
+  // have exactly one entry per site of the "source_bank" dataset.
+  if (object_exists(group_id, "birth_mesh_bin")) {
+    hid_t dset_bin = H5Dopen(group_id, "birth_mesh_bin", H5P_DEFAULT);
+    hid_t dspace_bin = H5Dget_space(dset_bin);
+    int rank_bin = H5Sget_simple_extent_ndims(dspace_bin);
+    hsize_t n_bins = 0;
+    if (rank_bin == 1)
+      H5Sget_simple_extent_dims(dspace_bin, &n_bins, nullptr);
+    if (rank_bin != 1 || n_bins != n_sites) {
+      H5Sclose(dspace_bin);
+      H5Dclose(dset_bin);
+      fatal_error(fmt::format(
+        "The birth_mesh_bin dataset in the source file must be "
+        "one-dimensional with the same length as the source_bank dataset "
+        "({} sites).",
+        n_sites));
+    }
+
+    // Number of tags to read: this process's share of the sites when
+    // distributing them, otherwise all of them
+    hsize_t n_read =
+      distribute ? static_cast<hsize_t>(simulation::work_per_rank) : n_sites;
+    vector<int32_t> birth_bins(n_read);
+
+    // Memory dataspace sized to the buffer, and the matching selection of
+    // the file dataspace (the whole dataset unless distributing)
+    hid_t memspace_bin = H5Screate_simple(1, &n_read, nullptr);
+    if (distribute) {
+      hsize_t offset = simulation::work_index[mpi::rank];
+      H5Sselect_hyperslab(
+        dspace_bin, H5S_SELECT_SET, &offset, nullptr, &n_read, nullptr);
+    }
+
+#ifdef PHDF5
+    // Read data in parallel
+    hid_t plist = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
+    herr_t status = H5Dread(dset_bin, H5T_NATIVE_INT32, memspace_bin,
+      dspace_bin, plist, birth_bins.data());
+    H5Pclose(plist);
+#else
+    herr_t status = H5Dread(dset_bin, H5T_NATIVE_INT32, memspace_bin,
+      dspace_bin, H5P_DEFAULT, birth_bins.data());
+#endif
+
+    H5Sclose(memspace_bin);
+    H5Sclose(dspace_bin);
+    H5Dclose(dset_bin);
+    if (status < 0) {
+      fatal_error("Failed to read the birth_mesh_bin dataset from the source "
+                  "file.");
+    }
+
+    for (hsize_t i = 0; i < n_read; ++i) {
+      sites[i].birth_mesh_bin = birth_bins[i];
+    }
+  }
 
   if (legacy_particle_codes) {
     for (auto& site : sites) {

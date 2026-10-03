@@ -47,6 +47,21 @@ class Settings:
         interactions.
     batches : int
         Number of batches to simulate
+    birth_mesh : openmc.MeshBase
+        Mesh used to tag the fission sites banked in an eigenvalue calculation
+        with the 0-based bin, numbered as for :class:`openmc.MeshFilter`, of
+        the birth position of the neutron that produced each site, or -1
+        outside the mesh. Any type of mesh can be used. No translation or
+        rotation is applied, since these are attributes of a mesh filter, not
+        of the mesh. The birth position is where that neutron was started
+        from a site: its fission site, or the collision or split point for
+        (n,xn) secondaries and split particles, as for
+        :class:`openmc.MeshBornFilter`. The tags are written to state point and
+        source point files as a ``birth_mesh_bin`` dataset aligned with the
+        source bank (see :ref:`io_statepoint`). Has no effect in fixed-source
+        mode.
+
+        .. versionadded:: 0.16.1
     confidence_intervals : bool
         If True, uncertainties on tally results will be reported as the
         half-width of the 95% two-sided confidence interval. If False,
@@ -484,6 +499,9 @@ class Settings:
 
         # Uniform fission source subelement
         self._ufs_mesh = None
+
+        # Fission bank birth tagging mesh
+        self._birth_mesh = None
 
         self._resonance_scattering = {}
         self._volume_calculations = cv.CheckedList(
@@ -1190,6 +1208,15 @@ class Settings:
         self._ufs_mesh = ufs_mesh
 
     @property
+    def birth_mesh(self) -> MeshBase:
+        return self._birth_mesh
+
+    @birth_mesh.setter
+    def birth_mesh(self, mesh: MeshBase):
+        cv.check_type('birth mesh', mesh, MeshBase)
+        self._birth_mesh = mesh
+
+    @property
     def resonance_scattering(self) -> dict:
         return self._resonance_scattering
 
@@ -1873,6 +1900,23 @@ class Settings:
             if mesh_memo is not None:
                 mesh_memo.add(self.ufs_mesh.id)
 
+    def _create_birth_mesh_subelement(self, root, mesh_memo=None):
+        if self.birth_mesh is None:
+            return
+
+        subelement = ET.SubElement(root, "birth_mesh")
+        subelement.text = str(self.birth_mesh.id)
+
+        if mesh_memo and self.birth_mesh.id in mesh_memo:
+            return
+
+        # See if a <mesh> element already exists -- if not, add it
+        path = f"./mesh[@id='{self.birth_mesh.id}']"
+        if root.find(path) is None:
+            root.append(self.birth_mesh.to_xml_element())
+            if mesh_memo is not None:
+                mesh_memo.add(self.birth_mesh.id)
+
     def _create_use_decay_photons_subelement(self, root):
         if self._use_decay_photons is not None:
             element = ET.SubElement(root, "use_decay_photons")
@@ -2400,6 +2444,15 @@ class Settings:
             raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
         self.ufs_mesh = meshes[mesh_id]
 
+    def _birth_mesh_from_xml_element(self, root, meshes):
+        text = get_text(root, 'birth_mesh')
+        if text is None:
+            return
+        mesh_id = int(text)
+        if mesh_id not in meshes:
+            raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
+        self.birth_mesh = meshes[mesh_id]
+
     def _resonance_scattering_from_xml_element(self, root):
         elem = root.find('resonance_scattering')
         if elem is not None:
@@ -2639,6 +2692,7 @@ class Settings:
         self._create_trace_subelement(element)
         self._create_track_subelement(element)
         self._create_ufs_mesh_subelement(element, mesh_memo)
+        self._create_birth_mesh_subelement(element, mesh_memo)
         self._create_resonance_scattering_subelement(element)
         self._create_volume_calcs_subelement(element)
         self._create_create_fission_neutrons_subelement(element)
@@ -2758,6 +2812,7 @@ class Settings:
         settings._trace_from_xml_element(elem)
         settings._track_from_xml_element(elem)
         settings._ufs_mesh_from_xml_element(elem, meshes)
+        settings._birth_mesh_from_xml_element(elem, meshes)
         settings._resonance_scattering_from_xml_element(elem)
         settings._create_fission_neutrons_from_xml_element(elem)
         settings._create_delayed_neutrons_from_xml_element(elem)

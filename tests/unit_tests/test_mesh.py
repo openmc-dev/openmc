@@ -457,7 +457,8 @@ def test_umesh_interface_hdf5(tmp_path, interface):
     assert mesh.interface == interface
 
 
-def test_umesh_from_hdf5_without_filename(run_in_tmpdir):
+@pytest.mark.parametrize('resolve_paths', [True, False])
+def test_umesh_from_hdf5_without_filename(run_in_tmpdir, resolve_paths):
     """An in-memory unstructured mesh has no source filename."""
     with h5py.File('mesh.h5', 'w') as f:
         group = f.create_group('mesh 1')
@@ -468,7 +469,8 @@ def test_umesh_from_hdf5_without_filename(run_in_tmpdir):
         group['connectivity'] = np.zeros((1, 8), dtype=int)
         group['element_types'] = [0]
 
-        mesh = openmc.MeshBase.from_hdf5(group)
+        with openmc.config.patch('resolve_paths', resolve_paths):
+            mesh = openmc.MeshBase.from_hdf5(group)
 
     assert mesh.filename == Path()
     assert mesh.has_statepoint_data

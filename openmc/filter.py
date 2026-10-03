@@ -497,7 +497,21 @@ class MaterialFilter(WithIDFilter):
 
 
 class MaterialFromFilter(WithIDFilter):
-    """Bins tally event locations based on the Material they occurred in.
+    """Bins tally events by the material the particle came from.
+
+    The material is that of the cell the particle occupied before it last
+    changed cell, which is not in general the material it is scoring in. Note
+    that a particle's "from" material is updated only when it enters a new
+    cell -- at birth, and on each surface or lattice crossing -- and *not* on
+    collision. A particle that collides repeatedly without leaving a cell
+    therefore keeps scoring in the bin of the material it originally arrived
+    from. This filter reads the same particle attribute as
+    :class:`openmc.CellFromFilter`, so the two are consistent decompositions
+    of the same score.
+
+    Combined with a ``flux`` score, this filter produces a cell-to-cell
+    partial current rather than a volumetric flux; see
+    :ref:`usersguide_tallies`.
 
     Parameters
     ----------

@@ -143,6 +143,7 @@ Constructing Tallies
    openmc.DelayedGroupFilter
    openmc.EnergyFunctionFilter
    openmc.LegendreFilter
+   openmc.LifetimeMomentFilter
    openmc.SpatialLegendreFilter
    openmc.SphericalHarmonicsFilter
    openmc.TimeFilter

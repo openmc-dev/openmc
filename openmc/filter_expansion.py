@@ -137,6 +137,82 @@ class LegendreFilter(ExpansionFilter):
         return out
 
 
+class LifetimeMomentFilter(ExpansionFilter):
+    r"""Score power moments of the time since particle birth up to an order.
+
+    This filter multiplies scores by :math:`\tau^n` for each order :math:`n =
+    0, 1, \ldots, N`, where :math:`\tau` is the time in seconds since the
+    particle was started from its source site. In an eigenvalue calculation the
+    source site of a neutron is the fission site that produced it, so combined
+    with a fission production score such as ``nu-fission``,
+    ``prompt-nu-fission``, or ``delayed-nu-fission``, the filter gives the
+    moments of the time from the birth of a neutron to the fission neutrons it
+    produces. The bin of order :math:`n` has the units of the score multiplied
+    by :math:`\mathrm{s}^n`; the bin of order zero equals the score itself.
+
+    The time since birth is not carried over to secondary or split particles
+    that continue a history: the extra neutrons of (n,xn) reactions and
+    particles created by weight-window splitting restart from zero at the
+    collision or split that created them. This is a limitation, shared with
+    :class:`MeshBornFilter` and the IFP lifetime, that biases the moments of
+    order one and higher low when such reactions or weight windows are
+    present; see :ref:`usersguide_lifetime_moments`.
+
+    Because the filter weight changes along a track, a tally with this filter
+    uses a collision estimator unless an analog estimator is requested or
+    required by another filter or score; the track-length estimator cannot be
+    used. Collision and analog estimators score nothing in void regions, and
+    in mesh surface current tallies the time since birth is taken at the end
+    of the flight rather than at the surface crossing.
+
+    .. versionadded:: 0.16.1
+
+    Parameters
+    ----------
+    order : int
+        Highest moment order :math:`N`
+    filter_id : int or None
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    order : int
+        Highest moment order :math:`N`
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins, :math:`N + 1`
+
+    """
+
+    def __hash__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
+        return hash(string)
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @ExpansionFilter.order.setter
+    def order(self, order):
+        ExpansionFilter.order.__set__(self, order)
+        self.bins = [f'tau^{i}' for i in range(order + 1)]
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + "' instead")
+
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+
+        return cls(int(group['order'][()]), filter_id)
+
+
 class SpatialLegendreFilter(ExpansionFilter):
     r"""Score Legendre expansion moments in space up to specified order.
 

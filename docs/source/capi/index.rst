@@ -317,6 +317,25 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
+.. c:function:: int openmc_lifetime_moment_filter_get_order(int32_t index, int* order)
+
+   Get the highest moment order of a lifetime moment filter
+
+   :param int32_t index: Index in the filters array
+   :param order: Highest moment order
+   :type order: int*
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_lifetime_moment_filter_set_order(int32_t index, int order)
+
+   Set the highest moment order of a lifetime moment filter
+
+   :param int32_t index: Index in the filters array
+   :param int order: Highest moment order, which must be non-negative
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
 .. c:function:: int openmc_load_nuclide(const char* name, const double* temps, int n)
 
    Load data for a nuclide from the HDF5 data library.

@@ -114,6 +114,16 @@ public:
 
   void init_triggers(pugi::xml_node node);
 
+  //! Replace the track-length estimator of a volume tally with a collision
+  //! estimator, with a warning, if a filter of the tally cannot weight
+  //! track-length estimates
+  //!
+  //! The estimator of a tally read from tallies.xml is chosen from its filters
+  //! when the tally is constructed, whereas a tally created at run time (e.g.,
+  //! through openmc.lib) keeps the estimator that it was given. This is called
+  //! when a simulation is initialized.
+  void check_estimator();
+
   void init_results();
 
   void reset();

@@ -293,9 +293,15 @@ void Particle::event_advance()
 
   // Find the distance to the nearest boundary. A boundary beyond the
   // collision site is not needed, which lets the search through complex cells
-  // stop early. The search uses no random numbers, so results do not depend
-  // on the order in which the two distances are found.
-  boundary() = distance_to_boundary(*this, collision_distance());
+  // stop early, and no boundary is needed at all for a particle that collides
+  // where it is, such as an electron or positron whose energy is deposited
+  // locally. The search uses no random numbers, so results do not depend on
+  // the order in which the two distances are found.
+  if (collision_distance() > 0.0) {
+    boundary() = distance_to_boundary(*this, collision_distance());
+  } else {
+    boundary().reset();
+  }
 
   // Select smaller of the three distances
   double distance =

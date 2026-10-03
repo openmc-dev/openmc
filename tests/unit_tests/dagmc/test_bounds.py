@@ -1,23 +1,22 @@
 import openmc
 import pytest
-from pathlib import Path
 
 
-def test_bounding_box(request):
+def test_bounding_box(dagmc_legacy_universe):
     """Checks that the DAGMCUniverse.bounding_box returns the correct values"""
 
-    u = openmc.DAGMCUniverse(Path(request.fspath).parent / "dagmc.h5m")
+    u = dagmc_legacy_universe
 
     ll, ur = u.bounding_box
     assert ll == pytest.approx((-25.0, -25.0, -25))
     assert ur == pytest.approx((25.0, 25.0, 25))
 
 
-def test_bounding_region(request):
+def test_bounding_region(dagmc_legacy_universe):
     """Checks that the DAGMCUniverse.bounding_region() returns a region with
     correct surfaces and boundary types"""
 
-    u = openmc.DAGMCUniverse(Path(request.fspath).parent / "dagmc.h5m")
+    u = dagmc_legacy_universe
 
     region = u.bounding_region()  # should default to bounded_type='box'
     assert isinstance(region, openmc.Region)
@@ -57,11 +56,11 @@ def test_bounding_region(request):
     assert larger_region.surface.r > region.surface.r
 
 
-def test_bounded_universe(request):
+def test_bounded_universe(dagmc_legacy_universe):
     """Checks that the DAGMCUniverse.bounded_universe() returns a
     openmc.Universe with correct surface ids and cell ids"""
 
-    u = openmc.DAGMCUniverse(Path(request.fspath).parent / "dagmc.h5m")
+    u = dagmc_legacy_universe
 
     # bounded with defaults
     bu = u.bounded_universe()
@@ -88,10 +87,10 @@ def test_bounded_universe(request):
     assert surfaces[0][1].id == 43
 
 
-def test_material_names(request):
+def test_material_names(dagmc_legacy_universe):
     """Checks that the DAGMCUniverse.material_names() returns a list of the
     name present in the dagmc.h5m file in the expected order"""
 
-    u = openmc.DAGMCUniverse(Path(request.fspath).parent / "dagmc.h5m")
+    u = dagmc_legacy_universe
 
     assert u.material_names == ['41', 'Graveyard', 'no-void fuel']

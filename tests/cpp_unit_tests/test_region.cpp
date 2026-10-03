@@ -183,6 +183,23 @@ TEST_CASE("Find boundary after virtual surface crossings")
     REQUIRE(surface == 2);
   }
 
+  SECTION("Boundary beyond a maximum distance")
+  {
+    // A boundary nearer than the maximum distance is found as before
+    auto [distance, surface] =
+      region.distance({1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, 0, 5.5);
+    REQUIRE(distance == Catch::Approx(5.0));
+    REQUIRE(surface == 2);
+
+    // The search stops once it passes the maximum distance, whether before or
+    // after the virtual crossings
+    for (double max_distance : {2.0, 4.5}) {
+      auto [far_distance, far_surface] =
+        region.distance({1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, 0, max_distance);
+      REQUIRE(far_distance == openmc::INFTY);
+    }
+  }
+
   SECTION("Starting outside the region")
   {
     // Along -x from x=7, entering the sphere at x=6 is the first boundary.

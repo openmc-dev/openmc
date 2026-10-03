@@ -276,9 +276,6 @@ void Particle::event_calculate_xs()
 
 void Particle::event_advance()
 {
-  // Find the distance to the nearest boundary
-  boundary() = distance_to_boundary(*this);
-
   // Sample a distance to collision
   if (type() == ParticleType::electron() ||
       type() == ParticleType::positron()) {
@@ -293,6 +290,12 @@ void Particle::event_advance()
   double time_cutoff = settings::time_cutoff[type().transport_index()];
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+
+  // Find the distance to the nearest boundary. A boundary beyond the
+  // collision site is not needed, which lets the search through complex cells
+  // stop early. The search uses no random numbers, so results do not depend
+  // on the order in which the two distances are found.
+  boundary() = distance_to_boundary(*this, collision_distance());
 
   // Select smaller of the three distances
   double distance =

@@ -470,7 +470,8 @@ def test_umesh_from_hdf5_without_filename(run_in_tmpdir):
         group['connectivity'] = np.zeros((1, 8), dtype=int)
         group['element_types'] = [0]
 
-        mesh = openmc.MeshBase.from_hdf5(group)
+        with openmc.config.patch('resolve_paths', True):
+            mesh = openmc.MeshBase.from_hdf5(group)
 
     assert mesh.filename == Path()
     assert mesh.has_statepoint_data

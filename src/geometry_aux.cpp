@@ -455,10 +455,45 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
 
 void count_universe_instances()
 {
-  for (auto& univ : model::universes) {
-    std::unordered_map<int32_t, int32_t> univ_count_memo;
-    univ->n_instances_ = count_universe_instances(
-      model::root_universe, univ->id_, univ_count_memo);
+  // Call a function with each universe filling a cell or lattice element of a
+  // universe, once per cell or lattice element
+  auto for_each_fill = [](int32_t i_univ, auto&& f) {
+    for (int32_t i_cell : model::universes[i_univ]->cells_) {
+      Cell& c = *model::cells[i_cell];
+      if (c.type_ == Fill::UNIVERSE) {
+        f(c.fill_);
+      } else if (c.type_ == Fill::LATTICE) {
+        Lattice& lat = *model::lattices[c.fill_];
+        for (auto it = lat.begin(); it != lat.end(); ++it)
+          f(*it);
+      }
+    }
+  };
+
+  // Order the universes reachable from the root so that every universe comes
+  // after all universes that contain it
+  vector<int32_t> order;
+  vector<bool> visited(model::universes.size(), false);
+  auto visit = [&](int32_t i_univ, auto& self) -> void {
+    visited[i_univ] = true;
+    for_each_fill(i_univ, [&](int32_t next) {
+      if (!visited[next])
+        self(next, self);
+    });
+    order.push_back(i_univ);
+  };
+  visit(model::root_universe, visit);
+
+  // The number of instances of a universe is the sum over the cells and
+  // lattice elements it fills of the number of instances of the universe
+  // containing them. Universes not reachable from the root have none.
+  for (auto& univ : model::universes)
+    univ->n_instances_ = 0;
+  model::universes[model::root_universe]->n_instances_ = 1;
+  for (auto it = order.rbegin(); it != order.rend(); ++it) {
+    int n = model::universes[*it]->n_instances_;
+    for_each_fill(
+      *it, [&](int32_t next) { model::universes[next]->n_instances_ += n; });
   }
 }
 

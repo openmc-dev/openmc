@@ -84,10 +84,11 @@ void prepare_distribcell(
   const std::vector<int32_t>* user_distribcells = nullptr);
 
 //==============================================================================
-//! Recursively search through the geometry and count universe instances.
+//! Count the number of instances of every universe in the geometry.
 //!
-//! This function will update Universe.n_instances_ for each
-//! universe in the geometry.
+//! This function will update Universe.n_instances_ for each universe in the
+//! geometry. The universes are visited once each, in an order where every
+//! universe comes after the universes containing it.
 //==============================================================================
 
 void count_universe_instances();

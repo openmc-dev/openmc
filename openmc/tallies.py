@@ -597,7 +597,7 @@ class Tally(IDManagerMixin):
 
             n = self.num_realizations
             nonzero = np.abs(self.mean) > 0
-            self._std_dev = np.zeros_like(self.mean)
+            std_dev = np.zeros_like(self.mean)
             if n > 1:
                 # The variance is formed from accumulated sums, so rounding can
                 # push it slightly below zero when the realizations are nearly
@@ -606,7 +606,7 @@ class Tally(IDManagerMixin):
                 # NaN, so clamp at zero as mean_stdev() in src/output.cpp does.
                 variance = (self.sum_sq[nonzero]/n -
                             self.mean[nonzero]**2)/(n - 1)
-                self._std_dev[nonzero] = np.sqrt(np.maximum(variance, 0.0))
+                std_dev[nonzero] = np.sqrt(np.maximum(variance, 0.0))
             elif nonzero.any():
                 # A single realization supports no uncertainty estimate. Keep
                 # reporting it as undefined, but say so directly rather than
@@ -615,12 +615,13 @@ class Tally(IDManagerMixin):
                 warnings.warn(
                     'Standard deviation is undefined for a tally with a single '
                     'realization; reporting it as NaN.')
-                self._std_dev[nonzero] = np.nan
+                std_dev[nonzero] = np.nan
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = lil_array(self._std_dev.reshape(1, -1))
+                std_dev = lil_array(std_dev.reshape(1, -1))
 
+            self._std_dev = std_dev
             self.with_batch_statistics = True
 
         if self.sparse:

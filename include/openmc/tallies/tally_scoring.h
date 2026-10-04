@@ -120,7 +120,14 @@ void score_surface_tally(
 //
 //! \param p The particle being tracked
 //! \param tallies A vector of the indices of the tallies to score to
-void score_pulse_height_tally(Particle& p, const vector<int>& tallies);
+//! Score a completed per-history pulse-height result.
+//
+//! \param p particle used to drive filter matching; its cell and E_last are
+//!   temporarily overwritten and restored
+//! \param pht per-cell deposited energy, indexed as model::pulse_height_cells
+//! \param tallies indices of the pulse-height tallies to score into
+void score_pulse_height_tally(
+  Particle& p, const vector<double>& pht, const vector<int>& tallies);
 
 } // namespace openmc
 

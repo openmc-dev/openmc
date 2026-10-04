@@ -79,8 +79,8 @@ void init_fission_bank(int64_t max)
 }
 
 // Performs an O(n) sort on a fission or secondary bank, by leveraging
-// the parent_id and progeny_id fields of banked particles. See the following
-// paper for more details:
+// the ancestor_index and progeny_id fields of banked particles. See the
+// following paper for more details:
 // "Reproducibility and Monte Carlo Eigenvalue Calculations," F.B. Brown and
 // T.M. Sutton, 1992 ANS Annual Meeting, Transactions of the American Nuclear
 // Society, Volume 65, Page 235.
@@ -121,15 +121,15 @@ void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
   // Use parent and progeny indices to sort bank
   for (int64_t i = 0; i < bank.size(); i++) {
     const auto& site = bank[i];
-    if (site.parent_id < 0 ||
-        site.parent_id >=
+    if (site.parent_slot() < 0 ||
+        site.parent_slot() >=
           static_cast<int64_t>(simulation::progeny_per_particle.size())) {
       fatal_error(fmt::format("Invalid parent_id {} for banked site (expected "
                               "range [0, {})).",
-        site.parent_id, simulation::progeny_per_particle.size()));
+        site.parent_slot(), simulation::progeny_per_particle.size()));
     }
     int64_t idx =
-      simulation::progeny_per_particle[site.parent_id] + site.progeny_id;
+      simulation::progeny_per_particle[site.parent_slot()] + site.progeny_id;
     if (idx < 0 || idx >= bank.size()) {
       fatal_error("Mismatch detected between sum of all particle progeny and "
                   "bank size during sorting.");

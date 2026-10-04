@@ -50,12 +50,33 @@ struct SourceSite {
 
   // Extra attributes that don't show up in source written to file
   int parent_nuclide {-1};
-  int64_t parent_id {0};
+
+  //! Index of an ancestor of this site, in one of two senses that never
+  //! overlap. Before the site is placed by collection it is the immediate
+  //! parent's slot in the current generation's work, which with progeny_id
+  //! gives the site its position in the collected bank and is used for nothing
+  //! else. Placement consumes that key, and resolve_root_indices() then
+  //! overwrites the field with the index of the primary at the root of the
+  //! site's history, which is what survives the sort and the MPI migration the
+  //! shared secondary bank performs between generations. Read it through
+  //! parent_slot() or root_index() so the sense is explicit at every use.
+  int64_t ancestor_index {0};
+
   int64_t progeny_id {0};
   double wgt_born {1.0};
   double wgt_ww_born {-1.0};
   int64_t n_split {0};
   int n_collision {0};
+
+  //! Slot of the immediate parent within the current generation's work. Valid
+  //! from creation until the site is placed by collection.
+  int64_t& parent_slot() { return ancestor_index; }
+  int64_t parent_slot() const { return ancestor_index; }
+
+  //! Index of the primary at the root of this site's history. Valid once the
+  //! site has been placed by collection.
+  int64_t& root_index() { return ancestor_index; }
+  int64_t root_index() const { return ancestor_index; }
 };
 
 struct CollisionTrackSite {
@@ -556,6 +577,8 @@ private:
 
   vector<double> pht_storage_;
 
+  int64_t root_index_ {-1};
+
   double keff_tally_absorption_ {0.0};
   double keff_tally_collision_ {0.0};
   double keff_tally_tracklength_ {0.0};
@@ -736,6 +759,11 @@ public:
 
   // Interim pulse height tally storage
   vector<double>& pht_storage() { return pht_storage_; }
+  const vector<double>& pht_storage() const { return pht_storage_; }
+
+  // Index of the primary particle at the root of this particle's tree
+  int64_t& root_index() { return root_index_; }
+  int64_t root_index() const { return root_index_; }
 
   // Global tally accumulators
   double& keff_tally_absorption() { return keff_tally_absorption_; }

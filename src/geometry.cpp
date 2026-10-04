@@ -313,6 +313,12 @@ bool neighbor_list_find_cell(GeometryState& p, bool verbose)
   auto i_cell = p.coord(coord_lvl).cell();
   Cell& c {*model::cells[i_cell]};
 
+  // A cell whose neighbor list is full, such as a matrix around many
+  // particles, is next to too many cells for the list to help, so its universe
+  // is searched directly
+  if (c.neighbors_.full())
+    return find_cell_inner(p, nullptr, verbose);
+
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.
   bool found = find_cell_inner(p, &c.neighbors_, verbose);

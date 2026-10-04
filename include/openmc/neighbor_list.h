@@ -2,6 +2,7 @@
 #define OPENMC_NEIGHBOR_LIST_H
 
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <forward_list>
@@ -26,7 +27,7 @@ public:
   using const_iterator = std::forward_list<value_type>::const_iterator;
 
   // Attempt to add an element, unless the list already holds max_size
-  // elements.
+  // elements, in which case the list is marked as full.
   //
   // If the relevant OpenMP lock is currently owned by another thread, this
   // function will return without actually modifying the data.  It has been
@@ -51,10 +52,15 @@ public:
             it1 = it2++;
             ++size;
           }
-          if (size < max_size)
+          if (size < max_size) {
             list_.insert_after(it1, new_elem);
+          } else {
+            full_.store(true, std::memory_order_relaxed);
+          }
         } else if (max_size > 0) {
           list_.push_front(new_elem);
+        } else {
+          full_.store(true, std::memory_order_relaxed);
         }
       }
     }
@@ -62,11 +68,15 @@ public:
 
   const_iterator cbegin() const { return list_.cbegin(); }
 
+  // Whether an element was not added because the list was full
+  bool full() const { return full_.load(std::memory_order_relaxed); }
+
   const_iterator cend() const { return list_.cend(); }
 
 private:
   std::forward_list<value_type> list_;
   OpenMPMutex mutex_;
+  std::atomic<bool> full_ {false};
 };
 
 } // namespace openmc

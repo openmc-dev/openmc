@@ -497,6 +497,19 @@ public:
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;
 
+  //! \brief Bounding box of the cell, enlarged slightly to allow for roundoff
+  //! in positions on its boundary, used to skip the cell when searching for
+  //! the cell containing a point outside of it
+  BoundingBox search_box_;
+
+  //! \brief Whether a point may be in the cell based on its bounding box
+  bool may_contain(Position r) const
+  {
+    return r.x >= search_box_.min.x && r.x <= search_box_.max.x &&
+           r.y >= search_box_.min.y && r.y <= search_box_.max.y &&
+           r.z >= search_box_.min.z && r.z <= search_box_.max.z;
+  }
+
   Position translation_ {0, 0, 0}; //!< Translation vector for filled universe
 
   //! \brief Rotational tranfsormation of the filled universe.

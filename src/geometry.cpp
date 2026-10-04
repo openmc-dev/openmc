@@ -138,14 +138,17 @@ bool find_cell_inner(
 
       // Make sure the search cell is in the same universe.
       int i_universe = p.lowest_coord().universe();
-      if (model::cells[i_cell]->universe_ != i_universe)
+      const auto& c = *model::cells[i_cell];
+      if (c.universe_ != i_universe)
         continue;
 
       // Check if this cell contains the particle.
       Position r {p.r_local()};
       Direction u {p.u_local()};
       auto surf = p.surface();
-      if (model::cells[i_cell]->contains(r, u, surf)) {
+      if (!c.may_contain(r))
+        continue;
+      if (c.contains(r, u, surf)) {
         p.lowest_coord().cell() = i_cell;
         found = true;
         break;

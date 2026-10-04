@@ -1,11 +1,10 @@
 import os
 from itertools import product
+from pathlib import Path
 
 import pytest
-
 import numpy as np
 from uncertainties import ufloat
-
 import openmc
 import openmc.lib
 from openmc.stats import Discrete, Point

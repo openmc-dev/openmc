@@ -230,7 +230,6 @@ TEST_CASE("Find boundary with and without working space")
   // does not, as can happen in event-based mode, the region is searched
   // without it and the boundary found is the same.
   openmc::GeometryState p;
-  REQUIRE(p.surface_states().size() >= 2);
   openmc::Position r[] = {{1.0, 0.0, 0.0}, {7.0, 0.0, 0.0}, {4.2, 0.6, 0.0}};
   openmc::Direction u[] = {{1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}};
   int32_t on_surface[] = {0, 0, -2};

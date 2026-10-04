@@ -62,19 +62,6 @@ GeometryState::GeometryState()
   // Create and clear coordinate levels
   coord_.resize(model::n_coord_levels);
   cell_last_.resize(model::n_coord_levels);
-
-  // Size the working space for complex regions for the region with the most
-  // surfaces. In event-based mode, where many particles are in flight, its
-  // total size is limited, and regions with more surfaces than it can hold
-  // are searched without it.
-  int64_t n_states = model::max_region_surfaces;
-  if (settings::event_based) {
-    int64_t n_particles = std::max<int64_t>(1,
-      std::min(simulation::work_per_rank, settings::max_particles_in_flight));
-    n_states = std::min<int64_t>(n_states,
-      MAX_SURFACE_STATES_MEMORY / (n_particles * sizeof(SurfaceState)));
-  }
-  surface_states_.resize(n_states);
   clear();
 }
 
@@ -130,6 +117,20 @@ ParticleData::ParticleData()
   // Create microscopic cross section caches
   neutron_xs_.resize(data::nuclides.size());
   photon_xs_.resize(data::elements.size());
+
+  // Size the working space for finding boundaries in complex regions for the
+  // region with the most surfaces. Other geometry states, which are only used
+  // to locate points, have none. In event-based mode, where many particles
+  // are in flight, its total size is limited. Regions with more surfaces than
+  // the working space holds are searched without it.
+  int64_t n_states = model::max_region_surfaces;
+  if (settings::event_based) {
+    int64_t n_particles = std::max<int64_t>(1,
+      std::min(simulation::work_per_rank, settings::max_particles_in_flight));
+    n_states = std::min<int64_t>(n_states,
+      MAX_SURFACE_STATES_MEMORY / (n_particles * sizeof(SurfaceState)));
+  }
+  surface_states().resize(n_states);
 
   // Creates the pulse-height storage for the particle
   if (!model::pulse_height_cells.empty()) {

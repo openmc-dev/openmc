@@ -32,6 +32,14 @@ std::unordered_map<OverlapKey, int, OverlapKeyHash> overlap_key_index;
 
 } // namespace model
 
+namespace {
+
+//! Most cells in the neighbor list of a cell in a universe whose cells are
+//! searched with a tree
+constexpr std::size_t MAX_TREE_NEIGHBORS {8};
+
+} // namespace
+
 //==============================================================================
 // Non-member functions
 //==============================================================================
@@ -313,10 +321,16 @@ bool neighbor_list_find_cell(GeometryState& p, bool verbose)
 
   // The particle could not be found in the neighbor list.  Try searching all
   // cells in this universe, and update the neighbor list if we find a new
-  // neighboring cell.
+  // neighboring cell. In a universe whose cells are searched with a tree,
+  // neighbor lists are kept short, since a cell with many neighbors, such as
+  // a matrix around many particles, is found faster with the tree.
   found = find_cell_inner(p, nullptr, verbose);
-  if (found)
-    c.neighbors_.push_back(p.coord(coord_lvl).cell());
+  if (found) {
+    std::size_t max_size = model::universes[c.universe_]->has_cell_tree()
+                             ? MAX_TREE_NEIGHBORS
+                             : std::numeric_limits<std::size_t>::max();
+    c.neighbors_.push_back(p.coord(coord_lvl).cell(), max_size);
+  }
   return found;
 }
 

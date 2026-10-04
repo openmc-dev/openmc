@@ -2,8 +2,10 @@
 #define OPENMC_NEIGHBOR_LIST_H
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <forward_list>
+#include <limits>
 #include <mutex>
 
 #include "openmc/openmp_interface.h"
@@ -23,13 +25,15 @@ public:
   using value_type = int32_t;
   using const_iterator = std::forward_list<value_type>::const_iterator;
 
-  // Attempt to add an element.
+  // Attempt to add an element, unless the list already holds max_size
+  // elements.
   //
   // If the relevant OpenMP lock is currently owned by another thread, this
   // function will return without actually modifying the data.  It has been
   // found that returning the transport calculation and possibly re-adding the
   // element later is slightly faster than waiting on the lock to be released.
-  void push_back(int new_elem)
+  void push_back(int new_elem,
+    std::size_t max_size = std::numeric_limits<std::size_t>::max())
   {
     // Try to acquire the lock.
     std::unique_lock<OpenMPMutex> lock(mutex_, std::try_to_lock);
@@ -42,10 +46,14 @@ public:
         if (!list_.empty()) {
           auto it1 = list_.cbegin();
           auto it2 = ++list_.cbegin();
-          while (it2 != list_.cend())
+          std::size_t size = 1;
+          while (it2 != list_.cend()) {
             it1 = it2++;
-          list_.insert_after(it1, new_elem);
-        } else {
+            ++size;
+          }
+          if (size < max_size)
+            list_.insert_after(it1, new_elem);
+        } else if (max_size > 0) {
           list_.push_front(new_elem);
         }
       }

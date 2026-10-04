@@ -7,6 +7,10 @@ namespace openmc {
 
 namespace {
 
+//! Minimum number of boxes for a tree to be used. Below it, testing every box
+//! is about as fast as searching a tree.
+constexpr int MIN_TREE_BOXES = 32;
+
 //! Half of the surface area of a box
 double half_area(const BoundingBox& b)
 {
@@ -140,6 +144,27 @@ private:
 };
 
 } // namespace
+
+bool use_box_tree(const vector<BoundingBox>& boxes)
+{
+  if (boxes.size() < MIN_TREE_BOXES)
+    return false;
+
+  // A tree only helps if each point is in few of the boxes. The total volume
+  // of the boxes divided by the volume of the box around all of them is the
+  // average number of boxes containing a point in it, which must be at most
+  // an eighth of the number of boxes.
+  auto volume = [](const BoundingBox& b) {
+    return (b.max.x - b.min.x) * (b.max.y - b.min.y) * (b.max.z - b.min.z);
+  };
+  BoundingBox all = BoundingBox::inverted();
+  double total = 0.0;
+  for (const auto& b : boxes) {
+    all |= b;
+    total += volume(b);
+  }
+  return 8.0 * total <= boxes.size() * volume(all);
+}
 
 BoxTree::BoxTree(const vector<BoundingBox>& boxes)
 {

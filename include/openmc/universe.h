@@ -2,6 +2,7 @@
 #define OPENMC_UNIVERSE_H
 
 #include "openmc/bounding_box.h"
+#include "openmc/box_tree.h"
 #include "openmc/cell.h"
 
 namespace openmc {
@@ -46,6 +47,21 @@ public:
   virtual GeometryType geom_type() const { return GeometryType::CSG; }
 
   unique_ptr<UniversePartitioner> partitioner_;
+
+  //! Build a tree over the search boxes of the cells, if it is expected to
+  //! make finding the cell containing a point faster
+  void build_cell_tree();
+
+  //! Whether the cells are searched with a tree
+  bool has_cell_tree() const { return !cell_tree_.empty(); }
+
+private:
+  //! Tree over the cells with finite search boxes. Item i of the tree is the
+  //! cell at position tree_cells_[i] in cells_.
+  BoxTree cell_tree_;
+  vector<int32_t> tree_cells_;
+  //! Positions in cells_ of the cells without finite search boxes
+  vector<int32_t> unboxed_cells_;
 };
 
 //==============================================================================

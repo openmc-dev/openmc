@@ -39,6 +39,32 @@ void Universe::to_hdf5(hid_t universes_group) const
 
 bool Universe::find_cell(GeometryState& p) const
 {
+  if (has_cell_tree()) {
+    // Find the first cell of the universe containing the point, as a linear
+    // search would, testing only the cells whose boxes contain the point
+    Position r {p.r_local()};
+    Direction u {p.u_local()};
+    auto surf = p.surface();
+    int32_t first = cells_.size();
+    auto check = [&](int32_t k) {
+      if (k < first && model::cells[cells_[k]]->contains(r, u, surf))
+        first = k;
+    };
+    cell_tree_.any_containing(r, [&](int32_t item) {
+      check(tree_cells_[item]);
+      return false;
+    });
+    for (int32_t k : unboxed_cells_) {
+      if (k >= first)
+        break;
+      check(k);
+    }
+    if (first == cells_.size())
+      return false;
+    p.lowest_coord().cell() = cells_[first];
+    return true;
+  }
+
   const auto& cells {
     !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
 
@@ -58,6 +84,27 @@ bool Universe::find_cell(GeometryState& p) const
     }
   }
   return false;
+}
+
+void Universe::build_cell_tree()
+{
+  vector<BoundingBox> boxes;
+  vector<int32_t> boxed;
+  vector<int32_t> unboxed;
+  for (int32_t k = 0; k < cells_.size(); ++k) {
+    const BoundingBox& b = model::cells[cells_[k]]->search_box_;
+    if (is_bounded(b)) {
+      boxed.push_back(k);
+      boxes.push_back(b);
+    } else {
+      unboxed.push_back(k);
+    }
+  }
+  if (!use_box_tree(boxes))
+    return;
+  cell_tree_ = BoxTree(boxes);
+  tree_cells_ = std::move(boxed);
+  unboxed_cells_ = std::move(unboxed);
 }
 
 BoundingBox Universe::bounding_box() const

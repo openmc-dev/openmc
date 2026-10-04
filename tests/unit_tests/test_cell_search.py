@@ -126,3 +126,48 @@ def test_find_cell_random_regions(run_in_tmpdir, seed):
             assert np.all(lower_left <= p) and np.all(p <= upper_right)
     finally:
         openmc.lib.finalize()
+
+
+@pytest.mark.parametrize('order', [(0, 1, 2), (1, 0, 2), (2, 0, 1), (1, 2, 0)])
+def test_find_cell_first_of_overlapping(run_in_tmpdir, order):
+    """In a universe with enough cells for their bounding boxes to be searched
+    with a tree, the cell found for a point in several cells is the first of
+    them in the universe, as in a linear search, whether or not the cells
+    have finite bounding boxes. Cells are in the universe in order of ID."""
+    regions = [
+        -openmc.Sphere(r=1.0),
+        -openmc.model.RectangularParallelepiped(-0.5, 0.5, -0.5, 0.5, -0.5, 0.5),
+        -openmc.ZPlane(0.25),
+    ]
+    overlapping = [openmc.Cell(1000 + order.index(i), region=regions[i])
+                   for i in range(3)]
+
+    # Small spheres away from the origin, and the rest of a box, which also
+    # contains the origin but comes after the overlapping cells
+    box = openmc.model.RectangularParallelepiped(
+        -10, 10, -10, 10, -10, 10, boundary_type='vacuum')
+    cells = [overlapping[i] for i in order]
+    rest = -box
+    for i in range(40):
+        sphere = openmc.Sphere(x0=-8.0 + 0.4 * i, y0=5.0, z0=5.0, r=0.1)
+        cells.append(openmc.Cell(2000 + i, region=-sphere))
+        rest &= +sphere
+    cells.append(openmc.Cell(3000, region=rest))
+
+    model = openmc.Model()
+    model.geometry = openmc.Geometry(cells)
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 1
+    model.settings.batches = 1
+    model.export_to_model_xml()
+
+    openmc.lib.init()
+    try:
+        cell, _ = openmc.lib.find_cell((0.0, 0.0, 0.0))
+        assert cell.id == cells[0].id
+        cell, _ = openmc.lib.find_cell((0.0, 0.0, 0.9))
+        assert cell.id == overlapping[0].id
+        cell, _ = openmc.lib.find_cell((-8.0, 5.0, 5.0))
+        assert cell.id == cells[3].id
+    finally:
+        openmc.lib.finalize()

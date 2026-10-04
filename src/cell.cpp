@@ -544,34 +544,6 @@ void CSGCell::to_hdf5_inner(hid_t group_id) const
 
 namespace {
 
-//! Minimum number of children of a root intersection that are false only
-//! within bounded boxes for the children to be searched with a tree. Below
-//! it, evaluating every child is about as fast as searching a tree.
-constexpr int MIN_BOXED_CHILDREN = 32;
-
-//! Whether the children of an intersection whose boxes are given should be
-//! searched with a tree
-bool use_child_tree(const vector<BoundingBox>& boxes)
-{
-  if (boxes.size() < MIN_BOXED_CHILDREN)
-    return false;
-
-  // A tree only helps if each point is in few of the boxes. The total volume
-  // of the boxes divided by the volume of the box around all of them is the
-  // average number of boxes containing a point in it, which must be at most
-  // an eighth of the number of boxes.
-  auto volume = [](const BoundingBox& b) {
-    return (b.max.x - b.min.x) * (b.max.y - b.min.y) * (b.max.z - b.min.z);
-  };
-  BoundingBox all = BoundingBox::inverted();
-  double total = 0.0;
-  for (const auto& b : boxes) {
-    all |= b;
-    total += volume(b);
-  }
-  return 8.0 * total <= boxes.size() * volume(all);
-}
-
 //! Expression tree node used while parsing a region specification
 struct ParseNode {
   enum class Type { HALFSPACE, INTERSECTION, UNION };
@@ -806,7 +778,7 @@ Region::Region(std::string region_spec, int32_t cell_id)
         boxes.push_back(b);
     }
   }
-  if (!simple || use_child_tree(boxes)) {
+  if (!simple || use_box_tree(boxes)) {
     // Refer to the surfaces of the half-spaces in the tree by their position
     // in the list of distinct surfaces, so that quantities can be computed
     // once per surface when the region is evaluated
@@ -876,7 +848,7 @@ void Region::set_child_boxes(bool simple)
       unboxed.push_back(j);
     }
   }
-  if (!use_child_tree(boxes))
+  if (!use_box_tree(boxes))
     return;
 
   c.children = unboxed_halfspaces;

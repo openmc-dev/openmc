@@ -23,6 +23,11 @@ inline bool is_bounded(const BoundingBox& b)
   return true;
 }
 
+//! Whether a tree over the given finite boxes is expected to find the boxes
+//! containing a point faster than testing each of them. There must be enough
+//! boxes, and a point must be in few of them.
+bool use_box_tree(const vector<BoundingBox>& boxes);
+
 //==============================================================================
 //! Bounding volume hierarchy over a set of axis-aligned boxes.
 //!

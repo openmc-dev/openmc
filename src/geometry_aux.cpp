@@ -162,6 +162,18 @@ void set_cell_search_boxes()
 }
 
 //==============================================================================
+//! Search the cells of universes that are not partitioned with a tree over
+//! their search boxes, where a tree is expected to be faster.
+
+void build_cell_trees()
+{
+  for (auto& univ : model::universes) {
+    if (!univ->partitioner_ && univ->geom_type() == GeometryType::CSG)
+      univ->build_cell_tree();
+  }
+}
+
+//==============================================================================
 //! Partition some universes with many z-planes for faster find_cell searches.
 
 void partition_universes()
@@ -297,6 +309,7 @@ void finalize_geometry()
   count_universe_instances();
   partition_universes();
   set_cell_search_boxes();
+  build_cell_trees();
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();

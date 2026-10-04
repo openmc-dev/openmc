@@ -1,5 +1,6 @@
 set(TEST_NAMES
   test_atomic_mass
+  test_box_tree
   test_distribution
   test_file_utils
   test_tally

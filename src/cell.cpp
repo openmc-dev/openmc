@@ -544,6 +544,34 @@ void CSGCell::to_hdf5_inner(hid_t group_id) const
 
 namespace {
 
+//! Minimum number of children of a root intersection that are false only
+//! within bounded boxes for the children to be searched with a tree. Below
+//! it, evaluating every child is about as fast as searching a tree.
+constexpr int MIN_BOXED_CHILDREN = 32;
+
+//! Whether the children of an intersection whose boxes are given should be
+//! searched with a tree
+bool use_child_tree(const vector<BoundingBox>& boxes)
+{
+  if (boxes.size() < MIN_BOXED_CHILDREN)
+    return false;
+
+  // A tree only helps if each point is in few of the boxes. The total volume
+  // of the boxes divided by the volume of the box around all of them is the
+  // average number of boxes containing a point in it, which must be at most
+  // an eighth of the number of boxes.
+  auto volume = [](const BoundingBox& b) {
+    return (b.max.x - b.min.x) * (b.max.y - b.min.y) * (b.max.z - b.min.z);
+  };
+  BoundingBox all = BoundingBox::inverted();
+  double total = 0.0;
+  for (const auto& b : boxes) {
+    all |= b;
+    total += volume(b);
+  }
+  return 8.0 * total <= boxes.size() * volume(all);
+}
+
 //! Expression tree node used while parsing a region specification
 struct ParseNode {
   enum class Type { HALFSPACE, INTERSECTION, UNION };
@@ -766,12 +794,19 @@ Region::Region(std::string region_spec, int32_t cell_id)
   append(root, -1, append);
 
   // Store the half-spaces in order. A simple region is just their
-  // intersection, so its expression tree is not needed.
+  // intersection, so its expression tree is not needed unless the region is
+  // the space outside of many bounded objects, which is searched with a tree.
+  vector<BoundingBox> boxes;
   for (const auto& node : nodes) {
-    if (node.type == Node::Type::HALFSPACE)
+    if (node.type == Node::Type::HALFSPACE) {
       halfspaces_.push_back(node.halfspace);
+      const auto& surf = *model::surfaces[std::abs(node.halfspace) - 1];
+      BoundingBox b = surf.bounding_box(node.halfspace < 0);
+      if (is_bounded(b))
+        boxes.push_back(b);
+    }
   }
-  if (!simple) {
+  if (!simple || use_child_tree(boxes)) {
     // Refer to the surfaces of the half-spaces in the tree by their position
     // in the list of distinct surfaces, so that quantities can be computed
     // once per surface when the region is evaluated
@@ -786,11 +821,96 @@ Region::Region(std::string region_spec, int32_t cell_id)
         surfaces.push_back(i_surf);
       node.halfspace = node.halfspace > 0 ? slot : -slot;
     }
-    model::max_region_surfaces =
-      std::max<int>(model::max_region_surfaces, surfaces.size());
     complex_ =
       make_unique<Complex>(Complex {std::move(nodes), std::move(surfaces)});
+    set_child_boxes(simple);
+    model::max_region_surfaces =
+      std::max<int>(model::max_region_surfaces, complex_->surfaces.size());
   }
+}
+
+//==============================================================================
+
+BoundingBox Region::node_box(int32_t i, bool value) const
+{
+  const auto& nodes = complex_->nodes;
+  const Node& node = nodes[i];
+  if (node.type == Node::Type::HALFSPACE) {
+    int32_t token = surface_token(node.halfspace);
+    return model::surfaces[abs(token) - 1]->bounding_box((token > 0) == value);
+  }
+  // An intersection is true, and a union is false, only where all of its
+  // children are
+  bool all = (node.type == Node::Type::INTERSECTION) == value;
+  BoundingBox bbox = all ? BoundingBox::infinite() : BoundingBox::inverted();
+  for (int32_t j = i + 1; j < node.end; j = nodes[j].end) {
+    if (all) {
+      bbox &= node_box(j, value);
+    } else {
+      bbox |= node_box(j, value);
+    }
+  }
+  return bbox;
+}
+
+//==============================================================================
+
+void Region::set_child_boxes(bool simple)
+{
+  auto& c = *complex_;
+  if (c.nodes[0].type != Node::Type::INTERSECTION)
+    return;
+
+  vector<int32_t> unboxed_halfspaces;
+  vector<int32_t> unboxed;
+  vector<int32_t> boxed;
+  vector<BoundingBox> boxes;
+  for (int32_t j = 1; j < c.nodes[0].end; j = c.nodes[j].end) {
+    BoundingBox b = node_box(j, false);
+    if (is_bounded(b)) {
+      boxed.push_back(j);
+      boxes.push_back(b);
+    } else if (c.nodes[j].type == Node::Type::HALFSPACE) {
+      unboxed_halfspaces.push_back(j);
+    } else {
+      unboxed.push_back(j);
+    }
+  }
+  if (!use_child_tree(boxes))
+    return;
+
+  c.children = unboxed_halfspaces;
+  c.children.insert(c.children.end(), unboxed.begin(), unboxed.end());
+  c.children.insert(c.children.end(), boxed.begin(), boxed.end());
+  for (int32_t j : unboxed_halfspaces)
+    c.unboxed_halfspaces.push_back(surface_token(c.nodes[j].halfspace));
+  c.n_unboxed = unboxed_halfspaces.size() + unboxed.size();
+  c.simple = simple;
+  c.child_tree = BoxTree(boxes);
+
+  // Give the distinct surfaces of each child consecutive positions in the
+  // list of surfaces, so that a child is searched with working space for its
+  // own surfaces only. A surface of several children appears once for each.
+  vector<int32_t> surfaces;
+  c.slot_offsets.push_back(0);
+  for (int32_t j : c.children) {
+    int32_t first = surfaces.size();
+    for (int32_t i = j; i < c.nodes[j].end; ++i) {
+      Node& node = c.nodes[i];
+      if (node.type != Node::Type::HALFSPACE)
+        continue;
+      int32_t i_surf = c.surfaces[std::abs(node.halfspace) - 1];
+      auto it = std::find(surfaces.begin() + first, surfaces.end(), i_surf);
+      int32_t slot = it - surfaces.begin() + 1;
+      if (it == surfaces.end())
+        surfaces.push_back(i_surf);
+      node.halfspace = node.halfspace > 0 ? slot : -slot;
+    }
+    c.slot_offsets.push_back(surfaces.size());
+    c.max_child_surfaces =
+      std::max<int32_t>(c.max_child_surfaces, surfaces.size() - first);
+  }
+  c.surfaces = std::move(surfaces);
 }
 
 //==============================================================================
@@ -867,6 +987,41 @@ bool Region::evaluate(F&& in_halfspace) const
 
 //==============================================================================
 
+template<typename F>
+bool Region::evaluate_subtree(int32_t root, F&& in_halfspace) const
+{
+  // Evaluate the expression tree without recursion: descend to the first
+  // half-space of each operator node and, after evaluating a half-space, move
+  // up the tree until reaching an operator node whose value is not yet known.
+  const auto& nodes = complex_->nodes;
+  int32_t i = root;
+  while (true) {
+    // Descend to the first half-space in this subtree
+    while (nodes[i].type != Node::Type::HALFSPACE)
+      ++i;
+    bool value = in_halfspace(nodes[i].halfspace);
+
+    // Move up the tree until reaching a node with children left to evaluate
+    while (true) {
+      if (i == root)
+        return value;
+      int32_t i_parent = nodes[i].parent;
+      const Node& parent = nodes[i_parent];
+      bool intersection = parent.type == Node::Type::INTERSECTION;
+      int32_t next = nodes[i].end;
+      if (value != intersection || next == parent.end) {
+        // The value of the parent is known
+        i = i_parent;
+      } else {
+        i = next;
+        break;
+      }
+    }
+  }
+}
+
+//==============================================================================
+
 std::pair<double, int32_t> Region::distance(
   Position r, Direction u, int32_t on_surface, GeometryState* p) const
 {
@@ -876,15 +1031,23 @@ std::pair<double, int32_t> Region::distance(
 
   // The state of each surface is kept in the particle's working space, so that
   // no memory is allocated during transport
-  if (!p) {
-    vector<SurfaceState> local(complex_->surfaces.size());
-    return distance_complex(r, u, on_surface, local.data());
+  vector<SurfaceState> local;
+  if (!p)
+    local.resize(complex_->surfaces.size());
+  auto& states = p ? p->surface_states() : local;
+
+  // The children of a region with child boxes are searched separately, unless
+  // the ray does not start in the region
+  std::pair<double, int32_t> result;
+  if (!complex_->children.empty() &&
+      complex_->max_child_surfaces <= states.size() &&
+      distance_children(r, u, on_surface, states.data(), result)) {
+    return result;
   }
-  auto& states = p->surface_states();
-  if (complex_->surfaces.size() > states.size()) {
-    return distance_complex_uncached(r, u, on_surface);
+  if (complex_->surfaces.size() <= states.size()) {
+    return distance_complex(r, u, on_surface, states.data());
   }
-  return distance_complex(r, u, on_surface, states.data());
+  return distance_complex_uncached(r, u, on_surface);
 }
 
 //==============================================================================
@@ -925,6 +1088,18 @@ std::pair<double, int32_t> Region::distance_to_nearest_surface(Position r,
 std::pair<double, int32_t> Region::distance_complex(
   Position r, Direction u, int32_t on_surface, SurfaceState* state) const
 {
+  bool value;
+  return distance_subtree<true>(
+    0, 0, complex_->surfaces.size(), r, u, on_surface, INFTY, state, value);
+}
+
+//==============================================================================
+
+template<bool ALL>
+std::pair<double, int32_t> Region::distance_subtree(int32_t root, int32_t first,
+  int32_t n_slots, Position r, Direction u, int32_t on_surface,
+  double max_distance, SurfaceState* state, bool& value) const
+{
   // The boundary is found by moving from one surface crossing to the next
   // along the ray until crossing a surface changes whether the ray is in the
   // region. Rather than recomputing the distance to and the sense with respect
@@ -935,8 +1110,7 @@ std::pair<double, int32_t> Region::distance_complex(
   // Distances updated by subtraction are only used to select the next
   // candidate surface; the distance to the candidate is recomputed from the
   // current position so that the result does not depend on roundoff.
-  const auto& surfaces = complex_->surfaces;
-  const int n = surfaces.size();
+  const int32_t* surfaces = complex_->surfaces.data() + first;
 
   // Evaluate the distance to and sense with respect to the surface in slot i.
   // If the ray is on the surface, its sense is given by on_surface.
@@ -949,15 +1123,21 @@ std::pair<double, int32_t> Region::distance_complex(
     state[i].stale = false;
   };
   auto in_region_now = [&]() {
-    return evaluate([&](int32_t halfspace) {
-      return state[std::abs(halfspace) - 1].sense == (halfspace > 0);
-    });
+    auto in_halfspace = [&](int32_t halfspace) {
+      return state[std::abs(halfspace) - 1 - first].sense == (halfspace > 0);
+    };
+    if constexpr (ALL) {
+      return evaluate(in_halfspace);
+    } else {
+      return evaluate_subtree(root, in_halfspace);
+    }
   };
 
-  for (int i = 0; i < n; ++i) {
+  for (int i = 0; i < n_slots; ++i) {
     evaluate_surface(i, on_surface);
   }
   const bool in_region = in_region_now();
+  value = in_region;
   double total_distance {0.0};
 
   while (true) {
@@ -969,7 +1149,7 @@ std::pair<double, int32_t> Region::distance_complex(
     while (true) {
       min_dist = INFTY;
       i_min = -1;
-      for (int i = 0; i < n; ++i) {
+      for (int i = 0; i < n_slots; ++i) {
         double d = state[i].distance;
         if (on_surface != 0 && d < FP_COINCIDENT)
           continue;
@@ -995,13 +1175,16 @@ std::pair<double, int32_t> Region::distance_complex(
     // the wrong side of a curved surface.
     r += min_dist * u;
     total_distance += min_dist;
+    if (!ALL && total_distance >= max_distance) {
+      return {INFTY, std::numeric_limits<int32_t>::max()};
+    }
     int32_t i_surf = surfaces[i_min];
     if (u.dot(model::surfaces[i_surf - 1]->normal(r)) <= 0.0) {
       i_surf = -i_surf;
     }
 
     // Update the distances, and reevaluate the surfaces at the new position
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < n_slots; ++i) {
       state[i].distance -= min_dist;
       state[i].stale = true;
       if (i == i_min || state[i].distance < TINY_BIT) {
@@ -1056,10 +1239,66 @@ std::pair<double, int32_t> Region::distance_complex_uncached(
 
 //==============================================================================
 
+bool Region::distance_children(Position r, Direction u, int32_t on_surface,
+  SurfaceState* state, std::pair<double, int32_t>& result) const
+{
+  // The ray normally starts in the region, so all children are true and the
+  // boundary is where the first of them becomes false. A child with a box can
+  // only become false inside its box, so it only needs to be searched if the
+  // ray enters its box before the nearest boundary found so far.
+  const auto& c = *complex_;
+
+  double min_dist = INFTY;
+  int32_t i_surf = std::numeric_limits<int32_t>::max();
+
+  // Children that are half-spaces without boxes become false where the ray
+  // crosses their surface, so they are searched as in a simple region
+  for (int32_t token : c.unboxed_halfspaces) {
+    const auto& surf = *model::surfaces[std::abs(token) - 1];
+    bool coincident = std::abs(token) == std::abs(on_surface);
+    if (!c.simple) {
+      bool sense = coincident ? on_surface > 0 : surf.sense(r, u);
+      if (sense != (token > 0))
+        return false;
+    }
+    double d = surf.distance(r, u, coincident);
+    if (d < min_dist && min_dist - d >= FP_PRECISION * min_dist) {
+      min_dist = d;
+      i_surf = -token;
+    }
+  }
+
+  auto search = [&](int k) {
+    bool value;
+    auto [d, s] = distance_subtree<false>(c.children[k], c.slot_offsets[k],
+      c.slot_offsets[k + 1] - c.slot_offsets[k], r, u, on_surface, min_dist,
+      state, value);
+    if (d < min_dist) {
+      min_dist = d;
+      i_surf = s;
+    }
+    return value;
+  };
+
+  for (int k = c.unboxed_halfspaces.size(); k < c.n_unboxed; ++k) {
+    if (!search(k))
+      return false;
+  }
+  bool in_region = true;
+  c.child_tree.visit_ray(r, u, min_dist,
+    [&](int32_t item, double) { in_region &= search(c.n_unboxed + item); });
+  result = {min_dist, i_surf};
+  return in_region;
+}
+
+//==============================================================================
+
 bool Region::contains(Position r, Direction u, int32_t on_surface) const
 {
   if (!complex_) {
     return contains_simple(r, u, on_surface);
+  } else if (!complex_->children.empty()) {
+    return contains_children(r, u, on_surface);
   } else {
     return contains_complex(r, u, on_surface);
   }
@@ -1102,6 +1341,41 @@ bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
       // Note the off-by-one indexing
       return model::surfaces[abs(token) - 1]->sense(r, u) == (token > 0);
     }
+  });
+}
+
+//==============================================================================
+
+bool Region::contains_children(
+  Position r, Direction u, int32_t on_surface) const
+{
+  const auto& c = *complex_;
+  auto in_halfspace = [&](int32_t halfspace) {
+    int32_t token = surface_token(halfspace);
+    if (token == on_surface) {
+      return true;
+    } else if (-token == on_surface) {
+      return false;
+    } else {
+      // Note the off-by-one indexing
+      return model::surfaces[abs(token) - 1]->sense(r, u) == (token > 0);
+    }
+  };
+  for (int32_t token : c.unboxed_halfspaces) {
+    if (token == on_surface) {
+      continue;
+    } else if (-token == on_surface ||
+               model::surfaces[abs(token) - 1]->sense(r, u) != (token > 0)) {
+      return false;
+    }
+  }
+  for (int k = c.unboxed_halfspaces.size(); k < c.n_unboxed; ++k) {
+    if (!evaluate_subtree(c.children[k], in_halfspace))
+      return false;
+  }
+  // Children whose boxes do not contain the point are true
+  return !c.child_tree.any_containing(r, [&](int32_t item) {
+    return !evaluate_subtree(c.children[c.n_unboxed + item], in_halfspace);
   });
 }
 
@@ -1195,8 +1469,8 @@ void read_cells(pugi::xml_node node)
 
 void populate_universes()
 {
-  // Used to map universe index to the index of an implicit complement cell for
-  // DAGMC universes
+  // Used to map universe index to the index of an implicit complement cell
+  // for DAGMC universes
   std::unordered_map<int, int> implicit_comp_cells;
 
   // Populate the Universe vector and map.
@@ -1594,13 +1868,13 @@ vector<ParentCell> Cell::exhaustive_find_parent_cells(int32_t instance) const
         continue;
 
       if (cell->type_ == Fill::UNIVERSE) {
-        // if this is in the set of cells previously visited for this universe,
-        // move on
+        // if this is in the set of cells previously visited for this
+        // universe, move on
         if (stack.visited(univ_idx, {model::cell_map[cell->id_], C_NONE}))
           continue;
 
-        // if this cell contains the universe we're searching for, add it to the
-        // stack
+        // if this cell contains the universe we're searching for, add it to
+        // the stack
         if (cell->fill_ == univ_idx) {
           stack.push(univ_idx, {model::cell_map[cell->id_], C_NONE});
           univ_idx = cell->universe_;
@@ -1637,7 +1911,8 @@ vector<ParentCell> Cell::exhaustive_find_parent_cells(int32_t instance) const
         break;
     } // end cell loop search for universe
 
-    // if we're at the top of the geometry and the instance matches, we're done
+    // if we're at the top of the geometry and the instance matches, we're
+    // done
     if (univ_idx == model::root_universe &&
         stack.compute_instance(this->distribcell_index_) == instance)
       break;

@@ -12,6 +12,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/bounding_box.h"
+#include "openmc/box_tree.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/neighbor_list.h"
@@ -143,6 +144,21 @@ private:
   template<typename F>
   bool evaluate(F&& in_halfspace) const;
 
+  //! Evaluate a subtree of the expression tree of a complex region
+  //! \param root Index of the node at the root of the subtree
+  //! \param in_halfspace As for evaluate
+  template<typename F>
+  bool evaluate_subtree(int32_t root, F&& in_halfspace) const;
+
+  //! Bounding box of the points where a node of the expression tree has the
+  //! given value
+  BoundingBox node_box(int32_t i, bool value) const;
+
+  //! Set up the boxes of the children of a root intersection, if it has
+  //! enough children that are false only within bounded boxes
+  //! \param simple Whether the region is an intersection of half-spaces
+  void set_child_boxes(bool simple);
+
   //! Signed surface index + 1 of a half-space of the expression tree
   int32_t surface_token(int32_t halfspace) const
   {
@@ -163,6 +179,32 @@ private:
   //! working space, evaluating every surface after each crossing.
   std::pair<double, int32_t> distance_complex_uncached(
     Position r, Direction u, int32_t on_surface) const;
+  //! Find the first point along a ray where the value of a subtree changes.
+  //!
+  //! \tparam ALL Whether the subtree is the whole region
+  //! \param root Index of the node at the root of the subtree
+  //! \param first Position in the list of surfaces of the first surface of
+  //!   the subtree, whose surfaces are consecutive
+  //! \param n_slots Number of surfaces of the subtree
+  //! \param max_distance Distance beyond which the search stops
+  //! \param state Working space for the surfaces of the subtree
+  //! \param value Set to the value of the subtree at the start of the ray
+  //! \return Distance and signed surface index + 1 of the crossing, or INFTY
+  //!   if there is none within max_distance
+  template<bool ALL>
+  std::pair<double, int32_t> distance_subtree(int32_t root, int32_t first,
+    int32_t n_slots, Position r, Direction u, int32_t on_surface,
+    double max_distance, SurfaceState* state, bool& value) const;
+
+  //! Determine if a point is inside a region with child boxes
+  bool contains_children(Position r, Direction u, int32_t on_surface) const;
+
+  //! Find the oncoming boundary of a region with child boxes
+  //! \param state Working space for the surfaces of the largest child
+  //! \param result Distance and signed surface index + 1 of the boundary
+  //! \return Whether the ray starts in the region. If not, result is not set.
+  bool distance_children(Position r, Direction u, int32_t on_surface,
+    SurfaceState* state, std::pair<double, int32_t>& result) const;
 
   //----------------------------------------------------------------------------
   // Private Data
@@ -176,8 +218,35 @@ private:
   struct Complex {
     vector<Node> nodes; //!< Expression tree in pre-order
     //! Distinct surface indices + 1 of the half-spaces, in order of first
-    //! appearance
+    //! appearance (for a region with child boxes, distinct within each child)
     vector<int32_t> surfaces;
+
+    // A region that is the intersection of many children, such as the space
+    // outside of many objects, is accelerated using the boxes outside of
+    // which each child is known to be true. Only the children whose boxes
+    // contain a point or are crossed by a ray need to be evaluated. These
+    // vectors are empty for other regions.
+
+    //! Node indices of the children of the root intersection. Children that
+    //! are always evaluated come first, starting with those that are single
+    //! half-spaces, followed by children with boxes.
+    vector<int32_t> children;
+    //! Number of children that are always evaluated
+    int32_t n_unboxed {0};
+    //! Signed surface indices + 1 of the children that are always evaluated
+    //! and are half-spaces, which are the first children
+    vector<int32_t> unboxed_halfspaces;
+    //! Whether the region is an intersection of half-spaces, in which case,
+    //! as for a simple region, a ray is taken to start in the region
+    bool simple {false};
+    //! Tree over the boxes outside of which the children with boxes are true.
+    //! Item i of the tree is child n_unboxed + i.
+    BoxTree child_tree;
+    //! The surfaces of child k are surfaces[slot_offsets[k]] to
+    //! surfaces[slot_offsets[k + 1] - 1]
+    vector<int32_t> slot_offsets;
+    //! Most surfaces of a child
+    int32_t max_child_surfaces {0};
   };
 
   //! Data of a complex region (null for a simple region)

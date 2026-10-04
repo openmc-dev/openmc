@@ -40,6 +40,7 @@ constexpr int32_t OP_UNION {std::numeric_limits<int32_t>::max() - 4};
 
 class Cell;
 class GeometryState;
+struct SurfaceState;
 class ParentCell;
 class CellInstance;
 class Universe;
@@ -81,7 +82,7 @@ public:
   bool contains(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
-  //! \param p Particle whose scratch space is used for complex regions, or
+  //! \param p Particle whose working space is used for complex regions, or
   //!   nullptr outside of transport
   std::pair<double, int32_t> distance(Position r, Direction u,
     int32_t on_surface, GeometryState* p = nullptr) const;
@@ -154,8 +155,14 @@ private:
     Direction u, int32_t on_surface, bool ignore_coincident_surfaces) const;
 
   //! Find the oncoming boundary of this cell for a complex cell.
+  //! \param state Working space for the surfaces of the region
   std::pair<double, int32_t> distance_complex(
-    Position r, Direction u, int32_t on_surface, GeometryState* p) const;
+    Position r, Direction u, int32_t on_surface, SurfaceState* state) const;
+
+  //! Find the oncoming boundary of this cell for a complex cell without
+  //! working space, evaluating every surface after each crossing.
+  std::pair<double, int32_t> distance_complex_uncached(
+    Position r, Direction u, int32_t on_surface) const;
 
   //----------------------------------------------------------------------------
   // Private Data

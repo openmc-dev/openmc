@@ -10,7 +10,6 @@
 
 #include <fmt/core.h>
 
-#include "openmc/array.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/dagmc.h"
@@ -873,9 +872,19 @@ std::pair<double, int32_t> Region::distance(
 {
   if (!complex_) {
     return distance_to_nearest_surface(r, u, on_surface, false);
-  } else {
-    return distance_complex(r, u, on_surface, p);
   }
+
+  // The state of each surface is kept in the particle's working space, so that
+  // no memory is allocated during transport
+  if (!p) {
+    vector<SurfaceState> local(complex_->surfaces.size());
+    return distance_complex(r, u, on_surface, local.data());
+  }
+  auto& states = p->surface_states();
+  if (complex_->surfaces.size() > states.size()) {
+    return distance_complex_uncached(r, u, on_surface);
+  }
+  return distance_complex(r, u, on_surface, states.data());
 }
 
 //==============================================================================
@@ -914,7 +923,7 @@ std::pair<double, int32_t> Region::distance_to_nearest_surface(Position r,
 //==============================================================================
 
 std::pair<double, int32_t> Region::distance_complex(
-  Position r, Direction u, int32_t on_surface, GeometryState* p) const
+  Position r, Direction u, int32_t on_surface, SurfaceState* state) const
 {
   // The boundary is found by moving from one surface crossing to the next
   // along the ray until crossing a surface changes whether the ray is in the
@@ -928,17 +937,6 @@ std::pair<double, int32_t> Region::distance_complex(
   // current position so that the result does not depend on roundoff.
   const auto& surfaces = complex_->surfaces;
   const int n = surfaces.size();
-
-  // The state of each surface is kept in the particle's scratch space, so that
-  // no memory is allocated during transport
-  vector<SurfaceState> local;
-  SurfaceState* state;
-  if (p) {
-    state = p->surface_states().data();
-  } else {
-    local.resize(n);
-    state = local.data();
-  }
 
   // Evaluate the distance to and sense with respect to the surface in slot i.
   // If the ray is on the surface, its sense is given by on_surface.
@@ -1014,6 +1012,42 @@ std::pair<double, int32_t> Region::distance_complex(
     // If crossing the candidate changes the region membership, it is a true
     // boundary. Otherwise, continue the search from the virtual crossing.
     if (in_region_now() != in_region) {
+      return {total_distance, i_surf};
+    }
+    on_surface = i_surf;
+  }
+}
+
+//==============================================================================
+
+std::pair<double, int32_t> Region::distance_complex_uncached(
+  Position r, Direction u, int32_t on_surface) const
+{
+  const bool in_region = contains_complex(r, u, on_surface);
+  double total_distance {0.0};
+
+  while (true) {
+    auto [distance, i_surf] =
+      distance_to_nearest_surface(r, u, on_surface, on_surface != 0);
+    if (distance == INFTY) {
+      return {INFTY, std::numeric_limits<int32_t>::max()};
+    }
+
+    // Move to the candidate surface and determine which side of it the ray is
+    // entering. The surface normal is used instead of evaluating the surface
+    // equation because accumulated roundoff may place the point slightly to
+    // the wrong side of a curved surface.
+    r += distance * u;
+    total_distance += distance;
+    i_surf = std::abs(i_surf);
+    const auto& surf {*model::surfaces[i_surf - 1]};
+    if (u.dot(surf.normal(r)) <= 0.0) {
+      i_surf = -i_surf;
+    }
+
+    // If crossing the candidate changes the region membership, it is a true
+    // boundary. Otherwise, continue the search from the virtual crossing.
+    if (contains_complex(r, u, i_surf) != in_region) {
       return {total_distance, i_surf};
     }
     on_surface = i_surf;

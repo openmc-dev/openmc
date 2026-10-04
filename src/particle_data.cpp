@@ -9,11 +9,20 @@
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 
 namespace openmc {
+
+namespace {
+
+//! Most memory used by the working space for complex regions of all of the
+//! particles in flight in event-based mode
+constexpr int64_t MAX_SURFACE_STATES_MEMORY {256'000'000};
+
+} // namespace
 
 void GeometryState::mark_as_lost(const char* message)
 {
@@ -53,7 +62,19 @@ GeometryState::GeometryState()
   // Create and clear coordinate levels
   coord_.resize(model::n_coord_levels);
   cell_last_.resize(model::n_coord_levels);
-  surface_states_.resize(model::max_region_surfaces);
+
+  // Size the working space for complex regions for the region with the most
+  // surfaces. In event-based mode, where many particles are in flight, its
+  // total size is limited, and regions with more surfaces than it can hold
+  // are searched without it.
+  int64_t n_states = model::max_region_surfaces;
+  if (settings::event_based) {
+    int64_t n_particles = std::max<int64_t>(1,
+      std::min(simulation::work_per_rank, settings::max_particles_in_flight));
+    n_states = std::min<int64_t>(n_states,
+      MAX_SURFACE_STATES_MEMORY / (n_particles * sizeof(SurfaceState)));
+  }
+  surface_states_.resize(n_states);
   clear();
 }
 

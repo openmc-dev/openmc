@@ -229,8 +229,6 @@ struct CacheDataMG {
 };
 
 //==============================================================================
-// Information about nearest boundary crossing
-//==============================================================================
 //! State of a surface while finding the boundary of a complex region
 //==============================================================================
 
@@ -240,6 +238,8 @@ struct SurfaceState {
   bool stale;      //!< Whether the distance must be recomputed before use
 };
 
+//==============================================================================
+// Information about nearest boundary crossing
 //==============================================================================
 
 class BoundaryInfo {

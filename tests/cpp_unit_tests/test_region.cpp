@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "openmc/cell.h"
+#include "openmc/particle_data.h"
 #include "openmc/surface.h"
 
 #include <pugixml.hpp>
@@ -217,6 +218,32 @@ TEST_CASE("Find boundary after virtual surface crossings")
 
     REQUIRE(distance == Catch::Approx(1.6));
     REQUIRE(surface == 2);
+  }
+}
+
+TEST_CASE("Find boundary with and without working space")
+{
+  MultiIntersectionFixture fixture;
+  openmc::Region region("-1 | -2", 0);
+
+  // A particle normally has working space for every complex region. When it
+  // does not, as can happen in event-based mode, the region is searched
+  // without it and the boundary found is the same.
+  openmc::GeometryState p;
+  REQUIRE(p.surface_states().size() >= 2);
+  openmc::Position r[] = {{1.0, 0.0, 0.0}, {7.0, 0.0, 0.0}, {4.2, 0.6, 0.0}};
+  openmc::Direction u[] = {{1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}};
+  int32_t on_surface[] = {0, 0, -2};
+  for (int i = 0; i < 3; ++i) {
+    auto expected = region.distance(r[i], u[i], on_surface[i]);
+    p.surface_states().clear();
+    auto without = region.distance(r[i], u[i], on_surface[i], &p);
+    p.surface_states().resize(2);
+    auto with = region.distance(r[i], u[i], on_surface[i], &p);
+    REQUIRE(without.first == Catch::Approx(expected.first));
+    REQUIRE(without.second == expected.second);
+    REQUIRE(with.first == expected.first);
+    REQUIRE(with.second == expected.second);
   }
 }
 

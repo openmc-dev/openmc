@@ -12,6 +12,7 @@ set(TEST_NAMES
   test_region
   test_surface
   test_tensor
+  test_temperature_endpoint
   test_geometry
   # Add additional unit test files here
 )

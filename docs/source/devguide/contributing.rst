@@ -121,6 +121,14 @@ The TC consists of the following individuals:
 
 The Project Lead is Paul Romano.
 
+Reporting Security Vulnerabilities
+----------------------------------
+
+Please report suspected security vulnerabilities privately by emailing
+`openmc@anl.gov <mailto:openmc@anl.gov>`_. Do not report security
+vulnerabilities through public GitHub issues. Include a description of the
+vulnerability, affected versions, and steps to reproduce it if available.
+
 Next Steps
 ----------
 

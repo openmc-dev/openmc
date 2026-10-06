@@ -1171,7 +1171,6 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 
       // Record which element this nuclide belongs to, so that a nuclide index
       // can reach the photon data it shares with the other isotopes
-      int i_nuclide = data::nuclide_map.at(name);
       if (data::nuclide_to_element.size() <= i_nuclide) {
         data::nuclide_to_element.resize(i_nuclide + 1, C_NONE);
       }

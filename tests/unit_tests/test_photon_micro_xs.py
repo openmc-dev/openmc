@@ -89,7 +89,8 @@ def test_nuclide_absent_from_the_material(run_in_tmpdir):
     assert u238 == pytest.approx(u235, rel=1e-12)
 
 
-def test_element_absent_from_the_scoring_region(run_in_tmpdir):
+@pytest.mark.parametrize('estimator', ['tracklength', 'collision'])
+def test_element_absent_from_the_scoring_region(run_in_tmpdir, estimator):
     """The cache of an element absent from the scoring region is refreshed.
 
     In the test above the tallied nuclide shares its element with the material,
@@ -100,6 +101,11 @@ def test_element_absent_from_the_scoring_region(run_in_tmpdir):
     microscopic total over the flux in the uncollided energy bin is then the
     silicon cross section at the source energy, and must match the same ratio
     in the shell, which does contain silicon.
+
+    The collision estimator scores after the collision, when photoelectric
+    absorption has already set the photon energy to zero, so the refresh has to
+    use the pre-collision energy. The source is at 100 keV so that photoelectric
+    absorption in the iron is common enough to catch that.
     """
     openmc.reset_auto_ids()
 
@@ -124,22 +130,24 @@ def test_element_absent_from_the_scoring_region(run_in_tmpdir):
     model.settings.batches = 2
     model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point(),
-        energy=openmc.stats.Discrete([1.0e6], [1.0]),
+        energy=openmc.stats.Discrete([1.0e5], [1.0]),
         particle='photon')
 
     filters = [
         openmc.CellFilter([iron_cell, silicon_cell]),
-        openmc.EnergyFilter([0.999e6, 1.001e6]),
+        openmc.EnergyFilter([0.999e5, 1.001e5]),
     ]
     flux = openmc.Tally()
     flux.filters = filters
     flux.scores = ['flux']
+    flux.estimator = estimator
 
     total = openmc.Tally()
     total.filters = filters
     total.nuclides = ['Si28']
     total.scores = ['total']
     total.multiply_density = False
+    total.estimator = estimator
     model.tallies = openmc.Tallies([flux, total])
 
     model.run(apply_tally_results=True)

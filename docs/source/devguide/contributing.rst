@@ -34,10 +34,11 @@ Terminology
 
 - A *Contributor* is any individual creating or commenting on an issue or pull
   request.
-- A *Committer* is a subset of contributors who are authorized to review and
-  merge pull requests.
+- A *Committer* is a subset of contributors who are authorized to review pull
+  requests, including approving them or requesting changes.
 - The *TC* (Technical Committee) is a group of committers who have the authority
-  to make decisions on behalf of the project team in order to resolve disputes.
+  to merge pull requests and to make decisions on behalf of the project team in
+  order to resolve disputes.
 - The *Project Lead* is a single individual who has the authority to make a final
   decision when the TC is unable to reach consensus.
 
@@ -60,9 +61,9 @@ extended if they are unable to review the change within 36 hours.
 During review, a committer may request that a specific contributor who is most
 versed in a particular area review the PR before it can be merged.
 
-A pull request can be merged by any committer, but only if no objections are
-raised by any other committer. In the case of an objection being raised, all
-involved committers should seek consensus through discussion and compromise.
+Only TC members may merge pull requests, and only if no objections are raised by
+any committer. In the case of an objection being raised, all involved committers
+should seek consensus through discussion and compromise.
 
 In the case of an objection being raised in a pull request by another committer,
 all involved committers should seek to arrive at a consensus by way of

@@ -1,9 +1,8 @@
 #include "openmc/particle.h"
 
-#include <cassert>
-
 #include <algorithm> // copy, min
-#include <cmath>     // log, abs
+#include <cassert>
+#include <cmath> // log, abs
 
 #include <fmt/core.h>
 

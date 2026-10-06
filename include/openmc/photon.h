@@ -190,7 +190,7 @@ extern vector<unique_ptr<PhotonInteraction>> elements;
 //! Photon data is tabulated per element rather than per nuclide, so the photon
 //! micro cross section cache is indexed by element while the neutron one is
 //! indexed by nuclide. Anything holding a nuclide index needs this to reach the
-//! photon data. Entries are C_NONE when photon transport is off.
+//! photon data. Empty when photon transport is off.
 extern vector<int> nuclide_to_element;
 
 } // namespace data

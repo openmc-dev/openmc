@@ -1,6 +1,5 @@
 #include "openmc/photon.h"
 
-#include <cassert>
 
 #include "openmc/array.h"
 #include "openmc/bremsstrahlung.h"
@@ -18,6 +17,7 @@
 
 #include "openmc/tensor.h"
 
+#include <cassert>
 #include <cmath>
 #include <fmt/core.h>
 #include <limits>

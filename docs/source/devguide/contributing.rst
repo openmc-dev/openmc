@@ -47,15 +47,11 @@ Contribution Process
 
 Any change to the OpenMC repository must be made through a pull request (PR).
 This applies to all changes to documentation, code, binary files, etc. Even long
-term committers and TC members must use pull requests.
-
-If an AI tool helped produce a pull request, the author must disclose each model
-used in the PR description. Suggested details include the harness (e.g., Codex,
-Claude Code, OpenCode), model (e.g., GPT-6-Sol, Opus 5.5), and reasoning effort
-(e.g., medium, high). If multiple harnesses or models were used, list each
-combination. For reasoning effort, use "not applicable" if the tool does not
-expose this setting, or "unknown" if the setting is not known. The pull request
-template provides an AI Assistance section for this disclosure.
+term committers and TC members must use pull requests. If an AI tool helped
+produce a pull request, the author must disclose each model used in the PR
+description. Suggested details include the harness (e.g., Claude Code), model
+(e.g., GPT-6-Sol), and reasoning effort (e.g., xhigh). The pull request template
+provides an AI Assistance section for this disclosure.
 
 No pull request may be merged without being independently reviewed.
 

@@ -13,12 +13,11 @@ Fixes # (issue)
 # AI Assistance
 
 <!--
-If an AI tool helped produce this pull request, you must disclose each model used.
-Suggested details include the harness (e.g., Codex, Claude Code, OpenCode), model
-(e.g., GPT-6-Sol, Opus 5.5), and reasoning effort (e.g., medium, high).
-Use "not applicable" if a tool does not expose a reasoning effort setting, or
-"unknown" if you do not know the setting. List each harness/model combination if
-you used more than one. If no AI tools were used, write "None".
+If an AI tool helped produce this pull request, you must disclose each model
+used. Suggested details include the harness (e.g., Claude Code), model
+(e.g.,GPT-6-Sol), and reasoning effort (e.g., xhigh). Use "not applicable" if a
+tool does not expose a reasoning effort setting. List each harness/model
+combination if you used more than one. If no AI tools were used, write "None".
 -->
 
 - Harness:

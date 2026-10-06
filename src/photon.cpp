@@ -1,6 +1,5 @@
 #include "openmc/photon.h"
 
-
 #include "openmc/array.h"
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"

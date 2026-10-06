@@ -22,7 +22,10 @@ set of values (neutron lifetime or delayed neutron group number for
 :math:`\Lambda_{\text{eff}}` or :math:`\beta_{\text{eff}}`, respectively)
 for every fission neutron simulated. Each set of values corresponds to
 the values that are associated to the :math:`N_{\text{gen}}` direct ancestors
-of any given fission neutron.
+of any given fission neutron. The neutron lifetime runs from the birth of the
+neutron's generation: a neutron produced by an (n,xn) reaction or by
+weight-window splitting continues the clock of the neutron that produced it,
+while a fission neutron starts a new clock at zero.
 
 :math:`N_{\text{gen}}` is referred to as the number of generations in the
 IFP method and corresponds to the number of generations between the birth of

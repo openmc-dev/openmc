@@ -394,6 +394,9 @@ public:
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
 
+  // Distance to the next collision
+  double& collision_distance() { return collision_distance_; }
+
 #ifdef OPENMC_DAGMC_ENABLED
   // DagMC state variables
   moab::DagMC::RayHistory& history() { return history_; }
@@ -446,6 +449,8 @@ private:
 
   double density_mult_ {1.0};      //!< density multiplier
   double density_mult_last_ {1.0}; //!< last density multiplier
+
+  double collision_distance_ {INFTY};
 
 #ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;
@@ -562,8 +567,6 @@ private:
   double keff_tally_leakage_ {0.0};
 
   bool trace_ {false};
-
-  double collision_distance_;
 
   int n_event_ {0};
 
@@ -745,9 +748,6 @@ public:
 
   // Shows debug info
   bool& trace() { return trace_; }
-
-  // Distance to the next collision
-  double& collision_distance() { return collision_distance_; }
 
   // Number of events particle has undergone
   int& n_event() { return n_event_; }

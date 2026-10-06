@@ -39,6 +39,12 @@ void Universe::to_hdf5(hid_t universes_group) const
 
 bool Universe::find_cell(GeometryState& p) const
 {
+  if (filled_with_triso_base_ != -1) {
+    bool found = find_cell_in_virtual_lattice(p);
+    if (found) {
+      return found;
+    }
+  }
   const auto& cells {
     !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
 
@@ -55,6 +61,60 @@ bool Universe::find_cell(GeometryState& p) const
       p.lowest_coord().cell() = i_cell;
       return true;
     }
+  }
+  return false;
+}
+bool Universe::find_cell_in_virtual_lattice(GeometryState& p) const
+{
+  Cell& c {*model::cells[model::cell_map[filled_with_triso_base_]]};
+  vector<int> lat_ind(3);
+  Position r {p.r_local()};
+  lat_ind[0] = std::max<int>(
+    std::min<int>(
+      floor((r.x - c.vl_lower_left_[0]) / c.vl_pitch_[0]), c.vl_shape_[0] - 1),
+    0);
+  lat_ind[1] = std::max<int>(
+    std::min<int>(
+      floor((r.y - c.vl_lower_left_[1]) / c.vl_pitch_[1]), c.vl_shape_[1] - 1),
+    0);
+  lat_ind[2] = std::max<int>(
+    std::min<int>(
+      floor((r.z - c.vl_lower_left_[2]) / c.vl_pitch_[2]), c.vl_shape_[2] - 1),
+    0);
+
+  int32_t i_univ = p.lowest_coord().universe();
+  for (int token :
+    c.vl_triso_distribution_[lat_ind[0] + lat_ind[1] * c.vl_shape_[0] +
+                             lat_ind[2] * c.vl_shape_[0] * c.vl_shape_[1]]) {
+    vector<double> triso_center = model::surfaces[abs(token) - 1]->get_center();
+    double triso_radius = model::surfaces[abs(token) - 1]->get_radius();
+    if (model::cells
+          [model::cell_map[model::surfaces[abs(token) - 1]->triso_base_index_]]
+            ->universe_ != i_univ)
+      continue;
+    if (abs(token) == abs(p.surface())) {
+      if (p.surface() < 0) {
+        p.lowest_coord().cell() =
+          model::cell_map[model::surfaces[abs(token) - 1]
+                            ->triso_particle_index_];
+        return true;
+      } else {
+        p.lowest_coord().cell() = model::cell_map[filled_with_triso_base_];
+        return true;
+      }
+    }
+    if (pow(r.x - triso_center[0], 2) + pow(r.y - triso_center[1], 2) +
+          pow(r.z - triso_center[2], 2) <
+        pow(triso_radius, 2)) {
+      p.lowest_coord().cell() =
+        model::cell_map[model::surfaces[abs(token) - 1]->triso_particle_index_];
+      return true;
+    }
+  }
+  if (model::cells[model::cell_map[filled_with_triso_base_]]->universe_ ==
+      i_univ) {
+    p.lowest_coord().cell() = model::cell_map[filled_with_triso_base_];
+    return true;
   }
   return false;
 }

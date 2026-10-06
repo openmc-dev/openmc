@@ -185,12 +185,22 @@ void score_fission_delayed_dg(int i_tally, int d_bin, double score,
 //! scoring of the particle type it holds cross sections for, so there is
 //! nothing to refresh for any other kind of particle.
 //
+//! Scores are evaluated at the pre-collision energy, so the cross sections are
+//! too. The collision estimator runs after the collision, when p.E() is
+//! already the outgoing energy (zero after photoelectric absorption or pair
+//! production), and the cross section routines read p.E() throughout, so the
+//! particle is evaluated at E_last() and its energy restored afterwards. On the
+//! tracklength path the two are equal.
+//
 //! \param[in,out] p Particle being scored
 //! \param[in] i_nuclide Index in data::nuclides
-//! \param[in,out] i_log_union Index on the log union grid, or C_NONE if it has
-//!   not been determined yet
+//! \param[in,out] i_log_union Index on the log union grid at E_last(), or
+//!   C_NONE if it has not been determined yet
 void update_absent_nuclide_xs(Particle& p, int i_nuclide, int& i_log_union)
 {
+  double E = p.E();
+  p.E() = p.E_last();
+
   if (p.type().is_neutron()) {
     // Determine log union grid index
     if (i_log_union == C_NONE) {
@@ -202,6 +212,8 @@ void update_absent_nuclide_xs(Particle& p, int i_nuclide, int& i_log_union)
   } else if (p.type().is_photon()) {
     p.update_photon_xs(data::nuclide_to_element[i_nuclide]);
   }
+
+  p.E() = E;
 }
 
 //! Helper function to retrieve fission q value from a nuclide

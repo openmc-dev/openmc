@@ -10,6 +10,21 @@ Please include a summary of the change and which issue is fixed if applicable. P
 
 Fixes # (issue)
 
+# AI Assistance
+
+<!--
+If an AI tool helped produce this pull request, you must disclose each model used.
+Suggested details include the harness (e.g., Codex, Claude Code, OpenCode), model
+(e.g., GPT-6-Sol, Opus 5.5), and reasoning effort (e.g., medium, high).
+Use "not applicable" if a tool does not expose a reasoning effort setting, or
+"unknown" if you do not know the setting. List each harness/model combination if
+you used more than one. If no AI tools were used, write "None".
+-->
+
+- Harness:
+- Model:
+- Reasoning effort:
+
 # Checklist
 
 - [ ] I have performed a self-review of my own code

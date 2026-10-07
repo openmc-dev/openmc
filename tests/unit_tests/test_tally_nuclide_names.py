@@ -1,7 +1,7 @@
 """A tally nuclide bin names a nuclide.
 
-Anything else has to be reported rather than terminating on an uncaught
-exception, which is what a name the data library cannot resolve used to do.
+Unresolvable names must produce a diagnostic that identifies the offending
+tally nuclide when the external executable fails.
 """
 
 import openmc

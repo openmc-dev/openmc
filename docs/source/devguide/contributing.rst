@@ -47,7 +47,11 @@ Contribution Process
 
 Any change to the OpenMC repository must be made through a pull request (PR).
 This applies to all changes to documentation, code, binary files, etc. Even long
-term committers and TC members must use pull requests.
+term committers and TC members must use pull requests. If an AI tool helped
+produce a pull request, the author must disclose each model used in the PR
+description. Suggested details include the harness (e.g., Claude Code), model
+(e.g., GPT-6-Sol), and reasoning effort (e.g., xhigh). The pull request template
+provides an AI Assistance section for this disclosure.
 
 No pull request may be merged without being independently reviewed.
 
@@ -116,6 +120,14 @@ The TC consists of the following individuals:
 - `John Tramm <https://github.com/jtramm>`_
 
 The Project Lead is Paul Romano.
+
+Reporting Security Vulnerabilities
+----------------------------------
+
+Please report suspected security vulnerabilities privately by emailing
+`openmc@anl.gov <mailto:openmc@anl.gov>`_. Do not report security
+vulnerabilities through public GitHub issues. Include a description of the
+vulnerability, affected versions, and steps to reproduce it if available.
 
 Next Steps
 ----------

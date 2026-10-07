@@ -108,7 +108,7 @@ void check_tally_triggers(double& ratio, int& tally_id, int& score)
         // Compute the uncertainty / threshold ratio.
         double this_ratio = uncertainty / trigger.threshold;
         if (trigger.metric == TriggerMetric::variance) {
-          this_ratio = std::sqrt(ratio);
+          this_ratio = std::sqrt(this_ratio);
         }
 
         // If this is the most uncertain value, set the output variables.

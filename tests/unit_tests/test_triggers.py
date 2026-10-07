@@ -39,6 +39,37 @@ def test_tally_trigger(run_in_tmpdir):
     assert realizations == expected_realizations
 
 
+def test_tally_trigger_variance(run_in_tmpdir):
+    pincell = openmc.examples.pwr_pin_cell()
+
+    # create a tally filter on the materials
+    mat_filter = openmc.MaterialFilter(pincell.materials)
+
+    # create a tally with a variance trigger that cannot be satisfied
+    tally = openmc.Tally()
+    tally.filters = [mat_filter]
+    tally.scores = ['scatter']
+
+    trigger = openmc.Trigger('variance', 1e-30)
+    trigger.scores = ['scatter']
+
+    tally.triggers = [trigger]
+
+    pincell.tallies = [tally]
+
+    pincell.settings.trigger_active = True
+    pincell.settings.trigger_max_batches = 15
+    pincell.settings.trigger_batch_interval = 5
+
+    sp_file = pincell.run()
+
+    with openmc.StatePoint(sp_file) as sp:
+        # the trigger is never satisfied, so the simulation must run
+        # up to the max allowed batches
+        total_batches = sp.n_realizations + sp.n_inactive
+        assert total_batches == pincell.settings.trigger_max_batches
+
+
 def test_tally_trigger_null_score(run_in_tmpdir):
     pincell = openmc.examples.pwr_pin_cell()
 

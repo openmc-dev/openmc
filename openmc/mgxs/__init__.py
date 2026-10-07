@@ -25,9 +25,9 @@ GROUP_STRUCTURES = {}
   intermediate and thermal reactor applications ([SAR1990]_)
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
   "TRIPOLI-315", "LLNL-616", "CCFE-709_" and "UKAEA-1102_"
-- ultra-fine multi-group binning structures "FOMG-16000_" (Fusion Optimised
-  Multi-Group, 1e-5 eV to 19.6 MeV, [MORGAN2013]_), "VESTA-43000_" (standard)
-  and "VESTA-100000_" (uniform lethargy), both 1e-5 eV to 20 MeV ([HAECK2007]_)
+- multi-group binning fine energy structures, Fusion Optimized Multi-Group "FOMG-16000_", 
+  LWR U238 Optimized "VESTA-43000_" and uniform lethargy "VESTA-100000_" ()
+  ([MORGAN2013]_, [HAECK2007]_)
 
 .. _CASMO: http://large.stanford.edu/courses/2013/ph241/dalvi1/docs/c5.physor2006.pdf
 .. _SCALE44: https://www-nds.iaea.org/publications/indc/indc-czr-0001.pdf
@@ -45,7 +45,7 @@ GROUP_STRUCTURES = {}
 .. _ECCO-1968: https://serpent.vtt.fi/mediawiki/index.php/ECCO_1968-group_structure
 .. _FOMG-16000: https://doi.org/10.1051/snamc/201405203
 .. _VESTA-43000: https://roma.sckcen.be/ws/portalfiles/portal/4558859/An_Optimum_Approach_to_Monte_Carlo_Burn_Up.pdf
-.. _VESTA-100000: VESTA-43000_
+.. _VESTA-100000: https://roma.sckcen.be/ws/portalfiles/portal/4558859/An_Optimum_Approach_to_Monte_Carlo_Burn_Up.pdf
 .. [SAR1990] Sartori, E., OECD/NEA Data Bank: Standard Energy Group Structures
    of Cross Section Libraries for Reactor Shielding, Reactor Cell and Fusion
    Neutronics Applications: VITAMIN-J, ECCO-33, ECCO-2000 and XMAS JEF/DOC-315
@@ -1359,23 +1359,15 @@ GROUP_STRUCTURES['ECCO-1968'] = np.array([
     1.806998e7, 1.822119e7, 1.837367e7, 1.852742e7, 1.868246e7, 1.883880e7,
     1.899644e7, 1.915541e7, 1.931570e7, 1.947734e7, 1.964033e7])
 
-# VESTA/ALEPH standard 43000-group structure (IRSN VESTA 2.1 manual
-# DSU/SEC/T/2011-81, Table A.1; [HAECK2007] §5.3): equal-lethargy groups per
-# macrogroup from 1e-5 eV to 20 MeV.
-GROUP_STRUCTURES['VESTA-43000'] = build_fine_group_structure(
-    [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1., 10., 100., 1e3, 1e4, 1e5, 1e6,
-     1e7, 2e7],
-    [1000, 1000, 1000, 1000, 1000, 4000, 4000, 10000, 10000, 4000, 4000,
-     1000, 1000])
-
-# FOMG 16000-group structure [MORGAN2013]: 1000 bins of 1 meV up to 1 eV (the
-# first one truncated at the 1e-5 eV floor), 14000 equal-lethargy bins up to
-# 2 MeV, 1000 bins of 17.6 keV up to 19.6 MeV.
+# FOMG 16000-group structure [MORGAN2013]: 
 GROUP_STRUCTURES['FOMG-16000'] = build_fine_group_structure(
     [1e-5, 1e-3, 1., 2e6, 1.96e7], [1, 999, 14000, 1000],
     spacing=['linear', 'linear', 'log', 'linear'])
 
-# Uniform 100000-group structure [HAECK2007] §5.3 (VESTA `GROUPS 100000 20`):
-# equal-lethargy groups from 1e-5 eV to 20 MeV.
-GROUP_STRUCTURES['VESTA-100000'] = build_fine_group_structure(
-    [1e-5, 2e7], 100000)
+# VESTA/ALEPH standard 43000-group structure [HAECK2007]:
+GROUP_STRUCTURES['VESTA-43000'] = build_fine_group_structure(
+    [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1., 10., 100., 1e3, 1e4, 1e5, 1e6, 1e7, 2e7],
+    [1000, 1000, 1000, 1000, 1000, 4000, 4000, 10000, 10000, 4000, 4000, 1000, 1000])
+
+# Uniform 100000-group structure [HAECK2007]:
+GROUP_STRUCTURES['VESTA-100000'] = build_fine_group_structure([1e-5, 2e7], 100000)

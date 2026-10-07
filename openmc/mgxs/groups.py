@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 import copy
 from numbers import Real
+import operator
 
 import numpy as np
 
@@ -438,3 +439,91 @@ def convert_flux_groups(flux, source_groups, target_groups):
             flux_target[idx_tgt] += flux_src * (lethargy_overlap / lethargy_src)
 
     return flux_target
+
+
+def build_fine_group_structure(bounds, num_groups, spacing='log'):
+    """Generate energy group boundaries from macro-intervals.
+
+    The energy range is split into macro-intervals by ``bounds``. Interval
+    ``i`` (from ``bounds[i]`` to ``bounds[i+1]``) is subdivided into
+    ``num_groups[i]`` groups of equal lethargy width (``spacing='log'``) or
+    equal energy width (``spacing='linear'``). Ultra-fine structures for
+    multi-group binning of reaction rates are defined this way, e.g. the VESTA
+    43000-group structure [HAECK2007]_ and the FOMG 16000-group structure
+    [MORGAN2013]_.
+
+    .. versionadded:: 0.16.1
+
+    Parameters
+    ----------
+    bounds : iterable of float
+        Macro-interval boundaries in [eV], non-negative and strictly
+        increasing.
+    num_groups : int or iterable of int
+        Number of groups in each macro-interval. A single integer applies to
+        every interval.
+    spacing : {'log', 'linear'} or iterable of str, optional
+        Spacing within each macro-interval: ``'log'`` for equal lethargy
+        width, ``'linear'`` for equal energy width. A single value applies to
+        every interval. Defaults to 'log'.
+
+    Returns
+    -------
+    numpy.ndarray
+        Group boundaries in [eV], ascending, with one edge more than the total
+        number of groups.
+
+    Examples
+    --------
+    250 groups per decade up to 10 MeV plus 250 groups to 20 MeV (the
+    3250-group structure of [HAECK2007]_):
+
+    >>> edges = openmc.mgxs.build_fine_group_structure(
+    ...     [1e-5, 1e7, 2e7], [3000, 250])
+
+    1000 bins of 1 meV, 14000 equal-lethargy bins, 1000 bins of 17.6 keV
+    (FOMG-16000, with the first bin truncated at the 1e-5 eV floor):
+
+    >>> edges = openmc.mgxs.build_fine_group_structure(
+    ...     [1e-5, 1e-3, 1., 2e6, 1.96e7], [1, 999, 14000, 1000],
+    ...     spacing=['linear', 'linear', 'log', 'linear'])
+
+    """
+    bounds = np.asarray(bounds, dtype=float)
+    if bounds.ndim != 1:
+        raise ValueError(
+            f'bounds must be 1-dimensional, got shape {bounds.shape}')
+    cv.check_length('bounds', bounds, 2)
+    if not np.all(np.isfinite(bounds)):
+        raise ValueError(f'bounds must be finite, got {bounds}')
+    cv.check_greater_than('bounds', bounds[0], 0.0, equality=True)
+    cv.check_increasing('bounds', bounds)
+    n_intervals = bounds.size - 1
+
+    # A scalar group count or spacing applies to every macro-interval
+    if np.ndim(num_groups) == 0:
+        num_groups = [num_groups] * n_intervals
+    if np.ndim(spacing) == 0:
+        spacing = [spacing] * n_intervals
+    cv.check_length('num_groups', num_groups, n_intervals, n_intervals)
+    cv.check_length('spacing', spacing, n_intervals, n_intervals)
+
+    edges = [bounds[:1]]
+    for lo, hi, n, kind in zip(bounds[:-1], bounds[1:], num_groups, spacing):
+        # Plain int, so that n + 1 cannot wrap for fixed-width numpy integers
+        n = operator.index(n)
+        if n < 1:
+            raise ValueError(f'Number of groups must be at least 1, got {n}')
+        cv.check_value('spacing', kind, ('log', 'linear'))
+        if kind == 'log':
+            if lo <= 0.0:
+                raise ValueError("A 'log' macro-interval needs a positive "
+                                 f"lower bound, got {lo} eV")
+            edges.append(np.geomspace(lo, hi, n + 1)[1:])
+        else:
+            edges.append(np.linspace(lo, hi, n + 1)[1:])
+
+    # An interval too narrow for its group count would repeat edges
+    edges = np.concatenate(edges)
+    cv.check_increasing('group boundaries', edges)
+    return edges

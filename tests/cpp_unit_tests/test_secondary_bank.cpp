@@ -175,3 +175,84 @@ TEST_CASE_METHOD(SharedSecondaryBank,
   REQUIRE(q.time() == 5.0e-6);
   REQUIRE(q.lifetime() == 0.0);
 }
+
+TEST_CASE_METHOD(SharedSecondaryBank,
+  "Neutrons revived from the shared secondary bank keep their delayed group")
+{
+  // Neutrons born from precursors of delayed groups 1 to N_PARENT_STATES bank
+  // the secondaries of SECONDARY_TYPES on the first rank. Then a photon banks a
+  // split photon and a neutron. It is given a nonzero delayed group, which
+  // transport never gives a photon, so that a copy of it would show.
+  const int64_t n_neutron_parent_sites = N_PARENT_STATES * N_SECONDARIES;
+  const int64_t n_sites = n_neutron_parent_sites + 2;
+  SharedArray<SourceSite> bank;
+  if (mpi::rank == 0) {
+    Particle p;
+    p.type() = ParticleType::neutron();
+    p.wgt() = 1.0;
+    p.r() = {1.0, 2.0, 3.0};
+    p.u() = {0.0, 0.0, 1.0};
+    p.E() = 2.0e6;
+    for (int i = 0; i < N_PARENT_STATES; ++i) {
+      p.delayed_group() = i + 1;
+      p.split(0.5);
+      for (int k = 1; k < N_SECONDARIES; ++k) {
+        CHECK(p.create_secondary(1.0, p.u(), 1.0e6, SECONDARY_TYPES[k]));
+      }
+    }
+    p.type() = ParticleType::photon();
+    p.delayed_group() = N_PARENT_STATES + 1;
+    p.split(0.5);
+    CHECK(p.create_secondary(1.0, p.u(), 1.0e6, ParticleType::neutron()));
+    for (const auto& site : p.local_secondary_bank()) {
+      bank.thread_unsafe_append(site);
+    }
+  }
+
+  int64_t n_total = synchronize_global_secondary_bank(bank);
+  REQUIRE(n_total == n_sites);
+  int64_t share =
+    n_sites / mpi::n_procs + (mpi::rank < n_sites % mpi::n_procs ? 1 : 0);
+  REQUIRE(bank.size() == share);
+
+  Particle q;
+  for (int64_t j = 0; j < bank.size(); ++j) {
+    const auto& site = bank[j];
+    int64_t id = site.progeny_id;
+    REQUIRE(id >= 0);
+    REQUIRE(id < n_sites);
+
+    // Only the neutrons banked by a neutron take its delayed group
+    ParticleType type;
+    int group = 0;
+    if (id < n_neutron_parent_sites) {
+      type = SECONDARY_TYPES[id % N_SECONDARIES];
+      if (type.is_neutron()) {
+        group = static_cast<int>(id / N_SECONDARIES) + 1;
+      }
+    } else if (id == n_neutron_parent_sites) {
+      type = ParticleType::photon();
+    } else {
+      type = ParticleType::neutron();
+    }
+    REQUIRE(site.particle == type);
+    REQUIRE(site.delayed_group == group);
+
+    q.delayed_group() = -1;
+    q.event_revive_from_secondary(site);
+    REQUIRE(q.type() == type);
+    REQUIRE(q.delayed_group() == group);
+  }
+
+  // A site that is not a secondary, such as a fission site, sets its own
+  // delayed group
+  SourceSite site;
+  site.particle = ParticleType::neutron();
+  site.r = {1.0, 2.0, 3.0};
+  site.u = {0.0, 0.0, 1.0};
+  site.E = 2.0e6;
+  site.delayed_group = 2;
+  q.delayed_group() = -1;
+  q.event_revive_from_secondary(site);
+  REQUIRE(q.delayed_group() == 2);
+}

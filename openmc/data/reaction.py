@@ -446,17 +446,19 @@ def _get_fission_products_endf(ev):
         # In MF=1, MT=455, the delayed-group abundances are actually not
         # specified if the group constants are energy-independent. In this case,
         # the abundances must be inferred from MF=5, MT=455 where multiple
-        # energy distributions are given.
+        # energy distributions are given. The total delayed yield is assigned
+        # to every delayed group.
+        delayed_neutrons = products[-len(decay_constants):]
         if lnu == 1:
             # Nu represented as polynomial
             items, coefficients = get_list_record(file_obj)
             yield_ = Polynomial(coefficients)
-            for neutron in products[-6:]:
+            for neutron in delayed_neutrons:
                 neutron.yield_ = deepcopy(yield_)
         elif lnu == 2:
             # Nu represented by tabulation
             params, yield_ = get_tab1_record(file_obj)
-            for neutron in products[-6:]:
+            for neutron in delayed_neutrons:
                 neutron.yield_ = deepcopy(yield_)
 
         if (5, 455) in ev.section:

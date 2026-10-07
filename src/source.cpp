@@ -214,10 +214,12 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
     if (constraints_applied()) {
       accepted = true;
     } else {
-      // Check whether sampled site satisfies constraints
-      accepted = satisfies_spatial_constraints(site.r) &&
-                 satisfies_energy_constraints(site.E) &&
-                 satisfies_time_constraints(site.time);
+      // Check whether sampled site satisfies constraints. Energy bounds are
+      // not applied to multigroup energy group indices.
+      accepted =
+        satisfies_spatial_constraints(site.r) &&
+        (energy_is_group_index() || satisfies_energy_constraints(site.E)) &&
+        satisfies_time_constraints(site.time);
       if (!accepted) {
         ++n_local_reject;
 
@@ -522,6 +524,44 @@ void FileSource::load_sites_from_file(const std::string& path)
     read_attribute(file_id, "filetype", filetype);
     if (filetype != "source" && filetype != "statepoint") {
       fatal_error("Specified starting source file not a source file type.");
+    }
+
+    // Source files written by a multigroup simulation store an energy group
+    // index rather than an energy for each site, which an "energy_mode"
+    // attribute equal to "multi-group" indicates. A state point records the
+    // energy mode of its simulation as a dataset. Without either, the sites
+    // hold energies in [eV].
+    std::string energy_mode {"continuous-energy"};
+    if (filetype == "source") {
+      if (attribute_exists(file_id, "energy_mode")) {
+        read_attribute(file_id, "energy_mode", energy_mode);
+      }
+    } else if (object_exists(file_id, "energy_mode")) {
+      read_dataset(file_id, "energy_mode", energy_mode);
+    }
+    if (energy_mode == "multi-group") {
+      group_index_ = true;
+    } else if (energy_mode != "continuous-energy") {
+      fatal_error(
+        fmt::format("Source file '{}' has an unrecognized energy mode '{}'.",
+          path, energy_mode));
+    }
+
+    if (group_index_) {
+      if (settings::run_CE) {
+        fatal_error(fmt::format(
+          "Source file '{}' holds multigroup energy group indices and cannot "
+          "be used in a continuous-energy simulation.",
+          path));
+      }
+      if (mpi::master &&
+          (energy_bounds_.first != 0.0 ||
+            energy_bounds_.second != std::numeric_limits<double>::max())) {
+        warning(fmt::format(
+          "Energy bounds are not applied to the sites of source file '{}', "
+          "which holds multigroup energy group indices.",
+          path));
+      }
     }
 
     // Read in the source particles
@@ -1220,6 +1260,18 @@ SourceSite sample_external_source(uint64_t* seed)
     double total_strength = model::external_sources_probability.integral();
     site.wgt *=
       model::external_sources[i]->strength() * n_sources / total_strength;
+  }
+
+  // Sites from a source file written by a multigroup simulation already hold
+  // an energy group index, which only needs to be checked
+  if (model::external_sources[i]->energy_is_group_index()) {
+    int n_groups = data::mg.num_energy_groups_;
+    if (!(site.E >= 0.0 && site.E < n_groups && site.E == std::floor(site.E))) {
+      fatal_error(fmt::format("Source site has energy group index {}, which is "
+                              "not valid for {} energy groups.",
+        site.E, n_groups));
+    }
+    return site;
   }
 
   // If running in MG, convert site.E to group

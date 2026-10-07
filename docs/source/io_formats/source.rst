@@ -17,6 +17,12 @@ following the same format.
 :Attributes: - **filetype** (*char[]*) -- String indicating the type of file.
              - **version** (*int[2]*) -- Major and minor version of the source
                file format.
+             - **energy_mode** (*char[]*) -- 'multi-group', indicating that
+               ``E`` holds energy group indices. Only present in source point
+               files written by a multigroup simulation. Surface source files
+               and files written by a continuous-energy simulation or by
+               :func:`openmc.write_source_file` do not have this attribute, and
+               their ``E`` is an energy in [eV].
 
 :Datasets:
 
@@ -25,4 +31,6 @@ following the same format.
              ``time``, ``wgt``, ``delayed_group``, ``surf_id`` and ``particle``,
              which represent the position, direction, energy, time, weight,
              delayed group, surface ID, and particle type (PDG number),
-             respectively.
+             respectively. When the **energy_mode** attribute is
+             'multi-group', ``E`` is the energy group index of the particle
+             (0 for the highest-energy group) rather than its energy in [eV].

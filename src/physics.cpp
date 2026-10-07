@@ -204,11 +204,21 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   // or the secondary particle bank.
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
 
-  // Counter for the number of fission sites successfully stored to the shared
-  // fission bank or the secondary particle bank
-  int n_sites_stored;
+  // Record a fission neutron for analog fission tallies
+  auto record_fission_neutron = [&](const SourceSite& site) {
+    // Increment the number of neutrons born delayed
+    if (site.delayed_group > 0) {
+      nu_d[site.delayed_group - 1]++;
+    }
 
-  for (n_sites_stored = 0; n_sites_stored < nu; n_sites_stored++) {
+    // Write fission particles to nuBank
+    NuBank& nu_bank_entry = p.nu_bank().emplace_back();
+    nu_bank_entry.wgt = site.wgt;
+    nu_bank_entry.E = site.E;
+    nu_bank_entry.delayed_group = site.delayed_group;
+  };
+
+  for (int i = 0; i < nu; ++i) {
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
@@ -220,10 +230,13 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
 
-    // Reject site if it exceeds time cutoff
+    // Reject site if it exceeds time cutoff. The neutron would be killed at
+    // birth, so it is not banked, but it was produced by this fission and is
+    // recorded for analog fission tallies like any other fission neutron.
     if (site.delayed_group > 0) {
       double t_cutoff = settings::time_cutoff[site.particle.transport_index()];
       if (site.time > t_cutoff) {
+        record_fission_neutron(site);
         continue;
       }
     }
@@ -261,30 +274,22 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
       p.n_secondaries()++;
     }
 
-    // Increment the number of neutrons born delayed
-    if (site.delayed_group > 0) {
-      nu_d[site.delayed_group - 1]++;
-    }
-
-    // Write fission particles to nuBank
-    NuBank& nu_bank_entry = p.nu_bank().emplace_back();
-    nu_bank_entry.wgt = site.wgt;
-    nu_bank_entry.E = site.E;
-    nu_bank_entry.delayed_group = site.delayed_group;
+    record_fission_neutron(site);
   }
 
-  // If shared fission bank was full, and no fissions could be added,
-  // set the particle fission flag to false.
-  if (n_sites_stored == 0) {
+  // If shared fission bank was full, and no fission neutrons could be
+  // recorded, set the particle fission flag to false.
+  if (p.nu_bank().empty()) {
     p.fission() = false;
     return;
   }
 
-  // Set nu to the number of fission sites successfully stored. If the fission
-  // bank was not found to be full then these values are already equivalent.
-  nu = n_sites_stored;
+  // Set nu to the number of fission neutrons recorded, i.e., the sites stored
+  // in a bank plus those rejected by the time cutoff. If the fission bank was
+  // not found to be full then these values are already equivalent.
+  nu = p.nu_bank().size();
 
-  // Store the total weight banked for analog fission tallies
+  // Store the total weight recorded for analog fission tallies
   p.n_bank() = nu;
   p.wgt_bank() = nu / weight;
   for (size_t d = 0; d < MAX_DELAYED_GROUPS; d++) {

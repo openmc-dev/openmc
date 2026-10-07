@@ -268,4 +268,16 @@ extern "C" int openmc_temperature_field_get_value(
   return 0;
 }
 
+extern "C" int openmc_velocity_field_set_velocity(
+  int32_t index, double vx, double vy, double vz)
+{
+  if (index < 0 || index >= simulation::velocity_field->values().size()) {
+    set_errmsg("Index in velocity field is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  simulation::velocity_field->assign(index, openmc::Position(vx, vy, vz));
+  return 0;
+}
+
 } // namespace openmc

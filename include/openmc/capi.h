@@ -292,6 +292,15 @@ size_t openmc_temperature_field_size();
 //! \return Status (negative if an error occurred)
 int openmc_temperature_field_get_value(int32_t index, double* temperature);
 
+//! Set a value at a given index in the velocity field
+//
+//! \param[in] index Index in the field
+//! \param[in] vx X-axis velocity component to apply
+//! \param[in] vy Y-axis velocity component to apply
+//! \param[in] vz Z-axis velocity component to apply
+//! \return Status (negative if an error occurred)
+int openmc_velocity_field_set_velocity(int32_t index, double vx, double vy, double vz);
+
 int openmc_get_weight_windows_index(int32_t id, int32_t* idx);
 int openmc_weight_windows_get_id(int32_t index, int32_t* id);
 int openmc_weight_windows_set_id(int32_t index, int32_t id);

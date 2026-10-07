@@ -25,7 +25,8 @@ the values that are associated to the :math:`N_{\text{gen}}` direct ancestors
 of any given fission neutron. The neutron lifetime runs from the birth of the
 neutron's generation: a neutron produced by an (n,xn) reaction or by
 weight-window splitting continues the clock of the neutron that produced it,
-while a fission neutron starts a new clock at zero.
+while a fission neutron starts a new clock at zero. Such a neutron also keeps
+the delayed group number of the neutron that produced it.
 
 :math:`N_{\text{gen}}` is referred to as the number of generations in the
 IFP method and corresponds to the number of generations between the birth of

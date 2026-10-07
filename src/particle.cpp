@@ -116,9 +116,11 @@ bool Particle::create_secondary(
   bank.n_split = n_split();
 
   // A neutron emitted by a neutron reaction such as (n,2n) belongs to the same
-  // generation as the neutron that produced it and keeps its lifetime clock
+  // generation as the neutron that produced it and keeps its lifetime clock and
+  // delayed group
   if (type.is_neutron() && this->type().is_neutron()) {
     bank.lifetime = lifetime();
+    bank.delayed_group = delayed_group();
   }
 
   local_secondary_bank().emplace_back(bank);
@@ -147,9 +149,11 @@ void Particle::split(double wgt)
   bank.wgt_ww_born = wgt_ww_born();
   bank.n_split = n_split();
   bank.n_collision = n_collision();
-  // A split neutron keeps the lifetime clock of the neutron it was split from
+  // A split neutron keeps the lifetime clock and delayed group of the neutron
+  // it was split from
   if (type().is_neutron()) {
     bank.lifetime = lifetime();
+    bank.delayed_group = delayed_group();
   }
   bank.parent_id = current_work();
   if (settings::use_shared_secondary_bank) {

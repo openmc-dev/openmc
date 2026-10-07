@@ -34,10 +34,11 @@ void set_state(openmc::Particle& p, openmc::ParticleType type)
 
 } // namespace
 
-TEST_CASE("A source site starts with a zero lifetime")
+TEST_CASE("A source site starts with a zero lifetime and delayed group")
 {
   openmc::SourceSite site {};
   REQUIRE(site.lifetime == 0.0);
+  REQUIRE(site.delayed_group == 0);
 }
 
 TEST_CASE_METHOD(
@@ -84,5 +85,52 @@ TEST_CASE_METHOD(
     q.from_source(&site);
     REQUIRE(q.lifetime() == site.lifetime);
     REQUIRE(q.time() == site.time);
+  }
+}
+
+TEST_CASE_METHOD(
+  OneCoordLevel, "Secondary and split neutrons keep the delayed group")
+{
+  using namespace openmc;
+
+  // A neutron born from a precursor of delayed group 4
+  Particle p;
+  set_state(p, ParticleType::neutron());
+  p.delayed_group() = 4;
+
+  // A neutron from a reaction such as (n,2n), and a split neutron
+  REQUIRE(p.create_secondary(p.wgt(), p.u(), p.E(), ParticleType::neutron()));
+  p.split(0.5);
+
+  // Photons, and a neutron produced by a photon, are not delayed neutrons
+  REQUIRE(p.create_secondary(p.wgt(), p.u(), 1.0e6, ParticleType::photon()));
+  p.type() = ParticleType::photon();
+  p.split(0.5);
+  REQUIRE(p.create_secondary(p.wgt(), p.u(), 1.0e6, ParticleType::neutron()));
+
+  const auto& bank = p.local_secondary_bank();
+  REQUIRE(bank.size() == 5);
+  for (int i = 0; i < 2; ++i) {
+    REQUIRE(bank[i].particle == ParticleType::neutron());
+    REQUIRE(bank[i].delayed_group == 4);
+  }
+  for (int i = 2; i < 4; ++i) {
+    REQUIRE(bank[i].particle == ParticleType::photon());
+    REQUIRE(bank[i].delayed_group == 0);
+  }
+  REQUIRE(bank[4].particle == ParticleType::neutron());
+  REQUIRE(bank[4].delayed_group == 0);
+
+  // A particle started or revived from a banked site resumes its delayed group
+  for (const auto& site : bank) {
+    Particle q;
+    q.delayed_group() = -1;
+    q.from_source(&site);
+    REQUIRE(q.delayed_group() == site.delayed_group);
+
+    Particle r;
+    r.delayed_group() = -1;
+    r.event_revive_from_secondary(site);
+    REQUIRE(r.delayed_group() == site.delayed_group);
   }
 }

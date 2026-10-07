@@ -10,6 +10,7 @@ import openmc.exceptions as exc
 import openmc.lib
 
 from tests import cdtemp
+from tests.regression_tests import config
 
 
 @pytest.fixture(scope='module')
@@ -1303,3 +1304,48 @@ def test_random_ray(random_ray_pincell_model, mpi_intracomm):
     assert keff[0]==pytest.approx(1.3236826574065745)
 
     openmc.lib.finalize()
+
+
+def test_restart_internal_tally(run_in_tmpdir, mpi_intracomm):
+    """Restart from a statepoint that holds an internal tally.
+
+    A tally that is not writable is stored in the statepoint with the
+    attribute internal=1. Loading such a statepoint used to leave the HDF5
+    group of that tally open. With parallel HDF5 the statepoint file then
+    could not be closed and the restarted run exited with a non-zero
+    status, which makes openmc.run() raise. With serial HDF5 the open
+    handle is a silent leak, so this test passes on such builds either way.
+    """
+    openmc.lib.finalize()
+
+    mat = openmc.Material()
+    mat.add_nuclide('U235', 1.0)
+    mat.set_density('g/cm3', 4.5)
+    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sphere)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell])
+    model.settings.batches = 4
+    model.settings.inactive = 2
+    model.settings.particles = 100
+    tally = openmc.Tally()
+    tally.scores = ['flux']
+    model.tallies = [tally]
+    model.export_to_xml()
+
+    # Run with the tally marked not writable so that the statepoint
+    # stores it as internal
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.tallies[tally.id].writable = False
+    openmc.lib.run()
+    openmc.lib.finalize()
+    assert os.path.exists('statepoint.4.h5')
+
+    # Restart from that statepoint and run two more batches
+    model.settings.batches = 6
+    model.settings.export_to_xml()
+    kwargs = {'restart_file': 'statepoint.4.h5', 'openmc_exec': config['exe']}
+    if config['mpi']:
+        kwargs['mpi_args'] = [config['mpiexec'], '-n', config['mpi_np']]
+    openmc.run(**kwargs)
+    assert os.path.exists('statepoint.6.h5')

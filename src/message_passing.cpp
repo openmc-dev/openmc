@@ -44,12 +44,36 @@ vector<int64_t> calculate_parallel_index_vector(int64_t size)
 }
 
 #ifdef OPENMC_MPI
+void broadcast_buffer(void* buffer, std::size_t count, MPI_Datatype datatype,
+  std::size_t type_size, int root, MPI_Comm comm)
+{
+#ifdef OPENMC_HAVE_MPI_LARGE_COUNT
+  const std::size_t chunk_limit {
+    static_cast<std::size_t>(std::numeric_limits<MPI_Count>::max())};
+#else
+  constexpr std::size_t chunk_limit {INT_MAX};
+#endif
+
+  // Bound the count before converting it to the type accepted by MPI.
+  for (std::size_t offset = 0; offset < count;) {
+    const std::size_t chunk_size = std::min(count - offset, chunk_limit);
+    void* chunk = static_cast<char*>(buffer) + offset * type_size;
+#ifdef OPENMC_HAVE_MPI_LARGE_COUNT
+    MPI_Bcast_c(
+      chunk, static_cast<MPI_Count>(chunk_size), datatype, root, comm);
+#else
+    MPI_Bcast(chunk, static_cast<int>(chunk_size), datatype, root, comm);
+#endif
+    offset += chunk_size;
+  }
+}
+
 void reduce_buffer(const void* sendbuf, void* recvbuf, std::size_t count,
   MPI_Datatype datatype, std::size_t type_size, MPI_Op op, int root,
   MPI_Comm comm)
 {
   // Determine the maximum number of elements accepted by the selected API.
-#ifdef OPENMC_HAVE_MPI_REDUCE_C
+#ifdef OPENMC_HAVE_MPI_LARGE_COUNT
   const std::size_t chunk_limit {
     static_cast<std::size_t>(std::numeric_limits<MPI_Count>::max())};
 #else
@@ -72,7 +96,7 @@ void reduce_buffer(const void* sendbuf, void* recvbuf, std::size_t count,
                          ? nullptr
                          : static_cast<char*>(recvbuf) + offset * type_size;
 
-#ifdef OPENMC_HAVE_MPI_REDUCE_C
+#ifdef OPENMC_HAVE_MPI_LARGE_COUNT
     MPI_Reduce_c(send_chunk, recv_chunk, static_cast<MPI_Count>(chunk_size),
       datatype, op, root, comm);
 #else

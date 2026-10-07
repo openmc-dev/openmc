@@ -41,9 +41,7 @@
 #include <fmt/format.h>
 
 #include <algorithm>
-#include <climits>
 #include <cmath>
-#include <cstddef>
 #include <numeric>
 #include <string>
 
@@ -921,43 +919,19 @@ void broadcast_results()
 {
   // Broadcast tally results so that each process has access to results
   for (auto& t : model::tallies) {
-    // Create a new datatype that consists of all values for a given filter
-    // bin and then use that to broadcast. This is done to minimize the
-    // chance of the 'count' argument of MPI_BCAST exceeding 2**31
     auto& results = t->results_;
-
-    auto shape = results.shape();
-    int count_per_filter = shape[1] * shape[2];
-    MPI_Datatype result_block;
-    MPI_Type_contiguous(count_per_filter, MPI_DOUBLE, &result_block);
-    MPI_Type_commit(&result_block);
-
-    // Aggregating per filter bin keeps the count well below 2**31 for all but
-    // the largest tallies, but the count is still an int. Broadcast in bounded
-    // chunks so that a tally with more filter bins than an int can represent
-    // is handled correctly rather than silently truncated.
-    const std::size_t n_filter_bins = shape[0];
-    constexpr std::size_t chunk_limit {INT_MAX};
-    double* data = results.data();
-    for (std::size_t offset = 0; offset < n_filter_bins;
-         offset += chunk_limit) {
-      const std::size_t chunk_size =
-        std::min(n_filter_bins - offset, chunk_limit);
-      MPI_Bcast(data + offset * count_per_filter, static_cast<int>(chunk_size),
-        result_block, 0, mpi::intracomm);
-    }
-    MPI_Type_free(&result_block);
+    mpi::broadcast(results.data(), results.size(), 0, mpi::intracomm);
   }
 
   // Also broadcast global tally results
   auto& gt = simulation::global_tallies;
-  MPI_Bcast(gt.data(), gt.size(), MPI_DOUBLE, 0, mpi::intracomm);
+  mpi::broadcast(gt.data(), gt.size(), 0, mpi::intracomm);
 
   // These guys are needed so that non-master processes can calculate the
   // combined estimate of k-effective
   double temp[] {
     simulation::k_col_abs, simulation::k_col_tra, simulation::k_abs_tra};
-  MPI_Bcast(temp, 3, MPI_DOUBLE, 0, mpi::intracomm);
+  mpi::broadcast(temp, 3, 0, mpi::intracomm);
   simulation::k_col_abs = temp[0];
   simulation::k_col_tra = temp[1];
   simulation::k_abs_tra = temp[2];

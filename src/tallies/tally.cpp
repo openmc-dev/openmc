@@ -837,14 +837,39 @@ void Tally::check_estimator()
   // A lifetime moment weight varies along a track, so it cannot weight a
   // track-length estimate (see the selection in the constructor). Surface and
   // pulse-height tallies do not use the estimator.
-  if (type_ == TallyType::VOLUME && estimator_ == TallyEstimator::TRACKLENGTH &&
-      this->has_filter(FilterType::LIFETIME_MOMENT)) {
-    estimator_ = TallyEstimator::COLLISION;
-    warning(fmt::format("Tally {} has a lifetime moment filter, which cannot "
-                        "be used with a track-length estimator. A collision "
-                        "estimator is used instead.",
-      id_));
+  if (type_ != TallyType::VOLUME || estimator_ != TallyEstimator::TRACKLENGTH ||
+      !this->has_filter(FilterType::LIFETIME_MOMENT))
+    return;
+
+  // As in the constructor, an analog estimator is used if another filter
+  // requires one, and a collision estimator otherwise. This does not rely on
+  // set_scores(), which may have been called before the filters of a tally
+  // created at run time were set.
+  estimator_ = TallyEstimator::COLLISION;
+  for (auto i_filt : filters_) {
+    const auto* filt = model::tally_filters[i_filt].get();
+    switch (filt->type()) {
+    case FilterType::ENERGY_OUT:
+    case FilterType::LEGENDRE:
+    case FilterType::PARTICLE_PRODUCTION:
+      estimator_ = TallyEstimator::ANALOG;
+      break;
+    case FilterType::SPHERICAL_HARMONICS:
+      if (dynamic_cast<const SphericalHarmonicsFilter*>(filt)->cosine() ==
+          SphericalHarmonicsCosine::scatter)
+        estimator_ = TallyEstimator::ANALOG;
+      break;
+    default:
+      break;
+    }
   }
+
+  warning(fmt::format("Tally {} has a lifetime moment filter, which cannot be "
+                      "used with a track-length estimator. {} is used instead.",
+    id_,
+    estimator_ == TallyEstimator::ANALOG
+      ? "An analog estimator, which another filter of the tally requires,"
+      : "A collision estimator"));
 }
 
 void Tally::init_results()

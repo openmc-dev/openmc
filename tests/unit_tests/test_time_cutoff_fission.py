@@ -452,9 +452,10 @@ def test_time_cutoff_full_fission_bank(run_in_tmpdir, energy_mode,
         else:
             assert_equal(prompt, [3.0])
             assert np.all(delayed > 0.0)
-            # The delayed neutrons sampled after the site that failed to enter
-            # the bank are not counted either, so the analog estimate stays
-            # well below the collision estimate, which counts all of them
+            # The delayed neutrons that the sites after the one that failed to
+            # enter the bank would have produced are neither sampled nor
+            # counted, so the analog estimate stays well below the collision
+            # estimate, which counts all of them
             assert np.all(delayed < 0.85 * collision_delayed)
 
 

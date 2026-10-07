@@ -1,5 +1,6 @@
 
 import openmc
+import pytest
 
 def test_tally_trigger(run_in_tmpdir):
     pincell = openmc.examples.pwr_pin_cell()
@@ -105,7 +106,9 @@ def test_tally_trigger_null_score(run_in_tmpdir):
         assert total_batches == pincell.settings.trigger_max_batches
 
 
-def test_tally_trigger_zero_ignored(run_in_tmpdir):
+@pytest.mark.parametrize("metric, threshold", [('rel_err', 1.0),
+                                               ('variance', 0.5)])
+def test_tally_trigger_zero_ignored(run_in_tmpdir, metric, threshold):
     pincell = openmc.examples.pwr_pin_cell()
 
     # create an energy filter below and around the O-16(n,p) threshold (1.02e7 eV)
@@ -117,8 +120,8 @@ def test_tally_trigger_zero_ignored(run_in_tmpdir):
     tally.scores = ['(n,p)']
     tally.nuclides = ["O16"]
 
-    # 100% relative error: should be immediately satisfied in nonzero bin
-    trigger = openmc.Trigger('rel_err', 1.0)
+    # loose threshold: should be immediately satisfied in nonzero bin
+    trigger = openmc.Trigger(metric, threshold)
     trigger.scores = ['(n,p)']
     trigger.ignore_zeros = True
 

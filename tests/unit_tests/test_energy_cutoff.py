@@ -61,3 +61,25 @@ def test_energy_cutoff(run_in_tmpdir):
     # Despite killing particles below the cutoff, the total heating should be
     # equal to the source energy
     assert heating[0] == pytest.approx(source_energy)
+
+
+def test_source_below_energy_cutoff(run_in_tmpdir):
+    # Source photons born below the energy cutoff should not be transported
+    # but should deposit their energy locally, as photons that fall below the
+    # cutoff during transport do
+    source_energy = 1e3
+    cutoff_energy = 2e3
+    model = inf_medium_model(cutoff_energy, 2*cutoff_energy)
+    model.settings.source = openmc.IndependentSource(
+        particle='photon',
+        energy=openmc.stats.Discrete([source_energy], [1.0]),
+    )
+    model.tallies[0].filters = [openmc.ParticleFilter(['photon'])]
+    statepoint_path = model.run()
+
+    with openmc.StatePoint(statepoint_path) as sp:
+        flux = sp.get_tally(name='flux').mean.ravel()
+        heating = sp.get_tally(name='heating').mean.ravel()
+
+    assert flux[0] == 0.0
+    assert heating[0] == pytest.approx(source_energy)

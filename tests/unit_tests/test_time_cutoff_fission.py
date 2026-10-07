@@ -114,7 +114,8 @@ def assert_equal(a, b):
     assert np.abs(a - b).max() <= 1e-10 * np.abs(b).max()
 
 
-@pytest.mark.parametrize('event_based', [False, True], ids=['history', 'event'])
+@pytest.mark.parametrize('event_based', [False, True],
+                         ids=['history', 'event'])
 @pytest.mark.parametrize('energy_mode', ['mg', 'ce'])
 def test_time_cutoff_eigenvalue(run_in_tmpdir, energy_mode, event_based):
     """The first generation with and without a time cutoff.
@@ -190,7 +191,8 @@ def test_time_cutoff_eigenvalue(run_in_tmpdir, energy_mode, event_based):
         assert a['analog', 'delayed-nu-fission'].sum() > 0.0
 
 
-@pytest.mark.parametrize('event_based', [False, True], ids=['history', 'event'])
+@pytest.mark.parametrize('event_based', [False, True],
+                         ids=['history', 'event'])
 def test_time_cutoff_all_delayed(run_in_tmpdir, event_based):
     """No fission neutron is prompt, so no prompt-nu-fission may be scored."""
     model = mg_model(all_delayed=True)
@@ -261,7 +263,8 @@ def create_exact_library(nu, prompt_fraction):
     return Path('exact.h5').resolve()
 
 
-@pytest.mark.parametrize('event_based', [False, True], ids=['history', 'event'])
+@pytest.mark.parametrize('event_based', [False, True],
+                         ids=['history', 'event'])
 def test_time_cutoff_one_neutron_per_collision(run_in_tmpdir, event_based):
     """Every collision produces one delayed neutron, which is never banked.
 
@@ -332,7 +335,8 @@ def test_time_cutoff_one_neutron_per_collision(run_in_tmpdir, event_based):
     assert np.all(collisions['progeny_id'] == 0)
 
 
-@pytest.mark.parametrize('event_based', [False, True], ids=['history', 'event'])
+@pytest.mark.parametrize('event_based', [False, True],
+                         ids=['history', 'event'])
 def test_time_cutoff_fixed_source_ce(run_in_tmpdir, event_based):
     """Analog and track-length estimates agree in a subcritical sphere.
 
@@ -384,7 +388,8 @@ def test_time_cutoff_fixed_source_ce(run_in_tmpdir, event_based):
             assert_equal(get_mean(sp, 'energyout', score).sum(), analog)
 
 
-@pytest.mark.parametrize('event_based', [False, True], ids=['history', 'event'])
+@pytest.mark.parametrize('event_based', [False, True],
+                         ids=['history', 'event'])
 @pytest.mark.parametrize('energy_mode', ['mg', 'ce'])
 def test_time_cutoff_full_fission_bank(run_in_tmpdir, energy_mode,
                                        event_based):
@@ -426,10 +431,11 @@ def test_time_cutoff_full_fission_bank(run_in_tmpdir, energy_mode,
     model.settings.seed = 1
     model.settings.event_based = event_based
     scores = ['nu-fission', 'prompt-nu-fission', 'delayed-nu-fission']
-    tally = openmc.Tally(name='analog')
-    tally.scores = scores
-    tally.estimator = 'analog'
-    model.tallies.append(tally)
+    for estimator in ('analog', 'collision'):
+        tally = openmc.Tally(name=estimator)
+        tally.scores = scores
+        tally.estimator = estimator
+        model.tallies.append(tally)
 
     for run in runs:
         if run == 'cutoff':
@@ -438,6 +444,7 @@ def test_time_cutoff_full_fission_bank(run_in_tmpdir, energy_mode,
         with openmc.StatePoint(sp_path) as sp:
             nu_fission, prompt, delayed = (
                 get_mean(sp, 'analog', score) for score in scores)
+            collision_delayed = get_mean(sp, 'collision', 'delayed-nu-fission')
         assert_equal(prompt + delayed, nu_fission)
         if run == 'no-cutoff':
             # The tallies are normalized by the number of source particles
@@ -445,9 +452,14 @@ def test_time_cutoff_full_fission_bank(run_in_tmpdir, energy_mode,
         else:
             assert_equal(prompt, [3.0])
             assert np.all(delayed > 0.0)
+            # The delayed neutrons sampled after the site that failed to enter
+            # the bank are not counted either, so the analog estimate stays
+            # well below the collision estimate, which counts all of them
+            assert np.all(delayed < 0.85 * collision_delayed)
 
 
-@pytest.mark.parametrize('event_based', [False, True], ids=['history', 'event'])
+@pytest.mark.parametrize('event_based', [False, True],
+                         ids=['history', 'event'])
 @pytest.mark.parametrize('energy_mode', ['mg', 'ce'])
 def test_time_cutoff_ufs(run_in_tmpdir, energy_mode, event_based):
     """Fission neutrons whose weight is set by uniform fission site weighting.

@@ -447,8 +447,7 @@ def _get_fission_products_endf(ev):
         # specified if the group constants are energy-independent. In this case,
         # the abundances must be inferred from MF=5, MT=455 where multiple
         # energy distributions are given. The total delayed yield is assigned
-        # to every delayed group; evaluations use six groups (ENDF/B) or eight
-        # (JEFF), so the number is taken from the decay constants.
+        # to every delayed group.
         delayed_neutrons = products[-len(decay_constants):]
         if lnu == 1:
             # Nu represented as polynomial

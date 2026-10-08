@@ -17,12 +17,18 @@ following the same format.
 :Attributes: - **filetype** (*char[]*) -- String indicating the type of file.
              - **version** (*int[2]*) -- Major and minor version of the source
                file format.
-             - **energy_mode** (*char[]*) -- 'multi-group', indicating that
-               ``E`` holds energy group indices. Only present in source point
-               files written by a multigroup simulation. Surface source files
-               and files written by a continuous-energy simulation or by
-               :func:`openmc.write_source_file` do not have this attribute, and
-               their ``E`` is an energy in [eV].
+             - **energy_mode** (*char[]*) -- Whether ``E`` holds energy group
+               indices ('multi-group') or energies in [eV]
+               ('continuous-energy'). A file without this attribute is read as
+               'continuous-energy'. When the file is read by
+               :class:`openmc.FileSource`, any other value is an error, and so
+               is a 'multi-group' file in a continuous-energy simulation.
+               OpenMC writes this attribute, with the value 'multi-group', only
+               to source point files written by a multigroup simulation.
+               Surface source files and files written by a continuous-energy
+               simulation, by :func:`openmc.write_source_file` or by
+               :meth:`openmc.ParticleList.export_to_hdf5` do not have this
+               attribute, so their ``E`` is read as an energy in [eV].
 
 :Datasets:
 

@@ -269,6 +269,21 @@ def test_fixed_source_from_file(name, mg_files, run_in_tmpdir):
     assert np.all(np.delete(flux, stored_bin) == 0.0)
 
 
+def test_energy_bounds_not_applied(mg_files, run_in_tmpdir, capsys):
+    # Read as an energy in eV, the stored group index 1 would lie outside
+    # these bounds, which are not applied to group indices
+    shutil.copy(mg_files('2g-thermal') / 'source.3.h5', 'source.3.h5')
+    model, _ = make_model('2g-thermal')
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.FileSource(
+        'source.3.h5', constraints={'energy_bounds': (1.0e3, 2.0e7)})
+    capsys.readouterr()
+    flux = run_flux(model, '2g-thermal', output=True)
+    assert flux[0] > 0.0
+    assert flux[1] == 0.0
+    assert count_bounds_warnings(capsys.readouterr().out) == 1
+
+
 def test_eigenvalue_from_file(mg_files, run_in_tmpdir):
     # The file holds sites in the low group, the only fissile one
     shutil.copy(mg_files('2g-thermal') / 'source.3.h5', 'source.3.h5')

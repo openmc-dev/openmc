@@ -1542,6 +1542,179 @@ class Model:
             return openmc.lib.sample_external_source(
                 n_samples=n_samples, prn_seed=prn_seed, as_array=as_array
             )
+        
+    def write_forward_source_mesh(
+        self,
+        space_mesh: openmc.MeshBase,
+        angle_mesh: openmc.UnitSpherePointset | None,
+        energy_bins: Sequence[float],
+        min_samples: int = 10000,
+        min_samples_per_voxel: float = 30.0,
+        max_samples: int | None = None,
+        filename: PathLike = 'forward_source_mesh.h5',
+        **init_kwargs,
+    ) -> None:
+        """Precompute this source's strength on a (space, angle, energy) grid 
+        and write it to an HDF5 file for FW-CADIS source biasing.
+
+        This is meant to accommodate biasing sources that aren't 
+        :class:`IndependentSource` instances, under the assumption that a 
+        geometrically simpler "lookalike" :class:`IndependentSource` is used 
+        in the Random Ray solve to estimate adjoint source strengths.
+
+        Parameters
+        ----------
+        space_mesh : openmc.MeshBase
+            Spatial mesh to bin sampled source positions into. Should match
+            the mesh that will be used for the corresponding random ray
+            source-biasing tally.
+        angle_mesh : openmc.MeshBase or None
+            Angular mesh (over the unit sphere) to bin sampled source
+            directions into. If None, emission is recorded as a single
+            (isotropic) angle bin.
+        energy_bins : sequence of float
+            Ascending energy group boundaries in [eV], matching the group
+            structure used for the corresponding random ray source-biasing
+            tally.
+        min_samples : int
+            Number of source sites to sample.
+        min_samples_per_voxel : float
+            Minimum median number of samples per occupied (spatial, angle,
+            energy) voxel.
+        max_samples : int or None
+            Maximum total number of source sites sampled. Issues a warning  
+            if this cap is reached before min_samples_per_voxel is
+            satisfied. Defaults to ``10 * min_samples``.
+        filename : path-like
+            Path to write the resulting HDF5 file to.
+        **init_kwargs
+            Keyword arguments passed to :func:`openmc.lib.init` (via
+            :class:`openmc.lib.TemporarySession`)
+        """
+        import openmc.lib
+
+        # Verify that the model run mode is fixed source
+        if self.settings.run_mode != 'fixed source':
+            raise ValueError(
+                f'Forward source mesh cannot be written in '
+                f'{self.settings.run_mode} mode (requires ''fixed source'').')
+
+        min_samples = int(min_samples)
+        if max_samples is None:
+            max_samples = 10 * min_samples
+        if max_samples < min_samples:
+            raise ValueError(
+                f'max_samples ({max_samples}) must be >= min_samples '
+                f'({min_samples}).')
+
+        energy_bins = np.asarray(energy_bins, dtype=float)
+        if energy_bins.ndim != 1 or energy_bins.size < 2:
+            raise ValueError(
+                'energy_bins must be a 1-D sequence with at least two '
+                'entries.')
+        n_energy = energy_bins.size - 1
+
+        n_space = space_mesh.n_elements
+        n_angle = angle_mesh.n_elements if angle_mesh is not None else 1
+
+        # Attach the meshes to a dummy tally so that openmc.lib mesh 
+        # objects exist for bin lookup later.
+        filters = [openmc.MeshFilter(space_mesh)]
+        if angle_mesh is not None:
+            filters.append(openmc.MeshAngularFilter(angle_mesh))
+        dummy_tally = openmc.Tally()
+        dummy_tally.filters = filters
+        dummy_tally.scores = ['flux']
+        self.tallies.append(dummy_tally)
+
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
+        counts = np.zeros((n_space, n_angle, n_energy))
+        n_drawn = 0
+        median = 0.0
+
+        # Helper function to return the flattened mesh bin index of each 
+        # sample, or -1 for points not inside the mesh
+        def _mesh_bin_indices(lib_mesh, points: np.ndarray) -> np.ndarray:
+            bins = np.empty(len(points), dtype=int)
+            for i, p in enumerate(points):
+                bins[i] = lib_mesh.get_bin(p)
+            return bins
+
+        with openmc.lib.TemporarySession(self, **init_kwargs):
+            space_lib_mesh = openmc.lib.meshes[space_mesh.id]
+            angle_lib_mesh = (
+                openmc.lib.meshes[angle_mesh.id]
+                if angle_mesh is not None else None
+            )
+
+            while True:
+                batch_size = min(min_samples, max_samples - n_drawn)
+                if batch_size <= 0:
+                    break
+
+                data = openmc.lib.sample_external_source(
+                    n_samples=batch_size, as_array=True)
+                n_drawn += batch_size
+
+                r = np.asarray(data['r'])
+                u = np.asarray(data['u'])
+                E = data['E']
+
+                space_bin = _mesh_bin_indices(space_lib_mesh, r)
+                valid = space_bin >= 0
+
+                if angle_lib_mesh is not None:
+                    angle_bin = _mesh_bin_indices(angle_lib_mesh, u)
+                    valid &= angle_bin >= 0
+                else:
+                    angle_bin = np.zeros(len(r), dtype=int)
+
+                energy_bin = np.digitize(E, energy_bins) - 1
+                valid &= (energy_bin >= 0) & (energy_bin < n_energy)
+
+                np.add.at(
+                    counts,
+                    (space_bin[valid], angle_bin[valid], energy_bin[valid]),
+                    1.0)
+
+                # Compute median samples per voxel among voxels sampled at 
+                # least once so far
+                median = np.median(counts[counts != 0])
+
+                if median >= min_samples_per_voxel:
+                    break
+                if n_drawn >= max_samples:
+                    break
+
+        if median < min_samples_per_voxel:
+            warnings.warn(
+                f"write_source_mesh reached max_samples ({max_samples}) "
+                f"with a median count of only {median:.1f} samples per "
+                f"occupied voxel (targeted {min_samples_per_voxel}). "
+                "Consider raising max_samples or coarsening "
+                "space_mesh/angle_mesh/energy_bins."
+            )
+
+        # Normalize by the total number of samples drawn, including rejected 
+        # sites, so that the mesh accurately describes source support falling 
+        # only inside space_mesh/angle_mesh/energy_bins
+        S = counts / n_drawn
+
+        with h5py.File(filename, 'w') as fh:
+            fh.attrs['filetype'] = np.bytes_('forward_source')
+            fh.attrs['version'] = np.array([1, 0])
+            fh.create_dataset('spatial_mesh', data=space_mesh.id)
+            # -1 used for angle-independent biasing
+            fh.create_dataset(
+                'angle_mesh',
+                data=angle_mesh.id if angle_mesh is not None else -1)
+            fh.create_dataset('energy_bounds', data=energy_bins)
+            fh.create_dataset('unbiased_source_strength', data=S)
+        
+        # Remove the dummy tally from earlier
+        self.tallies.remove(dummy_tally)
 
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
         """Apply results from a statepoint to tally objects on the Model

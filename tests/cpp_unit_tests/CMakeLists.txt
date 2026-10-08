@@ -1,6 +1,7 @@
 set(TEST_NAMES
   test_atomic_mass
   test_distribution
+  test_field
   test_file_utils
   test_tally
   test_interpolate

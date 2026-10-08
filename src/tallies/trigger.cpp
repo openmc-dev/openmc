@@ -111,6 +111,10 @@ void check_tally_triggers(double& ratio, int& tally_id, int& score)
         // Compute the uncertainty / threshold ratio.
         double this_ratio = uncertainty / trigger.threshold;
         if (trigger.metric == TriggerMetric::variance) {
+          // Batch prediction in check_triggers() squares the limiting ratio.
+          // Since variance scales as 1/N, use sqrt(variance / threshold) so
+          // the predicted batch multiplier is variance / threshold. This
+          // preserves the convergence condition that the ratio is <= 1.
           this_ratio = std::sqrt(this_ratio);
         }
 

@@ -521,8 +521,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   //   i=0 -> particle, i=1 -> energy, i=2 -> mesh
   // shape[j] gives the number of bins for filter storage position j.
 
-  // Row-major strides for the 3 filter dimensions. int64 so the flat filter
-  // index cannot overflow 2^31 for large mesh x energy tallies.
+  // Row-major strides for the 3 filter dimensions
   const int64_t stride0 = static_cast<int64_t>(shape[1]) * shape[2];
   const int64_t stride1 = shape[2];
 

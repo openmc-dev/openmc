@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Callable, MutableMapping
 from copy import deepcopy
 from io import StringIO
-from numbers import Real
+from numbers import Integral, Real
 from warnings import warn
 
 import numpy as np
@@ -833,8 +833,14 @@ class Reaction(EqualityMixin):
         Indicates whether or not this is a redundant reaction
     mt : int
         The ENDF MT number for this reaction.
-    q_value : float
-        The Q-value of this reaction in eV.
+    q_reaction : float
+        The reaction Q value in [eV] (ENDF MF=3 QI).
+    q_mass_difference : float or None
+        Evaluated mass-difference Q value in [eV] (ENDF MF=3 QM). None if
+        unavailable.
+    breakup_flag : int or None
+        ENDF LR flag indicating additional breakup products. Zero means no
+        breakup; None means the flag is unavailable.
     xs : dict of str to openmc.data.Function1D
         Microscopic cross section for this reaction as a function of incident
         energy; these cross sections are provided in a dictionary where the key
@@ -850,7 +856,9 @@ class Reaction(EqualityMixin):
     def __init__(self, mt):
         self._center_of_mass = True
         self._redundant = False
-        self._q_value = 0.
+        self._q_reaction = 0.
+        self._q_mass_difference = None
+        self._breakup_flag = None
         self._xs = {}
         self._products = []
         self._derived_products = []
@@ -882,13 +890,47 @@ class Reaction(EqualityMixin):
         self._redundant = redundant
 
     @property
+    def q_reaction(self):
+        return self._q_reaction
+
+    @q_reaction.setter
+    def q_reaction(self, value):
+        cv.check_type('reaction Q value', value, Real)
+        self._q_reaction = value
+
+    @property
     def q_value(self):
-        return self._q_value
+        """Deprecated alias for :attr:`q_reaction`."""
+        warn('q_value is deprecated; use q_reaction instead.',
+             FutureWarning, stacklevel=2)
+        return self.q_reaction
 
     @q_value.setter
     def q_value(self, q_value):
-        cv.check_type('Q value', q_value, Real)
-        self._q_value = q_value
+        warn('q_value is deprecated; use q_reaction instead.',
+             FutureWarning, stacklevel=2)
+        self.q_reaction = q_value
+
+    @property
+    def q_mass_difference(self):
+        return self._q_mass_difference
+
+    @q_mass_difference.setter
+    def q_mass_difference(self, value):
+        if value is not None:
+            cv.check_type('mass-difference Q value', value, Real)
+        self._q_mass_difference = value
+
+    @property
+    def breakup_flag(self):
+        return self._breakup_flag
+
+    @breakup_flag.setter
+    def breakup_flag(self, value):
+        if value is not None:
+            cv.check_type('breakup flag', value, Integral)
+            cv.check_greater_than('breakup flag', value, 0, equality=True)
+        self._breakup_flag = value
 
     @property
     def products(self):
@@ -936,7 +978,11 @@ class Reaction(EqualityMixin):
             group.attrs['label'] = np.bytes_(REACTION_NAME[self.mt])
         else:
             group.attrs['label'] = np.bytes_(self.mt)
-        group.attrs['Q_value'] = self.q_value
+        group.attrs['q_reaction'] = self.q_reaction
+        if self.q_mass_difference is not None:
+            group.attrs['q_mass_difference'] = self.q_mass_difference
+        if self.breakup_flag is not None:
+            group.attrs['breakup_flag'] = self.breakup_flag
         group.attrs['center_of_mass'] = 1 if self.center_of_mass else 0
         group.attrs['redundant'] = 1 if self.redundant else 0
         for T in self.xs:
@@ -970,7 +1016,12 @@ class Reaction(EqualityMixin):
 
         mt = group.attrs['mt']
         rx = cls(mt)
-        rx.q_value = group.attrs['Q_value']
+        if 'q_reaction' in group.attrs:
+            rx.q_reaction = group.attrs['q_reaction']
+        else:
+            rx.q_reaction = group.attrs['Q_value']
+        rx.q_mass_difference = group.attrs.get('q_mass_difference')
+        rx.breakup_flag = group.attrs.get('breakup_flag')
         rx.center_of_mass = bool(group.attrs['center_of_mass'])
         rx.redundant = bool(group.attrs.get('redundant', False))
 
@@ -1018,7 +1069,7 @@ class Reaction(EqualityMixin):
             rx = cls(mt)
 
             # Get Q-value of reaction
-            rx.q_value = ace.xss[ace.jxs[4] + i_reaction - 1]*EV_PER_MEV
+            rx.q_reaction = ace.xss[ace.jxs[4] + i_reaction - 1]*EV_PER_MEV
 
             # ==================================================================
             # CROSS SECTION
@@ -1172,7 +1223,9 @@ class Reaction(EqualityMixin):
             file_obj = StringIO(ev.section[3, mt])
             get_head_record(file_obj)
             params, rx.xs['0K'] = get_tab1_record(file_obj)
-            rx.q_value = params[1]
+            rx.q_reaction = params[1]
+            rx.q_mass_difference = params[0]
+            rx.breakup_flag = params[3]
 
         # Get fission product yields (nu) as well as delayed neutron energy
         # distributions
@@ -1217,7 +1270,7 @@ class Reaction(EqualityMixin):
                 dist = UncorrelatedAngleEnergy()
 
                 A = ev.target['mass']
-                threshold = (A + 1.)/A*abs(rx.q_value)
+                threshold = (A + 1.)/A*abs(rx.q_reaction)
                 mass_ratio = (A/(A + 1.))**2
                 dist.energy = LevelInelastic(threshold, mass_ratio)
 

@@ -743,8 +743,10 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       auto search = data::nuclide_map.find(nuc);
       if (search == data::nuclide_map.end()) {
         int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
-        if (err < 0)
-          throw std::runtime_error {get_errmsg()};
+        if (err < 0) {
+          throw std::runtime_error {fmt::format(
+            "Could not add nuclide '{}' to a tally: {}", nuc, get_errmsg())};
+        }
       }
       nuclides_.push_back(data::nuclide_map.at(nuc));
     }

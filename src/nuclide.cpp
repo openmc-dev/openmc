@@ -693,7 +693,7 @@ void Nuclide::calculate_xs(
         i_temp = 0;
         break;
       }
-      if (kT > kTs_.back()) {
+      if (kT >= kTs_.back()) {
         i_temp = kTs_.size() - 1;
         break;
       }

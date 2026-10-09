@@ -51,6 +51,7 @@ Multi-group Cross Sections
     openmc.mgxs.KappaFissionXS
     openmc.mgxs.MultiplicityMatrixXS
     openmc.mgxs.NuFissionMatrixXS
+    openmc.mgxs.PhotonTransferMatrixXS
     openmc.mgxs.ReducedAbsorptionXS
     openmc.mgxs.ScatterXS
     openmc.mgxs.ScatterMatrixXS

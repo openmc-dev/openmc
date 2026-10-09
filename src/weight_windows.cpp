@@ -763,9 +763,10 @@ void WeightWindows::to_hdf5(hid_t group) const
 //==============================================================================
 
 SourceBias::SourceBias(int32_t spatial_mesh_idx, int32_t angle_mesh_idx,
-  vector<double> energy_bounds, int32_t ww_id)
+  vector<double> energy_bounds, int32_t ww_id, std::string forward_source_mesh)
   : spatial_mesh_idx_(spatial_mesh_idx), angle_mesh_idx_(angle_mesh_idx),
-    energy_bounds_(std::move(energy_bounds)), ww_id_(ww_id)
+    energy_bounds_(std::move(energy_bounds)), ww_id_(ww_id),
+    forward_source_mesh_(forward_source_mesh)
 {
   int64_t spatial_bins = model::meshes[spatial_mesh_idx_]->n_bins();
   int64_t angle_bins =
@@ -931,9 +932,8 @@ void SourceBias::compute_unbiased_strength(int64_t n_samples_per_source)
   }
 
   // A precomputed file takes priority over sampling model::external_sources
-  const std::string fwd_path = "forward_source_mesh.h5";
-  if (file_exists(fwd_path)) {
-    load_forward_source_mesh(fwd_path);
+  if (file_exists(forward_source_mesh_)) {
+    load_forward_source_mesh(forward_source_mesh_);
     return;
   }
 
@@ -1153,6 +1153,9 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
           std::stoi(get_node_value(node, "angular_biasing_quadrature"));
         angle_mesh_idx_ = model::mesh_map[angle_mesh_id];
       }
+      if (source_biasing_ && check_for_node(node, "forward_source_mesh")) {
+        forward_source_mesh_ = get_node_value(node, "forward_source_mesh");
+      }
     }
   } else {
     fatal_error(fmt::format(
@@ -1243,7 +1246,6 @@ void WeightWindowsGenerator::create_tally()
   ww_tally->add_filter(particle_filter);
 
   if (!source_biasing_ || method_ != WeightWindowUpdateMethod::FW_CADIS) {
-    // technically the second condition isn't totally absolute
     return;
   }
 
@@ -1268,7 +1270,7 @@ void WeightWindowsGenerator::create_tally()
   // Create the object that will hold the accumulated flux data used to
   // build a biased forward source once the simulation finishes
   auto sb = std::make_unique<SourceBias>(
-    mesh_idx, angle_mesh_idx_, e_bounds, wws->id());
+    mesh_idx, angle_mesh_idx_, e_bounds, wws->id(), forward_source_mesh_);
   sb_idx_ = static_cast<int32_t>(variance_reduction::source_biases.size());
   variance_reduction::source_biases.push_back(std::move(sb));
 

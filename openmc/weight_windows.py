@@ -17,6 +17,7 @@ from openmc.checkvalue import PathLike
 from ._xml import get_elem_list, get_text, clean_indentation
 from .mixin import IDManagerMixin
 from .particle_type import ParticleType
+from .utility_funcs import input_path
 
 
 class WeightWindows(IDManagerMixin):
@@ -504,6 +505,9 @@ class WeightWindowGenerator:
         Target tallies for local variance reduction via FW-CADIS.
     source_biasing : bool
         Whether to perform automated biasing of fixed sources via FW-CADIS.
+    forward_source_mesh_file : Pathlike
+        Path to a forward source mesh file storing unbiased source strengths 
+        in each phase space voxel.
     angular_biasing_quadrature : :class:`openmc.UnitSpherePointset`, optional
         Optional set of angles to generate source biasing parameters on. 
         Defaults to None for biasing as a function of space and energy only.
@@ -530,6 +534,9 @@ class WeightWindowGenerator:
         Target tallies for local variance reduction via FW-CADIS.
     source_biasing : bool
         Whether to perform automated biasing of fixed sources via FW-CADIS.
+    forward_source_mesh_file : Pathlike
+        Path to a forward source mesh file storing unbiased source strengths 
+        in each phase space voxel.
     angular_biasing_quadrature : openmc.UnitSpherePointset or None
         Optional set of angles to generate source biasing parameters on. 
         Defaults to None for biasing as a function of space and energy only.
@@ -554,6 +561,7 @@ class WeightWindowGenerator:
         method: str = 'magic',
         targets: openmc.Tallies | Iterable[int] | None = None,
         source_biasing: bool = False,
+        forward_source_mesh_file: PathLike | None = None,
         angular_biasing_quadrature: openmc.UnitSpherePointset | None = None,
         max_realizations: int = 1,
         update_interval: int = 1,
@@ -569,6 +577,7 @@ class WeightWindowGenerator:
         self.method = method
         self.targets = targets
         self.source_biasing = source_biasing
+        self.forward_source_mesh_file = forward_source_mesh_file
         self.angular_biasing_quadrature = angular_biasing_quadrature
         self.max_realizations = max_realizations
         self.update_interval = update_interval
@@ -662,6 +671,22 @@ class WeightWindowGenerator:
                 "Automated source biasing is only enabled via the " \
                 "fw_cadis update method.")
         self._source_biasing = sb
+    
+    @property
+    def forward_source_mesh_file(self) -> PathLike:
+        return self._forward_source_mesh_file
+
+    @forward_source_mesh_file.setter
+    def forward_source_mesh_file(self, f: PathLike):
+        if f is None:
+            self._weight_windows_file = None
+        elif self.source_biasing != True:
+            raise ValueError(
+                "Forward source mesh file is not required when source " \
+                "biasing is not active.")
+        else:
+            cv.check_type('weight windows file', f, PathLike)
+            self._forward_source_mesh_file = input_path(f)
 
     @property
     def angular_biasing_quadrature(self) -> openmc.UnitSpherePointset:
@@ -822,9 +847,12 @@ class WeightWindowGenerator:
         if self.source_biasing:
             sb_elem = ET.SubElement(element, 'source_biasing')
             sb_elem.text = str(self.source_biasing).lower()
-        if self.angular_biasing_quadrature is not None:
-            angle_mesh_elem = ET.SubElement(element, 'angular_biasing_quadrature')
-            angle_mesh_elem.text = str(self.angular_biasing_quadrature.id)
+            if self.angular_biasing_quadrature is not None:
+                angle_mesh_elem = ET.SubElement(element, 'angular_biasing_quadrature')
+                angle_mesh_elem.text = str(self.angular_biasing_quadrature.id)
+            if self.forward_source_mesh_file is not None:
+                fwd_src_mesh_elem = ET.SubElement(element, 'forward_source_mesh')
+                fwd_src_mesh_elem.text = str(self.forward_source_mesh_file)
         if self.update_parameters is not None:
             self._update_parameters_subelement(element)
 
@@ -872,6 +900,8 @@ class WeightWindowGenerator:
 
         if elem.find('source_biasing') is not None:
             wwg.source_biasing = bool(get_text(elem, 'source_biasing'))
+        if elem.find('forward_source_mesh') is not None:
+            wwg.forward_source_mesh_file = get_text(elem, 'forward_source_mesh')
         if elem.find('angular_biasing_quadrature') is not None:
             angle_mesh_id = int(get_text(elem, 'angular_biasing_quadrature'))
             angle_mesh = meshes[angle_mesh_id]

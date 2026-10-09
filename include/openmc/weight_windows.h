@@ -217,8 +217,10 @@ public:
   //! \param[in] energy_bounds Energy group boundaries [eV]
   //! \param[in] ww_id ID of the WeightWindows object this source bias is
   //!   generated alongside (used to name this object's HDF5 group)
+  //! \param[in] forward_source_mesh Path to unbiased source strength mesh file
   SourceBias(int32_t spatial_mesh_idx, int32_t angle_mesh_idx,
-    vector<double> energy_bounds, int32_t ww_id);
+    vector<double> energy_bounds, int32_t ww_id,
+    std::string forward_source_mesh);
 
   //----------------------------------------------------------------------------
   // Methods
@@ -237,22 +239,24 @@ public:
 
   int32_t spatial_mesh_idx() const { return spatial_mesh_idx_; }
   int32_t angle_mesh_idx() const { return angle_mesh_idx_; }
+  std::string forward_source_mesh() const { return forward_source_mesh_; }
   //! Estimate the unbiased external source's strength as a function of
   //! spatial mesh element, angular mesh element, and energy group, assuming
   //! isotropic emission when no angular mesh is present.
   //!
-  //! If a file named "forward_source_mesh.h5" is present, it is used directly
-  //! in place of sampling model::external_sources. Its spatial mesh, angular
-  //! mesh, and energy group structure are checked against spatial_mesh_,
-  //! angle_mesh_, and energy_bounds_ before use.
+  //! If the source strengths are already written to a file
+  //! such as "forward_source_mesh.h5", that data is used directly in place of
+  //! sampling model::external_sources. Its spatial mesh, angular mesh, and
+  //! energy group structure are checked against spatial_mesh_, angle_mesh_,
+  //! and energy_bounds_ before use.
   //!
   //! Otherwise, group probabilities are read exactly from each source's
   //! Discrete energy spectrum, while the spatial and angular dimensions are
   //! estimated by binning samples into (spatial_mesh_, angle_mesh_).
   //!
   //! \param[in] n_samples_per_source Number of trial (position, direction)
-  //!   pairs to draw per external source. Unused if
-  //!   "forward_source_mesh.h5" is present.
+  //!   pairs to draw per external source. Unused if forward source mesh file
+  //!   is present.
   void compute_unbiased_strength(int64_t n_samples_per_source = 1000000);
 
   const tensor::Tensor<double>& unbiased_strength() const
@@ -262,16 +266,17 @@ public:
 
 private:
   //! Read a precomputed unbiased source strength distribution from a
-  //! "forward_source_mesh.h5"-format file
+  //! forward source mesh file
   void load_forward_source_mesh(const std::string& path);
 
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t spatial_mesh_idx_;     //!< Index into model::meshes
-  int32_t angle_mesh_idx_;       //!< Index into model::meshes, or C_NONE
-  vector<double> energy_bounds_; //!< Energy group boundaries [eV]
-  int32_t ww_id_;                //!< ID of the associated WeightWindows
+  int32_t spatial_mesh_idx_;        //!< Index into model::meshes
+  int32_t angle_mesh_idx_;          //!< Index into model::meshes, or C_NONE
+  vector<double> energy_bounds_;    //!< Energy group boundaries [eV]
+  int32_t ww_id_;                   //!< ID of the associated WeightWindows
+  std::string forward_source_mesh_; //!< Path to unbiased source strengths file
 
   //! Un-normalized mean flux. Shape: (spatial_bins, angle_bins,
   //! energy_bins). angle_bins == 1 when angle_mesh_idx_ == C_NONE.
@@ -318,6 +323,8 @@ public:
   bool source_biasing_;
   int32_t angle_mesh_idx_ {C_NONE}; //<! Index in mesh map of optional angular
                                     // quadrature for source biasing
+  std::string forward_source_mesh_ {
+    "forward_source_mesh.h5"}; //<! Path to unbiased source strengths mesh file
 };
 
 //==============================================================================

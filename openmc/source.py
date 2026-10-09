@@ -17,7 +17,7 @@ from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_elem_list, get_text
-from .mesh import MeshBase, StructuredMesh, UnstructuredMesh, UnitSpherePointset, triangularize_unit_sphere_mesh
+from .mesh import MeshBase, StructuredMesh, UnstructuredMesh, UnitSpherePointset, triangulate_unit_sphere_mesh
 from .particle_type import ParticleType
 from .statepoint import _VERSION_STATEPOINT
 from .utility_funcs import input_path
@@ -673,7 +673,7 @@ class CorrelatedSource(SourceBase):
     a :class:`UnitSphereTriangularMesh` (which instead supports direction
     sampling) via a star triangulation of its spherical Voronoi diagram,
     using :func:`scipy.spatial.SphericalVoronoi` (see
-    :func:`triangularize_unit_sphere_mesh`). This conversion happens once,
+    :func:`triangulate_unit_sphere_mesh`). This conversion happens once,
     in Python, at construction time; the fully-processed result -- the
     (possibly larger, after triangulation) biased strength and weight
     arrays, plus mesh references -- is written directly to XML, so the C++
@@ -816,7 +816,7 @@ class CorrelatedSource(SourceBase):
                 angle_mesh = None
 
         if angle_mesh is not None and isinstance(angle_mesh, UnitSpherePointset):
-            # triangularize_unit_sphere_mesh expects point-major data, with
+            # triangulate_unit_sphere_mesh expects point-major data, with
             # the angle/point dimension leading; reshape from our (spatial,
             # angle, energy) layout accordingly, treating (spatial, energy)
             # as one flattened "extra" block per point.
@@ -825,7 +825,7 @@ class CorrelatedSource(SourceBase):
             w_point_major = np.moveaxis(weights, 1, 0).reshape(
                 n_angle, n_space * n_energy)
 
-            angle_mesh, new_b, new_w = triangularize_unit_sphere_mesh(
+            angle_mesh, new_b, new_w = triangulate_unit_sphere_mesh(
                 angle_mesh, data=b_point_major, broadcast_data=w_point_major)
 
             n_angle = angle_mesh.n_elements

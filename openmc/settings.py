@@ -395,9 +395,6 @@ class Settings:
         Path to a weight window file to load during simulation initialization
 
         .. versionadded::0.14.0
-    
-    source_bias_file: Pathlike
-        Path to a file containing source biasing parameters generated via FW-CADIS
 
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
@@ -497,7 +494,6 @@ class Settings:
         self._weight_windows_on = None
         self._shared_secondary_bank = None
         self._weight_windows_file = None
-        self._source_bias_file = None
         self._weight_window_checkpoints = {}
         self._max_history_splits = None
         self._max_tracks = None
@@ -1387,18 +1383,6 @@ class Settings:
         else:
             cv.check_type('weight windows file', value, PathLike)
             self._weight_windows_file = input_path(value)
-    
-    @property
-    def source_bias_file(self) -> PathLike | None:
-        return self._source_bias_file
-    
-    @source_bias_file.setter
-    def source_bias_file(self, value: PathLike | None):
-        if value is None:
-            self._source_bias_file = None
-        else:
-            cv.check_type('source bias file', value, PathLike)
-            self._source_bias_file = input_path(value)
 
     @property
     def weight_window_generators(self) -> list[WeightWindowGenerator]:
@@ -1996,12 +1980,6 @@ class Settings:
             element = ET.Element("weight_windows_file")
             element.text = str(self.weight_windows_file)
             root.append(element)
-    
-    def _create_source_bias_file_element(self, root):
-        if self.source_bias_file is not None:
-            element = ET.element("source_bias_file")
-            element.text = str(self.source_bias_file)
-            root.append(element)
 
     def _create_weight_window_checkpoints_subelement(self, root):
         if not self._weight_window_checkpoints:
@@ -2494,11 +2472,6 @@ class Settings:
         if text is not None:
             self.weight_windows_file = text
 
-    def _source_bias_file_from_xml_element(self, root):
-        text = get_text(root, "source_bias_file")
-        if text is not None:
-            self.source_bias_file = text
-
     def _weight_window_checkpoints_from_xml_element(self, root):
         elem = root.find('weight_window_checkpoints')
         if elem is None:
@@ -2664,7 +2637,6 @@ class Settings:
         self._create_shared_secondary_bank_subelement(element)
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
-        self._create_source_bias_file_element(element)
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
@@ -2782,7 +2754,6 @@ class Settings:
         settings._weight_windows_on_from_xml_element(elem)
         settings._shared_secondary_bank_from_xml_element(elem)
         settings._weight_windows_file_from_xml_element(elem)
-        settings._source_bias_file_from_xml_element(elem)
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_history_splits_from_xml_element(elem)

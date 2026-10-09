@@ -98,7 +98,6 @@ std::string path_sourcepoint;
 std::string path_statepoint;
 const char* path_statepoint_c {path_statepoint.c_str()};
 std::string weight_windows_file;
-std::string source_bias_file;
 std::string properties_file;
 
 int32_t n_inactive {0};
@@ -1249,11 +1248,6 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "weight_windows_file")) {
     weight_windows_file = get_node_value(root, "weight_windows_file");
     weight_windows_on = true;
-  }
-
-  // read FW-CADIS biased source
-  if (check_for_node(root, "source_bias_file")) {
-    source_bias_file = get_node_value(root, "source_bias_file");
   }
 
   // read settings for weight windows value, this will override

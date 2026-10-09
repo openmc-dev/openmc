@@ -3861,16 +3861,172 @@ class UnitSphereTriangularMesh(AngularMesh):
 
         return cls(triangles, mesh_id=mesh_id)
     
-def triangularize_unit_sphere_mesh(mesh, data=None, broadcast_data=None):
+def _spherical_triangle_area(a, b, c):
+    num = np.dot(a, np.cross(b, c))
+    denom = 1 + np.dot(a, b) + np.dot(b, c) + np.dot(c, a)
+    return 2 * np.arctan2(num, denom)
+
+def _signed_area_2d(pts):
+    # shoelace formula for polygon area, positive for CCW vertex orientation
+    x = pts[:, 0]
+    y = pts[:, 1]
+    return 0.5 * np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y)
+
+def _delaunay_triangulate_convex_2d(points_2d):
+    """Perform a Delaunay triangulation of the vertices of a polygon (in 
+    CCW order) via edge flipping.
+
+    Begin by calculating the fan triangulation from vertex 0, then 
+    flip any edge that violates the condition that no other vertex 
+    may be inside the circumcircle of a given triangle. Returns a list of 
+    index triples into points_2d.
+    """
+    n = len(points_2d)
+    if n == 3:
+        return [(0, 1, 2)]
+
+    triangles = [[0, i, i + 1] for i in range(1, n - 1)]
+
+    def shared_edge(t1, t2):
+        shared = [v for v in t1 if v in t2]
+        return tuple(shared) if len(shared) == 2 else None
+
+    max_sweeps = n * n
+    for _ in range(max_sweeps):
+        changed = False
+        for ai in range(len(triangles)):
+            for bi in range(ai + 1, len(triangles)):
+                t_a, t_b = triangles[ai], triangles[bi]
+                edge = shared_edge(t_a, t_b)
+                if edge is None:
+                    continue
+                u, v = edge
+                opp_a = [p for p in t_a if p not in edge][0]
+                opp_b = [p for p in t_b if p not in edge][0]
+
+                pu, pv = points_2d[u], points_2d[v]
+                po_a, po_b = points_2d[opp_a], points_2d[opp_b]
+
+                # Orient (pu, pv, po_a) CCW before the in-circle test
+                if _signed_area_2d(np.array([pu, pv, po_a])) < 0:
+                    pu, pv = pv, pu
+                    u, v = v, u
+
+                # Test whether point po_b lies inside the circumcircle of
+                # triangle pu-pv-po_a
+                ax, ay = pu[0] - po_b[0], pu[1] - po_b[1]
+                bx, by = pv[0] - po_b[0], pv[1] - po_b[1]
+                cx, cy = po_a[0] - po_b[0], po_a[1] - po_b[1]
+                det = (
+                    (ax * ax + ay * ay) * (bx * cy - cx * by)
+                    - (bx * bx + by * by) * (ax * cy - cx * ay)
+                    + (cx * cx + cy * cy) * (ax * by - bx * ay)
+                )
+                if det <= 1e-12:
+                    continue
+
+                # flip the shared edge u-v for opp_a-opp_b
+                new_t1 = [opp_a, opp_b, u]
+                new_t2 = [opp_a, opp_b, v]
+                if _signed_area_2d(
+                        np.array([points_2d[i] for i in new_t1])) < 0:
+                    new_t1 = new_t1[::-1]
+                if _signed_area_2d(
+                        np.array([points_2d[i] for i in new_t2])) < 0:
+                    new_t2 = new_t2[::-1]
+                triangles[ai] = new_t1
+                triangles[bi] = new_t2
+                changed = True
+
+        if not changed:
+            break
+
+    return [tuple(t) for t in triangles]
+
+
+def _ear_clip_2d(points_2d):
+    """Perform an ear-clipping triangulation of a simple polygon given its
+    vertices in CCW order. Returns a list of index triples into points_2d.
+
+    Falls back to fan triangulation from vertex 0 for any vertices left over if 
+    no ear can be found, in case of a degeneracy (e.g. points nearly collinear 
+    on a great-circle arc).
+    """
+    n = len(points_2d)
+    indices = list(range(n))
+    triangles = []
+
+    while len(indices) > 3:
+        m = len(indices)
+        ear_found = False
+        for ii in range(m):
+            i_prev = indices[(ii - 1) % m]
+            i_curr = indices[ii]
+            i_next = indices[(ii + 1) % m]
+            a, b, c = points_2d[i_prev], points_2d[i_curr], points_2d[i_next]
+
+            cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+            if not cross > 0:
+                continue
+
+            # Make sure there are no other polygon vertices inside the
+            # candidate triangle
+            occupied = False
+            for k in indices:
+                if k in (i_prev, i_curr, i_next):
+                    continue
+
+                def _sign(p1, p2, p3):
+                    return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+            
+                d1 = _sign(points_2d[k], a, b)
+                d2 = _sign(points_2d[k], b, c)
+                d3 = _sign(points_2d[k], c, a)
+                has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
+                has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
+                
+                # determine if point p lies inside (or on the boundary of)
+                # triangle abc, assuming a, b, c are given in CCW order
+                if not (has_neg and has_pos):
+                    occupied = True
+                    break
+            if occupied:
+                continue
+
+            triangles.append((i_prev, i_curr, i_next))
+            indices.pop(ii)
+            ear_found = True
+            break
+
+        if not ear_found:
+            # fall back to fan triangulation of remaining polygon
+            for ii in range(1, len(indices) - 1):
+                triangles.append((indices[0], indices[ii], indices[ii + 1]))
+            indices = []
+            break
+
+    if len(indices) == 3:
+        triangles.append(tuple(indices))
+
+    return triangles
+
+def triangulate_unit_sphere_mesh(mesh, data=None, broadcast_data=None, method='delaunay'):
     """Convert a UnitSpherePointset to a UnitSphereTriangularMesh.
 
     This function takes a UnitSpherePointset, as well as optional dataset(s)
     defined on said mesh, and converts it to a triangular mesh of the unit 
-    sphere by performing a star triangularization of the Voronoi cells 
-    generated by the UnitSpherePointset. 
+    sphere by performing a Delaunay, ear-clipping, or star triangulation of 
+    the Voronoi cells generated by the UnitSpherePointset. 
+
+    By default, a Delaunay triangulation of the vertices of each region in 
+    the spherical Voronoi diagram is performed. The ear-clipping and star 
+    triangulation algorithms may be selected instead for faster execution, but 
+    do not offer the same optimization of triangle shape for sampling. Star 
+    triangulation additionally produces m triangles from a Voronoi cell with m 
+    vertices, while Delaunay and ear-clipping algorithms yield (m-2) triangles.
     
-    Two different methods are provided for redistributing provided data onto 
-    the triangularized mesh:
+    Two different methods are also provided for redistributing scalar data onto 
+    the triangulated mesh:
 
     - Data provided in the `data` field is treated as extensive 
       (e.g. a probability mass or reaction rate): new values are computed 
@@ -3894,6 +4050,9 @@ def triangularize_unit_sphere_mesh(mesh, data=None, broadcast_data=None):
     broadcast_data : numpy.ndarray, optional
         Intensive per-point data of shape (N, ...) to copy unchanged onto
         every new triangle belonging to its parent point.
+    method : {'delaunay', 'ear clipping', 'star'}
+        Method by which to perform the triangulation of the Voronoi region
+        about each point.
 
     Returns
     -------
@@ -3904,7 +4063,7 @@ def triangularize_unit_sphere_mesh(mesh, data=None, broadcast_data=None):
     new_broadcast_data : (M, ...) ndarray of float
         Only returned if `broadcast_data` was provided.
     """
-    cv.check_type("mesh for triangularization", mesh, UnitSpherePointset)
+    cv.check_type("mesh for triangulation", mesh, UnitSpherePointset)
     n_points = len(mesh.points)
 
     if data is not None:
@@ -3913,7 +4072,7 @@ def triangularize_unit_sphere_mesh(mesh, data=None, broadcast_data=None):
             raise ValueError(
                 f"First dimension of data array ({data.shape[0]}) does not "
                 f"match number of points in UnitSpherePointset for "
-                f"triangularization (expected {n_points})"
+                f"triangulation (expected {n_points})"
             )
         new_data = []
 
@@ -3923,7 +4082,7 @@ def triangularize_unit_sphere_mesh(mesh, data=None, broadcast_data=None):
             raise ValueError(
                 f"First dimension of broadcast_data array "
                 f"({broadcast_data.shape[0]}) does not match number of "
-                f"points in UnitSpherePointset for triangularization "
+                f"points in UnitSpherePointset for triangulation "
                 f"(expected {n_points})"
             )
         new_broadcast_data = []
@@ -3953,8 +4112,13 @@ def triangularize_unit_sphere_mesh(mesh, data=None, broadcast_data=None):
             ref = fallback - np.dot(pole, fallback) * pole
             ref_norm = np.linalg.norm(ref)
         ref /= ref_norm
+        # Second basis vector in the plane normal to the pole, used for 
+        # Delaunay and ear-clipping triangulation
+        perp = np.cross(pole, ref)
 
         angles = np.empty(n)
+        coords_2d = np.empty((n, 2)) # vertex coordinates for Delaunay
+                                     # and ear-clipping
         for i in range(n):
             v = verts[i] - np.dot(pole, verts[i]) * pole
             v_norm = np.linalg.norm(v)
@@ -3963,49 +4127,75 @@ def triangularize_unit_sphere_mesh(mesh, data=None, broadcast_data=None):
             cos_a = np.clip(np.dot(ref, v), -1.0, 1.0)
             sin_a = np.dot(pole, np.cross(ref, v))
             angles[i] = np.arctan2(sin_a, cos_a)
+            coords_2d[i] = (np.dot(ref, v), np.dot(perp, v))
 
-        verts = verts[np.argsort(angles)]
+        order = np.argsort(angles)			  
+        verts = verts[order]
+        coords_2d = coords_2d[order]
 
-        areas = np.empty(n)
-        for i in range(n):
-            v1 = verts[i]
-            v2 = verts[(i + 1) % n]
-            num = np.dot(pole, np.cross(v1, v2))
-            denom = 1 + np.dot(pole, v1) + np.dot(v1, v2) + np.dot(v2, pole)
-            areas[i] = 2 * np.arctan2(num, denom)
-
-        # The sort above guarantees a consistent winding (all triangles
-        # in the fan will agree in sign with each other), but not the
-        # overall rotational sense of the winding.
-        # Check once per region and flip if needed.
-        if areas.sum() < 0:
-            verts = verts[::-1]
+        # Get areas corresponding to a star (centroid-fan) triangulation of 
+        # the region and use them to determine correct vertex winding
+        def _fan_areas(verts):
             areas = np.empty(n)
             for i in range(n):
                 v1 = verts[i]
                 v2 = verts[(i + 1) % n]
-                num = np.dot(pole, np.cross(v1, v2))
-                denom = 1 + np.dot(pole, v1) + np.dot(v1, v2) + np.dot(v2, pole)
-                areas[i] = 2 * np.arctan2(num, denom)
+                areas[i] = _spherical_triangle_area(pole, v1, v2)
+                                                                                
+            return areas
+
+        areas = _fan_areas(verts)
+
+        # The sort above gives a consistent winding linking all triangles 
+        # but not the overall rotational sense of the winding. Check sign and 
+        # flip if needed.
+        if areas.sum() < 0:
+            verts = verts[::-1]
+            coords_2d = coords_2d[::-1]
+            areas = _fan_areas(verts)
 
         total_area = areas.sum()
 
-        for i in range(n):
-            v1 = verts[i]
-            v2 = verts[(i + 1) % n]
+        if method == 'star':
+            for i in range(n):
+                v1 = verts[i]
+                v2 = verts[(i + 1) % n]
+                faces.append(SphericalTriangle(
+                    vertices=np.stack((pole, v1, v2)), area=areas[i]))
+                if data is not None:
+                    new_data.append(data[pole_index] * areas[i] / total_area)
+                if broadcast_data is not None:
+                    new_broadcast_data.append(broadcast_data[pole_index])
+        else:
+            if method == 'delaunay':
+                triangles = _delaunay_triangulate_convex_2d(coords_2d)
+            elif method == 'ear clipping':
+                triangles = _ear_clip_2d(coords_2d)
+            else:
+                raise ValueError(
+                    f"{method} is not a recognized triangulation method (must be "
+                    f"one of ''delaunay'',''star'' or ''ear clipping'').")
+            tri_areas = np.array([
+                _spherical_triangle_area(verts[i], verts[j], verts[k])
+                for i, j, k in triangles
+            ])
+            # Near-degenerate triangles (nearly all points on same great-circle
+            # arc) may give small, negative areas and may break the sampling
+            # algorithm, so we neglect them
+            tri_areas = np.clip(tri_areas, 0.0, None)
+            tri_total = tri_areas.sum()
+            # Rescale to match total area we calculated earlier
+            if tri_total > 0:
+                tri_areas *= total_area / tri_total
 
-            triangle = np.stack((pole, v1, v2))
-
-            faces.append(
-                SphericalTriangle(
-                    vertices=triangle,
-                    area=areas[i]
-                )
-            )
-            if data is not None:
-                new_data.append(data[pole_index] * areas[i] / total_area)
-            if broadcast_data is not None:
-                new_broadcast_data.append(broadcast_data[pole_index])
+            for (i, j, k), area in zip(triangles, tri_areas):
+                faces.append(SphericalTriangle(
+                    vertices=np.stack((verts[i], verts[j], verts[k])),
+                    area=area))
+                if data is not None:
+                    new_data.append(data[pole_index] * area / total_area)
+                if broadcast_data is not None:
+                    new_broadcast_data.append(broadcast_data[pole_index])
     
     new_mesh = UnitSphereTriangularMesh(faces)
 

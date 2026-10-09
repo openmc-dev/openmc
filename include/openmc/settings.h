@@ -116,8 +116,6 @@ extern std::string path_sourcepoint;      //!< path to a source file
 extern std::string path_statepoint;       //!< path to a statepoint file
 extern std::string weight_windows_file;   //!< Location of weight window file to
                                           //!< load on simulation initialization
-extern std::string source_bias_file;      //!< Location of source bias file from
-                                          //!< FW-CADIS
 extern std::string properties_file;       //!< Location of properties file to
                                           //!< load on simulation initialization
 

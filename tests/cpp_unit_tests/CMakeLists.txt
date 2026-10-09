@@ -32,9 +32,10 @@ endforeach()
 # Also run the shared secondary bank test on two MPI ranks, so that banked
 # sites are sent between ranks
 if(OPENMC_USE_MPI)
+  # The test cases make collective calls, so all ranks must use the same order
   add_test(NAME test_secondary_bank_mpi
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-      $<TARGET_FILE:test_secondary_bank> ${MPIEXEC_POSTFLAGS}
+      $<TARGET_FILE:test_secondary_bank> ${MPIEXEC_POSTFLAGS} --order decl
     WORKING_DIRECTORY ${UNIT_TEST_BIN_OUTPUT_DIR})
 endif()
 

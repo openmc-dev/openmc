@@ -8,7 +8,7 @@ import math
 from numbers import Integral, Real
 import random
 import re
-from tempfile import NamedTemporaryFile, TemporaryDirectory
+from tempfile import TemporaryDirectory
 from typing import Any, Protocol
 import warnings
 
@@ -948,13 +948,8 @@ class Model:
 
         """
 
-        # Setting tstart here ensures we don't pick up any pre-existing
-        # statepoint files in the output directory -- just in case there are
-        # differences between the system clock and the filesystem, we get the
-        # time of a just-created temporary file
-        with NamedTemporaryFile() as fp:
-            tstart = Path(fp.name).stat().st_mtime
         last_statepoint = None
+        last_mtime = None
 
         # Operate in the provided working directory
         with change_directory(cwd):
@@ -963,9 +958,7 @@ class Model:
             else:
                 output_dir = Path.cwd()
 
-            # With coarse filesystem timestamps, a statepoint written just
-            # before this run can tie with tstart, so also remember which
-            # statepoints already exist and skip them unless rewritten
+            # Record modification times before execution.
             existing = {sp: sp.stat().st_mtime_ns
                         for sp in output_dir.glob('statepoint.*.h5')}
 
@@ -1010,12 +1003,11 @@ class Model:
 
             # Return the last statepoint written
             for sp in output_dir.glob('statepoint.*.h5'):
-                stat = sp.stat()
-                if existing.get(sp) == stat.st_mtime_ns:
+                mtime = sp.stat().st_mtime_ns
+                if existing.get(sp) == mtime:
                     continue
-                mtime = stat.st_mtime
-                if mtime >= tstart:  # >= allows for poor clock resolution
-                    tstart = mtime
+                if last_statepoint is None or mtime >= last_mtime:
+                    last_mtime = mtime
                     last_statepoint = sp
 
         if apply_tally_results:

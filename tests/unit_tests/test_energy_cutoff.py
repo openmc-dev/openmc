@@ -93,8 +93,13 @@ def test_positron_cutoff_annihilation(run_in_tmpdir):
             openmc.ParticleFilter(['photon'])
         ]
         tally.scores = ['flux']
-        model.tallies = [tally]
+        heating = openmc.Tally()
+        heating.scores = ['heating']
+        model.tallies = [tally, heating]
         model.run(apply_tally_results=True)
+        # The reflective medium absorbs all source energy, including the
+        # annihilation rest energy, for either positron cutoff.
+        assert heating.mean.item() == pytest.approx(10.0e6)
         return tally.mean.ravel()
 
     # Every positron is below a cutoff above the source energy

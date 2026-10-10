@@ -25,8 +25,8 @@ GROUP_STRUCTURES = {}
   intermediate and thermal reactor applications ([SAR1990]_)
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
   "TRIPOLI-315", "LLNL-616", "CCFE-709_" and "UKAEA-1102_"
-- multi-group binning fine energy structures, Fusion Optimized Multi-Group "FOMG-16000_", 
-  LWR U238 Optimized "VESTA-43000_" and general uniform lethargy "VESTA-100000_" ()
+- multi-group binning fine energy structures, Fusion Optimized Multi-Group "FOMG-16000_",
+  LWR U238 Optimized "VESTA-43000_" and general uniform lethargy "VESTA-100000_"
   ([MORGAN2013]_, [HAECK2007]_)
 
 .. _CASMO: http://large.stanford.edu/courses/2013/ph241/dalvi1/docs/c5.physor2006.pdf
@@ -1358,11 +1358,11 @@ GROUP_STRUCTURES['ECCO-1968'] = np.array([
     1.718869e7, 1.733253e7, 1.747757e7, 1.762383e7, 1.777131e7, 1.792002e7,
     1.806998e7, 1.822119e7, 1.837367e7, 1.852742e7, 1.868246e7, 1.883880e7,
     1.899644e7, 1.915541e7, 1.931570e7, 1.947734e7, 1.964033e7])
-# fine energy structures
+# formulaic fine group energy structures
 GROUP_STRUCTURES['FOMG-16000'] = build_fine_group_structure(
     [1e-5, 1e-3, 1., 2e6, 1.96e7], [1, 999, 14000, 1000],
     spacing=['linear', 'linear', 'log', 'linear'])
 GROUP_STRUCTURES['VESTA-43000'] = build_fine_group_structure(
-    [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1., 10., 100., 1e3, 1e4, 1e5, 1e6, 1e7, 2e7],
+    [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0,  1e1., 1e2.,  1e3,   1e4,  1e5,  1e6,  1e7, 2e7],
     [1000, 1000, 1000, 1000, 1000, 4000, 4000, 10000, 10000, 4000, 4000, 1000, 1000])
 GROUP_STRUCTURES['VESTA-100000'] = build_fine_group_structure([1e-5, 2e7], 100000)

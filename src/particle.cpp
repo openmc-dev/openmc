@@ -1,7 +1,8 @@
 #include "openmc/particle.h"
 
 #include <algorithm> // copy, min
-#include <cmath>     // log, abs
+#include <cassert>
+#include <cmath> // log, abs
 
 #include <fmt/core.h>
 
@@ -964,6 +965,8 @@ void Particle::write_restart() const
 void Particle::update_neutron_xs(
   int i_nuclide, int i_grid, int i_sab, double sab_frac, double ncrystal_xs)
 {
+  assert(type().is_neutron());
+
   // Get microscopic cross section cache
   auto& micro = this->neutron_xs(i_nuclide);
 
@@ -979,6 +982,16 @@ void Particle::update_neutron_xs(
       data::nuclides[i_nuclide]->calculate_elastic_xs(*this);
       ncrystal_update_micro(ncrystal_xs, micro);
     }
+  }
+}
+
+void Particle::update_photon_xs(int i_element)
+{
+  assert(type().is_photon());
+
+  // If the cache doesn't match, recalculate micro xs
+  if (this->E() != this->photon_xs(i_element).last_E) {
+    data::elements[i_element]->calculate_xs(*this);
   }
 }
 

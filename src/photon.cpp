@@ -16,6 +16,7 @@
 
 #include "openmc/tensor.h"
 
+#include <cassert>
 #include <cmath>
 #include <fmt/core.h>
 #include <limits>
@@ -36,6 +37,7 @@ tensor::Tensor<double> compton_profile_pz;
 
 std::unordered_map<std::string, int> element_map;
 vector<unique_ptr<PhotonInteraction>> elements;
+vector<int> nuclide_to_element;
 
 } // namespace data
 
@@ -710,6 +712,8 @@ void PhotonInteraction::compton_doppler(
 
 void PhotonInteraction::calculate_xs(Particle& p) const
 {
+  assert(p.type().is_photon());
+
   // Perform binary search on the element energy grid in order to determine
   // which points to interpolate between
   int n_grid = energy_.size();
@@ -1116,6 +1120,7 @@ std::pair<double, double> klein_nishina(double alpha, uint64_t* seed)
 void free_memory_photon()
 {
   data::elements.clear();
+  data::nuclide_to_element.clear();
   data::compton_profile_pz.resize({0});
   data::ttb_e_grid.resize({0});
   data::ttb_k_grid.resize({0});

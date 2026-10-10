@@ -74,9 +74,13 @@ void DecayPhotonAngleEnergy::sample(
   mu = Uniform(-1., 1.).sample(seed).first;
 }
 
-double DecayPhotonAngleEnergy::sample_energy_and_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+double DecayPhotonAngleEnergy::sample_energy_and_pdf(double E_in, double mu,
+  double& E_out, uint64_t* seed, bool is_com, double awr) const
 {
+  if (is_com)
+    fatal_error(
+      "DecayPhotonAngleEnergy distribution must be in lab coordinates");
+
   E_out = photon_energy_->sample(seed).first;
   return 0.5;
 }

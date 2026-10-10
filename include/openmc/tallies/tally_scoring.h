@@ -1,9 +1,12 @@
 #ifndef OPENMC_TALLIES_TALLY_SCORING_H
 #define OPENMC_TALLIES_TALLY_SCORING_H
 
+#include "openmc/nuclide.h"
 #include "openmc/particle.h"
+#include "openmc/ray.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/thermal.h"
 
 namespace openmc {
 
@@ -80,6 +83,9 @@ void score_analog_tally_ce(Particle& p);
 //
 //! \param p The particle being tracked
 void score_analog_tally_mg(Particle& p);
+
+void score_tracklength_tally_general(
+  Particle& p, double flux, const vector<int>& tallies);
 
 //! Score tallies using a tracklength estimate of the flux.
 //

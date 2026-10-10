@@ -476,6 +476,20 @@ radial proposals are resampled within the same interval. The two angles are
 sampled from the conditional distribution :math:`p(\theta,\zeta|\rho) \propto
 R\,|\tau|` (with :math:`\tau` the poloidal-plane Jacobian) by rejection.
 
+Angular proposals use a 32 by 32 partition of one field period. Each cell has
+a bound that varies quadratically across the radial interval. OpenMC selects
+cells in proportion to these bounds, samples uniformly inside the chosen cell,
+and accepts with probability equal to the density divided by the cell bound.
+Rejected angular proposals retain the radius and select a new cell. A uniformly
+chosen field period maps the accepted point to the full torus.
+
+The bounds are constructed during C++ initialization from the density's Fourier
+coefficients, using a Taylor bound on each cell. This requires no additional
+dependencies or Python preprocessing. Sampling checks for a density exceeding
+its bound and reports an error if one is encountered. Bounds and alias tables
+require approximately 72 KiB per radial interval on a 64-bit platform, in
+addition to the geometry coefficients and temporary initialization arrays.
+
 Sources are most conveniently created directly from equilibrium code output::
 
   # From a VMEC wout NetCDF file

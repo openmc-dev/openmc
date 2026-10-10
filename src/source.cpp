@@ -6,8 +6,9 @@
 
 #include <algorithm> // for max
 #include <cmath>     // for sin, cos, abs
-#include <numeric>   // for accumulate
-#include <utility>   // for move
+#include <complex>
+#include <numeric> // for accumulate
+#include <utility> // for move
 
 #ifdef HAS_DYNAMIC_LINKING
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
@@ -1176,22 +1177,104 @@ SourceSite TokamakSource::sample(uint64_t* seed) const
 
 namespace {
 
-//! Maximum over t in [0, 1] of the quadratic through q(0)=f0, q(1/2)=fh,
-//! q(1)=f1. Exact, since the sampled density is quadratic in the radial
-//! interpolation parameter within a bin.
-double quad_max01(double f0, double fh, double f1)
+constexpr int ANGULAR_BINS = 32;
+using Complex = std::complex<double>;
+
+// Separable Fourier sums. The small transforms used during source setup do
+// not require an FFT dependency. Each matrix is indexed [output, input].
+template<class T>
+vector<Complex> angular_transform(const vector<T>& values, int ni, int nj,
+  const vector<Complex>& left, const vector<Complex>& right)
 {
-  double c = 2.0 * (f0 + f1 - 2.0 * fh);
-  double b = f1 - f0 - c;
-  double m = std::max(f0, f1);
-  if (c < 0.0) {
-    double t_star = -b / (2.0 * c);
-    if (t_star > 0.0 && t_star < 1.0) {
-      m = std::max(m, f0 + t_star * (b + t_star * c));
+  int no = left.size() / ni;
+  int np = right.size() / nj;
+  vector<Complex> intermediate(no * nj), result(no * np);
+  for (int o = 0; o < no; ++o) {
+    for (int i = 0; i < ni; ++i) {
+      auto a = left[o * ni + i];
+      for (int j = 0; j < nj; ++j)
+        intermediate[o * nj + j] += a * values[i * nj + j];
+    }
+    for (int p = 0; p < np; ++p) {
+      for (int j = 0; j < nj; ++j)
+        result[o * np + p] += intermediate[o * nj + j] * right[p * nj + j];
     }
   }
-  return m;
+  return result;
 }
+
+// Bound a real Fourier polynomial on 32x32 angular cells. Recover the density
+// coefficients from its resolved quadrature grid, retaining cancellations in
+// the Jacobian. Taylor's theorem bounds each cell using its center value,
+// gradient, and a Fourier bound on the second directional derivative.
+class AngularBounds {
+public:
+  AngularBounds(int nt, int nz, int m, int n)
+    : nt_ {nt}, nz_ {nz}, m_ {m}, n_ {n}
+  {
+    auto forward = [](int points, int degree) {
+      vector<Complex> matrix((2 * degree + 1) * points);
+      for (int k = -degree; k <= degree; ++k)
+        for (int j = 0; j < points; ++j)
+          matrix[(k + degree) * points + j] =
+            std::polar(1.0 / points, -2 * PI * k * j / points);
+      return matrix;
+    };
+    theta_ = forward(nt, m);
+    zeta_ = forward(nz, n);
+    inverse_.resize(ANGULAR_BINS * ANGULAR_BINS);
+    for (int i = 0; i < ANGULAR_BINS; ++i)
+      for (int j = 0; j < ANGULAR_BINS; ++j)
+        inverse_[i * ANGULAR_BINS + j] =
+          std::polar(1.0, 2 * PI * i * j / ANGULAR_BINS);
+  }
+
+  void compute(
+    const vector<double>& values, double* upper, double* negative_upper) const
+  {
+    auto coeff = angular_transform(values, nt_, nz_, theta_, zeta_);
+    array<vector<Complex>, 3> folded;
+    for (auto& v : folded)
+      v.resize(ANGULAR_BINS * ANGULAR_BINS);
+    double norm = 0.0, curvature = 0.0;
+    double h = PI / ANGULAR_BINS;
+    for (int m = -m_; m <= m_; ++m) {
+      for (int n = -n_; n <= n_; ++n) {
+        auto c = coeff[(m + m_) * (2 * n_ + 1) + n + n_];
+        double k = std::abs(m) + std::abs(n);
+        norm += std::abs(c);
+        curvature += std::abs(c) * k * k;
+        // Fold frequencies onto the cell-center grid, preserving their phase
+        // and derivative factors even when they exceed its Nyquist frequency.
+        int i = (m % ANGULAR_BINS + ANGULAR_BINS) % ANGULAR_BINS;
+        int j = (n % ANGULAR_BINS + ANGULAR_BINS) % ANGULAR_BINS;
+        c *= std::polar(1.0, (m + n) * h);
+        folded[0][i * ANGULAR_BINS + j] += c;
+        folded[1][i * ANGULAR_BINS + j] += Complex(0, m) * c;
+        folded[2][i * ANGULAR_BINS + j] += Complex(0, n) * c;
+      }
+    }
+    for (auto& v : folded)
+      v = angular_transform(v, ANGULAR_BINS, ANGULAR_BINS, inverse_, inverse_);
+    // Small allowance for rounding in the Fourier sums and density evaluation.
+    double remainder = 0.5 * h * h * curvature + 1.e-10 * norm;
+    for (int c = 0; c < ANGULAR_BINS * ANGULAR_BINS; ++c) {
+      double excursion =
+        h * (std::abs(folded[1][c].real()) + std::abs(folded[2][c].real())) +
+        remainder;
+      double center = folded[0][c].real();
+      if (!std::isfinite(center) || !std::isfinite(excursion))
+        fatal_error("StellaratorSource: nonfinite angular cell bound.");
+      // Both signs share the derivative bounds; only the center value changes.
+      upper[c] = std::max(0.0, center + excursion);
+      negative_upper[c] = std::max(0.0, -center + excursion);
+    }
+  }
+
+private:
+  int nt_, nz_, m_, n_;
+  vector<Complex> theta_, zeta_, inverse_;
+};
 
 // Bernstein basis functions are nonnegative and sum to one on [0,1], so the
 // largest Bernstein coefficient bounds the cubic for rejection sampling.
@@ -1330,8 +1413,8 @@ void StellaratorSource::precompute_sampling_distributions()
   // of poloidal degree <= 3*m_max and toroidal degree <= 3*n_max per field
   // period, so a uniform trapezoidal product rule with more points than the
   // bandwidth integrates it exactly (discrete Fourier orthogonality). The
-  // denser grid below also estimates the angular maximum for rejection
-  // sampling; a heuristic safety factor allows for peaks between grid points.
+  // denser grid below also resolves every density Fourier coefficient used
+  // to construct the angular cell bounds (more than twice the bandwidth).
   int m_max = 0;
   int n_max = 0;
   for (size_t k = 0; k < n_modes; ++k) {
@@ -1414,8 +1497,15 @@ void StellaratorSource::precompute_sampling_distributions()
   double quad_wgt = 4.0 * PI * PI / n_grid; // full-torus angular weight
   double v_tot = 0.0;
   vector<double> vp_lo(n_bins), vp_mid(n_bins), vp_hi(n_bins);
-  vector<double> negative_envelope(n_bins);
-  envelope_.assign(n_bins, 0.0);
+  constexpr size_t n_cells = ANGULAR_BINS * ANGULAR_BINS;
+  angular_bounds_.resize({n_bins, size_t {3}, n_cells});
+  tensor::Tensor<double> negative_bounds({n_bins, size_t {3}, n_cells});
+  angular_cells_.resize(n_bins);
+  angular_totals_.resize(n_bins);
+  AngularBounds bounds(n_theta, n_zeta, 3 * m_max, 3 * n_max);
+  array<vector<double>, 3> controls;
+  for (auto& v : controls)
+    v.resize(n_grid);
   double f_peak = 0.0;
   double f_min = 0.0;
   evaluate_surface(0);
@@ -1433,8 +1523,6 @@ void StellaratorSource::precompute_sampling_distributions()
     const double* Zt0 = &Zt_s[lo];
     const double* Zt1 = &Zt_s[hi];
     double s0 = 0.0, sh = 0.0, s1 = 0.0;
-    double env = 0.0;
-    double negative_env = 0.0;
     for (size_t p = 0; p < n_grid; ++p) {
       // Linear interpolation makes radial derivatives constant within a bin.
       // R and the poloidal derivatives are linear, so R*tau is quadratic.
@@ -1449,11 +1537,11 @@ void StellaratorSource::precompute_sampling_distributions()
       s0 += f0;
       sh += fh;
       s1 += f1;
-
-      // Endpoints and midpoint determine the radial quadratic at this angle.
-      // Bound both signs until the global Jacobian orientation is known.
-      env = std::max(env, quad_max01(f0, fh, f1));
-      negative_env = std::max(negative_env, quad_max01(-f0, -fh, -f1));
+      // Express the radial quadratic in the Bernstein basis so its cell
+      // bounds can be mixed with nonnegative weights at the sampled radius.
+      controls[0][p] = f0;
+      controls[1][p] = 2 * fh - (f0 + f1) / 2;
+      controls[2][p] = f1;
       f_peak = std::max({f_peak, f0, fh, f1});
       f_min = std::min({f_min, f0, fh, f1});
     }
@@ -1461,14 +1549,15 @@ void StellaratorSource::precompute_sampling_distributions()
     vp_mid[b] = sh * quad_wgt;
     vp_hi[b] = s1 * quad_wgt;
     v_tot += sh * quad_wgt * (rho_[b + 1] - rho_[b]);
-    // Heuristic allowance for angular peaks between quadrature points
-    envelope_[b] = 1.05 * env;
-    negative_envelope[b] = 1.05 * negative_env;
+    for (int j = 0; j < 3; ++j) {
+      bounds.compute(
+        controls[j], &angular_bounds_(b, j, 0), &negative_bounds(b, j, 0));
+    }
   }
   jacobian_sign_ = (v_tot >= 0.0) ? 1.0 : -1.0;
   if (jacobian_sign_ < 0.0) {
     // Reverse the integrals and extrema to use a positive volume element.
-    envelope_.swap(negative_envelope);
+    angular_bounds_ = std::move(negative_bounds);
     double old_peak = f_peak;
     f_peak = -f_min;
     f_min = -old_peak;
@@ -1485,6 +1574,19 @@ void StellaratorSource::precompute_sampling_distributions()
       "coefficient tables are inconsistent.");
   }
 
+  // Build cell-selection tables after choosing the global orientation.
+  for (size_t b = 0; b < n_bins; ++b) {
+    for (int j = 0; j < 3; ++j) {
+      double* upper = &angular_bounds_(b, j, 0);
+      double total = std::accumulate(upper, upper + n_cells, 0.0);
+      if (!std::isfinite(total))
+        fatal_error("StellaratorSource: nonfinite angular bound integral.");
+      angular_totals_[b][j] = total;
+      // An identically zero component (e.g., on the axis) is never selected.
+      if (total > 0)
+        angular_cells_[b][j].assign({upper, n_cells});
+    }
+  }
   // Integrate S(rho)*V'(rho) independently on each radial interval. Scaling
   // the emission profile by its maximum preserves the normalized distribution.
   double s_max =
@@ -1639,13 +1741,35 @@ SourceSite StellaratorSource::sample(uint64_t* seed) const
   double rho = rho_[bin] + t * (rho_[bin + 1] - rho_[bin]);
 
   // 3. Rejection-sample (theta, zeta) from p(theta, zeta | rho) ~ R*tau
-  double env = envelope_[bin];
+  array<double, 3> beta {(1 - t) * (1 - t), 2 * t * (1 - t), t * t};
+  array<double, 3> weights;
+  for (int j = 0; j < 3; ++j)
+    weights[j] = beta[j] * angular_totals_[bin][j];
+  double total = weights[0] + weights[1] + weights[2];
+  if (!(total > 0) || !std::isfinite(total))
+    fatal_error("StellaratorSource: invalid angular proposal normalization.");
   double R, Z, zeta;
   n_reject = 0;
   while (true) {
-    double theta = uniform_distribution(0.0, 2.0 * PI, seed);
-    zeta = uniform_distribution(0.0, 2.0 * PI, seed);
+    // Mix the three alias tables to select cells proportional to their
+    // quadratic bound at this radius. Resample the cell on every rejection.
+    double u = prn(seed) * total;
+    int j = u < weights[0] ? 0 : (u < weights[0] + weights[1] ? 1 : 2);
+    size_t cell = angular_cells_[bin][j].sample(seed);
+    double theta = (cell / ANGULAR_BINS + prn(seed)) * (2 * PI / ANGULAR_BINS);
+    zeta = (cell % ANGULAR_BINS + prn(seed)) *
+           (2 * PI / (ANGULAR_BINS * num_field_periods_));
+    double env = beta[0] * angular_bounds_(bin, 0, cell) +
+                 beta[1] * angular_bounds_(bin, 1, cell) +
+                 beta[2] * angular_bounds_(bin, 2, cell);
     double f = eval_density(bin, t, theta, zeta, &R, &Z);
+    if (!std::isfinite(f) || f < 0)
+      fatal_error("StellaratorSource: invalid angular density; check the "
+                  "Fourier geometry.");
+    if (f > env)
+      fatal_error(fmt::format("StellaratorSource: angular density {} exceeds "
+                              "cell bound {} in radial interval {}.",
+        f, env, bin));
     if (prn(seed) * env < f)
       break;
     if (++n_reject > MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
@@ -1655,6 +1779,8 @@ SourceSite StellaratorSource::sample(uint64_t* seed) const
   }
 
   // 4. Convert to Cartesian coordinates (zeta is the cylindrical angle)
+  zeta += 2 * PI * static_cast<int>(num_field_periods_ * prn(seed)) /
+          num_field_periods_;
   site.r = {R * std::cos(zeta), R * std::sin(zeta), Z};
 
   // 5. Sample isotropic direction

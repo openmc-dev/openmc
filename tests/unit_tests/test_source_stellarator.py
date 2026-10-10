@@ -194,6 +194,48 @@ def test_stellarator_source_axisymmetric_sampling(run_in_tmpdir):
     assert_sample_mean(major_r, r0 + a**2 / (4.0 * r0))
 
 
+@pytest.mark.parametrize('nfp, orientation', [(1, 1), (3, -1)])
+def test_stellarator_source_angular_cells(run_in_tmpdir, nfp, orientation):
+    """A phase-shifted tube has analytic angular and radial marginals.
+
+    Its narrow peaks exceed the old grid maximum plus 5% envelope. Two radial
+    surfaces exercise the zero axis component and the full quadratic mixture;
+    toroidal density harmonics exceed the cell grid's Nyquist frequency.
+    """
+    r0, a, epsilon, k, phase = 600., 40., .9, 8, np.pi / 8
+    rho = np.array([0., 1.])
+    rc = np.array([[r0, 0., 0., 0.],
+                   [r0, a, a * epsilon * np.cos(phase) / 2,
+                    a * epsilon * np.cos(phase) / 2]])
+    zs = rc.copy()
+    zs[:, 0] = 0.
+    rs = np.zeros_like(rc)
+    rs[1, 2:] = a * epsilon * np.sin(phase) / 2 * np.array([-1, 1])
+    zc = -rs
+    src = make_source(
+        rho=rho, emission_density=np.ones(2), mode_m=[0, 1, 1, 1],
+        mode_n=[0, 0, k, -k], rmnc=rc, zmns=orientation * zs,
+        rmns=rs, zmnc=orientation * zc, num_field_periods=nfp,
+        energy=openmc.stats.delta_function(14.07e6),
+    )
+    sites = make_model(src).sample_external_source(100_000)
+    xyz = np.array([s.r for s in sites])
+    r = np.hypot(xyz[:, 0], xyz[:, 1])
+    phi = np.arctan2(xyz[:, 1], xyz[:, 0])
+    harmonic = np.cos(k * nfp * phi - phase)
+    minor_rho = np.hypot(r - r0, xyz[:, 2]) / (a * (1 + epsilon * harmonic))
+    assert minor_rho.max() <= 1 + 1e-10
+    assert_sample_mean(minor_rho, 2 / 3)
+    assert_sample_mean(harmonic, epsilon / (1 + epsilon**2 / 2))
+    assert_sample_mean(np.sin(k * nfp * phi - phase), 0.)
+    assert_sample_mean(r, r0 + a**2 * (1 + 3 * epsilon**2 +
+                       3 * epsilon**4 / 8) / (4 * r0 * (1 + epsilon**2 / 2)))
+    if nfp > 1:
+        # Sampling only one field period would fail these full-torus moments.
+        assert_sample_mean(np.cos(phi), 0.)
+        assert_sample_mean(np.sin(phi), 0.)
+
+
 @pytest.mark.parametrize('orientation', [1, -1])
 def test_stellarator_source_rotating_ellipse_sampling(run_in_tmpdir, orientation):
     """Compare sampled moments of a 3-D configuration against quadrature of

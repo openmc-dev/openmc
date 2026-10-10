@@ -17,6 +17,7 @@
 #include "openmc/distribution_spatial.h"
 #include "openmc/memory.h"
 #include "openmc/particle_type.h"
+#include "openmc/tensor.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -509,8 +510,10 @@ private:
   vector<array<double, 4>> radial_pdf_;
   DiscreteIndex radial_bins_;
 
-  // Per-radial-bin majorant of R*tau for rejection sampling (n_rho - 1)
-  vector<double> envelope_;
+  // Angular cell bounds for the three quadratic Bernstein components per bin.
+  tensor::Tensor<double> angular_bounds_;
+  vector<array<DiscreteIndex, 3>> angular_cells_;
+  vector<array<double, 3>> angular_totals_;
 
   // Global sign of the flux-coordinate Jacobian (+1 or -1)
   double jacobian_sign_ {1.0};

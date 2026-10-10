@@ -367,7 +367,7 @@ double NeutronMajorant::calculate_max_sab_micro_tot_xs(
   // Loop over the nuclide's temperature grid to ensure we're consistent.
   double max_sab_total = 0.0;
   for (int i_nuc_temp = 0; i_nuc_temp < nuc.kTs_.size(); ++i_nuc_temp) {
-    double nuc_kT = nuc.kTs_[i_nuc_temp] * nuc.kTs_[i_nuc_temp];
+    double nuc_kT = nuc.kTs_[i_nuc_temp];
 
     // Compute the elastic and inelastic scattering cross sections. The S(a,b)
     // cross sections are interpolated to match the nuclide temperature point.

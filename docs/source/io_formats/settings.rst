@@ -191,7 +191,8 @@ time.
     *Default*: 0.0
 
   :energy_photon:
-    The energy under which photons will be killed.
+    The energy under which photons will be killed. When a photon is killed
+    after a collision, its remaining energy is deposited locally.
 
     *Default*: 1000.0
 

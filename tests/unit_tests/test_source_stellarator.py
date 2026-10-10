@@ -218,7 +218,7 @@ def test_stellarator_source_angular_cells(run_in_tmpdir, nfp, orientation):
         rmns=rs, zmnc=orientation * zc, num_field_periods=nfp,
         energy=openmc.stats.delta_function(14.07e6),
     )
-    sites = make_model(src).sample_external_source(100_000)
+    sites = make_model(src).sample_external_source(100_000, prn_seed=20261010)
     xyz = np.array([s.r for s in sites])
     r = np.hypot(xyz[:, 0], xyz[:, 1])
     phi = np.arctan2(xyz[:, 1], xyz[:, 0])

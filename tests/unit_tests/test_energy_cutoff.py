@@ -19,7 +19,7 @@ def inf_medium_model(cutoff_energy, source_energy):
     model.settings.run_mode = 'fixed source'
     model.settings.source = openmc.IndependentSource(
         particle='photon',
-        energy=openmc.stats.Discrete([source_energy], [1.0]),
+        energy=openmc.stats.delta_function(source_energy),
     )
     model.settings.particles = 100
     model.settings.batches = 10
@@ -77,7 +77,7 @@ def test_positron_cutoff_annihilation(run_in_tmpdir):
         model.settings.run_mode = 'fixed source'
         model.settings.source = openmc.IndependentSource(
             particle='photon',
-            energy=openmc.stats.Discrete([10.0e6], [1.0]),
+            energy=openmc.stats.delta_function(10.0e6),
         )
         model.settings.particles = 100
         model.settings.batches = 2

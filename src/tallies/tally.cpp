@@ -693,11 +693,16 @@ void Tally::set_scores(const vector<std::string>& scores)
 
   // Make sure all scores are compatible with multigroup mode.
   if (!settings::run_CE) {
-    for (auto sc : scores_)
-      if (sc > 0)
+    for (auto sc : scores_) {
+      if (sc > 0) {
         fatal_error("Cannot tally " + reaction_name(sc) +
                     " reaction rate "
                     "in multi-group mode");
+      } else if (sc == SCORE_FISS_Q_PROMPT || sc == SCORE_FISS_Q_RECOV) {
+        fatal_error("Cannot tally " + reaction_name(sc) +
+                    " in multi-group mode; kappa-fission is available instead");
+      }
+    }
   }
 
   // Make sure mesh surface tallies contain only current score.

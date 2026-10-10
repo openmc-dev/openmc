@@ -9,7 +9,7 @@ from itertools import product
 from numbers import Real
 import sys
 
-from numpy import dot, zeros, newaxis, asarray
+from numpy import dot, zeros, newaxis, asarray, isfinite, clip
 
 from openmc.mpi import comm
 from openmc.checkvalue import check_type, check_greater_than
@@ -21,10 +21,12 @@ from .abc import (
     ReactionRateHelper, NormalizationHelper, FissionYieldHelper)
 
 __all__ = (
-    "DirectReactionRateHelper", "ChainFissionHelper", "EnergyScoreHelper"
+    "DirectReactionRateHelper", "ChainFissionHelper", "EnergyScoreHelper",
     "SourceRateHelper", "TalliedFissionYieldHelper",
     "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
-    "AveragedFissionYieldHelper", "FluxCollapseHelper")
+    "AveragedFissionYieldHelper", "LogLinInterpolateFissionYieldHelper",
+    "LinLinInterpolateFissionYieldHelper",
+    "FluxCollapseHelper")
 
 
 class TalliedFissionYieldHelper(FissionYieldHelper):
@@ -1019,3 +1021,306 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         AveragedFissionYieldHelper
         """
         return cls(operator.chain.nuclides)
+
+class LogLinInterpolateFissionYieldHelper(TalliedFissionYieldHelper):
+    r"""Helper that computes fission yields from log-lin weighted groups.
+
+    Parameters
+    ----------
+    chain_nuclides : iterable of openmc.deplete.Nuclide
+        Nuclides tracked in the depletion chain. All nuclides are
+        not required to have fission yield data.
+    energy_bins : iterable of float, optional
+        Energy points [eV] that define ``len(energy_bins)`` log-lin
+        groups. Must be strictly increasing and positive.
+        Defaults to ``(0.025, 500e3, 14e6)``.
+
+    Attributes
+    ----------
+    constant_yields : collections.defaultdict
+        Fission yields for all nuclides that only have one set of
+        fission yield data. Dictionary of form ``{str: {str: float}}``
+        representing yields for ``{parent: {product: yield}}``. Default
+        return object is an empty dictionary
+    results : None or numpy.ndarray
+        If tallies have been generated and unpacked, then the array will
+        have shape ``(n_mats, n_groups, n_tnucs)``, where ``n_mats`` is the
+        number of materials where fission reactions were tallied,
+        ``n_groups = len(energy_bins)``, and ``n_tnucs`` is the number
+        of nuclides with multiple sets of fission yields.
+        Data are normalized group fractions corresponding to ``y1..yN``.
+
+    Notes
+    -----
+    Fission events are partitioned into ``len(energy_bins)`` group
+    fractions using the provided energy points. Adjacent groups share each
+    interval and are blended using log-linear interpolation in incident energy.
+    For energies below the first point, all contribution is assigned to the
+    first group. For energies above the last point, all contribution is
+    assigned to the last group.
+
+    Group fractions are then used to blend the corresponding yield libraries
+    for each nuclide.
+
+     Implementation overview
+
+    The helper creates one denominator tally and ``N`` weighted numerator
+    tallies, where ``N = len(energy_bins)``:
+
+     1. Denominator tally
+         ``self._fission_rate_tally`` is given an
+         :class:`openmc.lib.EnergyFilter` over ``[0, self._upper_energy]``. This
+         stores total fission scores used for normalization.
+     2. Group filters
+         A bank of ``N`` :class:`openmc.lib.EnergyFunctionFilter` objects is
+         built. Each one is configured as:
+
+         - ``filt = EnergyFunctionFilter()``
+         - ``filt.set_data(x_nodes, y_nodes)``
+         - ``filt.interpolation = 'log-linear'`` (when supported by wrapper)
+
+         Here ``x_nodes = [e0, *energy_bins, e_top]`` and each
+         group's ``y_nodes`` determines its weight-vs-energy shape.
+     3. Weighted tallies
+         For each group filter, a tally with ``score='fission'`` is created in
+         ``self._weighted_tallies``.
+     4. Normalized fractions
+         In :meth:`unpack`, each weighted tally is divided by the denominator
+         tally to produce per-group fractions ``w_g``.
+
+     Depletion-chain combination
+
+     For each nuclide, the final effective fission-yield vector is computed from
+     group-wise yield vectors in the depletion chain:
+
+     .. math::
+
+          \vec{f} = \sum_g \vec{f}_g\, w_g
+
+     where ``\vec{f}_g`` is the chain fission-yield vector selected for group
+     ``g``, and ``w_g`` is the normalized group fraction from tallies.
+
+    Example with bins ``(0.025, 500e3, 14e6)``
+
+    This gives 3 groups ``(y1, y2, y3)`` with
+    ``x_nodes = [e0, 0.025, 500e3, 14e6, e_top]`` and:
+
+    - Group 1 ``y_nodes``: ``[1, 1, 0, 0, 0]``
+    - Group 2 ``y_nodes``: ``[0, 0, 1, 0, 0]``
+    - Group 3 ``y_nodes``: ``[0, 0, 0, 1, 1]``
+
+     For a fission event at ``E = 1000 eV`` (between ``0.025`` and ``500e3``),
+     only groups 1 and 2 are active. Their log-lin interval weights are:
+
+     .. math::
+
+          w_2(E) = \frac{\ln E - \ln E_1}{\ln E_2 - \ln E_1}, \qquad
+          w_1(E) = 1 - w_2(E)
+
+     with ``E_1 = 0.025``, ``E_2 = 500e3`` and ``E = 1000`` giving
+     ``w_1 \approx 0.3697`` and ``w_2 \approx 0.6303``.
+
+     For unit event score before unpacking:
+
+     - ``T1 -> T1 + 0.3697``
+     - ``T2 -> T2 + 0.6303``
+     - ``T3 -> T3 + 0.0``
+     - ``D  -> D + 1.0``
+
+     So the event contributes to the chain-weighted yield as
+     ``\vec{f} \approx 0.3697\,\vec{f}_1 + 0.6303\,\vec{f}_2`` for this
+     interval.
+
+    Examples
+    --------
+    operator=openmc.deplete.CoupledOperator(model,chain, fission_yield_mode='loglin', fission_yield_opts={'energy_bins':(0.025, 500.0e3, 14.0e6)})
+
+    
+    """
+
+    def __init__(self, chain_nuclides, energy_bins=(0.025, 500.0e3, 14.0e6)):
+        super().__init__(chain_nuclides)
+        self._weighted_tallies = []
+
+        energy_bins = asarray(energy_bins).ravel()
+        if energy_bins.size < 1:
+            raise ValueError("energy_bins must have at least one entry")
+        for i, ene in enumerate(energy_bins):
+            check_greater_than(f"energy_bins[{i}]", ene, 0.0, equality=False)
+            if i > 0:
+                check_greater_than(
+                    f"energy_bins[{i}]", ene, energy_bins[i - 1], equality=False)
+        check_greater_than(
+            "upper tally energy", self._upper_energy, energy_bins[-1], equality=False)
+        self._energy_bins = energy_bins
+        self._n_groups = len(self._energy_bins)
+
+        # Store one yield set per group for each nuclide. Out-of-range incident
+        # energies are clamped by the group filters to the first/last group.
+        self._group_yields = {}
+        convert_to_constant = set()
+        for name, nuc in self._chain_nuclides.items():
+            energies = nuc.yield_energies
+            yields = nuc.yield_data
+
+            group_energies = [
+                min(energies, key=lambda e: abs(e - boundary))
+                for boundary in self._energy_bins
+            ]
+
+            if len(set(group_energies)) == 1:
+                self._constant_yields[name] = yields[group_energies[0]]
+                convert_to_constant.add(name)
+                continue
+
+            self._group_yields[name] = tuple(yields[e] for e in group_energies)
+
+        for name in convert_to_constant:
+            self._chain_nuclides.pop(name)
+        self._chain_set = set(self._chain_nuclides) | set(self._constant_yields)
+
+    def _set_loglin_interpolation(self, filt):
+        try:
+            filt.interpolation = 'log-linear'
+        except AttributeError:
+            # Older Python wrapper in some versions does not expose this
+            # property; C++ defaults to linear-linear in this case.
+            pass
+
+    def generate_tallies(self, materials, mat_indexes):
+        """Construct weighted fission tallies for arbitrary log-lin groups.
+
+        Detailed algorithm notes and worked examples are documented in the
+        class docstring.
+        """
+        super().generate_tallies(materials, mat_indexes)
+        fission_tally = self._fission_rate_tally
+        filters = fission_tally.filters
+
+        # Restrict denominator to the same energy range used by weighting
+        # functions so normalized group fractions remain consistent.
+        ene_filter = EnergyFilter([0.0, self._upper_energy])
+        fission_tally.filters = filters + [ene_filter]
+
+        e0 = min(1.0e-12, self._energy_bins[0] * 1.0e-6)
+        e_top = self._upper_energy
+
+        # Clamp outside [min_bin, max_bin] by keeping first/last weights at 1.
+        x_nodes = [e0, *self._energy_bins, e_top]
+
+        # Build one weighted tally filter per user-specified energy bin.
+        filters_by_group = []
+        for i_group in range(self._n_groups):
+            y_nodes = [0.0] * len(x_nodes)
+            if i_group == 0:
+                y_nodes[0] = 1.0
+
+            # Anchor each boundary to one group index so adjacent intervals
+            # naturally blend between neighboring groups.
+            for i_boundary, _ in enumerate(self._energy_bins):
+                if i_group == i_boundary:
+                    y_nodes[i_boundary + 1] = 1.0
+
+            # Final group receives full weight above the highest boundary.
+            if i_group == self._n_groups - 1:
+                y_nodes[-1] = 1.0
+
+            filt = EnergyFunctionFilter()
+            filt.set_data(tuple(x_nodes), tuple(y_nodes))
+            self._set_loglin_interpolation(filt)
+            filters_by_group.append(filt)
+
+        self._weighted_tallies = []
+        for filt in filters_by_group:
+            weighted_tally = Tally()
+            weighted_tally.writable = False
+            weighted_tally.scores = ['fission']
+            weighted_tally.filters = filters + [filt]
+            self._weighted_tallies.append(weighted_tally)
+
+    def update_tally_nuclides(self, nuclides):
+        """Tally nuclides with non-zero density and multiple yields."""
+        tally_nucs = super().update_tally_nuclides(nuclides)
+        for weighted_tally in self._weighted_tallies:
+            weighted_tally.nuclides = tally_nucs
+        return tally_nucs
+
+    def unpack(self):
+        """Unpack tallies and populate normalized group fractions."""
+        if not self._tally_nucs or self._local_indexes.size == 0:
+            self.results = None
+            return
+
+        fission_results = self._fission_rate_tally.mean[self._local_indexes]
+        n_mats, n_nucs = fission_results.shape
+        self.results = zeros((n_mats, self._n_groups, n_nucs))
+
+        for i, weighted_tally in enumerate(self._weighted_tallies):
+            self.results[:, i, :] = weighted_tally.mean[self._local_indexes]
+
+        nz_mat, nz_nuc = fission_results.nonzero()
+        self.results[nz_mat, :, nz_nuc] /= fission_results[nz_mat, newaxis, nz_nuc]
+
+    def weighted_yields(self, local_mat_index):
+        """Return weighted fission yields for one material.
+
+        Group fractions from :attr:`results` are applied to per-group yields
+        selected for each nuclide.
+        """
+        if not self._tally_nucs:
+            return self.constant_yields
+
+        mat_yields = defaultdict(dict)
+        group_fracs = self.results[local_mat_index]
+        for i_nuc, nuc in enumerate(self._tally_nucs):
+            group_yields = self._group_yields[nuc.name]
+            group_weights = asarray(group_fracs[:, i_nuc], dtype=float)
+
+            # Low-statistics runs can produce non-finite or slightly negative
+            # normalized fractions. Keep physically meaningful non-negative
+            # weights and renormalize before combining yield libraries.
+            if not isfinite(group_weights).all():
+                group_weights[:] = 0.0
+                group_weights[0] = 1.0
+            else:
+                group_weights = clip(group_weights, 0.0, None)
+                weight_sum = group_weights.sum()
+                if weight_sum > 0.0:
+                    group_weights /= weight_sum
+                else:
+                    group_weights[:] = 0.0
+                    group_weights[0] = 1.0
+
+            # FissionYield objects cannot be summed with the default integer
+            # start value used by sum(), so accumulate explicitly.
+            weighted = None
+            for y, w in zip(group_yields, group_weights):
+                term = y * w
+                weighted = term if weighted is None else weighted + term
+            mat_yields[nuc.name] = weighted
+
+        mat_yields.update(self.constant_yields)
+        return mat_yields
+
+    @classmethod
+    def from_operator(cls, operator, **kwargs):
+        """Return a new helper with data from an operator."""
+        return cls(operator.chain.nuclides, **kwargs)
+
+
+class LinLinInterpolateFissionYieldHelper(LogLinInterpolateFissionYieldHelper):
+    r"""Helper that computes fission yields from lin-lin weighted groups.
+
+    This helper uses the same tally construction and yield-combination logic as
+    :class:`LogLinInterpolateFissionYieldHelper`, but the
+    :class:`openmc.lib.EnergyFunctionFilter` interpolation is set to
+    ``'linear-linear'`` when supported by the Python wrapper.
+    """
+
+    def _set_loglin_interpolation(self, filt):
+        try:
+            filt.interpolation = 'linear-linear'
+        except AttributeError:
+            # Older Python wrapper in some versions does not expose this
+            # property; C++ defaults to linear-linear in this case.
+            pass

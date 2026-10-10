@@ -358,19 +358,9 @@ double score_particle_heating(const Particle& p, const Tally& tally,
     // Get the pre-collision energy of the particle.
     auto E = p.E_last();
 
-    // A photon killed by its energy cutoff deposits its remaining energy
-    // locally. Preserve p.E() for outgoing-energy filters and pulse-height
-    // scoring, but exclude that energy from the transported energy balance.
-    double E_out = p.E();
-    if (p.type().is_photon() &&
-        E_out <
-          settings::energy_cutoff[ParticleType::photon().transport_index()]) {
-      E_out = 0.0;
-    }
-
     // The energy deposited is the sum of the incident energy and the reaction
     // Q-value less the energy of any outgoing particles
-    double score = E + Q - E_out - p.bank_second_E();
+    double score = E + Q - p.E() - p.bank_second_E();
 
     score *= p.wgt_last();
 

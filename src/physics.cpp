@@ -79,6 +79,12 @@ void collision(Particle& p)
   // Kill particle if energy falls below cutoff
   int type = p.type().transport_index();
   if (type != C_NONE && p.E() < settings::energy_cutoff[type]) {
+    if (p.type().is_photon()) {
+      // Account for local cutoff deposition in the collision energy balance
+      // while retaining the outgoing energy for filters and pulse-height
+      // scoring.
+      p.bank_second_E() -= p.E();
+    }
     p.wgt() = 0.0;
   }
 

@@ -1,6 +1,7 @@
 #include "openmc/tallies/filter_materialfrom.h"
 
 #include "openmc/cell.h"
+#include "openmc/constants.h"
 #include "openmc/material.h"
 
 namespace openmc {
@@ -8,7 +9,13 @@ namespace openmc {
 void MaterialFromFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  auto search = map_.find(p.material_last());
+  int32_t i_cell = p.cell_last(p.n_coord_last() - 1);
+  if (i_cell == C_NONE)
+    return;
+
+  int32_t i_material = model::cells[i_cell]->material(p.cell_instance_last());
+
+  auto search = map_.find(i_material);
   if (search != map_.end()) {
     match.bins_.push_back(search->second);
     match.weights_.push_back(1.0);

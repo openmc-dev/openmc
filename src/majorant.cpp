@@ -96,7 +96,7 @@ Majorant::Majorant(int i_universe) : maj_universe_(i_universe)
 void Majorant::compute_majorant()
 {
   // Fill with zeros.
-  xs_.resize(grid_.energy.size(), 0.0);
+  xs_.assign(grid_.energy.size(), min_cross_section());
 
   vector<double> material_maj_xs;
   for (int i_material : contained_materials_) {
@@ -128,25 +128,15 @@ void Majorant::post_process_grid()
   auto unique_end = std::unique(grid_.energy.begin(), grid_.energy.end());
   grid_.energy.resize(std::distance(grid_.energy.begin(), unique_end));
 
-  // Remove all values below the minimum neutron energy.
-  auto min_it = grid_.energy.begin();
-  while (*min_it < E_min) {
-    min_it++;
-  }
-  grid_.energy.erase(grid_.energy.begin(), min_it + 1);
-
-  // Insert the minimum neutron energy at the beginning.
-  grid_.energy.insert(grid_.energy.begin(), E_min);
-
-  // Remove all values above the maximum neutron energy.
-  auto max_it = --grid_.energy.end();
-  while (*max_it > E_max) {
-    max_it--;
-  }
-  grid_.energy.erase(max_it - 1, grid_.energy.end());
-
-  // Insert the maximum neutron energy at the end.
-  grid_.energy.insert(grid_.energy.end(), E_max);
+  // Keep only points strictly inside (E_min, E_max), then add the bounds.
+  auto lo = std::upper_bound(grid_.energy.begin(), grid_.energy.end(), E_min);
+  auto hi = std::lower_bound(lo, grid_.energy.end(), E_max);
+  vector<double> clipped;
+  clipped.reserve(std::distance(lo, hi) + 2);
+  clipped.push_back(E_min);
+  clipped.insert(clipped.end(), lo, hi);
+  clipped.push_back(E_max);
+  grid_.energy = std::move(clipped);
 }
 
 //==============================================================================

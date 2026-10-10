@@ -65,6 +65,14 @@ protected:
   //! \return The maximum transport energy associated with the majorant
   virtual double max_transport_energy() const = 0;
 
+  //! Virtual function for the minimum cross section to use as the
+  //! initial point of comparison when computing the majorant. This is
+  //! required as different particles may use different representations
+  //! of cross sections on an energy grid (e.g. linear vs log).
+  //!
+  //! \return The minimum cross section to use when initializing the majorant
+  virtual double min_cross_section() const = 0;
+
   //! Compute a per-material macroscopic majorant cross section in units
   //! of [cm^-1]
   //!
@@ -141,6 +149,11 @@ protected:
   {
     return data::energy_max[I_NEUTRON];
   }
+
+  //! Initial minimum majorant.
+  //!
+  //! \return The minimum cross section to use when initializing the majorant
+  virtual double min_cross_section() const override { return 0.0; }
 
   //! Compute a per-material macroscopic majorant cross section.
   //!
@@ -243,6 +256,11 @@ protected:
   {
     return std::log(data::energy_max[I_PHOTON]);
   }
+
+  //! Initial minimum majorant.
+  //!
+  //! \return The minimum cross section to use when initializing the majorant
+  virtual double min_cross_section() const override { return -INFINITY; }
 
   //! Compute a per-material macroscopic majorant cross section.
   //!

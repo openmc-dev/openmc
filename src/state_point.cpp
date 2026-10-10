@@ -114,6 +114,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       break;
     }
     write_attribute(file_id, "photon_transport", settings::photon_transport);
+    write_attribute(file_id, "delta_tracking", settings::delta_tracking);
     write_dataset(file_id, "n_particles", settings::n_particles);
     write_dataset(file_id, "n_batches", settings::n_batches);
 
@@ -313,6 +314,10 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     hid_t runtime_group = create_group(file_id, "runtime");
     write_dataset(
       runtime_group, "total initialization", time_initialize.elapsed());
+    if (settings::delta_tracking) {
+      write_dataset(
+        runtime_group, "build majorant", time_build_majorant.elapsed());
+    }
     write_dataset(
       runtime_group, "reading cross sections", time_read_xs.elapsed());
     write_dataset(runtime_group, "simulation",

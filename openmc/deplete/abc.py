@@ -882,7 +882,23 @@ class Integrator(ABC):
 
     def _get_bos_data(self, step_index, source_rate, bos_conc):
         """Get beginning-of-step concentrations, rates, and control state."""
-        if step_index > 0 or self.operator.prev_res is None:
+        prev_res = self.operator.prev_res
+
+        # Restart data can only be reused for the very first step of this
+        # Integrator, and only if the last StepResult in prev_res actually
+        # came from a real transport/eigenvalue solve. When a previous
+        # integrate() call used final_step=False, its last saved StepResult
+        # is a zero-filled placeholder (see the "final simulation" block in
+        # integrate() below) and must NOT be treated as valid BOS data --
+        # doing so silently zeroes out reaction rates (and therefore
+        # depletion) for the continued run.
+        use_restart = (
+            step_index == 0
+            and prev_res is not None
+            and prev_res[-1].evaluated
+        )
+
+        if not use_restart:
             if self._keff_search_control is not None and source_rate != 0.0:
                 keff_search_root = self._keff_search_control.run(bos_conc)
             else:
@@ -893,7 +909,7 @@ class Integrator(ABC):
             bos_conc, res = self._get_bos_data_from_restart(
                 source_rate, bos_conc)
             if self._keff_search_control is not None and source_rate != 0.0:
-                keff_search_root = self._restore_keff_search_control(self.operator.prev_res[-1])
+                keff_search_root = self._restore_keff_search_control(prev_res[-1])
             else:
                 keff_search_root = None
 
@@ -953,7 +969,8 @@ class Integrator(ABC):
                     proc_time,
                     write_rates=write_rates,
                     keff_search_root=keff_search_root,
-                    path=path
+                    path=path,
+                    evaluated=True,
                 )
 
                 # Update for next step
@@ -981,9 +998,21 @@ class Integrator(ABC):
                 proc_time,
                 write_rates=write_rates,
                 keff_search_root=keff_search_root,
-                path=path
+                path=path,
+                evaluated=final_step,
             )
-            self.operator.write_bos_data(len(self) + self._i_res)
+            # Only document beginning-of-step data (which triggers a
+            # statepoint write) when a real transport/eigenvalue solve was
+            # actually performed above. When final_step=False, res_final is
+            # a zero-source-rate placeholder -- the operator was just
+            # reset(), never run() -- so writing a statepoint here would
+            # capture leftover/inconsistent internal simulation state
+            # (observed as a nonzero k-effective with infinite std. dev.).
+            # The real statepoint for this step gets written on a
+            # subsequent continue_timesteps=True restart, via
+            # _get_bos_data_from_operator's call to write_bos_data.
+            if final_step:
+                self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()
 

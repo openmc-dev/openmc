@@ -23,6 +23,7 @@ namespace model {
 
 int root_universe {-1};
 int n_coord_levels;
+int max_region_surfaces {0};
 
 vector<int64_t> overlap_check_count;
 

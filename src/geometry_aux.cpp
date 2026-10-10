@@ -142,6 +142,26 @@ void adjust_indices()
 }
 
 //==============================================================================
+//! Set the bounding boxes used to skip CSG cells that cannot contain a point
+//! when searching for the cell containing it.
+
+void set_cell_search_boxes()
+{
+  for (auto& c : model::cells) {
+    if (c->geom_type() != GeometryType::CSG)
+      continue;
+    BoundingBox b = c->bounding_box();
+    for (int i = 0; i < 3; ++i) {
+      double pad =
+        1e-9 * std::max({1.0, std::abs(b.min[i]), std::abs(b.max[i])});
+      b.min[i] -= pad;
+      b.max[i] += pad;
+    }
+    c->search_box_ = b;
+  }
+}
+
+//==============================================================================
 //! Partition some universes with many z-planes for faster find_cell searches.
 
 void partition_universes()
@@ -276,6 +296,7 @@ void finalize_geometry()
   adjust_indices();
   count_universe_instances();
   partition_universes();
+  set_cell_search_boxes();
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();

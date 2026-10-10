@@ -990,9 +990,11 @@ void transport_delta_history_based_single_particle(Particle& p)
       // Collided before hitting an external boundary. Rejection sample the
       // majorant.
       p.event_calculate_xs();
-      if (p.kill_invalid_maj()) {
-        break;
-      }
+      // Kill the particle if the majorant is invalid. Can't end the while loop
+      // as the particle may have created secondaries, which need to be revived
+      // in event_check_limit_and_revive().
+      p.kill_invalid_maj();
+
       if (p.alive() &&
           (prn(p.current_seed()) < (p.macro_xs().total / p.majorant()))) {
         p.event_collide();

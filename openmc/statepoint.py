@@ -354,7 +354,7 @@ class StatePoint:
 
     @property
     def delta_tracking(self):
-        return self._f.attrs['delta_tracking'] > 0
+        return self._f.attrs.get('delta_tracking', 0) > 0
 
     @property
     def run_mode(self):

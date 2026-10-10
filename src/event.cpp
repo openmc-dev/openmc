@@ -331,14 +331,14 @@ void process_delta_collision_events()
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
 
-    if (p.kill_invalid_maj()) {
-      continue;
-    }
-
-    if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
-      // Real collision, need to process the collision prior to enqueuing an
-      // advance event.
-      p.event_collide();
+    // Kill the particle if the majorant is invalid. If the majorant is valid,
+    // we can move to rejection sample the collision.
+    if (!p.kill_invalid_maj()) {
+      if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
+        // Real collision, need to process the collision prior to enqueuing an
+        // advance event.
+        p.event_collide();
+      }
     }
 
     p.event_check_limit_and_revive();

@@ -663,6 +663,7 @@ bool is_root_universe(int32_t univ_id)
 
 void free_memory_geometry()
 {
+  model::boundary_surfaces.clear();
   model::cells.clear();
   model::cell_map.clear();
 

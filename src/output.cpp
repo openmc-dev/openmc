@@ -629,8 +629,12 @@ void print_results()
     if (settings::run_mode == RunMode::EIGENVALUE) {
       fmt::print(" k-effective (Collision)    = {:.5f}\n",
         gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n);
-      fmt::print(" k-effective (Track-length) = {:.5f}\n",
-        gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n);
+      if (settings::delta_tracking) {
+        fmt::print(" k-effective (Track-length)  = (Delta-tracking enabled)\n");
+      } else {
+        fmt::print(" k-effective (Track-length) = {:.5f}\n",
+          gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n);
+      }
       fmt::print(" k-effective (Absorption)   = {:.5f}\n",
         gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n);
     }

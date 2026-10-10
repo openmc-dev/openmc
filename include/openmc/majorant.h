@@ -2,8 +2,11 @@
 //! Majorant cross section type
 
 #ifndef OPENMC_MAJORANT_H
-#define OPENMC_MAJORANT_
+#define OPENMC_MAJORANT_H
 
+#include <cmath>
+#include <memory>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "openmc/nuclide.h"

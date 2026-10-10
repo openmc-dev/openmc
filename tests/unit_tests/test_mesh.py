@@ -1506,8 +1506,15 @@ def test_write_vtkhdf_default_volume_normalization_for_vtkhdf(run_in_tmpdir):
     ],
     ids=["1d", "2d", "3d"],
 )
-def test_write_vtkhdf_rectilinear_multi_dimensional_data(run_in_tmpdir, x_grid, y_grid, z_grid, data, expected):
-    """Test RectilinearMesh VTKHDF accepts 1D/2D/3D data with singleton padding."""
+@pytest.mark.parametrize("volume_normalization", [False, True])
+def test_write_vtkhdf_rectilinear_multi_dimensional_data(
+    run_in_tmpdir, x_grid, y_grid, z_grid, data, expected, volume_normalization
+):
+    """Test RectilinearMesh VTKHDF accepts 1D/2D/3D data with singleton padding.
+
+    The grids have unit spacing, so every element volume is one and the
+    written values are the same with and without volume normalization.
+    """
     mesh = openmc.RectilinearMesh()
     mesh.x_grid = x_grid
     mesh.y_grid = y_grid
@@ -1516,7 +1523,7 @@ def test_write_vtkhdf_rectilinear_multi_dimensional_data(run_in_tmpdir, x_grid, 
     mesh.write_data_to_vtk(
         datasets={"flux": data},
         filename="test_rectilinear_dims.vtkhdf",
-        volume_normalization=False,
+        volume_normalization=volume_normalization,
     )
 
     with h5py.File("test_rectilinear_dims.vtkhdf", "r") as f:

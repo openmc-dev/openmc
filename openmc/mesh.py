@@ -1068,6 +1068,10 @@ class StructuredMesh(MeshBase):
         for label, dataset in datasets.items():
             dataset = self._reshape_vtk_dataset(dataset)
             self._check_vtk_dataset(label, dataset)
+            # restore any trailing axes of size one so that the dataset
+            # aligns with the volumes instead of broadcasting against them
+            if dataset.ndim > 1:
+                dataset = dataset.reshape(self.dimension)
 
             if volume_normalization:
                 # a flat dataset is already ordered with the first index

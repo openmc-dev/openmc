@@ -485,6 +485,10 @@ void PhotonMajorant::compute_unionized_grid()
 
 double PhotonMajorant::calculate_photon_xs(double energy) const
 {
+  if (contained_materials_.empty()) {
+    return 0.0;
+  }
+
   double log_energy = std::log(energy);
   int i_grid = get_i_grid<vector<double>>(log_energy, grid_.energy);
 

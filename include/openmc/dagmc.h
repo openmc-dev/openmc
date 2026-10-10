@@ -1,11 +1,6 @@
 #ifndef OPENMC_DAGMC_H
 #define OPENMC_DAGMC_H
 
-namespace openmc {
-extern "C" const bool DAGMC_ENABLED;
-extern "C" const bool UWUW_ENABLED;
-} // namespace openmc
-
 // always include the XML interface header
 #include "openmc/xml_interface.h"
 

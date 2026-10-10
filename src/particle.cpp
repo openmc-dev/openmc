@@ -44,15 +44,18 @@ namespace openmc {
 // Particle implementation
 //==============================================================================
 
+double Particle::speed(double E) const
+{
+  // Determine mass in eV/c^2
+  double mass = this->mass();
+  // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
+  return C_LIGHT * std::sqrt(E * (E + 2 * mass)) / (E + mass);
+}
+
 double Particle::speed() const
 {
   if (settings::run_CE) {
-    // Determine mass in eV/c^2
-    double mass = this->mass();
-
-    // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
-    return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
-           (this->E() + mass);
+    return speed(this->E());
   } else {
     auto mat = this->material();
     if (mat == MATERIAL_VOID)
@@ -73,6 +76,8 @@ double Particle::mass() const
   case PDG_ELECTRON:
   case PDG_POSITRON:
     return MASS_ELECTRON_EV;
+  case PDG_PHOTON:
+    return 0.0;
   default:
     return this->type().mass() * AMU_EV;
   }
@@ -323,6 +328,10 @@ void Particle::event_advance()
   if (distance == distance_cutoff) {
     wgt() = 0.0;
   }
+
+  // Clear surface component if distance is long enough
+  if (distance > TINY_BIT)
+    surface() = SURFACE_NONE;
 }
 
 void Particle::event_cross_surface()
@@ -402,7 +411,11 @@ void Particle::event_collide()
   if (!model::active_meshsurf_tallies.empty())
     score_meshsurface_tally(*this, model::active_meshsurf_tallies);
 
-  // Clear surface component
+  // Preserve whether the particle is still associated with a recently crossed
+  // surface so that a direction change during a near-surface collision can be
+  // reconciled afterward. The surface marker is no longer needed during the
+  // collision itself.
+  const bool near_surface = surface() != SURFACE_NONE;
   surface() = SURFACE_NONE;
 
   if (settings::run_CE) {
@@ -475,6 +488,9 @@ void Particle::event_collide()
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
+
+  if (near_surface && alive())
+    reconcile_cell_after_collision(*this);
 }
 
 void Particle::event_revive_from_secondary(const SourceSite& site)
@@ -648,12 +664,6 @@ void Particle::cross_surface(const Surface& surf)
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf.id_);
   }
-
-// if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef OPENMC_DAGMC_ENABLED
-  if (surf.geom_type() == GeometryType::CSG)
-    history().reset();
-#endif
 
   // Handle any applicable boundary conditions.
   if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
@@ -1058,7 +1068,7 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   site.particle = p.type();
   site.parent_id = p.id();
   site.progeny_id = p.n_progeny();
-  int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+  simulation::surf_source_bank.thread_safe_append(site);
 }
 
 } // namespace openmc

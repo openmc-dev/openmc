@@ -1,5 +1,6 @@
 
 import openmc
+import pytest
 
 def test_tally_trigger(run_in_tmpdir):
     pincell = openmc.examples.pwr_pin_cell()
@@ -39,6 +40,37 @@ def test_tally_trigger(run_in_tmpdir):
     assert realizations == expected_realizations
 
 
+def test_tally_trigger_variance(run_in_tmpdir):
+    pincell = openmc.examples.pwr_pin_cell()
+
+    # create a tally filter on the materials
+    mat_filter = openmc.MaterialFilter(pincell.materials)
+
+    # create a tally with a variance trigger that cannot be satisfied
+    tally = openmc.Tally()
+    tally.filters = [mat_filter]
+    tally.scores = ['scatter']
+
+    trigger = openmc.Trigger('variance', 1e-30)
+    trigger.scores = ['scatter']
+
+    tally.triggers = [trigger]
+
+    pincell.tallies = [tally]
+
+    pincell.settings.trigger_active = True
+    pincell.settings.trigger_max_batches = 15
+    pincell.settings.trigger_batch_interval = 5
+
+    sp_file = pincell.run()
+
+    with openmc.StatePoint(sp_file) as sp:
+        # the trigger is never satisfied, so the simulation must run
+        # up to the max allowed batches
+        total_batches = sp.n_realizations + sp.n_inactive
+        assert total_batches == pincell.settings.trigger_max_batches
+
+
 def test_tally_trigger_null_score(run_in_tmpdir):
     pincell = openmc.examples.pwr_pin_cell()
 
@@ -74,7 +106,9 @@ def test_tally_trigger_null_score(run_in_tmpdir):
         assert total_batches == pincell.settings.trigger_max_batches
 
 
-def test_tally_trigger_zero_ignored(run_in_tmpdir):
+@pytest.mark.parametrize("metric, threshold", [('rel_err', 1.0),
+                                               ('variance', 0.5)])
+def test_tally_trigger_zero_ignored(run_in_tmpdir, metric, threshold):
     pincell = openmc.examples.pwr_pin_cell()
 
     # create an energy filter below and around the O-16(n,p) threshold (1.02e7 eV)
@@ -86,8 +120,8 @@ def test_tally_trigger_zero_ignored(run_in_tmpdir):
     tally.scores = ['(n,p)']
     tally.nuclides = ["O16"]
 
-    # 100% relative error: should be immediately satisfied in nonzero bin
-    trigger = openmc.Trigger('rel_err', 1.0)
+    # loose threshold: should be immediately satisfied in nonzero bin
+    trigger = openmc.Trigger(metric, threshold)
     trigger.scores = ['(n,p)']
     trigger.ignore_zeros = True
 

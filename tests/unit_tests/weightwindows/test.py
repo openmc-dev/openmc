@@ -1,8 +1,9 @@
 import os
+from itertools import product
 from pathlib import Path
 
-import numpy as np
 import pytest
+import numpy as np
 from uncertainties import ufloat
 import openmc
 import openmc.lib
@@ -11,13 +12,12 @@ from openmc.stats import Discrete, Point
 from tests import cdtemp
 
 
-@pytest.fixture
-def wws():
+UMESH_TETS = (Path(__file__).resolve().parents[2] / 'regression_tests' /
+              'unstructured_mesh' / 'test_mesh_tets.exo')
 
-    # weight windows
-    ww_files = ('ww_n.txt', 'ww_p.txt')
-    cwd = Path(__file__).parent.absolute()
-    ww_n_file, ww_p_file = [cwd / Path(f) for f in ww_files]
+@pytest.fixture
+def wws(ww_files):
+    ww_n_file, ww_p_file = ww_files
 
     # load pre-generated weight windows
     # (created using the same tally as above)
@@ -123,13 +123,9 @@ def model():
 
 
 @pytest.mark.parametrize("shared_secondary", [False, True])
-def test_weightwindows(model, wws, shared_secondary):
+def test_weightwindows(model, wws, shared_secondary, ww_files):
 
-    ww_files = ('ww_n.txt', 'ww_p.txt')
-    cwd = Path(__file__).parent.absolute()
-    filepaths = [cwd / Path(f) for f in ww_files]
-
-    with cdtemp(filepaths):
+    with cdtemp(ww_files):
         # run once with variance reduction off
         model.settings.weight_windows_on = False
         model.settings.shared_secondary_bank = shared_secondary
@@ -347,17 +343,19 @@ def test_ww_attrs_capi(run_in_tmpdir, model):
     openmc.lib.finalize()
 
 
-@pytest.mark.parametrize('library', ('libmesh', 'moab'))
-def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
+@pytest.mark.parametrize('library, interface', product(('libmesh', 'moab'), ('native', 'xdg')))
+def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library, interface):
     """
     Ensure that weight windows on unstructured mesh work when
     they aren't part of a tally or weight window generator
     """
 
-    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip('LibMesh not enabled in this build.')
-    if library == 'moab' and not openmc.lib._dagmc_enabled():
+    if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip('DAGMC (and MOAB) mesh not enabled in this build.')
+    if interface == 'xdg' and not openmc.lib.feature_enabled('xdg'):
+        pytest.skip('XDG mesh interface not enabled in this build.')
 
     water = openmc.Material(name='water')
     water.add_nuclide('H1', 2.0)
@@ -367,8 +365,9 @@ def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
     cell = openmc.Cell(region=-box, fill=water)
 
     geometry = openmc.Geometry([cell])
-    mesh_file = str(request.fspath.dirpath() / 'test_mesh_tets.exo')
+    mesh_file = str(UMESH_TETS)
     mesh = openmc.UnstructuredMesh(mesh_file, library)
+    mesh.interface = interface
 
     dummy_wws = np.ones((12_000,))
 

@@ -12,7 +12,6 @@
 #include <type_traits>
 
 #include "openmc/constants.h"
-#include "openmc/error.h"
 
 namespace openmc {
 
@@ -62,16 +61,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  // Get particle mass in [u]
-  double mass() const
-  {
-    int32_t p = std::abs(pdg_number_);
-    if (ATOMIC_MASS.count(p)) {
-      return ATOMIC_MASS[p];
-    } else {
-      fatal_error("Unknown mass for particle " + str());
-    }
-  }
+  //! Get the bare-particle rest mass in [u]
+  double mass() const;
 
   // Convert to string representation
   std::string str() const;
@@ -79,8 +70,10 @@ public:
   // Check if this represents a nucleus (vs elementary particle)
   constexpr bool is_nucleus() const
   {
-    // PDG nuclear codes are >= 1000000000 (100ZZZAAAI format)
-    return pdg_number_ >= 1000000000;
+    // PDG nuclear codes are >= 1000000000 (100ZZZAAAI format). The proton has
+    // its own code rather than the H-1 nuclear one, but it is a bare nucleus
+    // and reaction-product bookkeeping needs to treat it as one.
+    return pdg_number_ >= 1000000000 || pdg_number_ == PDG_PROTON;
   }
 
   // Get transport index (0-3 for transportable particles, C_NONE otherwise)

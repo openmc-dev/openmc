@@ -1062,7 +1062,7 @@ class Normal(Univariate):
     the distribution is renormalized so that the PDF integrates to 1 over the
     truncation interval.
 
-    .. versionchanged:: 0.15.4
+    .. versionchanged:: 0.16.0
         Added optional truncation bounds via `lower` and `upper` parameters.
 
     Parameters
@@ -1313,7 +1313,7 @@ def fusion_neutron_spectrum(
     T_i \le 40` keV and Table IV for :math:`40 < T_i < 100` keV. The returned
     distribution is a normal (Gaussian) approximation to the spectrum.
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------
@@ -2212,7 +2212,7 @@ class DecaySpectrum(Univariate):
     necessary so that the C++ solver can compute the total photon emission rate
     in [photons/s], which is used as the source strength.
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------

@@ -50,8 +50,8 @@ struct OverlapKeyHash {
 
 namespace model {
 
-extern int root_universe;      //!< Index of root universe
-extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
+extern int root_universe;  //!< Index of root universe
+extern int n_coord_levels; //!< Number of CSG coordinate levels
 
 extern vector<int64_t> overlap_check_count;
 
@@ -95,8 +95,19 @@ int cell_instance_at_level(const GeometryState& p, int level);
 //!   valid geometry coordinate stack.
 //==============================================================================
 bool exhaustive_find_cell(GeometryState& p, bool verbose = false);
-bool neighbor_list_find_cell(
-  GeometryState& p, bool verbose = false); // Only usable on surface crossings
+
+//==============================================================================
+//! Locate a particle starting from its current coordinate level.
+//==============================================================================
+bool neighbor_list_find_cell(GeometryState& p, bool verbose = false);
+
+//==============================================================================
+//! Reconcile the current cell after a direction change near a surface.
+//!
+//! \param p A particle whose coordinate stack may need to be updated.
+//==============================================================================
+
+void reconcile_cell_after_collision(GeometryState& p);
 
 //==============================================================================
 //! Move a particle into a new lattice tile.

@@ -1,0 +1,4092 @@
+{
+  "schema_version": 1,
+  "source": {
+    "title": "Compendium of Material Composition Data for Radiation Transport Modeling",
+    "report": "PNNL-15870 Rev. 2",
+    "report_url": "https://www.pnnl.gov/main/publications/external/technical_reports/PNNL-15870Rev2.pdf",
+    "report_sha256": "72b26dba2c3b5583b86fe5d5fe27a43d2890331d0515ce787f1c18fd7321cee6",
+    "data_origin": "PNNL Materials Compendium downloadable JSON",
+    "data_url": "https://compendium.cwmd.pnnl.gov/",
+    "data_mirror_url": "https://raw.githubusercontent.com/pyne/materials-compendium/ae2f6c43f422737d659a8b19081586fb0bad09aa/src/materials_compendium/MaterialsCompendium.json",
+    "site_version": "0.1.1",
+    "data_sha256": "5db6f9ca58793659e73c66cfd624736ffa59846239cd423c11eb6dbe5a56607b",
+    "note": "Values are taken from the PNNL downloadable JSON except for LYSO. Its density and elemental atom fractions are taken from material 206 in the Rev. 2 PDF so that the composition includes the specified 0.5 atom% Ce dopant."
+  },
+  "density_units": "g/cm3",
+  "percent_type": "ao",
+  "materials": {
+    "A-150 Tissue-Equivalent Plastic": {
+      "density": 1.127,
+      "elements": {
+        "H": 0.583629,
+        "C": 0.374869,
+        "N": 0.014531,
+        "O": 0.018984,
+        "F": 0.005324,
+        "Ca": 0.002662
+      }
+    },
+    "Acetone": {
+      "density": 0.7899,
+      "elements": {
+        "H": 0.6,
+        "C": 0.3,
+        "O": 0.1
+      }
+    },
+    "Acetylene": {
+      "density": 0.0010967,
+      "elements": {
+        "H": 0.5,
+        "C": 0.5
+      }
+    },
+    "Air (dry, near sea level)": {
+      "density": 0.001205,
+      "elements": {
+        "C": 0.00015,
+        "N": 0.784429,
+        "O": 0.21075,
+        "Ar": 0.004671
+      }
+    },
+    "Alanine": {
+      "density": 1.42,
+      "elements": {
+        "H": 0.538441,
+        "C": 0.230784,
+        "N": 0.076925,
+        "O": 0.153851
+      }
+    },
+    "Aluminum": {
+      "density": 2.6989,
+      "elements": {
+        "Al": 1.0
+      }
+    },
+    "Aluminum Oxide": {
+      "density": 3.97,
+      "elements": {
+        "O": 0.6,
+        "Al": 0.4
+      }
+    },
+    "Aluminum, alloy 2024-O": {
+      "density": 2.78,
+      "elements": {
+        "Mg": 0.017157,
+        "Al": 0.955161,
+        "Si": 0.002804,
+        "Ti": 0.000494,
+        "Cr": 0.000303,
+        "Mn": 0.003036,
+        "Fe": 0.00141,
+        "Cu": 0.019031,
+        "Zn": 0.000603
+      }
+    },
+    "Aluminum, alloy 2090-T83": {
+      "density": 2.59,
+      "elements": {
+        "Li": 0.083227,
+        "Mg": 0.001729,
+        "Al": 0.901709,
+        "Si": 0.000598,
+        "Ti": 0.000527,
+        "Cr": 0.000162,
+        "Mn": 0.000153,
+        "Fe": 0.000361,
+        "Cu": 0.010951,
+        "Zn": 0.000257,
+        "Zr": 0.000325
+      }
+    },
+    "Aluminum, alloy 3003": {
+      "density": 2.73,
+      "elements": {
+        "Al": 0.987924,
+        "Si": 0.003221,
+        "Mn": 0.006198,
+        "Fe": 0.00189,
+        "Cu": 0.000536,
+        "Zn": 0.000231
+      }
+    },
+    "Aluminum, alloy 4043-O": {
+      "density": 2.69,
+      "elements": {
+        "Be": 1.5e-05,
+        "Mg": 0.000316,
+        "Al": 0.944964,
+        "Si": 0.050758,
+        "Ti": 0.000643,
+        "Mn": 0.00014,
+        "Fe": 0.002203,
+        "Cu": 0.000726,
+        "Zn": 0.000235
+      }
+    },
+    "Aluminum, alloy 5086-O": {
+      "density": 2.66,
+      "elements": {
+        "Mg": 0.044472,
+        "Al": 0.947942,
+        "Si": 0.002062,
+        "Ti": 0.000454,
+        "Cr": 0.00078,
+        "Mn": 0.002213,
+        "Fe": 0.001296,
+        "Cu": 0.000228,
+        "Zn": 0.000553
+      }
+    },
+    "Aluminum, alloy 6061-O": {
+      "density": 2.7,
+      "elements": {
+        "Mg": 0.011162,
+        "Al": 0.97733,
+        "Si": 0.005796,
+        "Ti": 0.000496,
+        "Cr": 0.001017,
+        "Mn": 0.000433,
+        "Fe": 0.001986,
+        "Cu": 0.001174,
+        "Zn": 0.000606
+      }
+    },
+    "Aluminum, alloy 7075-O": {
+      "density": 2.81,
+      "elements": {
+        "Mg": 0.029013,
+        "Al": 0.933051,
+        "Si": 0.002353,
+        "Ti": 0.00069,
+        "Cr": 0.001248,
+        "Mn": 0.000902,
+        "Fe": 0.001479,
+        "Cu": 0.007102,
+        "Zn": 0.024161
+      }
+    },
+    "Ammonia (liquid at T= -79 C)": {
+      "density": 0.771,
+      "elements": {
+        "H": 0.75,
+        "N": 0.25
+      }
+    },
+    "Anthracene": {
+      "density": 1.28,
+      "elements": {
+        "H": 0.416667,
+        "C": 0.583333
+      }
+    },
+    "Argon": {
+      "density": 0.00166201,
+      "elements": {
+        "Ar": 1.0
+      }
+    },
+    "Asbestos (Chrysotile)": {
+      "density": 2.53,
+      "elements": {
+        "H": 0.222222,
+        "O": 0.5,
+        "Mg": 0.166667,
+        "Si": 0.111111
+      }
+    },
+    "Asphalt": {
+      "density": 1.3,
+      "elements": {
+        "H": 0.586745,
+        "C": 0.402599,
+        "N": 0.002463,
+        "O": 0.001443,
+        "S": 0.006703,
+        "V": 4.4e-05,
+        "Ni": 3e-06
+      }
+    },
+    "Asphalt pavement": {
+      "density": 2.5784,
+      "elements": {
+        "H": 0.129089,
+        "C": 0.153985,
+        "N": 0.000449,
+        "O": 0.459407,
+        "Na": 0.00991,
+        "Mg": 0.022142,
+        "Al": 0.035271,
+        "Si": 0.12081,
+        "P": 0.000251,
+        "S": 0.005816,
+        "K": 0.007091,
+        "Ca": 0.044214,
+        "Ti": 0.001238,
+        "V": 8e-06,
+        "Mn": 0.000135,
+        "Fe": 0.010184,
+        "Ni": 1e-06
+      }
+    },
+    "Bakelite": {
+      "density": 1.25,
+      "elements": {
+        "H": 0.431804,
+        "C": 0.488651,
+        "O": 0.079545
+      }
+    },
+    "Barium Fluoride": {
+      "density": 4.89,
+      "elements": {
+        "F": 0.666667,
+        "Ba": 0.333333
+      }
+    },
+    "Barium sulfate": {
+      "density": 4.5,
+      "elements": {
+        "O": 0.666667,
+        "S": 0.166667,
+        "Ba": 0.166667
+      }
+    },
+    "Benzene": {
+      "density": 0.87865,
+      "elements": {
+        "H": 0.5,
+        "C": 0.5
+      }
+    },
+    "Beryllium": {
+      "density": 1.848,
+      "elements": {
+        "Be": 1.0
+      }
+    },
+    "Beryllium Carbide": {
+      "density": 1.9,
+      "elements": {
+        "Be": 0.666667,
+        "C": 0.333333
+      }
+    },
+    "Beryllium Oxide": {
+      "density": 3.01,
+      "elements": {
+        "Be": 0.5,
+        "O": 0.5
+      }
+    },
+    "Bismuth": {
+      "density": 9.747,
+      "elements": {
+        "Bi": 1.0
+      }
+    },
+    "Bismuth Germanate (BGO)": {
+      "density": 7.13,
+      "elements": {
+        "O": 0.631579,
+        "Ge": 0.157895,
+        "Bi": 0.210526
+      }
+    },
+    "Bismuth Iodide": {
+      "density": 5.778,
+      "elements": {
+        "I": 0.75,
+        "Bi": 0.25
+      }
+    },
+    "Blood (ICRP)": {
+      "density": 1.06,
+      "elements": {
+        "H": 0.634596,
+        "C": 0.052293,
+        "N": 0.013288,
+        "O": 0.298052,
+        "Na": 0.000505,
+        "Mg": 1e-05,
+        "Si": 7e-06,
+        "P": 7.1e-05,
+        "S": 0.000362,
+        "Cl": 0.000492,
+        "K": 0.000262,
+        "Ca": 9e-06,
+        "Fe": 5.2e-05,
+        "Zn": 1e-06
+      }
+    },
+    "Bone Equivalent Plastic, B-100": {
+      "density": 1.45,
+      "elements": {
+        "H": 0.513799,
+        "C": 0.353638,
+        "N": 0.012142,
+        "O": 0.015863,
+        "F": 0.069704,
+        "Ca": 0.034854
+      }
+    },
+    "Bone Equivalent Plastic, B-110": {
+      "density": 1.785,
+      "elements": {
+        "H": 0.386395,
+        "C": 0.335513,
+        "N": 0.031096,
+        "O": 0.031063,
+        "F": 0.143965,
+        "Ca": 0.071968
+      }
+    },
+    "Bone, Compact (ICRU)": {
+      "density": 1.85,
+      "elements": {
+        "H": 0.527877,
+        "C": 0.192482,
+        "N": 0.01603,
+        "O": 0.213112,
+        "Mg": 0.000684,
+        "P": 0.018794,
+        "S": 0.000519,
+        "Ca": 0.030502
+      }
+    },
+    "Bone, Cortical (ICRP)": {
+      "density": 1.85,
+      "elements": {
+        "H": 0.47538,
+        "C": 0.121907,
+        "N": 0.030412,
+        "O": 0.282853,
+        "Mg": 0.000918,
+        "P": 0.03438,
+        "S": 0.000997,
+        "Ca": 0.053138,
+        "Zn": 1.6e-05
+      }
+    },
+    "Boral (65% Al-35% B4C)": {
+      "density": 2.53,
+      "elements": {
+        "B": 0.454449,
+        "C": 0.113488,
+        "Al": 0.432063
+      }
+    },
+    "Boral (Aluminum 10% boron alloy)": {
+      "density": 2.6,
+      "elements": {
+        "B": 0.217839,
+        "Na": 0.005123,
+        "Al": 0.767405,
+        "Si": 0.002097,
+        "K": 0.006025,
+        "Ti": 0.000246,
+        "Fe": 0.001265
+      }
+    },
+    "Boral (Aluminum 5% boron alloy)": {
+      "density": 2.6,
+      "elements": {
+        "B": 0.116664,
+        "Na": 0.005487,
+        "Al": 0.867979,
+        "Si": 0.001797,
+        "K": 0.006453,
+        "Ti": 0.000264,
+        "Fe": 0.001355
+      }
+    },
+    "Borax": {
+      "density": 1.73,
+      "elements": {
+        "Na": 0.046512,
+        "B": 0.093023,
+        "O": 0.395349,
+        "H": 0.465116
+      }
+    },
+    "Boric Acid": {
+      "density": 1.5,
+      "elements": {
+        "H": 0.428571,
+        "B": 0.142857,
+        "O": 0.428571
+      }
+    },
+    "Boron": {
+      "density": 2.37,
+      "elements": {
+        "B": 1.0
+      }
+    },
+    "Boron Carbide": {
+      "density": 2.52,
+      "elements": {
+        "B": 0.8,
+        "C": 0.2
+      }
+    },
+    "Boron Fluoride (B2F4)": {
+      "density": 0.004057993216788089,
+      "elements": {
+        "B": 0.333333,
+        "F": 0.666667
+      }
+    },
+    "Boron Fluoride (BF3)": {
+      "density": 0.002831466088198437,
+      "elements": {
+        "B": 0.25,
+        "F": 0.75
+      }
+    },
+    "Boron Oxide": {
+      "density": 1.812,
+      "elements": {
+        "B": 0.4,
+        "O": 0.6
+      }
+    },
+    "Brain (ICRP)": {
+      "density": 1.03,
+      "elements": {
+        "H": 0.654704,
+        "C": 0.06227,
+        "N": 0.005654,
+        "O": 0.274958,
+        "Na": 0.000477,
+        "Mg": 3.7e-05,
+        "P": 0.000682,
+        "S": 0.000329,
+        "Cl": 0.000397,
+        "K": 0.000473,
+        "Ca": 1.3e-05,
+        "Fe": 5e-06,
+        "Zn": 1e-06
+      }
+    },
+    "Brass (typical composition)": {
+      "density": 8.07,
+      "elements": {
+        "Fe": 0.000992,
+        "Cu": 0.668462,
+        "Zn": 0.318026,
+        "Sn": 0.001437,
+        "P": 0.011083
+      }
+    },
+    "Brick, Common Silica": {
+      "density": 1.8,
+      "elements": {
+        "O": 0.663428,
+        "Al": 0.003747,
+        "Si": 0.323229,
+        "Ca": 0.007063,
+        "Fe": 0.002534
+      }
+    },
+    "Brick, Fire": {
+      "density": 2.1,
+      "elements": {
+        "O": 0.636335,
+        "Mg": 0.005057,
+        "Al": 0.160954,
+        "Si": 0.183806,
+        "Ca": 0.003578,
+        "Ti": 0.005135,
+        "Fe": 0.005135
+      }
+    },
+    "Brick, Kaolin (white)": {
+      "density": 2.1,
+      "elements": {
+        "O": 0.635743,
+        "Mg": 0.001008,
+        "Al": 0.181264,
+        "Si": 0.175774,
+        "Ca": 0.000362,
+        "Ti": 0.004323,
+        "Fe": 0.001526
+      }
+    },
+    "Bronze (typical composition)": {
+      "density": 8.4,
+      "elements": {
+        "Al": 0.065612,
+        "Si": 0.007378,
+        "Mn": 0.004016,
+        "Fe": 0.011343,
+        "Ni": 0.007103,
+        "Cu": 0.853654,
+        "Zn": 0.034205,
+        "Sn": 0.012809,
+        "Pb": 0.003881
+      }
+    },
+    "C-552 Air-Equivalent Plastic": {
+      "density": 1.76,
+      "elements": {
+        "H": 0.268591,
+        "C": 0.45814,
+        "O": 0.003104,
+        "F": 0.268613,
+        "Si": 0.001552
+      }
+    },
+    "CELOTEX (Lignocellulosic Fiberboard)": {
+      "density": 0.25,
+      "elements": {
+        "C": 0.285714,
+        "H": 0.47619,
+        "O": 0.238095
+      }
+    },
+    "CLLB(Ce) - Cesium Lithium Lanthanum Bromide - 0.3 wt% Cerium doped": {
+      "density": 4.2,
+      "elements": {
+        "Cs": 0.19994,
+        "Li": 0.09997,
+        "La": 0.09997,
+        "Br": 0.599819,
+        "Ce": 0.000301
+      }
+    },
+    "Cadmium": {
+      "density": 8.65,
+      "elements": {
+        "Cd": 1.0
+      }
+    },
+    "Cadmium Nitrate Tetrahydrate": {
+      "density": 2.45,
+      "elements": {
+        "H": 0.380952,
+        "N": 0.095238,
+        "O": 0.47619,
+        "Cd": 0.047619
+      }
+    },
+    "Cadmium Telluride": {
+      "density": 6.2,
+      "elements": {
+        "Cd": 0.5,
+        "Te": 0.5
+      }
+    },
+    "Cadmium Tungstate (CWO)": {
+      "density": 7.9,
+      "elements": {
+        "O": 0.666667,
+        "Cd": 0.166667,
+        "W": 0.166667
+      }
+    },
+    "Cadmium Zinc Telluride (CZT)": {
+      "density": 5.78,
+      "elements": {
+        "Cd": 0.333333,
+        "Zn": 0.333333,
+        "Te": 0.333333
+      }
+    },
+    "Calcium Carbonate": {
+      "density": 2.8,
+      "elements": {
+        "C": 0.2,
+        "O": 0.6,
+        "Ca": 0.2
+      }
+    },
+    "Calcium Fluoride": {
+      "density": 3.18,
+      "elements": {
+        "F": 0.666667,
+        "Ca": 0.333333
+      }
+    },
+    "Calcium Oxide": {
+      "density": 3.3,
+      "elements": {
+        "O": 0.5,
+        "Ca": 0.5
+      }
+    },
+    "Calcium Sulfate": {
+      "density": 2.96,
+      "elements": {
+        "O": 0.666667,
+        "S": 0.166667,
+        "Ca": 0.166667
+      }
+    },
+    "Calcium Tungstate": {
+      "density": 7.9,
+      "elements": {
+        "Ca": 0.166667,
+        "W": 0.166667,
+        "O": 0.666667
+      }
+    },
+    "Carbon Dioxide": {
+      "density": 0.00184212,
+      "elements": {
+        "C": 0.333333,
+        "O": 0.666667
+      }
+    },
+    "Carbon Tetrachloride": {
+      "density": 1.594,
+      "elements": {
+        "C": 0.2,
+        "Cl": 0.8
+      }
+    },
+    "Carbon, Activated": {
+      "density": 0.45,
+      "elements": {
+        "B": 1e-06,
+        "C": 0.999999
+      }
+    },
+    "Carbon, Amorphous": {
+      "density": 2.0,
+      "elements": {
+        "B": 1e-06,
+        "C": 0.999999
+      }
+    },
+    "Carbon, Graphite (reactor grade)": {
+      "density": 1.7,
+      "elements": {
+        "B": 1e-06,
+        "C": 0.999999
+      }
+    },
+    "Cat litter (clumping)": {
+      "density": 1.1,
+      "elements": {
+        "H": 0.437432,
+        "O": 0.437322,
+        "Na": 0.003988,
+        "Al": 0.039762,
+        "Si": 0.079508,
+        "Ca": 0.001988
+      }
+    },
+    "Cat litter (non-clumping)": {
+      "density": 0.8,
+      "elements": {
+        "H": 0.213278,
+        "O": 0.528385,
+        "Na": 0.02947,
+        "Mg": 0.032513,
+        "Al": 0.030251,
+        "Si": 0.163456,
+        "K": 0.00151,
+        "Ca": 0.000524,
+        "Fe": 0.000614
+      }
+    },
+    "Cellulose": {
+      "density": 1.5,
+      "elements": {
+        "H": 0.47619,
+        "C": 0.285714,
+        "O": 0.238095
+      }
+    },
+    "Cellulose Acetate": {
+      "density": 1.42,
+      "elements": {
+        "H": 0.476179,
+        "C": 0.285724,
+        "O": 0.238097
+      }
+    },
+    "Ceric Sulfate Dosimeter Solution": {
+      "density": 1.03,
+      "elements": {
+        "H": 0.65908,
+        "N": 0.000353,
+        "O": 0.337663,
+        "S": 0.002816,
+        "Ce": 8.8e-05
+      }
+    },
+    "Cerium Bromide": {
+      "density": 5.2,
+      "elements": {
+        "Ce": 0.25,
+        "Br": 0.75
+      }
+    },
+    "Cerium Fluoride": {
+      "density": 6.16,
+      "elements": {
+        "F": 0.75,
+        "Ce": 0.25
+      }
+    },
+    "Cesium Iodide - 1 wt% Sodium doped": {
+      "density": 4.51,
+      "elements": {
+        "Cs": 0.497513,
+        "I": 0.497512,
+        "Na": 0.004975
+      }
+    },
+    "Cesium Iodide - 1 wt% Thalium doped": {
+      "density": 4.51,
+      "elements": {
+        "Cs": 0.497512,
+        "I": 0.497513,
+        "Tl": 0.004975
+      }
+    },
+    "Cesium Lithium Yttrium Chloride (CLYC)": {
+      "density": 3.31,
+      "elements": {
+        "Cs": 0.2,
+        "Li": 0.1,
+        "Y": 0.1,
+        "Cl": 0.6
+      }
+    },
+    "Cesium Lithium Yttrium Chloride (CLYC) with 95% Li6 Enrichment": {
+      "density": 3.31,
+      "elements": {
+        "Cs": 0.2,
+        "Y": 0.1,
+        "Cl": 0.6
+      },
+      "nuclides": {
+        "Li6": 0.095682,
+        "Li7": 0.004318
+      }
+    },
+    "Chromium": {
+      "density": 7.18,
+      "elements": {
+        "Cr": 1.0
+      }
+    },
+    "Clay": {
+      "density": 2.2,
+      "elements": {
+        "O": 0.633298,
+        "Na": 0.006923,
+        "Mg": 0.009202,
+        "Al": 0.094688,
+        "Si": 0.219137,
+        "P": 7.6e-05,
+        "K": 0.01093,
+        "Ca": 0.009895,
+        "Ti": 0.00204,
+        "Mn": 2.4e-05,
+        "Fe": 0.013787
+      }
+    },
+    "Coal, Anthracite": {
+      "density": 0.84,
+      "elements": {
+        "H": 0.228604,
+        "C": 0.749028,
+        "N": 0.006169,
+        "O": 0.014402,
+        "S": 0.001796
+      }
+    },
+    "Coal, Bituminous": {
+      "density": 0.75,
+      "elements": {
+        "H": 0.421415,
+        "C": 0.533659,
+        "N": 0.008665,
+        "O": 0.033187,
+        "S": 0.003075
+      }
+    },
+    "Coal, Lignite": {
+      "density": 0.75,
+      "elements": {
+        "H": 0.357496,
+        "C": 0.519327,
+        "N": 0.00735,
+        "O": 0.114221,
+        "S": 0.001605
+      }
+    },
+    "Concrete [Los Alamos (MCNP) Mix]": {
+      "density": 2.25,
+      "elements": {
+        "H": 0.084736,
+        "O": 0.604078,
+        "Si": 0.241925,
+        "Al": 0.024842,
+        "Na": 0.012523,
+        "Ca": 0.027244,
+        "Fe": 0.004652
+      }
+    },
+    "Concrete, Barite (Type BA)": {
+      "density": 3.35,
+      "elements": {
+        "H": 0.109599,
+        "O": 0.600196,
+        "Mg": 0.001515,
+        "Al": 0.004777,
+        "Si": 0.011474,
+        "S": 0.103647,
+        "Ca": 0.038594,
+        "Fe": 0.026213,
+        "Ba": 0.103985
+      }
+    },
+    "Concrete, Barytes-Limonite": {
+      "density": 3.36,
+      "elements": {
+        "H": 0.235412,
+        "O": 0.548167,
+        "Na": 0.000911,
+        "Mg": 0.002201,
+        "Al": 0.004311,
+        "Si": 0.011183,
+        "S": 0.05499,
+        "Ca": 0.03117,
+        "Mn": 0.000593,
+        "Fe": 0.056904,
+        "Ba": 0.054158
+      }
+    },
+    "Concrete, Boron Frits-baryte": {
+      "density": 3.1,
+      "elements": {
+        "H": 0.147509,
+        "B": 0.025537,
+        "O": 0.560955,
+        "F": 0.003215,
+        "Na": 0.013975,
+        "Mg": 0.002513,
+        "Al": 0.006298,
+        "Si": 0.031294,
+        "S": 0.075765,
+        "K": 0.000679,
+        "Ca": 0.041475,
+        "Mn": 9.7e-05,
+        "Fe": 0.010413,
+        "Zn": 0.00268,
+        "Ba": 0.077594
+      }
+    },
+    "Concrete, Colemanite-baryte": {
+      "density": 3.2,
+      "elements": {
+        "H": 0.208721,
+        "B": 0.022432,
+        "O": 0.539767,
+        "Na": 0.001184,
+        "Mg": 0.002241,
+        "Al": 0.005596,
+        "Si": 0.015511,
+        "S": 0.074331,
+        "Ca": 0.052248,
+        "Mn": 4.5e-05,
+        "Fe": 0.004565,
+        "Ba": 0.073358
+      }
+    },
+    "Concrete, Ferro-phosphorus": {
+      "density": 4.8,
+      "elements": {
+        "H": 0.158638,
+        "O": 0.207882,
+        "Mg": 0.002632,
+        "Al": 0.004741,
+        "Si": 0.038716,
+        "P": 0.203404,
+        "Ca": 0.033514,
+        "Fe": 0.350473
+      }
+    },
+    "Concrete, Hanford Dry": {
+      "density": 2.18,
+      "elements": {
+        "H": 0.078437,
+        "O": 0.595591,
+        "Na": 0.001864,
+        "Mg": 0.011462,
+        "Al": 0.05083,
+        "Si": 0.195334,
+        "K": 0.006577,
+        "Ca": 0.039567,
+        "Fe": 0.020338
+      }
+    },
+    "Concrete, Hanford Wet": {
+      "density": 2.35,
+      "elements": {
+        "H": 0.205169,
+        "O": 0.539084,
+        "Na": 0.001462,
+        "Mg": 0.008992,
+        "Al": 0.03988,
+        "Si": 0.153253,
+        "K": 0.00516,
+        "Ca": 0.031043,
+        "Fe": 0.015956
+      }
+    },
+    "Concrete, Iron-Portland": {
+      "density": 5.9,
+      "elements": {
+        "H": 0.135596,
+        "O": 0.150642,
+        "Mg": 0.002215,
+        "Al": 0.005066,
+        "Si": 0.013419,
+        "S": 0.000646,
+        "Ca": 0.040918,
+        "Mn": 0.002638,
+        "Fe": 0.648861
+      }
+    },
+    "Concrete, Iron-limonite": {
+      "density": 4.4,
+      "elements": {
+        "H": 0.018201,
+        "O": 0.412586,
+        "Mg": 0.003018,
+        "Al": 0.006797,
+        "Si": 0.018281,
+        "S": 0.001144,
+        "Ca": 0.055818,
+        "Mn": 0.010681,
+        "Fe": 0.473475
+      }
+    },
+    "Concrete, Limonite and steel": {
+      "density": 4.54,
+      "elements": {
+        "H": 0.209628,
+        "O": 0.301635,
+        "Mg": 0.001964,
+        "Al": 0.007326,
+        "Si": 0.016261,
+        "K": 0.000698,
+        "Ca": 0.04439,
+        "V": 0.000535,
+        "Fe": 0.417563
+      }
+    },
+    "Concrete, Luminite-Portland-colemanite-baryte": {
+      "density": 3.1,
+      "elements": {
+        "H": 0.248273,
+        "B": 0.021458,
+        "O": 0.525816,
+        "Na": 0.001089,
+        "Mg": 0.001872,
+        "Al": 0.01113,
+        "Si": 0.012069,
+        "S": 0.063635,
+        "Ca": 0.043537,
+        "Ti": 0.000337,
+        "Mn": 0.000166,
+        "Fe": 0.007618,
+        "Ba": 0.063
+      }
+    },
+    "Concrete, Luminite-colemanite-baryte": {
+      "density": 3.1,
+      "elements": {
+        "H": 0.247674,
+        "B": 0.018639,
+        "O": 0.528949,
+        "Na": 0.001096,
+        "Mg": 0.001319,
+        "Al": 0.01494,
+        "Si": 0.007829,
+        "S": 0.06471,
+        "Ca": 0.031317,
+        "Ti": 0.006077,
+        "Mn": 0.0005,
+        "Fe": 0.012591,
+        "Ba": 0.064361
+      }
+    },
+    "Concrete, M-1": {
+      "density": 4.5,
+      "elements": {
+        "H": 0.244682,
+        "B": 0.025659,
+        "O": 0.206177,
+        "Mg": 0.054541,
+        "Cl": 0.018262,
+        "Mn": 0.001683,
+        "Ca": 0.008462,
+        "Fe": 0.440534
+      }
+    },
+    "Concrete, MO": {
+      "density": 5.5,
+      "elements": {
+        "H": 0.187553,
+        "O": 0.141792,
+        "Mg": 0.057557,
+        "Mn": 0.002753,
+        "Cl": 0.013865,
+        "Fe": 0.59648
+      }
+    },
+    "Concrete, Magnetite": {
+      "density": 3.53,
+      "elements": {
+        "H": 0.082377,
+        "O": 0.551,
+        "Mg": 0.010248,
+        "Al": 0.023218,
+        "Si": 0.024456,
+        "S": 0.001177,
+        "Ca": 0.047269,
+        "Ti": 0.030274,
+        "V": 0.00163,
+        "Cr": 0.000871,
+        "Mn": 0.000962,
+        "Fe": 0.226518
+      }
+    },
+    "Concrete, Magnetite and steel": {
+      "density": 4.64,
+      "elements": {
+        "H": 0.086074,
+        "O": 0.314486,
+        "Mg": 0.005517,
+        "Al": 0.01403,
+        "Si": 0.020499,
+        "Ca": 0.050769,
+        "Ti": 0.012192,
+        "V": 0.000464,
+        "Fe": 0.49597
+      }
+    },
+    "Concrete, Magnuson's": {
+      "density": 2.147,
+      "elements": {
+        "H": 0.059731,
+        "C": 0.159072,
+        "O": 0.566259,
+        "Na": 0.001113,
+        "Mg": 0.070306,
+        "Al": 0.005284,
+        "Si": 0.027193,
+        "S": 0.001405,
+        "Cl": 0.000268,
+        "K": 0.004382,
+        "Ca": 0.102437,
+        "Ti": 0.000564,
+        "Mn": 0.000169,
+        "Fe": 0.001817
+      }
+    },
+    "Concrete, Oak Ridge (ORNL)": {
+      "density": 2.2994,
+      "elements": {
+        "H": 0.106687,
+        "C": 0.253543,
+        "O": 0.445629,
+        "Na": 0.000205,
+        "Mg": 0.023349,
+        "Al": 0.006977,
+        "Si": 0.021339,
+        "K": 0.000506,
+        "Ca": 0.139343,
+        "Fe": 0.002423
+      }
+    },
+    "Concrete, Ordinary (NBS 03)": {
+      "density": 2.35,
+      "elements": {
+        "H": 0.149857,
+        "C": 0.074206,
+        "O": 0.526837,
+        "Mg": 0.017713,
+        "Al": 0.023794,
+        "Si": 0.091975,
+        "S": 0.001649,
+        "K": 0.000773,
+        "Ca": 0.109681,
+        "Fe": 0.003516
+      }
+    },
+    "Concrete, Ordinary (NBS 04)": {
+      "density": 2.35,
+      "elements": {
+        "H": 0.103584,
+        "O": 0.584809,
+        "Na": 0.013974,
+        "Mg": 0.001982,
+        "Al": 0.03185,
+        "Si": 0.210759,
+        "S": 0.000752,
+        "K": 0.009244,
+        "Ca": 0.038876,
+        "Fe": 0.004171
+      }
+    },
+    "Concrete, Ordinary (NIST)": {
+      "density": 2.3,
+      "elements": {
+        "H": 0.305322,
+        "C": 0.00288,
+        "O": 0.500411,
+        "Na": 0.009212,
+        "Mg": 0.000725,
+        "Al": 0.010298,
+        "Si": 0.151046,
+        "K": 0.003578,
+        "Ca": 0.014924,
+        "Fe": 0.001605
+      }
+    },
+    "Concrete, Portland": {
+      "density": 2.3,
+      "elements": {
+        "H": 0.168753,
+        "C": 0.001416,
+        "O": 0.562525,
+        "Na": 0.011838,
+        "Mg": 0.0014,
+        "Al": 0.021354,
+        "Si": 0.204119,
+        "K": 0.005656,
+        "Ca": 0.018674,
+        "Fe": 0.004264
+      }
+    },
+    "Concrete, Regulatory Concrete (developed for U.S. NRC)": {
+      "density": 2.3,
+      "elements": {
+        "H": 0.168032,
+        "O": 0.563184,
+        "Na": 0.021365,
+        "Al": 0.021343,
+        "Si": 0.203235,
+        "Ca": 0.018595,
+        "Fe": 0.004246
+      }
+    },
+    "Concrete, Rocky Flats": {
+      "density": 2.321,
+      "elements": {
+        "H": 0.133297,
+        "C": 0.082335,
+        "N": 0.000256,
+        "O": 0.542948,
+        "Na": 0.004909,
+        "Mg": 0.009213,
+        "Al": 0.014408,
+        "Si": 0.098871,
+        "S": 0.001061,
+        "K": 0.006277,
+        "Ca": 0.102809,
+        "Ti": 0.000374,
+        "Fe": 0.00324
+      }
+    },
+    "Concrete, Serpentine": {
+      "density": 2.1,
+      "elements": {
+        "H": 0.246195,
+        "C": 0.001181,
+        "O": 0.498977,
+        "Na": 0.002776,
+        "Mg": 0.086638,
+        "Al": 0.011036,
+        "Si": 0.116124,
+        "K": 0.001632,
+        "Ca": 0.026536,
+        "Cr": 0.000273,
+        "Fe": 0.008633
+      }
+    },
+    "Copper": {
+      "density": 8.96,
+      "elements": {
+        "Cu": 1.0
+      }
+    },
+    "Diatomaceous Earth": {
+      "density": 0.2563,
+      "elements": {
+        "H": 0.151307,
+        "O": 0.581761,
+        "Na": 0.00733,
+        "Mg": 0.001944,
+        "Al": 0.009834,
+        "Si": 0.239362,
+        "K": 0.004823,
+        "Ca": 0.001676,
+        "Fe": 0.001962
+      }
+    },
+    "Diesel Fuel": {
+      "density": 0.849,
+      "elements": {
+        "H": 0.657143,
+        "C": 0.342857
+      }
+    },
+    "Earth, Typical Western U.S.": {
+      "density": 1.52,
+      "elements": {
+        "H": 0.316843,
+        "O": 0.501587,
+        "Al": 0.039952,
+        "Si": 0.141618
+      }
+    },
+    "Earth, U.S. Average": {
+      "density": 1.52,
+      "elements": {
+        "O": 0.670604,
+        "Na": 0.005578,
+        "Mg": 0.011432,
+        "Al": 0.053073,
+        "Si": 0.201665,
+        "K": 0.007653,
+        "Ca": 0.026664,
+        "Ti": 0.002009,
+        "Mn": 0.000272,
+        "Fe": 0.02105
+      }
+    },
+    "Ethane": {
+      "density": 0.00125324,
+      "elements": {
+        "H": 0.75,
+        "C": 0.25
+      }
+    },
+    "Ethyl Acetate": {
+      "density": 0.901,
+      "elements": {
+        "H": 0.571429,
+        "C": 0.285714,
+        "O": 0.142857
+      }
+    },
+    "Ethyl Alcohol": {
+      "density": 0.7893,
+      "elements": {
+        "H": 0.666667,
+        "C": 0.222222,
+        "O": 0.111111
+      }
+    },
+    "Ethylene": {
+      "density": 0.00117497,
+      "elements": {
+        "H": 0.666667,
+        "C": 0.333333
+      }
+    },
+    "Ethylene Glycol": {
+      "density": 1.114,
+      "elements": {
+        "H": 0.6,
+        "C": 0.2,
+        "O": 0.2
+      }
+    },
+    "Explosive Compound, AN": {
+      "density": 1.72,
+      "elements": {
+        "H": 0.444444,
+        "N": 0.222222,
+        "O": 0.333333
+      }
+    },
+    "Explosive Compound, EGDN": {
+      "density": 1.49,
+      "elements": {
+        "H": 0.285714,
+        "C": 0.142857,
+        "N": 0.142857,
+        "O": 0.428571
+      }
+    },
+    "Explosive Compound, HMX": {
+      "density": 1.91,
+      "elements": {
+        "H": 0.285714,
+        "C": 0.142857,
+        "N": 0.285714,
+        "O": 0.285714
+      }
+    },
+    "Explosive Compound, NC": {
+      "density": 1.49,
+      "elements": {
+        "H": 0.300764,
+        "C": 0.234387,
+        "N": 0.089844,
+        "O": 0.375006
+      }
+    },
+    "Explosive Compound, NG": {
+      "density": 1.6,
+      "elements": {
+        "H": 0.25,
+        "C": 0.15,
+        "N": 0.15,
+        "O": 0.45
+      }
+    },
+    "Explosive Compound, PETN": {
+      "density": 1.77,
+      "elements": {
+        "H": 0.275862,
+        "C": 0.172414,
+        "N": 0.137931,
+        "O": 0.413793
+      }
+    },
+    "Explosive Compound, RDX": {
+      "density": 1.858,
+      "elements": {
+        "H": 0.285714,
+        "C": 0.142857,
+        "N": 0.285714,
+        "O": 0.285714
+      }
+    },
+    "Explosive Compound, TNT": {
+      "density": 1.654,
+      "elements": {
+        "H": 0.238095,
+        "C": 0.333333,
+        "N": 0.142857,
+        "O": 0.285714
+      }
+    },
+    "Eye Lens (ICRP)": {
+      "density": 1.1,
+      "elements": {
+        "H": 0.618321,
+        "C": 0.10126,
+        "N": 0.023878,
+        "O": 0.256542
+      }
+    },
+    "Felt": {
+      "density": 0.185,
+      "elements": {
+        "H": 0.384044,
+        "C": 0.316908,
+        "N": 0.11036,
+        "O": 0.188689
+      }
+    },
+    "Ferric Oxide": {
+      "density": 5.2,
+      "elements": {
+        "O": 0.6,
+        "Fe": 0.4
+      }
+    },
+    "Ferrous Sulfate Dosimeter Solution": {
+      "density": 1.024,
+      "elements": {
+        "H": 0.66001,
+        "N": 1.2e-05,
+        "O": 0.337475,
+        "Na": 6e-06,
+        "S": 0.002485,
+        "Cl": 6e-06,
+        "Fe": 6e-06
+      }
+    },
+    "Fertilizer (Muriate of Potash)": {
+      "density": 1.121,
+      "elements": {
+        "H": 0.001833,
+        "O": 0.001658,
+        "Na": 0.013642,
+        "Mg": 0.000313,
+        "S": 0.000183,
+        "Cl": 0.49818,
+        "K": 0.483783,
+        "Ca": 0.000254,
+        "Br": 0.000153
+      }
+    },
+    "Fiberglass, Type C": {
+      "density": 2.54,
+      "elements": {
+        "B": 0.035032,
+        "O": 0.60997,
+        "Na": 0.052479,
+        "Mg": 0.015131,
+        "Al": 0.01595,
+        "Si": 0.219923,
+        "S": 0.000254,
+        "Ca": 0.050751,
+        "Fe": 0.000509
+      }
+    },
+    "Fiberglass, Type E": {
+      "density": 2.57,
+      "elements": {
+        "B": 0.043748,
+        "O": 0.611969,
+        "F": 0.005345,
+        "Na": 0.006553,
+        "Mg": 0.012598,
+        "Al": 0.055773,
+        "Si": 0.182532,
+        "K": 0.004312,
+        "Ca": 0.074245,
+        "Ti": 0.001907,
+        "Fe": 0.001018
+      }
+    },
+    "Fiberglass, Type R": {
+      "density": 2.52,
+      "elements": {
+        "O": 0.628478,
+        "Mg": 0.030755,
+        "Al": 0.101309,
+        "Si": 0.206302,
+        "Ca": 0.033156
+      }
+    },
+    "Freon-12": {
+      "density": 1.12,
+      "elements": {
+        "C": 0.2,
+        "F": 0.4,
+        "Cl": 0.4
+      }
+    },
+    "Freon-12B2": {
+      "density": 1.8,
+      "elements": {
+        "C": 0.2,
+        "F": 0.4,
+        "Br": 0.4
+      }
+    },
+    "Freon-13": {
+      "density": 0.95,
+      "elements": {
+        "C": 0.2,
+        "F": 0.6,
+        "Cl": 0.2
+      }
+    },
+    "Freon-13B1": {
+      "density": 1.5,
+      "elements": {
+        "C": 0.2,
+        "F": 0.6,
+        "Br": 0.2
+      }
+    },
+    "Freon-13I1": {
+      "density": 1.8,
+      "elements": {
+        "C": 0.2,
+        "F": 0.6,
+        "I": 0.2
+      }
+    },
+    "GAGG(CE)": {
+      "density": 6.63,
+      "elements": {
+        "Gd": 0.15,
+        "Al": 0.1,
+        "Ga": 0.15,
+        "O": 0.6
+      }
+    },
+    "Gadolinium": {
+      "density": 7.9004,
+      "elements": {
+        "Gd": 1.0
+      }
+    },
+    "Gadolinium Aluminum Galium Oxide - 0.5 atom% Cerium doped": {
+      "density": 6.6,
+      "elements": {
+        "Gd": 0.14925,
+        "Al": 0.0995,
+        "Ga": 0.14925,
+        "O": 0.597,
+        "Ce": 0.005
+      }
+    },
+    "Gadolinium Oxysulfide": {
+      "density": 7.44,
+      "elements": {
+        "O": 0.4,
+        "S": 0.2,
+        "Gd": 0.4
+      }
+    },
+    "Gadolinium Silicate (GSO)": {
+      "density": 6.71,
+      "elements": {
+        "O": 0.625,
+        "Si": 0.125,
+        "Gd": 0.25
+      }
+    },
+    "Gafchromic Sensor (GS)": {
+      "density": 1.3,
+      "elements": {
+        "H": 0.558078,
+        "C": 0.316313,
+        "N": 0.050235,
+        "O": 0.075375
+      }
+    },
+    "Gallium Arsenide": {
+      "density": 5.31,
+      "elements": {
+        "Ga": 0.5,
+        "As": 0.5
+      }
+    },
+    "Gasoline": {
+      "density": 0.721,
+      "elements": {
+        "H": 0.692308,
+        "C": 0.307692
+      }
+    },
+    "Germanium, High Purity": {
+      "density": 5.323,
+      "elements": {
+        "Ge": 1.0
+      }
+    },
+    "Glass Scintillator, Li Doped (GS1, GS2, GS3)": {
+      "density": 2.66,
+      "elements": {
+        "Li": 0.077858,
+        "O": 0.581368,
+        "Mg": 0.115886,
+        "Al": 0.041992,
+        "Si": 0.178152,
+        "Ce": 0.004743
+      }
+    },
+    "Glass Scintillator, Li Doped (GS10, GS20, GS30)": {
+      "density": 2.5,
+      "elements": {
+        "Li": 0.209064,
+        "O": 0.545546,
+        "Mg": 0.017287,
+        "Al": 0.061502,
+        "Si": 0.162355,
+        "Ce": 0.004246
+      }
+    },
+    "Glass Scintillator, Li Doped (GSF1, GSF2, and GSF3)": {
+      "density": 2.42,
+      "elements": {
+        "Li": 0.123884,
+        "O": 0.586221,
+        "Na": 0.014389,
+        "Al": 0.0656,
+        "Si": 0.207188,
+        "Ce": 0.002717
+      }
+    },
+    "Glass Scintillator, Li Doped (KG1, KG2, KG3)": {
+      "density": 2.42,
+      "elements": {
+        "Li": 0.238376,
+        "O": 0.546763,
+        "Si": 0.209674,
+        "Ce": 0.005187
+      }
+    },
+    "Glass, Borosilicate (Pyrex Glass)": {
+      "density": 2.23,
+      "elements": {
+        "B": 0.070433,
+        "O": 0.641102,
+        "Na": 0.023311,
+        "Al": 0.008204,
+        "Si": 0.255335,
+        "K": 0.001615
+      }
+    },
+    "Glass, Foam": {
+      "density": 0.128,
+      "elements": {
+        "H": 0.018717,
+        "B": 0.02617,
+        "O": 0.629686,
+        "Na": 0.132123,
+        "Si": 0.18742,
+        "S": 0.005883
+      }
+    },
+    "Glass, Lead": {
+      "density": 6.22,
+      "elements": {
+        "O": 0.592953,
+        "Si": 0.174595,
+        "Ti": 0.010251,
+        "As": 0.002146,
+        "Pb": 0.220056
+      }
+    },
+    "Glass, Plate": {
+      "density": 2.4,
+      "elements": {
+        "O": 0.603856,
+        "Na": 0.088144,
+        "Si": 0.251795,
+        "Ca": 0.056205
+      }
+    },
+    "Glycerol": {
+      "density": 1.2613,
+      "elements": {
+        "H": 0.571429,
+        "C": 0.214286,
+        "O": 0.214286
+      }
+    },
+    "Gold": {
+      "density": 19.32,
+      "elements": {
+        "Au": 1.0
+      }
+    },
+    "Gypsum (Plaster of Paris)": {
+      "density": 2.32,
+      "elements": {
+        "H": 0.333333,
+        "O": 0.5,
+        "S": 0.083333,
+        "Ca": 0.083333
+      }
+    },
+    "He-3 Proportional Gas": {
+      "density": 0.0001252645124733361,
+      "nuclides": {
+        "He3": 1.0
+      }
+    },
+    "He-4 Gas Detector": {
+      "density": 0.03,
+      "nuclides": {
+        "He4": 1.0
+      }
+    },
+    "Helium, Natural": {
+      "density": 0.000166322,
+      "elements": {
+        "He": 1.0
+      }
+    },
+    "Hydrogen": {
+      "density": 8.3748e-05,
+      "elements": {
+        "H": 1.0
+      }
+    },
+    "Incoloy Alloy 800": {
+      "density": 7.94,
+      "elements": {
+        "C": 0.002984,
+        "Al": 0.007663,
+        "Si": 0.012761,
+        "S": 0.000167,
+        "Ti": 0.00432,
+        "Cr": 0.222684,
+        "Mn": 0.009785,
+        "Fe": 0.430102,
+        "Ni": 0.305305,
+        "Cu": 0.00423
+      }
+    },
+    "Inconel Alloy 600": {
+      "density": 8.47,
+      "elements": {
+        "C": 0.004618,
+        "Si": 0.006584,
+        "S": 0.000172,
+        "Cr": 0.169596,
+        "Mn": 0.006731,
+        "Fe": 0.081501,
+        "Ni": 0.727888,
+        "Cu": 0.00291
+      }
+    },
+    "Inconel Alloy 625": {
+      "density": 8.44,
+      "elements": {
+        "C": 0.004852,
+        "Al": 0.008639,
+        "Si": 0.010374,
+        "P": 0.000281,
+        "S": 0.000272,
+        "Ti": 0.004869,
+        "Cr": 0.24338,
+        "Mn": 0.005303,
+        "Fe": 0.052167,
+        "Co": 0.009887,
+        "Ni": 0.581643,
+        "Nb": 0.023124,
+        "Mo": 0.05521
+      }
+    },
+    "Inconel Alloy 718": {
+      "density": 8.19,
+      "elements": {
+        "B": 0.000294,
+        "C": 0.003498,
+        "Al": 0.010694,
+        "Si": 0.006542,
+        "P": 0.000253,
+        "S": 0.000245,
+        "Ti": 0.01085,
+        "Cr": 0.210869,
+        "Mn": 0.003344,
+        "Fe": 0.175669,
+        "Ni": 0.516178,
+        "Co": 0.008909,
+        "Cu": 0.002478,
+        "Nb": 0.031833,
+        "Mo": 0.018344
+      }
+    },
+    "Indium": {
+      "density": 7.31,
+      "elements": {
+        "In": 1.0
+      }
+    },
+    "Iron": {
+      "density": 7.874,
+      "elements": {
+        "Fe": 1.0
+      }
+    },
+    "Iron Boride (Fe2B)": {
+      "density": 7.3,
+      "elements": {
+        "B": 0.333333,
+        "Fe": 0.666667
+      }
+    },
+    "Iron Boride (FeB)": {
+      "density": 7.15,
+      "elements": {
+        "B": 0.5,
+        "Fe": 0.5
+      }
+    },
+    "Iron, Armco Ingot": {
+      "density": 7.866,
+      "elements": {
+        "C": 0.000556,
+        "O": 0.003826,
+        "P": 9e-05,
+        "S": 0.000434,
+        "Mn": 0.000172,
+        "Fe": 0.994922
+      }
+    },
+    "Iron, Cast (gray)": {
+      "density": 7.15,
+      "elements": {
+        "C": 0.137105,
+        "Si": 0.044837,
+        "P": 0.004691,
+        "S": 0.00151,
+        "Mn": 0.00573,
+        "Fe": 0.806127
+      }
+    },
+    "Iron, Wrought (Byers No.1)": {
+      "density": 7.7,
+      "elements": {
+        "C": 0.003747,
+        "Si": 0.003163,
+        "P": 0.001127,
+        "S": 0.000175,
+        "Mn": 0.000154,
+        "Fe": 0.991634
+      }
+    },
+    "Kaowool": {
+      "density": 0.096,
+      "elements": {
+        "B": 0.000467,
+        "O": 0.636101,
+        "Al": 0.179644,
+        "Si": 0.176545,
+        "Ca": 0.000363,
+        "Ti": 0.004332,
+        "Fe": 0.002549
+      }
+    },
+    "Kapton Polyimide Film": {
+      "density": 1.42,
+      "elements": {
+        "H": 0.256392,
+        "C": 0.564121,
+        "N": 0.051282,
+        "O": 0.128205
+      }
+    },
+    "Kennertium": {
+      "density": 16.8,
+      "elements": {
+        "Ni": 0.191007,
+        "Cu": 0.294036,
+        "W": 0.514957
+      }
+    },
+    "Kernite": {
+      "density": 1.95,
+      "elements": {
+        "H": 0.32,
+        "B": 0.16,
+        "O": 0.44,
+        "Na": 0.08
+      }
+    },
+    "Kerosene": {
+      "density": 0.819,
+      "elements": {
+        "H": 0.681818,
+        "C": 0.318182
+      }
+    },
+    "Krypton": {
+      "density": 0.00347832,
+      "elements": {
+        "Kr": 1.0
+      }
+    },
+    "Kynar": {
+      "density": 1.79,
+      "elements": {
+        "H": 0.333333,
+        "C": 0.333333,
+        "F": 0.333333
+      }
+    },
+    "Lanthanum Bromide - 0.5 wt% Cerium doped": {
+      "density": 5.08,
+      "elements": {
+        "Br": 0.755995,
+        "Ce": 0.001249,
+        "La": 0.242756
+      }
+    },
+    "Lanthanum Bromide - 10 wt% Cerium and 0.10 wt% Strontium doped": {
+      "density": 5.08,
+      "elements": {
+        "Br": 0.750001,
+        "Ce": 0.025,
+        "La": 0.22475,
+        "Sr": 0.00025
+      }
+    },
+    "Lanthanum Bromide - 10 wt% Cerium doped": {
+      "density": 5.08,
+      "elements": {
+        "Br": 0.748694,
+        "Ce": 0.024741,
+        "La": 0.226566
+      }
+    },
+    "Lanthanum Bromide - 5 wt% Cerium doped": {
+      "density": 5.08,
+      "elements": {
+        "Br": 0.748532,
+        "Ce": 0.012368,
+        "La": 0.239101
+      }
+    },
+    "Lead": {
+      "density": 11.35,
+      "elements": {
+        "Pb": 1.0
+      }
+    },
+    "Lead Iodide": {
+      "density": 6.16,
+      "elements": {
+        "Pb": 0.333333,
+        "I": 0.666667
+      }
+    },
+    "Lead Tungstate (PWO)": {
+      "density": 8.24,
+      "elements": {
+        "O": 0.666667,
+        "W": 0.166667,
+        "Pb": 0.166667
+      }
+    },
+    "Lithium": {
+      "density": 0.534,
+      "elements": {
+        "Li": 1.0
+      }
+    },
+    "Lithium Amide": {
+      "density": 1.178,
+      "elements": {
+        "H": 0.5,
+        "Li": 0.25,
+        "N": 0.25
+      }
+    },
+    "Lithium Fluoride": {
+      "density": 2.635,
+      "elements": {
+        "Li": 0.5,
+        "F": 0.5
+      }
+    },
+    "Lithium Gadolinium Borate (LGB)": {
+      "density": 3.5,
+      "elements": {
+        "O": 0.473684,
+        "Gd": 0.052632
+      },
+      "nuclides": {
+        "Li6": 0.315789,
+        "B10": 0.157895
+      }
+    },
+    "Lithium Hydride": {
+      "density": 0.82,
+      "elements": {
+        "H": 0.5,
+        "Li": 0.5
+      }
+    },
+    "Lithium Iodide (high density)": {
+      "density": 4.08,
+      "elements": {
+        "Li": 0.5,
+        "I": 0.5
+      }
+    },
+    "Lithium Iodide (low density)": {
+      "density": 3.494,
+      "elements": {
+        "Li": 0.5,
+        "I": 0.5
+      }
+    },
+    "Lithium Oxide": {
+      "density": 2.013,
+      "elements": {
+        "Li": 0.666667,
+        "O": 0.333333
+      }
+    },
+    "Lithium Tetraborate": {
+      "density": 2.44,
+      "elements": {
+        "Li": 0.153846,
+        "B": 0.307692,
+        "O": 0.538462
+      }
+    },
+    "Lucite": {
+      "density": 1.19,
+      "elements": {
+        "H": 0.533333,
+        "C": 0.333333,
+        "O": 0.133333
+      }
+    },
+    "Lutetium Aluminum Garnet (LuAG)": {
+      "density": 6.73,
+      "elements": {
+        "O": 0.6,
+        "Al": 0.25,
+        "Lu": 0.15
+      }
+    },
+    "Lutetium Iodide": {
+      "density": 5.6,
+      "elements": {
+        "Lu": 0.25,
+        "I": 0.75
+      }
+    },
+    "Lutetium Orthoaluminate (LuAP)": {
+      "density": 8.4,
+      "elements": {
+        "O": 0.6,
+        "Al": 0.2,
+        "Lu": 0.2
+      }
+    },
+    "Lutetium Oxyorthosilicate (LSO)": {
+      "density": 7.4,
+      "elements": {
+        "O": 0.625,
+        "Si": 0.125,
+        "Lu": 0.25
+      }
+    },
+    "Lutetium Yttrium OxyorthoSilicate: 0.5 atom% Cerium (LYSO)": {
+      "density": 7.25,
+      "elements": {
+        "O": 0.621875,
+        "Si": 0.124375,
+        "Y": 0.012438,
+        "Lu": 0.236313,
+        "Ce": 0.005
+      },
+      "source_note": "Density and elemental atom fractions are taken from material 206 in PNNL-15870 Rev. 2 rather than the downloadable JSON."
+    },
+    "Magnesium": {
+      "density": 1.74,
+      "elements": {
+        "Mg": 1.0
+      }
+    },
+    "Magnesium Oxide": {
+      "density": 3.58,
+      "elements": {
+        "O": 0.5,
+        "Mg": 0.5
+      }
+    },
+    "Magnesium Tetraborate": {
+      "density": 2.53,
+      "elements": {
+        "B": 0.333333,
+        "O": 0.583333,
+        "Mg": 0.083333
+      }
+    },
+    "Masonite": {
+      "density": 1.3,
+      "elements": {
+        "H": 0.47619,
+        "C": 0.285714,
+        "O": 0.238095
+      }
+    },
+    "Melamine": {
+      "density": 1.573,
+      "elements": {
+        "H": 0.4,
+        "C": 0.2,
+        "N": 0.4
+      }
+    },
+    "Melamine Formaldehyde": {
+      "density": 1.35,
+      "elements": {
+        "H": 0.388889,
+        "C": 0.277778,
+        "N": 0.333333
+      }
+    },
+    "Mercuric Iodide": {
+      "density": 6.36,
+      "elements": {
+        "I": 0.666667,
+        "Hg": 0.333333
+      }
+    },
+    "Mercury": {
+      "density": 13.546,
+      "elements": {
+        "Hg": 1.0
+      }
+    },
+    "Methane": {
+      "density": 0.000667151,
+      "elements": {
+        "H": 0.8,
+        "C": 0.2
+      }
+    },
+    "Methanol": {
+      "density": 0.7914,
+      "elements": {
+        "H": 0.666667,
+        "C": 0.166667,
+        "O": 0.166667
+      }
+    },
+    "Methylene Chloride": {
+      "density": 1.3266,
+      "elements": {
+        "H": 0.4,
+        "C": 0.2,
+        "Cl": 0.4
+      }
+    },
+    "Molybdenum": {
+      "density": 10.22,
+      "elements": {
+        "Mo": 1.0
+      }
+    },
+    "Monosodium Titanate, MST": {
+      "density": 1.0,
+      "elements": {
+        "H": 0.111111,
+        "O": 0.555556,
+        "Na": 0.111111,
+        "Ti": 0.222222
+      }
+    },
+    "Mortar": {
+      "density": 1.97,
+      "elements": {
+        "Al": 0.176573,
+        "Ca": 0.001118,
+        "O": 0.625073,
+        "Fe": 0.004185,
+        "K": 0.003991,
+        "Na": 0.018197,
+        "Si": 0.167202,
+        "Ti": 0.003661
+      }
+    },
+    "Muscle Equivalent-Liquid, with sucrose": {
+      "density": 1.11,
+      "elements": {
+        "H": 0.619257,
+        "C": 0.082644,
+        "N": 0.016082,
+        "O": 0.282017
+      }
+    },
+    "Muscle Equivalent-Liquid, without sucrose": {
+      "density": 1.07,
+      "elements": {
+        "H": 0.631875,
+        "C": 0.062437,
+        "N": 0.015809,
+        "O": 0.28988
+      }
+    },
+    "Muscle, Skeletal": {
+      "density": 1.04,
+      "elements": {
+        "H": 0.630924,
+        "C": 0.056734,
+        "N": 0.012488,
+        "O": 0.298113,
+        "Na": 0.000206,
+        "Mg": 4.9e-05,
+        "P": 0.000367,
+        "S": 0.000475,
+        "Cl": 0.000141,
+        "K": 0.000488,
+        "Ca": 5e-06,
+        "Fe": 5e-06,
+        "Zn": 5e-06
+      }
+    },
+    "Muscle, Striated": {
+      "density": 1.04,
+      "elements": {
+        "H": 0.633093,
+        "C": 0.064072,
+        "N": 0.015634,
+        "O": 0.285073,
+        "Na": 0.000218,
+        "Mg": 5.1e-05,
+        "P": 0.000404,
+        "S": 0.000976,
+        "K": 0.00048
+      }
+    },
+    "NE-213 Equivalent": {
+      "density": 0.874,
+      "elements": {
+        "C": 0.444444,
+        "H": 0.555556
+      }
+    },
+    "Neon": {
+      "density": 0.000838505,
+      "elements": {
+        "Ne": 1.0
+      }
+    },
+    "Nickel": {
+      "density": 8.902,
+      "elements": {
+        "Ni": 1.0
+      }
+    },
+    "Niobium": {
+      "density": 8.57,
+      "elements": {
+        "Nb": 1.0
+      }
+    },
+    "Nitrogen": {
+      "density": 0.00116528,
+      "elements": {
+        "N": 1.0
+      }
+    },
+    "Nylon, Dupont ELVAmide 8062": {
+      "density": 1.08,
+      "elements": {
+        "H": 0.593353,
+        "C": 0.311942,
+        "N": 0.041061,
+        "O": 0.053644
+      }
+    },
+    "Nylon, Type 11 (Rilsan)": {
+      "density": 1.425,
+      "elements": {
+        "H": 0.617647,
+        "C": 0.323529,
+        "N": 0.029412,
+        "O": 0.029412
+      }
+    },
+    "Nylon, Type 6 and Type 6/6": {
+      "density": 1.14,
+      "elements": {
+        "H": 0.578947,
+        "C": 0.315789,
+        "N": 0.052632,
+        "O": 0.052632
+      }
+    },
+    "Nylon, Type 6/10": {
+      "density": 1.14,
+      "elements": {
+        "H": 0.6,
+        "C": 0.32,
+        "N": 0.04,
+        "O": 0.04
+      }
+    },
+    "Oil, Crude (Heavy, Cold Lake, Canada)": {
+      "density": 0.97,
+      "elements": {
+        "H": 0.588874,
+        "C": 0.397741,
+        "N": 0.00163,
+        "O": 0.003924,
+        "S": 0.007831
+      }
+    },
+    "Oil, Crude (Heavy, Mexican)": {
+      "density": 0.975,
+      "elements": {
+        "H": 0.587742,
+        "C": 0.40476,
+        "S": 0.007499
+      }
+    },
+    "Oil, Crude (Heavy, Qayarah, Iraq)": {
+      "density": 0.97,
+      "elements": {
+        "H": 0.590037,
+        "C": 0.391776,
+        "N": 0.002914,
+        "S": 0.015274
+      }
+    },
+    "Oil, Crude (Light, Texas)": {
+      "density": 0.875,
+      "elements": {
+        "H": 0.629377,
+        "C": 0.36523,
+        "N": 0.002578,
+        "S": 0.002815
+      }
+    },
+    "Oil, Fuel (Calif.)": {
+      "density": 0.955,
+      "elements": {
+        "H": 0.633771,
+        "C": 0.364359,
+        "S": 0.00187
+      }
+    },
+    "Oil, Hydraulic": {
+      "density": 0.871,
+      "elements": {
+        "H": 0.392857,
+        "C": 0.47619,
+        "O": 0.047619,
+        "P": 0.011905,
+        "Cl": 0.071429
+      }
+    },
+    "Oil, Lard": {
+      "density": 0.915,
+      "elements": {
+        "H": 0.62069,
+        "C": 0.344828,
+        "O": 0.034483
+      }
+    },
+    "Oxygen": {
+      "density": 0.00133151,
+      "elements": {
+        "O": 1.0
+      }
+    },
+    "P-10 gas": {
+      "density": 0.0015613061961732106,
+      "elements": {
+        "H": 0.285714,
+        "C": 0.071429,
+        "Ar": 0.642857
+      }
+    },
+    "P-5 gas": {
+      "density": 0.0016109952348326373,
+      "elements": {
+        "H": 0.166667,
+        "C": 0.041667,
+        "Ar": 0.791667
+      }
+    },
+    "P-terphenyl": {
+      "density": 1.28,
+      "elements": {
+        "H": 0.4375,
+        "C": 0.5625
+      }
+    },
+    "Palladium": {
+      "density": 12.02,
+      "elements": {
+        "Pd": 1.0
+      }
+    },
+    "Paper, News print": {
+      "density": 0.65,
+      "elements": {
+        "H": 0.47619,
+        "C": 0.285714,
+        "O": 0.238095
+      }
+    },
+    "Paper, glossy": {
+      "density": 1.135,
+      "elements": {
+        "H": 0.47619,
+        "C": 0.285714,
+        "O": 0.238095
+      }
+    },
+    "Paper, printer": {
+      "density": 0.69,
+      "elements": {
+        "H": 0.47619,
+        "C": 0.285714,
+        "O": 0.238095
+      }
+    },
+    "Photographic Emulsion, Gel in": {
+      "density": 1.2914,
+      "elements": {
+        "H": 0.546943,
+        "C": 0.235252,
+        "N": 0.053934,
+        "O": 0.161567,
+        "S": 0.002304
+      }
+    },
+    "Photographic Emulsion, Kodak Type AA": {
+      "density": 2.2,
+      "elements": {
+        "H": 0.440284,
+        "C": 0.25526,
+        "N": 0.074899,
+        "O": 0.148422,
+        "Br": 0.040572,
+        "Ag": 0.040562
+      }
+    },
+    "Photographic Emulsion, Standard Nuclear": {
+      "density": 3.815,
+      "elements": {
+        "H": 0.407073,
+        "C": 0.175082,
+        "N": 0.040139,
+        "O": 0.120229,
+        "S": 0.001715,
+        "Br": 0.127142,
+        "Ag": 0.127904,
+        "I": 0.000715
+      }
+    },
+    "Platinum": {
+      "density": 21.45,
+      "elements": {
+        "Pt": 1.0
+      }
+    },
+    "Plutonium Bromide": {
+      "density": 6.75,
+      "elements": {
+        "Br": 0.75
+      },
+      "nuclides": {
+        "Pu238": 0.000126,
+        "Pu239": 0.233817,
+        "Pu240": 0.014942,
+        "Pu241": 0.000992,
+        "Pu242": 0.000123
+      }
+    },
+    "Plutonium Carbide": {
+      "density": 13.6,
+      "elements": {
+        "C": 0.5
+      },
+      "nuclides": {
+        "Pu238": 0.000251,
+        "Pu239": 0.467635,
+        "Pu240": 0.029883,
+        "Pu241": 0.001984,
+        "Pu242": 0.000247
+      }
+    },
+    "Plutonium Chloride": {
+      "density": 5.71,
+      "elements": {
+        "Cl": 0.75
+      },
+      "nuclides": {
+        "Pu238": 0.000126,
+        "Pu239": 0.233817,
+        "Pu240": 0.014942,
+        "Pu241": 0.000992,
+        "Pu242": 0.000123
+      }
+    },
+    "Plutonium Dioxide": {
+      "density": 11.46,
+      "elements": {
+        "O": 0.666667
+      },
+      "nuclides": {
+        "Pu238": 0.000167,
+        "Pu239": 0.311756,
+        "Pu240": 0.019922,
+        "Pu241": 0.001323,
+        "Pu242": 0.000165
+      }
+    },
+    "Plutonium Fluoride (PuF3)": {
+      "density": 9.33,
+      "elements": {
+        "F": 0.75
+      },
+      "nuclides": {
+        "Pu238": 0.000126,
+        "Pu239": 0.233817,
+        "Pu240": 0.014942,
+        "Pu241": 0.000992,
+        "Pu242": 0.000123
+      }
+    },
+    "Plutonium Fluoride (PuF4)": {
+      "density": 7.1,
+      "elements": {
+        "F": 0.8
+      },
+      "nuclides": {
+        "Pu238": 0.0001,
+        "Pu239": 0.187054,
+        "Pu240": 0.011953,
+        "Pu241": 0.000794,
+        "Pu242": 9.9e-05
+      }
+    },
+    "Plutonium Fluoride (PuF6)": {
+      "density": 5.08,
+      "elements": {
+        "F": 0.857143
+      },
+      "nuclides": {
+        "Pu238": 7.2e-05,
+        "Pu239": 0.13361,
+        "Pu240": 0.008538,
+        "Pu241": 0.000567,
+        "Pu242": 7.1e-05
+      }
+    },
+    "Plutonium Iodide": {
+      "density": 6.92,
+      "elements": {
+        "I": 0.75
+      },
+      "nuclides": {
+        "Pu238": 0.000126,
+        "Pu239": 0.233817,
+        "Pu240": 0.014942,
+        "Pu241": 0.000992,
+        "Pu242": 0.000123
+      }
+    },
+    "Plutonium Nitrate": {
+      "density": 2.447,
+      "elements": {
+        "N": 0.235294,
+        "O": 0.705882
+      },
+      "nuclides": {
+        "Pu238": 3e-05,
+        "Pu239": 0.055016,
+        "Pu240": 0.003516,
+        "Pu241": 0.000233,
+        "Pu242": 2.9e-05
+      }
+    },
+    "Plutonium Nitride": {
+      "density": 14.25,
+      "elements": {
+        "N": 0.5
+      },
+      "nuclides": {
+        "Pu238": 0.000251,
+        "Pu239": 0.467635,
+        "Pu240": 0.029883,
+        "Pu241": 0.001984,
+        "Pu242": 0.000247
+      }
+    },
+    "Plutonium Oxide (Pu2O3)": {
+      "density": 10.5,
+      "elements": {
+        "O": 0.6
+      },
+      "nuclides": {
+        "Pu238": 0.000201,
+        "Pu239": 0.374108,
+        "Pu240": 0.023907,
+        "Pu241": 0.001587,
+        "Pu242": 0.000198
+      }
+    },
+    "Plutonium Oxide (PuO)": {
+      "density": 14.0,
+      "elements": {
+        "O": 0.5
+      },
+      "nuclides": {
+        "Pu238": 0.000251,
+        "Pu239": 0.467635,
+        "Pu240": 0.029883,
+        "Pu241": 0.001984,
+        "Pu242": 0.000247
+      }
+    },
+    "Plutonium, Aged WGPu (A: 4-7% Pu240)": {
+      "density": 19.84,
+      "nuclides": {
+        "Pu238": 0.0001,
+        "Pu239": 0.936557,
+        "Pu240": 0.059677,
+        "Pu241": 0.001981,
+        "Pu242": 0.000296,
+        "Am241": 0.001389
+      }
+    },
+    "Plutonium, Aged WGPu (B: 10-13% Pu240)": {
+      "density": 19.84,
+      "nuclides": {
+        "Pu238": 0.000897,
+        "Pu239": 0.862406,
+        "Pu240": 0.116661,
+        "Pu241": 0.009837,
+        "Pu242": 0.001665,
+        "Am241": 0.008534
+      }
+    },
+    "Plutonium, Aged WGPu (C: 16-19% Pu240)": {
+      "density": 19.84,
+      "nuclides": {
+        "Pu238": 0.002345,
+        "Pu239": 0.784809,
+        "Pu240": 0.164523,
+        "Pu241": 0.013894,
+        "Pu242": 0.00663,
+        "Am241": 0.027798
+      }
+    },
+    "Plutonium, DOE 3013 WGPu": {
+      "density": 19.84,
+      "nuclides": {
+        "Pu238": 0.000502,
+        "Pu239": 0.935269,
+        "Pu240": 0.059767,
+        "Pu241": 0.003968,
+        "Pu242": 0.000494
+      }
+    },
+    "Plutonium, Fuel Grade": {
+      "density": 19.84,
+      "nuclides": {
+        "Pu238": 0.001005,
+        "Pu239": 0.861564,
+        "Pu240": 0.119578,
+        "Pu241": 0.015877,
+        "Pu242": 0.001976
+      }
+    },
+    "Plutonium, Power Grade": {
+      "density": 19.84,
+      "nuclides": {
+        "Pu238": 0.009964,
+        "Pu239": 0.62519,
+        "Pu240": 0.217375,
+        "Pu241": 0.118075,
+        "Pu242": 0.029396
+      }
+    },
+    "Plutonium, Shefelbine WGPu": {
+      "density": 19.84,
+      "nuclides": {
+        "Pu238": 0.000301,
+        "Pu239": 0.939451,
+        "Pu240": 0.056777,
+        "Pu241": 0.002976,
+        "Pu242": 0.000296,
+        "Am241": 0.000198
+      }
+    },
+    "Polycarbonate": {
+      "density": 1.2,
+      "elements": {
+        "H": 0.424242,
+        "C": 0.484848,
+        "O": 0.090909
+      }
+    },
+    "Polyethylene Terephthalate (PET)": {
+      "density": 1.38,
+      "elements": {
+        "H": 0.363636,
+        "C": 0.454545,
+        "O": 0.181818
+      }
+    },
+    "Polyethylene, Borated": {
+      "density": 1.0,
+      "elements": {
+        "H": 0.627756,
+        "B": 0.04668,
+        "C": 0.325564
+      }
+    },
+    "Polyethylene, Non-borated": {
+      "density": 0.93,
+      "elements": {
+        "H": 0.666667,
+        "C": 0.333333
+      }
+    },
+    "Polyisocyanurate (PIR)": {
+      "density": 0.0482,
+      "elements": {
+        "H": 0.344828,
+        "C": 0.517241,
+        "N": 0.068966,
+        "O": 0.068966
+      }
+    },
+    "Polypropylene (PP)": {
+      "density": 0.9,
+      "elements": {
+        "H": 0.666667,
+        "C": 0.333333
+      }
+    },
+    "Polystyrene (PS)": {
+      "density": 1.06,
+      "elements": {
+        "H": 0.5,
+        "C": 0.5
+      }
+    },
+    "Polytetrafluoroethylene (PTFE)": {
+      "density": 2.25,
+      "elements": {
+        "C": 0.333333,
+        "F": 0.666667
+      }
+    },
+    "Polyurethane Foam (PUR)": {
+      "density": 0.021,
+      "elements": {
+        "H": 0.360023,
+        "C": 0.400878,
+        "N": 0.076459,
+        "O": 0.162639
+      }
+    },
+    "Polyvinyl Acetate (PVA)": {
+      "density": 1.19,
+      "elements": {
+        "H": 0.5,
+        "C": 0.333333,
+        "O": 0.166667
+      }
+    },
+    "Polyvinyl Chloride (PVC)": {
+      "density": 1.406,
+      "elements": {
+        "H": 0.5,
+        "C": 0.333333,
+        "Cl": 0.166667
+      }
+    },
+    "Polyvinyl Toluene (PVT)": {
+      "density": 1.032,
+      "elements": {
+        "H": 0.526316,
+        "C": 0.473684
+      }
+    },
+    "Polyvinylidene Chloride (PVDC)": {
+      "density": 1.7,
+      "elements": {
+        "H": 0.333333,
+        "C": 0.333333,
+        "Cl": 0.333333
+      }
+    },
+    "Potassium Aluminum Silicate": {
+      "density": 1.1,
+      "elements": {
+        "O": 0.615385,
+        "Al": 0.076923,
+        "Si": 0.230769,
+        "K": 0.076923
+      }
+    },
+    "Potassium Iodide": {
+      "density": 3.13,
+      "elements": {
+        "K": 0.5,
+        "I": 0.5
+      }
+    },
+    "Potassium Oxide": {
+      "density": 2.32,
+      "elements": {
+        "O": 0.333333,
+        "K": 0.666667
+      }
+    },
+    "Propane (gas)": {
+      "density": 0.00187939,
+      "elements": {
+        "H": 0.727273,
+        "C": 0.272727
+      }
+    },
+    "Propane (liquid)": {
+      "density": 0.43,
+      "elements": {
+        "H": 0.727273,
+        "C": 0.272727
+      }
+    },
+    "Quartz": {
+      "density": 2.62,
+      "elements": {
+        "O": 0.666667,
+        "Si": 0.333333
+      }
+    },
+    "Quartz Glass": {
+      "density": 2.2,
+      "elements": {
+        "O": 0.666667,
+        "Si": 0.333333
+      }
+    },
+    "Radiochromic Dye Film, Nylon Base (RDF: NB)": {
+      "density": 1.08,
+      "elements": {
+        "H": 0.589064,
+        "C": 0.317179,
+        "N": 0.04111,
+        "O": 0.052647
+      }
+    },
+    "Rayon": {
+      "density": 1.16,
+      "elements": {
+        "H": 0.47619,
+        "C": 0.285714,
+        "O": 0.238095
+      }
+    },
+    "Rock (Average of 5 types)": {
+      "density": 2.662,
+      "elements": {
+        "H": 0.027052,
+        "C": 0.098551,
+        "O": 0.561516,
+        "Na": 0.012119,
+        "Mg": 0.027079,
+        "Al": 0.043135,
+        "Si": 0.147747,
+        "P": 0.000307,
+        "S": 0.005618,
+        "K": 0.008671,
+        "Ca": 0.054072,
+        "Ti": 0.001514,
+        "Mn": 0.000165,
+        "Fe": 0.012454
+      }
+    },
+    "Rock, Basalt": {
+      "density": 3.01,
+      "elements": {
+        "O": 0.629838,
+        "Na": 0.024716,
+        "Mg": 0.003656,
+        "Al": 0.058713,
+        "Si": 0.24888,
+        "P": 0.000351,
+        "K": 0.018158,
+        "Ca": 0.006737,
+        "Ti": 0.00078,
+        "Mn": 0.000146,
+        "Fe": 0.008025
+      }
+    },
+    "Rock, Granite": {
+      "density": 2.69,
+      "elements": {
+        "O": 0.607743,
+        "Na": 0.020743,
+        "Mg": 0.037864,
+        "Al": 0.068362,
+        "Si": 0.182167,
+        "P": 0.001047,
+        "K": 0.005014,
+        "Ca": 0.03782,
+        "Ti": 0.005119,
+        "Mn": 0.000616,
+        "Fe": 0.033504
+      }
+    },
+    "Rock, Limestone": {
+      "density": 2.6,
+      "elements": {
+        "C": 0.190012,
+        "O": 0.603322,
+        "Si": 0.016659,
+        "Ca": 0.190007
+      }
+    },
+    "Rock, Sandstone": {
+      "density": 2.37,
+      "elements": {
+        "C": 0.00148,
+        "O": 0.654712,
+        "Na": 0.006472,
+        "Mg": 0.001355,
+        "Al": 0.015468,
+        "Si": 0.30491,
+        "P": 3e-06,
+        "K": 0.007027,
+        "Ca": 0.004532,
+        "Ti": 8.5e-05,
+        "Fe": 0.003956,
+        "Mn": 1e-06
+      }
+    },
+    "Rock, Shale": {
+      "density": 2.6,
+      "elements": {
+        "H": 0.029418,
+        "C": 0.031447,
+        "O": 0.607866,
+        "Na": 0.003719,
+        "Mg": 0.004942,
+        "Al": 0.053784,
+        "Si": 0.225978,
+        "P": 4.1e-05,
+        "S": 0.00611,
+        "K": 0.008792,
+        "Ca": 0.014705,
+        "Ti": 0.001096,
+        "Fe": 0.012089,
+        "Mn": 1.3e-05
+      }
+    },
+    "Rubber, Butyl": {
+      "density": 0.92,
+      "elements": {
+        "H": 0.666667,
+        "C": 0.333333
+      }
+    },
+    "Rubber, Natural": {
+      "density": 0.92,
+      "elements": {
+        "H": 0.615385,
+        "C": 0.384615
+      }
+    },
+    "Rubber, Neoprene": {
+      "density": 1.23,
+      "elements": {
+        "H": 0.5,
+        "C": 0.4,
+        "Cl": 0.1
+      }
+    },
+    "Rubber, Silicon": {
+      "density": 1.0185,
+      "elements": {
+        "H": 0.597028,
+        "C": 0.199364,
+        "O": 0.104171,
+        "Si": 0.099437
+      }
+    },
+    "Salt Water (T=0 C)": {
+      "density": 1.2098648484824486,
+      "elements": {
+        "H": 0.621151,
+        "O": 0.310588,
+        "Na": 0.03413,
+        "Cl": 0.034131
+      }
+    },
+    "Salt Water (T=20 C)": {
+      "density": 1.0223941310230285,
+      "elements": {
+        "H": 0.661897,
+        "O": 0.330961,
+        "Na": 0.003571,
+        "Cl": 0.003571
+      }
+    },
+    "Sand": {
+      "density": 1.7,
+      "elements": {
+        "H": 0.135402,
+        "C": 0.004874,
+        "O": 0.58389,
+        "Na": 0.012932,
+        "Al": 0.022215,
+        "Si": 0.226487,
+        "K": 0.005179,
+        "Ca": 0.004874,
+        "Fe": 0.004146
+      }
+    },
+    "Sea Water, Simple Artificial": {
+      "density": 1.023343,
+      "elements": {
+        "H": 0.661582,
+        "O": 0.331501,
+        "Na": 0.002897,
+        "Mg": 0.000326,
+        "S": 0.000174,
+        "Cl": 0.003392,
+        "K": 6.3e-05,
+        "Ca": 6.4e-05
+      }
+    },
+    "Sea Water, Standard": {
+      "density": 1.023343,
+      "elements": {
+        "H": 0.661558,
+        "B": 3e-06,
+        "C": 1.2e-05,
+        "O": 0.331525,
+        "Na": 0.002897,
+        "Mg": 0.000326,
+        "S": 0.000174,
+        "Cl": 0.003371,
+        "K": 6.3e-05,
+        "Ca": 6.3e-05,
+        "Br": 5e-06,
+        "Sr": 1e-06
+      }
+    },
+    "Sepiolite": {
+      "density": 2.14,
+      "elements": {
+        "H": 0.297872,
+        "O": 0.489362,
+        "Mg": 0.085106,
+        "Si": 0.12766
+      }
+    },
+    "Silciate Yttrium - 0.5 atom% Cerium": {
+      "density": 4.5,
+      "elements": {
+        "Y": 0.142173,
+        "S": 0.214332,
+        "O": 0.642995,
+        "Ce": 0.0005
+      }
+    },
+    "Silicon": {
+      "density": 2.33,
+      "elements": {
+        "Si": 1.0
+      }
+    },
+    "Silicon Carbide (hexagonal)": {
+      "density": 3.21,
+      "elements": {
+        "C": 0.5,
+        "Si": 0.5
+      }
+    },
+    "Silicon Dioxide (Alpha-quartz)": {
+      "density": 2.648,
+      "elements": {
+        "O": 0.666667,
+        "Si": 0.333333
+      }
+    },
+    "Silicon Dioxide (Silica)": {
+      "density": 2.32,
+      "elements": {
+        "O": 0.666667,
+        "Si": 0.333333
+      }
+    },
+    "Silver": {
+      "density": 10.5,
+      "elements": {
+        "Ag": 1.0
+      }
+    },
+    "Skin (ICRP)": {
+      "density": 1.1,
+      "elements": {
+        "H": 0.619957,
+        "C": 0.118062,
+        "N": 0.020589,
+        "O": 0.240355,
+        "Na": 1.9e-05,
+        "Mg": 1.5e-05,
+        "P": 6.6e-05,
+        "S": 0.000308,
+        "Cl": 0.000468,
+        "K": 0.000135,
+        "Ca": 2.3e-05,
+        "Fe": 1e-06,
+        "Zn": 1e-06
+      }
+    },
+    "Sodium": {
+      "density": 0.971,
+      "elements": {
+        "Na": 1.0
+      }
+    },
+    "Sodium Bismuth Tungstate (NBWO)": {
+      "density": 7.57,
+      "elements": {
+        "O": 0.666667,
+        "Na": 0.083333,
+        "W": 0.166667,
+        "Bi": 0.083333
+      }
+    },
+    "Sodium Chloride": {
+      "density": 2.17,
+      "elements": {
+        "Na": 0.5,
+        "Cl": 0.5
+      }
+    },
+    "Sodium Iodide - 0.2 wt% Thalium Doped": {
+      "density": 3.667,
+      "elements": {
+        "Na": 0.4995,
+        "I": 0.499501,
+        "Tl": 0.000999
+      }
+    },
+    "Sodium Iodide with 8 wt% Lithium - 0.10 wt% Thalium doped": {
+      "density": 3.66,
+      "elements": {
+        "I": 0.474211,
+        "Na": 0.438678,
+        "Tl": 0.000439
+      },
+      "nuclides": {
+        "Li6": 0.028452,
+        "Li7": 0.05822
+      }
+    },
+    "Sodium Nitrate": {
+      "density": 2.261,
+      "elements": {
+        "N": 0.2,
+        "O": 0.6,
+        "Na": 0.2
+      }
+    },
+    "Sodium Oxide": {
+      "density": 2.27,
+      "elements": {
+        "O": 0.333333,
+        "Na": 0.666667
+      }
+    },
+    "Steel, Boron Stainless": {
+      "density": 7.87,
+      "elements": {
+        "Cr": 0.196075,
+        "Ni": 0.118895,
+        "B": 0.056685,
+        "C": 0.002181,
+        "N": 0.000374,
+        "P": 3.4e-05,
+        "S": 4.9e-05,
+        "Co": 0.000267,
+        "Si": 0.012871,
+        "Mn": 0.018214,
+        "Fe": 0.594355
+      }
+    },
+    "Steel, HT9 Stainless": {
+      "density": 7.874,
+      "elements": {
+        "C": 0.009637,
+        "N": 0.000236,
+        "Al": 0.000613,
+        "Si": 0.004121,
+        "P": 0.000142,
+        "S": 5.2e-05,
+        "Ti": 0.000115,
+        "V": 0.00357,
+        "Cr": 0.125077,
+        "Mn": 0.005016,
+        "Fe": 0.839996,
+        "Ni": 0.004789,
+        "Mo": 0.005916,
+        "W": 0.00072
+      }
+    },
+    "Steel, High Carbon (1095)": {
+      "density": 7.872,
+      "elements": {
+        "C": 0.046122,
+        "Mn": 0.004895,
+        "P": 0.000695,
+        "S": 0.000839,
+        "Fe": 0.94745
+      }
+    },
+    "Steel, Low Carbon (1008)": {
+      "density": 7.872,
+      "elements": {
+        "C": 0.004629,
+        "Mn": 0.00506,
+        "P": 0.000718,
+        "S": 0.000867,
+        "Fe": 0.988726
+      }
+    },
+    "Steel, Medium Carbon (1045)": {
+      "density": 7.872,
+      "elements": {
+        "C": 0.022813,
+        "Mn": 0.008977,
+        "P": 0.000708,
+        "S": 0.000854,
+        "Fe": 0.966648
+      }
+    },
+    "Steel, Stainless 202": {
+      "density": 7.86,
+      "elements": {
+        "C": 0.006733,
+        "Mn": 0.085864,
+        "P": 0.001044,
+        "S": 0.000504,
+        "Si": 0.019196,
+        "Cr": 0.186629,
+        "Ni": 0.045926,
+        "N": 0.009622,
+        "Fe": 0.644481
+      }
+    },
+    "Steel, Stainless 302": {
+      "density": 7.86,
+      "elements": {
+        "C": 0.006783,
+        "Mn": 0.019772,
+        "P": 0.000789,
+        "S": 0.000508,
+        "Si": 0.019339,
+        "Cr": 0.188019,
+        "Ni": 0.083282,
+        "N": 0.003878,
+        "Fe": 0.67763
+      }
+    },
+    "Steel, Stainless 304": {
+      "density": 8.03,
+      "elements": {
+        "C": 0.003635,
+        "Mn": 0.01987,
+        "P": 0.000793,
+        "S": 0.000511,
+        "Si": 0.019434,
+        "Cr": 0.199443,
+        "Ni": 0.088343,
+        "Fe": 0.667972
+      }
+    },
+    "Steel, Stainless 304L": {
+      "density": 8.0,
+      "elements": {
+        "C": 0.001366,
+        "Mn": 0.01991,
+        "P": 0.000795,
+        "S": 0.000512,
+        "Si": 0.019473,
+        "Cr": 0.199847,
+        "Ni": 0.09318,
+        "Fe": 0.664917
+      }
+    },
+    "Steel, Stainless 316": {
+      "density": 8.0,
+      "elements": {
+        "C": 0.003683,
+        "Mn": 0.020128,
+        "P": 0.000803,
+        "S": 0.000517,
+        "Si": 0.019687,
+        "Cr": 0.180771,
+        "Ni": 0.113043,
+        "Mo": 0.014406,
+        "Fe": 0.646962
+      }
+    },
+    "Steel, Stainless 316L": {
+      "density": 8.0,
+      "elements": {
+        "C": 0.001384,
+        "Mn": 0.020165,
+        "P": 0.000805,
+        "S": 0.000518,
+        "Si": 0.019722,
+        "Cr": 0.181098,
+        "Ni": 0.113247,
+        "Mo": 0.014432,
+        "Fe": 0.648629
+      }
+    },
+    "Steel, Stainless 321": {
+      "density": 8.0,
+      "elements": {
+        "C": 0.00364,
+        "Mn": 0.019894,
+        "P": 0.000794,
+        "S": 0.000511,
+        "Si": 0.019457,
+        "Cr": 0.189172,
+        "Ni": 0.097759,
+        "Fe": 0.668773
+      }
+    },
+    "Steel, Stainless 347": {
+      "density": 8.0,
+      "elements": {
+        "C": 0.003653,
+        "Mn": 0.019968,
+        "P": 0.000797,
+        "S": 0.000513,
+        "Si": 0.01953,
+        "Cr": 0.189877,
+        "Ni": 0.098123,
+        "Nb": 0.005609,
+        "Fe": 0.661931
+      }
+    },
+    "Steel, Stainless 409": {
+      "density": 7.8,
+      "elements": {
+        "C": 0.001367,
+        "Mn": 0.009961,
+        "P": 0.000707,
+        "S": 0.000341,
+        "Si": 0.019484,
+        "Cr": 0.116819,
+        "Ni": 0.004662,
+        "N": 0.001172,
+        "Ti": 0.004916,
+        "Nb": 0.001001,
+        "Fe": 0.83957
+      }
+    },
+    "Steel, Stainless 440A": {
+      "density": 7.8,
+      "elements": {
+        "C": 0.030043,
+        "Mn": 0.00973,
+        "P": 0.00069,
+        "S": 0.0005,
+        "Si": 0.019034,
+        "Cr": 0.174775,
+        "Mo": 0.004178,
+        "Fe": 0.761049
+      }
+    },
+    "Steel, Stainless 440B": {
+      "density": 7.8,
+      "elements": {
+        "C": 0.037602,
+        "Mn": 0.009671,
+        "P": 0.000686,
+        "S": 0.000497,
+        "Si": 0.018918,
+        "Cr": 0.173713,
+        "Mo": 0.004153,
+        "Fe": 0.754759
+      }
+    },
+    "Steel, Stainless 440C": {
+      "density": 7.8,
+      "elements": {
+        "C": 0.047087,
+        "Mn": 0.009576,
+        "P": 0.000679,
+        "S": 0.000492,
+        "Si": 0.018732,
+        "Cr": 0.172001,
+        "Mo": 0.004112,
+        "Fe": 0.747321
+      }
+    },
+    "Sterotex": {
+      "density": 0.862,
+      "elements": {
+        "H": 0.635838,
+        "C": 0.32948,
+        "O": 0.034682
+      }
+    },
+    "Stilbene (trans-stilbene isomer)": {
+      "density": 0.9707,
+      "elements": {
+        "H": 0.461538,
+        "C": 0.538462
+      }
+    },
+    "Strontium Iodide - 2.5 atom% Europium doped": {
+      "density": 4.59,
+      "elements": {
+        "Sr": 0.330508,
+        "I": 0.661017,
+        "Eu": 0.008475
+      }
+    },
+    "Sulfuric acid": {
+      "density": 1.84,
+      "elements": {
+        "H": 0.285714,
+        "S": 0.142857,
+        "O": 0.571429
+      }
+    },
+    "Sulphur": {
+      "density": 2.0,
+      "elements": {
+        "S": 1.0
+      }
+    },
+    "TLYC": {
+      "density": 4.58,
+      "elements": {
+        "Tl": 0.2,
+        "Li": 0.1,
+        "Y": 0.1,
+        "Cl": 0.6
+      }
+    },
+    "Tantalum": {
+      "density": 16.654,
+      "elements": {
+        "Ta": 1.0
+      }
+    },
+    "Thorium": {
+      "density": 11.72,
+      "elements": {
+        "Th": 1.0
+      }
+    },
+    "Thorium Dioxide": {
+      "density": 9.7,
+      "elements": {
+        "O": 0.666667,
+        "Th": 0.333333
+      }
+    },
+    "Tin": {
+      "density": 7.31,
+      "elements": {
+        "Sn": 1.0
+      }
+    },
+    "Tissue Equivalent, MS20": {
+      "density": 1.0,
+      "elements": {
+        "H": 0.546349,
+        "C": 0.329488,
+        "N": 0.008619,
+        "O": 0.079014,
+        "Mg": 0.036358,
+        "Cl": 0.000172
+      }
+    },
+    "Tissue Equivalent-Gas, methane based (TEG: MB)": {
+      "density": 0.00106409,
+      "elements": {
+        "H": 0.60524,
+        "C": 0.22746,
+        "N": 0.015038,
+        "O": 0.152262
+      }
+    },
+    "Tissue Equivalent-Gas, propane based (TEG: PB)": {
+      "density": 0.00182628,
+      "elements": {
+        "H": 0.598942,
+        "C": 0.278538,
+        "N": 0.014702,
+        "O": 0.107817
+      }
+    },
+    "Tissue, Adipose (ICRP)": {
+      "density": 0.92,
+      "elements": {
+        "H": 0.634633,
+        "C": 0.284071,
+        "N": 0.003047,
+        "O": 0.077749,
+        "Na": 0.000116,
+        "Mg": 4e-06,
+        "P": 2.8e-05,
+        "S": 0.000122,
+        "Cl": 0.00018,
+        "K": 4.4e-05,
+        "Ca": 3e-06,
+        "Fe": 2e-06,
+        "Zn": 2e-06
+      }
+    },
+    "Tissue, Breast": {
+      "density": 1.02,
+      "elements": {
+        "H": 0.625772,
+        "C": 0.164488,
+        "N": 0.012745,
+        "O": 0.196005,
+        "Na": 0.000259,
+        "P": 0.000192,
+        "S": 0.000371,
+        "Cl": 0.000168
+      }
+    },
+    "Tissue, Lung (ICRP)": {
+      "density": 1.05,
+      "elements": {
+        "H": 0.633128,
+        "C": 0.053676,
+        "N": 0.012889,
+        "O": 0.298167,
+        "Na": 0.000504,
+        "Mg": 0.000189,
+        "P": 0.000163,
+        "S": 0.000442,
+        "Cl": 0.000473,
+        "K": 0.000313,
+        "Ca": 1.4e-05,
+        "Fe": 4.2e-05,
+        "Zn": 1e-06
+      }
+    },
+    "Tissue, Ovary": {
+      "density": 1.05,
+      "elements": {
+        "H": 0.643222,
+        "C": 0.047812,
+        "N": 0.01058,
+        "O": 0.2964,
+        "Na": 0.000537,
+        "P": 0.000399,
+        "S": 0.000385,
+        "Cl": 0.000348,
+        "K": 0.000316
+      }
+    },
+    "Tissue, Soft (ICRP)": {
+      "density": 1.0,
+      "elements": {
+        "H": 0.630445,
+        "C": 0.117591,
+        "N": 0.010805,
+        "O": 0.239606,
+        "Na": 0.000299,
+        "Mg": 3.3e-05,
+        "P": 0.000261,
+        "S": 0.000377,
+        "Cl": 0.00023,
+        "K": 0.00031,
+        "Ca": 3.5e-05,
+        "Fe": 5e-06,
+        "Zn": 3e-06
+      }
+    },
+    "Tissue, Soft (ICRU four component)": {
+      "density": 1.0,
+      "elements": {
+        "H": 0.630928,
+        "C": 0.058093,
+        "N": 0.011668,
+        "O": 0.299311
+      }
+    },
+    "Tissue, Testes (ICRP)": {
+      "density": 1.04,
+      "elements": {
+        "H": 0.641352,
+        "C": 0.047678,
+        "N": 0.008835,
+        "O": 0.300187,
+        "Na": 0.00061,
+        "Mg": 2.8e-05,
+        "P": 0.00025,
+        "S": 0.000283,
+        "Cl": 0.000427,
+        "K": 0.00033,
+        "Ca": 1.5e-05,
+        "Fe": 2e-06,
+        "Zn": 2e-06
+      }
+    },
+    "Tissue, Testis (ICRU)": {
+      "density": 1.04,
+      "elements": {
+        "H": 0.64517,
+        "C": 0.050569,
+        "N": 0.00876,
+        "O": 0.293726,
+        "Na": 0.000534,
+        "P": 0.000198,
+        "S": 0.000383,
+        "Cl": 0.000346,
+        "K": 0.000314
+      }
+    },
+    "Titanium": {
+      "density": 4.54,
+      "elements": {
+        "Ti": 1.0
+      }
+    },
+    "Titanium Dioxide": {
+      "density": 4.26,
+      "elements": {
+        "O": 0.666667,
+        "Ti": 0.333333
+      }
+    },
+    "Titanium Hydride": {
+      "density": 3.75,
+      "elements": {
+        "H": 0.666667,
+        "Ti": 0.333333
+      }
+    },
+    "Titanium alloy, grade 5": {
+      "density": 4.43,
+      "elements": {
+        "C": 0.003011,
+        "O": 0.00565,
+        "N": 0.001614,
+        "H": 0.006727,
+        "Fe": 0.003238,
+        "Al": 0.10261,
+        "V": 0.035493,
+        "Ti": 0.841659
+      }
+    },
+    "Toluene": {
+      "density": 0.8669,
+      "elements": {
+        "H": 0.533333,
+        "C": 0.466667
+      }
+    },
+    "Tributyl Borate": {
+      "density": 0.8567,
+      "elements": {
+        "H": 0.627907,
+        "B": 0.023256,
+        "C": 0.27907,
+        "O": 0.069767
+      }
+    },
+    "Tributyl Phosphate (TBP)": {
+      "density": 0.978,
+      "elements": {
+        "H": 0.613636,
+        "C": 0.272727,
+        "O": 0.090909,
+        "P": 0.022727
+      }
+    },
+    "Tungsten": {
+      "density": 19.3,
+      "elements": {
+        "W": 1.0
+      }
+    },
+    "Uranium Carbide": {
+      "density": 13.63,
+      "elements": {
+        "C": 0.5
+      },
+      "nuclides": {
+        "U234": 0.000136,
+        "U235": 0.015186,
+        "U236": 7e-05,
+        "U238": 0.484609
+      }
+    },
+    "Uranium Dicarbide": {
+      "density": 11.28,
+      "elements": {
+        "C": 0.666667
+      },
+      "nuclides": {
+        "U234": 9e-05,
+        "U235": 0.010124,
+        "U236": 4.6e-05,
+        "U238": 0.323072
+      }
+    },
+    "Uranium Dioxide": {
+      "density": 10.96,
+      "elements": {
+        "O": 0.666667
+      },
+      "nuclides": {
+        "U234": 9e-05,
+        "U235": 0.010124,
+        "U236": 4.6e-05,
+        "U238": 0.323072
+      }
+    },
+    "Uranium Hexafluoride": {
+      "density": 5.09,
+      "elements": {
+        "F": 0.857143
+      },
+      "nuclides": {
+        "U234": 3.9e-05,
+        "U235": 0.004339,
+        "U236": 2e-05,
+        "U238": 0.13846
+      }
+    },
+    "Uranium Hydride": {
+      "density": 11.1,
+      "elements": {
+        "H": 0.75
+      },
+      "nuclides": {
+        "U234": 6.8e-05,
+        "U235": 0.007593,
+        "U236": 3.5e-05,
+        "U238": 0.242304
+      }
+    },
+    "Uranium Nitride": {
+      "density": 14.31,
+      "elements": {
+        "N": 0.5
+      },
+      "nuclides": {
+        "U234": 0.000136,
+        "U235": 0.015186,
+        "U236": 7e-05,
+        "U238": 0.484609
+      }
+    },
+    "Uranium Oxide": {
+      "density": 8.38,
+      "elements": {
+        "O": 0.727273
+      },
+      "nuclides": {
+        "U234": 7.4e-05,
+        "U235": 0.008283,
+        "U236": 3.8e-05,
+        "U238": 0.264332
+      }
+    },
+    "Uranium Tetrafluoride": {
+      "density": 6.7,
+      "elements": {
+        "F": 0.8
+      },
+      "nuclides": {
+        "U234": 5.4e-05,
+        "U235": 0.006074,
+        "U236": 2.8e-05,
+        "U238": 0.193843
+      }
+    },
+    "Uranium Trioxide": {
+      "density": 7.29,
+      "elements": {
+        "O": 0.75
+      },
+      "nuclides": {
+        "U234": 6.8e-05,
+        "U235": 0.007593,
+        "U236": 3.5e-05,
+        "U238": 0.242304
+      }
+    },
+    "Uranium, Depleted, Typical": {
+      "density": 18.951157,
+      "nuclides": {
+        "U234": 5e-06,
+        "U235": 0.002532,
+        "U238": 0.997463
+      }
+    },
+    "Uranium, Enriched, Typical Commercial": {
+      "density": 18.944492296569006,
+      "nuclides": {
+        "U234": 0.00031,
+        "U235": 0.029967,
+        "U238": 0.969723
+      }
+    },
+    "Uranium, HEU, Health Physics Society": {
+      "density": 18.724867588072136,
+      "nuclides": {
+        "U234": 0.010582,
+        "U235": 0.932362,
+        "U236": 0.002053,
+        "U238": 0.055003
+      }
+    },
+    "Uranium, HEU, Russian Average": {
+      "density": 18.732853958893422,
+      "nuclides": {
+        "U234": 0.009722,
+        "U235": 0.898982,
+        "U236": 0.003798,
+        "U238": 0.087498
+      }
+    },
+    "Uranium, HEU, US Average": {
+      "density": 18.72476046627714,
+      "nuclides": {
+        "U234": 0.009849,
+        "U235": 0.932166,
+        "U236": 0.004484,
+        "U238": 0.053501
+      }
+    },
+    "Uranium, Low Enriched (LEU)": {
+      "density": 18.944385522215608,
+      "nuclides": {
+        "U234": 0.000271,
+        "U235": 0.030372,
+        "U236": 0.000139,
+        "U238": 0.969217
+      }
+    },
+    "Uranium, Natural (NU)": {
+      "density": 18.95,
+      "nuclides": {
+        "U234": 5.8e-05,
+        "U235": 0.007295,
+        "U238": 0.992647
+      }
+    },
+    "Uranium-Plutonium, Mixed Oxide (MOX)": {
+      "density": 11.0,
+      "elements": {
+        "O": 0.666666
+      },
+      "nuclides": {
+        "Pu238": 0.00039,
+        "Pu239": 0.008487,
+        "Pu240": 0.004032,
+        "Pu241": 0.001462,
+        "Pu242": 0.001103,
+        "U234": 4e-06,
+        "U235": 0.000805,
+        "U238": 0.317052
+      }
+    },
+    "Uranyl Fluoride": {
+      "density": 6.37,
+      "elements": {
+        "O": 0.4,
+        "F": 0.4
+      },
+      "nuclides": {
+        "U234": 5.4e-05,
+        "U235": 0.006074,
+        "U236": 2.8e-05,
+        "U238": 0.193843
+      }
+    },
+    "Uranyl Nitrate": {
+      "density": 2.81,
+      "elements": {
+        "N": 0.181818,
+        "O": 0.727273
+      },
+      "nuclides": {
+        "U234": 2.5e-05,
+        "U235": 0.002761,
+        "U236": 1.3e-05,
+        "U238": 0.088111
+      }
+    },
+    "Vermiculite, Exfoliated": {
+      "density": 0.085,
+      "elements": {
+        "H": 0.197174,
+        "O": 0.520979,
+        "Mg": 0.092157,
+        "Al": 0.039305,
+        "Si": 0.11341,
+        "K": 0.009307,
+        "Ca": 0.006852,
+        "Ti": 0.003457,
+        "Fe": 0.017361
+      }
+    },
+    "Viton Fluoroelastomer": {
+      "density": 1.8,
+      "elements": {
+        "H": 0.133322,
+        "C": 0.333345,
+        "F": 0.533333
+      }
+    },
+    "Water, Heavy": {
+      "density": 1.1044,
+      "elements": {
+        "O": 0.333333
+      },
+      "nuclides": {
+        "H2": 0.666667
+      }
+    },
+    "Water, Liquid": {
+      "density": 0.997,
+      "elements": {
+        "H": 0.666667,
+        "O": 0.333333
+      }
+    },
+    "Water, Vapor": {
+      "density": 0.000756182,
+      "elements": {
+        "H": 0.666667,
+        "O": 0.333333
+      }
+    },
+    "Wax, M3": {
+      "density": 1.05,
+      "elements": {
+        "H": 0.632195,
+        "C": 0.304374,
+        "O": 0.032117,
+        "Mg": 0.030913,
+        "Ca": 0.000401
+      }
+    },
+    "Wax, Mix D": {
+      "density": 0.99,
+      "elements": {
+        "H": 0.65887,
+        "C": 0.320928,
+        "O": 0.010845,
+        "Mg": 0.007867,
+        "Ti": 0.001489
+      }
+    },
+    "Wax, Paraffin": {
+      "density": 0.812,
+      "elements": {
+        "H": 0.675325,
+        "C": 0.324675
+      }
+    },
+    "Wood (Southern Pine)": {
+      "density": 0.64,
+      "elements": {
+        "H": 0.462413,
+        "C": 0.323396,
+        "N": 0.002773,
+        "O": 0.208782,
+        "Mg": 0.000639,
+        "S": 0.001211,
+        "K": 0.000397,
+        "Ca": 0.000388
+      }
+    },
+    "Xenon": {
+      "density": 0.00548536,
+      "elements": {
+        "Xe": 1.0
+      }
+    },
+    "Yttrium Aluminum Oxide - 1 atom% Cerium": {
+      "density": 4.56,
+      "elements": {
+        "O": 0.4,
+        "Al": 0.5,
+        "Y": 0.1
+      }
+    },
+    "Yttrium Aluminum Perovslite - 0.5 atom% Cerium": {
+      "density": 5.4,
+      "elements": {
+        "Y": 0.199,
+        "Al": 0.597,
+        "O": 0.199,
+        "Ce": 0.005
+      }
+    },
+    "Zeolite (Natrolite)": {
+      "density": 2.25,
+      "elements": {
+        "H": 0.173913,
+        "O": 0.521739,
+        "Na": 0.086957,
+        "Al": 0.086957,
+        "Si": 0.130435
+      }
+    },
+    "Zinc": {
+      "density": 7.133,
+      "elements": {
+        "Zn": 1.0
+      }
+    },
+    "Zinc Selenide": {
+      "density": 5.27,
+      "elements": {
+        "Zn": 0.5,
+        "Se": 0.5
+      }
+    },
+    "Zinc Sulfide": {
+      "density": 4.09,
+      "elements": {
+        "S": 0.5,
+        "Zn": 0.5
+      }
+    },
+    "Zircaloy-2": {
+      "density": 6.56,
+      "elements": {
+        "O": 0.006797,
+        "Cr": 0.001742,
+        "Fe": 0.001622,
+        "Ni": 0.000772,
+        "Zr": 0.97838,
+        "Sn": 0.010686
+      }
+    },
+    "Zircaloy-4": {
+      "density": 6.56,
+      "elements": {
+        "O": 0.00679,
+        "Cr": 0.001741,
+        "Fe": 0.003242,
+        "Zr": 0.97755,
+        "Sn": 0.010677
+      }
+    },
+    "Zirconium": {
+      "density": 6.52,
+      "elements": {
+        "Zr": 1.0
+      }
+    },
+    "Zirconium Hydride (Zr5H8)": {
+      "density": 5.61,
+      "elements": {
+        "H": 0.615385,
+        "Zr": 0.384615
+      }
+    },
+    "Zirconium Hydride (ZrH2)": {
+      "density": 5.6,
+      "elements": {
+        "H": 0.666667,
+        "Zr": 0.333333
+      }
+    },
+    "ZnS(Ag):LiF 95wt% 6Li PHOSPHOR POWDER Neutron Detectors": {
+      "density": 4.09,
+      "elements": {
+        "Zn": 0.439541,
+        "S": 0.439541,
+        "F": 0.060459
+      },
+      "nuclides": {
+        "Li6": 0.057849,
+        "Li7": 0.00261
+      }
+    },
+    "ZnS:Ag PHOSPHOR POWDER EJ-600 for Neutron Detectors": {
+      "density": 4.09,
+      "elements": {
+        "Zn": 0.5,
+        "S": 0.5
+      }
+    }
+  }
+}

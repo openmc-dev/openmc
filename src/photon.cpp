@@ -8,6 +8,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
+#include "openmc/physics.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
@@ -970,9 +971,9 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
       // Push the hole left by emitted auger electron onto the stack
       holes[n_holes++] = transition.secondary_subshell;
 
-      // Create auger electron
-      p.create_secondary(
-        p.wgt(), u, transition.energy, ParticleType::electron());
+      // Process Auger electron at the photon collision site.
+      process_charged_secondary(
+        p, u, transition.energy, ParticleType::electron());
     } else {
       // Radiative transition -- get X-ray energy
 

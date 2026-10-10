@@ -166,6 +166,86 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     assert (sp_tally.mean == tally.mean).all()
     assert sp_tally.nuclides == tally.nuclides
 
+
+def _virtual_material_tally():
+    tally = openmc.Tally()
+    tally.filters = [openmc.EnergyFilter([0.0, 1.0, 2.0])]
+    tally.nuclides = ['Si28', 'Si29', 'O16']
+    tally.scores = ['heating', 'damage-energy']
+    tally.multiply_density = False
+    tally._sp_filename = 'dummy.h5'
+    tally._results_read = True
+    tally._higher_moments = True
+
+    shape = (2, 3, 2)
+    n_realizations = 5
+    samples = np.arange(
+        1.0, n_realizations*np.prod(shape) + 1.0
+    ).reshape(n_realizations, *shape)
+    tally._num_realizations = samples.shape[0]
+    tally._sum = np.sum(samples, axis=0)
+    tally._sum_sq = np.sum(samples**2, axis=0)
+    tally._sum_third = np.sum(samples**3, axis=0)
+    tally._sum_fourth = np.sum(samples**4, axis=0)
+    return tally
+
+
+def test_apply_virtual_material():
+    tally = _virtual_material_tally()
+
+    material = openmc.Material()
+    material.add_nuclide('Si28', 0.04)
+    material.add_nuclide('Si29', 0.01)
+    material.set_density('sum')
+
+    original_sum = tally.sum.copy()
+    original_sum_sq = tally.sum_sq.copy()
+    original_sum_third = tally.sum_third.copy()
+    original_sum_fourth = tally.sum_fourth.copy()
+    original_mean = tally.mean.copy()
+    original_std_dev = tally.std_dev.copy()
+    original_shape = tally.shape
+
+    result = tally.apply_virtual_material(material)
+
+    factors = np.array([0.04, 0.01, 0.0])[np.newaxis, :, np.newaxis]
+    assert result is None
+    assert tally.shape == original_shape
+    assert tally.nuclides == ['Si28', 'Si29', 'O16']
+    assert tally.scores == ['heating', 'damage-energy']
+    assert tally.multiply_density is False
+    assert tally.sum == pytest.approx(original_sum * factors)
+    assert tally.sum_sq == pytest.approx(original_sum_sq * factors**2)
+    assert tally.sum_third == pytest.approx(original_sum_third * factors**3)
+    assert tally.sum_fourth == pytest.approx(original_sum_fourth * factors**4)
+    assert tally.mean == pytest.approx(original_mean * factors)
+    assert tally.std_dev == pytest.approx(original_std_dev * factors)
+
+
+def test_apply_virtual_material_errors():
+    material = openmc.Material()
+    material.add_nuclide('Si28', 1.0)
+    material.set_density('atom/b-cm', 0.05)
+
+    tally = _virtual_material_tally()
+    with pytest.raises(TypeError):
+        tally.apply_virtual_material('silicon')
+
+    tally.multiply_density = True
+    with pytest.raises(ValueError, match='multiply_density is True'):
+        tally.apply_virtual_material(material)
+
+    tally = openmc.Tally()
+    tally.multiply_density = False
+    with pytest.raises(ValueError, match='does not contain any results'):
+        tally.apply_virtual_material(material)
+
+    tally = _virtual_material_tally()
+    tally.nuclides = ['total']
+    with pytest.raises(ValueError, match='single nuclide'):
+        tally.apply_virtual_material(material)
+
+
 def _tally_from_data(x, *, higher_moments=True, normality=True):
     t = openmc.Tally()
     t.scores = ["flux"]  # 1 score

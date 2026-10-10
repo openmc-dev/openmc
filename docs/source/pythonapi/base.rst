@@ -21,6 +21,7 @@ Simulation Settings
    :nosignatures:
    :template: myclass.rst
 
+   openmc.ParticleType
    openmc.SourceBase
    openmc.IndependentSource
    openmc.FileSource

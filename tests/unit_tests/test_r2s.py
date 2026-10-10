@@ -78,6 +78,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     nt = Path(outdir) / 'neutron_transport'
     assert (nt / 'fluxes.npy').exists()
     assert (nt / 'micros.h5').exists()
+    assert (nt / 'tally_ids.json').exists()
     assert (nt / 'mesh_material_volumes_0.npz').exists()
     act = Path(outdir) / 'activation'
     assert (act / 'depletion_results.h5').exists()
@@ -89,6 +90,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     # Basic results structure checks
     assert len(r2s.results['fluxes']) == 2
     assert len(r2s.results['micros']) == 2
+    assert r2s.results['neutron_tallies'] == []
     assert len(r2s.results['mesh_material_volumes']) == 1
     assert len(r2s.results['mesh_material_volumes'][0]) == 2
     assert len(r2s.results['activation_materials']) == 2
@@ -107,6 +109,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     r2s_loaded.load_results(outdir)
     assert len(r2s_loaded.results['fluxes']) == 2
     assert len(r2s_loaded.results['micros']) == 2
+    assert r2s_loaded.results['neutron_tallies'] == []
     assert len(r2s_loaded.results['mesh_material_volumes']) == 1
     assert len(r2s_loaded.results['mesh_material_volumes'][0]) == 2
     assert len(r2s_loaded.results['activation_materials']) == 2
@@ -181,7 +184,7 @@ def test_r2s_multi_mesh(simple_model_and_mesh, tmp_path):
 
 def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
     model, (c1, c2), _ = simple_model_and_mesh
-    tally = openmc.Tally()
+    tally = openmc.Tally(name='neutron flux')
     tally.scores = ['flux']
     model.tallies = [tally]
 
@@ -208,6 +211,7 @@ def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
     nt = Path(outdir) / 'neutron_transport'
     assert (nt / 'fluxes.npy').exists()
     assert (nt / 'micros.h5').exists()
+    assert (nt / 'tally_ids.json').exists()
     act = Path(outdir) / 'activation'
     assert (act / 'depletion_results.h5').exists()
     pt = Path(outdir) / 'photon_transport'
@@ -217,6 +221,9 @@ def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
     # Basic results structure checks
     assert len(r2s.results['fluxes']) == 2
     assert len(r2s.results['micros']) == 2
+    assert len(r2s.results['neutron_tallies']) == 1
+    assert r2s.results['neutron_tallies'][0].id == tally.id
+    assert r2s.results['neutron_tallies'][0].mean[0] > 0.0
     assert len(r2s.results['activation_materials']) == 2
     assert len(r2s.results['depletion_results']) == 2
     assert r2s.photon_model.tallies[0].contains_filter(
@@ -236,6 +243,9 @@ def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
     r2s_loaded.load_results(outdir)
     assert len(r2s_loaded.results['fluxes']) == 2
     assert len(r2s_loaded.results['micros']) == 2
+    assert len(r2s_loaded.results['neutron_tallies']) == 1
+    assert r2s_loaded.results['neutron_tallies'][0].id == tally.id
+    assert r2s_loaded.results['neutron_tallies'][0].mean[0] > 0.0
     assert len(r2s_loaded.results['activation_materials']) == 2
     assert len(r2s_loaded.results['depletion_results']) == 2
 

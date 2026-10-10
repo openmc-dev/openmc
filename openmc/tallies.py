@@ -7,6 +7,7 @@ from math import sqrt, log
 from numbers import Integral, Real
 import operator
 from pathlib import Path
+import warnings
 import lxml.etree as ET
 
 import h5py
@@ -17,16 +18,16 @@ from scipy.stats import chi2, norm
 import openmc
 import openmc.checkvalue as cv
 from openmc.filter import (
-    Filter, 
-    DistribcellFilter, 
-    EnergyFunctionFilter, 
-    DelayedGroupFilter, 
-    FilterMeta, 
+    Filter,
+    DistribcellFilter,
+    EnergyFunctionFilter,
+    DelayedGroupFilter,
+    FilterMeta,
     MeshFilter,
     MeshBornFilter,
 )
 from openmc.arithmetic import (
-    CrossFilter, 
+    CrossFilter,
     AggregateFilter,
     CrossScore,
     AggregateScore,
@@ -596,14 +597,23 @@ class Tally(IDManagerMixin):
 
             n = self.num_realizations
             nonzero = np.abs(self.mean) > 0
-            self._std_dev = np.zeros_like(self.mean)
-            self._std_dev[nonzero] = np.sqrt((self.sum_sq[nonzero]/n -
-                                              self.mean[nonzero]**2)/(n - 1))
+            std_dev = np.zeros_like(self.mean)
+            if n > 1:
+                # Rounding can push the variance below zero when realizations
+                # are nearly identical, so clamp at zero
+                variance = (self.sum_sq[nonzero]/n - self.mean[nonzero]**2)/(n - 1)
+                std_dev[nonzero] = np.sqrt(np.maximum(variance, 0.0))
+            elif nonzero.any():
+                warnings.warn(
+                    'Standard deviation is undefined for a tally with a single '
+                    'realization; reporting it as NaN.')
+                std_dev[nonzero] = np.nan
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = lil_array(self._std_dev.reshape(1, -1))
+                std_dev = lil_array(std_dev.reshape(1, -1))
 
+            self._std_dev = std_dev
             self.with_batch_statistics = True
 
         if self.sparse:
@@ -1518,6 +1528,64 @@ class Tally(IDManagerMixin):
         self._higher_moments = False
         self._num_realizations = 0
         self._results_read = False
+
+    def apply_virtual_material(self, material: openmc.Material) -> None:
+        """Apply nuclide densities from a material to tally results.
+
+        This method multiplies each nuclide bin in the tally by the
+        corresponding atom density in ``material``. Nuclides that are not
+        present in the material are multiplied by zero. The operation is
+        performed in place and the nuclide dimension is preserved.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        material : openmc.Material
+            Material whose nuclide atom densities are to be applied
+
+        Raises
+        ------
+        ValueError
+            If ``multiply_density`` is ``True``, the tally has no results, or
+            the tally contains a nuclide bin that does not represent a single
+            nuclide.
+
+        """
+        cv.check_type('virtual material', material, openmc.Material)
+
+        if self.multiply_density:
+            raise ValueError('Unable to apply a virtual material when '
+                             'multiply_density is True.')
+
+        # Accessing sum ensures that results are read from the statepoint before
+        # inspecting nuclide bins or modifying the underlying moments
+        if self.sum is None:
+            raise ValueError('Unable to apply a virtual material since the '
+                             'tally does not contain any results.')
+
+        if any(not isinstance(n, str) or n == 'total' for n in self.nuclides):
+            raise ValueError('Unable to apply a virtual material unless every '
+                             'nuclide bin represents a single nuclide.')
+
+        # Get the matching nuclide atom densities in [atom/b-cm]
+        densities = material.get_nuclide_atom_densities()
+        factors = np.array(
+            [densities.get(nuclide, 0.0) for nuclide in self.nuclides]
+        )[np.newaxis, :, np.newaxis]
+
+        # Scale the raw moments by the atom densities
+        self._sum *= factors
+        self._sum_sq *= factors**2
+        if self._sum_third is not None:
+            self._sum_third *= factors**3
+        if self._sum_fourth is not None:
+            self._sum_fourth *= factors**4
+
+        # Recompute derived statistics from the scaled raw moments on demand
+        self._mean = None
+        self._std_dev = None
+        self._vov = None
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):

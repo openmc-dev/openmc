@@ -44,6 +44,7 @@ def test_weight_windows_fw_cadis_mesh(shape):
         model.settings.inactive = 20
 
         model.settings.random_ray['source_shape'] = shape
+        model.settings.random_ray['volume_estimator'] = 'hybrid'
 
         harness = MGXSTestHarness('statepoint.30.h5', model)
         harness.main()

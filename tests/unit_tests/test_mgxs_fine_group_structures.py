@@ -111,8 +111,8 @@ def test_build_non_integer_bins_per_macro():
 
 @pytest.mark.parametrize('name, rtol', [
     ('VESTA-43000', 1e-12),
-    # FOMG edges were tabulated to 7 significant figures
-    ('FOMG-16000', 1e-6),
+    # FOMG edges were tabulated to 9 significant figures
+    ('FOMG-16000', 1e-9),
 ])
 def test_reference_edges(reference, name, rtol):
     edges = GROUP_STRUCTURES[name]

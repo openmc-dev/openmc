@@ -1363,6 +1363,6 @@ GROUP_STRUCTURES['FOMG-16000'] = build_fine_group_structure(
     [1e-5, 1e-3, 1., 2e6, 1.96e7], [1, 999, 14000, 1000],
     spacing=['linear', 'linear', 'log', 'linear'])
 GROUP_STRUCTURES['VESTA-43000'] = build_fine_group_structure(
-    [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0,  1e1., 1e2.,  1e3,   1e4,  1e5,  1e6,  1e7, 2e7],
+    [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0,  1e1, 1e2,  1e3,   1e4,  1e5,  1e6,  1e7, 2e7],
     [1000, 1000, 1000, 1000, 1000, 4000, 4000, 10000, 10000, 4000, 4000, 1000, 1000])
 GROUP_STRUCTURES['VESTA-100000'] = build_fine_group_structure([1e-5, 2e7], 100000)

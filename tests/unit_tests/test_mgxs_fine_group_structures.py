@@ -14,7 +14,7 @@ REFERENCE_FILE = Path(__file__).with_name('fine_group_structures_reference.npz')
 # VESTA-43000 macro group bounds [eV] and number of fine group bins per macro group
 VESTA43000_MACRO_BOUNDS = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1., 10., 100., 1e3, 1e4, 1e5,
                 1e6, 1e7, 2e7]
-VESTA43000_NUM_FINE_BINS = [1000, 1000, 1000, 1000, 1000, 4000, 4000, 10000,
+VESTA43000_BINS_PER_MACRO = [1000, 1000, 1000, 1000, 1000, 4000, 4000, 10000,
                     10000, 4000, 4000, 1000, 1000]
 
 
@@ -45,13 +45,13 @@ def test_build_scalar_arguments(spacing):
 
 def test_build_mixed_spacing():
     macro_bounds = [0., 1., 1e3, 2e7]
-    num_fine_bins = [4, 30, 7]
+    bins_per_macro = [4, 30, 7]
     spacing = ['linear', 'log', 'linear']
-    edges = build_fine_group_structure(macro_bounds, num_fine_bins, spacing)
-    assert edges.size == sum(num_fine_bins) + 1
+    edges = build_fine_group_structure(macro_bounds, bins_per_macro, spacing)
+    assert edges.size == sum(bins_per_macro) + 1
 
     # Macro group bounds are reproduced exactly
-    idx = np.cumsum([0] + num_fine_bins)
+    idx = np.cumsum([0] + bins_per_macro)
     np.testing.assert_array_equal(edges[idx], macro_bounds)
 
     # Constant lethargy ('log') or energy ('linear') width within a macro group
@@ -69,7 +69,7 @@ def test_build_linear_from_zero():
     np.testing.assert_array_equal(edges, [0., 0.25, 0.5, 0.75, 1.])
 
 
-def test_build_uint8_num_fine_bins():
+def test_build_uint8_bins_per_macro():
     # np.uint8(255) + 1 would wrap to 0 if the count stayed a numpy scalar
     edges = build_fine_group_structure([1., 10.], np.uint8(255))
     assert edges.size == 256
@@ -77,7 +77,7 @@ def test_build_uint8_num_fine_bins():
     assert edges[-1] == 10.
 
 
-def test_build_array_num_fine_bins_tuple_spacing():
+def test_build_array_bins_per_macro_tuple_spacing():
     edges = build_fine_group_structure(
         [1., 10., 100.], np.array([3, 4], dtype=np.int64),
         spacing=('log', 'linear'))
@@ -85,7 +85,7 @@ def test_build_array_num_fine_bins_tuple_spacing():
     np.testing.assert_array_equal(edges[[0, 3, 7]], [1., 10., 100.])
 
 
-@pytest.mark.parametrize('macro_bounds, num_fine_bins, spacing', [
+@pytest.mark.parametrize('macro_bounds, bins_per_macro, spacing', [
     pytest.param([1., 10., 100.], [10], 'log', id='num-groups-length'),
     pytest.param([1., 10., 100.], 10, ['log'], id='spacing-length'),
     pytest.param([1., 100., 10.], 10, 'log', id='decreasing-bounds'),
@@ -99,12 +99,12 @@ def test_build_array_num_fine_bins_tuple_spacing():
     pytest.param([0., 10.], 10, 'log', id='log-from-zero'),
     pytest.param([1., 1. + 1e-12], 100000, 'log', id='too-narrow-macrobound'),
 ])
-def test_build_invalid(macro_bounds, num_fine_bins, spacing):
+def test_build_invalid(macro_bounds, bins_per_macro, spacing):
     with pytest.raises(ValueError):
-        build_fine_group_structure(macro_bounds, num_fine_bins, spacing)
+        build_fine_group_structure(macro_bounds, bins_per_macro, spacing)
 
 
-def test_build_non_integer_num_fine_bins():
+def test_build_non_integer_bins_per_macro():
     with pytest.raises(TypeError):
         build_fine_group_structure([1., 10.], 2.5)
 
@@ -128,10 +128,10 @@ def test_vesta_43000():
     assert edges.size == 43001
 
     # Macrogroup endpoints are exact; lethargy width ln(hi/lo)/n inside
-    idx = np.cumsum([0] + VESTA43000_NUM_FINE_BINS)
+    idx = np.cumsum([0] + VESTA43000_BINS_PER_MACRO)
     np.testing.assert_array_equal(edges[idx], VESTA43000_MACRO_BOUNDS)
     for lo, hi, n, start, stop in zip(VESTA43000_MACRO_BOUNDS[:-1], VESTA43000_MACRO_BOUNDS[1:],
-                                      VESTA43000_NUM_FINE_BINS, idx[:-1], idx[1:]):
+                                      VESTA43000_BINS_PER_MACRO, idx[:-1], idx[1:]):
         du = np.diff(np.log(edges[start:stop + 1]))
         np.testing.assert_allclose(du, np.log(hi / lo) / n, rtol=1e-9)
 
@@ -170,6 +170,6 @@ def test_vesta_100000():
 ])
 def test_name_lookup(name, n_groups):
     assert openmc.EnergyFilter.from_group_structure(name).num_bins == n_groups
-    assert openmc.mgxs.EnergyGroups(name).num_fine_bins == n_groups
+    assert openmc.mgxs.EnergyGroups(name).num_groups == n_groups
     f = openmc.ParticleProductionFilter('photon', energies=name)
     assert f.num_energy_bins == n_groups

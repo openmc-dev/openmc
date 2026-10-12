@@ -441,12 +441,12 @@ def convert_flux_groups(flux, source_groups, target_groups):
     return flux_target
 
 
-def build_fine_group_structure(macro_bounds, num_fine_bins, spacing='log'):
-    """Generate energy group boundaries from # fine bins per macro-group.
+def build_fine_group_structure(macro_bounds, bins_per_macro, spacing='log'):
+    """Generate energy group boundaries from macro-intervals and bins_per_macro.
 
-    The energy range is split into num_fine_bins by ``macro_bounds``. Interval
+    The energy range is split into macro-intervals by ``macro_bounds``. Interval
     ``i`` (from ``macro_bounds[i]`` to ``macro_bounds[i+1]``) is subdivided into
-    ``num_fine_bins[i]`` groups of equal lethargy width (``spacing='log'``) or
+    ``bins_per_macro[i]`` groups of equal lethargy width (``spacing='log'``) or
     equal energy width (``spacing='linear'``). Ultra-fine structures for
     multi-group binning of reaction rates are defined this way, e.g. the
     VESTA-43000 group structure [HAECK2007]_ and the FOMG-16000 group structure
@@ -457,11 +457,10 @@ def build_fine_group_structure(macro_bounds, num_fine_bins, spacing='log'):
     Parameters
     ----------
     macro_bounds : iterable of float
-        Macro-group boundaries in [eV], non-negative and strictly
-        increasing.
-    num_fine_bins : int or iterable of int
-        Number of groups in each macro-group. A single integer applies to
-        every macro-group interval.
+        Macro-group boundaries in [eV], non-negative and strictly increasing.
+    bins_per_macro : int or iterable of int
+        Number of fine energy groups in each macro-group. 
+        A single integer applies to every macro-group interval.
     spacing : {'log', 'linear'} or iterable of str, optional
         Spacing within each macro-group: ``'log'`` for equal lethargy
         width, ``'linear'`` for equal energy width. A single value applies to
@@ -493,15 +492,15 @@ def build_fine_group_structure(macro_bounds, num_fine_bins, spacing='log'):
     num_macro_groups = macro_bounds.size - 1
 
     # A scalar group count or spacing applies to every macro-group interval
-    if np.ndim(num_fine_bins) == 0:
-        num_fine_bins = [num_fine_bins] * num_macro_groups
+    if np.ndim(bins_per_macro) == 0:
+        bins_per_macro = [bins_per_macro] * num_macro_groups
     if np.ndim(spacing) == 0:
         spacing = [spacing] * num_macro_groups
-    cv.check_length('num_fine_bins', num_fine_bins, num_macro_groups, num_macro_groups)
+    cv.check_length('bins_per_macro', bins_per_macro, num_macro_groups, num_macro_groups)
     cv.check_length('spacing', spacing, num_macro_groups, num_macro_groups)
 
     edges = [macro_bounds[:1]]
-    for lo, hi, n, kind in zip(macro_bounds[:-1], macro_bounds[1:], num_fine_bins, spacing):
+    for lo, hi, n, kind in zip(macro_bounds[:-1], macro_bounds[1:], bins_per_macro, spacing):
         # Plain int, so that n + 1 cannot wrap for fixed-width numpy integers
         n = operator.index(n)
         if n < 1:

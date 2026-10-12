@@ -1360,7 +1360,7 @@ GROUP_STRUCTURES['ECCO-1968'] = np.array([
     1.899644e7, 1.915541e7, 1.931570e7, 1.947734e7, 1.964033e7])
 # formulaic fine group energy structures
 GROUP_STRUCTURES['FOMG-16000'] = build_fine_group_structure(
-    [1e-5, 1e-3, 1., 2e6, 1.96e7], [1, 999, 14000, 1000],
+    [1e-5, 1e-3, 1e0, 2e6, 1.96e7], [1, 999, 14000, 1000],
     spacing=['linear', 'linear', 'log', 'linear'])
 GROUP_STRUCTURES['VESTA-43000'] = build_fine_group_structure(
     [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0,  1e1, 1e2,  1e3,   1e4,  1e5,  1e6,  1e7, 2e7],

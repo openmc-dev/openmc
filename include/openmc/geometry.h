@@ -109,6 +109,10 @@ bool neighbor_list_find_cell(GeometryState& p, bool verbose = false);
 
 void reconcile_cell_after_collision(GeometryState& p);
 
+bool find_cell_in_virtual_lattice(GeometryState& p,
+  bool verbose =
+    false); // Only usable on triso surface crossings in virtual lattice
+
 //==============================================================================
 //! Move a particle into a new lattice tile.
 //==============================================================================

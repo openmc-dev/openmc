@@ -14,7 +14,7 @@ import numpy as np
 import scipy.spatial
 
 import openmc
-from ..checkvalue import check_type
+from ..checkvalue import check_greater_than, check_type
 
 
 MAX_PF_RSP = 0.38  # maximum packing fraction for random sequential packing
@@ -802,6 +802,295 @@ class _SphericalShell(_Container):
             q[:] = (q - c)*ll[0]/r + c
 
 
+class _RegionContainer(_Container):
+    """Generic region container in which to pack spheres.
+
+    Parameters
+    ----------
+    region : openmc.Region
+        Region defining the container boundary.
+    bounding_box : openmc.BoundingBox
+        Finite bounding box enclosing the region.
+    volume : float
+        Volume of the region.
+    sphere_radius : float
+        Radius of spheres to be packed in container.
+
+    Attributes
+    ----------
+    region : openmc.Region
+        Region defining the container boundary.
+    bounding_box : openmc.BoundingBox
+        Finite bounding box enclosing the region.
+    volume : float
+        Volume of the region.
+    sphere_radius : float
+        Radius of spheres to be packed in container.
+    center : list of float
+        Cartesian coordinates of the center of the container bounding box.
+    cell_length : list of float
+        Length in x-, y-, and z- directions of each cell in mesh overlaid on
+        domain.
+    limits : list of float
+        Minimum and maximum distance in x-, y-, and z-direction where sphere
+        center can be placed.
+
+    """
+
+    _DIRECTION_COUNT = 50
+    _SAFETY_FACTOR = 1.001
+    _MAX_POINT_ATTEMPTS = 10000
+    _MAX_BACKTRACKS = 20
+
+    def __init__(self, region, bounding_box, volume, sphere_radius):
+        super().__init__(sphere_radius, center=bounding_box.center)
+        self.region = region
+        self.bounding_box = bounding_box
+        self._volume = float(volume)
+        self._boundary_radius = None
+        self._analytic_surfaces = self._build_analytic_surfaces()
+        self._directions = None
+
+    @property
+    def region(self):
+        return self._region
+
+    @region.setter
+    def region(self, region):
+        check_type('region', region, openmc.Region)
+        self._region = region
+
+    @property
+    def bounding_box(self):
+        return self._bounding_box
+
+    @bounding_box.setter
+    def bounding_box(self, bounding_box):
+        check_type('bounding_box', bounding_box, openmc.BoundingBox)
+        self._bounding_box = bounding_box
+        self._limits = None
+        self._cell_length = None
+
+    @property
+    def boundary_radius(self):
+        if self._boundary_radius is None:
+            return self.sphere_radius
+        return self._boundary_radius
+
+    @boundary_radius.setter
+    def boundary_radius(self, boundary_radius):
+        self._boundary_radius = float(boundary_radius)
+
+    @property
+    def limits(self):
+        if self._limits is None:
+            r = self.sphere_radius
+            ll = self.bounding_box.lower_left + r
+            ur = self.bounding_box.upper_right - r
+            self._limits = [ll, ur]
+        return self._limits
+
+    @limits.setter
+    def limits(self, limits):
+        self._limits = limits
+
+    @property
+    def cell_length(self):
+        if self._cell_length is None:
+            mesh_length = self.bounding_box.width
+            self._cell_length = [x/int(x/(4*self.sphere_radius))
+                                 for x in mesh_length]
+        return self._cell_length
+
+    @property
+    def volume(self):
+        return self._volume
+
+    @classmethod
+    def from_region(self, region, sphere_radius, bounding_box=None, volume=None):
+        check_type('region', region, openmc.Region)
+
+        if volume is None:
+            raise ValueError('`volume` must be provided for generic regions.')
+        check_type('volume', volume, Real)
+        check_greater_than('volume', volume, 0.0)
+
+        if bounding_box is None:
+            bounding_box = region.bounding_box
+        check_type('bounding_box', bounding_box, openmc.BoundingBox)
+        if (np.isinf(bounding_box.lower_left).any() or
+            np.isinf(bounding_box.upper_right).any()):
+            raise ValueError('`bounding_box` must be finite for generic regions.')
+
+        return _RegionContainer(region, bounding_box, volume, sphere_radius)
+
+    def random_point(self):
+        ll, ul = self.limits
+        for _ in range(self._MAX_POINT_ATTEMPTS):
+            p = np.array([uniform(ll[0], ul[0]),
+                          uniform(ll[1], ul[1]),
+                          uniform(ll[2], ul[2])])
+            if self._is_valid_center(p):
+                return p.tolist()
+        raise ValueError('Failed to sample a valid point in the region. '
+                         'Consider providing a tighter bounding_box or '
+                         'verifying the region is closed.')
+
+    def repel_spheres(self, p, q, d, d_new):
+        s = (d_new - d)/2
+
+        v = (p - q)/d
+        p_old = p.copy()
+        q_old = q.copy()
+        p_target = p_old + s*v
+        q_target = q_old - s*v
+        if (self._is_valid_center(p_target) and
+            self._is_valid_center(q_target)):
+            p[:] = p_target
+            q[:] = q_target
+            return
+
+        self._backtrack_pair(p, q, p_old, q_old, p_target, q_target)
+
+    def _backtrack_pair(self, p, q, p_old, q_old, p_target, q_target):
+        for i in range(self._MAX_BACKTRACKS):
+            alpha = 0.5**(i + 1)
+            p_candidate = p_old + alpha*(p_target - p_old)
+            q_candidate = q_old + alpha*(q_target - q_old)
+            if (self._is_valid_center(p_candidate) and
+                self._is_valid_center(q_candidate)):
+                p[:] = p_candidate
+                q[:] = q_candidate
+                return
+        p[:] = p_old
+        q[:] = q_old
+
+    def _is_valid_center(self, point):
+        point = np.asarray(point, dtype=float)
+        boundary_radius = self.boundary_radius
+        if self._analytic_surfaces is not None:
+            for entry in self._analytic_surfaces:
+                if self._analytic_clearance(entry, point) < boundary_radius:
+                    return False
+            return True
+
+        for direction in self._direction_vectors():
+            if (point + self._SAFETY_FACTOR*boundary_radius*direction
+                not in self.region):
+                return False
+        return True
+
+    def _direction_vectors(self):
+        if self._directions is None:
+            self._directions = self._fibonacci_directions(self._DIRECTION_COUNT)
+        return self._directions
+
+    @staticmethod
+    def _fibonacci_directions(count):
+        directions = []
+        offset = 2.0/count
+        increment = pi*(3.0 - sqrt(5.0))
+        for i in range(count):
+            y = ((i*offset) - 1) + (offset/2)
+            r = sqrt(max(0.0, 1 - y*y))
+            phi = i*increment
+            x = cos(phi)*r
+            z = sin(phi)*r
+            directions.append(np.array([x, y, z]))
+        return directions
+
+    def _build_analytic_surfaces(self):
+        if isinstance(self.region, openmc.Halfspace):
+            nodes = [self.region]
+        elif (isinstance(self.region, openmc.Intersection) and
+              all(isinstance(node, openmc.Halfspace) for node in self.region)):
+            nodes = list(self.region)
+        else:
+            return None
+
+        entries = []
+        for node in nodes:
+            surface = node.surface
+            side = node.side
+
+            if isinstance(surface, (openmc.Plane, openmc.XPlane, openmc.YPlane,
+                                    openmc.ZPlane)):
+                a, b, c = surface.a, surface.b, surface.c
+                norm = sqrt(a*a + b*b + c*c)
+                if np.isclose(norm, 0.0):
+                    return None
+                entries.append(('plane', side, surface, norm))
+            elif isinstance(surface, openmc.Sphere):
+                center = np.array([surface.x0, surface.y0, surface.z0])
+                entries.append(('sphere', side, center, surface.r))
+            elif isinstance(surface, openmc.XCylinder):
+                entries.append(('xcylinder', side, surface.y0, surface.z0,
+                                surface.r))
+            elif isinstance(surface, openmc.YCylinder):
+                entries.append(('ycylinder', side, surface.x0, surface.z0,
+                                surface.r))
+            elif isinstance(surface, openmc.ZCylinder):
+                entries.append(('zcylinder', side, surface.x0, surface.y0,
+                                surface.r))
+            elif isinstance(surface, (openmc.Cone, openmc.XCone, openmc.YCone,
+                                      openmc.ZCone)):
+                axis = np.array([surface.dx, surface.dy, surface.dz],
+                                dtype=float)
+                axis_norm = np.linalg.norm(axis)
+                if np.isclose(axis_norm, 0.0):
+                    return None
+                axis = axis/axis_norm
+                apex = np.array([surface.x0, surface.y0, surface.z0])
+                k = sqrt(surface.r2)
+                entries.append(('cone', side, apex, axis, k))
+            else:
+                return None
+
+        return entries
+
+    def _analytic_clearance(self, entry, point):
+        kind = entry[0]
+        side = entry[1]
+
+        if kind == 'plane':
+            surface = entry[2]
+            norm = entry[3]
+            value = surface.evaluate(point)
+            return (value if side == '+' else -value)/norm
+
+        if kind == 'sphere':
+            center = entry[2]
+            radius = entry[3]
+            r = np.linalg.norm(point - center)
+            return radius - r if side == '-' else r - radius
+
+        if kind == 'xcylinder':
+            y0, z0, radius = entry[2], entry[3], entry[4]
+            r = sqrt((point[1] - y0)**2 + (point[2] - z0)**2)
+            return radius - r if side == '-' else r - radius
+
+        if kind == 'ycylinder':
+            x0, z0, radius = entry[2], entry[3], entry[4]
+            r = sqrt((point[0] - x0)**2 + (point[2] - z0)**2)
+            return radius - r if side == '-' else r - radius
+
+        if kind == 'zcylinder':
+            x0, y0, radius = entry[2], entry[3], entry[4]
+            r = sqrt((point[0] - x0)**2 + (point[1] - y0)**2)
+            return radius - r if side == '-' else r - radius
+
+        apex = entry[2]
+        axis = entry[3]
+        k = entry[4]
+        w = point - apex
+        a = np.dot(w, axis)
+        b = np.linalg.norm(w - a*axis)
+        denom = sqrt(1 + k*k)
+        if side == '-':
+            return (k*abs(a) - b)/denom
+        return (b - k*abs(a))/denom
+
+
 def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     """Create a lattice containing TRISO particles for optimized tracking.
 
@@ -1208,7 +1497,8 @@ def _close_random_pack(domain, spheres, contraction_rate):
 
 
 def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
-                 contraction_rate=1.e-3, seed=None):
+                 contraction_rate=1.e-3, seed=None, bounding_box=None,
+                 volume=None):
     """Generate a random, non-overlapping configuration of spheres within a
     container.
 
@@ -1218,7 +1508,9 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
         Outer radius of spheres.
     region : openmc.Region
         Container in which the spheres are packed. Supported shapes are
-        rectangular prism, cylinder, sphere, and spherical shell.
+        rectangular prism, cylinder, sphere, and spherical shell. Other closed
+        regions are supported when `bounding_box` is finite and `volume` is
+        provided.
     pf : float
         Packing fraction of the spheres. One of 'pf' and 'num_spheres' must
         be specified; the other will be calculated. If both are specified, 'pf'
@@ -1238,6 +1530,12 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
         longer to converge.
     seed : int, optional
         Pseudorandom number generator seed passed to :func:`random.seed`
+    bounding_box : openmc.BoundingBox, optional
+        Bounding box used to sample sphere centers for generic regions. This
+        is required when the region's bounding box is unbounded.
+    volume : float, optional
+        Volume of the region. This is required for generic regions and is
+        ignored for analytic container shapes.
 
     Returns
     ------
@@ -1285,27 +1583,37 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
 
     # Create container with the correct shape based on the supplied region
     domain = None
-    for cls in _Container.__subclasses__():
+    for cls in (_RectangularPrism, _Cylinder, _SphericalShell):
         try:
             domain = cls.from_region(region, radius)
+            break
         except ValueError:
             pass
 
     if not domain:
-        raise ValueError('Could not map region {} to a container: supported '
-                         'container shapes are rectangular prism, cylinder, '
-                         'sphere, and spherical shell.'.format(region))
+        try:
+            domain = _RegionContainer.from_region(
+                region, radius, bounding_box=bounding_box, volume=volume)
+        except ValueError as exc:
+            raise ValueError(
+                f'Could not create container from region {region}: {exc}'
+            ) from exc
 
     # Determine the packing fraction/number of spheres
-    volume = _volume_sphere(radius)
+    sphere_volume = _volume_sphere(radius)
     if pf is None and num_spheres is None:
         raise ValueError('`pf` or `num_spheres` must be specified.')
     elif pf is None:
         num_spheres = int(num_spheres)
-        pf = volume*num_spheres/domain.volume
+        pf = sphere_volume*num_spheres/domain.volume
     else:
         pf = float(pf)
-        num_spheres = int(pf*domain.volume//volume)
+        num_spheres = int(pf*domain.volume//sphere_volume)
+
+    pf_actual = sphere_volume*num_spheres/domain.volume
+    if isinstance(domain, _RegionContainer) and pf <= MAX_PF_RSP:
+        pf = pf_actual
+        initial_pf = pf
 
     # Make sure initial packing fraction is less than packing fraction
     if initial_pf > pf:
@@ -1331,6 +1639,9 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
     # within the domain during the close random pack
     domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
                      [x + initial_radius - radius for x in domain.limits[1]]]
+
+    if isinstance(domain, _RegionContainer):
+        domain.boundary_radius = radius
 
     # Generate non-overlapping spheres for an initial inner radius using
     # random sequential packing algorithm

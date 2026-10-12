@@ -8,7 +8,6 @@ import pytest
 import openmc
 from openmc.mgxs import GROUP_STRUCTURES, build_fine_group_structure
 
-# Edges tabulated from: !!TODOXYZ!!
 REFERENCE_FILE = Path(__file__).with_name('fine_group_structures_reference.npz')
 
 # VESTA-43000 macro group bounds [eV] and number of fine group bins per macro group
@@ -111,7 +110,7 @@ def test_build_non_integer_bins_per_macro():
 
 @pytest.mark.parametrize('name, rtol', [
     ('VESTA-43000', 1e-12),
-    # FOMG edges were tabulated to 9 significant figures
+    # FOMG edges were tabulated to 10 significant figures
     ('FOMG-16000', 1e-9),
 ])
 def test_reference_edges(reference, name, rtol):

@@ -459,7 +459,7 @@ def build_fine_group_structure(macro_bounds, bins_per_macro, spacing='log'):
     macro_bounds : iterable of float
         Macro-group boundaries in [eV], non-negative and strictly increasing.
     bins_per_macro : int or iterable of int
-        Number of fine energy groups in each macro-group. 
+        Number of fine energy groups in each macro-group.
         A single integer applies to every macro-group interval.
     spacing : {'log', 'linear'} or iterable of str, optional
         Spacing within each macro-group: ``'log'`` for equal lethargy

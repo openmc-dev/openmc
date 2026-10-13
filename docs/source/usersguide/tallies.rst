@@ -103,17 +103,19 @@ its precursor.
    :class:`openmc.CellBornFilter`, and the neutron lifetime of the iterated
    fission probability method, have the same limitation.
 
-Because the filter weight changes along a track, a tally with this filter uses
-a collision estimator unless an analog estimator is requested or required by
-another filter or score (for example, by an :class:`openmc.EnergyoutFilter`).
-Requesting a track-length estimator for such a tally in ``tallies.xml``
-results in an error. A tally created at run time through :mod:`openmc.lib`
-that has a track-length estimator, whether by default or set explicitly, is
-instead switched, with a warning, when the simulation is initialized: to an
-analog estimator if another filter or score requires one, as for a tally read
-from ``tallies.xml``, and to a collision estimator otherwise. Since collision
-and analog estimators only score at collisions, a tally with this filter
-scores nothing in void regions. In surface current tallies on a mesh
+Because the filter weight changes along a track, a tally with this filter
+cannot use a track-length estimator. A tally read from ``tallies.xml`` gets the
+estimator that it would get without this filter, except that a collision
+estimator replaces the default track-length one. For example, a tally with
+only this filter and a ``flux`` score uses a collision estimator, and one with
+this filter, an :class:`openmc.EnergyoutFilter`, and a ``nu-fission`` score
+uses an analog estimator. Requesting a track-length estimator for such a tally
+in ``tallies.xml`` results in an error. A tally created at run time through
+:mod:`openmc.lib` that has a track-length estimator, whether by default or set
+explicitly, is instead switched, with a warning, when the simulation is
+initialized, to the estimator that the same tally gets from ``tallies.xml``.
+Since collision and analog estimators only score at collisions, a tally with
+this filter scores nothing in void regions. In surface current tallies on a mesh
 (:class:`openmc.MeshSurfaceFilter`), :math:`\tau` is the time since birth at
 the end of the flight that crossed the mesh surface rather than at the
 crossing, as for :class:`openmc.TimeFilter`.

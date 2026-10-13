@@ -841,45 +841,102 @@ void Tally::check_estimator()
       !this->has_filter(FilterType::LIFETIME_MOMENT))
     return;
 
-  // As in the constructor, an analog estimator is used if another filter
-  // requires one, and a collision estimator otherwise. This does not rely on
-  // set_scores(), which may have been called before the filters of a tally
-  // created at run time were set.
-  estimator_ = TallyEstimator::COLLISION;
+  // The estimator is chosen as for the same tally read from tallies.xml: the
+  // filters select one in their order, as in the constructor, and then the
+  // scores in their order, as in set_scores(), so that the last rule that
+  // applies decides. The choice of set_scores() itself is not used: it may have
+  // been made before the filters of a tally created at run time were set, and a
+  // track-length estimator can be set afterwards (e.g., through
+  // openmc_tally_set_estimator()).
+  std::string selected_by; // filter or score that made the choice
+  auto select = [&](TallyEstimator estimator, const std::string& by) {
+    if (estimator_ != estimator || selected_by.empty()) {
+      estimator_ = estimator;
+      selected_by = by;
+    }
+  };
+
+  bool legendre_present = false;
+  bool neutron_only = false;
   for (auto i_filt : filters_) {
     const auto* filt = model::tally_filters[i_filt].get();
     switch (filt->type()) {
-    case FilterType::ENERGY_OUT:
     case FilterType::LEGENDRE:
+      legendre_present = true;
+      select(TallyEstimator::ANALOG, filt->type_str() + " filter");
+      break;
+    case FilterType::ENERGY_OUT:
     case FilterType::PARTICLE_PRODUCTION:
-      estimator_ = TallyEstimator::ANALOG;
+      select(TallyEstimator::ANALOG, filt->type_str() + " filter");
       break;
     case FilterType::SPHERICAL_HARMONICS:
       if (dynamic_cast<const SphericalHarmonicsFilter*>(filt)->cosine() ==
           SphericalHarmonicsCosine::scatter)
-        estimator_ = TallyEstimator::ANALOG;
+        select(TallyEstimator::ANALOG, filt->type_str() + " filter");
+      break;
+    case FilterType::SPATIAL_LEGENDRE:
+    case FilterType::ZERNIKE:
+    case FilterType::ZERNIKE_RADIAL:
+      select(TallyEstimator::COLLISION, filt->type_str() + " filter");
+      break;
+    case FilterType::REACTION:
+    case FilterType::LIFETIME_MOMENT:
+      if (estimator_ == TallyEstimator::TRACKLENGTH)
+        estimator_ = TallyEstimator::COLLISION;
+      break;
+    case FilterType::PARTICLE: {
+      const auto& particles =
+        dynamic_cast<const ParticleFilter*>(filt)->particles();
+      if (particles.size() == 1 && particles[0].is_neutron())
+        neutron_only = true;
+      break;
+    }
+    default:
+      break;
+    }
+  }
+
+  bool energyout_present = energyout_filter_ != C_NONE;
+  for (auto score : scores_) {
+    std::string by = reaction_name(score) + " score";
+    switch (score) {
+    case SCORE_SCATTER:
+      if (legendre_present || energyout_present)
+        select(TallyEstimator::ANALOG, by);
+      break;
+    case SCORE_NU_FISSION:
+    case SCORE_DELAYED_NU_FISSION:
+    case SCORE_PROMPT_NU_FISSION:
+      if (energyout_present)
+        select(TallyEstimator::ANALOG, by);
+      break;
+    case SCORE_NU_SCATTER:
+      // In continuous-energy mode, only an analog estimator scores nu-scatter
+      if (settings::run_CE || energyout_present || legendre_present)
+        select(TallyEstimator::ANALOG, by);
+      break;
+    case HEATING:
+      if (settings::photon_transport && !neutron_only)
+        select(TallyEstimator::COLLISION, by);
+      break;
+    case SCORE_IFP_TIME_NUM:
+    case SCORE_IFP_BETA_NUM:
+    case SCORE_IFP_DENOM:
+      select(TallyEstimator::COLLISION, by);
       break;
     default:
       break;
     }
   }
 
-  // In continuous-energy mode, nu-scatter is only scored by an analog
-  // estimator. set_scores() selects one for it, but a track-length estimator
-  // can still be set afterwards (e.g., through openmc_tally_set_estimator()).
-  const char* required_by = "another filter of the tally";
-  if (estimator_ == TallyEstimator::COLLISION && settings::run_CE &&
-      contains(scores_, SCORE_NU_SCATTER)) {
-    estimator_ = TallyEstimator::ANALOG;
-    required_by = "the nu-scatter score";
-  }
-
   warning(fmt::format("Tally {} has a lifetime moment filter, which cannot be "
-                      "used with a track-length estimator. {} is used instead.",
+                      "used with a track-length estimator. {}{} is used "
+                      "instead.",
     id_,
-    estimator_ == TallyEstimator::ANALOG
-      ? fmt::format("An analog estimator, which {} requires,", required_by)
-      : "A collision estimator"));
+    estimator_ == TallyEstimator::ANALOG ? "An analog estimator"
+                                         : "A collision estimator",
+    selected_by.empty() ? ""
+                        : fmt::format(", which its {} selects,", selected_by)));
 }
 
 void Tally::init_results()

@@ -119,11 +119,11 @@ public:
   //!
   //! The estimator of a tally read from tallies.xml is chosen from its filters
   //! and scores when the tally is constructed, whereas a tally created at run
-  //! time (e.g., through openmc.lib) keeps the estimator that it was given. As
-  //! for a tally read from tallies.xml, the replacement is an analog estimator
-  //! if another filter of the tally requires one or, in continuous-energy
-  //! mode, if the tally scores nu-scatter, and a collision estimator
-  //! otherwise. This is called when a simulation is initialized.
+  //! time (e.g., through openmc.lib) keeps the estimator that it was given. The
+  //! replacement is the estimator that the same tally gets from tallies.xml:
+  //! the filters select one in their order, as in the constructor, and then
+  //! the scores in their order, as in set_scores(). This is called when a
+  //! simulation is initialized.
   void check_estimator();
 
   void init_results();

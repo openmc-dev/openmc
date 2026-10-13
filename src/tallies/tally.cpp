@@ -156,7 +156,8 @@ Tally::Tally(pugi::xml_node node)
     if (pf)
       particle_filter_index = i_filter;
 
-    // Change the tally estimator if a filter demands it
+    // Change the tally estimator if a filter demands it. Keep these rules in
+    // sync with Tally::check_estimator().
     FilterType filt_type = f->type();
     if (filt_type == FilterType::ENERGY_OUT ||
         filt_type == FilterType::LEGENDRE) {
@@ -581,6 +582,8 @@ void Tally::set_scores(const vector<std::string>& scores)
     // Determine integer code for score
     int score = reaction_tally_mt(score_str);
 
+    // The estimator rules of this switch for volume tallies are repeated in
+    // Tally::check_estimator(); keep them in sync.
     switch (score) {
     case SCORE_FLUX:
       if (!nuclides_.empty())
@@ -841,13 +844,13 @@ void Tally::check_estimator()
       !this->has_filter(FilterType::LIFETIME_MOMENT))
     return;
 
-  // The estimator is chosen as for the same tally read from tallies.xml: the
-  // filters select one in their order, as in the constructor, and then the
-  // scores in their order, as in set_scores(), so that the last rule that
-  // applies decides. The choice of set_scores() itself is not used: it may have
-  // been made before the filters of a tally created at run time were set, and a
-  // track-length estimator can be set afterwards (e.g., through
-  // openmc_tally_set_estimator()).
+  // The estimator is chosen with the rules of tallies.xml: the filters select
+  // one in their order, as in the constructor, and then the scores in their
+  // order, as in set_scores(), so that the last rule that applies decides. Keep
+  // the rules below in sync with those two places. The choice of set_scores()
+  // itself is not used: it may have been made before the filters of a tally
+  // created at run time were set, and a track-length estimator can be set
+  // afterwards (e.g., through openmc_tally_set_estimator()).
   std::string selected_by; // filter or score that made the choice
   auto select = [&](TallyEstimator estimator, const std::string& by) {
     if (estimator_ != estimator || selected_by.empty()) {

@@ -110,12 +110,16 @@ estimator replaces the default track-length one. For example, a tally with
 only this filter and a ``flux`` score uses a collision estimator, and one with
 this filter, an :class:`openmc.EnergyoutFilter`, and a ``nu-fission`` score
 uses an analog estimator. Requesting a track-length estimator for such a tally
-in ``tallies.xml`` results in an error. A tally created at run time through
-:mod:`openmc.lib` that has a track-length estimator, whether by default or set
-explicitly, is instead switched, with a warning, when the simulation is
+in ``tallies.xml`` results in an error. A volume tally created at run time
+through :mod:`openmc.lib` that has a track-length estimator, whether by default
+or set explicitly, is instead switched, with a warning, when the simulation is
 initialized, to the estimator that the same tally gets from ``tallies.xml``.
-Since collision and analog estimators only score at collisions, a tally with
-this filter scores nothing in void regions. In surface current tallies on a mesh
+The exception is a ``flux`` tally whose :class:`openmc.SurfaceFilter`,
+:class:`openmc.CellFromFilter`, or :class:`openmc.MaterialFromFilter` was set
+after its scores: it stays a volume tally, whereas ``tallies.xml`` makes it a
+surface tally with an analog estimator. Since collision and analog estimators
+only score at collisions, a tally with this filter scores nothing in void
+regions. In surface current tallies on a mesh
 (:class:`openmc.MeshSurfaceFilter`), :math:`\tau` is the time since birth at
 the end of the flight that crossed the mesh surface rather than at the
 crossing, as for :class:`openmc.TimeFilter`.

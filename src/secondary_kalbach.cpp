@@ -264,9 +264,16 @@ double KalbachMann::sample_energy_and_pdf(
   double km_r, km_a;
   sample_params(E_in, E_out, km_a, km_r, seed);
 
-  // https://docs.openmc.org/en/latest/methods/neutron_physics.html#equation-KM-pdf-angle
-  return km_a / (2 * std::sinh(km_a)) *
-         (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu));
+  if (is_photon_) {
+    // Isotropic with probability 1 - R, proportional to exp(A mu) otherwise,
+    // matching sample()
+    return 0.5 * (1.0 - km_r) +
+           km_r * km_a * std::exp(km_a * mu) / (2 * std::sinh(km_a));
+  } else {
+    // https://docs.openmc.org/en/latest/methods/neutron_physics.html#equation-KM-pdf-angle
+    return km_a / (2 * std::sinh(km_a)) *
+           (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu));
+  }
 }
 
 } // namespace openmc

@@ -110,10 +110,10 @@ Requesting a track-length estimator for such a tally in ``tallies.xml``
 results in an error. A tally created at run time through :mod:`openmc.lib`
 that has a track-length estimator, whether by default or set explicitly, is
 instead switched, with a warning, when the simulation is initialized: to an
-analog estimator if another filter requires one, as for a tally read from
-``tallies.xml``, and to a collision estimator otherwise. Since collision and
-analog estimators only score at collisions, a tally with this filter scores
-nothing in void regions. In surface current tallies on a mesh
+analog estimator if another filter or score requires one, as for a tally read
+from ``tallies.xml``, and to a collision estimator otherwise. Since collision
+and analog estimators only score at collisions, a tally with this filter
+scores nothing in void regions. In surface current tallies on a mesh
 (:class:`openmc.MeshSurfaceFilter`), :math:`\tau` is the time since birth at
 the end of the flight that crossed the mesh surface rather than at the
 crossing, as for :class:`openmc.TimeFilter`.

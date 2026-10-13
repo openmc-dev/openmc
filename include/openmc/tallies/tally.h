@@ -118,11 +118,12 @@ public:
   //! a filter of the tally cannot weight track-length estimates
   //!
   //! The estimator of a tally read from tallies.xml is chosen from its filters
-  //! when the tally is constructed, whereas a tally created at run time (e.g.,
-  //! through openmc.lib) keeps the estimator that it was given. As in the
-  //! constructor, the replacement is an analog estimator if another filter of
-  //! the tally requires one and a collision estimator otherwise. This is
-  //! called when a simulation is initialized.
+  //! and scores when the tally is constructed, whereas a tally created at run
+  //! time (e.g., through openmc.lib) keeps the estimator that it was given. As
+  //! for a tally read from tallies.xml, the replacement is an analog estimator
+  //! if another filter of the tally requires one or, in continuous-energy
+  //! mode, if the tally scores nu-scatter, and a collision estimator
+  //! otherwise. This is called when a simulation is initialized.
   void check_estimator();
 
   void init_results();

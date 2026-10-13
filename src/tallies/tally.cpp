@@ -864,11 +864,21 @@ void Tally::check_estimator()
     }
   }
 
+  // In continuous-energy mode, nu-scatter is only scored by an analog
+  // estimator. set_scores() selects one for it, but a track-length estimator
+  // can still be set afterwards (e.g., through openmc_tally_set_estimator()).
+  const char* required_by = "another filter of the tally";
+  if (estimator_ == TallyEstimator::COLLISION && settings::run_CE &&
+      contains(scores_, SCORE_NU_SCATTER)) {
+    estimator_ = TallyEstimator::ANALOG;
+    required_by = "the nu-scatter score";
+  }
+
   warning(fmt::format("Tally {} has a lifetime moment filter, which cannot be "
                       "used with a track-length estimator. {} is used instead.",
     id_,
     estimator_ == TallyEstimator::ANALOG
-      ? "An analog estimator, which another filter of the tally requires,"
+      ? fmt::format("An analog estimator, which {} requires,", required_by)
       : "A collision estimator"));
 }
 

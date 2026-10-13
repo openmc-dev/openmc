@@ -1521,7 +1521,6 @@ void StellaratorSource::precompute_sampling_distributions()
         v /= bound;
     }
   }
-  double total = std::accumulate(masses.begin(), masses.end(), 0.0);
   radial_bins_.assign({masses.data(), masses.size()});
 }
 

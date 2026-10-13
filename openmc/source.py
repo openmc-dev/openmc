@@ -47,7 +47,7 @@ class SourceBase(ABC):
 
     Attributes
     ----------
-    type : {'independent', 'file', 'compiled', 'mesh', 'tokamak'}
+    type : {'independent', 'file', 'compiled', 'mesh', 'tokamak', 'stellarator'}
         Indicator of source type.
     strength : float
         Strength of the source

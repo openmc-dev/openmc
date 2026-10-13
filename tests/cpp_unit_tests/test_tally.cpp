@@ -1,8 +1,10 @@
 #include "openmc/capi.h"
 #include "openmc/particle.h"
+#include "openmc/settings.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_lifetime_moment.h"
+#include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/tally.h"
 #include <catch2/catch_test_macros.hpp>
@@ -458,5 +460,302 @@ TEST_CASE("Run-time tallies without a lifetime moment filter keep their "
     CHECK(scores_first->estimator_ == TE::TRACKLENGTH);
     CHECK(check_estimator(scores_first).empty());
     CHECK(scores_first->estimator_ == TE::TRACKLENGTH);
+  }
+}
+
+namespace {
+
+// Saves the settings that the estimator of a tally depends on, and those that
+// reading a tally with an IFP score from XML changes, and restores them
+class SettingsGuard {
+public:
+  SettingsGuard()
+    : run_CE_ {settings::run_CE},
+      photon_transport_ {settings::photon_transport},
+      run_mode_ {settings::run_mode}, n_inactive_ {settings::n_inactive},
+      ifp_n_generation_ {settings::ifp_n_generation},
+      ifp_lifetime_on_ {settings::ifp_lifetime_on},
+      ifp_delayed_group_on_ {settings::ifp_delayed_group_on}
+  {}
+  ~SettingsGuard()
+  {
+    settings::run_CE = run_CE_;
+    settings::photon_transport = photon_transport_;
+    settings::run_mode = run_mode_;
+    settings::n_inactive = n_inactive_;
+    settings::ifp_n_generation = ifp_n_generation_;
+    settings::ifp_lifetime_on = ifp_lifetime_on_;
+    settings::ifp_delayed_group_on = ifp_delayed_group_on_;
+  }
+
+private:
+  bool run_CE_;
+  bool photon_transport_;
+  RunMode run_mode_;
+  int32_t n_inactive_;
+  int ifp_n_generation_;
+  bool ifp_lifetime_on_;
+  bool ifp_delayed_group_on_;
+};
+
+ParticleFilter* particle_filter(vector<ParticleType> particles)
+{
+  auto* filter = dynamic_cast<ParticleFilter*>(Filter::create("particle"));
+  filter->set_particles(particles);
+  return filter;
+}
+
+std::string join(const vector<std::string>& words)
+{
+  std::string text;
+  for (const auto& word : words)
+    text += (text.empty() ? "" : " ") + word;
+  return text;
+}
+
+} // namespace
+
+TEST_CASE("Run-time lifetime moment tallies follow the estimator rules of "
+          "tallies.xml")
+{
+  auto* lifetime = Filter::create("lifetimemoment");
+  auto* energyout = Filter::create("energyout");
+  auto* legendre = dynamic_cast<LegendreFilter*>(Filter::create("legendre"));
+  legendre->set_order(1);
+  auto* production = Filter::create("particleproduction");
+  auto* reaction = Filter::create("reaction");
+  auto* spatial = Filter::create("spatiallegendre");
+  auto* zernike = Filter::create("zernike");
+  auto* zernike_radial = Filter::create("zernikeradial");
+  auto* harmonics = dynamic_cast<SphericalHarmonicsFilter*>(
+    Filter::create("sphericalharmonics"));
+  harmonics->set_order(1);
+  harmonics->set_cosine("scatter");
+  auto* neutron = particle_filter({ParticleType::neutron()});
+  auto* photon = particle_filter({ParticleType::photon()});
+  auto* neutron_photon =
+    particle_filter({ParticleType::neutron(), ParticleType::photon()});
+
+  // Tallies with an IFP score are read from XML as in an eigenvalue run
+  SettingsGuard guard;
+  settings::run_mode = RunMode::EIGENVALUE;
+  settings::n_inactive = 5;
+  settings::ifp_n_generation = 2;
+
+  // A tally read from tallies.xml gets its estimator from its filters, in
+  // their order, and then from its scores, in their order; a later rule
+  // replaces the choice of an earlier one. The warning names the filter or
+  // score that chose the estimator in use: the first of the rules that choose
+  // it after the last rule that chooses the other one, if any rule does.
+  enum class Mode { CE, MG, PHOTON };
+  auto mode_name = [](Mode mode) {
+    switch (mode) {
+    case Mode::MG:
+      return "multigroup";
+    case Mode::PHOTON:
+      return "continuous energy with photon transport";
+    default:
+      return "continuous energy";
+    }
+  };
+  using TE = TallyEstimator;
+  struct Case {
+    Mode mode;
+    vector<Filter*> filters;
+    vector<std::string> scores;
+    TallyEstimator estimator;   // of the same tally read from tallies.xml
+    TallyEstimator from_scores; // chosen by set_scores() after the filters
+    std::string selected_by;    // named by the warning, if anything is
+  };
+  vector<Case> cases {
+    // A later filter replaces the choice of an earlier one
+    {Mode::CE, {legendre, spatial, lifetime}, {"flux"}, TE::COLLISION,
+      TE::TRACKLENGTH, "spatiallegendre filter"},
+    {Mode::CE, {spatial, legendre, lifetime}, {"flux"}, TE::ANALOG,
+      TE::TRACKLENGTH, "legendre filter"},
+    {Mode::CE, {legendre, zernike, lifetime}, {"flux"}, TE::COLLISION,
+      TE::TRACKLENGTH, "zernike filter"},
+    {Mode::CE, {legendre, zernike_radial, lifetime}, {"flux"}, TE::COLLISION,
+      TE::TRACKLENGTH, "zernikeradial filter"},
+    {Mode::CE, {lifetime, zernike, legendre}, {"flux"}, TE::ANALOG,
+      TE::TRACKLENGTH, "legendre filter"},
+    {Mode::CE, {energyout, spatial, lifetime}, {"events"}, TE::COLLISION,
+      TE::TRACKLENGTH, "spatiallegendre filter"},
+    {Mode::CE, {harmonics, spatial, lifetime}, {"scatter"}, TE::COLLISION,
+      TE::TRACKLENGTH, "spatiallegendre filter"},
+    {Mode::CE, {production, zernike, lifetime}, {"events"}, TE::COLLISION,
+      TE::TRACKLENGTH, "zernike filter"},
+    {Mode::CE, {energyout, lifetime}, {"events"}, TE::ANALOG, TE::TRACKLENGTH,
+      "energyout filter"},
+    // The lifetime moment and reaction filters only replace a track-length
+    // estimator, and the warning does not name them
+    {Mode::CE, {lifetime, spatial}, {"flux"}, TE::COLLISION, TE::TRACKLENGTH,
+      "spatiallegendre filter"},
+    {Mode::CE, {lifetime}, {"flux"}, TE::COLLISION, TE::TRACKLENGTH, ""},
+    {Mode::CE, {reaction, lifetime}, {"flux"}, TE::COLLISION, TE::TRACKLENGTH,
+      ""},
+    // Scatter and the nu-fission scores with an outgoing energy filter, and
+    // scatter with a Legendre filter, choose an analog estimator
+    {Mode::CE, {legendre, spatial, lifetime}, {"scatter"}, TE::ANALOG,
+      TE::ANALOG, "scatter score"},
+    {Mode::CE, {energyout, spatial, lifetime}, {"scatter"}, TE::ANALOG,
+      TE::ANALOG, "scatter score"},
+    {Mode::CE, {spatial, lifetime}, {"scatter"}, TE::COLLISION, TE::TRACKLENGTH,
+      "spatiallegendre filter"},
+    {Mode::CE, {energyout, spatial, lifetime}, {"nu-fission"}, TE::ANALOG,
+      TE::ANALOG, "nu-fission score"},
+    {Mode::CE, {energyout, spatial, lifetime}, {"delayed-nu-fission"},
+      TE::ANALOG, TE::ANALOG, "delayed-nu-fission score"},
+    {Mode::CE, {energyout, spatial, lifetime}, {"prompt-nu-fission"},
+      TE::ANALOG, TE::ANALOG, "prompt-nu-fission score"},
+    {Mode::CE, {spatial, lifetime}, {"nu-fission"}, TE::COLLISION,
+      TE::TRACKLENGTH, "spatiallegendre filter"},
+    {Mode::CE, {legendre, spatial, lifetime}, {"nu-fission"}, TE::COLLISION,
+      TE::TRACKLENGTH, "spatiallegendre filter"},
+    {Mode::CE, {energyout, lifetime}, {"nu-fission"}, TE::ANALOG, TE::ANALOG,
+      "energyout filter"},
+    // nu-scatter chooses an analog estimator in continuous-energy mode, and in
+    // multigroup mode with an outgoing energy or Legendre filter
+    {Mode::CE, {lifetime}, {"nu-scatter"}, TE::ANALOG, TE::ANALOG,
+      "nu-scatter score"},
+    {Mode::CE, {spatial, lifetime}, {"nu-scatter"}, TE::ANALOG, TE::ANALOG,
+      "nu-scatter score"},
+    {Mode::CE, {energyout, lifetime}, {"nu-scatter"}, TE::ANALOG, TE::ANALOG,
+      "energyout filter"},
+    {Mode::CE, {lifetime}, {"flux", "nu-scatter"}, TE::ANALOG, TE::ANALOG,
+      "nu-scatter score"},
+    {Mode::CE, {lifetime}, {"nu-scatter", "flux"}, TE::ANALOG, TE::ANALOG,
+      "nu-scatter score"},
+    {Mode::MG, {lifetime}, {"nu-scatter"}, TE::COLLISION, TE::TRACKLENGTH, ""},
+    {Mode::MG, {spatial, lifetime}, {"nu-scatter"}, TE::COLLISION,
+      TE::TRACKLENGTH, "spatiallegendre filter"},
+    {Mode::MG, {legendre, spatial, lifetime}, {"nu-scatter"}, TE::ANALOG,
+      TE::ANALOG, "nu-scatter score"},
+    {Mode::MG, {energyout, spatial, lifetime}, {"nu-scatter"}, TE::ANALOG,
+      TE::ANALOG, "nu-scatter score"},
+    // The IFP scores choose a collision estimator
+    {Mode::CE, {energyout, lifetime}, {"ifp-time-numerator"}, TE::COLLISION,
+      TE::COLLISION, "ifp-time-numerator score"},
+    {Mode::CE, {energyout, lifetime}, {"ifp-beta-numerator"}, TE::COLLISION,
+      TE::COLLISION, "ifp-beta-numerator score"},
+    {Mode::CE, {energyout, lifetime}, {"ifp-denominator"}, TE::COLLISION,
+      TE::COLLISION, "ifp-denominator score"},
+    {Mode::CE, {energyout, lifetime},
+      {"ifp-time-numerator", "ifp-beta-numerator", "ifp-denominator"},
+      TE::COLLISION, TE::COLLISION, "ifp-time-numerator score"},
+    {Mode::CE, {lifetime}, {"ifp-denominator"}, TE::COLLISION, TE::COLLISION,
+      "ifp-denominator score"},
+    // Of two scores that choose different estimators, the later one decides
+    {Mode::CE, {lifetime}, {"nu-scatter", "ifp-denominator"}, TE::COLLISION,
+      TE::COLLISION, "ifp-denominator score"},
+    {Mode::CE, {lifetime}, {"ifp-denominator", "nu-scatter"}, TE::ANALOG,
+      TE::ANALOG, "nu-scatter score"},
+    // With photon transport, heating chooses a collision estimator unless a
+    // particle filter restricts the tally to neutrons
+    {Mode::PHOTON, {energyout, lifetime}, {"heating"}, TE::COLLISION,
+      TE::COLLISION, "heating score"},
+    {Mode::PHOTON, {energyout, neutron, lifetime}, {"heating"}, TE::ANALOG,
+      TE::TRACKLENGTH, "energyout filter"},
+    {Mode::PHOTON, {energyout, neutron_photon, lifetime}, {"heating"},
+      TE::COLLISION, TE::COLLISION, "heating score"},
+    {Mode::PHOTON, {energyout, photon, lifetime}, {"heating"}, TE::COLLISION,
+      TE::COLLISION, "heating score"},
+    {Mode::PHOTON, {energyout, neutron, photon, lifetime}, {"heating"},
+      TE::ANALOG, TE::TRACKLENGTH, "energyout filter"},
+    {Mode::PHOTON, {energyout, photon, neutron, lifetime}, {"heating"},
+      TE::ANALOG, TE::TRACKLENGTH, "energyout filter"},
+    {Mode::PHOTON, {lifetime}, {"heating"}, TE::COLLISION, TE::COLLISION,
+      "heating score"},
+    {Mode::PHOTON, {neutron, lifetime}, {"heating"}, TE::COLLISION,
+      TE::TRACKLENGTH, ""},
+    {Mode::CE, {energyout, lifetime}, {"heating"}, TE::ANALOG, TE::TRACKLENGTH,
+      "energyout filter"},
+  };
+
+  int32_t id = 5000;
+  for (size_t i = 0; i < cases.size(); ++i) {
+    auto& c = cases[i];
+    settings::run_CE = c.mode != Mode::MG;
+    settings::photon_transport = c.mode == Mode::PHOTON;
+    auto scores = join(c.scores);
+    INFO("case " << i + 1 << ": " << mode_name(c.mode) << ", filters:"
+                 << filter_types(c.filters) << ", scores: " << scores);
+
+    // The same tally read from tallies.xml
+    {
+      std::string ids;
+      for (const auto* f : c.filters)
+        ids += fmt::format(" {}", f->id());
+      std::string xml = fmt::format(
+        "<tally id=\"{}\"><filters>{}</filters><scores>{}</scores></tally>",
+        ++id, ids, scores);
+      pugi::xml_document doc;
+      REQUIRE(doc.load_string(xml.c_str()));
+      Tally tally(doc.child("tally"));
+      CHECK(tally.estimator_ == c.estimator);
+    }
+
+    // A track-length estimator is replaced by that estimator, with one warning
+    // that names it and what chose it
+    auto check_replaced = [&c](Tally* tally) {
+      auto text = check_estimator(tally);
+      CHECK(tally->estimator_ == c.estimator);
+      CHECK(count(text, "WARNING:") == 1);
+      auto message = fmt::format(
+        "Tally {} has a lifetime moment filter, which cannot be used with a "
+        "track-length estimator. {}{} is used instead.",
+        tally->id(),
+        c.estimator == TE::ANALOG ? "An analog estimator"
+                                  : "A collision estimator",
+        c.selected_by.empty()
+          ? ""
+          : fmt::format(", which its {} selects,", c.selected_by));
+      CHECK(count(text, message) == 1);
+    };
+    auto set_tracklength = [](Tally* tally) {
+      REQUIRE(openmc_tally_set_estimator(
+                model::tally_map.at(tally->id()), "tracklength") == 0);
+    };
+
+    // A track-length estimator set explicitly after the filters and scores,
+    // whatever set_scores() chose
+    {
+      INFO("filters, scores, track-length estimator");
+      Tally* tally = Tally::create(++id);
+      tally->set_filters(c.filters);
+      tally->set_scores(c.scores);
+      CHECK(tally->estimator_ == c.from_scores);
+      set_tracklength(tally);
+      check_replaced(tally);
+
+      // Checking again changes nothing
+      CHECK(check_estimator(tally).empty());
+      CHECK(tally->estimator_ == c.estimator);
+    }
+
+    // The scores set before the filters, so that set_scores() did not see them
+    {
+      INFO("scores, filters, track-length estimator");
+      Tally* tally = Tally::create(++id);
+      tally->set_scores(c.scores);
+      tally->set_filters(c.filters);
+      set_tracklength(tally);
+      check_replaced(tally);
+    }
+
+    // The estimator that set_scores() chose after the filters is only
+    // replaced if it is a track-length one
+    {
+      INFO("filters, scores");
+      Tally* tally = Tally::create(++id);
+      tally->set_filters(c.filters);
+      tally->set_scores(c.scores);
+      if (c.from_scores == TE::TRACKLENGTH) {
+        check_replaced(tally);
+      } else {
+        CHECK(check_estimator(tally).empty());
+        CHECK(tally->estimator_ == c.estimator);
+      }
+    }
   }
 }

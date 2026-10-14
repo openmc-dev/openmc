@@ -995,61 +995,6 @@ Direction SurfaceQuadric::normal(Position r) const
     2.0 * B_ * y + D_ * x + E_ * z + H_, 2.0 * C_ * z + E_ * y + F_ * x + J_};
 }
 
-namespace {
-
-//! Eigenvalues and eigenvectors of a symmetric 3x3 matrix by cyclic Jacobi
-//! rotations, as _symmetric_eigen in openmc/surface.py, so that both give the
-//! same bounding boxes. Exact zeros in the matrix stay exact, so a quadric
-//! aligned with the axes is recognized as such. v[i][k] is component i of
-//! eigenvector k.
-void symmetric_eigen(
-  double a[3][3], std::array<double, 3>& lambda, double v[3][3])
-{
-  for (int i = 0; i < 3; ++i)
-    for (int k = 0; k < 3; ++k)
-      v[i][k] = i == k ? 1.0 : 0.0;
-  constexpr int pairs[3][2] = {{0, 1}, {0, 2}, {1, 2}};
-  for (int sweep = 0; sweep < 50; ++sweep) {
-    double off = a[0][1] * a[0][1] + a[0][2] * a[0][2] + a[1][2] * a[1][2];
-    double diag = a[0][0] * a[0][0] + a[1][1] * a[1][1] + a[2][2] * a[2][2];
-    if (off == 0.0 || off <= 1e-36 * diag)
-      break;
-    for (const auto& pq : pairs) {
-      int p = pq[0];
-      int q = pq[1];
-      if (a[p][q] == 0.0)
-        continue;
-      double theta = (a[q][q] - a[p][p]) / (2.0 * a[p][q]);
-      double t = std::copysign(1.0, theta) /
-                 (std::abs(theta) + std::sqrt(theta * theta + 1.0));
-      double c = 1.0 / std::sqrt(t * t + 1.0);
-      double s = t * c;
-      for (int r = 0; r < 3; ++r) {
-        double arp = a[r][p];
-        double arq = a[r][q];
-        a[r][p] = c * arp - s * arq;
-        a[r][q] = s * arp + c * arq;
-      }
-      for (int r = 0; r < 3; ++r) {
-        double apr = a[p][r];
-        double aqr = a[q][r];
-        a[p][r] = c * apr - s * aqr;
-        a[q][r] = s * apr + c * aqr;
-      }
-      for (int r = 0; r < 3; ++r) {
-        double vrp = v[r][p];
-        double vrq = v[r][q];
-        v[r][p] = c * vrp - s * vrq;
-        v[r][q] = s * vrp + c * vrq;
-      }
-    }
-  }
-  for (int k = 0; k < 3; ++k)
-    lambda[k] = a[k][k];
-}
-
-} // namespace
-
 BoundingBox SurfaceQuadric::bounding_box(bool pos_side) const
 {
   // The half-space is bounded in a direction only if the quadratic form is

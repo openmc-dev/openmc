@@ -1007,8 +1007,8 @@ class ZPlane(PlaneMixin, Surface):
 
 def _symmetric_eigen(m):
     """Eigenvalues and eigenvectors of a symmetric 3x3 matrix by cyclic Jacobi
-    rotations. The C++ SurfaceQuadric::bounding_box uses the same algorithm, so
-    that both give the same bounding boxes. Exact zeros in the matrix stay
+    rotations. The C++ code uses the same algorithm (openmc::symmetric_eigen in
+    src/math_functions.cpp), so that both give the same bounding boxes. Exact zeros in the matrix stay
     exact, so a quadric aligned with the axes is recognized as such.
 
     Returns

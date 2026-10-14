@@ -460,11 +460,15 @@ def test_birth_mesh_random_ray(tmp_path, capfd):
 # Source point settings of test_birth_mesh_mcpl_warning. In the cases 'mcpl',
 # 'fixed_source' and 'random_ray', source points are requested in MCPL format
 # at a batch that the run does not reach, so no MCPL file is written and the
-# MCPL library is not needed.
+# MCPL library is not needed. With 'overwrite', the latest source is written
+# at every batch, also when 'write' is False.
 MCPL_CASES = {
     'mcpl': {'batches': [7], 'separate': True, 'mcpl': True},
     'mcpl_written': {'batches': [3, 6], 'separate': True, 'mcpl': True},
+    'overwrite_not_written': {'write': False, 'overwrite': True, 'mcpl': True},
     'hdf5': {'batches': [3, 6], 'separate': True},
+    'overwrite_hdf5': {'overwrite': True},
+    'empty_batches': {'batches': [], 'separate': True, 'mcpl': True},
     'not_separate': {'batches': [6], 'separate': False, 'mcpl': True},
     'not_written': {'write': False, 'separate': True, 'mcpl': True},
     'fixed_source': {'batches': [7], 'separate': True, 'mcpl': True},
@@ -485,17 +489,31 @@ def test_birth_mesh_mcpl_warning(tmp_path, capfd, case):
         model.settings.run_mode = 'fixed source'
         model.settings.batches = 2
     model.settings.sourcepoint = MCPL_CASES[case]
-    sp_path = run_model(model, tmp_path)
+    try:
+        sp_path = run_model(model, tmp_path)
+    except RuntimeError as err:
+        # Without the MCPL library, the run of 'overwrite_not_written' stops
+        # where it writes the first MCPL file, after the settings are read
+        if (case != 'overwrite_not_written' or shutil.which('mcpl-config')
+                or 'the MCPL library is not available' not in str(err)):
+            raise
+        sp_path = None
     out = capfd.readouterr().out
 
     # The warning is given once, by the master process, when the settings are
     # read, and only for an eigenvalue run with the Monte Carlo solver that
-    # writes its source points to separate MCPL files
-    n_warnings = 1 if case in ('mcpl', 'mcpl_written') else 0
+    # writes source points to MCPL files
+    mcpl_files = ('mcpl', 'mcpl_written', 'overwrite_not_written')
+    n_warnings = 1 if case in mcpl_files else 0
     assert out.count(MCPL_WARNING) == n_warnings
     if case == 'mcpl_written':
         for batch in (3, 6):
             assert (tmp_path / f'source.{batch}.mcpl').exists()
+    elif case == 'overwrite_not_written' and sp_path is not None:
+        assert (tmp_path / 'source.mcpl').exists()
+    elif case == 'overwrite_hdf5':
+        _, _, tags = read_source(tmp_path / 'source.h5')
+        assert tags is not None
     elif case == 'hdf5':
         for batch in (3, 6):
             _, _, tags = read_source(tmp_path / f'source.{batch}.h5')

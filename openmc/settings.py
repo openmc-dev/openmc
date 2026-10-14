@@ -59,7 +59,7 @@ class Settings:
         :class:`openmc.MeshBornFilter`. The tags are written to state point and
         source point files as a ``birth_mesh_bin`` dataset aligned with the
         source bank (see :ref:`io_statepoint`). Has no effect in fixed-source
-        mode.
+        mode or with the random ray solver.
 
         .. versionadded:: 0.16.1
     confidence_intervals : bool

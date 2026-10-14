@@ -51,7 +51,8 @@ class Mesh;
 namespace settings {
 
 // Mesh used to tag banked fission sites (see SourceSite::birth_mesh_bin);
-// nullptr when no tagging is done, including in fixed-source mode
+// nullptr when no tagging is done, including in fixed-source mode and with the
+// random ray solver
 extern const Mesh* birth_mesh;
 
 // Boolean flags

@@ -43,9 +43,10 @@ fission-matrix data. When this element is present, every site banked in the
 fission bank, in continuous-energy and in multigroup mode, is tagged with the
 bin of the mesh that contains the *birth position of the neutron that produced
 the site*, or with ``-1`` if that position is outside the mesh. Only an
-eigenvalue calculation banks fission sites, so in fixed-source mode the element
-has no effect and is ignored with a warning. Tagging consumes no random numbers
-and changes no transport or tally result.
+eigenvalue calculation with the Monte Carlo solver banks fission sites, so in
+fixed-source mode and with the random ray solver the element has no effect and
+is ignored with a warning. Tagging consumes no random numbers and changes no
+transport or tally result.
 
 The birth position is the position at which the neutron was started from a
 site: its fission site for a neutron started from the source bank, the

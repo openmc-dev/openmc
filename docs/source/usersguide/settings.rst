@@ -727,8 +727,8 @@ of :class:`openmc.MeshBornFilter`), or with -1 if that position is outside the
 mesh. No translation or rotation is applied, since these are attributes of a
 mesh filter, not of the mesh. The tags are written as a ``birth_mesh_bin``
 dataset to the statepoint files that contain the source bank and to the source
-files ``source.<batch>.h5`` and ``source.h5``. In fixed-source mode, the
-attribute has no effect. For example::
+files ``source.<batch>.h5`` and ``source.h5``. In fixed-source mode and with the
+random ray solver, the attribute has no effect. For example::
 
   settings.birth_mesh = mesh
 

@@ -897,10 +897,14 @@ void read_settings_xml(pugi::xml_node root)
     }
 
     // Only an eigenvalue calculation banks fission sites in the fission bank,
-    // so birth tagging has no effect in fixed-source mode
+    // and the random ray solver banks none, so birth tagging has no effect in
+    // fixed-source mode or with the random ray solver
     if (run_mode == RunMode::FIXED_SOURCE) {
       warning("The <birth_mesh> element has no effect in fixed-source mode "
               "and is ignored.");
+    } else if (solver_type == SolverType::RANDOM_RAY) {
+      warning("The <birth_mesh> element has no effect with the random ray "
+              "solver and is ignored.");
     } else {
       auto& m = model::meshes[model::mesh_map.at(temp)];
       m->prepare_for_point_location();
@@ -967,6 +971,14 @@ void read_settings_xml(pugi::xml_node root)
     // statepoint file and write it out at statepoints intervals
     source_separate = false;
     sourcepoint_batch = statepoint_batch;
+  }
+
+  // MCPL source point files have no place for the fission bank birth tags.
+  // Say so once, rather than at every source point written.
+  if (birth_mesh && source_write && source_separate && source_mcpl_write &&
+      mpi::master) {
+    warning("The <birth_mesh> tags are not written to MCPL source point "
+            "files.");
   }
 
   // Check is the user specified to convert strength to statistical weight

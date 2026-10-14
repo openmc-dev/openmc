@@ -2,6 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from numbers import Integral, Real
+import os
 from pathlib import Path
 import warnings
 from typing import Any
@@ -1799,7 +1800,7 @@ class StellaratorSource(SourceBase):
         which is read directly with h5py. Returns ``(r_modes, r_lmn, z_modes,
         z_lmn, nfp)`` where the modes arrays have columns ``(l, m, n)``.
         """
-        if isinstance(eq, (str, Path)):
+        if isinstance(eq, (str, os.PathLike)):
             with h5py.File(input_path(eq), 'r') as f:
                 # Output files may contain a family of equilibria; use the last
                 g = f

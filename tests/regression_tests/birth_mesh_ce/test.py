@@ -15,11 +15,13 @@ birth_mesh test:
 - with a mesh over the left half of the problem, the sites in the right slab
   are tagged -1.
 
-A last test runs the problem through openmc.lib and compares each tag with the
-bin of the source site from which the neutron that produced the site was
-started, its birth position.
+Two last tests run the problem through openmc.lib. The first compares each tag
+with the bin of the source site from which the neutron that produced the site
+was started, its birth position. The second checks that the sites sampled from
+a tagged source file for the first batch carry the tags of the file.
 
 """
+import h5py
 import numpy as np
 import openmc
 import openmc.lib
@@ -175,3 +177,37 @@ def test_birth_mesh_ce_birth_position(tmp_path, monkeypatch):
     own_bin = regular_bin(mesh, bank['r'])
     assert np.count_nonzero(tags != birth_bin) <= 0.01 * n_sites
     assert np.count_nonzero(tags != own_bin) > 0.1 * n_sites
+
+
+def test_birth_mesh_ce_file_source(tmp_path, monkeypatch):
+    if config['mpi']:
+        pytest.skip('openmc.lib runs in this process, without MPI')
+    # A tagged run writes its final source bank and tags to source.h5
+    mesh = regular_mesh(X_MAX, (2, 1, 1))
+    model = make_model(mesh)
+    model.settings.sourcepoint = {'separate': True, 'overwrite': True}
+    model.run(cwd=tmp_path, openmc_exec=config['exe'],
+              event_based=config['event'])
+    source_file = tmp_path / 'source.h5'
+    with h5py.File(source_file, 'r') as f:
+        file_sites = f['source_bank'][()]
+        file_tags = f['birth_mesh_bin'][()]
+    assert set(np.unique(file_tags)) == {0, 1}
+    file_tag = {tuple(r): tag for r, tag in zip(file_sites['r'], file_tags)}
+
+    # A FileSource on that file reads the tags with the sites, so each site
+    # sampled for the first batch has the tag of the file site that it copies
+    model = make_model(mesh)
+    model.settings.source = openmc.FileSource(source_file)
+    run_dir = tmp_path / 'file_source'
+    run_dir.mkdir()
+    monkeypatch.chdir(run_dir)
+    model.init_lib(output=False)
+    try:
+        openmc.lib.simulation_init()
+        bank = openmc.lib.source_bank().copy()
+        openmc.lib.simulation_finalize()
+    finally:
+        model.finalize_lib()
+    expected = [file_tag[tuple(r)] for r in bank['r']]
+    np.testing.assert_array_equal(bank['birth_mesh_bin'], expected)

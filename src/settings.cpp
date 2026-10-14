@@ -974,9 +974,13 @@ void read_settings_xml(pugi::xml_node root)
   }
 
   // MCPL source point files have no place for the fission bank birth tags.
-  // Say so once, rather than at every source point written.
-  if (birth_mesh && source_write && source_separate && source_mcpl_write &&
-      mpi::master) {
+  // Say so once, rather than at every source point written. finalize_batch()
+  // writes the source points of the given batches to separate files, and with
+  // overwrite_latest the latest source at every batch, even when the source is
+  // otherwise not written.
+  bool source_point_files = source_latest || (source_write && source_separate &&
+                                               !sourcepoint_batch.empty());
+  if (birth_mesh && source_mcpl_write && source_point_files && mpi::master) {
     warning("The <birth_mesh> tags are not written to MCPL source point "
             "files.");
   }

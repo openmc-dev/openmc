@@ -15,7 +15,9 @@ site, for a regular and for a nonuniform rectilinear mesh.
 
 The tests also check which output files carry the tags, the restart path that
 reads them back, and the rejection of a tag dataset whose length differs from
-that of the source bank.
+that of the source bank. With the random ray solver, which banks no fission
+sites, the element is ignored with a warning, and a warning says that source
+point files written in MCPL format carry no tags.
 
 Two more tests compare the tags with references. The first runs the two-slab
 problem through openmc.lib and compares every field of openmc.lib.source_bank()
@@ -411,6 +413,100 @@ def test_birth_mesh_fixed_source(tmp_path, capsys):
     file_attrs, _, file_tags = read_source(tmp_path / 'surface_source.h5')
     assert 'birth_mesh_id' not in file_attrs
     assert file_tags is None
+
+
+# Fragments of the warnings about the <birth_mesh> element. Warnings are
+# wrapped at 80 columns, and each fragment lies within the first line.
+FIXED_SOURCE_WARNING = 'no effect in fixed-source mode'
+RANDOM_RAY_WARNING = 'no effect with the random ray solver'
+MCPL_WARNING = 'tags are not written to MCPL source point files'
+
+
+def random_ray_model(tmp_path, mesh):
+    """The two-slab eigenvalue problem solved with the random ray solver."""
+    model, _ = eigenvalue_model(tmp_path, mesh)
+    x_max = HALF_WIDTH + FUEL_WIDTH
+    model.settings.particles = 200
+    model.settings.random_ray = {
+        'distance_inactive': 10.0,
+        'distance_active': 50.0,
+        'ray_source': openmc.IndependentSource(
+            space=openmc.stats.Box((-x_max, -5.0, -5.0), (x_max, 5.0, 5.0)))
+    }
+    return model
+
+
+def n_processes():
+    return int(config['mpi_np']) if config['mpi'] else 1
+
+
+def test_birth_mesh_random_ray(tmp_path, capfd):
+    # The random ray solver banks no fission sites, so the element is ignored
+    # with a warning, which each process prints, and no file records the mesh
+    model = random_ray_model(tmp_path, slab_mesh(2))
+    sp_path = run_model(model, tmp_path)
+    out = capfd.readouterr().out
+    assert out.count(RANDOM_RAY_WARNING) == n_processes()
+    assert FIXED_SOURCE_WARNING not in out
+    assert MCPL_WARNING not in out
+    with h5py.File(sp_path, 'r') as f:
+        assert 'birth_mesh_id' not in f.attrs
+        assert 'birth_mesh_bin' not in f
+    with openmc.StatePoint(sp_path) as sp:
+        assert sp.birth_mesh_id is None
+        assert sp.birth_mesh_bin is None
+
+
+# Source point settings of test_birth_mesh_mcpl_warning. In the cases 'mcpl',
+# 'fixed_source' and 'random_ray', source points are requested in MCPL format
+# at a batch that the run does not reach, so no MCPL file is written and the
+# MCPL library is not needed.
+MCPL_CASES = {
+    'mcpl': {'batches': [7], 'separate': True, 'mcpl': True},
+    'mcpl_written': {'batches': [3, 6], 'separate': True, 'mcpl': True},
+    'hdf5': {'batches': [3, 6], 'separate': True},
+    'not_separate': {'batches': [6], 'separate': False, 'mcpl': True},
+    'not_written': {'write': False, 'separate': True, 'mcpl': True},
+    'fixed_source': {'batches': [7], 'separate': True, 'mcpl': True},
+    'random_ray': {'batches': [7], 'separate': True, 'mcpl': True},
+}
+
+
+@pytest.mark.parametrize('case', MCPL_CASES)
+def test_birth_mesh_mcpl_warning(tmp_path, capfd, case):
+    if case == 'mcpl_written' and shutil.which('mcpl-config') is None:
+        pytest.skip('MCPL is not available.')
+    mesh = slab_mesh(2)
+    if case == 'random_ray':
+        model = random_ray_model(tmp_path, mesh)
+    else:
+        model, _ = eigenvalue_model(tmp_path, mesh)
+    if case == 'fixed_source':
+        model.settings.run_mode = 'fixed source'
+        model.settings.batches = 2
+    model.settings.sourcepoint = MCPL_CASES[case]
+    sp_path = run_model(model, tmp_path)
+    out = capfd.readouterr().out
+
+    # The warning is given once, by the master process, when the settings are
+    # read, and only for an eigenvalue run with the Monte Carlo solver that
+    # writes its source points to separate MCPL files
+    n_warnings = 1 if case in ('mcpl', 'mcpl_written') else 0
+    assert out.count(MCPL_WARNING) == n_warnings
+    if case == 'mcpl_written':
+        for batch in (3, 6):
+            assert (tmp_path / f'source.{batch}.mcpl').exists()
+    elif case == 'hdf5':
+        for batch in (3, 6):
+            _, _, tags = read_source(tmp_path / f'source.{batch}.h5')
+            assert tags is not None
+    elif case == 'not_separate':
+        _, _, tags = read_source(sp_path)
+        assert tags is not None
+    elif case == 'fixed_source':
+        assert FIXED_SOURCE_WARNING in out
+    elif case == 'random_ray':
+        assert RANDOM_RAY_WARNING in out
 
 
 # Eight fuel islands, x in s_x [a, a + 10] and y in s_y [a, a + 10] cm for a in

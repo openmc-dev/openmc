@@ -119,6 +119,11 @@ def _run(args, output, cwd):
             _, _, error_msg = output.partition('ERROR: ')
         elif 'what()' in output:
             _, _, error_msg = output.partition('what(): ')
+        elif 'terminating due to uncaught exception of type ' in output:
+            # libc++ (e.g. macOS) reports "...of type std::runtime_error: msg"
+            _, _, error_msg = output.partition(
+                'terminating due to uncaught exception of type ')
+            _, _, error_msg = error_msg.partition(': ')
         else:
             error_msg = 'OpenMC aborted unexpectedly.'
         error_msg = ' '.join(error_msg.split())

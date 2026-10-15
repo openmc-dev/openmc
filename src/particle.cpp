@@ -40,6 +40,34 @@
 
 namespace openmc {
 
+namespace {
+
+//! Find the cell containing a particle that has no cell yet
+//
+//! A particle that starts on a surface, e.g., one split by weight windows at a
+//! surface crossing, is only known to be on that surface. If another surface
+//! coincides with it, roundoff in the particle's position may place the
+//! particle on the wrong side of the other surface so that no cell contains
+//! it. As when crossing a surface, move the particle forward a tiny bit and
+//! search again.
+//
+//! \param p Particle to locate
+//! \param verbose Whether to print verbose search information
+//! \return Whether a cell containing the particle was found
+bool find_cell_from_surface(Particle& p, bool verbose = false)
+{
+  bool found = exhaustive_find_cell(p, verbose);
+  if (!found && p.surface() != SURFACE_NONE) {
+    p.surface() = SURFACE_NONE;
+    p.n_coord() = 1;
+    p.r() += TINY_BIT * p.u();
+    found = exhaustive_find_cell(p, verbose);
+  }
+  return found;
+}
+
+} // namespace
+
 //==============================================================================
 // Particle implementation
 //==============================================================================
@@ -223,20 +251,7 @@ void Particle::event_calculate_xs()
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (lowest_coord().cell() == C_NONE) {
-    bool found = exhaustive_find_cell(*this);
-    if (!found && surface() != SURFACE_NONE) {
-      // A particle that starts on a surface, e.g., one split by weight windows
-      // at a surface crossing, is only known to be on that surface. If another
-      // surface coincides with it, roundoff in the particle's position may
-      // place the particle on the wrong side of the other surface so that no
-      // cell contains it. As when crossing a surface, move the particle
-      // forward a tiny bit and search again.
-      surface() = SURFACE_NONE;
-      n_coord() = 1;
-      r() += TINY_BIT * u();
-      found = exhaustive_find_cell(*this);
-    }
-    if (!found) {
+    if (!find_cell_from_surface(*this)) {
       mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
       return;
@@ -533,7 +548,7 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
     // removed from the pulse-height of this cell.
     if (lowest_coord().cell() == C_NONE) {
       bool verbose = settings::verbosity >= 10 || trace();
-      if (!exhaustive_find_cell(*this, verbose)) {
+      if (!find_cell_from_surface(*this, verbose)) {
         mark_as_lost("Could not find the cell containing particle " +
                      std::to_string(id()));
         return;

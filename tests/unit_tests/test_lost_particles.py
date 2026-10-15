@@ -49,9 +49,7 @@ def test_max_write_lost_particles(model: openmc.Model, run_in_tmpdir):
 
 
 
-def test_split_on_coincident_surfaces(run_in_tmpdir):
-    """Particles split by weight windows on a surface that coincides with
-    another surface must not be lost (GitHub issue #4140)"""
+def _coincident_surfaces_model(particle):
     s1 = openmc.XPlane(-57452.33336021505)
     s2 = openmc.XPlane(43403.32187479845)
     s3 = openmc.XPlane(62125.04976135607)
@@ -71,6 +69,7 @@ def test_split_on_coincident_surfaces(run_in_tmpdir):
     model.settings.max_lost_particles = 100
     model.settings.rel_max_lost_particles = 0.999999
     model.settings.source = openmc.IndependentSource(
+        particle=particle,
         space=openmc.stats.Point((-85626.45049221347, 0.0, 0.0)),
         angle=openmc.stats.Monodirectional(
             (0.9182609440159194, 0.39597580569397484, 0.0)),
@@ -84,13 +83,44 @@ def test_split_on_coincident_surfaces(run_in_tmpdir):
     mesh.dimension = (2, 1, 1)
     model.settings.weight_windows = openmc.WeightWindows(
         mesh, lower_ww_bounds=[0.5, 0.01], upper_ww_bounds=[5.0, 0.1],
-        energy_bounds=[0.0, 2.0e7])
+        energy_bounds=[0.0, 2.0e7], particle_type=particle)
     model.settings.weight_window_checkpoints = {
         'collision': False, 'surface': True}
+    return model
 
+
+def test_split_on_coincident_surfaces(run_in_tmpdir):
+    """Particles split by weight windows on a surface that coincides with
+    another surface must not be lost (GitHub issue #4140)"""
+    model = _coincident_surfaces_model('neutron')
     sp_path = model.run()
 
     # All weight should leak out of the vacuum boundary
+    with openmc.StatePoint(sp_path) as sp:
+        leakage = sp.global_tallies[sp.global_tallies['name'] == b'leakage']
+        assert leakage['mean'][0] == pytest.approx(1.0)
+
+
+def test_split_photons_on_coincident_surfaces_pulse_height(run_in_tmpdir):
+    """Split photons are located before their pulse-height contribution is
+    removed, and that search must not lose them either"""
+    model = _coincident_surfaces_model('photon')
+    model.settings.photon_transport = True
+    cells = [c for c in model.geometry.get_all_cells().values()
+             if not isinstance(c.fill, openmc.UniverseBase)]
+    # Photon data is only loaded for materials in the model, so fill one cell
+    # with a material too thin to interact
+    mat = openmc.Material()
+    mat.add_element('H', 1.0)
+    mat.set_density('g/cm3', 1.0e-12)
+    cells[-1].fill = mat
+    tally = openmc.Tally()
+    tally.filters = [openmc.CellFilter(cells),
+                     openmc.EnergyFilter([0.0, 1.0e3, 2.0e7])]
+    tally.scores = ['pulse-height']
+    model.tallies = [tally]
+    sp_path = model.run()
+
     with openmc.StatePoint(sp_path) as sp:
         leakage = sp.global_tallies[sp.global_tallies['name'] == b'leakage']
         assert leakage['mean'][0] == pytest.approx(1.0)

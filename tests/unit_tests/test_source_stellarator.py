@@ -258,20 +258,27 @@ def test_stellarator_source_from_vmec(run_in_tmpdir):
     assert src.rmns is None
 
 
-@pytest.fixture
-def desc_equilibrium():
+@pytest.fixture(params=[0, 1], ids=['axisymmetric', 'stellarator'])
+def desc_equilibrium(request):
     pytest.importorskip('desc')
     from desc.equilibrium import Equilibrium
 
     # Circular torus plus a nontrivial l=3 radial contribution.
-    eq = Equilibrium(L=3, M=2, N=1, NFP=3, sym=False)
+    eq = Equilibrium(L=3, M=2, N=request.param, NFP=3, sym=False)
     r = np.zeros(eq.R_basis.num_modes)
     z = np.zeros(eq.Z_basis.num_modes)
     r[eq.R_basis.get_idx(0, 0, 0)] = 6.0
     r[eq.R_basis.get_idx(1, 1, 0)] = 1.5
     z[eq.Z_basis.get_idx(1, -1, 0)] = 1.5
-    r[eq.R_basis.get_idx(3, 1, -1)] = 0.02
-    z[eq.Z_basis.get_idx(3, -1, -1)] = 0.03
+    r[eq.R_basis.get_idx(3, -1, 0)] = 0.02
+    z[eq.Z_basis.get_idx(2, 0, 0)] = 0.03
+    if eq.N:
+        # Exercise all product-basis sign combinations and m=0 harmonics.
+        for m, n in [(1, 1), (1, -1), (-1, 1), (-1, -1)]:
+            r[eq.R_basis.get_idx(3, m, n)] = 0.02
+            z[eq.Z_basis.get_idx(3, m, n)] = 0.03
+        r[eq.R_basis.get_idx(0, 0, -1)] = 0.01
+        z[eq.Z_basis.get_idx(0, 0, 1)] = 0.01
     eq.R_lmn, eq.Z_lmn = r, z
     return eq
 
@@ -345,6 +352,10 @@ def test_stellarator_source_desc_invalid(desc_equilibrium, tmp_path):
         openmc.StellaratorSource.from_desc(desc_equilibrium, n_rho=1, **args)
     with pytest.raises(FileNotFoundError):
         openmc.StellaratorSource.from_desc(tmp_path/'missing.h5', **args)
+    path = tmp_path/'surface.h5'
+    desc_equilibrium.get_surface_at(rho=1.0).save(path)
+    with pytest.raises(TypeError, match='eq'):
+        openmc.StellaratorSource.from_desc(path, **args)
 
 
 def test_stellarator_source_desc_missing_dependency(monkeypatch):

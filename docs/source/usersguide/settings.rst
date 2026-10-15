@@ -381,6 +381,8 @@ available through ``pip install openmc[desc]`` or
 ``conda install -c conda-forge desc-opt``. DESC loads its own files and performs
 the spectral conversion. An equilibrium family uses its last member. DESC is
 not required to import OpenMC, read the resulting source XML, or run transport.
+The first call can incur DESC/JAX initialization and compilation overhead;
+reusing an already-loaded equilibrium avoids repeated file loading.
 
 The ``emission_density`` argument accepts either a callable evaluated on the
 radial grid or an array with one value per radial surface; only its shape

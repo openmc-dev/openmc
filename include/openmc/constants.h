@@ -23,7 +23,7 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 // VERSIONING NUMBERS
 
 // HDF5 data format
-constexpr int HDF5_VERSION[] {3, 0};
+constexpr int HDF5_VERSION[] {3, 1};
 
 // Version numbers for binary files
 constexpr array<int, 2> VERSION_STATEPOINT {18, 2};
@@ -78,6 +78,21 @@ constexpr int MAX_SAMPLE {100000};
 // the band as inside the window is statistically negligible, and weight
 // window games are unbiased regardless of where the thresholds sit.
 constexpr double WEIGHT_WINDOW_REL_TOL {1e-9};
+
+// Maximum number of DAGMC entity handles to send when exchanging rays
+// between MPI ranks. This caps the RayHistory length to avoid sending
+// variable-length vectors.
+constexpr int MAX_N_HANDLES {5};
+
+// Number of initial batches over which the load is rebalanced between MPI
+// ranks during random ray transport. (The iteration cap within a single
+// rebalancing pass is a local in DecompositionMap::balance_load.)
+constexpr int ITER_LOAD_BALANCE {5};
+
+// Maximum number of times a random ray may be handed to another MPI rank
+// before it is terminated. Bounds a ray ping-ponging across a subdomain
+// boundary, which would otherwise hang every rank in the job.
+constexpr int MAX_RAY_TRANSFERS {10000};
 
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
@@ -341,6 +356,8 @@ enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
 
 // Miscellaneous
 constexpr int C_NONE {-1};
+//! Unset floating-point value; test with std::isnan(), not equality.
+constexpr double FP_UNSET {std::numeric_limits<double>::quiet_NaN()};
 
 // Default value of generation for IFP
 constexpr int DEFAULT_IFP_N_GENERATION {10};
@@ -378,6 +395,7 @@ enum class RandomRayVolumeEstimator {
   AUTO
 };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
+enum class RandomRayGeomDim { TWO_DIM, THREE_DIM };
 enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
 enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };
 

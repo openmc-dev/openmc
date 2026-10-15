@@ -34,6 +34,7 @@ option(OPENMC_BUILD_TESTS     "Build tests"                                     
 option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
 option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
+option(OPENMC_USE_XDG         "Enable support for XDG mesh interfaces"      OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
@@ -147,10 +148,11 @@ if(OPENMC_USE_MPI)
     {
       double value = 0.0;
       MPI_Count count = 1;
-      return MPI_Reduce_c(
+      int err = MPI_Reduce_c(
         &value, &value, count, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      return err + MPI_Bcast_c(&value, count, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }"
-    OPENMC_HAVE_MPI_REDUCE_C
+    OPENMC_HAVE_MPI_LARGE_COUNT
   )
   cmake_pop_check_state()
 endif()
@@ -171,6 +173,15 @@ if(OPENMC_USE_DAGMC)
   if(OPENMC_USE_UWUW AND NOT DAGMC_BUILD_UWUW)
     message(FATAL_ERROR "UWUW is enabled but DAGMC was not configured with UWUW.")
   endif()
+endif()
+
+#===============================================================================
+# XDG Mesh and Geometry Support
+#===============================================================================
+
+if(OPENMC_USE_XDG)
+  find_package(XDG REQUIRED PATH_SUFFIXES lib/cmake)
+  message(STATUS "Found XDG: ${XDG_DIR} (version ${XDG_VERSION})")
 endif()
 
 #===============================================================================
@@ -230,6 +241,13 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
+# Use -Wunused-variable to catch unused variables in the code
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag(-Wunused-variable SUPPORTS_UNUSED_VARIABLE)
+if(SUPPORTS_UNUSED_VARIABLE)
+  list(APPEND cxxflags -Wunused-variable)
+endif()
+
 # When OPENMC_ENABLE_STRICT_FP is enabled, disable compiler optimizations that change
 # floating-point results relative to -O0, improving cross-platform and
 # cross-optimization-level reproducibility for regression testing:
@@ -239,7 +257,6 @@ endif()
 # By default (OFF), the compiler is free to use all optimizations for best
 # performance.
 if(OPENMC_ENABLE_STRICT_FP)
-  include(CheckCXXCompilerFlag)
   check_cxx_compiler_flag(-ffp-contract=off SUPPORTS_FP_CONTRACT_OFF)
   if(SUPPORTS_FP_CONTRACT_OFF)
     list(APPEND cxxflags -ffp-contract=off)
@@ -363,6 +380,8 @@ list(APPEND libopenmc_SOURCES
   src/progress_bar.cpp
   src/random_dist.cpp
   src/random_lcg.cpp
+  src/random_ray/decomposition_map.cpp
+  src/random_ray/ray_bank.cpp
   src/random_ray/random_ray_simulation.cpp
   src/random_ray/random_ray.cpp
   src/random_ray/flat_source_domain.cpp
@@ -385,6 +404,7 @@ list(APPEND libopenmc_SOURCES
   src/string_utils.cpp
   src/summary.cpp
   src/surface.cpp
+  src/xdg.cpp
   src/tallies/derivative.cpp
   src/tallies/filter.cpp
   src/tallies/filter_azimuthal.cpp
@@ -491,8 +511,8 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc_objects PUBLIC -DOPENMC_MPI)
-  if (OPENMC_HAVE_MPI_REDUCE_C)
-    target_compile_definitions(libopenmc_objects PRIVATE -DOPENMC_HAVE_MPI_REDUCE_C)
+  if (OPENMC_HAVE_MPI_LARGE_COUNT)
+    target_compile_definitions(libopenmc_objects PRIVATE -DOPENMC_HAVE_MPI_LARGE_COUNT)
   endif()
 endif()
 
@@ -514,6 +534,11 @@ if(OPENMC_USE_DAGMC)
 elseif(OPENMC_USE_UWUW)
   set(OPENMC_USE_UWUW OFF)
   message(FATAL_ERROR "DAGMC must be enabled when UWUW is enabled.")
+endif()
+
+if(OPENMC_USE_XDG)
+  target_compile_definitions(libopenmc_objects PRIVATE OPENMC_XDG_ENABLED)
+  target_link_libraries(libopenmc_objects PUBLIC xdg::xdg)
 endif()
 
 if(OPENMC_USE_LIBMESH)

@@ -220,8 +220,10 @@ def test_stellarator_source_rotating_ellipse_sampling(run_in_tmpdir):
     assert_sample_mean(z**2, ref['Z2'])
 
 
-def test_stellarator_source_from_vmec(run_in_tmpdir):
+@pytest.mark.parametrize('file_format', ['netcdf3', 'hdf5'])
+def test_stellarator_source_from_vmec(run_in_tmpdir, file_format):
     """Round-trip a synthetic rotating-ellipse wout file through from_vmec."""
+    import h5py
     from scipy.io import netcdf_file
 
     ns, nfp = 16, 5
@@ -233,15 +235,22 @@ def test_stellarator_source_from_vmec(run_in_tmpdir):
     rmnc = np.column_stack([np.full(ns, r0_m), a_m * rho, e_m * rho])
     zmns = np.column_stack([np.zeros(ns), a_m * rho, -e_m * rho])
 
-    with netcdf_file('wout_test.nc', 'w') as ds:
-        ds.createDimension('radius', ns)
-        ds.createDimension('mn_mode', len(xm))
-        ds.createVariable('rmnc', 'd', ('radius', 'mn_mode'))[:] = rmnc
-        ds.createVariable('zmns', 'd', ('radius', 'mn_mode'))[:] = zmns
-        ds.createVariable('xm', 'd', ('mn_mode',))[:] = xm
-        ds.createVariable('xn', 'd', ('mn_mode',))[:] = xn
-        ds.createVariable('nfp', 'i', ()).data.fill(nfp)
-        ds.createVariable('lasym__logical__', 'i', ()).data.fill(0)
+    if file_format == 'netcdf3':
+        with netcdf_file('wout_test.nc', 'w') as ds:
+            ds.createDimension('radius', ns)
+            ds.createDimension('mn_mode', len(xm))
+            ds.createVariable('rmnc', 'd', ('radius', 'mn_mode'))[:] = rmnc
+            ds.createVariable('zmns', 'd', ('radius', 'mn_mode'))[:] = zmns
+            ds.createVariable('xm', 'd', ('mn_mode',))[:] = xm
+            ds.createVariable('xn', 'd', ('mn_mode',))[:] = xn
+            ds.createVariable('nfp', 'i', ()).data.fill(nfp)
+            ds.createVariable('lasym__logical__', 'i', ()).data.fill(0)
+    else:
+        # Exercise the HDF5 fallback without constructing a full NetCDF4 file.
+        with h5py.File('wout_test.nc', 'w') as ds:
+            for name, value in dict(rmnc=rmnc, zmns=zmns, xm=xm, xn=xn,
+                                    nfp=nfp, lasym__logical__=0).items():
+                ds[name] = value
 
     src = openmc.StellaratorSource.from_vmec(
         'wout_test.nc',

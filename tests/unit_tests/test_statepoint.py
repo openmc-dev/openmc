@@ -1,3 +1,4 @@
+import h5py
 import numpy as np
 import pytest
 
@@ -104,3 +105,40 @@ def test_multiplication_generations_per_batch():
     expected = 1.0 + 0.5 + 0.25 + 0.125 + 0.0625/(1.0 - keff)
     assert _multiplication(sp) == pytest.approx(expected)
     assert _source_efficiency(sp) == pytest.approx(1.0)
+
+
+def _write_minimal_statepoint(path, version, global_tallies, k_generation):
+    with h5py.File(path, 'w') as f:
+        f.attrs['filetype'] = np.bytes_('statepoint')
+        f.attrs['version'] = np.array(version)
+        f['run_mode'] = np.bytes_('eigenvalue')
+        f['n_realizations'] = 4
+        f['n_inactive'] = 2
+        f['generations_per_batch'] = 1
+        f['k_combined'] = [1.0, 0.01]
+        f['global_tallies'] = global_tallies
+        f['k_generation'] = k_generation
+
+
+@pytest.mark.parametrize('version', [(18, 2), (18, 3)])
+def test_global_tallies_layout(run_in_tmpdir, version):
+    """Old files store (value, sum, sum_sq); 18.3+ store (sum, sum_sq)"""
+    sums = np.array([4.0, 4.4, 3.6, 0.8])
+    sums_sq = np.array([4.1, 4.9, 3.3, 0.2])
+    if version < (18, 3):
+        data = np.column_stack([np.full(4, 99.0), sums, sums_sq])
+        k_gen = np.array([0.9, 0.95, 1.0, 1.0, 1.0, 1.0])
+    else:
+        data = np.column_stack([sums, sums_sq])
+        k_gen = np.column_stack([[0.9, 0.95, 1.0, 1.0, 1.0, 1.0],
+                                 np.full(6, 0.01)])
+    _write_minimal_statepoint('statepoint.h5', version, data, k_gen)
+
+    with openmc.StatePoint('statepoint.h5', autolink=False) as sp:
+        gt = sp.global_tallies
+        np.testing.assert_allclose(gt['sum'], sums)
+        np.testing.assert_allclose(gt['sum_sq'], sums_sq)
+        np.testing.assert_allclose(gt['mean'], sums/4)
+        assert sp.keff.n == pytest.approx(1.0)
+        assert len(sp.k_generation) == 6
+        assert sp.source_efficiency.n == pytest.approx(0.9*0.95)

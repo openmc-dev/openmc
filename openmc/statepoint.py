@@ -268,8 +268,14 @@ class StatePoint:
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']
-            gt['sum'] = data[:,0]
-            gt['sum_sq'] = data[:,1]
+            # Files older than version 18.3 store (value, sum, sum_sq) for
+            # each global tally; newer ones store only (sum, sum_sq)
+            if self._file_version < (18, 3):
+                gt['sum'] = data[:, 1]
+                gt['sum_sq'] = data[:, 2]
+            else:
+                gt['sum'] = data[:, 0]
+                gt['sum_sq'] = data[:, 1]
 
             # Calculate mean and sample standard deviation of mean
             n = self.n_realizations
@@ -291,14 +297,22 @@ class StatePoint:
     def k_generation(self):
         if self.run_mode == 'eigenvalue':
             arr = self._f['k_generation'][()]
-            if arr.ndim==1:
+            # Files older than version 18.3 store only k for each generation;
+            # newer ones store k and its standard deviation
+            if arr.ndim == 1:
                 return arr
-            elif arr.ndim==2:
-                return uarray(arr[:,0],arr[:,1])
+            elif arr.ndim == 2:
+                return uarray(arr[:, 0], arr[:, 1])
             else:
-                raise ValueError(f'k_generation shape ({arr.shape}) must be either 1d or 2d')
+                raise ValueError(
+                    f'k_generation shape ({arr.shape}) must be either 1d or 2d')
         else:
             return None
+
+    @property
+    def _file_version(self):
+        """Major and minor version of the statepoint file format"""
+        return tuple(int(v) for v in self._f.attrs['version'])
 
     def _k_generation_inactive(self):
         """Generation-wise k estimates for the inactive generations"""

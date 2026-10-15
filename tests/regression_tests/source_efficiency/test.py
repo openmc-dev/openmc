@@ -90,6 +90,6 @@ def sphere_model(sources):
     return model
 
 
-def test_source_effectiveness(sphere_model):
+def test_source_efficiency(sphere_model):
     harness = SourceTestHarness("statepoint.20.h5", model=sphere_model)
     harness.main()

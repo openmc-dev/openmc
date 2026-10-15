@@ -295,7 +295,7 @@ void FlatSourceDomain::set_flux_to_source(int64_t sr, int g)
 // Combine transport flux contributions and flat source contributions from the
 // previous iteration to generate this iteration's estimate of scalar flux.
 // Source terms are evenly distributed across angular flux as sources are
-// isotropic; this however assumes that the reference angles' Voronoi cells 
+// isotropic; this however assumes that the reference angles' Voronoi cells
 // subtend approximately equal solid angles on the surface of the unit sphere.
 int64_t FlatSourceDomain::add_source_to_scalar_flux()
 {
@@ -466,8 +466,18 @@ void FlatSourceDomain::initialize_angular_quadrature()
   tally_is_angular_.assign(model::tallies.size(), false);
   angular_target_cells_.clear();
   angular_target_materials_.clear();
-  angular_target_meshes_.clear();
+  angular_target_spatial_meshes_.clear();
   tally_angular_flux_everywhere_ = false;
+
+  // If FW-CADIS source biasing is active, flag its tally
+  int sb_tally = C_NONE;
+  for (const auto& wwg : variance_reduction::weight_windows_generators) {
+    if (wwg->sb_tally_idx_ != C_NONE &&
+        wwg->sb_tally_idx_ < static_cast<int32_t>(model::tallies.size())) {
+      sb_tally = wwg->sb_tally_idx_;
+      break;
+    }
+  }
 
   for (int i_tally = 0; i_tally < model::tallies.size(); i_tally++) {
     Tally& tally {*model::tallies[i_tally]};
@@ -515,6 +525,7 @@ void FlatSourceDomain::initialize_angular_quadrature()
           tally_materials.push_back(m);
         }
       } else if (auto* mesh_filter = dynamic_cast<MeshFilter*>(filt)) {
+        // Already caught angular-type mesh filters; only spatial remain
         has_spatial_filter = true;
         tally_meshes.push_back(mesh_filter->mesh());
       }
@@ -530,14 +541,86 @@ void FlatSourceDomain::initialize_angular_quadrature()
       continue;
     }
 
-    for (int32_t c : tally_cells) {
-      angular_target_cells_.insert(c);
-    }
-    for (int32_t m : tally_materials) {
-      angular_target_materials_.insert(m);
-    }
-    for (int32_t m : tally_meshes) {
-      angular_target_meshes_.insert(m);
+    if (i_tally == sb_tally) {
+      // If this is the source biasing tally, flag only the cells with a
+      // forward external source present. But we'll need to borrow syntax from
+      // convert_external_sources() to locate these sources. This should only
+      // have to occur once (or twice, if eventually supported for photons).
+      for (int es = 0; es < model::external_sources.size(); es++) {
+        // Extract source information
+        Source* s = model::external_sources[es].get();
+        IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+        const std::unordered_set<int32_t>& domain_ids = is->domain_ids();
+
+        // If there is no domain constraint specified, then this must be a point
+        // source.
+        if (is->domain_ids().size() == 0) {
+
+          // Extract the point source coordinate and find its cell
+          auto sp = dynamic_cast<SpatialPoint*>(is->space());
+          GeometryState gs;
+          gs.r() = sp->r();
+          gs.r_last() = sp->r();
+          gs.u() = {1.0, 0.0, 0.0};
+          bool found = exhaustive_find_cell(gs);
+          if (!found) {
+            fatal_error(fmt::format("Could not find cell containing external "
+                                    "point source at {}",
+              sp->r()));
+          }
+          angular_target_cells_.insert(gs.lowest_coord().cell());
+
+        } else {
+          // If not a point source, then use the volumetric domain constraints
+          // to determine the location of the forward source.
+          if (is->domain_type() == Source::DomainType::MATERIAL) {
+            for (int32_t material_id : domain_ids) {
+              int32_t i_mat = model::material_map[material_id];
+              angular_target_materials_.insert(i_mat);
+            }
+          } else if (is->domain_type() == Source::DomainType::CELL) {
+            for (int32_t cell_id : domain_ids) {
+              int32_t i_cell = model::cell_map[cell_id];
+              Cell& cell = *model::cells[i_cell];
+              if (cell.type_ == Fill::MATERIAL) {
+                angular_target_cells_.insert(i_cell);
+              } else {
+                for (const auto& pair : cell.get_contained_cells(0, nullptr)) {
+                  angular_target_cells_.insert(pair.first);
+                }
+              }
+            }
+          } else if (is->domain_type() == Source::DomainType::UNIVERSE) {
+            for (int32_t universe_id : domain_ids) {
+              int32_t i_universe = model::universe_map[universe_id];
+              Universe& universe = *model::universes[i_universe];
+              for (int32_t i_cell : universe.cells_) {
+                Cell& cell = *model::cells[i_cell];
+                if (cell.type_ == Fill::MATERIAL) {
+                  angular_target_cells_.insert(i_cell);
+                } else {
+                  for (const auto& pair :
+                    cell.get_contained_cells(0, nullptr)) {
+                    angular_target_cells_.insert(pair.first);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // If this is not the source biasing tally, flag all cells, materials,
+      // and meshes in the spatial domain of the tally for angular flux scoring
+      for (int32_t c : tally_cells) {
+        angular_target_cells_.insert(c);
+      }
+      for (int32_t m : tally_materials) {
+        angular_target_materials_.insert(m);
+      }
+      for (int32_t m : tally_meshes) {
+        angular_target_spatial_meshes_.insert(m);
+      }
     }
   }
 
@@ -558,7 +641,7 @@ bool FlatSourceDomain::tally_angular_flux_applies(
   if (material != MATERIAL_VOID && angular_target_materials_.count(material)) {
     return true;
   }
-  if (mesh_idx != C_NONE && angular_target_meshes_.count(mesh_idx)) {
+  if (mesh_idx != C_NONE && angular_target_spatial_meshes_.count(mesh_idx)) {
     // will flag every source region this mesh applies to, whether or
     // not the region actually falls in a bin
     return true;
@@ -2088,8 +2171,8 @@ int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
 int FlatSourceDomain::lookup_angular_bin(Direction u) const
 {
   if (solve_ == RandomRaySolve::ADJOINT) {
-    // Flip direction in adjoint mode, since the ray is actually traveling in 
-    // the direction -(Omega), whereas we want to tally the importance of a 
+    // Flip direction in adjoint mode, since the ray is actually traveling in
+    // the direction -(Omega), whereas we want to tally the importance of a
     // particle traveling in the forward direction Omega
     u = -u;
   }

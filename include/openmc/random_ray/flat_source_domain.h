@@ -186,7 +186,7 @@ protected:
   vector<bool> tally_is_angular_;
   std::unordered_set<int32_t> angular_target_cells_;
   std::unordered_set<int32_t> angular_target_materials_;
-  std::unordered_set<int32_t> angular_target_meshes_;
+  std::unordered_set<int32_t> angular_target_spatial_meshes_;
   bool tally_angular_flux_everywhere_ {false};
 
   double

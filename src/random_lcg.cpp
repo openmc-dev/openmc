@@ -1,7 +1,5 @@
 #include "openmc/random_lcg.h"
 
-#include <cmath>
-
 namespace openmc {
 
 // Starting seed
@@ -78,8 +76,9 @@ double prn(uint64_t* seed)
     ((*seed >> ((*seed >> 59u) + 5u)) ^ *seed) * 12605985483714917081ull;
   uint64_t result = (word >> 43u) ^ word;
 
-  // Convert output from unsigned integer to double
-  return ldexp(result, -64);
+  // Convert output from unsigned integer to double. Multiplying by an exact
+  // power of two gives the same result as ldexp but avoids a library call.
+  return static_cast<double>(result) * 0x1p-64;
 }
 
 //==============================================================================

@@ -23,7 +23,7 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 // VERSIONING NUMBERS
 
 // HDF5 data format
-constexpr int HDF5_VERSION[] {3, 0};
+constexpr int HDF5_VERSION[] {3, 1};
 
 // Version numbers for binary files
 constexpr array<int, 2> VERSION_STATEPOINT {18, 2};
@@ -356,6 +356,8 @@ enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
 
 // Miscellaneous
 constexpr int C_NONE {-1};
+//! Unset floating-point value; test with std::isnan(), not equality.
+constexpr double FP_UNSET {std::numeric_limits<double>::quiet_NaN()};
 
 // Default value of generation for IFP
 constexpr int DEFAULT_IFP_N_GENERATION {10};

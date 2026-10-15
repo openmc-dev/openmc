@@ -148,10 +148,11 @@ if(OPENMC_USE_MPI)
     {
       double value = 0.0;
       MPI_Count count = 1;
-      return MPI_Reduce_c(
+      int err = MPI_Reduce_c(
         &value, &value, count, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      return err + MPI_Bcast_c(&value, count, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }"
-    OPENMC_HAVE_MPI_REDUCE_C
+    OPENMC_HAVE_MPI_LARGE_COUNT
   )
   cmake_pop_check_state()
 endif()
@@ -509,8 +510,8 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc_objects PUBLIC -DOPENMC_MPI)
-  if (OPENMC_HAVE_MPI_REDUCE_C)
-    target_compile_definitions(libopenmc_objects PRIVATE -DOPENMC_HAVE_MPI_REDUCE_C)
+  if (OPENMC_HAVE_MPI_LARGE_COUNT)
+    target_compile_definitions(libopenmc_objects PRIVATE -DOPENMC_HAVE_MPI_LARGE_COUNT)
   endif()
 endif()
 

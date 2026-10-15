@@ -1692,7 +1692,7 @@ class StellaratorSource(SourceBase):
         openmc.StellaratorSource
 
         """
-        ds = cls._read_wout(input_path(wout))
+        ds = cls._read_wout(wout)
         rmnc = ds['rmnc']
         zmns = ds['zmns']
         xm = ds['xm'].astype(int)
@@ -1800,7 +1800,7 @@ class StellaratorSource(SourceBase):
         cv.check_greater_than('n_rho', n_rho, 1)
         rho = np.linspace(0.0, 1.0, n_rho)
         if isinstance(eq, (str, os.PathLike)):
-            eq = load(input_path(eq), file_format='hdf5')
+            eq = load(eq, file_format='hdf5')
         if isinstance(eq, EquilibriaFamily):
             if not len(eq):
                 raise ValueError("The DESC equilibrium family is empty")

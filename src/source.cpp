@@ -1361,13 +1361,11 @@ void StellaratorSource::precompute_sampling_distributions()
     }
   }
 
-  // Evaluate R, Z, dR/dtheta, dZ/dtheta on the angle grid for every radial
-  // surface. Radial derivatives within a bin follow from finite differences
-  // of these grids because the Fourier evaluation is linear in the
-  // coefficients.
-  vector<double> R_s(n_rho * n_grid), Z_s(n_rho * n_grid);
-  vector<double> Rt_s(n_rho * n_grid), Zt_s(n_rho * n_grid);
-  for (size_t i = 0; i < n_rho; ++i) {
+  // Keep only adjacent surfaces, reusing the older surface's storage after
+  // processing each interval. Each surface is evaluated once.
+  vector<double> R_s(2 * n_grid), Z_s(2 * n_grid);
+  vector<double> Rt_s(2 * n_grid), Zt_s(2 * n_grid);
+  auto evaluate_surface = [&](size_t i) {
     const double* rc = &rmnc_[i * n_modes];
     const double* zs = &zmns_[i * n_modes];
     const double* rs = asym_ ? &rmns_[i * n_modes] : nullptr;
@@ -1395,90 +1393,82 @@ void StellaratorSource::precompute_sampling_distributions()
             Zt -= m * zc[k] * s;
           }
         }
-        size_t p = i * n_grid + it * n_zeta + jz;
+        if (R <= 0.0) {
+          fatal_error(
+            "StellaratorSource: flux surfaces reach R <= 0; check the "
+            "Fourier coefficients (units should be cm).");
+        }
+        size_t p = (i % 2) * n_grid + it * n_zeta + jz;
         R_s[p] = R;
         Z_s[p] = Z;
         Rt_s[p] = Rt;
         Zt_s[p] = Zt;
       }
     }
-  }
+  };
 
-  // Sanity check: the map must stay on the +R side of the cylindrical axis
-  double R_min = *std::min_element(R_s.begin(), R_s.end());
-  if (R_min <= 0.0) {
-    fatal_error("StellaratorSource: flux surfaces reach R <= 0; check the "
-                "Fourier coefficients (units should be cm).");
-  }
-
-  // Pass 1: signed volume integral to fix the global Jacobian sign. Both
-  // (rho, theta, zeta) handednesses occur in practice (VMEC's Jacobian is
-  // conventionally negative), so the sign is detected rather than assumed.
+  // Accumulate signed integrals and bounds for both orientations. The total
+  // volume determines the Jacobian sign after all intervals are processed.
   double quad_wgt = 4.0 * PI * PI / n_grid; // full-torus angular weight
   double v_tot = 0.0;
-  for (size_t b = 0; b < n_bins; ++b) {
-    double inv_drho = 1.0 / (rho_[b + 1] - rho_[b]);
-    const double* R0 = &R_s[b * n_grid];
-    const double* R1 = &R_s[(b + 1) * n_grid];
-    const double* Z0 = &Z_s[b * n_grid];
-    const double* Z1 = &Z_s[(b + 1) * n_grid];
-    const double* Rt0 = &Rt_s[b * n_grid];
-    const double* Rt1 = &Rt_s[(b + 1) * n_grid];
-    const double* Zt0 = &Zt_s[b * n_grid];
-    const double* Zt1 = &Zt_s[(b + 1) * n_grid];
-    double sum = 0.0;
-    for (size_t p = 0; p < n_grid; ++p) {
-      double Rr = (R1[p] - R0[p]) * inv_drho;
-      double Zr = (Z1[p] - Z0[p]) * inv_drho;
-      // Midpoint of the bin (all factors are linear in t)
-      double Rh = 0.5 * (R0[p] + R1[p]);
-      double Rth = 0.5 * (Rt0[p] + Rt1[p]);
-      double Zth = 0.5 * (Zt0[p] + Zt1[p]);
-      sum += Rh * (Rr * Zth - Rth * Zr);
-    }
-    v_tot += sum * quad_wgt * (rho_[b + 1] - rho_[b]);
-  }
-  jacobian_sign_ = (v_tot >= 0.0) ? 1.0 : -1.0;
-
-  // Pass 2: differential volume V'(rho) at surfaces and bin midpoints,
-  // rejection majorants, and Jacobian sign-consistency check
   vector<double> vp_lo(n_bins), vp_mid(n_bins), vp_hi(n_bins);
+  vector<double> negative_envelope(n_bins);
   envelope_.assign(n_bins, 0.0);
   double f_peak = 0.0;
   double f_min = 0.0;
+  evaluate_surface(0);
   for (size_t b = 0; b < n_bins; ++b) {
+    evaluate_surface(b + 1);
     double inv_drho = 1.0 / (rho_[b + 1] - rho_[b]);
-    const double* R0 = &R_s[b * n_grid];
-    const double* R1 = &R_s[(b + 1) * n_grid];
-    const double* Z0 = &Z_s[b * n_grid];
-    const double* Z1 = &Z_s[(b + 1) * n_grid];
-    const double* Rt0 = &Rt_s[b * n_grid];
-    const double* Rt1 = &Rt_s[(b + 1) * n_grid];
-    const double* Zt0 = &Zt_s[b * n_grid];
-    const double* Zt1 = &Zt_s[(b + 1) * n_grid];
+    size_t lo = (b % 2) * n_grid;
+    size_t hi = ((b + 1) % 2) * n_grid;
+    const double* R0 = &R_s[lo];
+    const double* R1 = &R_s[hi];
+    const double* Z0 = &Z_s[lo];
+    const double* Z1 = &Z_s[hi];
+    const double* Rt0 = &Rt_s[lo];
+    const double* Rt1 = &Rt_s[hi];
+    const double* Zt0 = &Zt_s[lo];
+    const double* Zt1 = &Zt_s[hi];
     double s0 = 0.0, sh = 0.0, s1 = 0.0;
     double env = 0.0;
+    double negative_env = 0.0;
     for (size_t p = 0; p < n_grid; ++p) {
       double Rr = (R1[p] - R0[p]) * inv_drho;
       double Zr = (Z1[p] - Z0[p]) * inv_drho;
-      double f0 = jacobian_sign_ * R0[p] * (Rr * Zt0[p] - Rt0[p] * Zr);
-      double f1 = jacobian_sign_ * R1[p] * (Rr * Zt1[p] - Rt1[p] * Zr);
+      double f0 = R0[p] * (Rr * Zt0[p] - Rt0[p] * Zr);
+      double f1 = R1[p] * (Rr * Zt1[p] - Rt1[p] * Zr);
       double Rh = 0.5 * (R0[p] + R1[p]);
       double Rth = 0.5 * (Rt0[p] + Rt1[p]);
       double Zth = 0.5 * (Zt0[p] + Zt1[p]);
-      double fh = jacobian_sign_ * Rh * (Rr * Zth - Rth * Zr);
+      double fh = Rh * (Rr * Zth - Rth * Zr);
       s0 += f0;
       sh += fh;
       s1 += f1;
       env = std::max(env, quad_max01(f0, fh, f1));
+      negative_env = std::max(negative_env, quad_max01(-f0, -fh, -f1));
       f_peak = std::max({f_peak, f0, fh, f1});
       f_min = std::min({f_min, f0, fh, f1});
     }
     vp_lo[b] = s0 * quad_wgt;
     vp_mid[b] = sh * quad_wgt;
     vp_hi[b] = s1 * quad_wgt;
+    v_tot += sh * quad_wgt * (rho_[b + 1] - rho_[b]);
     // Safety factor covering angular discretization of the majorant
     envelope_[b] = 1.05 * env;
+    negative_envelope[b] = 1.05 * negative_env;
+  }
+  jacobian_sign_ = (v_tot >= 0.0) ? 1.0 : -1.0;
+  if (jacobian_sign_ < 0.0) {
+    envelope_.swap(negative_envelope);
+    double old_peak = f_peak;
+    f_peak = -f_min;
+    f_min = -old_peak;
+    for (size_t b = 0; b < n_bins; ++b) {
+      vp_lo[b] = -vp_lo[b];
+      vp_mid[b] = -vp_mid[b];
+      vp_hi[b] = -vp_hi[b];
+    }
   }
   if (f_min < -1.0e-6 * f_peak) {
     fatal_error(

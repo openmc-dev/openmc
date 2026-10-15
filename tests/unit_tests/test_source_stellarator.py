@@ -194,12 +194,14 @@ def test_stellarator_source_axisymmetric_sampling(run_in_tmpdir):
     assert_sample_mean(major_r, r0 + a**2 / (4.0 * r0))
 
 
-def test_stellarator_source_rotating_ellipse_sampling(run_in_tmpdir):
+@pytest.mark.parametrize('orientation', [1, -1])
+def test_stellarator_source_rotating_ellipse_sampling(run_in_tmpdir, orientation):
     """Compare sampled moments of a 3-D configuration against quadrature of
     the exact density S(rho) * R * |tau|."""
     r0, a, e, nfp = 600.0, 150.0, 50.0, 5
     rho, mode_m, mode_n, rmnc, zmns = rotating_ellipse_modes(
         r0, a, e, nfp=nfp)
+    zmns *= orientation
     emission_density = 1.0 - rho**2
     src = make_source(
         rho=rho, emission_density=emission_density, mode_m=mode_m,

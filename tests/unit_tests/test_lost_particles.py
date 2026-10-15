@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 
 import openmc
@@ -49,7 +50,9 @@ def test_max_write_lost_particles(model: openmc.Model, run_in_tmpdir):
 
 
 
-def _coincident_surfaces_model(particle):
+def _coincident_surfaces_model(particle,
+                               direction=(0.9182609440159194,
+                                          0.39597580569397484, 0.0)):
     s1 = openmc.XPlane(-57452.33336021505)
     s2 = openmc.XPlane(43403.32187479845)
     s3 = openmc.XPlane(62125.04976135607)
@@ -71,15 +74,14 @@ def _coincident_surfaces_model(particle):
     model.settings.source = openmc.IndependentSource(
         particle=particle,
         space=openmc.stats.Point((-85626.45049221347, 0.0, 0.0)),
-        angle=openmc.stats.Monodirectional(
-            (0.9182609440159194, 0.39597580569397484, 0.0)),
+        angle=openmc.stats.Monodirectional(direction),
         energy=openmc.stats.delta_function(1.0e6),
     )
 
     # The particle is split into ten when crossing s3 into the second mesh bin
     mesh = openmc.RegularMesh()
-    mesh.lower_left = (-1.0e5, -1.0e5, -1.0)
-    mesh.upper_right = (2.2e5, 1.0e5, 1.0)
+    mesh.lower_left = (-1.0e5, -1.0e12, -1.0)
+    mesh.upper_right = (2.2e5, 1.0e12, 1.0)
     mesh.dimension = (2, 1, 1)
     model.settings.weight_windows = openmc.WeightWindows(
         mesh, lower_ww_bounds=[0.5, 0.01], upper_ww_bounds=[5.0, 0.1],
@@ -89,10 +91,14 @@ def _coincident_surfaces_model(particle):
     return model
 
 
-def test_split_on_coincident_surfaces(run_in_tmpdir):
+@pytest.mark.parametrize('u_x', [0.9182609440159194, 1.0e-4])
+def test_split_on_coincident_surfaces(run_in_tmpdir, u_x):
     """Particles split by weight windows on a surface that coincides with
-    another surface must not be lost (GitHub issue #4140)"""
-    model = _coincident_surfaces_model('neutron')
+    another surface must not be lost (GitHub issue #4140), including on a
+    near-grazing crossing where the retry's small move is comparable to
+    roundoff in the position"""
+    model = _coincident_surfaces_model(
+        'neutron', direction=(u_x, math.sqrt(1.0 - u_x**2), 0.0))
     sp_path = model.run()
 
     # All weight should leak out of the vacuum boundary

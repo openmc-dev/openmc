@@ -48,8 +48,11 @@ namespace {
 //! surface crossing, is only known to be on that surface. If another surface
 //! coincides with it, roundoff in the particle's position may place the
 //! particle on the wrong side of the other surface so that no cell contains
-//! it. As when crossing a surface, move the particle forward a tiny bit and
-//! search again.
+//! it. Move the particle forward a tiny bit and search again. The surface is
+//! kept set, so that its sense is still taken from the side the particle is
+//! on rather than from its position: on a near-grazing direction the move may
+//! be too small to get past roundoff, and the particle must then be lost
+//! rather than placed in the cell on the other side.
 //
 //! \param p Particle to locate
 //! \param verbose Whether to print verbose search information
@@ -58,7 +61,6 @@ bool find_cell_from_surface(Particle& p, bool verbose = false)
 {
   bool found = exhaustive_find_cell(p, verbose);
   if (!found && p.surface() != SURFACE_NONE) {
-    p.surface() = SURFACE_NONE;
     p.n_coord() = 1;
     p.r() += TINY_BIT * p.u();
     found = exhaustive_find_cell(p, verbose);

@@ -11,6 +11,7 @@ import lxml.etree as ET
 import numpy as np
 import h5py
 import pandas as pd
+from scipy.io import netcdf_file
 
 import openmc
 import openmc.checkvalue as cv
@@ -1738,7 +1739,6 @@ class StellaratorSource(SourceBase):
         names = ('rmnc', 'zmns', 'rmns', 'zmnc', 'xm', 'xn', 'nfp',
                  'lasym__logical__')
         try:
-            from scipy.io import netcdf_file
             with netcdf_file(str(path), mmap=False) as ds:
                 return {k: np.asarray(v[()], dtype=float)
                         for k, v in ds.variables.items() if k in names}

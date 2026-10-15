@@ -419,11 +419,19 @@ class StepResult:
         source_rate_dset = handle["/source_rate"]
         proc_time_dset = handle["/depletion time"]
         keff_search_root_dset = handle["/keff_search_root"]
-        evaluated_dset = handle["/evaluated"]
-
         # Get number of results stored
         number_shape = list(number_dset.shape)
         number_results = number_shape[0]
+
+        if "evaluated" not in handle:
+            # Appending to a file written before VERSION_RESULTS (1, 4).
+            # Backfill the flag with the same values from_hdf5 assumes for
+            # such files.
+            evaluated = np.ones(number_results, dtype=bool)
+            evaluated[-1:] = False
+            handle.create_dataset(
+                "evaluated", data=evaluated, maxshape=(None,), dtype="bool")
+        evaluated_dset = handle["/evaluated"]
 
         new_shape = index + 1
 
@@ -542,11 +550,11 @@ class StepResult:
         else:
             # Older results files (pre VERSION_RESULTS (1, 4)) did not track
             # whether a step's k/rates came from a real solve or were a
-            # final_step=False placeholder. Assume valid so that restarts
-            # against pre-existing files keep behaving as before -- this
-            # only matters for continuation runs, and files from before the
-            # continue_timesteps feature existed never hit this code path.
-            results.evaluated = True
+            # final_step=False placeholder. Only the final record can be such
+            # a placeholder, so treat it as unevaluated; a restart then
+            # re-runs the operator instead of reusing possibly zero rates.
+            n_steps = number_dset.shape[0]
+            results.evaluated = (step % n_steps) != n_steps - 1
 
         if results.proc_time is None:
             results.proc_time = np.array([np.nan])

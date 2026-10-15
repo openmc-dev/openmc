@@ -11,12 +11,13 @@ placeholder written when a previous `integrate()` call used
 These tests exercise the fix at the two points where it lives:
 
 1. `StepResult` now carries an explicit `evaluated` flag through save/load
-   (including a default of `True` for pre-existing results files that
-   predate the flag).
+   (for pre-existing results files that predate the flag, only the final
+   record is treated as unevaluated).
 2. `Integrator._get_bos_data()` now consults that flag -- not just
    `step_index` -- before deciding to reuse restart data.
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import h5py
@@ -44,9 +45,10 @@ class _StubOperator:
         return volume, nuc_list, burn_list, full_burn_list, name_list
 
 
-def test_stepresult_evaluated_roundtrip(tmp_path):
+@pytest.mark.parametrize("path_type", [str, Path])
+def test_stepresult_evaluated_roundtrip(tmp_path, path_type):
     """`evaluated` should survive a save -> HDF5 -> load round trip."""
-    path = tmp_path / "depletion_results.h5"
+    path = path_type(tmp_path / "depletion_results.h5")
     op = _StubOperator()
     x = [np.array([1.0e20])]
 
@@ -68,28 +70,45 @@ def test_stepresult_evaluated_roundtrip(tmp_path):
     assert step1.evaluated is False
 
 
-def test_stepresult_evaluated_defaults_true_for_legacy_files(tmp_path):
-    """Results files written before this fix (no 'evaluated' dataset)
-    should be treated as evaluated=True, preserving old behavior for
-    existing files on disk."""
-    path = tmp_path / "depletion_results.h5"
+def _write_legacy_results(path, n_steps):
+    """Write a results file without the 'evaluated' dataset, as files from
+    before VERSION_RESULTS (1, 4) were."""
     op = _StubOperator()
     x = [np.array([1.0e20])]
-
     result = OperatorResult(k=ufloat(1.0, 0.001), rates=None)
-    StepResult.save(op, x, result, [0.0, 100.0], 174.0, 0, proc_time=1.0,
-                     path=str(path))
-
-    # Simulate a results file from before this fix by removing the
-    # 'evaluated' dataset that StepResult.save() would normally have
-    # written.
+    for i in range(n_steps):
+        StepResult.save(op, x, result, [100.0*i, 100.0*(i + 1)], 174.0, i,
+                        proc_time=1.0, path=str(path))
     with h5py.File(str(path), "a") as fh:
         del fh["evaluated"]
 
-    with h5py.File(str(path), "r") as fh:
-        step0 = StepResult.from_hdf5(fh, 0)
 
-    assert step0.evaluated is True
+def test_stepresult_evaluated_legacy_files(tmp_path):
+    """In results files without an 'evaluated' dataset, only the final
+    record can be a final_step=False placeholder, so it is treated as
+    unevaluated and the others as evaluated."""
+    path = tmp_path / "depletion_results.h5"
+    _write_legacy_results(path, 2)
+
+    with h5py.File(str(path), "r") as fh:
+        assert StepResult.from_hdf5(fh, 0).evaluated is True
+        assert StepResult.from_hdf5(fh, 1).evaluated is False
+
+
+def test_stepresult_append_to_legacy_file(tmp_path):
+    """Appending to a results file without an 'evaluated' dataset creates
+    and backfills it."""
+    path = tmp_path / "depletion_results.h5"
+    _write_legacy_results(path, 2)
+
+    op = _StubOperator()
+    x = [np.array([1.0e20])]
+    result = OperatorResult(k=ufloat(1.0, 0.001), rates=None)
+    StepResult.save(op, x, result, [200.0, 300.0], 174.0, 2,
+                    proc_time=1.0, path=str(path), evaluated=True)
+
+    with h5py.File(str(path), "r") as fh:
+        assert list(fh["evaluated"][()]) == [True, False, True]
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +267,20 @@ def test_integrate_skips_write_bos_data_when_final_step_false(tmp_path):
     # evaluation (from _get_bos_data_from_operator), not for the skipped
     # trailing placeholder.
     op.write_bos_data.assert_called_once_with(0)
+
+
+def test_integrate_zero_final_source_rate_is_unevaluated(tmp_path):
+    """A final evaluation with a zero source rate never runs the operator,
+    so it is saved as unevaluated and writes no statepoint."""
+    path = tmp_path / "depletion_results.h5"
+    op = _FakeOperatorForIntegrate()
+    integ = _OneStepIntegrator(
+        op, timesteps=[1.0, 1.0], power=[174.0, 0.0], timestep_units="d")
+    integ.integrate(final_step=True, output=False, path=str(path))
+
+    with h5py.File(str(path), "r") as fh:
+        assert list(fh["evaluated"][()]) == [True, True, False]
+    assert op.write_bos_data.call_count == 2
 
 
 def test_integrate_calls_write_bos_data_when_final_step_true(tmp_path):

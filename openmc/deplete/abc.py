@@ -988,6 +988,9 @@ class Integrator(ABC):
             else:
                 keff_search_root = None
             res_final = self.operator(n, source_rate if final_step else 0.0)
+            # With a zero source rate the operator returns zero rates without
+            # running, so the record is only a placeholder
+            final_evaluated = final_step and source_rate != 0.0
             StepResult.save(
                 self.operator,
                 n,
@@ -999,7 +1002,7 @@ class Integrator(ABC):
                 write_rates=write_rates,
                 keff_search_root=keff_search_root,
                 path=path,
-                evaluated=final_step,
+                evaluated=final_evaluated,
             )
             # Only document beginning-of-step data (which triggers a
             # statepoint write) when a real transport/eigenvalue solve was
@@ -1011,7 +1014,7 @@ class Integrator(ABC):
             # The real statepoint for this step gets written on a
             # subsequent continue_timesteps=True restart, via
             # _get_bos_data_from_operator's call to write_bos_data.
-            if final_step:
+            if final_evaluated:
                 self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()

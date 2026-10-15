@@ -511,18 +511,53 @@ when using the naive estimator, though at the cost of a notable increase in
 variance. Empirical testing reveals that on most eigenvalue problems, the
 simulation averaged estimator does win out overall in numerical performance, as
 a much coarser quadrature can be used resulting in faster runtimes overall.
-Thus, OpenMC uses the simulation averaged estimator as default in its random ray
-mode for eigenvalue solves.
+Thus, the simulation averaged estimator is generally preferred over the naive
+estimator for eigenvalue solves.
 
 OpenMC also features a "hybrid" volume estimator that uses the naive estimator
 for all regions containing an external (fixed) source term. For all other
 source regions, the "simulation averaged" estimator is used. This typically achieves
-a best of both worlds result, with the benefits of the low bias simulation averaged
+a best of both worlds result, with the benefits of the unbiased simulation averaged
 estimator in most regions, while preventing instability and/or large biases in regions
-with external source terms via use of the naive estimator. In general, it is
-recommended to use the "hybrid" estimator, which is the default method used
-in OpenMC. If instability is encountered despite high ray densities, then
-the naive estimator may be preferable.
+with external source terms via use of the naive estimator. If instability is
+encountered despite high ray densities, then the naive estimator may be
+preferable.
+
+OpenMC also features an "adaptive" volume estimator that generalizes the
+hybrid estimator. It uses the simulation averaged estimator by default and
+automatically demotes individual cells to the naive treatment (the naive
+volume and the previous-flux miss treatment) when they show signs of
+instability. The most important case this adds over the hybrid estimator is
+a cell fed almost entirely by in-scatter from other groups, as in the
+optically thin air regions common to shielding problems, where the reduced
+source dwarfs the flux even though no external source is present.
+
+A cell is demoted when it is hit-starved or when its reduced source is
+negative. During the inactive batches, a cell whose reduced source is much
+larger than its scalar flux is also demoted. Finally, beginning at the end
+of the inactive batches and re-evaluated throughout the active phase, a
+cell is demoted permanently if its flux accumulated over the simulation is
+negative or is dominated by sources that do not derive from its own flux.
+Because these last decisions are made from accumulated statistics and are
+never reversed, the estimator choice does not churn with iteration noise
+during the tallied batches. When a linear source shape is in use, demoted
+cells also revert to a flat source representation.
+
+A "strict adaptive" variant is provided for solves whose results feed
+variance reduction, where even a small number of slightly negative flux
+estimates can degrade the adjoint solve and the quality of generated weight
+windows. It runs the same machinery and additionally repairs any negative
+flux estimate each batch, first by recomputing it with the batch's own
+volume and then, if it is still negative, by falling back on the previous
+iterate. A cell that needs the repair repeatedly is demoted outright, which
+keeps the one-sided repair from biasing its flux upward. The repair
+introduces a small conservative bias overall (several hundred pcm on
+typical eigenvalue problems), so the strict variant is not used for
+standard solves.
+
+By default, OpenMC selects the volume estimator automatically ("auto").
+Weight window generation and adjoint solves receive the strict adaptive
+estimator, and all other solves receive the adaptive estimator.
 
 A table that summarizes the pros and cons, as well as recommendations for
 different use cases, is given in the :ref:`volume
@@ -999,6 +1034,97 @@ The contents of this section, alongside the equations for the flat source and
 scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively,
 completes the set of equations for LS.
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Consistency of the Scalar Flux Estimate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One subtlety of the linear source scheme deserves note. Intuitively, the
+issue is a mismatch of statistics: the naive volume treatment of Equation
+:eq:`phi_naive` updates the flux from a single batch's rays, while the
+linear source is anchored to the simulation-averaged centroid, so the two
+halves of the update describe different sets of tracks and the exactness
+the naive treatment promises is quietly broken. Concretely, the transport
+sweep evaluates each region's linear source of Equation :eq:`region_source`
+against the accumulated centroid :math:`\mathbf{r}_{\mathrm{c}}`, but a
+batch's tracks average that source at their own track-length-weighted
+centroid :math:`\mathbf{r}_{\mathrm{c},b}`, so the mean source the batch
+actually integrates is
+
+.. math::
+    :label: batch_sampled_source
+
+    Q_{i,g} + \boldsymbol{\vec{Q}}_{i,g} \cdot \left(\mathbf{r}_{\mathrm{c},b}
+    - \mathbf{r}_{\mathrm{c}}\right)\;.
+
+A flux update that adds back only :math:`Q_{i,g} / \Sigma_{t,i,g}` absorbs
+the difference as gradient-scale noise, which in optically thin scatter-fed
+regions can ignite self-sustaining negative fluxes. OpenMC therefore adds
+back the full batch-sampled source (divided by :math:`\Sigma_{t,i,g}`)
+whenever a region updates with its own batch volume, making that update
+exact for the batch's tracks. Regions updating with the simulation-averaged
+volume keep the original form: each batch's centroid scatters about the
+accumulated centroid it feeds, so the omitted term has no persistent sign
+and its contribution to the accumulated flux shrinks with the number of
+batches, while the original form carries less variance there.
+
+.. _methods_random_ray_gradient_limiter:
+
+~~~~~~~~~~~~~~~~~~~~~~~~
+Source Gradient Limiting
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The fitted source gradient :math:`\boldsymbol{\vec{Q}}_{i,g} =
+\mathbf{M}_i^{-1} \boldsymbol{\vec{q}}_{i,g}` amplifies noise in the fitted
+moments along any thin extent of a region, so a poorly sampled region can
+carry a spuriously steep gradient and emit a negative source over part of
+its extent. Rays crossing that part can carry negative angular flux
+downstream, which optically thin media with scattering ratios near one can
+amplify.
+
+When the source gradient limiter is enabled, each group's gradient is
+rescaled so that the modeled source stays non-negative over the region's
+axis-aligned bounding box. The box is accumulated from the endpoints of
+every ray segment that has crossed the region past the ray's inactive
+length. These lie on the region's boundary except where a ray starts or
+ends inside it. The linear term is lowest at a corner of the box, where it
+reaches
+
+.. math::
+    :label: gradient-limiter-bound
+
+    \sum_{d \in \{x, y, z\}} \; \min_{x_d \in \{x^{\min}_{i,d},\,
+    x^{\max}_{i,d}\}} \left(\boldsymbol{\vec{Q}}_{i,g}\right)_d \left(x_d -
+    r_{\mathrm{c},i,d}\right),
+
+where :math:`x^{\min}_{i}` and :math:`x^{\max}_{i}` are the box bounds,
+:math:`\mathbf{r}_{\mathrm{c},i}` is the centroid, and :math:`d` indexes
+their components. Whenever the flat source :math:`Q_{i,g}` plus this
+minimum is negative, the gradient is scaled by the ratio of the flat source
+to the magnitude of the minimum, so that the modeled source reaches zero at
+that corner. Because the linear term integrates to zero over the region,
+the rescaling preserves the region's mean emission, and gradients that pass
+the test are left untouched. A group whose flat source is not positive has
+its gradient zeroed. Once the region's extreme points along each axis have
+been sampled, the box contains the region and the modeled source is
+non-negative throughout it. The bound is exact for axis-aligned box regions
+and conservative for others: a sphere is limited by up to a factor of
+:math:`\sqrt{3}` more than necessary, and a thin region lying diagonally to
+the axes by much more, as its bounding box is far larger than the region.
+
+This is the treatment `MPACT <Choi-2024_>`_ applies in its limited linear
+source approximation, with the same mean-preserving factor. MPACT finds
+the minimum source exactly, over the entrance and exit points of every
+segment crossing the region, which requires the fixed set of tracks that
+deterministic MOC lays down once. Random ray samples new rays every batch,
+so no such segment set exists when the source is built, and the sampled
+bounding box takes its place.
+
+The limiter is off by default because a steep fit can also be physical, as
+in the optically thick regions of deep-penetration problems, where
+limiting discards real shape information and alters the solution at
+depth. It is best reserved for simulations that negative sources
+destabilize.
+
 .. _methods-shannon-entropy-random-ray:
 
 -----------------------------
@@ -1100,13 +1226,161 @@ The adjoint external source will be computed for each source region in the
 simulation mesh, independent of any tallies. The adjoint external source is 
 always flat, even when a linear scattering and fission source shape is used. 
 
-When in adjoint mode, all reported results (e.g., tallies, eigenvalues, etc.) 
-are derived from the adjoint flux, even when the physical meaning is not 
-necessarily obvious. These values are still reported, though we emphasize that 
-the primary use case for adjoint mode is for producing adjoint flux tallies to 
-support subsequent perturbation studies and weight window generation. Note 
-however that the adjoint :math:`k_{eff}` is statistically the same as the 
+When in adjoint mode, all reported results (e.g., tallies, eigenvalues, etc.)
+are derived from the adjoint flux, even when the physical meaning is not
+necessarily obvious. These values are still reported, though we emphasize that
+the primary use case for adjoint mode is for producing adjoint flux tallies to
+support subsequent perturbation studies and weight window generation. Note
+however that the adjoint :math:`k_{eff}` is statistically the same as the
 forward :math:`k_{eff}`, despite the flux distributions taking different shapes.
+
+--------------------
+Domain Decomposition
+--------------------
+
+To enable parallelisation and scalability beyond the resources of a single
+computational node, a domain decomposition capability is available for the
+random ray solver.
+
+~~~~~~~~~~~~~~~~~~~~
+Voronoi Tessellation
+~~~~~~~~~~~~~~~~~~~~
+
+The domain decomposition scheme distributes the source regions across multiple
+MPI processes (ranks) according to a `capacity-constrained Voronoi tessellation
+<Balzer-2009_>`_. Each MPI rank is responsible for the transport sweeps and
+result tallying in one Voronoi region of the problem. Source regions are
+assigned to MPI ranks (and thus Voronoi regions) using a formula that evaluates
+the distance between the first intersection point :math:`\mathbf{x}` of a ray
+with that source region and the Voronoi region centroid
+:math:`\mathbf{c}_{\mathrm{rank}}`, combined with an additive weight
+:math:`\omega_{\mathrm{rank}}`: 
+
+.. math:: 
+    :label: mpi_ownership
+    
+    \mathrm{rank}(\mathbf{x}) = \arg\min_{\text{rank}} 
+    \left(\|\mathbf{c}_{\mathrm{rank}} - \mathbf{x}\|^2 - 
+    \omega_{\mathrm{rank}} \right)\;\mathrm{.}
+
+The initial weight is zero and subsequently changed for load balancing. This
+approach yields compact MPI rank subdomains. 
+
+In the OpenMC random ray implementation, the algorithm is not aware of the
+source regions in the geometry a priori. Instead, source regions are discovered
+dynamically as rays travel through the geometry and, once discovered, they get
+added to a list of known source regions. Whenever a ray enters a previously
+unknown source region, the responsible MPI rank is determined using the formula
+given above. Ideally, the source region centroid would be used to assign
+ownership unambiguously. However, centroid positions are not precalculated, and
+ownership is instead decided based on the ray entry point. If a source region
+happens to sit on a boundary between two Voronoi regions, it may be hit by rays
+from both MPI ranks at different locations, and both MPI ranks may therefore
+claim the same source region during the transport sweep. To resolve these
+conflicts, after each transport sweep, ownership of contested source regions is
+decided based on the estimated load of the ranks involved.
+
+Once each newly discovered source region has a unique owner rank, the ownership
+information is shared across all MPI ranks and saved in a decomposition map.
+This decomposition map is used to look up the responsible MPI rank every time a
+ray enters a source region that has already been recorded, thereby avoiding the
+need to evaluate Equation :eq:`mpi_ownership` again, which can be time-intensive
+if many MPI ranks are present. 
+
+~~~~~~~~~~~~~~~~~
+Ray Communication
+~~~~~~~~~~~~~~~~~
+
+When rays exit an MPI rank subdomain, they must be transmitted to their new
+owner rank so that the transport can continue until the rays reach their
+termination distance. Every time an MPI rank detects that a ray is leaving its
+subdomain, the transport of that ray stops, and the ray attributes (angular flux
+values, position, direction, distance traveled, etc.) are stored in a buffer.
+Once each MPI rank has processed all rays in its subdomain, i.e. the rays have
+either terminated or been moved into the buffer, all MPI ranks send their
+buffered ray data in a bulk synchronous communication pattern to the new MPI
+owner ranks. After communicating the ray data, each MPI rank reinitializes the
+received rays with the transmitted data, and the rays continue traveling. This
+communication pattern continues until all rays of a given batch have terminated.
+
+~~~~~~~~~~~~~~
+Load Balancing
+~~~~~~~~~~~~~~
+
+To ensure high parallel efficiency, it is crucial to assign each MPI rank
+approximately the same amount of computational workload, such that the
+individual MPI processes do not spend excessive time waiting at synchronization
+steps (like the synchronous communication phase described above), while others
+are still performing their calculations. In many computational fields, the
+amount of work that is performed is fixed per source region. In such cases, the
+overall load is simply a function of how many source regions are contained
+within a given subdomain, with each source region requiring the same set of
+operations to be performed. 
+
+However, in random ray, the load for a given source region is much
+more complex to determine. When a ray crosses a cell, the angular flux increment
+:math:`\Delta \psi_{r,g}` for each energy group is calculated according to
+Equation :eq:`delta_psi`. Additionally, to determine the length of the ray
+through the cell (and which cell comes next), ray tracing operations are
+performed. The frequency of these calculations and the cost of the ray trace
+operations depend on the size, aspect ratio and definition of a given cell,
+which can vary strongly across the simulation problem. To estimate the workload
+associated with a given source region, an empirical formula has been set up that
+accounts for 1) the number of ray crossings :math:`n_{\mathrm{hits}, i}`
+in a source region :math:`i`, and 2) the number of surface ray trace operations
+:math:`n_{\mathrm{RT}, i}` associated with the definition of that source
+region:
+
+.. math::
+    \mathrm{load}_{\mathrm{estimate}, i} = F_{r} \cdot \left(C_1 \cdot 
+    n_{\mathrm{hits}, i} \cdot N_{G} + C_2 \cdot n_{\mathrm{RT}, i} \right)\;
+    \mathrm{.}
+
+The quantities :math:`n_{\mathrm{hits}, i}` and  :math:`n_{\mathrm{RT}, i}` are
+recorded throughout the simulation. Both contributions are weighted with factors
+:math:`C_1` and  :math:`C_2`, which represent the relative computational cost
+of these operations. The values of these factors are set to :math:`C_1=1.0` and
+:math:`C_2=0.1`, according to empirical tests. These estimates per source
+region are then scaled by the additional prefactor :math:`F_{\mathrm{rank}}`
+for the respective MPI rank, which is calculated from the ratio between measured
+and estimated MPI rank load in the current batch. The measured load is
+determined based on the transport sweep times, which are recorded by default for
+diagnostics.
+
+Based on these load estimates, a load balancing routine tries to equalize the
+work per MPI rank. To do so, the weights
+:math:`\omega_{\mathrm{rank}}` in Equation :eq:`mpi_ownership` are
+adjusted according to the deviation of the estimated rank load 
+
+.. math::
+    \mathrm{load}_{\mathrm{estimate}, \mathrm{rank}} = \frac{\sum\limits_{i \, 
+    \in \, \mathrm{rank}} \mathrm{load}_{\mathrm{estimate},i}}{\sum\limits_{i=1}
+    ^{M} \mathrm{load}_{\mathrm{estimate}, i}}
+    
+from the target load 
+
+.. math::
+    \mathrm{load}_{\mathrm{target}} = \frac{1}{N_{\mathrm{rank}}}\;\mathrm{,}
+
+where :math:`N_{\mathrm{rank}}` is the total number of MPI ranks. 
+
+Changes to the weights :math:`\mathbf{\omega_{\mathrm{rank}}}` increase or
+decrease the reach of a specific MPI rank, and thus the number of source regions
+that belong to it. After each weight change, the rank load estimates are updated
+according to the anticipated changes in the ownership of source regions, and the
+new load estimates are then used again to calculate new weights. These load
+optimization iterations continue until the estimated load imbalance is smaller
+than 1% or until a maximum of 200 iterations is reached. 
+
+After the load balancing, numerous source regions will belong to new MPI ranks.
+The corresponding cell data is transferred to the new owner ranks and erased
+from the previous owner ranks. Since both the iterative load optimization and
+source region exchange can be computationally expensive, load balancing is
+restricted to the first 5 simulation batches. Because random ray simulations
+should use an appropriately large ray population, it is expected that sufficient
+load estimate data has been recorded for the vast majority of cells after 5
+batches, and the load per MPI rank will not change significantly beyond
+stochastic fluctuations associated with the changing quadrature. 
 
 ---------------------------
 Fundamental Sources of Bias
@@ -1161,7 +1435,9 @@ in random ray particle transport are:
 .. _Tramm-2020: https://doi.org/10.1051/EPJCONF/202124703021
 .. _Cosgrove-2023: https://doi.org/10.1080/00295639.2023.2270618
 .. _Ferrer-2016: https://doi.org/10.13182/NSE15-6
+.. _Choi-2024: https://doi.org/10.1080/00295639.2023.2224234
 .. _Gunow-2018: https://dspace.mit.edu/handle/1721.1/119030
+.. _Balzer-2009: https://doi.org/10.1109/ISVD.2009.28
 
 .. only:: html
 

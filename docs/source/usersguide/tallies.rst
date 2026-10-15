@@ -369,8 +369,8 @@ The following tables show all valid scores:
     |                      |The migration area score can only be used with     |
     |                      |a ParticleFilter or with an EnergyFilter.          |
     |                      |It also cannot be used in the same run as a        |
-    |                      |MeshBornFilter when non vacuum               |
-    |                      |boundary conditions are present.                |
+    |                      |MeshBornFilter when non vacuum boundary conditions |
+    |                      |are present.                                       |
     |                      |For more information, see Liu_.                    |
     +----------------------+---------------------------------------------------+
 

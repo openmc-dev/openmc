@@ -988,6 +988,7 @@ class LevelInelastic(EnergyDistribution):
     @mass.setter
     def mass(self, mass):
         cv.check_type('level inelastic mass', mass, Real)
+        cv.check_greater_than('level inelastic mass', mass, 0.0)
         self._mass = mass
     
     @property    
@@ -1007,6 +1008,10 @@ class LevelInelastic(EnergyDistribution):
             return (A+1.0)/A*abs(Q)
         else:
             b = NEUTRON_MASS_EV*A
+            if b - 2*abs(Q) < 0.0:
+                raise ValueError(
+                    f'Level inelastic Q value {Q} eV is too large in magnitude '
+                    f'for a photon threshold with mass {A}')
             return sqrt(b)*(sqrt(b)-sqrt(b-2*abs(Q)))
 
     def to_hdf5(self, group):

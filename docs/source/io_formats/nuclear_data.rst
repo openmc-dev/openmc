@@ -596,8 +596,15 @@ Level Inelastic
 :Object type: Group
 :Attributes: - **type** (*char[]*) -- 'level'
              - **q_value** (*double*) -- Q value in eV
-             - **mass** (*double*) -- Nucleus mass A relative to neutron rest mass  
+             - **mass** (*double*) -- Nucleus mass A relative to neutron rest mass
              - **particle** (*char[]*) -- Incident particle name
+             - **threshold** (*double*) -- Energy threshold in the laboratory
+               system in eV. Optional legacy attribute, written only for an
+               incident neutron so that older versions of OpenMC can read the
+               file. Readers use it only when **q_value** is absent.
+             - **mass_ratio** (*double*) -- :math:`(A/(A + 1))^2`. Optional
+               legacy attribute, written and read under the same conditions
+               as **threshold**.
 
 Continuous Tabular
 ------------------

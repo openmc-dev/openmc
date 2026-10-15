@@ -94,6 +94,21 @@ def test_photon_threshold():
     assert LevelInelastic(q_value, A, 'neutron').threshold > dist.threshold
 
 
+def test_photon_threshold_unreachable():
+    """A Q value with no real photon threshold raises a clear error."""
+    A = 1.0
+    q_value = -NEUTRON_MASS_EV*A
+    dist = LevelInelastic(q_value, A, 'photon')
+    with pytest.raises(ValueError, match='photon threshold'):
+        dist.threshold
+
+
+@pytest.mark.parametrize('mass', [0.0, -1.0])
+def test_nonpositive_mass_raises(mass):
+    with pytest.raises(ValueError):
+        LevelInelastic(-1.0e6, mass)
+
+
 def test_hdf5_version_is_bumped():
     """The level attribute set changed, so the format version must say so."""
     assert openmc.data.HDF5_VERSION >= (3, 1)

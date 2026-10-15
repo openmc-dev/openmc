@@ -14,6 +14,8 @@ from openmc.utility_funcs import change_directory
 from uncertainties.unumpy import uarray, nominal_values, std_devs
 
 
+UMESH_DIR = Path(__file__).resolve().parents[1] / 'regression_tests' / 'unstructured_mesh'
+
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
 def test_raises_error_when_flat(val_left, val_right):
     """Checks that an error is raised when a mesh is flat"""
@@ -388,7 +390,8 @@ def test_mesh_name_roundtrip(run_in_tmpdir):
 
 
 def test_umesh_roundtrip(run_in_tmpdir, request):
-    umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', 'moab')
+    umesh = openmc.UnstructuredMesh(UMESH_DIR / 'test_mesh_tets.exo', 'moab')
+    umesh.interface = 'xdg'
     umesh.output = True
 
     # create a tally using this mesh
@@ -405,6 +408,74 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     xml_mesh = xml_tally.filters[0].mesh
 
     assert umesh.id == xml_mesh.id
+    assert xml_mesh.interface == 'xdg'
+
+
+@pytest.mark.parametrize('filename, library', [
+    ('mesh.h5m', 'moab'), ('mesh.h5', 'moab'), ('mesh.vtk', 'moab'),
+    ('mesh.e', 'libmesh'), ('mesh.exo', 'libmesh'), ('mesh.ex2', 'libmesh'),
+    (Path('mesh.H5M'), 'moab'), (Path('mesh.EXO'), 'libmesh'),
+])
+def test_umesh_library_inference(filename, library):
+    mesh = openmc.UnstructuredMesh(filename)
+    assert mesh.library == library
+
+
+def test_umesh_library_override():
+    mesh = openmc.UnstructuredMesh('mesh.exo', 'moab')
+    mesh.filename = 'mesh.unknown'
+    assert mesh.library == 'moab'
+    assert openmc.UnstructuredMesh('mesh.unknown', 'libmesh').library == 'libmesh'
+    with pytest.raises(ValueError, match='Cannot infer mesh library'):
+        openmc.UnstructuredMesh('mesh.unknown')
+
+
+def test_umesh_interface_validation():
+    umesh = openmc.UnstructuredMesh('mesh.h5m', 'moab')
+
+    with pytest.raises(ValueError, match='interface'):
+        umesh.interface = 'invalid'
+
+    with pytest.raises(ValueError, match='library'):
+        openmc.UnstructuredMesh('mesh.h5m', 'xdg')
+
+
+@pytest.mark.parametrize('interface', ('native', 'xdg'))
+def test_umesh_interface_hdf5(tmp_path, interface):
+    with h5py.File(tmp_path / 'mesh.h5', 'w') as fh:
+        group = fh.create_group('meshes/mesh 1')
+        group['type'] = np.bytes_('unstructured')
+        group['filename'] = np.bytes_('mesh.h5m')
+        group['library'] = np.bytes_('moab')
+        if interface != 'native':
+            group['interface'] = np.bytes_(interface)
+        group['volumes'] = [1.0]
+        group['vertices'] = np.zeros((4, 3))
+        group['connectivity'] = np.array([[0, 1, 2, 3, -1, -1, -1, -1]])
+        group['element_types'] = [10]
+
+        mesh = openmc.MeshBase.from_hdf5(group)
+
+    assert mesh.interface == interface
+
+
+def test_umesh_from_hdf5_without_filename(run_in_tmpdir):
+    """An in-memory unstructured mesh has no source filename."""
+    with h5py.File('mesh.h5', 'w') as f:
+        group = f.create_group('mesh 1')
+        group['type'] = np.bytes_('unstructured')
+        group['library'] = np.bytes_('libmesh')
+        group['volumes'] = [1.0]
+        group['vertices'] = np.zeros((4, 3))
+        group['connectivity'] = np.zeros((1, 8), dtype=int)
+        group['element_types'] = [0]
+
+        with openmc.config.patch('resolve_paths', True):
+            mesh = openmc.MeshBase.from_hdf5(group)
+
+    assert mesh.filename == Path()
+    assert mesh.has_statepoint_data
+    assert mesh.n_elements == 1
 
 
 @pytest.fixture(scope='module')
@@ -494,11 +565,11 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
 
 vtkhdf_tests = [
     (
-        Path("test_mesh_dagmc_tets.vtk"),
+        UMESH_DIR / "test_mesh_dagmc_tets.vtk",
         "moab"
     ),
     (
-        Path("test_mesh_hexes.exo"),
+        UMESH_DIR / "test_mesh_hexes.exo",
         "libmesh"
     )
 ]

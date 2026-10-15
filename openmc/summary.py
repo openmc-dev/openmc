@@ -176,7 +176,7 @@ class Summary:
                 if 'rotation' in group:
                     rotation = group['rotation'][()]
                     if rotation.size == 9:
-                        rotation.shape = (3, 3)
+                        rotation = rotation.reshape(3, 3)
                     cell.rotation = rotation
 
             elif fill_type == 'material':

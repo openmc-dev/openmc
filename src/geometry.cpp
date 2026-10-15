@@ -543,6 +543,11 @@ extern "C" int openmc_find_cell(
   return 0;
 }
 
+extern "C" int openmc_get_n_coord_levels()
+{
+  return model::n_coord_levels;
+}
+
 extern "C" int openmc_global_bounding_box(double* llc, double* urc)
 {
   auto bbox = model::universes.at(model::root_universe)->bounding_box();

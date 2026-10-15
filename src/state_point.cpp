@@ -382,7 +382,7 @@ void restart_set_keff()
 void load_state_point()
 {
   write_message(
-    fmt::format("Loading state point {}...", settings::path_statepoint_c), 5);
+    fmt::format("Loading state point {}...", settings::path_statepoint), 5);
   openmc_statepoint_load(settings::path_statepoint.c_str());
 }
 
@@ -527,8 +527,8 @@ extern "C" int openmc_statepoint_load(const char* filename)
             results.shape(2), results.data());
 
           read_dataset(tally_group, "n_realizations", tally->n_realizations_);
-          close_group(tally_group);
         }
+        close_group(tally_group);
       }
       close_group(tallies_group);
     }

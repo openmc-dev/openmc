@@ -124,8 +124,13 @@ void KalbachMann::sample_params(
 
   const int i1 = upper_energy_index(energy_, i);
 
+  // With histogram interpolation on the incident energy grid, the table at i
+  // applies as tabulated
+  const bool histogram_interp =
+    n_region_ == 1 && interpolation_[0] == Interpolation::histogram;
+
   // Sample between the ith and [i+1]th bin
-  int l = r > prn(seed) ? i1 : i;
+  int l = histogram_interp ? i : (r > prn(seed) ? i1 : i);
 
   // Determine outgoing energy bin
   int n_energy_out = distribution_[l].e_out.size();
@@ -160,10 +165,11 @@ void KalbachMann::sample_params(
   if (k < n_discrete) {
     // Discrete case. Discrete lines correspond by index between adjacent
     // incident energies, so interpolate the line energy rather than using the
-    // value tabulated at grid l alone.
+    // value tabulated at grid l alone. Histogram interpolation on the
+    // incident energy grid pins l to i, so no interpolation is applied there.
     const auto& e_lo = distribution_[i].e_out;
     const auto& e_hi = distribution_[i1].e_out;
-    E_out = e_lo[k] + r * (e_hi[k] - e_lo[k]);
+    E_out = e_lo[k] + (histogram_interp ? 0.0 : r) * (e_hi[k] - e_lo[k]);
     km_r = distribution_[l].r[k];
     km_a = distribution_[l].a[k];
 
@@ -207,31 +213,35 @@ void KalbachMann::sample_params(
                (distribution_[l].a[k + 1] - distribution_[l].a[k]);
     }
 
-    // Unit-base interpolation between the continua at i and i + 1. The ACE
-    // format requires the number of discrete lines to match at every incident
-    // energy, but does not require a continuum to be present at each one, so
-    // check for each side and fall back to whichever one has a continuum.
-    const int n_i = distribution_[i].e_out.size();
-    const int nd_i = distribution_[i].n_discrete;
-    const int n_i1 = distribution_[i1].e_out.size();
-    const int nd_i1 = distribution_[i1].n_discrete;
-    const bool cont_i = nd_i < n_i;
-    const bool cont_i1 = nd_i1 < n_i1;
+    // Histogram interpolation on the incident energy grid means the table at i
+    // applies as tabulated, with no interpolation between grids
+    if (!histogram_interp) {
+      // Unit-base interpolation between the continua at i and i + 1. The ACE
+      // format requires the number of discrete lines to match at every incident
+      // energy, but does not require a continuum to be present at each one, so
+      // check for each side and fall back to whichever one has a continuum.
+      const int n_i = distribution_[i].e_out.size();
+      const int nd_i = distribution_[i].n_discrete;
+      const int n_i1 = distribution_[i1].e_out.size();
+      const int nd_i1 = distribution_[i1].n_discrete;
+      const bool cont_i = nd_i < n_i;
+      const bool cont_i1 = nd_i1 < n_i1;
 
-    const double r_c = cont_i ? (cont_i1 ? r : 0.0) : 1.0;
-    const double E_i_1 = cont_i ? distribution_[i].e_out[nd_i] : 0.0;
-    const double E_i_K = cont_i ? distribution_[i].e_out[n_i - 1] : 0.0;
-    const double E_i1_1 = cont_i1 ? distribution_[i1].e_out[nd_i1] : 0.0;
-    const double E_i1_K = cont_i1 ? distribution_[i1].e_out[n_i1 - 1] : 0.0;
+      const double r_c = cont_i ? (cont_i1 ? r : 0.0) : 1.0;
+      const double E_i_1 = cont_i ? distribution_[i].e_out[nd_i] : 0.0;
+      const double E_i_K = cont_i ? distribution_[i].e_out[n_i - 1] : 0.0;
+      const double E_i1_1 = cont_i1 ? distribution_[i1].e_out[nd_i1] : 0.0;
+      const double E_i1_K = cont_i1 ? distribution_[i1].e_out[n_i1 - 1] : 0.0;
 
-    const double E_1 = E_i_1 + r_c * (E_i1_1 - E_i_1);
-    const double E_K = E_i_K + r_c * (E_i1_K - E_i_K);
+      const double E_1 = E_i_1 + r_c * (E_i1_1 - E_i_1);
+      const double E_K = E_i_K + r_c * (E_i1_K - E_i_K);
 
-    // Now interpolate between incident energy bins i and i + 1
-    const double E_lo = (l == i) ? E_i_1 : E_i1_1;
-    const double E_hi = (l == i) ? E_i_K : E_i1_K;
-    if (E_hi != E_lo) {
-      E_out = E_1 + (E_out - E_lo) * (E_K - E_1) / (E_hi - E_lo);
+      // Now interpolate between incident energy bins i and i + 1
+      const double E_lo = (l == i) ? E_i_1 : E_i1_1;
+      const double E_hi = (l == i) ? E_i_K : E_i1_K;
+      if (E_hi != E_lo) {
+        E_out = E_1 + (E_out - E_lo) * (E_K - E_1) / (E_hi - E_lo);
+      }
     }
   }
 }

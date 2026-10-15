@@ -56,5 +56,6 @@ def test_random_ray_low_density():
         [source_mat_data, void_mat_data, absorber_mat_data])
     mg_cross_sections_file.export_to_hdf5()
 
+    model.settings.random_ray['volume_estimator'] = 'hybrid'
     harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.main()

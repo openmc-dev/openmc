@@ -93,8 +93,10 @@ public:
   int Z_;            //!< Atomic number
   int A_;            //!< Mass number
   int metastable_;   //!< Metastable state
-  double awr_;       //!< Atomic weight ratio
-  int64_t index_;    //!< Index in the nuclides array
+  //! Target excitation [eV]; NaN if unavailable.
+  double excitation_energy_ {FP_UNSET};
+  double awr_;    //!< Atomic weight ratio
+  int64_t index_; //!< Index in the nuclides array
 
   // Temperature dependent cross section data
   vector<double> kTs_;                //!< temperatures in eV (k*T)

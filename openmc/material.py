@@ -2,7 +2,9 @@ from __future__ import annotations
 from collections import defaultdict, namedtuple, Counter
 from collections.abc import Iterable
 from copy import deepcopy
-from functools import reduce
+from functools import cache, reduce
+from importlib import resources
+import json
 from numbers import Real
 from pathlib import Path
 import re
@@ -41,7 +43,67 @@ _SMALLEST_NORMAL = sys.float_info.min
 
 _BECQUEREL_PER_CURIE = 3.7e10
 
+# Minimum mass fraction of nuclides without photon attenuation data that
+# results in a warning from Material.get_photon_contact_dose_rate()
+_MIN_ATTENUATION_MASS_FRACTION = 1e-6
+
+_MATERIAL_LIBRARIES = {
+    'pnnl_v2': 'material_libraries/pnnl_v2.json',
+}
+
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
+
+
+def _normalize_material_name(name):
+    """Normalize whitespace for material-library name lookup."""
+    return ' '.join(name.split())
+
+
+@cache
+def _load_material_library(library):
+    """Load a registered material library."""
+    try:
+        location = _MATERIAL_LIBRARIES[library]
+    except KeyError:
+        available = ', '.join(sorted(_MATERIAL_LIBRARIES))
+        raise ValueError(
+            f"Unknown material library '{library}'. Available libraries: "
+            f"{available}"
+        ) from None
+
+    if isinstance(location, Path):
+        path = location
+    else:
+        path = resources.files('openmc.data').joinpath(location)
+    return _read_material_library(library, path)
+
+
+def _read_material_library(library, path):
+    """Read and validate material library data from a path."""
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"Could not load material library '{library}'"
+        ) from exc
+
+    if not isinstance(data, dict):
+        raise RuntimeError(
+            f"Material library '{library}' does not contain a JSON object"
+        )
+    if data.get('schema_version') != 1:
+        raise RuntimeError(
+            f"Material library '{library}' has an unsupported schema version"
+        )
+    if not isinstance(data.get('materials'), dict):
+        raise RuntimeError(
+            f"Material library '{library}' does not contain valid materials"
+        )
+    data['materials'] = {
+        _normalize_material_name(name): material
+        for name, material in data['materials'].items()
+    }
+    return data
 
 
 class Material(IDManagerMixin):
@@ -473,6 +535,9 @@ class Material(IDManagerMixin):
         relevant at close distances.
         In addition, it computes the gamma contact dose rate only for the unstable nuclides
         for which the radiation source specification is present in the chain file.
+        Photon attenuation data is only tabulated up to Z=100; nuclides with a
+        higher atomic number are neglected when building the material
+        attenuation coefficient.
 
         Returns
         -------
@@ -493,16 +558,47 @@ class Material(IDManagerMixin):
             raise ValueError("Material has no nuclides; cannot compute mass attenuation")
 
         # Collect partial mass densities ρ_i [g/cm³] and elemental mass
-        # attenuation coefficients µ_i/ρ_i [cm²/g] per nuclide
+        # attenuation coefficients µ_i/ρ_i [cm²/g] per nuclide. Attenuation
+        # data is only tabulated up to Z=100, so nuclides beyond that -- which
+        # show up in trace quantities after depletion -- are left out of
+        # µ_material(E) instead of aborting the calculation.
         nuc_attenuation = []
+        missing_data = {}
+        total_rho = 0.0
         for nuc, atom_density_bcm in nuc_densities.items():
-            Z = openmc.data.zam(nuc)[0]
-            mu_over_rho = openmc.data.mass_attenuation_coefficient(Z)
             rho_i = (
                 atom_density_bcm * 1.0e24
                 * openmc.data.atomic_mass(nuc) / openmc.data.AVOGADRO
             )
+            total_rho += rho_i
+
+            Z = openmc.data.zam(nuc)[0]
+            try:
+                mu_over_rho = openmc.data.mass_attenuation_coefficient(Z)
+            except ValueError:
+                missing_data[nuc] = rho_i
+                continue
+
             nuc_attenuation.append((rho_i, mu_over_rho))
+
+        if not nuc_attenuation:
+            raise ValueError(
+                "No photon attenuation data is available for any nuclide in "
+                f"material ID={self.id}; cannot compute the contact dose rate."
+            )
+
+        # Only warn about neglected nuclides if they are more than a trace
+        if missing_data and total_rho > 0.0:
+            missing_frac = sum(missing_data.values()) / total_rho
+            if missing_frac > _MIN_ATTENUATION_MASS_FRACTION:
+                warnings.warn(
+                    'No photon attenuation data available for '
+                    f'{", ".join(sorted(missing_data))} in material '
+                    f'ID={self.id}. These nuclides make up a mass fraction of '
+                    f'{missing_frac:.3e} and are neglected in the material '
+                    'attenuation coefficient.',
+                    stacklevel=2,
+                )
 
         # Build union energy grid across all nuclides
         mu_e_vals = reduce(np.union1d, [t.x for _, t in nuc_attenuation])
@@ -657,6 +753,142 @@ class Material(IDManagerMixin):
                 material.add_macroscopic(name)
 
         return material
+
+    @staticmethod
+    def get_library_material_names(
+        library: str = 'pnnl_v2'
+    ) -> tuple[str, ...]:
+        """Return the material names available in a registered library.
+
+        .. versionadded:: 0.16.1
+
+        Parameters
+        ----------
+        library : str, optional
+            Name of the material library. Defaults to ``'pnnl_v2'``.
+
+        Returns
+        -------
+        tuple of str
+            Material names in alphabetical order.
+
+        Raises
+        ------
+        ValueError
+            If `library` is not registered.
+
+        """
+        cv.check_type('material library', library, str)
+        library_data = _load_material_library(library)
+        return tuple(sorted(library_data['materials']))
+
+    @staticmethod
+    def register_library(library: str, path: PathLike):
+        """Register a material library from a JSON file.
+
+        The registration applies to the current Python process. The file and
+        its top-level schema are validated before the library is registered.
+
+        .. versionadded:: 0.16.1
+
+        Parameters
+        ----------
+        library : str
+            Name used to identify the material library.
+        path : path-like
+            Path to a material library JSON file.
+
+        Raises
+        ------
+        ValueError
+            If `library` is empty or already registered.
+        RuntimeError
+            If the file cannot be read or has an unsupported schema.
+
+        """
+        cv.check_type('material library', library, str)
+        cv.check_type('material library path', path, PathLike)
+        if not library.strip():
+            raise ValueError('Material library name cannot be empty')
+        if library in _MATERIAL_LIBRARIES:
+            raise ValueError(
+                f"Material library '{library}' is already registered"
+            )
+
+        path = Path(path).resolve()
+        _read_material_library(library, path)
+        _MATERIAL_LIBRARIES[library] = path
+        _load_material_library.cache_clear()
+
+    @classmethod
+    def from_library(
+        cls, material_name: str, library: str = 'pnnl_v2', **kwargs
+    ) -> Material:
+        """Create a material from a registered material library.
+
+        Natural elements in a library are expanded according to the nuclides
+        available in the cross section library indicated by
+        :data:`openmc.config`. Compositions that are explicitly isotopic in the
+        source library retain their specified nuclides.
+
+        .. versionadded:: 0.16.1
+
+        Parameters
+        ----------
+        material_name : str
+            Name of the material in the library. Names are case sensitive, but
+            whitespace is normalized for lookup.
+        library : str, optional
+            Name of the material library. Defaults to ``'pnnl_v2'``, the `PNNL
+            Compendium of Material Composition Data for Radiation Transport
+            Modeling <https://doi.org/10.2172/1782721>`_.
+        **kwargs
+            Keyword arguments passed to :class:`openmc.Material`. The material
+            name, composition, density, density units, and percent type from the
+            library are used as defaults.
+
+        Returns
+        -------
+        openmc.Material
+            Material with the library composition and density.
+
+        Raises
+        ------
+        ValueError
+            If `library` or `material_name` is not found.
+
+        Notes
+        -----
+        For the 'pnnl_v2' library, the bundled values are taken from the
+        machine-readable JSON download provided by the PNNL Materials Compendium
+        website. The one exception is Lutetium Yttrium OxyorthoSilicate (LYSO),
+        whose density and elemental composition are taken from the published
+        Revision 2 PDF so that the material includes its cerium dopant.
+
+        """
+        cv.check_type('material name', material_name, str)
+        cv.check_type('material library', library, str)
+
+        library_data = _load_material_library(library)
+        requested_name = material_name
+        normalized_name = _normalize_material_name(material_name)
+        try:
+            material_data = library_data['materials'][normalized_name]
+        except KeyError:
+            raise ValueError(
+                f"Material '{requested_name}' not found in library '{library}'"
+            ) from None
+
+        components = {
+            **material_data.get('elements', {}),
+            **material_data.get('nuclides', {}),
+        }
+        kwargs.setdefault('name', requested_name)
+        kwargs.setdefault('components', components)
+        kwargs.setdefault('percent_type', library_data['percent_type'])
+        kwargs.setdefault('density', material_data['density'])
+        kwargs.setdefault('density_units', library_data['density_units'])
+        return cls(**kwargs)
 
     @classmethod
     def from_ncrystal(cls, cfg, **kwargs) -> Material:

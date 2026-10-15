@@ -1,0 +1,37 @@
+name: Trigger performance benchmarks
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create benchmark app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.BENCH_APP_ID }}
+          private-key: ${{ secrets.BENCH_APP_PRIVATE_KEY }}
+          owner: openmc-dev
+          repositories: openmc-performance-bench
+          permission-contents: write
+
+      - name: Trigger performance benchmarks
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          OPENMC_SHA: ${{ github.sha }}
+        run: |
+          gh api \
+            --method POST \
+            repos/openmc-dev/openmc-performance-bench/dispatches \
+            --field event_type=run-perf \
+            --raw-field "client_payload[sha]=$OPENMC_SHA" \
+            --raw-field "client_payload[branch]=${{ github.ref_name }}"

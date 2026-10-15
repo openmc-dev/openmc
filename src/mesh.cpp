@@ -55,6 +55,8 @@
 #include "moab/FileOptions.hpp"
 #endif
 
+#include "openmc/xdg.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -323,10 +325,32 @@ void MaterialVolumes::add_volume_unsafe(
 // Mesh implementation
 //==============================================================================
 
-template<typename T>
-const std::unique_ptr<Mesh>& Mesh::create(
-  T dataset, const std::string& mesh_type, const std::string& mesh_library)
+std::string read_mesh_type(const pugi::xml_node& node)
 {
+  std::string mesh_type;
+  if (check_for_node(node, "type")) {
+    mesh_type = get_node_value(node, "type");
+  } else {
+    mesh_type = "regular";
+  }
+  return std::move(mesh_type);
+}
+
+std::string read_mesh_type(hid_t group)
+{
+  std::string mesh_type;
+  if (object_exists(group, "type")) {
+    read_dataset(group, "type", mesh_type);
+  } else {
+    mesh_type = "regular";
+  }
+  return std::move(mesh_type);
+}
+
+template<typename T>
+const std::unique_ptr<Mesh>& Mesh::create(T dataset)
+{
+  std::string mesh_type = read_mesh_type(dataset);
   // Determine mesh type. Add to model vector and map
   if (mesh_type == RegularMesh::mesh_type) {
     model::meshes.push_back(make_unique<RegularMesh>(dataset));
@@ -336,19 +360,8 @@ const std::unique_ptr<Mesh>& Mesh::create(
     model::meshes.push_back(make_unique<CylindricalMesh>(dataset));
   } else if (mesh_type == SphericalMesh::mesh_type) {
     model::meshes.push_back(make_unique<SphericalMesh>(dataset));
-#ifdef OPENMC_DAGMC_ENABLED
-  } else if (mesh_type == UnstructuredMesh::mesh_type &&
-             mesh_library == MOABMesh::mesh_lib_type) {
-    model::meshes.push_back(make_unique<MOABMesh>(dataset));
-#endif
-#ifdef OPENMC_LIBMESH_ENABLED
-  } else if (mesh_type == UnstructuredMesh::mesh_type &&
-             mesh_library == LibMesh::mesh_lib_type) {
-    model::meshes.push_back(make_unique<LibMesh>(dataset));
-#endif
   } else if (mesh_type == UnstructuredMesh::mesh_type) {
-    fatal_error("Unstructured mesh support is not enabled or the mesh "
-                "library is invalid.");
+    model::meshes.push_back(UnstructuredMesh::create(dataset));
   } else {
     fatal_error(fmt::format("Invalid mesh type: {}", mesh_type));
   }
@@ -482,9 +495,6 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   width.y = (ny > 0) ? width.y / ny : 0.0;
   width.z = (nz > 0) ? width.z / nz : 0.0;
 
-  // Set flag for mesh being contained within model
-  bool out_of_model = false;
-
 #pragma omp parallel
   {
     // Preallocate vector for mesh indices and length fractions and particle
@@ -495,6 +505,32 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
     SourceSite site;
     site.E = 1.0;
     site.particle = ParticleType::neutron();
+
+    bool verbose = settings::verbosity >= 10;
+
+    // Save the cells occupied immediately before a boundary crossing.
+    auto save_cell_state = [&p]() {
+      for (int j = 0; j < p.n_coord(); ++j) {
+        p.cell_last(j) = p.coord(j).cell();
+      }
+      p.n_coord_last() = p.n_coord();
+    };
+
+    // Initialize cell history after locating a ray inside the model.
+    auto initialize_cell_state = [&p, &save_cell_state]() {
+      if (p.cell_born() == C_NONE)
+        p.cell_born() = p.lowest_coord().cell();
+
+      save_cell_state();
+    };
+
+    // Reset a failed coordinate search while preserving position and direction.
+    auto reset_geometry_state = [&p]() {
+      Position r = p.r();
+      Direction u = p.u();
+      p.init_from_r_u(r, u);
+      p.coord(0).universe() = model::root_universe;
+    };
 
     for (int axis = 0; axis < 3; ++axis) {
       // Set starting position and direction
@@ -524,6 +560,50 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
       int i1_start = mpi::rank * min_work + std::min(mpi::rank, remainder);
       int i1_end = i1_start + n1_local;
 
+      // Add the contribution from a ray segment. The positions used here are
+      // kept separate from the particle position because the latter is moved a
+      // tiny distance across each surface for robust geometry searches.
+      auto add_segment = [&](const Position& r0, const Position& r1,
+                           int i_material) {
+        double distance = r1[axis] - r0[axis];
+        if (distance <= 0.0)
+          return;
+
+        bins.clear();
+        length_fractions.clear();
+        this->bins_crossed(r0, r1, site.u, bins, length_fractions);
+
+        double cumulative_frac = 0.0;
+        for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
+          int mesh_index = bins[i_bin];
+          double length = distance * length_fractions[i_bin];
+          double volume = length * d1 * d2;
+
+          if (compute_bboxes) {
+            double axis_start = r0[axis] + distance * cumulative_frac;
+            double axis_end = axis_start + length;
+            cumulative_frac += length_fractions[i_bin];
+
+            Position contrib_min = site.r;
+            Position contrib_max = site.r;
+
+            contrib_min[ax1] = site.r[ax1] - 0.5 * d1;
+            contrib_max[ax1] = site.r[ax1] + 0.5 * d1;
+            contrib_min[ax2] = site.r[ax2] - 0.5 * d2;
+            contrib_max[ax2] = site.r[ax2] + 0.5 * d2;
+            contrib_min[axis] = std::min(axis_start, axis_end);
+            contrib_max[axis] = std::max(axis_start, axis_end);
+
+            BoundingBox contrib_bbox {contrib_min, contrib_max};
+            contrib_bbox &= bbox;
+
+            result.add_volume(mesh_index, i_material, volume, &contrib_bbox);
+          } else {
+            result.add_volume(mesh_index, i_material, volume);
+          }
+        }
+      };
+
       // Loop over rays on face of bounding box
 #pragma omp for collapse(2)
       for (int i1 = i1_start; i1 < i1_end; ++i1) {
@@ -533,98 +613,115 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
           p.from_source(&site);
 
+          // Set the physical endpoint of this ray at the far mesh face.
+          Position r_mesh_end = site.r;
+          r_mesh_end[axis] = bbox.max[axis];
+
           // Determine particle's location
-          if (!exhaustive_find_cell(p)) {
-            out_of_model = true;
-            continue;
+          bool inside_model = exhaustive_find_cell(p, verbose);
+
+          if (inside_model) {
+            initialize_cell_state();
+          } else {
+            // Clear any partial descent into nested universes before searching
+            // for the first root-universe boundary from undefined space.
+            reset_geometry_state();
           }
 
-          // Set birth cell attribute
-          if (p.cell_born() == C_NONE)
-            p.cell_born() = p.lowest_coord().cell();
+          // Physical position through which volume has been accumulated. This
+          // differs by TINY_BIT from p.r() after crossing a surface.
+          Position r_scored = site.r;
 
-          // Initialize last cells from current cell
-          for (int j = 0; j < p.n_coord(); ++j) {
-            p.cell_last(j) = p.coord(j).cell();
-          }
-          p.n_coord_last() = p.n_coord();
+          while (r_scored[axis] < r_mesh_end[axis]) {
+            if (!inside_model) {
+              // The ray is outside the model. Advance to the next surface of
+              // any cell in the root universe, as is done for ray-traced
+              // plots. Undefined space traversed along the way is void.
+              Position r0 = p.r();
+              p.advance_to_boundary_from_void();
 
-          while (true) {
-            // Ray trace from r_start to r_end
-            Position r0 = p.r();
-            double max_distance = bbox.max[axis] - r0[axis];
+              // If no model surface lies before the mesh edge, score the
+              // remaining exterior interval as void and finish the ray.
+              double distance_to_mesh_end = r_mesh_end[axis] - r0[axis];
+              if (p.boundary().surface() == SURFACE_NONE ||
+                  p.boundary().distance() >= distance_to_mesh_end) {
+                add_segment(r_scored, r_mesh_end, MATERIAL_VOID);
+                break;
+              }
+
+              // Determine the physical position of the model boundary.
+              Position r_boundary = r0 + p.boundary().distance() * p.u();
+
+              // Score the exterior interval and record its physical endpoint.
+              add_segment(r_scored, r_boundary, MATERIAL_VOID);
+              r_scored = r_boundary;
+
+              // Check whether advancing through the surface entered the model.
+              inside_model = exhaustive_find_cell(p, verbose);
+              if (inside_model) {
+                initialize_cell_state();
+              } else {
+                // Clear any partial coordinate search before looking for the
+                // next surface from undefined space.
+                reset_geometry_state();
+              }
+              continue;
+            }
 
             // Find the distance to the nearest boundary
             BoundaryInfo boundary = distance_to_boundary(p);
 
-            // Advance particle forward
-            double distance = std::min(boundary.distance(), max_distance);
-            p.move_distance(distance);
-
-            // Determine what mesh elements were crossed by particle
-            bins.clear();
-            length_fractions.clear();
-            this->bins_crossed(r0, p.r(), p.u(), bins, length_fractions);
-
-            // Add volumes to any mesh elements that were crossed
+            // Convert the material index to a user-facing ID
             int i_material = p.material();
             if (i_material != C_NONE) {
               i_material = model::materials[i_material]->id();
             }
-            double cumulative_frac = 0.0;
-            for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
-              int mesh_index = bins[i_bin];
-              double length = distance * length_fractions[i_bin];
-              double volume = length * d1 * d2;
 
-              if (compute_bboxes) {
-                double axis_start = r0[axis] + distance * cumulative_frac;
-                double axis_end = axis_start + length;
-                cumulative_frac += length_fractions[i_bin];
-
-                Position contrib_min = site.r;
-                Position contrib_max = site.r;
-
-                contrib_min[ax1] = site.r[ax1] - 0.5 * d1;
-                contrib_max[ax1] = site.r[ax1] + 0.5 * d1;
-                contrib_min[ax2] = site.r[ax2] - 0.5 * d2;
-                contrib_max[ax2] = site.r[ax2] + 0.5 * d2;
-                contrib_min[axis] = std::min(axis_start, axis_end);
-                contrib_max[axis] = std::max(axis_start, axis_end);
-
-                BoundingBox contrib_bbox {contrib_min, contrib_max};
-                contrib_bbox &= bbox;
-
-                result.add_volume(
-                  mesh_index, i_material, volume, &contrib_bbox);
-              } else {
-                // Add volume to result
-                result.add_volume(mesh_index, i_material, volume);
-              }
-            }
-
-            if (distance == max_distance)
+            // If no model boundary lies before the mesh edge, score the
+            // remaining material interval and finish the ray.
+            double distance_to_mesh_end = r_mesh_end[axis] - p.r()[axis];
+            if (boundary.distance() >= distance_to_mesh_end) {
+              add_segment(r_scored, r_mesh_end, i_material);
               break;
-
-            // cross next geometric surface
-            for (int j = 0; j < p.n_coord(); ++j) {
-              p.cell_last(j) = p.coord(j).cell();
             }
-            p.n_coord_last() = p.n_coord();
+
+            // Determine the physical position of the model boundary.
+            Position r_boundary = p.r() + boundary.distance() * p.u();
+
+            // Score the material interval and record its physical endpoint.
+            add_segment(r_scored, r_boundary, i_material);
+            r_scored = r_boundary;
+
+            // Cross the next geometric surface. The small forward movement
+            // and neighbor-list search mirror Ray::trace, allowing a failed
+            // search to mean that the ray has left the model rather than that
+            // a transport particle has been lost.
+            save_cell_state();
+
+            // Move just beyond the surface to make the next search robust.
+            p.move_distance(boundary.distance() + TINY_BIT);
 
             // Set surface that particle is on and adjust coordinate levels
             p.surface() = boundary.surface();
             p.n_coord() = boundary.coord_level();
 
+            // Update the geometry state according to the boundary type.
             if (boundary.lattice_translation()[0] != 0 ||
                 boundary.lattice_translation()[1] != 0 ||
                 boundary.lattice_translation()[2] != 0) {
               // Particle crosses lattice boundary
-              cross_lattice(p, boundary);
+              cross_lattice(p, boundary, verbose);
+              inside_model = true;
             } else {
-              // Particle crosses surface
-              const auto& surf {model::surfaces[p.surface_index()].get()};
-              p.cross_surface(*surf);
+              // Search for the cell on the opposite side of a surface.
+              inside_model = neighbor_list_find_cell(p, verbose);
+            }
+
+            // Treat a failed cell search as a transition to exterior void.
+            if (!inside_model) {
+              // Reset the geometry state so the next iteration can search for
+              // another disjoint portion of the model.
+              reset_geometry_state();
             }
           }
         }
@@ -633,9 +730,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   }
 
   // Check for errors
-  if (out_of_model) {
-    throw std::runtime_error("Mesh not fully contained in geometry.");
-  } else if (result.table_full()) {
+  if (result.table_full()) {
     throw std::runtime_error("Maximum number of materials for mesh material "
                              "volume calculation insufficient.");
   }
@@ -806,17 +901,92 @@ Position StructuredMesh::sample_element(
 // Unstructured Mesh implementation
 //==============================================================================
 
+std::string read_mesh_interface(const pugi::xml_node& node)
+{
+  std::string mesh_interface;
+  if (check_for_node(node, "interface")) {
+    mesh_interface = get_node_value(node, "interface");
+  } else {
+    mesh_interface = "native";
+  }
+  return std::move(mesh_interface);
+}
+
+std::string read_mesh_interface(hid_t group)
+{
+  std::string mesh_interface;
+  if (object_exists(group, "interface")) {
+    read_dataset(group, "interface", mesh_interface);
+  } else {
+    mesh_interface = "native";
+  }
+  return std::move(mesh_interface);
+}
+
+std::string read_mesh_library(const pugi::xml_node& node)
+{
+  std::string mesh_library;
+  if (check_for_node(node, "library")) {
+    mesh_library = get_node_value(node, "library");
+  } else {
+    mesh_library = "moab";
+  }
+  return std::move(mesh_library);
+}
+
+std::string read_mesh_library(hid_t group)
+{
+  std::string mesh_library;
+  if (object_exists(group, "library")) {
+    read_dataset(group, "library", mesh_library);
+  } else {
+    mesh_library = "moab";
+  }
+  return std::move(mesh_library);
+}
+
+template<typename T>
+std::unique_ptr<UnstructuredMesh> UnstructuredMesh::create(T dataset)
+{
+  std::string mesh_interface = read_mesh_interface(dataset);
+  std::string mesh_library = read_mesh_library(dataset);
+
+  if (mesh_interface == "xdg") {
+#ifdef OPENMC_XDG_ENABLED
+    return make_unique<XDGMesh>(dataset);
+#else
+    fatal_error(fmt::format(
+      "XDG unstructured mesh interface with library '{}' is not enabled in "
+      "this build of OpenMC.",
+      mesh_library));
+#endif
+  }
+
+  if (mesh_interface != "native") {
+    fatal_error(fmt::format(
+      "Unrecognized unstructured mesh interface '{}'.", mesh_interface));
+  }
+
+#ifdef OPENMC_DAGMC_ENABLED
+  if (mesh_library == MOABMesh::mesh_lib_type) {
+    return make_unique<MOABMesh>(dataset);
+  }
+#endif
+
+#ifdef OPENMC_LIBMESH_ENABLED
+  if (mesh_library == LibMesh::mesh_lib_type) {
+    return make_unique<LibMesh>(dataset);
+  }
+#endif
+
+  fatal_error(fmt::format("Native unstructured mesh library '{}' is not "
+                          "enabled in this build of OpenMC.",
+    mesh_library));
+}
+
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 {
   n_dimension_ = 3;
-
-  // check the mesh type
-  if (check_for_node(node, "type")) {
-    auto temp = get_node_value(node, "type", true, true);
-    if (temp != mesh_type) {
-      fatal_error(fmt::format("Invalid mesh type: {}", temp));
-    }
-  }
 
   // check if a length unit multiplier was specified
   if (check_for_node(node, "length_multiplier")) {
@@ -907,36 +1077,6 @@ void UnstructuredMesh::determine_bounds()
   upper_right_ = {xmax, ymax, zmax};
 }
 
-Position UnstructuredMesh::sample_tet(
-  std::array<Position, 4> coords, uint64_t* seed) const
-{
-  // Uniform distribution
-  double s = prn(seed);
-  double t = prn(seed);
-  double u = prn(seed);
-
-  // From PyNE implementation of moab tet sampling C. Rocchini & P. Cignoni
-  // (2000) Generating Random Points in a Tetrahedron, Journal of Graphics
-  // Tools, 5:4, 9-12, DOI: 10.1080/10867651.2000.10487528
-  if (s + t > 1) {
-    s = 1.0 - s;
-    t = 1.0 - t;
-  }
-  if (s + t + u > 1) {
-    if (t + u > 1) {
-      double old_t = t;
-      t = 1.0 - u;
-      u = 1.0 - s - old_t;
-    } else if (t + u <= 1) {
-      double old_s = s;
-      s = 1.0 - t - u;
-      u = old_s + t + u - 1;
-    }
-  }
-  return s * (coords[1] - coords[0]) + t * (coords[2] - coords[0]) +
-         u * (coords[3] - coords[0]) + coords[0];
-}
-
 const std::string UnstructuredMesh::mesh_type = "unstructured";
 
 std::string UnstructuredMesh::get_mesh_type() const
@@ -959,6 +1099,9 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
 {
   write_dataset(mesh_group, "filename", filename_);
   write_dataset(mesh_group, "library", this->library());
+  if (interface_ != "native") {
+    write_dataset(mesh_group, "interface", interface_);
+  }
   if (!options_.empty()) {
     write_attribute(mesh_group, "options", options_);
   }
@@ -1004,7 +1147,6 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
       connectivity.slice(i) = -1;
     }
   }
-
   // warn users that some elements were skipped
   if (num_elem_skipped > 0) {
     warning(fmt::format("The connectivity of {} elements "
@@ -1454,7 +1596,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
     fatal_error("Must specify either <upper_right> or <width> on a mesh.");
   }
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(get_errmsg());
   }
 }
@@ -1490,7 +1632,7 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
     fatal_error("Must specify either upper_right dataset on a mesh.");
   }
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(get_errmsg());
   }
 }
@@ -1657,7 +1799,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[1] = get_node_array<double>(node, "y_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(get_errmsg());
   }
 }
@@ -1670,7 +1812,7 @@ RectilinearMesh::RectilinearMesh(hid_t group) : StructuredMesh {group}
   read_dataset(group, "y_grid", grid_[1]);
   read_dataset(group, "z_grid", grid_[2]);
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(get_errmsg());
   }
 }
@@ -1805,7 +1947,7 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node)
   grid_[2] = get_node_array<double>(node, "z_grid");
   origin_ = get_node_position(node, "origin");
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(get_errmsg());
   }
 }
@@ -1818,7 +1960,7 @@ CylindricalMesh::CylindricalMesh(hid_t group) : PeriodicStructuredMesh {group}
   read_dataset(group, "z_grid", grid_[2]);
   read_dataset(group, "origin", origin_);
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(get_errmsg());
   }
 }
@@ -2102,7 +2244,7 @@ SphericalMesh::SphericalMesh(pugi::xml_node node)
   grid_[2] = get_node_array<double>(node, "phi_grid");
   origin_ = get_node_position(node, "origin");
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(get_errmsg());
   }
 }
@@ -2116,7 +2258,7 @@ SphericalMesh::SphericalMesh(hid_t group) : PeriodicStructuredMesh {group}
   read_dataset(group, "phi_grid", grid_[2]);
   read_dataset(group, "origin", origin_);
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(get_errmsg());
   }
 }
@@ -2499,24 +2641,28 @@ extern "C" int openmc_extend_meshes(
   return 0;
 }
 
-//! Adds a new unstructured mesh to OpenMC
-extern "C" int openmc_add_unstructured_mesh(
-  const char filename[], const char library[], int* id)
+//! Adds a new unstructured mesh to OpenMC with all supported properties
+extern "C" int openmc_add_unstructured_mesh(const char filename[],
+  const char library[], double length_multiplier, const char options[],
+  int32_t id, int32_t* index)
 {
   std::string lib_name(library);
   std::string mesh_file(filename);
+  std::string mesh_options(options ? options : "");
   bool valid_lib = false;
 
 #ifdef OPENMC_DAGMC_ENABLED
   if (lib_name == MOABMesh::mesh_lib_type) {
-    model::meshes.push_back(std::move(make_unique<MOABMesh>(mesh_file)));
+    model::meshes.push_back(
+      make_unique<MOABMesh>(mesh_file, length_multiplier, mesh_options));
     valid_lib = true;
   }
 #endif
 
 #ifdef OPENMC_LIBMESH_ENABLED
   if (lib_name == LibMesh::mesh_lib_type) {
-    model::meshes.push_back(std::move(make_unique<LibMesh>(mesh_file)));
+    model::meshes.push_back(
+      make_unique<LibMesh>(mesh_file, length_multiplier, mesh_options));
     valid_lib = true;
   }
 #endif
@@ -2528,9 +2674,8 @@ extern "C" int openmc_add_unstructured_mesh(
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  // auto-assign new ID
-  model::meshes.back()->set_id(-1);
-  *id = model::meshes.back()->id_;
+  model::meshes.back()->set_id(id);
+  *index = model::meshes.size() - 1;
 
   return 0;
 }
@@ -2561,8 +2706,25 @@ extern "C" int openmc_mesh_set_id(int32_t index, int32_t id)
 {
   if (int err = check_mesh(index))
     return err;
-  model::meshes[index]->id_ = id;
-  model::mesh_map[id] = index;
+  model::meshes[index]->set_id(id);
+  return 0;
+}
+
+//! Return the name of a mesh
+extern "C" int openmc_mesh_get_name(int32_t index, const char** name)
+{
+  if (int err = check_mesh(index))
+    return err;
+  *name = model::meshes[index]->name().c_str();
+  return 0;
+}
+
+//! Set the name of a mesh
+extern "C" int openmc_mesh_set_name(int32_t index, const char* name)
+{
+  if (int err = check_mesh(index))
+    return err;
+  model::meshes[index]->set_name(name);
   return 0;
 }
 
@@ -2882,6 +3044,59 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
     index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
+template<class T>
+int openmc_periodic_mesh_get_origin_impl(int32_t index, double origin[3])
+{
+  if (int err = check_mesh(index))
+    return err;
+  T* mesh = dynamic_cast<T*>(model::meshes[index].get());
+  if (!mesh) {
+    set_errmsg("This mesh is not of the expected type.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+  const auto& mesh_origin = mesh->origin();
+  origin[0] = mesh_origin.x;
+  origin[1] = mesh_origin.y;
+  origin[2] = mesh_origin.z;
+  return 0;
+}
+
+template<class T>
+int openmc_periodic_mesh_set_origin_impl(int32_t index, const double origin[3])
+{
+  if (int err = check_mesh(index))
+    return err;
+  T* mesh = dynamic_cast<T*>(model::meshes[index].get());
+  if (!mesh) {
+    set_errmsg("This mesh is not of the expected type.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+  return mesh->set_origin({origin[0], origin[1], origin[2]});
+}
+
+extern "C" int openmc_cylindrical_mesh_get_origin(
+  int32_t index, double origin[3])
+{
+  return openmc_periodic_mesh_get_origin_impl<CylindricalMesh>(index, origin);
+}
+
+extern "C" int openmc_cylindrical_mesh_set_origin(
+  int32_t index, const double origin[3])
+{
+  return openmc_periodic_mesh_set_origin_impl<CylindricalMesh>(index, origin);
+}
+
+extern "C" int openmc_spherical_mesh_get_origin(int32_t index, double origin[3])
+{
+  return openmc_periodic_mesh_get_origin_impl<SphericalMesh>(index, origin);
+}
+
+extern "C" int openmc_spherical_mesh_set_origin(
+  int32_t index, const double origin[3])
+{
+  return openmc_periodic_mesh_set_origin_impl<SphericalMesh>(index, origin);
+}
+
 #ifdef OPENMC_DAGMC_ENABLED
 
 const std::string MOABMesh::mesh_lib_type = "moab";
@@ -2896,11 +3111,13 @@ MOABMesh::MOABMesh(hid_t group) : UnstructuredMesh(group)
   initialize();
 }
 
-MOABMesh::MOABMesh(const std::string& filename, double length_multiplier)
+MOABMesh::MOABMesh(const std::string& filename, double length_multiplier,
+  const std::string& options)
   : UnstructuredMesh()
 {
   n_dimension_ = 3;
   filename_ = filename;
+  options_ = options;
   set_length_multiplier(length_multiplier);
   initialize();
 }
@@ -2914,7 +3131,6 @@ MOABMesh::MOABMesh(std::shared_ptr<moab::Interface> external_mbi)
 
 void MOABMesh::initialize()
 {
-
   // Create the MOAB interface and load data from file
   this->create_interface();
 
@@ -3198,7 +3414,6 @@ std::string MOABMesh::library() const
 // Sample position within a tet for MOAB type tets
 Position MOABMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
-
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
 
   // Get vertex coordinates for MOAB tet
@@ -3216,12 +3431,8 @@ Position MOABMesh::sample_element(int32_t bin, uint64_t* seed) const
     fatal_error("Failed to get tet coords");
   }
 
-  std::array<Position, 4> tet_verts;
-  for (int i = 0; i < 4; i++) {
-    tet_verts[i] = {p[i][0], p[i][1], p[i][2]};
-  }
   // Samples position within tet using Barycentric stuff
-  return this->sample_tet(tet_verts, seed);
+  return this->sample_tet<moab::CartVect>({p, 4}, seed);
 }
 
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
@@ -3627,9 +3838,11 @@ LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 }
 
 // create the mesh from an input file
-LibMesh::LibMesh(const std::string& filename, double length_multiplier)
+LibMesh::LibMesh(const std::string& filename, double length_multiplier,
+  const std::string& options)
 {
   n_dimension_ = 3;
+  options_ = options;
   set_mesh_pointer_from_filename(filename);
   set_length_multiplier(length_multiplier);
   initialize();
@@ -3713,7 +3926,8 @@ Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates
-  Position sampled_position = this->sample_tet(tet_verts, seed);
+  Position sampled_position =
+    this->sample_tet<Position>({tet_verts.begin(), tet_verts.end()}, seed);
   if (length_multiplier_ > 0.0) {
     return length_multiplier_ * sampled_position;
   } else {
@@ -4055,16 +4269,12 @@ void read_meshes(pugi::xml_node root)
     if (check_for_node(node, "type")) {
       mesh_type = get_node_value(node, "type", true, true);
     } else {
+      // legacy support: older versions of XML do not specify a type,
+      // so assume a regular mesh
       mesh_type = "regular";
     }
 
-    // determine the mesh library to use
-    std::string mesh_lib;
-    if (check_for_node(node, "library")) {
-      mesh_lib = get_node_value(node, "library", true, true);
-    }
-
-    Mesh::create(node, mesh_type, mesh_lib);
+    Mesh::create(node);
   }
 }
 
@@ -4099,16 +4309,12 @@ void read_meshes(hid_t group)
     if (object_exists(mesh_group, "type")) {
       read_dataset(mesh_group, "type", mesh_type);
     } else {
+      // legacy support: older versions of HDF5 do not specify a type,
+      // so assume a regular mesh
       mesh_type = "regular";
     }
 
-    // determine the mesh library to use
-    std::string mesh_lib;
-    if (object_exists(mesh_group, "library")) {
-      read_dataset(mesh_group, "library", mesh_lib);
-    }
-
-    Mesh::create(mesh_group, mesh_type, mesh_lib);
+    Mesh::create(mesh_group);
   }
 }
 

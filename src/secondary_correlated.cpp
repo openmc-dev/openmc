@@ -210,34 +210,37 @@ Distribution& CorrelatedAngleEnergy::sample_dist(
   }
 
   double E_l_k = distribution_[l].e_out[k];
-  double p_l_k = distribution_[l].p[k];
-  if (distribution_[l].interpolation == Interpolation::histogram) {
-    // Histogram interpolation
-    if (p_l_k > 0.0 && k >= n_discrete) {
-      E_out = E_l_k + (r1 - c_k) / p_l_k;
-    } else {
-      E_out = E_l_k;
+  if (k < n_discrete) {
+    // Discrete case
+    E_out = E_l_k;
+  } else {
+    // Continuous case
+    double p_l_k = distribution_[l].p[k];
+    if (distribution_[l].interpolation == Interpolation::histogram) {
+      // Histogram interpolation
+      if (p_l_k > 0.0) {
+        E_out = E_l_k + (r1 - c_k) / p_l_k;
+      } else {
+        E_out = E_l_k;
+      }
+    } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
+      // Linear-linear interpolation
+      double E_l_k1 = distribution_[l].e_out[k + 1];
+      double p_l_k1 = distribution_[l].p[k + 1];
+
+      double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
+      if (frac == 0.0) {
+        E_out = E_l_k + (r1 - c_k) / p_l_k;
+      } else {
+        E_out =
+          E_l_k +
+          (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
+            p_l_k) /
+            frac;
+      }
     }
 
-  } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
-    // Linear-linear interpolation
-    double E_l_k1 = distribution_[l].e_out[k + 1];
-    double p_l_k1 = distribution_[l].p[k + 1];
-
-    double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
-    if (frac == 0.0) {
-      E_out = E_l_k + (r1 - c_k) / p_l_k;
-    } else {
-      E_out =
-        E_l_k +
-        (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
-          p_l_k) /
-          frac;
-    }
-  }
-
-  // Now interpolate between incident energy bins i and i + 1
-  if (k >= n_discrete) {
+    // Now interpolate between incident energy bins i and i + 1
     if (l == i) {
       E_out = E_1 + (E_out - E_i_1) * (E_K - E_1) / (E_i_K - E_i_1);
     } else {

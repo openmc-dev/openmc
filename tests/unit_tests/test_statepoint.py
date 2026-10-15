@@ -1,3 +1,6 @@
+import numpy as np
+import pytest
+
 import openmc
 
 
@@ -65,3 +68,39 @@ def test_get_tally_filter_type(run_in_tmpdir):
 
     tally_found = sp.get_tally(id=2)
     assert tally_found.id == 2
+
+
+class _FakeStatePoint:
+    """Stand-in exposing just what multiplication/source_efficiency use"""
+    run_mode = 'eigenvalue'
+    _k_generation_inactive = openmc.StatePoint._k_generation_inactive
+
+    def __init__(self, k_generation, n_inactive, generations_per_batch, keff):
+        self.k_generation = np.asarray(k_generation)
+        self.n_inactive = n_inactive
+        self.generations_per_batch = generations_per_batch
+        self.keff = keff
+
+
+def _multiplication(sp):
+    return openmc.StatePoint.multiplication.fget(sp)
+
+
+def _source_efficiency(sp):
+    return openmc.StatePoint.source_efficiency.fget(sp)
+
+
+def test_multiplication_no_inactive():
+    sp = _FakeStatePoint([0.9, 0.8], 0, 1, 0.8)
+    assert _multiplication(sp) == 1.0
+    assert _source_efficiency(sp) == 1.0
+
+
+def test_multiplication_generations_per_batch():
+    # Two inactive batches of two generations each use four k estimates
+    k_gen = [0.5, 0.5, 0.5, 0.5, 0.1, 0.1]
+    keff = 0.5
+    sp = _FakeStatePoint(k_gen, 2, 2, keff)
+    expected = 1.0 + 0.5 + 0.25 + 0.125 + 0.0625/(1.0 - keff)
+    assert _multiplication(sp) == pytest.approx(expected)
+    assert _source_efficiency(sp) == pytest.approx(1.0)

@@ -83,8 +83,13 @@ void calculate_generation_keff()
     keff_reduced[1] /= settings::n_particles;
   }
   double k_mean = keff_reduced[0];
-  double k_std = std::sqrt(
-    (keff_reduced[1] - std::pow(k_mean, 2)) / (settings::n_particles - 1));
+  // Round-off can make the variance slightly negative, and it is undefined
+  // for a single particle
+  double k_std = 0.0;
+  if (settings::n_particles > 1) {
+    k_std = std::sqrt(std::max(0.0, keff_reduced[1] - std::pow(k_mean, 2)) /
+                      (settings::n_particles - 1));
+  }
   simulation::k_generation.push_back({k_mean, k_std});
 }
 

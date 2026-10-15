@@ -85,8 +85,17 @@ class StatePoint:
         .. versionadded:: 0.13.1
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
-    multiplication : uncertainties.UFloat
-        Estimator for multiplication of initial source neutrons 
+    multiplication : uncertainties.UFloat or float
+        Estimator for the total multiplication :math:`M` of the initial source
+        neutrons, computed from the generation-wise estimates :math:`k_j` of
+        the :math:`N` inactive generations as
+
+        .. math::
+            M = 1 + \sum_{n=1}^{N} \prod_{j=1}^{n} k_j,
+
+        where the last term is multiplied by :math:`1/(1 - k_{eff})` to account
+        for all later generations, which are assumed to have reached the
+        fundamental mode. Equal to 1.0 when there are no inactive generations.
     n_batches : int
         Number of batches
     n_inactive : int
@@ -113,8 +122,16 @@ class StatePoint:
         'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
         the position, direction, energy, weight, delayed group, surface ID and
         particle type of the source site, respectively.
-    source_effectiveness : uncertainties.UFloat
-        Source effectiveness factor.        
+    source_efficiency : uncertainties.UFloat or float
+        Source efficiency factor :math:`g^*`, the ratio of the multiplication
+        of the initial source to that of a source already in the fundamental
+        mode, estimated from the generation-wise estimates :math:`k_j` of the
+        :math:`N` inactive generations as
+
+        .. math::
+            g^* = \prod_{j=1}^{N} \frac{k_j}{k_{eff}}.
+
+        Equal to 1.0 when there are no inactive generations.
     source_present : bool
         Indicate whether source sites are present
     sparse : bool
@@ -283,6 +300,11 @@ class StatePoint:
         else:
             return None
 
+    def _k_generation_inactive(self):
+        """Generation-wise k estimates for the inactive generations"""
+        n_gen = self.n_inactive*self.generations_per_batch
+        return self.k_generation[:n_gen]
+
     @property
     def keff(self):
         if self.run_mode == 'eigenvalue':
@@ -336,13 +358,14 @@ class StatePoint:
     @property
     def multiplication(self):
         if self.run_mode == 'eigenvalue':
-            k_gen = self.k_generation
-            k_inactive = k_gen[:self.n_inactive]
+            k_inactive = self._k_generation_inactive()
+            if len(k_inactive) == 0:
+                return 1.0
             cumprod = np.cumprod(k_inactive)
             cumprod[-1] *= 1/(1-self.keff)
             return 1.0+np.sum(cumprod)
         else:
-            return None        
+            return None
 
     @property
     def n_batches(self):
@@ -395,11 +418,12 @@ class StatePoint:
     @property
     def source_efficiency(self):
         if self.run_mode == 'eigenvalue':
-            k_gen = self.k_generation
-            k_inactive = k_gen[:self.n_inactive]
+            k_inactive = self._k_generation_inactive()
+            if len(k_inactive) == 0:
+                return 1.0
             return np.prod(k_inactive/self.keff)
         else:
-            return None          
+            return None
 
     @property
     def source_present(self):

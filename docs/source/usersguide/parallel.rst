@@ -69,6 +69,9 @@ argument to :func:`openmc.run`::
 
    openmc.run(mpi_args=['mpiexec', '-n', '32'])
 
+Distributed memory calculations with the random ray solver for DAGMC geometries 
+require MOAB version 5.2.0 or later.
+
 ----------------------
 Maximizing Performance
 ----------------------

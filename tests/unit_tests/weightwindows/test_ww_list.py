@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import h5py
 import numpy as np
 import pytest
@@ -5,6 +7,9 @@ import pytest
 import openmc
 import openmc.lib
 
+
+UMESH_TETS = (Path(__file__).resolve().parents[2] / 'regression_tests' /
+              'unstructured_mesh' / 'test_mesh_tets.exo')
 
 def test_ww_roundtrip(request, run_in_tmpdir, monkeypatch):
     # Load weight windows from a wwinp file
@@ -87,7 +92,7 @@ def test_export_hdf5_unstructured_mesh(request, run_in_tmpdir, library):
         pytest.skip('DAGMC (and MOAB) not enabled in this build.')
 
     mesh = openmc.UnstructuredMesh(
-        request.path.with_name('test_mesh_tets.exo'), library, mesh_id=20,
+        UMESH_TETS, library, mesh_id=20,
         name='unstructured', length_multiplier=2.0)
     ww = openmc.WeightWindows(mesh, np.ones(12_000), upper_bound_ratio=5.0)
     openmc.WeightWindowsList([ww]).export_to_hdf5('ww.h5')

@@ -5,7 +5,7 @@ from numbers import Integral, Real
 import os
 from pathlib import Path
 import warnings
-from typing import Any
+from typing import Any, Self
 
 import lxml.etree as ET
 import numpy as np
@@ -1659,7 +1659,7 @@ class StellaratorSource(SourceBase):
         emission_density,
         energy: Univariate | Sequence[Univariate],
         **kwargs
-    ) -> StellaratorSource:
+    ) -> Self:
         """Generate a stellarator source from a VMEC wout file.
 
         The VMEC radial grid is uniform in the normalized toroidal flux
@@ -1755,7 +1755,7 @@ class StellaratorSource(SourceBase):
         energy: Univariate | Sequence[Univariate],
         n_rho: int = 33,
         **kwargs
-    ) -> StellaratorSource:
+    ) -> Self:
         """Generate a stellarator source from a DESC equilibrium.
 
         DESC represents :math:`R` and :math:`Z` in a Fourier-Zernike basis,
@@ -1791,25 +1791,17 @@ class StellaratorSource(SourceBase):
         openmc.StellaratorSource
 
         """
-        try:
-            from desc.basis import zernike_radial
-            from desc.equilibrium import Equilibrium, EquilibriaFamily
-            from desc.io import load
-            from desc.vmec_utils import ptolemy_identity_rev
-        except ModuleNotFoundError as exc:
-            if exc.name != 'desc':
-                raise
-            raise ImportError(
-                "StellaratorSource.from_desc requires DESC. "
-                "Install it with 'pip install openmc[desc]' or "
-                "'pip install desc-opt'.") from exc
+        from desc.basis import zernike_radial
+        from desc.equilibrium import Equilibrium, EquilibriaFamily
+        from desc.io import load
+        from desc.vmec_utils import ptolemy_identity_rev
 
         cv.check_type('n_rho', n_rho, Integral)
         cv.check_greater_than('n_rho', n_rho, 1)
         rho = np.linspace(0.0, 1.0, n_rho)
         if isinstance(eq, (str, os.PathLike)):
             eq = load(input_path(eq), file_format='hdf5')
-        if isinstance(eq, EquilibriaFamily):
+        elif isinstance(eq, EquilibriaFamily):
             if not len(eq):
                 raise ValueError("The DESC equilibrium family is empty")
             eq = eq[-1]
@@ -1818,15 +1810,13 @@ class StellaratorSource(SourceBase):
         def convert(name):
             basis = getattr(eq, f'{name}_basis')
             l, m, _ = basis.modes.T  # noqa: E741
-            modes, inverse = np.unique(basis.modes[:, 1:], axis=0,
-                                       return_inverse=True)
+            modes, inverse = np.unique(basis.modes[:, 1:], axis=0, return_inverse=True)
             radial = np.asarray(zernike_radial(rho[:, None], l, m))
             values = np.zeros((n_rho, len(modes)))
             # Sum radial modes sharing the same angular mode on each surface.
             np.add.at(values.T, inverse,
                       (radial * np.asarray(getattr(eq, f'{name}_lmn'))).T)
-            m, n, sine, cosine = ptolemy_identity_rev(
-                modes[:, 0], modes[:, 1], values)
+            m, n, sine, cosine = ptolemy_identity_rev(modes[:, 0], modes[:, 1], values)
             return list(zip(m, n)), sine, cosine
 
         r_modes, r_sine, r_cosine = convert('R')
@@ -1876,16 +1866,12 @@ class StellaratorSource(SourceBase):
         """
         self._validate()
 
-        ET.SubElement(element, "num_field_periods").text = \
-            str(self.num_field_periods)
-        ET.SubElement(element, "rho").text = \
-            ' '.join(str(r) for r in self.rho)
-        ET.SubElement(element, "emission_density").text = \
-            ' '.join(str(s) for s in self.emission_density)
-        ET.SubElement(element, "mode_m").text = \
-            ' '.join(str(m) for m in self.mode_m)
-        ET.SubElement(element, "mode_n").text = \
-            ' '.join(str(n) for n in self.mode_n)
+        ET.SubElement(element, "num_field_periods").text = str(self.num_field_periods)
+        ET.SubElement(element, "rho").text = ' '.join(str(r) for r in self.rho)
+        ET.SubElement(element, "emission_density").text = ' '.join(
+            str(s) for s in self.emission_density)
+        ET.SubElement(element, "mode_m").text = ' '.join(str(m) for m in self.mode_m)
+        ET.SubElement(element, "mode_n").text = ' '.join(str(n) for n in self.mode_n)
 
         # Coefficient tables flattened row-major (surface index varies slowest)
         for name in ('rmnc', 'zmns', 'rmns', 'zmnc'):
@@ -1903,7 +1889,7 @@ class StellaratorSource(SourceBase):
             element.append(self.time.to_xml_element('time'))
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element) -> StellaratorSource:
+    def from_xml_element(cls, elem: ET.Element) -> Self:
         """Generate stellarator source from an XML element
 
         Parameters

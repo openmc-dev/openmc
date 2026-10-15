@@ -882,7 +882,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         const auto& nuc {*data::nuclides[i_nuclide]};
         if (nuc.fissionable_) {
           const auto& rxn {*nuc.fission_rx_[0]};
-          score = rxn.q_value_ * p.neutron_xs(i_nuclide).fission *
+          score = rxn.q_reaction_ * p.neutron_xs(i_nuclide).fission *
                   atom_density * flux;
         }
       } else if (p.material() != MATERIAL_VOID) {
@@ -893,7 +893,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
           const auto& nuc {*data::nuclides[j_nuclide]};
           if (nuc.fissionable_) {
             const auto& rxn {*nuc.fission_rx_[0]};
-            score += rxn.q_value_ * p.neutron_xs(j_nuclide).fission *
+            score += rxn.q_reaction_ * p.neutron_xs(j_nuclide).fission *
                      atom_density * flux;
           }
         }
@@ -1491,7 +1491,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
         const auto& nuc {*data::nuclides[p.event_nuclide()]};
         if (p.neutron_xs(p.event_nuclide()).total > 0 && nuc.fissionable_) {
           const auto& rxn {*nuc.fission_rx_[0]};
-          score = p.wgt_last() * rxn.q_value_ *
+          score = p.wgt_last() * rxn.q_reaction_ *
                   p.neutron_xs(p.event_nuclide()).fission /
                   p.neutron_xs(p.event_nuclide()).total * flux;
         }
@@ -1506,7 +1506,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
         if (p.neutron_xs(p.event_nuclide()).absorption > 0 &&
             nuc.fissionable_) {
           const auto& rxn {*nuc.fission_rx_[0]};
-          score = p.wgt_last() * rxn.q_value_ *
+          score = p.wgt_last() * rxn.q_reaction_ *
                   p.neutron_xs(p.event_nuclide()).fission /
                   p.neutron_xs(p.event_nuclide()).absorption * flux;
         }

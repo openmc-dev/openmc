@@ -35,9 +35,44 @@ public:
   virtual ~AngleEnergy() = default;
 };
 
+//! Transform a lab-frame scattering cosine and center-of-mass outgoing energy
+//! for a stationary target, and return the Jacobian of the transformation
+//!
+//! Computes the energy of the center-of-mass motion from E_in and awr and
+//! calls get_jac_and_transform_impl.
+//!
+//! \param[in] E_in Incoming energy in the lab frame in [eV]
+//! \param[in,out] mu On input, the scattering cosine in the lab frame. On
+//!   output, the corresponding scattering cosine in the center-of-mass frame.
+//! \param[in,out] E_out On input, the outgoing energy in the center-of-mass
+//!   frame in [eV]. On output, the outgoing energy in the lab frame in [eV].
+//! \param[inout] seed Pseudorandom seed pointer. A random number is consumed
+//!   only when two lab-frame outgoing energies are possible.
+//! \param[in] awr Weight of nucleus in neutron masses
+//! \return Jacobian that converts a center-of-mass angular PDF into a lab-frame
+//!   one (including a factor of 2 when two lab energies are possible), or 0 if
+//!   the lab cosine cannot be reached from the given center-of-mass energy, in
+//!   which case mu and E_out are left unchanged
 double get_jac_and_transform(
   double E_in, double& mu, double& E_out, uint64_t* seed, double awr);
 
+//! Transform a lab-frame scattering cosine and center-of-mass outgoing energy
+//! given the energy of the center-of-mass motion, and return the Jacobian of
+//! the transformation
+//!
+//! \param[in] E_com Kinetic energy in the lab frame of a neutron moving with
+//!   the center-of-mass velocity in [eV]
+//! \param[in,out] mu On input, the scattering cosine in the lab frame. On
+//!   output, the corresponding scattering cosine in the center-of-mass frame.
+//! \param[in,out] E_out On input, the outgoing energy in the center-of-mass
+//!   frame in [eV]. On output, the outgoing energy in the lab frame in [eV].
+//! \param[inout] seed Pseudorandom seed pointer. A random number is consumed
+//!   only when two lab-frame outgoing energies are possible.
+//! \param[in] awr Weight of nucleus in neutron masses
+//! \return Jacobian that converts a center-of-mass angular PDF into a lab-frame
+//!   one (including a factor of 2 when two lab energies are possible), or 0 if
+//!   the lab cosine cannot be reached from the given center-of-mass energy, in
+//!   which case mu and E_out are left unchanged
 double get_jac_and_transform_impl(
   double E_com, double& mu, double& E_out, uint64_t* seed, double awr);
 

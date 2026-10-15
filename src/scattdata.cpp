@@ -550,11 +550,7 @@ void ScattDataHistogram::sample(
   // Randomly select mu within the imu bin
   mu = prn(seed) * dmu + this->mu[imu];
 
-  if (mu < -1.) {
-    mu = -1.;
-  } else if (mu > 1.) {
-    mu = 1.;
-  }
+  mu = std::clamp(mu, -1., 1.);
 
   // Update the weight to reflect neutron multiplicity
   wgt *= mult[gin][i_gout];
@@ -767,11 +763,7 @@ void ScattDataTabular::sample(
       (std::sqrt(std::max(0., p0 * p0 + 2. * frac * (xi - c_k))) - p0) / frac;
   }
 
-  if (mu < -1.) {
-    mu = -1.;
-  } else if (mu > 1.) {
-    mu = 1.;
-  }
+  mu = std::clamp(mu, -1., 1.);
 
   // Update the weight to reflect neutron multiplicity
   wgt *= mult[gin][i_gout];

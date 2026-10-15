@@ -450,6 +450,67 @@ to transfer xenon from one material to another, you'd use::
 
     integrator.add_transfer_rate(mat1, ['Xe'], 0.1, destination_material=mat2)
 
+External Source Rates
+=====================
+
+External source rates define a fixed mass feed or removal of nuclides to or
+from a depletable material. Unlike transfer rates, which are proportional to
+the instantaneous nuclide inventory, external source rates add a constant
+source term to the depletion equations. This can be useful to model batch
+refueling, makeup fuel addition, or fixed-rate off-gas removal.
+
+External source rates are defined by calling the
+:meth:`~openmc.deplete.abc.Integrator.add_external_source_rate()` method
+directly from one of the Integrator classes::
+
+    ...
+    integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power)
+    integrator.add_external_source_rate(...)
+
+Defining external source rates
+------------------------------
+
+The :meth:`~openmc.deplete.abc.Integrator.add_external_source_rate()` method
+requires a :class:`~openmc.Material` instance (or a material ID or the name) as
+the depletable material, a composition dictionary giving the relative weight
+fractions of elements and/or nuclides in the feed or removal stream, and a mass
+flow rate.
+
+.. caution::
+
+   Make sure you set the rate value with the right sign. A positive rate
+   corresponds to feed, while a negative rate corresponds to removal. This is
+   the opposite convention used for transfer rates.
+
+The ``rate_units`` argument specifies the units for the mass flow rate. The
+default is ``g/s``, but ``g/min``, ``g/h``, ``g/d``, and ``g/a`` are also valid
+options.
+
+For example, to feed U235 into a material at 10 g/day, you'd use::
+
+    mat = openmc.Material()
+    ...
+
+    integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power)
+    composition = {'U235': 1.0}
+    integrator.add_external_source_rate(mat1, composition, 10, rate_units='g/d')
+
+Composition keys may be nuclides (e.g., ``'U235'``) or naturally abundant
+elements (e.g., ``'U'``). When an element is specified, the mass flow is
+distributed across its naturally occurring isotopes according to their natural
+abundances.
+
+The optional ``timesteps`` argument restricts the external source rate to
+specific depletion step indices. If omitted, the rate is applied at every step.
+
+Combining with transfer rates
+-----------------------------
+
+External source rates can be used together with transfer rates, including
+transfers between materials via ``destination_material``. See
+:ref:`methods_depletion` for the augmented-matrix formulation used when both
+features are active.
+
 Comparing to Other Codes
 ========================
 

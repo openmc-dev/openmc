@@ -90,6 +90,24 @@ def test_unstable_nuclides(simple_chain: Chain):
     assert [nuc.name for nuc in simple_chain.unstable_nuclides] == ["A", "B"]
 
 
+def test_from_xml_empty_source(tmp_path):
+    """Ignore legacy chain sources with no distribution parameters."""
+    chain_path = tmp_path / 'chain.xml'
+    chain_path.write_text("""\
+<depletion_chain>
+  <nuclide name="Sm164" half_life="1.226" decay_modes="0"
+    decay_energy="0.0" reactions="0">
+    <source type="discrete" particle="neutron">
+      <parameters> </parameters>
+    </source>
+  </nuclide>
+</depletion_chain>
+""")
+
+    chain = Chain.from_xml(chain_path)
+    assert chain['Sm164'].sources == {}
+
+
 def test_stable_nuclides(simple_chain: Chain):
     assert [nuc.name for nuc in simple_chain.stable_nuclides] == ["H1", "C"]
 

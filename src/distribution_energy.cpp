@@ -11,7 +11,6 @@
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
-#include "openmc/search.h"
 
 namespace openmc {
 
@@ -159,19 +158,9 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
-  auto n_energy_in = energy_.size();
   int i;
   double r;
-  if (E < energy_[0]) {
-    i = 0;
-    r = 0.0;
-  } else if (E > energy_[n_energy_in - 1]) {
-    i = n_energy_in - 2;
-    r = 1.0;
-  } else {
-    i = lower_bound_index(energy_.begin(), energy_.end(), E);
-    r = (E - energy_[i]) / (energy_[i + 1] - energy_[i]);
-  }
+  get_energy_index(energy_, E, i, r);
 
   // Sample between the ith and [i+1]th bin
   int l;
@@ -211,59 +200,70 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
   }
 
   double E_l_k = distribution_[l].e_out[k];
-  double p_l_k = distribution_[l].p[k];
-  double E_out = E_l_k;
-  if (distribution_[l].interpolation == Interpolation::histogram) {
-    // Histogram interpolation
-    if (p_l_k > 0.0 && k >= n_discrete) {
-      E_out = E_l_k + (r1 - c_k) / p_l_k;
-    }
 
-  } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
-    // Linear-linear interpolation
-    double E_l_k1 = distribution_[l].e_out[k + 1];
-    double p_l_k1 = distribution_[l].p[k + 1];
-
-    if (E_l_k != E_l_k1) {
-      double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
-      if (frac == 0.0) {
+  if (k < n_discrete) {
+    // Discrete case
+    return E_l_k;
+  } else {
+    // Continuous case
+    double p_l_k = distribution_[l].p[k];
+    double E_out;
+    if (distribution_[l].interpolation == Interpolation::histogram) {
+      // Histogram interpolation
+      if (p_l_k > 0.0) {
         E_out = E_l_k + (r1 - c_k) / p_l_k;
       } else {
-        E_out =
-          E_l_k +
-          (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
-            p_l_k) /
-            frac;
+        E_out = E_l_k;
       }
-    }
-  } else {
-    throw std::runtime_error {"Unexpected interpolation for continuous energy "
-                              "distribution."};
-  }
+    } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
+      // Linear-linear interpolation
+      double E_l_k1 = distribution_[l].e_out[k + 1];
+      double p_l_k1 = distribution_[l].p[k + 1];
 
-  // Now interpolate between incident energy bins i and i + 1
-  if (!histogram_interp && n_energy_out > 1 && k >= n_discrete) {
-    // Interpolation for energy E1 and EK
-    n_energy_out = distribution_[i].e_out.size();
-    n_discrete = distribution_[i].n_discrete;
-    const double E_i_1 = distribution_[i].e_out[n_discrete];
-    const double E_i_K = distribution_[i].e_out[n_energy_out - 1];
-
-    n_energy_out = distribution_[i + 1].e_out.size();
-    n_discrete = distribution_[i + 1].n_discrete;
-    const double E_i1_1 = distribution_[i + 1].e_out[n_discrete];
-    const double E_i1_K = distribution_[i + 1].e_out[n_energy_out - 1];
-
-    const double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
-    const double E_K = E_i_K + r * (E_i1_K - E_i_K);
-
-    if (l == i) {
-      return E_1 + (E_out - E_i_1) * (E_K - E_1) / (E_i_K - E_i_1);
+      if (E_l_k != E_l_k1) {
+        double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
+        if (frac == 0.0) {
+          E_out = E_l_k + (r1 - c_k) / p_l_k;
+        } else {
+          E_out =
+            E_l_k +
+            (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
+              p_l_k) /
+              frac;
+        }
+      } else {
+        E_out = E_l_k;
+      }
     } else {
-      return E_1 + (E_out - E_i1_1) * (E_K - E_1) / (E_i1_K - E_i1_1);
+      throw std::runtime_error {
+        "Unexpected interpolation for continuous energy "
+        "distribution."};
     }
-  } else {
-    return E_out;
+
+    // Now interpolate between incident energy bins i and i + 1
+    if (!histogram_interp && n_energy_out > 1) {
+      // Interpolation for energy E1 and EK
+      n_energy_out = distribution_[i].e_out.size();
+      n_discrete = distribution_[i].n_discrete;
+      const double E_i_1 = distribution_[i].e_out[n_discrete];
+      const double E_i_K = distribution_[i].e_out[n_energy_out - 1];
+
+      n_energy_out = distribution_[i + 1].e_out.size();
+      n_discrete = distribution_[i + 1].n_discrete;
+      const double E_i1_1 = distribution_[i + 1].e_out[n_discrete];
+      const double E_i1_K = distribution_[i + 1].e_out[n_energy_out - 1];
+
+      const double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
+      const double E_K = E_i_K + r * (E_i1_K - E_i_K);
+
+      if (l == i) {
+        return E_1 + (E_out - E_i_1) * (E_K - E_1) / (E_i_K - E_i_1);
+      } else {
+        return E_1 + (E_out - E_i1_1) * (E_K - E_1) / (E_i1_K - E_i1_1);
+      }
+    } else {
+      return E_out;
+    }
   }
 }
 

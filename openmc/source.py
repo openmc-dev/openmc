@@ -921,7 +921,7 @@ class TokamakSource(SourceBase):
     :math:`\Delta` is the Shafranov shift, and :math:`Z_\mathrm{shift}` is
     the vertical shift.
 
-    .. versionadded:: 0.15.4
+    .. versionadded:: 0.16.0
 
     Parameters
     ----------

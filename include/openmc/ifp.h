@@ -10,16 +10,6 @@
 
 namespace openmc {
 
-//! Check the value of the IFP parameter for beta effective or both.
-//!
-//! \return true if "BetaEffective" or "Both", false otherwise.
-bool is_beta_effective_or_both();
-
-//! Check the value of the IFP parameter for generation time or both.
-//!
-//! \return true if "GenerationTime" or "Both", false otherwise.
-bool is_generation_time_or_both();
-
 //! Resize IFP vectors
 //!
 //! \param[in,out] delayed_groups List of delayed group numbers
@@ -28,10 +18,10 @@ bool is_generation_time_or_both();
 template<typename T, typename U>
 void resize_ifp_data(vector<T>& delayed_groups, vector<U>& lifetimes, int64_t n)
 {
-  if (is_beta_effective_or_both()) {
+  if (settings::ifp_delayed_group_on) {
     delayed_groups.resize(n);
   }
-  if (is_generation_time_or_both()) {
+  if (settings::ifp_lifetime_on) {
     lifetimes.resize(n);
   }
 }
@@ -85,10 +75,11 @@ void resize_simulation_ifp_banks();
 //! Retrieve IFP data from the IFP fission banks.
 //!
 //! \param[in] i_bank Index in the fission banks
+//! \param[in] i_temp Index in the temporary bank vectors
 //! \param[in,out] delayed_groups Delayed group numbers
 //! \param[in,out] lifetimes Lifetimes lists
-void copy_ifp_data_from_fission_banks(
-  int i_bank, vector<int>& delayed_groups, vector<double>& lifetimes);
+void copy_ifp_data_from_fission_banks(int64_t i_bank, int64_t i_temp,
+  vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes);
 
 #ifdef OPENMC_MPI
 

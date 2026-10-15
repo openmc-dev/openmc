@@ -45,11 +45,50 @@
 
 namespace openmc {
 
-#ifdef OPENMC_ENABLE_STRICT_FP
-const bool STRICT_FP_ENABLED = true;
+extern "C" int openmc_get_feature_enabled(const char* feature, bool* enabled)
+{
+  if (!feature || !enabled) {
+    set_errmsg("Feature name and output pointer must not be null.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (strcmp(feature, "dagmc") == 0) {
+#ifdef OPENMC_DAGMC_ENABLED
+    *enabled = true;
 #else
-const bool STRICT_FP_ENABLED = false;
+    *enabled = false;
 #endif
+  } else if (strcmp(feature, "libmesh") == 0) {
+#ifdef OPENMC_LIBMESH_ENABLED
+    *enabled = true;
+#else
+    *enabled = false;
+#endif
+  } else if (strcmp(feature, "xdg") == 0) {
+#ifdef OPENMC_XDG_ENABLED
+    *enabled = true;
+#else
+    *enabled = false;
+#endif
+  } else if (strcmp(feature, "strict_fp") == 0) {
+#ifdef OPENMC_ENABLE_STRICT_FP
+    *enabled = true;
+#else
+    *enabled = false;
+#endif
+  } else if (strcmp(feature, "uwuw") == 0) {
+#ifdef OPENMC_UWUW_ENABLED
+    *enabled = true;
+#else
+    *enabled = false;
+#endif
+  } else {
+    set_errmsg(fmt::format("Unknown build feature '{}'.", feature));
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  return 0;
+}
 
 //==============================================================================
 
@@ -244,8 +283,8 @@ void print_overlap_check()
 {
 #ifdef OPENMC_MPI
   vector<int64_t> temp(model::overlap_check_count);
-  MPI_Reduce(temp.data(), model::overlap_check_count.data(),
-    model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(temp.data(), model::overlap_check_count.data(),
+    model::overlap_check_count.size(), MPI_SUM, 0, mpi::intracomm);
 #endif
 
   if (mpi::master) {
@@ -318,6 +357,7 @@ void print_build_info()
   std::string mpi(n);
   std::string phdf5(n);
   std::string dagmc(n);
+  std::string xdg(n);
   std::string libmesh(n);
   std::string png(n);
   std::string profiling(n);
@@ -333,6 +373,9 @@ void print_build_info()
 #endif
 #ifdef OPENMC_DAGMC_ENABLED
   dagmc = y;
+#endif
+#ifdef OPENMC_XDG_ENABLED
+  xdg = y;
 #endif
 #ifdef OPENMC_LIBMESH_ENABLED
   libmesh = y;
@@ -365,6 +408,7 @@ void print_build_info()
     fmt::print("Parallel HDF5 enabled: {}\n", phdf5);
     fmt::print("PNG support:           {}\n", png);
     fmt::print("DAGMC support:         {}\n", dagmc);
+    fmt::print("XDG support:           {}\n", xdg);
     fmt::print("libMesh support:       {}\n", libmesh);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);

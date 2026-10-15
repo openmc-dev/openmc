@@ -406,6 +406,11 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
     *Default*: None
 
+  :length_multiplier:
+    Coordinate scaling factor applied when loading a DAGMC geometry model.
+
+    *Default*: 1.0
+
   :cell:
     Zero or more ``<cell>`` sub-elements may appear to override properties of
     individual DAGMC volumes. Each ``<cell>`` element supports the following

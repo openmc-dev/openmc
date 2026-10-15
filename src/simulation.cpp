@@ -459,7 +459,7 @@ void allocate_banks()
     init_fission_bank(3 * simulation::work_per_rank);
 
     // Allocate IFP bank
-    if (settings::ifp_on) {
+    if (settings::ifp_on()) {
       resize_simulation_ifp_banks();
     }
   }
@@ -919,29 +919,19 @@ void broadcast_results()
 {
   // Broadcast tally results so that each process has access to results
   for (auto& t : model::tallies) {
-    // Create a new datatype that consists of all values for a given filter
-    // bin and then use that to broadcast. This is done to minimize the
-    // chance of the 'count' argument of MPI_BCAST exceeding 2**31
     auto& results = t->results_;
-
-    auto shape = results.shape();
-    int count_per_filter = shape[1] * shape[2];
-    MPI_Datatype result_block;
-    MPI_Type_contiguous(count_per_filter, MPI_DOUBLE, &result_block);
-    MPI_Type_commit(&result_block);
-    MPI_Bcast(results.data(), shape[0], result_block, 0, mpi::intracomm);
-    MPI_Type_free(&result_block);
+    mpi::broadcast(results.data(), results.size(), 0, mpi::intracomm);
   }
 
   // Also broadcast global tally results
   auto& gt = simulation::global_tallies;
-  MPI_Bcast(gt.data(), gt.size(), MPI_DOUBLE, 0, mpi::intracomm);
+  mpi::broadcast(gt.data(), gt.size(), 0, mpi::intracomm);
 
   // These guys are needed so that non-master processes can calculate the
   // combined estimate of k-effective
   double temp[] {
     simulation::k_col_abs, simulation::k_col_tra, simulation::k_abs_tra};
-  MPI_Bcast(temp, 3, MPI_DOUBLE, 0, mpi::intracomm);
+  mpi::broadcast(temp, 3, 0, mpi::intracomm);
   simulation::k_col_abs = temp[0];
   simulation::k_col_tra = temp[1];
   simulation::k_abs_tra = temp[2];
@@ -1233,6 +1223,11 @@ void transport_event_based_shared_secondary()
 
   // Reset work so that fission bank etc works correctly
   calculate_work(settings::n_particles);
+}
+
+extern "C" int openmc_get_current_batch()
+{
+  return simulation::current_batch;
 }
 
 } // namespace openmc

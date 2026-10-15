@@ -15,6 +15,8 @@ and feature requests.
 
 https://openmc.discourse.group/
 
+For suspected security vulnerabilities, email openmc@anl.gov privately instead
+of opening a public issue.
 -->
 
 ## Bug Description

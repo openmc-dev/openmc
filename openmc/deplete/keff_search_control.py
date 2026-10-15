@@ -54,6 +54,12 @@ class _KeffSearchControl:
         root : float
             Parameter value that achieves target keff
         """
+        # This runs before the operator is called for this step, so
+        # openmc.lib.materials and the operator's AtomNumber still hold the
+        # previous step's compositions. Push `x` in first, otherwise the search
+        # runs on stale materials and _update_vec() reverts `x` to them.
+        self.operator._update_materials_and_nuclides(x)
+
         root = self._search_for_keff()
         self._update_vec(x)
         return root

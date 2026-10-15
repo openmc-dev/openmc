@@ -170,6 +170,11 @@ void trace_ray(RayT& ray, double max_distance)
 
     max -= advance;
 
+    // Accumulate before crossing into the next cell, while material() still
+    // refers to the cell the ray just traversed. Both cross_lattice() and the
+    // cell search below overwrite it.
+    ray.update_distance(advance);
+
     ray.surface() = ray.boundary().surface();
     // Initialize last cells from the current cell, because the cell() variable
     // does not contain the data for the case of a single-segment ray
@@ -183,10 +188,6 @@ void trace_ray(RayT& ray, double max_distance)
         ray.boundary().lattice_translation()[2] != 0) {
       cross_lattice(ray, ray.boundary(), settings::verbosity >= 10);
     }
-
-    // Accumulate before the cell search, while material() still refers to the
-    // cell the ray just crossed.
-    ray.update_distance(advance);
 
     inside_cell = neighbor_list_find_cell(ray, settings::verbosity >= 10);
 

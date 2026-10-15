@@ -1380,7 +1380,7 @@ void StructuredMesh::raytrace_mesh(
 
       // Update cell and calculate distance to next surface in k-direction.
       // The two other directions are still valid!
-      for (int j = 0; j < MESH_MAX_AXES; ++j)
+      for (int j = 0; j < n; ++j)
         ijk[j] += distances[k].offset[j];
       sanitize_index(ijk);
       distances[k] =

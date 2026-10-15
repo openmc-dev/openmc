@@ -320,6 +320,9 @@ public:
 
   struct MeshDistance {
     MeshDistance() = default;
+    //! \param _offset Change in each index when this surface is crossed
+    //! \param _max_surface Whether the surface crossed is the upper surface
+    //! \param _distance Distance to the surface
     MeshDistance(MeshIndex _offset, bool _max_surface, double _distance)
       : offset {_offset}, max_surface {_max_surface}, distance {_distance}
     {}
@@ -337,6 +340,7 @@ public:
   //
   //! Called after an index is advanced by a MeshDistance offset. Meshes with a
   //! periodic axis override this; for the rest it is a no-op.
+  //! \param[in,out] idx Mesh indices, modified in place
   virtual void sanitize_index(MeshIndex& idx) const {}
 
   Position sample_element(int32_t bin, uint64_t* seed) const override

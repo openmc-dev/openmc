@@ -101,6 +101,18 @@ def test_mesh_filter_matches_mesh_indices(mesh_name, request):
 
 
 @pytest.mark.parametrize('mesh_name', ALL_MESHES)
+def test_mesh_filter_tiled(mesh_name, request):
+    """With an outer filter, the whole block of mesh rows repeats."""
+    mesh = request.getfixturevalue(mesh_name)
+    filt = openmc.MeshFilter(mesh)
+    df = filt.get_pandas_dataframe(2 * filt.num_bins, 1)
+
+    assert df.shape == (2 * filt.num_bins, len(EXPECTED_LABELS[mesh_name]))
+    expected = [tuple(i) for i in mesh.indices]
+    assert [tuple(row) for row in df.to_numpy()] == 2 * expected
+
+
+@pytest.mark.parametrize('mesh_name', ALL_MESHES)
 def test_mesh_surface_filter_columns(mesh_name, request):
     """Surface filter adds a 'surf' column after the axis columns."""
     mesh = request.getfixturevalue(mesh_name)

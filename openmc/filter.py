@@ -88,7 +88,9 @@ class FilterMeta(ABCMeta):
 def _repeat_and_tile(bins, repeat_factor, data_size):
     filter_bins = np.repeat(bins, repeat_factor, axis=0)
     tile_factor = data_size // len(filter_bins)
-    return np.tile(filter_bins, tile_factor)
+    # Tile along the first axis only so that 2D index arrays repeat rows
+    reps = (tile_factor,) + (1,)*(filter_bins.ndim - 1)
+    return np.tile(filter_bins, reps)
 
 
 class Filter(IDManagerMixin, metaclass=FilterMeta):

@@ -1,6 +1,7 @@
 """ Tests for KeffSearchControl class """
 
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 import numpy as np
@@ -8,6 +9,7 @@ import numpy as np
 import openmc
 import openmc.lib
 from openmc.deplete import CoupledOperator
+from openmc.deplete.keff_search_control import _KeffSearchControl
 
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 
@@ -114,3 +116,26 @@ def test_integrator_add_keff_search_control(run_in_tmpdir, function, x0, x1, bra
     assert integrator._keff_search_control.search_kwargs['x_max'] == bracket[1]
     assert integrator._keff_search_control.search_kwargs['k_tol'] == 0.1
     assert not integrator._keff_search_control.search_kwargs['output']
+
+
+def test_materials_updated_before_search(monkeypatch):
+    """Test that compositions reach the operator before the keff search runs
+
+    The search happens at the beginning of a depletion step, before the
+    transport operator is called. Without the update, the search uses the
+    previous step's materials and _update_vec() reverts the depletion vector
+    to them.
+    """
+    recorder = Mock()
+    recorder.search.return_value = 0.5
+    control = _KeffSearchControl(recorder.operator, lambda x: None,
+                                 x0=0.0, x1=1.0, bracket=[0.0, 2.0])
+    monkeypatch.setattr(control, '_search_for_keff', recorder.search)
+    monkeypatch.setattr(control, '_update_vec', recorder.update_vec)
+
+    n = [np.array([1.0, 2.0, 3.0])]
+
+    assert control.run(n) == 0.5
+    assert [c[0] for c in recorder.mock_calls] == [
+        'operator._update_materials_and_nuclides', 'search', 'update_vec']
+    assert recorder.mock_calls[0].args[0] is n

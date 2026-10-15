@@ -58,8 +58,13 @@ def void_model(one_group_lib):
     model.settings.batches = 5
     model.settings.particles = 100
 
+    # Start just inside the slab, heading for the void, so every history has
+    # a segment in the material and most also reach the void. From deeper
+    # inside the slab, isotropic particles reach the void rarely enough that
+    # some seeds produce no void tracks at all.
     source = openmc.IndependentSource()
-    source.space = openmc.stats.Point((-5.0, 0.0, 0.0))
+    source.space = openmc.stats.Point((-0.5, 0.0, 0.0))
+    source.angle = openmc.stats.Monodirectional((1.0, 0.0, 0.0))
     model.settings.source = source
     return model
 

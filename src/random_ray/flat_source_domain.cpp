@@ -920,7 +920,10 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
     p.r() = source_regions_.position(sr);
     p.r_last() = source_regions_.position(sr);
     p.u() = {1.0, 0.0, 0.0};
-    bool found = exhaustive_find_cell(p);
+    // The return value is not checked because the position was recorded by a
+    // ray that actually traversed this source region, so the search cannot
+    // fail.
+    exhaustive_find_cell(p);
 
     // Loop over energy groups (so as to support energy filters)
     for (int g = 0; g < negroups_; g++) {
@@ -930,8 +933,6 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
       p.g_last() = g;
       p.E() = data::mg.energy_bin_avg_[p.g()];
       p.E_last() = p.E();
-
-      int64_t source_element = sr * negroups_ + g;
 
       // If this task has already been populated, we don't need to do
       // it again.
@@ -956,7 +957,6 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
         // Loop over filter bins.
         for (; filter_iter != end; ++filter_iter) {
           auto filter_index = filter_iter.index_;
-          auto filter_weight = filter_iter.weight_;
 
           // Loop over scores
           for (int score = 0; score < tally.scores_.size(); score++) {
@@ -1350,9 +1350,6 @@ void FlatSourceDomain::output_to_vtk() const
       }
     }
 
-    double source_normalization_factor =
-      compute_fixed_source_normalization_factor();
-
     // Open file for writing
     std::FILE* plot = std::fopen(filename.c_str(), "wb");
 
@@ -1628,9 +1625,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
         }
       }
     }
-
-    double source_normalization_factor =
-      compute_fixed_source_normalization_factor();
 
     // Open file for writing
     std::FILE* plot = nullptr;
@@ -2033,9 +2027,7 @@ void FlatSourceDomain::convert_external_sources(bool use_adjoint_sources)
     // Extract source information
     Source* s = sources[es].get();
     IndependentSource* is = dynamic_cast<IndependentSource*>(s);
-    Discrete* energy = dynamic_cast<Discrete*>(is->energy());
     const std::unordered_set<int32_t>& domain_ids = is->domain_ids();
-    double strength_factor = is->strength();
 
     // If there is no domain constraint specified, then this must be a point
     // source. In this case, we need to find the source region that contains the

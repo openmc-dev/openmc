@@ -115,7 +115,7 @@ def _write_minimal_statepoint(path, version, global_tallies, k_generation):
         f['n_realizations'] = 4
         f['n_inactive'] = 2
         f['generations_per_batch'] = 1
-        f['k_combined'] = [1.0, 0.01]
+        f['k_combined'] = [0.5, 0.01]
         f['global_tallies'] = global_tallies
         f['k_generation'] = k_generation
 
@@ -139,6 +139,8 @@ def test_global_tallies_layout(run_in_tmpdir, version):
         np.testing.assert_allclose(gt['sum'], sums)
         np.testing.assert_allclose(gt['sum_sq'], sums_sq)
         np.testing.assert_allclose(gt['mean'], sums/4)
-        assert sp.keff.n == pytest.approx(1.0)
+        assert sp.keff.n == pytest.approx(0.5)
         assert len(sp.k_generation) == 6
-        assert sp.source_efficiency.n == pytest.approx(0.9*0.95)
+        assert sp.source_efficiency.n == pytest.approx(0.9*0.95/0.5**2)
+        expected = 1.0 + 0.9 + 0.9*0.95/(1.0 - 0.5)
+        assert sp.multiplication.n == pytest.approx(expected)

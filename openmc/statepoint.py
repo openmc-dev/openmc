@@ -317,7 +317,9 @@ class StatePoint:
     def _k_generation_inactive(self):
         """Generation-wise k estimates for the inactive generations"""
         n_gen = self.n_inactive*self.generations_per_batch
-        return self.k_generation[:n_gen]
+        # Use an object array so that plain floats from files older than
+        # version 18.3 can be combined with the ufloat keff
+        return np.asarray(self.k_generation[:n_gen], dtype=object)
 
     @property
     def keff(self):

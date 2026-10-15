@@ -743,8 +743,10 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       auto search = data::nuclide_map.find(nuc);
       if (search == data::nuclide_map.end()) {
         int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
-        if (err < 0)
-          throw std::runtime_error {get_errmsg()};
+        if (err < 0) {
+          throw std::runtime_error {fmt::format(
+            "Could not add nuclide '{}' to a tally: {}", nuc, get_errmsg())};
+        }
       }
       nuclides_.push_back(data::nuclide_map.at(nuc));
     }
@@ -1000,16 +1002,15 @@ void read_tallies_xml(pugi::xml_node root)
 
   // Check for user filters and allocate
   for (auto node_filt : root.children("filter")) {
-    auto f = Filter::create(node_filt);
+    Filter::create(node_filt);
   }
 
   // ==========================================================================
   // READ TALLY DATA
 
   // Check for user tallies
-  int n = 0;
-  for (auto node : root.children("tally"))
-    ++n;
+  auto tally_nodes = root.children("tally");
+  int n = std::distance(tally_nodes.begin(), tally_nodes.end());
   if (n == 0 && mpi::master) {
     warning("No tallies present in tallies.xml file.");
   }
@@ -1086,7 +1087,7 @@ void accumulate_tallies()
 {
 #ifdef OPENMC_MPI
   // Combine tally results onto master process
-  if (mpi::n_procs > 1 && settings::solver_type == SolverType::MONTE_CARLO) {
+  if (mpi::n_procs > 1) {
     reduce_tally_results();
   }
 #endif

@@ -71,7 +71,9 @@ exclude = ['tests*']
 
 [tool.setuptools.package-data]
 "openmc.data.dose" = ["**/*.txt", "*.h5"]
-"openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
+"openmc.data" = [
+  "*.txt", "*.DAT", "*.json", "*.h5", "material_libraries/*.json"
+]
 "openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
 
 [tool.setuptools_scm]

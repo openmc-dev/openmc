@@ -155,8 +155,7 @@ public:
 
   // Factory method for creating meshes from either an XML node or HDF5 group
   template<typename T>
-  static const std::unique_ptr<Mesh>& create(
-    T dataset, const std::string& mesh_type, const std::string& mesh_library);
+  static const std::unique_ptr<Mesh>& create(T dataset);
 
   // Methods
   //! Perform any preparation needed to support point location within the mesh
@@ -206,6 +205,8 @@ public:
   int32_t id() const { return id_; }
 
   const std::string& name() const { return name_; }
+
+  void set_name(const std::string& name) { name_ = name; }
 
   //! Set the mesh ID
   void set_id(int32_t id = -1);
@@ -481,6 +482,16 @@ public:
     return r - origin_;
   };
 
+  const Position& origin() const { return origin_; }
+
+  virtual int set_grid() = 0;
+
+  int set_origin(Position origin)
+  {
+    origin_ = origin;
+    return set_grid();
+  }
+
   // Data members
   Position origin_ {0.0, 0.0, 0.0}; //!< Origin of the mesh
 };
@@ -620,7 +631,7 @@ public:
   double phi(int i) const { return grid_[1][i]; }
   double z(int i) const { return grid_[2][i]; }
 
-  int set_grid();
+  int set_grid() override;
 
   // Data members
   array<vector<double>, 3> grid_;
@@ -684,7 +695,7 @@ public:
   double theta(int i) const { return grid_[1][i]; }
   double phi(int i) const { return grid_[2][i]; }
 
-  int set_grid();
+  int set_grid() override;
 
   // Data members
   array<vector<double>, 3> grid_;
@@ -727,15 +738,18 @@ private:
 class UnstructuredMesh : public Mesh {
 
 public:
+  template<typename T>
+  static std::unique_ptr<UnstructuredMesh> create(T dataset);
+
   // Constructors
   UnstructuredMesh() { n_dimension_ = 3; };
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(hid_t group);
 
   static const std::string mesh_type;
-  virtual std::string get_mesh_type() const override;
 
   // Overridden Methods
+  virtual std::string get_mesh_type() const override;
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
@@ -743,6 +757,8 @@ public:
   void to_hdf5_inner(hid_t group) const override;
 
   std::string bin_label(int bin) const override;
+
+  const std::string& interface() const { return interface_; }
 
   // Methods
 
@@ -788,6 +804,9 @@ public:
   //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;
 
+  //! Get the mesh filename
+  virtual const std::string& filename() const { return filename_; }
+
   // Data members
   bool output_ {
     true}; //!< Write tallies onto the unstructured mesh at the end of a run
@@ -814,12 +833,43 @@ protected:
   //! \param[in] coords Coordinates of the tetrahedron
   //! \param[in] seed Random number generation seed
   //! \return Sampled position within the tetrahedron
-  Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
+  template<typename V>
+  Position sample_tet(span<V> coords, uint64_t* seed) const
+  {
+    // Uniform distribution
+    double s = prn(seed);
+    double t = prn(seed);
+    double u = prn(seed);
+
+    // From PyNE implementation of moab tet sampling C. Rocchini & P. Cignoni
+    // (2000) Generating Random Points in a Tetrahedron, Journal of Graphics
+    // Tools, 5:4, 9-12, DOI: 10.1080/10867651.2000.10487528
+    if (s + t > 1) {
+      s = 1.0 - s;
+      t = 1.0 - t;
+    }
+    if (s + t + u > 1) {
+      if (t + u > 1) {
+        double old_t = t;
+        t = 1.0 - u;
+        u = 1.0 - s - old_t;
+      } else if (t + u <= 1) {
+        double old_s = s;
+        s = 1.0 - t - u;
+        u = old_s + t + u - 1;
+      }
+    }
+    V result = s * (coords[1] - coords[0]) + t * (coords[2] - coords[0]) +
+               u * (coords[3] - coords[0]) + coords[0];
+    return {result[0], result[1], result[2]};
+  }
 
   // Data members
   double length_multiplier_ {
     -1.0};              //!< Multiplicative factor applied to mesh coordinates
   std::string options_; //!< Options for search data structures
+  std::string interface_ {
+    "native"}; //!< Name of the interface used for the mesh
 
   //! Determine lower-left and upper-right bounds of mesh
   void determine_bounds();
@@ -838,7 +888,8 @@ public:
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
   MOABMesh(hid_t group);
-  MOABMesh(const std::string& filename, double length_multiplier = 1.0);
+  MOABMesh(const std::string& filename, double length_multiplier = 1.0,
+    const std::string& options = {});
   MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
 
   static const std::string mesh_lib_type;
@@ -1008,7 +1059,8 @@ public:
   // Constructors
   LibMesh(pugi::xml_node node);
   LibMesh(hid_t group);
-  LibMesh(const std::string& filename, double length_multiplier = 1.0);
+  LibMesh(const std::string& filename, double length_multiplier = 1.0,
+    const std::string& options = {});
   LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
   static const std::string mesh_lib_type;

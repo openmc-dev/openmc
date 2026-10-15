@@ -76,6 +76,8 @@ double Particle::mass() const
   case PDG_ELECTRON:
   case PDG_POSITRON:
     return MASS_ELECTRON_EV;
+  case PDG_PHOTON:
+    return 0.0;
   default:
     return this->type().mass() * AMU_EV;
   }
@@ -1066,7 +1068,7 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   site.particle = p.type();
   site.parent_id = p.id();
   site.progeny_id = p.n_progeny();
-  int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+  simulation::surf_source_bank.thread_safe_append(site);
 }
 
 } // namespace openmc

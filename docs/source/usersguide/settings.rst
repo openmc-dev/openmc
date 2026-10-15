@@ -422,6 +422,11 @@ As an example, to write a maximum of three surface source files:::
       'max_source_files': 3
   }
 
+A surface source file is read back like any other source file, with the
+:class:`openmc.FileSource` class::
+
+  settings.source = openmc.FileSource('surface_source.h5')
+
 .. _compiled_source:
 
 Compiled Sources

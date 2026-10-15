@@ -186,6 +186,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double A_, B_, C_, D_;
 };
@@ -352,6 +353,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, z0_, A_, B_, C_;
 };
@@ -369,6 +371,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, z0_, A_, B_, C_;
 };
@@ -386,6 +389,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, z0_, A_, B_, C_;
 };

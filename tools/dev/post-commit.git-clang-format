@@ -21,7 +21,19 @@ to apply formatting.\e[0m
 fi
 
 printf "\e[2;37;40mRunning git-clang-format...\e[0m" >&2
-CLANG_FORMAT_RESULT="$(git-clang-format HEAD^)"
+if CLANG_FORMAT_RESULT="$(git-clang-format HEAD^)"; then
+  GCF_STATUS=0
+else
+  GCF_STATUS=$?
+fi
+
+# git-clang-format returns 1 when it successfully applies formatting changes.
+# Any other nonzero status indicates an actual failure.
+if [ "${GCF_STATUS}" -gt 1 ]; then
+  printf "%s\n" "${CLANG_FORMAT_RESULT}" >&2
+  printf "git-clang-format failed with status %s\n" "${GCF_STATUS}" >&2
+  exit "${GCF_STATUS}"
+fi
 
 if git diff-files --quiet ; then
   printf "\r\e[2;32mAll code changes were properly formatted\e[0m\n" >&2

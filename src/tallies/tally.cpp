@@ -699,8 +699,8 @@ void Tally::set_scores(const vector<std::string>& scores)
                     " reaction rate "
                     "in multi-group mode");
       } else if (sc == SCORE_FISS_Q_PROMPT || sc == SCORE_FISS_Q_RECOV) {
-        fatal_error("Cannot tally " + reaction_name(sc) +
-                    " in multi-group mode; kappa-fission is available instead");
+        fatal_error(
+          "Cannot tally " + reaction_name(sc) + " in multi-group mode");
       }
     }
   }

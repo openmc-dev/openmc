@@ -3,6 +3,7 @@
 #include <cmath>
 #include <complex>
 #include <initializer_list>
+#include <iterator>
 #include <set>
 #include <utility>
 
@@ -1247,10 +1248,8 @@ void read_surfaces(pugi::xml_node node,
   std::unordered_map<int, int>& periodic_sense_map)
 {
   // Count the number of surfaces
-  int n_surfaces = 0;
-  for (pugi::xml_node surf_node : node.children("surface")) {
-    n_surfaces++;
-  }
+  auto surf_nodes = node.children("surface");
+  int n_surfaces = std::distance(surf_nodes.begin(), surf_nodes.end());
 
   // Loop over XML surface elements and populate the array.  Keep track of
   // periodic surfaces and their albedos.

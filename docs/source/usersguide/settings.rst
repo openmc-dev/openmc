@@ -376,6 +376,12 @@ Sources are most conveniently created directly from equilibrium code output::
       energy=openmc.stats.muir(e0=14.08e6, m_rat=5.0, kt=20000.0),
   )
 
+The ``from_desc`` constructor requires the optional ``desc-opt`` package,
+available through ``pip install openmc[desc]`` or
+``conda install -c conda-forge desc-opt``. DESC loads its own files and performs
+the spectral conversion. An equilibrium family uses its last member. DESC is
+not required to import OpenMC, read the resulting source XML, or run transport.
+
 The ``emission_density`` argument accepts either a callable evaluated on the
 radial grid or an array with one value per radial surface; only its shape
 matters, since it is normalized internally. The Fourier coefficient tables can

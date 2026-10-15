@@ -11,7 +11,6 @@ import lxml.etree as ET
 import numpy as np
 import h5py
 import pandas as pd
-from scipy.special import eval_jacobi
 
 import openmc
 import openmc.checkvalue as cv
@@ -1748,77 +1747,6 @@ class StellaratorSource(SourceBase):
                 return {k: np.asarray(ds[k][()], dtype=float)
                         for k in names if k in ds}
 
-    @staticmethod
-    def _desc_to_combined(modes_m, modes_n, coeffs, table):
-        """Fold DESC's product-form double Fourier coefficients into the
-        combined form sum[c*cos(m*theta - n*Nfp*zeta) + s*sin(...)], m >= 0.
-
-        DESC basis conventions: positive (negative) m selects cos(|m| theta)
-        (sin(|m| theta)); likewise for n with the toroidal angle. The Ptolemy
-        identities split each product into the two combined-form harmonics
-        (m, n) and (m, -n), and modes with m < 0 (or m == 0, n < 0) are folded
-        using cos(-x) = cos(x), sin(-x) = -sin(x).
-        """
-        def add(m, n, c, s):
-            if m < 0 or (m == 0 and n < 0):
-                m, n, s = -m, -n, -s
-            entry = table.setdefault((m, n), [0.0, 0.0])
-            entry[0] += c
-            entry[1] += s
-
-        for m0, n0, x in zip(modes_m, modes_n, coeffs):
-            am, an = abs(int(m0)), abs(int(n0))
-            h = 0.5 * float(x)
-            if m0 >= 0 and n0 >= 0:    # cos(m theta) * cos(n zeta')
-                add(am, an, h, 0.0)
-                add(am, -an, h, 0.0)
-            elif m0 < 0 and n0 >= 0:   # sin(m theta) * cos(n zeta')
-                add(am, an, 0.0, h)
-                add(am, -an, 0.0, h)
-            elif m0 >= 0 and n0 < 0:   # cos(m theta) * sin(n zeta')
-                add(am, an, 0.0, -h)
-                add(am, -an, 0.0, h)
-            else:                      # sin(m theta) * sin(n zeta')
-                add(am, an, h, 0.0)
-                add(am, -an, -h, 0.0)
-
-    @staticmethod
-    def _zernike_radial(rho, l, m):  # noqa: E741
-        """Unnormalized Zernike radial polynomial :math:`R_l^{|m|}(\\rho)`."""
-        m = abs(m)
-        if l < m or (l - m) % 2:
-            raise ValueError("Zernike l - abs(m) must be nonnegative and even")
-        rho = np.asarray(rho, dtype=float)
-        return rho**m * eval_jacobi((l - m)//2, 0, m, 2*rho**2 - 1)
-
-    @staticmethod
-    def _desc_spectral_data(eq):
-        """Extract Fourier-Zernike modes/coefficients from a DESC equilibrium.
-
-        Accepts either a live ``desc.equilibrium.Equilibrium`` (duck-typed, so
-        no import of desc is needed) or a path to a DESC HDF5 output file,
-        which is read directly with h5py. Returns ``(r_modes, r_lmn, z_modes,
-        z_lmn, nfp)`` where the modes arrays have columns ``(l, m, n)``.
-        """
-        if isinstance(eq, (str, os.PathLike)):
-            with h5py.File(input_path(eq), 'r') as f:
-                # Output files may contain a family of equilibria; use the last
-                g = f
-                if '_equilibria' in f:
-                    idx = sorted((k for k in f['_equilibria'] if k.isdigit()),
-                                 key=int)
-                    g = f['_equilibria'][idx[-1]]
-                return (np.asarray(g['_R_basis/_modes'][()], dtype=int),
-                        np.asarray(g['_R_lmn'][()], dtype=float),
-                        np.asarray(g['_Z_basis/_modes'][()], dtype=int),
-                        np.asarray(g['_Z_lmn'][()], dtype=float),
-                        int(g['_NFP'][()]))
-        return (np.asarray(eq.R_basis.modes, dtype=int),
-                np.asarray(eq.R_lmn, dtype=float),
-                np.asarray(eq.Z_basis.modes, dtype=int),
-                np.asarray(eq.Z_lmn, dtype=float),
-                int(eq.NFP))
-
     @classmethod
     def from_desc(
         cls,
@@ -1836,20 +1764,17 @@ class StellaratorSource(SourceBase):
         \\mathcal{F}_n(N_{fp}\\zeta)`, where :math:`\\mathcal{R}_l^{|m|}` is the
         (unnormalized) Zernike radial polynomial and :math:`\\mathcal{F}_m(x)`
         is :math:`\\cos(|m|x)` for :math:`m \\ge 0` and :math:`\\sin(|m|x)`
-        otherwise. The Zernike polynomials are evaluated here on a uniform grid
-        in :math:`\\rho` (DESC's native radial coordinate) to obtain
-        per-surface double Fourier coefficients, which are then converted from
-        DESC's product-form basis to the combined VMEC-style form using the
-        Ptolemy identities. Coefficients are converted from [m] to [cm]. No
-        additional packages are required: DESC HDF5 output files are read
-        directly with :mod:`h5py`, and live equilibrium objects are accessed
-        through their public attributes only.
+        otherwise. DESC evaluates the radial basis on a uniform grid in
+        :math:`\\rho` and converts the product-form coefficients to the
+        combined VMEC-style form. Coefficients are converted from [m] to [cm].
+        This method requires the optional ``desc-opt`` package, which is
+        imported only when the method is called.
 
         Parameters
         ----------
-        eq : desc.equilibrium.Equilibrium or path-like
+        eq : desc.equilibrium.Equilibrium or desc.equilibrium.EquilibriaFamily or path-like
             A DESC equilibrium object, or a path to a DESC HDF5 output file
-            (the last equilibrium is used if the file contains a family).
+            (the last equilibrium is used for an equilibrium family).
         emission_density : callable or numpy.ndarray
             Either a callable ``S(rho)`` evaluated at the radial grid points,
             or an array of length ``n_rho`` (arbitrary units, must be >= 0).
@@ -1866,52 +1791,56 @@ class StellaratorSource(SourceBase):
         openmc.StellaratorSource
 
         """
+        try:
+            from desc.basis import zernike_radial
+            from desc.equilibrium import Equilibrium, EquilibriaFamily
+            from desc.io import load
+            from desc.vmec_utils import ptolemy_identity_rev
+        except ModuleNotFoundError as exc:
+            if exc.name != 'desc':
+                raise
+            raise ImportError(
+                "StellaratorSource.from_desc requires DESC. "
+                "Install it with 'pip install openmc[desc]' or "
+                "'pip install desc-opt'.") from exc
+
+        cv.check_type('n_rho', n_rho, Integral)
         cv.check_greater_than('n_rho', n_rho, 1)
         rho = np.linspace(0.0, 1.0, n_rho)
+        if isinstance(eq, (str, os.PathLike)):
+            eq = load(input_path(eq), file_format='hdf5')
+        if isinstance(eq, EquilibriaFamily):
+            if not len(eq):
+                raise ValueError("The DESC equilibrium family is empty")
+            eq = eq[-1]
+        cv.check_type('eq', eq, Equilibrium)
 
-        r_modes, r_lmn, z_modes, z_lmn, nfp = cls._desc_spectral_data(eq)
+        def convert(name):
+            basis = getattr(eq, f'{name}_basis')
+            l, m, _ = basis.modes.T  # noqa: E741
+            modes, inverse = np.unique(basis.modes[:, 1:], axis=0,
+                                       return_inverse=True)
+            radial = np.asarray(zernike_radial(rho[:, None], l, m))
+            values = np.zeros((n_rho, len(modes)))
+            # Sum radial modes sharing the same angular mode on each surface.
+            np.add.at(values.T, inverse,
+                      (radial * np.asarray(getattr(eq, f'{name}_lmn'))).T)
+            m, n, sine, cosine = ptolemy_identity_rev(
+                modes[:, 0], modes[:, 1], values)
+            return list(zip(m, n)), sine, cosine
 
-        # Collapse the Zernike radial dependence onto the rho grid, giving
-        # product-form double Fourier coefficients for each surface, then
-        # convert to combined form
-        surface_tables = []
-        radial_r = np.column_stack([
-            x * cls._zernike_radial(rho, l, m)
-            for (l, m, n), x in zip(r_modes, r_lmn)])  # noqa: E741
-        radial_z = np.column_stack([
-            x * cls._zernike_radial(rho, l, m)
-            for (l, m, n), x in zip(z_modes, z_lmn)])  # noqa: E741
-        for i in range(n_rho):
-            table_r, table_z = {}, {}
-            cls._desc_to_combined(r_modes[:, 1], r_modes[:, 2],
-                                  radial_r[i], table_r)
-            cls._desc_to_combined(z_modes[:, 1], z_modes[:, 2],
-                                  radial_z[i], table_z)
-            surface_tables.append((table_r, table_z))
-
-        # Union of modes across R, Z, and all surfaces
-        modes = sorted({key for table_r, table_z in surface_tables
-                        for key in (*table_r, *table_z)})
-        mode_m = np.array([m for m, _ in modes], dtype=int)
-        mode_n = np.array([n for _, n in modes], dtype=int)
-
-        n_modes = len(modes)
-        rmnc = np.zeros((n_rho, n_modes))
-        rmns = np.zeros((n_rho, n_modes))
-        zmnc = np.zeros((n_rho, n_modes))
-        zmns = np.zeros((n_rho, n_modes))
-        for i, (table_r, table_z) in enumerate(surface_tables):
-            for k, key in enumerate(modes):
-                if key in table_r:
-                    rmnc[i, k], rmns[i, k] = table_r[key]
-                if key in table_z:
-                    zmnc[i, k], zmns[i, k] = table_z[key]
-
-        # m to cm
-        rmnc *= 100.0
-        rmns *= 100.0
-        zmnc *= 100.0
-        zmns *= 100.0
+        r_modes, r_sine, r_cosine = convert('R')
+        z_modes, z_sine, z_cosine = convert('Z')
+        modes = sorted(set(r_modes) | set(z_modes))
+        mode_m, mode_n = np.asarray(modes, dtype=int).T
+        indices = {mode: k for k, mode in enumerate(modes)}
+        rmnc, rmns, zmnc, zmns = (
+            np.zeros((n_rho, len(modes))) for _ in range(4))
+        # Align the R/Z mode lists and convert meters to centimeters.
+        r_indices = [indices[mode] for mode in r_modes]
+        z_indices = [indices[mode] for mode in z_modes]
+        rmnc[:, r_indices], rmns[:, r_indices] = 100*r_cosine, 100*r_sine
+        zmnc[:, z_indices], zmns[:, z_indices] = 100*z_cosine, 100*z_sine
 
         # Drop modes whose R and Z coefficients are exactly zero on every surface.
         keep = np.any((rmnc != 0) | (rmns != 0) | (zmnc != 0) | (zmns != 0), axis=0)
@@ -1931,7 +1860,7 @@ class StellaratorSource(SourceBase):
             zmns=zmns,
             rmns=None if sym else rmns,
             zmnc=None if sym else zmnc,
-            num_field_periods=nfp,
+            num_field_periods=eq.NFP,
             energy=energy,
             **kwargs
         )

@@ -258,87 +258,106 @@ def test_stellarator_source_from_vmec(run_in_tmpdir):
     assert src.rmns is None
 
 
-def test_stellarator_source_desc_ptolemy():
-    """Check the DESC product-form to combined-form conversion identities."""
-    rng = np.random.default_rng(42)
-    theta = rng.uniform(0.0, 2 * np.pi, 50)
-    zp = rng.uniform(0.0, 2 * np.pi, 50)  # zeta' = nfp * zeta
+@pytest.fixture
+def desc_equilibrium():
+    pytest.importorskip('desc')
+    from desc.equilibrium import Equilibrium
 
-    # One mode of each sign class with random coefficients
-    modes_m = np.array([2, -2, 2, -2, 0, 3])
-    modes_n = np.array([1, 1, -1, -1, -2, 0])
-    coeffs = rng.normal(size=modes_m.size)
-
-    # Direct evaluation in DESC's product-form convention
-    direct = np.zeros_like(theta)
-    for m0, n0, x in zip(modes_m, modes_n, coeffs):
-        pol = np.cos(abs(m0) * theta) if m0 >= 0 else np.sin(abs(m0) * theta)
-        tor = np.cos(abs(n0) * zp) if n0 >= 0 else np.sin(abs(n0) * zp)
-        direct += x * pol * tor
-
-    # Combined-form evaluation
-    table = {}
-    openmc.StellaratorSource._desc_to_combined(modes_m, modes_n, coeffs, table)
-    combined = np.zeros_like(theta)
-    for (m, n), (c, s) in table.items():
-        ang = m * theta - n * zp
-        combined += c * np.cos(ang) + s * np.sin(ang)
-
-    np.testing.assert_allclose(combined, direct, atol=1e-12)
+    # Circular torus plus a nontrivial l=3 radial contribution.
+    eq = Equilibrium(L=3, M=2, N=1, NFP=3, sym=False)
+    r = np.zeros(eq.R_basis.num_modes)
+    z = np.zeros(eq.Z_basis.num_modes)
+    r[eq.R_basis.get_idx(0, 0, 0)] = 6.0
+    r[eq.R_basis.get_idx(1, 1, 0)] = 1.5
+    z[eq.Z_basis.get_idx(1, -1, 0)] = 1.5
+    r[eq.R_basis.get_idx(3, 1, -1)] = 0.02
+    z[eq.Z_basis.get_idx(3, -1, -1)] = 0.03
+    eq.R_lmn, eq.Z_lmn = r, z
+    return eq
 
 
-def test_stellarator_source_zernike_radial():
-    """Check the Zernike radial polynomial against known closed forms."""
-    zr = openmc.StellaratorSource._zernike_radial
-    rho = np.linspace(0.0, 1.0, 11)
-    np.testing.assert_allclose(zr(rho, 0, 0), np.ones_like(rho))
-    np.testing.assert_allclose(zr(rho, 1, 1), rho)
-    np.testing.assert_allclose(zr(rho, 2, 0), 2 * rho**2 - 1)
-    np.testing.assert_allclose(zr(rho, 2, 2), rho**2)
-    np.testing.assert_allclose(zr(rho, 3, 1), 3 * rho**3 - 2 * rho)
-    np.testing.assert_allclose(zr(rho, 4, 0), 6 * rho**4 - 6 * rho**2 + 1)
-    np.testing.assert_allclose(zr(rho, 3, -1), zr(rho, 3, 1))  # |m| is used
+@pytest.mark.parametrize('sym', [False, True])
+def test_stellarator_source_from_desc(desc_equilibrium, sym):
+    from desc.grid import Grid
 
-
-def test_stellarator_source_from_desc(run_in_tmpdir):
-    """Read a synthetic rotating-ellipse DESC HDF5 file with from_desc.
-
-    The equilibrium R = R0 + a*rho*cos(theta - Nfp*zeta') expands in DESC's
-    product-form Fourier-Zernike basis (Zernike R_1^1(rho) = rho) as modes
-    (l=1, m=1, n=1) and (l=1, m=-1, n=-1), and likewise for Z.
-    """
-    import h5py
-
-    nfp = 5
-    r0_m, a_m = 6.0, 1.5
-    r_modes = np.array([[0, 0, 0], [1, 1, 1], [1, -1, -1]])
-    r_lmn = np.array([r0_m, a_m, a_m])
-    z_modes = np.array([[1, 1, -1], [1, -1, 1]])
-    z_lmn = np.array([-a_m, a_m])  # Z = a*rho*sin(theta - Nfp*zeta')
-
-    with h5py.File('desc_test.h5', 'w') as f:
-        g = f.create_group('_equilibria').create_group('0')
-        g['_R_basis/_modes'] = r_modes
-        g['_R_lmn'] = r_lmn
-        g['_Z_basis/_modes'] = z_modes
-        g['_Z_lmn'] = z_lmn
-        g['_NFP'] = nfp
-
+    eq = desc_equilibrium
+    if sym:
+        eq.change_resolution(sym=True)
     src = openmc.StellaratorSource.from_desc(
-        'desc_test.h5',
-        emission_density=lambda r: 1.0 - r**2,
-        energy=openmc.stats.delta_function(14.07e6),
-        n_rho=9,
-    )
-    assert src.num_field_periods == nfp
-    rho = np.linspace(0.0, 1.0, 9)
-    np.testing.assert_allclose(src.rho, rho)
-    assert src.rmns is None  # symmetric equilibrium
+        eq, lambda r: 1-r**2, openmc.stats.delta_function(14.07e6), n_rho=7)
+    assert src.num_field_periods == eq.NFP
+    np.testing.assert_allclose(src.emission_density, 1-src.rho**2)
+    assert (src.rmns is None) == sym
 
-    # Combined form: R = R0 + a*rho*cos(theta - Nfp*zeta), Z = a*rho*sin(...)
-    k00 = np.flatnonzero((src.mode_m == 0) & (src.mode_n == 0))[0]
-    k11 = np.flatnonzero((src.mode_m == 1) & (src.mode_n == 1))[0]
-    np.testing.assert_allclose(src.rmnc[:, k00], 100.0 * r0_m)
-    np.testing.assert_allclose(src.rmnc[:, k11], 100.0 * a_m * rho, atol=1e-12)
-    np.testing.assert_allclose(src.zmns[:, k11], 100.0 * a_m * rho, atol=1e-12)
-    np.testing.assert_allclose(src.zmns[:, k00], 0.0, atol=1e-12)
+    # Compare physical surfaces against DESC's full basis evaluation, which
+    # independently exercises radial evaluation, mode signs, and units.
+    rng = np.random.default_rng(640)
+    theta, zeta = rng.uniform(0, 2*np.pi, (2, 30))
+    phase = src.mode_m[:, None]*theta - src.mode_n[:, None]*eq.NFP*zeta
+    for i, rho in enumerate(src.rho):
+        nodes = np.column_stack([np.full(theta.size, rho), theta, zeta])
+        # Supplying a Grid preserves rho=0 without the default axis shift.
+        grid = Grid(nodes)
+        expected_r = np.asarray(eq.R_basis.evaluate(grid) @ eq.R_lmn)*100
+        expected_z = np.asarray(eq.Z_basis.evaluate(grid) @ eq.Z_lmn)*100
+        r = src.rmnc[i] @ np.cos(phase)
+        z = src.zmns[i] @ np.sin(phase)
+        if not sym:
+            r += src.rmns[i] @ np.sin(phase)
+            z += src.zmnc[i] @ np.cos(phase)
+        np.testing.assert_allclose(r, expected_r, atol=1e-10, rtol=1e-12)
+        np.testing.assert_allclose(z, expected_z, atol=1e-10, rtol=1e-12)
+
+
+@pytest.mark.parametrize('family', [False, True])
+def test_stellarator_source_desc_file(desc_equilibrium, tmp_path, family):
+    from desc.equilibrium import EquilibriaFamily
+
+    eq = desc_equilibrium
+    obj = EquilibriaFamily(eq.copy(), eq) if family else eq
+    if family:
+        obj[0].R_lmn = obj[0].R_lmn * 2
+    path = tmp_path/'equilibrium.h5'
+    obj.save(path)
+    args = dict(emission_density=lambda r: 1-r**2,
+                energy=openmc.stats.delta_function(14.07e6), n_rho=5)
+    reference = openmc.StellaratorSource.from_desc(eq, **args)
+    for value in (obj, path, str(path)):
+        source = openmc.StellaratorSource.from_desc(value, **args)
+        assert source.num_field_periods == reference.num_field_periods
+        for name in ('rho', 'mode_m', 'mode_n', 'rmnc', 'rmns', 'zmnc', 'zmns'):
+            np.testing.assert_allclose(getattr(source, name),
+                                       getattr(reference, name))
+
+
+def test_stellarator_source_desc_invalid(desc_equilibrium, tmp_path):
+    from desc.equilibrium import EquilibriaFamily
+
+    args = dict(emission_density=lambda r: 1-r**2,
+                energy=openmc.stats.delta_function(14.07e6))
+    with pytest.raises(ValueError, match='empty'):
+        openmc.StellaratorSource.from_desc(EquilibriaFamily(), **args)
+    with pytest.raises(TypeError, match='eq'):
+        openmc.StellaratorSource.from_desc(object(), **args)
+    with pytest.raises(TypeError, match='n_rho'):
+        openmc.StellaratorSource.from_desc(desc_equilibrium, n_rho=3.5, **args)
+    with pytest.raises(ValueError, match='n_rho'):
+        openmc.StellaratorSource.from_desc(desc_equilibrium, n_rho=1, **args)
+    with pytest.raises(FileNotFoundError):
+        openmc.StellaratorSource.from_desc(tmp_path/'missing.h5', **args)
+
+
+def test_stellarator_source_desc_missing_dependency(monkeypatch):
+    import builtins
+
+    original_import = builtins.__import__
+
+    def without_desc(name, *args, **kwargs):
+        if name == 'desc' or name.startswith('desc.'):
+            raise ModuleNotFoundError("No module named 'desc'", name='desc')
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, '__import__', without_desc)
+    with pytest.raises(ImportError, match='pip install openmc'):
+        openmc.StellaratorSource.from_desc(
+            'unused.h5', [1, 1], openmc.stats.delta_function(14.07e6))

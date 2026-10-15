@@ -15,6 +15,8 @@ from tests import cdtemp
 # MeshSpatial Tests
 ###################
 TETS_PER_VOXEL = 12
+UMESH_TETS = (Path(__file__).resolve().parents[1] / 'regression_tests' /
+              'unstructured_mesh' / 'test_mesh_tets.exo')
 
 # This test uses a geometry file with cells that match a regular mesh. Each cell
 # in the geometry corresponds to 12 tetrahedra in the unstructured mesh file.
@@ -83,7 +85,7 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
         pytest.skip("XDG mesh interface not enabled in this build.")
 
     # setup mesh source ###
-    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
+    mesh_filename = UMESH_TETS
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_cases['library'])
     uscd_mesh.interface = test_cases['interface']
 
@@ -153,7 +155,7 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
 
 def test_strengths_size_failure(request, model):
     # setup mesh source ###
-    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
+    mesh_filename = UMESH_TETS
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, 'libmesh')
 
     # intentionally incorrectly sized to trigger an error
@@ -191,7 +193,7 @@ def test_roundtrip(run_in_tmpdir, model, request):
     ):
         pytest.skip("Unstructured mesh is not enabled in this build.")
 
-    mesh_filename = Path(request.fspath).parent / 'test_mesh_tets.e'
+    mesh_filename = UMESH_TETS
     ucd_mesh = openmc.UnstructuredMesh(mesh_filename, library='libmesh')
 
     if not openmc.lib.feature_enabled('libmesh'):
@@ -339,7 +341,7 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library, i
 
     model = void_model
 
-    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
+    mesh_filename = UMESH_TETS
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, library)
     uscd_mesh.interface = interface
     ind_source = openmc.IndependentSource()

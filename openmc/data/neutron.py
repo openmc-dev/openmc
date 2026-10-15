@@ -13,8 +13,8 @@ from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Library, Table, get_table, get_metadata
 from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV, gnds_name
 from .endf import (
-    Evaluation, SUM_RULES, as_evaluation, get_head_record, get_tab1_record,
-    get_evaluations)
+    Evaluation, SUM_RULES, as_evaluation, get_cont_record, get_head_record,
+    get_tab1_record, get_evaluations)
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
 from .njoy import make_ace, make_pendf
@@ -68,6 +68,9 @@ class IncidentNeutron(EqualityMixin):
     fission_energy : None or openmc.data.FissionEnergyRelease
         The energy released by fission, tabulated by component (e.g. prompt
         neutrons or beta particles) and dependent on incident neutron energy
+    excitation_energy : float or None
+        Target excitation energy (ENDF ELIS) in [eV]. None if unavailable,
+        including when loading ACE data or older HDF5 libraries.
     mass_number : int
         Number of nucleons in the target nucleus
     metastable : int
@@ -106,6 +109,7 @@ class IncidentNeutron(EqualityMixin):
         self.kTs = kTs
         self.energy = {}
         self._fission_energy = None
+        self._excitation_energy = None
         self.reactions = {}
         self._urr = {}
         self._resonances = None
@@ -168,6 +172,17 @@ class IncidentNeutron(EqualityMixin):
         cv.check_type('metastable', metastable, Integral)
         cv.check_greater_than('metastable', metastable, 0, True)
         self._metastable = metastable
+
+    @property
+    def excitation_energy(self):
+        return self._excitation_energy
+
+    @excitation_energy.setter
+    def excitation_energy(self, value):
+        if value is not None:
+            cv.check_type('excitation energy', value, Real)
+            cv.check_greater_than('excitation energy', value, 0, equality=True)
+        self._excitation_energy = value
 
     @property
     def atomic_weight_ratio(self):
@@ -382,6 +397,8 @@ class IncidentNeutron(EqualityMixin):
             g.attrs['Z'] = self.atomic_number
             g.attrs['A'] = self.mass_number
             g.attrs['metastable'] = self.metastable
+            if self.excitation_energy is not None:
+                g.attrs['excitation_energy'] = self.excitation_energy
             g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
             ktg = g.create_group('kTs')
             for i, temperature in enumerate(self.temperatures):
@@ -476,6 +493,7 @@ class IncidentNeutron(EqualityMixin):
 
         data = cls(name, atomic_number, mass_number, metastable,
                    atomic_weight_ratio, kTs)
+        data.excitation_energy = group.attrs.get('excitation_energy')
 
         # Read energy grid
         e_group = group['energy']
@@ -681,6 +699,7 @@ class IncidentNeutron(EqualityMixin):
         # Instantiate incident neutron data
         data = cls(name, atomic_number, mass_number, metastable,
                    atomic_weight_ratio, [temperature])
+        data.excitation_energy = ev.target['excitation_energy']
 
         if (2, 151) in ev.section:
             data.resonances = res.Resonances.from_endf(ev)
@@ -767,6 +786,18 @@ class IncidentNeutron(EqualityMixin):
             # may be wrong for higher metastable states (e.g., Hf178_m2)
             ev = evaluation if evaluation is not None else Evaluation(filename)
             data.name = ev.gnds_name
+            data.metastable = ev.target['isomeric_state']
+            data.excitation_energy = ev.target['excitation_energy']
+
+            # Recover reaction data that ACE does not retain. Preserve QM as
+            # evaluated, including any target-excitation convention it uses.
+            for mt, reaction in data.reactions.items():
+                if (3, mt) in ev.section:
+                    file_obj = StringIO(ev.section[3, mt])
+                    get_head_record(file_obj)
+                    params = get_cont_record(file_obj)
+                    reaction.q_mass_difference = params[0]
+                    reaction.breakup_flag = params[3]
 
             # Add 0K elastic scattering cross section
             if '0K' not in data.energy:

@@ -158,7 +158,6 @@ TEST_CASE("Test calc_rn")
 
   double azi = 0.1; // Longitude
   double pol = 0.2; // Latitude
-  double mu = std::cos(pol);
 
   std::vector<double> test_uvw {std::sin(pol) * std::cos(azi),
     std::sin(pol) * std::sin(azi), std::cos(pol)};

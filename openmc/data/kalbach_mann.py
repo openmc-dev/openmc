@@ -492,7 +492,9 @@ class KalbachMann(AngleEnergy):
             Kalbach-Mann energy distribution
 
         """
-        particle = group.attrs.get("particle", b"neutron").decode()
+        particle = group.attrs.get("particle", "neutron")
+        if isinstance(particle, bytes):
+            particle = particle.decode()
         interp_data = group['energy'].attrs['interpolation']
         energy_breakpoints = interp_data[0, :]
         energy_interpolation = interp_data[1, :]

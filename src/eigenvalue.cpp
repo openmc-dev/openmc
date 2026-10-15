@@ -203,7 +203,7 @@ void synchronize_bank()
   // SEND BANK SITES TO NEIGHBORS
 
   // IFP number of generation
-  int ifp_n_generation;
+  int ifp_n_generation = 0;
   if (ifp_on()) {
     broadcast_ifp_n_generation(
       ifp_n_generation, temp_delayed_groups, temp_lifetimes);

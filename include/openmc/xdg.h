@@ -24,7 +24,8 @@ public:
   XDGMesh(pugi::xml_node node);
   XDGMesh(hid_t group);
   XDGMesh(const std::string& filename, double length_multiplier = 1.0);
-  XDGMesh(std::shared_ptr<xdg::XDG> external_xdg);
+  XDGMesh(
+    std::shared_ptr<xdg::XDG> external_xdg, double length_multiplier = 1.0);
 
   static const std::string mesh_interface;
 

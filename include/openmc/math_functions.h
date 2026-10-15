@@ -261,6 +261,14 @@ double standard_normal_cdf(double z);
 //==============================================================================
 bool isclose(double a, double b, double rel_tol, double abs_tol);
 
+//! Fewest realizations from which a combination can be formed
+//!
+//! A k by k sample covariance built from n realizations has rank at most
+//! n - 1, so it is singular unless n exceeds k. The n-3 and n-2 factors in the
+//! expressions for the standard deviation are the residual degrees of freedom
+//! and vanish at the same point.
+constexpr int64_t MIN_REALIZATIONS_TO_COMBINE {4};
+
 //==============================================================================
 //! Combine three correlated estimates of the same quantity
 //!
@@ -279,7 +287,8 @@ bool isclose(double a, double b, double rel_tol, double abs_tol);
 //! instead.
 //!
 //! \p n must be at least MIN_REALIZATIONS_TO_COMBINE; below that the
-//! covariance is singular and the expressions are undefined.
+//! covariance is singular and the expressions are undefined, so
+//! fatal_error() is called instead.
 //!
 //! \param[in] estimates The three estimates
 //! \param[in] cov Covariance of the three estimates over a single
@@ -287,15 +296,6 @@ bool isclose(double a, double b, double rel_tol, double abs_tol);
 //! \param[in] n Number of realizations each estimate was formed from
 //! \param[out] combined The combination and the standard deviation of its mean
 //==============================================================================
-
-//! Fewest realizations from which a combination can be formed
-//!
-//! A k by k sample covariance built from n realizations has rank at most
-//! n - 1, so it is singular unless n exceeds k. The n-3 and n-2 factors in the
-//! expressions for the standard deviation are the residual degrees of freedom
-//! and vanish at the same point.
-constexpr int64_t MIN_REALIZATIONS_TO_COMBINE {4};
-
 void combine_estimates(const array<double, 3>& estimates,
   const tensor::StaticTensor2D<double, 3, 3>& cov, int64_t n,
   array<double, 2>& combined);

@@ -1,6 +1,7 @@
 #include "openmc/geometry_aux.h"
 
 #include <algorithm> // for std::max
+#include <cmath>     // for std::abs, std::isfinite
 #include <sstream>
 #include <unordered_set>
 
@@ -152,10 +153,20 @@ void set_cell_search_boxes()
       continue;
     BoundingBox b = c->bounding_box();
     for (int i = 0; i < 3; ++i) {
-      double pad =
-        1e-9 * std::max({1.0, std::abs(b.min[i]), std::abs(b.max[i])});
-      b.min[i] -= pad;
-      b.max[i] += pad;
+      // Pad only finite bounds, scaled by their magnitude, so that a box
+      // that is unbounded on one side keeps its finite limit on the other
+      bool min_finite = std::isfinite(b.min[i]);
+      bool max_finite = std::isfinite(b.max[i]);
+      double scale = 1.0;
+      if (min_finite)
+        scale = std::max(scale, std::abs(b.min[i]));
+      if (max_finite)
+        scale = std::max(scale, std::abs(b.max[i]));
+      double pad = 1e-9 * scale;
+      if (min_finite)
+        b.min[i] -= pad;
+      if (max_finite)
+        b.max[i] += pad;
     }
     c->search_box_ = b;
   }

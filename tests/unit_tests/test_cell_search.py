@@ -8,7 +8,14 @@ import openmc.lib
 def many_cells_model():
     """Spheres, finite rods and their overlaps in a box, with a background
     cell outside of all of them, so that most cells are skipped based on their
-    bounding boxes when searching for the cell containing a point."""
+    bounding boxes when searching for the cell containing a point.
+
+    Returns
+    -------
+    openmc.Model
+        Fixed-source model with 61 cells
+
+    """
     rng = np.random.default_rng(1)
     mat = openmc.Material()
     mat.add_nuclide('H1', 1.0)
@@ -72,7 +79,23 @@ def test_transport_many_cells(run_in_tmpdir, many_cells_model):
 
 
 def random_region(rng, surfaces, depth):
-    """Random region expression with unions, intersections and complements"""
+    """Random region expression with unions, intersections and complements
+
+    Parameters
+    ----------
+    rng : numpy.random.Generator
+        Random number generator
+    surfaces : list of openmc.Surface
+        Surfaces to build half-spaces from
+    depth : int
+        Maximum nesting depth of the expression
+
+    Returns
+    -------
+    openmc.Region
+        Random region
+
+    """
     if depth == 0 or rng.random() < 0.25:
         s = surfaces[rng.integers(len(surfaces))]
         return -s if rng.random() < 0.5 else +s

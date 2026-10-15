@@ -1,7 +1,8 @@
-from pathlib import Path
-import sys
+import io
+import subprocess
 
 import openmc
+from openmc.executor import _get_error_message
 import pytest
 
 
@@ -17,15 +18,26 @@ import pytest
     # libc++ with an exception that has no message
     ('libc++abi: terminating due to uncaught exception of type int',
      'OpenMC aborted unexpectedly.'),
+    # Any other failure
+    ('Segmentation fault', 'OpenMC aborted unexpectedly.'),
 ])
-def test_error_message_from_output(run_in_tmpdir, output, message):
+def test_error_message_from_output(output, message):
     """The error message is recovered from each way OpenMC can fail."""
-    # Stand-in for the openmc executable that prints the output and fails
-    fake_openmc = Path.cwd() / 'fake_openmc'
-    with fake_openmc.open('w') as f:
-        f.write(f'#!{sys.executable}\nimport sys\nprint({output!r})\nsys.exit(1)\n')
-    fake_openmc.chmod(0o755)
+    assert _get_error_message(output) == message
 
-    with pytest.raises(RuntimeError) as excinfo:
-        openmc.plot_geometry(output=False, openmc_exec=str(fake_openmc))
-    assert str(excinfo.value) == message
+
+def test_failed_run_raises_error_message(monkeypatch):
+    """A failed run raises a RuntimeError with the message from its output."""
+    class FailedProcess:
+        def __init__(self, *args, **kwargs):
+            self.stdout = io.StringIO(
+                'libc++abi: terminating due to uncaught exception of type '
+                'std::runtime_error: Could not add nuclide\n')
+            self.returncode = 1
+
+        def poll(self):
+            return self.returncode
+
+    monkeypatch.setattr(subprocess, 'Popen', FailedProcess)
+    with pytest.raises(RuntimeError, match='^Could not add nuclide$'):
+        openmc.plot_geometry(output=False)

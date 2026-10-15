@@ -1801,7 +1801,7 @@ class StellaratorSource(SourceBase):
         rho = np.linspace(0.0, 1.0, n_rho)
         if isinstance(eq, (str, os.PathLike)):
             eq = load(input_path(eq), file_format='hdf5')
-        elif isinstance(eq, EquilibriaFamily):
+        if isinstance(eq, EquilibriaFamily):
             if not len(eq):
                 raise ValueError("The DESC equilibrium family is empty")
             eq = eq[-1]

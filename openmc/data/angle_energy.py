@@ -110,7 +110,7 @@ class AngleEnergy(EqualityMixin, ABC):
                 ace, idx, location_dist)
         elif law == 66:
             distribution = openmc.data.NBodyPhaseSpace.from_ace(
-                ace, idx, rx.q_value)
+                ace, idx, rx.q_reaction)
         else:
             raise ValueError(f"Unsupported ACE secondary energy distribution law {law}")
 

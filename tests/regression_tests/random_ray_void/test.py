@@ -68,5 +68,6 @@ def test_random_ray_void(shape):
         tallies = openmc.Tallies([source_tally, void_tally, absorber_tally])
         model.tallies = tallies
 
+        model.settings.random_ray['volume_estimator'] = 'hybrid'
         harness = MGXSTestHarness('statepoint.40.h5', model)
         harness.main()

@@ -201,7 +201,9 @@ time.
     *Default*: 0.0
 
   :energy_positron:
-    The energy under which positrons will be killed.
+    The energy under which positrons will be killed. A killed positron
+    deposits its kinetic energy locally but still produces a pair of
+    annihilation photons.
 
     *Default*: 0.0
 

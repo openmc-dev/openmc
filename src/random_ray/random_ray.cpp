@@ -593,8 +593,6 @@ void RandomRay::attenuate_flux_flat_source_void(
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
 
-  int material = srh.material();
-
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
   if (is_active) {

@@ -33,6 +33,10 @@
 
 #include "openmc/tensor.h"
 
+#ifdef OPENMC_XDG_ENABLED
+#include "xdg/config.h"
+#endif
+
 namespace openmc {
 
 void free_memory()
@@ -195,7 +199,12 @@ int openmc_finalize()
   free_memory();
 
 #ifdef OPENMC_LIBMESH_ENABLED
+#if defined(OPENMC_XDG_ENABLED) && defined(XDG_ENABLE_LIBMESH)
+  xdg::config::external_libmesh_init = nullptr;
+  xdg::config::external_libmesh_comm = nullptr;
+#endif
   settings::libmesh_init.reset();
+  settings::libmesh_comm = nullptr;
 #endif
 
   // Free all MPI types

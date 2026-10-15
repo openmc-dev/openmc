@@ -1036,8 +1036,9 @@ attributes/sub-elements:
     ``<source>`` sub-elements should correspond to the number of mesh elements.
 
   For a source with ``type="tokamak"``, the spatial distribution is described by
-  a Miller-style flux-surface parameterization and the following sub-elements
-  are used instead of the ``space`` element:
+  a Miller-style flux-surface parameterization (see
+  :ref:`usersguide_tokamak_source`). The following sub-elements are used instead
+  of the ``space`` element:
 
   :major_radius:
     The major radius :math:`R_0` of the plasma in [cm].
@@ -1109,23 +1110,10 @@ attributes/sub-elements:
 
     *Default*: particles are born at :math:`t=0`
 
-  For a source with ``type="stellarator"``, the spatial distribution is
-  described by the flux-surface Fourier representation shared by the VMEC and
-  DESC equilibrium codes, using flux coordinates :math:`(\rho, \theta, \zeta)`
-  where :math:`\rho = \sqrt{s}` is the square root of the normalized toroidal
-  flux, :math:`\theta` is the poloidal angle, and :math:`\zeta` is the toroidal
-  (cylindrical) angle:
-
-  .. math::
-
-      \begin{aligned}
-      R &= \sum_k \left[ R^c_k(\rho) \cos(m_k\theta - n_k N_{fp} \zeta)
-           + R^s_k(\rho) \sin(m_k\theta - n_k N_{fp}\zeta) \right] \\
-      Z &= \sum_k \left[ Z^s_k(\rho) \sin(m_k\theta - n_k N_{fp}\zeta)
-           + Z^c_k(\rho) \cos(m_k\theta - n_k N_{fp}\zeta) \right]
-      \end{aligned}
-
-  The following sub-elements are used instead of the ``space`` element:
+  For a source with ``type="stellarator"``, the spatial distribution uses the
+  flux-surface Fourier representation described in
+  :ref:`usersguide_stellarator_source`. The following sub-elements are used
+  instead of the ``space`` element:
 
   :num_field_periods:
     The number of field periods :math:`N_{fp}`.

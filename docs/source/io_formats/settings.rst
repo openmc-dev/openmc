@@ -201,7 +201,9 @@ time.
     *Default*: 0.0
 
   :energy_positron:
-    The energy under which positrons will be killed.
+    The energy under which positrons will be killed. A killed positron
+    deposits its kinetic energy locally but still produces a pair of
+    annihilation photons.
 
     *Default*: 0.0
 
@@ -633,6 +635,20 @@ found in the :ref:`random ray user guide <random_ray>`.
     workflows).
 
     *Default*: None
+
+  :source_shape:
+    Specifies the assumed shape of the source distribution within each
+    source region. Options are "flat", "linear", or "linear_xy".
+
+    *Default*: flat
+
+  :source_gradient_limiter:
+    Specifies whether to rescale linear source gradients as needed so that
+    the source shape modeled within each source region remains non-negative
+    over the region's bounding box, as sampled by the rays that have crossed
+    it (bool). Only used when the source shape is "linear" or "linear_xy".
+
+    *Default*: false
 
   :volume_normalized_flux_tallies:
     Specifies whether to normalize flux tallies by volume (bool). The

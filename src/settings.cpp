@@ -341,6 +341,10 @@ void get_run_parameters(pugi::xml_node node_base)
       FlatSourceDomain::adjoint_requested_ =
         get_node_value_bool(random_ray_node, "adjoint");
     }
+    if (check_for_node(random_ray_node, "source_gradient_limiter")) {
+      FlatSourceDomain::source_gradient_limiter_ =
+        get_node_value_bool(random_ray_node, "source_gradient_limiter");
+    }
     if (check_for_node(random_ray_node, "sample_method")) {
       std::string temp_str =
         get_node_value(random_ray_node, "sample_method", true, true);

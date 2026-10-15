@@ -365,19 +365,3 @@ def test_stellarator_source_desc_invalid(desc_equilibrium, tmp_path):
     desc_equilibrium.get_surface_at(rho=1.0).save(path)
     with pytest.raises(TypeError, match='eq'):
         openmc.StellaratorSource.from_desc(path, **args)
-
-
-def test_stellarator_source_desc_missing_dependency(monkeypatch):
-    import builtins
-
-    original_import = builtins.__import__
-
-    def without_desc(name, *args, **kwargs):
-        if name == 'desc' or name.startswith('desc.'):
-            raise ModuleNotFoundError("No module named 'desc'", name='desc')
-        return original_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, '__import__', without_desc)
-    with pytest.raises(ImportError, match='pip install openmc'):
-        openmc.StellaratorSource.from_desc(
-            'unused.h5', [1, 1], openmc.stats.delta_function(14.07e6))

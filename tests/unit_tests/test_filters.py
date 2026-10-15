@@ -464,6 +464,14 @@ def test_material():
     
     with raises(ValueError):
         openmc.MaterialFilter(['void2'])
+    with raises(ValueError):
+        openmc.MaterialFilter(['v'])
+
+    # Integer IDs and the void sentinel can be mixed
+    filt3 = openmc.MaterialFilter([1, 'void'])
+    assert list(filt3.bins) == [1, -1]
+    filt4 = openmc.MaterialFilter('void')
+    assert list(filt4.bins) == [-1]
 
 
 def test_mesh_material():

@@ -496,14 +496,18 @@ class MaterialFilter(Filter):
     expected_type = Material | str | None
     
     def __init__(self, bins, filter_id=None):
-        bins = np.atleast_1d(bins)
+        # Build a plain list rather than a NumPy array so that mixing integer
+        # IDs with the "void" sentinel does not coerce every bin to a string
+        if bins is None or isinstance(bins, (Integral, str, Material)):
+            bins = [bins]
+        bins = list(bins)
 
         # Make sure bins are either integers or appropriate objects
         cv.check_iterable_type('filter bins', bins,
                                (Integral, self.expected_type))
-        for i,b in enumerate(bins):
+        for i, b in enumerate(bins):
             if isinstance(b, str):
-              cv.check_value(f'filter bins[{i}]', b, "void")
+                cv.check_value(f'filter bins[{i}]', b, ('void',))
               
         def get_id(b):
             if isinstance(b, Integral):

@@ -1087,25 +1087,48 @@ def _quadric_bounding_box(coeffs, side):
     # unbounded along the null space (a paraboloid)
     lin = (g, h, j)
     lin_norm = math.sqrt(g*g + h*h + j*j)
-    proj = [sum(lin[i]*vec[i][n] for i in range(3)) for n in range(3)]
-    if any(null[n] and abs(proj[n]) > 1e-12*lin_norm for n in range(3)):
-        return BoundingBox.infinite()
+    # Sums are accumulated with explicit left-to-right loops rather than sum(),
+    # which uses compensated summation on Python >= 3.12, so that the result
+    # matches the C++ implementation bit for bit
+    proj = []
+    for n in range(3):
+        p = 0.
+        for i in range(3):
+            p += lin[i]*vec[i][n]
+        if null[n] and abs(p) > 1e-12*lin_norm:
+            return BoundingBox.infinite()
+        proj.append(p)
 
     # Centre and size: (x - center)^T M (x - center) <= rho
-    center = [-0.5*sum(proj[n]/lam[n]*vec[i][n]
-                       for n in range(3) if not null[n]) for i in range(3)]
-    rho = -k + 0.25*sum(proj[n]*proj[n]/lam[n] for n in range(3) if not null[n])
+    center = []
+    for i in range(3):
+        total = 0.
+        for n in range(3):
+            if not null[n]:
+                total += proj[n]/lam[n]*vec[i][n]
+        center.append(-0.5*total)
+    rho = 0.
+    for n in range(3):
+        if not null[n]:
+            rho += proj[n]*proj[n]/lam[n]
+    rho = -k + 0.25*rho
     if rho < 0.:
         return BoundingBox.infinite()
 
     lower, upper = [], []
     for i in range(3):
-        if sum(vec[i][n]*vec[i][n] for n in range(3) if null[n]) > 1e-24:
+        in_null = 0.
+        m_plus = 0.
+        for n in range(3):
+            if null[n]:
+                in_null += vec[i][n]*vec[i][n]
+            else:
+                m_plus += vec[i][n]*vec[i][n]/lam[n]
+        if in_null > 1e-24:
             lower.append(-np.inf)
             upper.append(np.inf)
         else:
-            w = math.sqrt(rho*sum(vec[i][n]*vec[i][n]/lam[n]
-                                  for n in range(3) if not null[n]))
+            w = math.sqrt(rho*m_plus)
             lower.append(center[i] - w)
             upper.append(center[i] + w)
     return BoundingBox(np.array(lower), np.array(upper))

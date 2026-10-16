@@ -51,3 +51,43 @@ def test_convert_to_multigroup_without_particles_batches(run_in_tmpdir):
 
     # Verify the model was converted successfully
     assert model.settings.energy_mode == 'multi-group'
+
+
+def test_convert_to_multigroup_cell_wise(run_in_tmpdir):
+    """cell_wise gives each DAGMC volume its own cross sections, so two
+    cells filled with the same material end up with distinct macroscopics."""
+    openmc.reset_auto_ids()
+
+    # dagmc.h5m has two fuel volumes (both "no-void fuel"), one water volume, a
+    # graveyard and an implicit complement.
+    u235 = openmc.Material(name="no-void fuel")
+    u235.add_nuclide("U235", 1.0)
+    u235.set_density("g/cm3", 11.0)
+    water = openmc.Material(name="water")
+    water.add_nuclide("H1", 2.0)
+    water.add_nuclide("O16", 1.0)
+    water.set_density("g/cm3", 1.0)
+    water.id = 41
+
+    dagmc_file = Path(__file__).parent / "dagmc.h5m"
+    model = openmc.Model()
+    model.materials = openmc.Materials([u235, water])
+    model.geometry = openmc.Geometry(openmc.DAGMCUniverse(dagmc_file))
+    model.settings = openmc.Settings()
+    model.settings.run_mode = "fixed source"
+    source = openmc.IndependentSource()
+    source.energy = openmc.stats.delta_function(2.0e6)
+    model.settings.source = source
+
+    # Pre-create the library so MGXS generation/transport is skipped; this
+    # exercises the per-cell material cloning for the DAGMC cells only.
+    Path("mgxs.h5").touch()
+    model.convert_to_multigroup(
+        method="cell_wise", groups="CASMO-2", mgxs_path="mgxs.h5")
+
+    # The three material-filled volumes (two fuel, one water) each get their own
+    # cloned material with a distinct macroscopic; the void cells are skipped.
+    assert model.settings.energy_mode == "multi-group"
+    assert len(model.materials) == 3
+    macros = [m._macroscopic for m in model.materials]
+    assert len(set(macros)) == 3

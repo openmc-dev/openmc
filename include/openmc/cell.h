@@ -81,8 +81,10 @@ public:
   bool contains(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
-  std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface) const;
+  //! \param max_distance Distance beyond which the boundary is not needed. If
+  //!   the boundary is not nearer, the distance returned may be INFTY.
+  std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, double max_distance = INFTY) const;
 
   //! Get the BoundingBox for this cell.
   BoundingBox bounding_box(int32_t cell_id) const;
@@ -126,7 +128,7 @@ private:
 
   //! Find the oncoming boundary of this cell for a complex cell.
   std::pair<double, int32_t> distance_complex(
-    Position r, Direction u, int32_t on_surface) const;
+    Position r, Direction u, int32_t on_surface, double max_distance) const;
 
   //! BoundingBox if the particle is in a simple cell.
   BoundingBox bounding_box_simple() const;
@@ -216,8 +218,11 @@ public:
   virtual bool contains(Position r, Direction u, int32_t on_surface) const = 0;
 
   //! Find the oncoming boundary of this cell.
-  virtual std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, GeometryState* p) const = 0;
+  //! \param max_distance Distance beyond which the boundary is not needed. If
+  //!   the boundary is not nearer, the distance returned may be INFTY.
+  virtual std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, GeometryState* p,
+    double max_distance = INFTY) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -437,9 +442,10 @@ public:
   int n_surfaces() const override { return region_.n_surfaces(); }
 
   std::pair<double, int32_t> distance(Position r, Direction u,
-    int32_t on_surface, GeometryState* p) const override
+    int32_t on_surface, GeometryState* p,
+    double max_distance = INFTY) const override
   {
-    return region_.distance(r, u, on_surface);
+    return region_.distance(r, u, on_surface, max_distance);
   }
 
   bool contains(Position r, Direction u, int32_t on_surface) const override

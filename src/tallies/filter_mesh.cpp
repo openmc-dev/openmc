@@ -7,6 +7,8 @@
 #include "openmc/error.h"
 #include "openmc/mesh.h"
 #include "openmc/position.h"
+#include "openmc/universe.h"
+#include "openmc/xdg.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -44,6 +46,22 @@ void MeshFilter::get_all_bins(
   Position last_r = p.r_last();
   Position r = p.r();
   Position u = p.u();
+
+  // check if particle is in a mesh universe
+  // for the mesh on this filter
+  if (model::universes[p.lowest_coord().universe()]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
+    auto univ = dynamic_cast<const XDGMeshUniverse*>(
+      model::universes[p.lowest_coord().universe()].get());
+    if (univ->mesh_idx() == mesh_) {
+      // if so, use the element index as the bin
+      int bin = p.lowest_coord().mesh_cell_index();
+      if (bin >= 0) {
+        match.bins_.push_back(bin);
+        match.weights_.push_back(1.0);
+      }
+      return;
+    }
+  }
 
   // apply translation if present
   if (translated_) {

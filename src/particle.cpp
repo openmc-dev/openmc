@@ -353,6 +353,14 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
+  #ifdef OPENMC_XDG_ENABLED
+  if (model::universes[lowest_coord().universe()]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
+    const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(model::universes[lowest_coord().universe()].get());
+    xdg_mesh_univ->next_cell(*this);
+    return;
+  }
+  #endif
+
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {

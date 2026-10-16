@@ -75,6 +75,7 @@ Classes
    EnergyoutFilter
    Filter
    LegendreFilter
+   LifetimeMomentFilter
    Material
    MaterialFilter
    MaterialFromFilter

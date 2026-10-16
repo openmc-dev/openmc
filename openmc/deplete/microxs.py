@@ -28,6 +28,7 @@ from openmc.mpi import comm
 _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
 _valid_rxns.append('damage-energy')
+_valid_rxns.append('nu-fission')
 
 
 # TODO: Replace with type statement when support is Python 3.12+
@@ -85,7 +86,10 @@ def get_microxs_and_flux(
         nuclides from the depletion chain file are used.
     reactions : list of str
         Reactions to get cross sections for. If not specified, all neutron
-        reactions listed in the depletion chain file are used.
+        reactions listed in the depletion chain file are used. In addition to
+        transmutation reactions, 'nu-fission' may be specified to obtain the
+        fission neutron production cross section, which is needed to estimate
+        k-infinity with :class:`~openmc.deplete.IndependentOperator`.
     energies : iterable of float or str
         Energy group boundaries in [eV] or the name of the group structure.
         If left as None, no energy filter is applied to the flux tally. When
@@ -427,7 +431,14 @@ class MicroXS:
             nuclides from the depletion chain file are used.
         reactions : list of str, optional
             Reactions to get cross sections for. If not specified, all neutron
-            reactions listed in the depletion chain file are used.
+            reactions listed in the depletion chain file are used. In addition
+            to transmutation reactions, 'nu-fission' may be specified to
+            obtain the fission neutron production cross section, which is
+            needed to estimate k-infinity with
+            :class:`~openmc.deplete.IndependentOperator`.
+
+            .. versionchanged:: 0.16.1
+                Added support for 'nu-fission'.
         **init_kwargs : dict
             Keyword arguments passed to :func:`openmc.lib.init`
 
@@ -460,10 +471,13 @@ class MicroXS:
             nuclides = [nuc.name for nuc in nuclides]
 
         # Get reaction MT values. If no reactions specified, default to the
-        # reactions available in the chain file
+        # reactions available in the chain file.
         if reactions is None:
             reactions = chain.reactions
-        mts = [REACTION_MT[name] for name in reactions]
+        # 'nu-fission' has no MT of its own and is collapsed separately
+        # below; every other reaction name must map to an MT
+        mts = [None if name == 'nu-fission' else REACTION_MT[name]
+               for name in reactions]
 
         # Create 3D array for microscopic cross sections
         microxs_arr = np.zeros((len(nuclides), len(mts), 1))
@@ -478,15 +492,20 @@ class MicroXS:
 
         # Compute microscopic cross sections within a temporary session
         with openmc.lib.TemporarySession(**init_kwargs):
-            # For each nuclide and reaction, compute the flux-averaged xs
             for nuc_index, nuc in enumerate(nuclides):
                 if nuc not in nuclides_with_data:
                     continue
                 lib_nuc = openmc.lib.load_nuclide(nuc)
-                for mt_index, mt in enumerate(mts):
-                    microxs_arr[nuc_index, mt_index, 0] = lib_nuc.collapse_rate(
-                        mt, temperature, energies, multigroup_flux
-                    )
+                for mt_index, (rxn_name, mt) in enumerate(
+                        zip(reactions, mts)):
+                    if rxn_name == 'nu-fission':
+                        microxs_arr[nuc_index, mt_index, 0] = \
+                            lib_nuc.collapse_nu_fission_rate(
+                                temperature, energies, multigroup_flux)
+                    elif mt is not None:
+                        microxs_arr[nuc_index, mt_index, 0] = \
+                            lib_nuc.collapse_rate(
+                                mt, temperature, energies, multigroup_flux)
 
         return cls(microxs_arr, nuclides, reactions)
 

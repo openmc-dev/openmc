@@ -29,6 +29,10 @@ _dll.openmc_nuclide_collapse_rate.argtypes = [c_int, c_int, c_double,
     _array_1d_dble, _array_1d_dble, c_int, POINTER(c_double)]
 _dll.openmc_nuclide_collapse_rate.restype = c_int
 _dll.openmc_nuclide_collapse_rate.errcheck = _error_handler
+_dll.openmc_nuclide_collapse_nu_fission_rate.argtypes = [c_int, c_double,
+    _array_1d_dble, _array_1d_dble, c_int, POINTER(c_double)]
+_dll.openmc_nuclide_collapse_nu_fission_rate.restype = c_int
+_dll.openmc_nuclide_collapse_nu_fission_rate.errcheck = _error_handler
 _dll.nuclides_size.restype = c_size_t
 
 
@@ -110,6 +114,34 @@ class Nuclide(_FortranObject):
         xs = c_double()
         _dll.openmc_nuclide_collapse_rate(self._index, MT, temperature, energy,
                                           flux, len(flux), xs)
+        return xs.value
+
+    def collapse_nu_fission_rate(self, temperature, energy, flux):
+        r"""Calculate flux-averaged :math:`\nu\sigma_f` cross section
+
+        .. versionadded:: 0.16.1
+
+        Parameters
+        ----------
+        temperature : float
+            Temperature in [K] at which to evaluate cross sections
+        energy : iterable of float
+            Energy group boundaries in [eV]
+        flux : iterable of float
+            Flux in each energy group (not normalized per eV)
+
+        Returns
+        -------
+        float
+            Flux-averaged nu-fission cross section, or 0.0 if nuclide is
+            not fissionable
+
+        """
+        energy = np.asarray(energy, dtype=float)
+        flux = np.asarray(flux, dtype=float)
+        xs = c_double()
+        _dll.openmc_nuclide_collapse_nu_fission_rate(
+            self._index, temperature, energy, flux, len(flux), xs)
         return xs.value
 
 

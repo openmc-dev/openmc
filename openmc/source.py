@@ -816,11 +816,13 @@ class FileSource(SourceBase):
         :class:`openmc.Universe` for which sampled sites must be within. For
         'time_bounds' and 'energy_bounds', the corresponding value is a sequence
         of floats giving the lower and upper bounds on time in [s] or energy in
-        [eV] that the sampled particle must be within. For 'fissionable', the
-        value is a bool indicating that only sites in fissionable material
-        should be accepted. The 'rejection_strategy' indicates what should
-        happen when a source particle is rejected: either 'resample' (pick a new
-        particle) or 'kill' (accept and terminate).
+        [eV] that the sampled particle must be within. Energy bounds are not
+        applied to the sites of a file that holds multigroup energy group
+        indices (see below). For 'fissionable', the value is a bool indicating
+        that only sites in fissionable material should be accepted. The
+        'rejection_strategy' indicates what should happen when a source
+        particle is rejected: either 'resample' (pick a new particle) or 'kill'
+        (accept and terminate).
 
     Attributes
     ----------
@@ -834,6 +836,15 @@ class FileSource(SourceBase):
         Constraints on sampled source particles. Valid keys include
         'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds',
         'fissionable', and 'rejection_strategy'.
+
+    Notes
+    -----
+    Source point files and state points written by a multigroup simulation
+    store the energy group index of each site rather than its energy (see
+    :ref:`io_source`). A multigroup simulation starts each particle from such a
+    file in its stored group, and a continuous-energy simulation cannot use
+    such a file. Other files, such as surface source files and files written by
+    :func:`openmc.write_source_file`, are read as energies in [eV].
 
     """
 
@@ -1337,7 +1348,8 @@ class SourceParticle:
     u : iterable of float
         Directional cosines
     E : float
-        Energy of particle in [eV]
+        Energy of particle in [eV]. For a particle read from a source file
+        written by a multigroup simulation, the energy group index.
     time : float
         Time of particle in [s]
     wgt : float
@@ -1434,6 +1446,10 @@ class ParticleList(list):
     @classmethod
     def from_hdf5(cls, filename: PathLike) -> ParticleList:
         """Create particle list from an HDF5 file.
+
+        Energies are returned as stored. For a source file written by a
+        multigroup simulation (``energy_mode`` attribute 'multi-group'), they
+        are energy group indices.
 
         Parameters
         ----------
@@ -1548,7 +1564,10 @@ class ParticleList(list):
         """Export particle list to an HDF5 file.
 
         This method write out an .h5 file that can be used as a source file in
-        conjunction with the :class:`openmc.FileSource` class.
+        conjunction with the :class:`openmc.FileSource` class. The file has no
+        ``energy_mode`` attribute, so OpenMC reads its energies in [eV], also
+        when the particles were read from a source file written by a multigroup
+        simulation.
 
         Parameters
         ----------

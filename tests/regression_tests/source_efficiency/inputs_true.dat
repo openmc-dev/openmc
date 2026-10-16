@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" name="heu" depletable="true">
+      <density value="18.6" units="g/cm3"/>
+      <nuclide name="U234" ao="0.008247653336908328"/>
+      <nuclide name="U235" ao="0.9227482031182644"/>
+      <nuclide name="U238" ao="0.06477751356381696"/>
+      <nuclide name="U236" ao="0.004226629981010156"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface id="1" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 8.85"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100000</particles>
+    <batches>20</batches>
+    <inactive>10</inactive>
+    <source type="independent" strength="100" particle="neutron">
+      <space type="point">
+        <parameters>0.0 0.0 0.0</parameters>
+      </space>
+      <energy type="watt" parameters="1025000.0 2.926e-06"/>
+    </source>
+    <source type="independent" strength="0.5" particle="neutron">
+      <space type="spherical" origin="0.0 0.0 0.0">
+        <r type="powerlaw" parameters="0.0 8.85 2"/>
+        <cos_theta type="uniform" parameters="-1.0 1.0"/>
+        <phi type="uniform" parameters="0.0 6.283185307179586"/>
+      </space>
+      <energy type="watt" parameters="774700.0 4.852e-06"/>
+    </source>
+    <source type="independent" strength="57.3" particle="neutron">
+      <space type="spherical" origin="0.0 0.0 0.0">
+        <r type="powerlaw" parameters="0.0 8.85 2"/>
+        <cos_theta type="uniform" parameters="-1.0 1.0"/>
+        <phi type="uniform" parameters="0.0 6.283185307179586"/>
+      </space>
+      <energy type="watt" parameters="648300.0 6.811e-06"/>
+    </source>
+  </settings>
+  </model>

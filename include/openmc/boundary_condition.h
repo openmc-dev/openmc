@@ -1,6 +1,8 @@
 #ifndef OPENMC_BOUNDARY_CONDITION_H
 #define OPENMC_BOUNDARY_CONDITION_H
 
+#include <string>
+
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 #include "openmc/position.h"
@@ -161,6 +163,39 @@ protected:
   int axis_1_idx_;
   int axis_2_idx_;
 };
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+//! What a scan of the model's boundary conditions found that is relevant to
+//! migration-area scoring.
+struct MigrationBoundaryInfo {
+  //! Whether any surface has a non-vacuum boundary condition
+  bool nonvacuum = false;
+  //! Description of an unsupported boundary condition, empty if none found
+  std::string unsupported;
+};
+
+//! Scan every surface's boundary condition once on behalf of migration-area
+//! scoring.
+//
+//! This inspects the boundary conditions themselves rather than the XML that
+//! produced them, so it also covers surfaces that are not created by
+//! read_surfaces (e.g., DAGMC geometries).
+//
+//! Scoring migration-area relies on transforming the particle's birth point so
+//! that displacements are measured in the frame of the unfolded trajectory.
+//! That is only valid for a boundary condition which is an isometry mapping the
+//! outgoing ray onto the continuation of the incoming ray, as specular
+//! reflection and the periodic translations/rotations are. A white boundary
+//! samples the outgoing direction independently of the incoming one, so no such
+//! transformation exists. An albedo is a different problem: the geometry stays
+//! exact, but weight is removed only from particles that reach the boundary,
+//! which are the ones that have travelled furthest from their birth point. That
+//! preferentially attenuates the large-displacement contributions and biases
+//! the migration area low, and the bias does not cancel against the flux tally.
+MigrationBoundaryInfo scan_boundaries_for_migration();
 
 } // namespace openmc
 #endif // OPENMC_BOUNDARY_CONDITION_H

@@ -1617,9 +1617,6 @@ std::pair<double, double> StellaratorSource::sample_energy(
 SourceSite StellaratorSource::sample(uint64_t* seed) const
 {
   SourceSite site;
-  site.particle = ParticleType::neutron();
-  site.wgt = 1.0;
-  site.delayed_group = 0;
 
   // 1. Select a radial bin by its integrated mass, then sample within that bin.
   int bin = radial_bins_.sample(seed);
@@ -1644,8 +1641,8 @@ SourceSite StellaratorSource::sample(uint64_t* seed) const
   double R, Z, zeta;
   n_reject = 0;
   while (true) {
-    double theta = 2.0 * PI * prn(seed);
-    zeta = 2.0 * PI * prn(seed);
+    double theta = uniform_distribution(0.0, 2.0 * PI, seed);
+    zeta = uniform_distribution(0.0, 2.0 * PI, seed);
     double f = eval_density(bin, t, theta, zeta, &R, &Z);
     if (prn(seed) * env < f)
       break;

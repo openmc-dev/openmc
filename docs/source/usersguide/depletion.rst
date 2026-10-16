@@ -511,6 +511,35 @@ transfers between materials via ``destination_material``. See
 :ref:`methods_depletion` for the augmented-matrix formulation used when both
 features are active.
 
+Inspecting Depletion-Chain Sources
+==================================
+
+:meth:`openmc.deplete.Chain.from_endf` records the library name, version, and
+release of the supplied neutron, decay, and fission-product-yield evaluations
+separately. The records survive XML export and import::
+
+    chain = openmc.deplete.Chain.from_endf(
+        decay_files, fission_yield_files, neutron_files)
+    chain.export_to_xml("chain.xml")
+    reloaded = openmc.deplete.Chain.from_xml("chain.xml")
+    for component, sources in reloaded.source_metadata.items():
+        for source in sources:
+            print(component, source["library"],
+                  source["version"], source["release"])
+
+Each component can contain several source records if its input evaluations
+come from different libraries or releases. For a chain file without source
+metadata, :attr:`~openmc.deplete.Chain.source_metadata` is an empty dictionary.
+The XML representation is described in :ref:`io_chain_source_metadata`.
+
+These records describe the evaluations supplied to construct the chain, not
+every later adjustment to branching ratios, fission Q values, or yields.
+:meth:`~openmc.deplete.Chain.reduce` retains the original construction records.
+They do not select the cross sections used to calculate reaction rates:
+transport-coupled depletion uses the model's cross-section library, while
+transport-independent depletion uses the supplied microscopic cross sections
+and fluxes. Record those inputs separately when comparing calculations.
+
 Comparing to Other Codes
 ========================
 

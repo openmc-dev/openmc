@@ -13,6 +13,8 @@ set(TEST_NAMES
   test_surface
   test_tensor
   test_geometry
+  test_particle
+  test_secondary_bank
   # Add additional unit test files here
 )
 
@@ -26,6 +28,16 @@ foreach(test ${TEST_NAMES})
   # dependency is unavailable.
   set_tests_properties(${test} PROPERTIES SKIP_RETURN_CODE 4)
 endforeach()
+
+# Also run the shared secondary bank test on two MPI ranks, so that banked
+# sites are sent between ranks
+if(OPENMC_USE_MPI)
+  # The test cases make collective calls, so all ranks must use the same order
+  add_test(NAME test_secondary_bank_mpi
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
+      $<TARGET_FILE:test_secondary_bank> ${MPIEXEC_POSTFLAGS} --order decl
+    WORKING_DIRECTORY ${UNIT_TEST_BIN_OUTPUT_DIR})
+endif()
 
 if(OPENMC_USE_XDG)
   target_compile_definitions(test_mesh PRIVATE OPENMC_XDG_ENABLED)

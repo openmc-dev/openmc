@@ -6,6 +6,7 @@
 
 #include "openmc/mesh.h"
 #include "openmc/particle.h"
+#include "openmc/shared_array.h"
 #include "openmc/vector.h"
 
 #include <cstdint>
@@ -61,6 +62,36 @@ void allocate_banks();
 
 //! Determine number of particles to transport per process
 void calculate_work(int64_t n_particles);
+
+//! First primary index owned by a rank under the phase-1 partition
+//!
+//! Recomputes what calculate_work(settings::n_particles) would produce, so
+//! that the primary partition is available after work_index has been
+//! overwritten for a secondary generation. Valid for rank in [0, n_procs],
+//! where n_procs returns the total primary count.
+//!
+//! \param rank MPI rank
+//! \return Index of that rank's first primary
+int64_t phase1_first_root(int rank);
+
+//! Rank owning a given root index under the phase-1 partition
+//!
+//! \param root Root index in [0, n_particles)
+//! \return Rank that transported that primary
+int phase1_owner_of_root(int64_t root);
+
+//! Replace the placement key of every site in a collected bank with the root
+//! of its history
+//!
+//! Must be called once per generation, after the sites have been placed and
+//! before any MPI migration, since the placement key indexes a bank that is
+//! local to the rank that produced the sites.
+//!
+//! \param sites Bank whose sites were just collected
+//! \param parents Bank the parents were transported from, or nullptr when the
+//!   parents were the primaries
+void resolve_root_indices(
+  SharedArray<SourceSite>& sites, const SharedArray<SourceSite>* parents);
 
 //! Initialize nuclear data before a simulation
 void initialize_data();

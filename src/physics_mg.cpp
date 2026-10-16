@@ -179,7 +179,7 @@ void create_fission_sites(Particle& p)
     }
 
     // Set parent and progeny ID
-    site.parent_id = p.current_work();
+    site.parent_slot() = p.current_work();
     site.progeny_id = p.n_progeny()++;
 
     // Store fission site in bank

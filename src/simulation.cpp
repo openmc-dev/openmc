@@ -754,8 +754,18 @@ void initialize_particle_track(
   // Set particle track.
   p.write_track() = check_track_criteria(p);
 
+  // Determine whether a source neutron is below the energy cutoff, in which
+  // case it is killed before being transported. Photons, electrons, and
+  // positrons below the cutoff instead deposit their energy locally at their
+  // first collision, which occurs at the birth site.
+  bool below_cutoff = false;
+  if (!is_secondary && p.type().is_neutron()) {
+    int idx = p.type().transport_index();
+    below_cutoff = p.E() < settings::energy_cutoff[idx];
+  }
+
   // Set the particle's initial weight window value.
-  if (!is_secondary) {
+  if (!is_secondary && !below_cutoff) {
     p.wgt_ww_born() = -1.0;
     apply_weight_windows(p);
   }
@@ -769,6 +779,11 @@ void initialize_particle_track(
   if (!is_secondary) {
 #pragma omp atomic
     simulation::total_weight += p.wgt();
+  }
+
+  // Kill source neutrons below the energy cutoff
+  if (below_cutoff) {
+    p.wgt() = 0.0;
   }
 
   // Force calculation of cross-sections by setting last energy to zero

@@ -72,11 +72,14 @@ void NBodyPhaseSpace::sample(
   E_out = sample_energy(E_in, seed);
 }
 
-double NBodyPhaseSpace::sample_energy_and_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+double NBodyPhaseSpace::sample_energy_and_pdf(double E_in, double mu,
+  double& E_out, uint64_t* seed, bool is_com, double awr) const
 {
   E_out = sample_energy(E_in, seed);
-  return 0.5;
+  double jac = 1.0;
+  if (is_com)
+    jac = get_jac_and_transform(E_in, mu, E_out, seed, awr);
+  return jac * 0.5;
 }
 
 } // namespace openmc

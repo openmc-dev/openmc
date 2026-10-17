@@ -1546,6 +1546,7 @@ class StellaratorSource(SourceBase):
 
     @mode_m.setter
     def mode_m(self, value: Sequence[int]):
+        cv.check_type('mode_m', value, Iterable, Integral)
         value = np.asarray(value, dtype=int)
         if value.ndim != 1 or len(value) < 1:
             raise ValueError("mode_m must be a 1-D array with at least 1 mode")
@@ -1559,6 +1560,7 @@ class StellaratorSource(SourceBase):
 
     @mode_n.setter
     def mode_n(self, value: Sequence[int]):
+        cv.check_type('mode_n', value, Iterable, Integral)
         value = np.asarray(value, dtype=int)
         if value.ndim != 1:
             raise ValueError("mode_n must be a 1-D array")

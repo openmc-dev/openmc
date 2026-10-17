@@ -93,7 +93,7 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
 
 
 def _get_error_message(output):
-    """Get the error message from the output of a failed OpenMC run
+    """Truncate a raised exception message from C++ to be applied as a Python exception message
 
     Parameters
     ----------
@@ -103,7 +103,7 @@ def _get_error_message(output):
     Returns
     -------
     str
-        Error message with whitespace simplified
+        Error message to be applied as Exception text
 
     """
     if 'ERROR: ' in output:

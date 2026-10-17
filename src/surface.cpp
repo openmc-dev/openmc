@@ -15,6 +15,7 @@
 #include "openmc/error.h"
 #include "openmc/external/quartic_solver.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
@@ -1076,7 +1077,7 @@ double SurfaceXTorus::evaluate(Position r) const
   double y = r.y - y0_;
   double z = r.z - z0_;
   return (x * x) / (B_ * B_) +
-         std::pow(std::sqrt(y * y + z * z) - A_, 2) / (C_ * C_) - 1.;
+         openmc::pow(std::sqrt(y * y + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
 BoundingBox SurfaceXTorus::bounding_box(bool pos_side) const
@@ -1140,7 +1141,7 @@ double SurfaceYTorus::evaluate(Position r) const
   double y = r.y - y0_;
   double z = r.z - z0_;
   return (y * y) / (B_ * B_) +
-         std::pow(std::sqrt(x * x + z * z) - A_, 2) / (C_ * C_) - 1.;
+         openmc::pow(std::sqrt(x * x + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
 BoundingBox SurfaceYTorus::bounding_box(bool pos_side) const
@@ -1201,7 +1202,7 @@ double SurfaceZTorus::evaluate(Position r) const
   double y = r.y - y0_;
   double z = r.z - z0_;
   return (z * z) / (B_ * B_) +
-         std::pow(std::sqrt(x * x + y * y) - A_, 2) / (C_ * C_) - 1.;
+         openmc::pow(std::sqrt(x * x + y * y) - A_, 2) / (C_ * C_) - 1.;
 }
 
 BoundingBox SurfaceZTorus::bounding_box(bool pos_side) const

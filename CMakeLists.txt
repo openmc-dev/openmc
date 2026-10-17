@@ -331,6 +331,7 @@ list(APPEND libopenmc_SOURCES
   src/bank.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
+  src/box_tree.cpp
   src/cell.cpp
   src/chain.cpp
   src/cmfd_solver.cpp

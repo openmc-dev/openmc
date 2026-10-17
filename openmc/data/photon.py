@@ -105,6 +105,47 @@ _COMPTON_PROFILES = {}
 _BREMSSTRAHLUNG = {}
 
 
+def _check_source_metadata(metadata):
+    """Validate the supported source fields before opening an output file."""
+    cv.check_type('source metadata', metadata, Mapping)
+    for key, value in metadata.items():
+        cv.check_value('source metadata field', key,
+                       ('library', 'version', 'release'))
+        expected_type = str if key == 'library' else Integral
+        cv.check_type(f'source {key}', value, expected_type)
+        if key == 'library':
+            value.encode('utf-8')
+            if '\x00' in value:
+                raise ValueError('Source library cannot contain null bytes')
+        else:
+            cv.check_greater_than(f'source {key}', value, -(1 << 63), True)
+            cv.check_less_than(f'source {key}', value, (1 << 64) - 1, True)
+
+
+def _read_source_metadata(group):
+    """Read optional component source attributes as Python scalars."""
+    metadata = {}
+    for key in ('library', 'version', 'release'):
+        if f'source_{key}' in group.attrs:
+            value = group.attrs[f'source_{key}']
+            if key == 'library':
+                if isinstance(value, bytes):
+                    value = value.decode('utf-8')
+            else:
+                cv.check_type(f'source {key}', value, Integral)
+                value = int(value)
+            metadata[key] = value
+    _check_source_metadata(metadata)
+    return metadata
+
+
+def _write_source_metadata(group, metadata):
+    """Write source attributes without adding entries to the group."""
+    for key, value in metadata.items():
+        value = str(value) if key == 'library' else int(value)
+        group.attrs[f'source_{key}'] = value
+
+
 class AtomicRelaxation(EqualityMixin):
     """Atomic relaxation data.
 
@@ -145,6 +186,11 @@ class AtomicRelaxation(EqualityMixin):
         strings, e.g., 'K', 'L1', 'L2', etc.
     subshells : list
         List of subshells as strings, e.g. ``['K', 'L1', ...]``
+    source_metadata : dict
+        Source of the atomic-relaxation evaluation, with keys ``'library'``
+        (str), ``'version'`` (int), and ``'release'`` (int). Unknown fields
+        are absent. Empty for data without source information, including
+        older HDF5 files and data read from ACE.
     transitions : pandas.DataFrame
         Dictionary indicating allowed transitions and their probabilities
         (values) for given subshells (keys). The subshells should be given as
@@ -163,6 +209,7 @@ class AtomicRelaxation(EqualityMixin):
         self.num_electrons = num_electrons
         self.transitions = transitions
         self._e_fluorescence = {}
+        self.source_metadata = {}
 
     @property
     def binding_energy(self):
@@ -323,8 +370,11 @@ class AtomicRelaxation(EqualityMixin):
                 transitions[subi] = pd.DataFrame.from_records(
                     records, columns=columns)
 
-        # Return instance of class
-        return cls(binding_energy, num_electrons, transitions)
+        data = cls(binding_energy, num_electrons, transitions)
+        library, version, release = ev.info['library']
+        data.source_metadata = {
+            'library': library, 'version': version, 'release': release}
+        return data
 
     @classmethod
     def from_hdf5(cls, group):
@@ -368,7 +418,9 @@ class AtomicRelaxation(EqualityMixin):
                                 np.arange(float(len(_SUBSHELLS))), _SUBSHELLS)
                 transitions[shell] = df
 
-        return cls(binding_energy, num_electrons, transitions)
+        data = cls(binding_energy, num_electrons, transitions)
+        data.source_metadata = _read_source_metadata(group)
+        return data
 
     def to_hdf5(self, group, shell):
         """Write atomic relaxation data to an HDF5 group
@@ -436,6 +488,12 @@ class IncidentPhoton(EqualityMixin):
     reactions : dict
         Contains the cross sections for each photon reaction. The keys are MT
         values and the values are instances of :class:`PhotonReaction`.
+    source_metadata : dict
+        Source of the photoatomic evaluation, with keys ``'library'`` (str),
+        ``'version'`` (int), and ``'release'`` (int). Unknown fields are
+        absent. Empty for data without source information, including older
+        HDF5 files and data read from ACE. The atomic-relaxation source is
+        stored separately on :attr:`atomic_relaxation`.
 
     """
 
@@ -445,6 +503,7 @@ class IncidentPhoton(EqualityMixin):
         self.reactions = {}
         self.compton_profiles = {}
         self.bremsstrahlung = {}
+        self.source_metadata = {}
 
     def __contains__(self, mt):
         return mt in self.reactions
@@ -621,6 +680,9 @@ class IncidentPhoton(EqualityMixin):
 
         Z = ev.target['atomic_number']
         data = cls(Z)
+        library, version, release = ev.info['library']
+        data.source_metadata = {
+            'library': library, 'version': version, 'release': release}
 
         # Read each reaction
         for mf, mt, nc, mod in ev.reaction_list:
@@ -695,6 +757,7 @@ class IncidentPhoton(EqualityMixin):
 
         Z = group.attrs['Z']
         data = cls(Z)
+        data.source_metadata = _read_source_metadata(group)
 
         # Read energy grid
         energy = group['energy'][()]
@@ -761,6 +824,10 @@ class IncidentPhoton(EqualityMixin):
             that are less backwards compatible but have performance benefits.
 
         """
+        _check_source_metadata(self.source_metadata)
+        if self.atomic_relaxation is not None:
+            _check_source_metadata(self.atomic_relaxation.source_metadata)
+
         with h5py.File(str(path), mode, libver=libver) as f:
             # Write filetype and version
             f.attrs['filetype'] = np.bytes_('data_photon')
@@ -769,6 +836,7 @@ class IncidentPhoton(EqualityMixin):
 
             group = f.create_group(self.name)
             group.attrs['Z'] = Z = self.atomic_number
+            _write_source_metadata(group, self.source_metadata)
 
             # Determine union energy grid
             union_grid = np.array([])
@@ -778,6 +846,9 @@ class IncidentPhoton(EqualityMixin):
 
             # Write cross sections
             shell_group = group.create_group('subshells')
+            if self.atomic_relaxation is not None:
+                _write_source_metadata(
+                    shell_group, self.atomic_relaxation.source_metadata)
             designators = []
             for mt, rx in self.reactions.items():
                 name, key = _REACTION_NAME[mt]

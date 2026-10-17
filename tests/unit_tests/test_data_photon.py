@@ -1,7 +1,9 @@
 from collections.abc import Mapping, Callable
+from copy import deepcopy
 import os
 from pathlib import Path
 
+import h5py
 import numpy as np
 import pandas as pd
 import pytest
@@ -173,3 +175,258 @@ def test_atomic_relaxation_from_endf_material(endf_data):
 
     assert data.binding_energy['K'] == pytest.approx(13.61)
     assert data.num_electrons['K'] == pytest.approx(1.0)
+
+
+@pytest.fixture(scope='module')
+def photon_evaluations(endf_data):
+    endf_dir = Path(endf_data)
+    paths = (
+        endf_dir / 'photoat' / 'photoat-001_H_000.endf',
+        endf_dir / 'atomic_relax' / 'atom-001_H_000.endf',
+    )
+    return tuple(openmc.data.endf.Evaluation(path) for path in paths)
+
+
+@pytest.fixture
+def photon_with_metadata(photon_evaluations):
+    photoatomic, relaxation = deepcopy(photon_evaluations)
+    photoatomic.info['library'] = ('Photoatomic evaluation', 8, 1)
+    relaxation.info['library'] = ('Relaxation evaluation', 7, 3)
+    return openmc.data.IncidentPhoton.from_endf(photoatomic, relaxation)
+
+
+@pytest.mark.parametrize(
+    'input_type', ['str', 'path', 'evaluation', 'material'])
+def test_source_metadata_from_endf(endf_data, photon_evaluations, input_type):
+    """Extract each component's own ENDF library, version and release."""
+    inputs = [
+        Path(endf_data) / 'photoat' / 'photoat-001_H_000.endf',
+        Path(endf_data) / 'atomic_relax' / 'atom-001_H_000.endf',
+    ]
+    if input_type == 'str':
+        inputs = [str(path) for path in inputs]
+    elif input_type == 'evaluation':
+        inputs = deepcopy(photon_evaluations)
+    elif input_type == 'material':
+        inputs = [openmc.data.endf.get_evaluations(path)[0] for path in inputs]
+
+    data = openmc.data.IncidentPhoton.from_endf(*inputs)
+    standalone = openmc.data.AtomicRelaxation.from_endf(inputs[1])
+    for component, evaluation in zip(
+            (data, data.atomic_relaxation), photon_evaluations):
+        library, version, release = evaluation.info['library']
+        assert component.source_metadata == {
+            'library': library, 'version': version, 'release': release}
+    assert standalone.source_metadata == data.atomic_relaxation.source_metadata
+
+
+def test_source_metadata_components_are_independent(photon_evaluations):
+    """Keep different evaluations and their mutable source records separate."""
+    photoatomic, relaxation = deepcopy(photon_evaluations)
+    photoatomic.info['library'] = ('Photoatomic evaluation', 8, 1)
+    relaxation.info['library'] = ('Relaxation evaluation', 7, 3)
+    data = openmc.data.IncidentPhoton.from_endf(photoatomic, relaxation)
+
+    assert data.source_metadata == {
+        'library': 'Photoatomic evaluation', 'version': 8, 'release': 1}
+    assert data.atomic_relaxation.source_metadata == {
+        'library': 'Relaxation evaluation', 'version': 7, 'release': 3}
+    photoatomic.info['library'] = ('Changed input', 99, 99)
+    data.source_metadata['version'] = 9
+    assert data.source_metadata['library'] == 'Photoatomic evaluation'
+    assert data.atomic_relaxation.source_metadata['version'] == 7
+    assert relaxation.info['library'] == ('Relaxation evaluation', 7, 3)
+
+
+def test_source_metadata_hdf5_roundtrip(tmp_path, photon_with_metadata):
+    """Round-trip independent records through paths and HDF5 groups."""
+    path = tmp_path / 'photon.h5'
+    data = photon_with_metadata
+    data.export_to_hdf5(path)
+
+    for filename in (str(path), path):
+        restored = openmc.data.IncidentPhoton.from_hdf5(filename)
+        assert restored.source_metadata == data.source_metadata
+        assert (restored.atomic_relaxation.source_metadata ==
+                data.atomic_relaxation.source_metadata)
+        for component in (restored, restored.atomic_relaxation):
+            assert isinstance(component.source_metadata['library'], str)
+            assert type(component.source_metadata['version']) is int
+            assert type(component.source_metadata['release']) is int
+
+    with h5py.File(path, 'r') as h5file:
+        group = h5file[data.name]
+        restored = openmc.data.IncidentPhoton.from_hdf5(group)
+        standalone = openmc.data.AtomicRelaxation.from_hdf5(group['subshells'])
+        assert restored.source_metadata == data.source_metadata
+        assert (standalone.source_metadata ==
+                data.atomic_relaxation.source_metadata)
+        for location, metadata in (
+                (group, data.source_metadata),
+                (group['subshells'], data.atomic_relaxation.source_metadata)):
+            library = location.attrs['source_library']
+            if isinstance(library, bytes):
+                library = library.decode('utf-8')
+            assert library == metadata['library']
+            assert location.attrs['source_version'] == metadata['version']
+            assert location.attrs['source_release'] == metadata['release']
+        assert h5file.id.valid
+
+
+def test_source_metadata_legacy_hdf5(tmp_path, photon_with_metadata):
+    """Read older files without inventing provenance for either source."""
+    path = tmp_path / 'legacy.h5'
+    data = photon_with_metadata
+    data.export_to_hdf5(path)
+    original = openmc.data.IncidentPhoton.from_hdf5(path)
+    with h5py.File(path, 'r+') as h5file:
+        for group in (h5file[data.name], h5file[data.name]['subshells']):
+            for key in ('source_library', 'source_version', 'source_release'):
+                del group.attrs[key]
+
+    restored = openmc.data.IncidentPhoton.from_hdf5(path)
+    assert restored.source_metadata == {}
+    assert restored.atomic_relaxation.source_metadata == {}
+    assert (restored.atomic_relaxation.binding_energy ==
+            data.atomic_relaxation.binding_energy)
+    np.testing.assert_array_equal(restored[502].xs.y, original[502].xs.y)
+
+
+def test_source_metadata_preserves_hdf5_payload(
+        tmp_path, photon_with_metadata):
+    """Keep numerical data, attributes and element registration unchanged."""
+    enriched = tmp_path / 'with_metadata.h5'
+    plain = tmp_path / 'without_metadata.h5'
+    data = photon_with_metadata
+    data.export_to_hdf5(enriched)
+    without_metadata = deepcopy(data)
+    without_metadata.source_metadata = {}
+    without_metadata.atomic_relaxation.source_metadata = {}
+    without_metadata.export_to_hdf5(plain)
+
+    metadata_keys = {'source_library', 'source_version', 'source_release'}
+    with h5py.File(enriched, 'r') as actual, h5py.File(plain, 'r') as expected:
+        actual_names, expected_names = [], []
+        actual.visit(actual_names.append)
+        expected.visit(expected_names.append)
+        assert actual_names == expected_names
+        assert list(actual) == [data.name]
+        for name in ['', *actual_names]:
+            left, right = actual[name or '/'], expected[name or '/']
+            assert set(left.attrs) - metadata_keys == set(right.attrs)
+            for key in right.attrs:
+                np.testing.assert_array_equal(
+                    left.attrs[key], right.attrs[key])
+            if isinstance(right, h5py.Dataset):
+                assert left.dtype == right.dtype
+                np.testing.assert_array_equal(left[()], right[()])
+
+    library = openmc.data.DataLibrary()
+    library.register_file(enriched)
+    assert len(library) == 1
+    assert library[0]['type'] == 'photon'
+    assert library[0]['materials'] == [data.name]
+
+
+def test_source_metadata_without_relaxation(tmp_path, photon_evaluations):
+    """Do not assign photoatomic provenance to absent relaxation data."""
+    photoatomic, _ = photon_evaluations
+    data = openmc.data.IncidentPhoton.from_endf(photoatomic)
+    assert data.atomic_relaxation is None
+    library, version, release = photoatomic.info['library']
+    assert data.source_metadata == {
+        'library': library, 'version': version, 'release': release}
+    path = tmp_path / 'photoatomic.h5'
+    data.export_to_hdf5(path)
+    with h5py.File(path, 'r') as h5file:
+        subshells = h5file[data.name]['subshells']
+        assert not any(key.startswith('source_') for key in subshells.attrs)
+    restored = openmc.data.IncidentPhoton.from_hdf5(path)
+    assert restored.source_metadata == data.source_metadata
+    assert restored.atomic_relaxation.source_metadata == {}
+
+
+def test_source_metadata_defaults_are_independent():
+    """Give new objects separate empty provenance dictionaries."""
+    first = openmc.data.IncidentPhoton(1)
+    second = openmc.data.IncidentPhoton(1)
+    first_relaxation = openmc.data.AtomicRelaxation({}, {}, {})
+    second_relaxation = openmc.data.AtomicRelaxation({}, {}, {})
+    for component in (first, second, first_relaxation, second_relaxation):
+        assert component.source_metadata == {}
+    first.source_metadata['library'] = 'Photoatomic evaluation'
+    first_relaxation.source_metadata['library'] = 'Relaxation evaluation'
+    assert second.source_metadata == {}
+    assert second_relaxation.source_metadata == {}
+
+
+@pytest.mark.parametrize('as_bytes', [False, True])
+def test_source_metadata_unicode(tmp_path, photon_with_metadata, as_bytes):
+    """Decode UTF-8 provenance without changing the numeric version fields."""
+    data = photon_with_metadata
+    data.source_metadata['library'] = 'Évaluation photonique'
+    path = tmp_path / 'unicode.h5'
+    data.export_to_hdf5(path)
+    if as_bytes:
+        with h5py.File(path, 'r+') as h5file:
+            attrs = h5file[data.name].attrs
+            del attrs['source_library']
+            attrs['source_library'] = np.bytes_(
+                data.source_metadata['library'].encode('utf-8'))
+    restored = openmc.data.IncidentPhoton.from_hdf5(path)
+    assert restored.source_metadata == data.source_metadata
+
+
+def test_source_metadata_partial_records(tmp_path, photon_with_metadata):
+    """Preserve known fields without filling in absent component metadata."""
+    data = photon_with_metadata
+    data.source_metadata = {'library': 'Partial photoatomic record'}
+    data.atomic_relaxation.source_metadata = {'version': 7}
+    path = tmp_path / 'partial.h5'
+    data.export_to_hdf5(path)
+    restored = openmc.data.IncidentPhoton.from_hdf5(path)
+    assert restored.source_metadata == data.source_metadata
+    assert (restored.atomic_relaxation.source_metadata ==
+            data.atomic_relaxation.source_metadata)
+
+
+def test_source_metadata_zero_versions(tmp_path, photon_with_metadata):
+    """Retain zero-valued NumPy integers as ordinary Python metadata."""
+    data = photon_with_metadata
+    data.source_metadata = {
+        'library': 'Zero version',
+        'version': np.int32(0),
+        'release': np.int64(0),
+    }
+    path = tmp_path / 'zero.h5'
+    data.export_to_hdf5(path)
+    restored = openmc.data.IncidentPhoton.from_hdf5(path)
+    assert restored.source_metadata == {
+        'library': 'Zero version', 'version': 0, 'release': 0}
+    assert type(restored.source_metadata['version']) is int
+    assert type(restored.source_metadata['release']) is int
+
+
+@pytest.mark.parametrize('component, metadata, error', [
+    ('photoatomic', {'version': '8'}, TypeError),
+    ('relaxation', {'library': 7}, TypeError),
+    ('photoatomic', {'unrecognized': 'source'}, ValueError),
+    ('photoatomic', {'library': 'invalid\x00library'}, ValueError),
+    ('relaxation', {'library': '\ud800'}, UnicodeEncodeError),
+    ('photoatomic', {'version': 1 << 100}, ValueError),
+    ('relaxation', {'release': -(1 << 100)}, ValueError),
+])
+def test_invalid_source_metadata_preserves_output(
+        tmp_path, photon_with_metadata, component, metadata, error):
+    """Reject invalid metadata before truncating an existing output file."""
+    data = photon_with_metadata
+    target = data if component == 'photoatomic' else data.atomic_relaxation
+    target.source_metadata = metadata
+    path = tmp_path / 'existing.h5'
+    original = b'Existing output must survive invalid metadata.'
+    path.write_bytes(original)
+
+    with pytest.raises(error):
+        data.export_to_hdf5(path, mode='w')
+
+    assert path.read_bytes() == original

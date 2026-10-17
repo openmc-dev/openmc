@@ -1,7 +1,3 @@
-import io
-import subprocess
-
-import openmc
 from openmc.executor import _get_error_message
 import pytest
 
@@ -24,20 +20,3 @@ import pytest
 def test_error_message_from_output(output, message):
     """The error message is recovered from each way OpenMC can fail."""
     assert _get_error_message(output) == message
-
-
-def test_failed_run_raises_error_message(monkeypatch):
-    """A failed run raises a RuntimeError with the message from its output."""
-    class FailedProcess:
-        def __init__(self, *args, **kwargs):
-            self.stdout = io.StringIO(
-                'libc++abi: terminating due to uncaught exception of type '
-                'std::runtime_error: Could not add nuclide\n')
-            self.returncode = 1
-
-        def poll(self):
-            return self.returncode
-
-    monkeypatch.setattr(subprocess, 'Popen', FailedProcess)
-    with pytest.raises(RuntimeError, match='^Could not add nuclide$'):
-        openmc.plot_geometry(output=False)

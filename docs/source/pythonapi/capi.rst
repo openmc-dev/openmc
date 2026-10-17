@@ -97,6 +97,7 @@ Classes
    SolidRayTracePlot
    SurfaceFilter
    Tally
+   TemperatureField
    TemporarySession
    UniverseFilter
    UnstructuredMesh
@@ -149,6 +150,13 @@ Data
    Mapping of tally ID to :class:`openmc.lib.Tally` instances.
 
    :type: dict
+
+.. data:: temperature_field
+
+   Temperatures in [K] of each element of the temperature field mesh, if one
+   was specified. Empty when no temperature field is in use.
+
+   :type: :class:`openmc.lib.TemperatureField`
 
 .. data:: weight_windows
 

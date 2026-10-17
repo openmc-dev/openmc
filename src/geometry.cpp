@@ -124,6 +124,23 @@ int cell_instance_at_level(const GeometryState& p, int level)
 
 //==============================================================================
 
+Direction rotate_to_root(const GeometryState& p, int level, Direction u)
+{
+  // Each coordinate level below the root was reached by applying the rotation
+  // matrix of the cell one level above it, so walk back up applying the
+  // inverse of each rotation in turn. Translations are irrelevant here since
+  // they do not affect directions.
+  for (int i = level; i > 0; --i) {
+    if (p.coord(i).rotated()) {
+      const auto& c {*model::cells[p.coord(i - 1).cell()]};
+      u = u.inverse_rotate(c.rotation_);
+    }
+  }
+  return u;
+}
+
+//==============================================================================
+
 bool find_cell_inner(
   GeometryState& p, const NeighborList* neighbor_list, bool verbose)
 {

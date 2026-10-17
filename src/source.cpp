@@ -554,11 +554,19 @@ SourceSite FileSource::sample(uint64_t* seed) const
   // surface containing the source site, determine the signed half-space from
   // the particle direction. Otherwise, ignore the surface ID and allow the
   // normal cell search to locate the particle.
+  //
+  // The site position and direction are in the root coordinate frame, whereas
+  // evaluate() and normal() work in the local frame of the universe holding
+  // the surface. The half-space can therefore only be recovered here for
+  // surfaces in the root universe; for any other surface the frames differ by
+  // an unknown transform (a universe may be filled in several places with
+  // different rotations, so the transform cannot be recovered from the site
+  // alone) and the surface ID is dropped rather than signed incorrectly.
   if (site.surf_id != SURFACE_NONE) {
     auto it = model::surface_map.find(std::abs(site.surf_id));
     if (it != model::surface_map.end()) {
       const auto& surf = *model::surfaces[it->second];
-      if (surf.geom_type() == GeometryType::CSG &&
+      if (surf.geom_type() == GeometryType::CSG && surf.root_frame_ &&
           std::abs(surf.evaluate(site.r)) < FP_COINCIDENT) {
         int surf_id = std::abs(site.surf_id);
         site.surf_id =

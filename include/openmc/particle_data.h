@@ -384,6 +384,14 @@ public:
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
 
+  // Outward unit normal of the surface (or lattice boundary) currently being
+  // crossed, expressed in the root coordinate frame. Set by
+  // score_surface_tally() immediately before the tally filters are evaluated,
+  // so that filters can compare it against the root-frame direction u()
+  // without having to know which coordinate level the surface lives in.
+  Direction& surface_normal() { return surface_normal_; }
+  const Direction& surface_normal() const { return surface_normal_; }
+
   // Surface index based on the current value of the surface_ attribute
   int surface_index() const
   {
@@ -435,6 +443,9 @@ private:
 
   int surface_ {
     SURFACE_NONE}; //!< surface token for surface the particle is currently on
+
+  //! Outward normal of the surface being crossed, in the root coordinate frame
+  Direction surface_normal_ {0.0, 0.0, 1.0};
 
   BoundaryInfo boundary_; //!< Info about the next intersection
 

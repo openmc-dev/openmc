@@ -16,6 +16,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/math.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
@@ -286,7 +287,7 @@ void Particle::event_advance()
   } else if (macro_xs().total == 0.0) {
     collision_distance() = INFINITY;
   } else {
-    collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
+    collision_distance() = -openmc::log(prn(current_seed())) / macro_xs().total;
   }
 
   double speed = this->speed();

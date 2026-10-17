@@ -1,0 +1,289 @@
+name: Cross-platform reproducibility
+
+# Builds OpenMC with the CORE-MATH backend and the same settings on x86-64
+# Linux, arm64 Linux and arm64 macOS, runs the C++ unit tests and the
+# regression tests against the shared reference results on each, and checks
+# that a simulation produces bit-identical particle histories and tallies on
+# all three.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+  push:
+    branches:
+      - develop
+
+env:
+  OMP_NUM_THREADS: 2
+
+jobs:
+  regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-26]
+    runs-on: ${{ matrix.os }}
+    name: "Regression tests (${{ matrix.os }})"
+
+    steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.31'
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Environment variables
+        run: |
+          echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
+          echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
+          echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install hdf5 libpng libomp
+          echo "HDF5_ROOT=$(brew --prefix hdf5)" >> $GITHUB_ENV
+          echo "OpenMP_ROOT=$(brew --prefix libomp)" >> $GITHUB_ENV
+          # Projects configured with an older policy version ignore OpenMP_ROOT
+          echo "CMAKE_PREFIX_PATH=$(brew --prefix libomp)" >> $GITHUB_ENV
+          echo "FC=gfortran-15" >> $GITHUB_ENV
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt -y update
+          sudo apt install -y libhdf5-serial-dev libpng-dev gfortran
+
+      - name: Install NJOY
+        run: |
+          git clone -b 2016.78 https://github.com/njoy/NJOY2016 $HOME/NJOY2016
+          cmake -S $HOME/NJOY2016 -B $HOME/NJOY2016/build
+          cmake --build $HOME/NJOY2016/build --parallel 3
+
+      # The same settings as tools/ci/gha-install.py, without coverage
+      - name: Build OpenMC
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DOPENMC_ENABLE_STRICT_FP=on -DOPENMC_USE_OPENMP=on \
+            -DOPENMC_USE_MCPL=on -DOPENMC_BUILD_TESTS=on \
+            -DOPENMC_USE_COREMATH=on \
+            -DHDF5_PREFER_PARALLEL=OFF
+          cmake --build build --parallel 3
+          sudo cmake --install build
+
+      - name: Install Python API
+        run: |
+          pip install --upgrade pip
+          pip install 'ncrystal>=4.1.0' mcpl
+          pip install -e .[test,vtk,ci]
+
+      - name: Display configuration
+        run: openmc -v
+
+      - name: C++ unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Cache cross sections
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/nndc_hdf5
+            ~/endf-b-vii.1
+          key: ${{ runner.os }}-${{ runner.arch }}-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
+
+      - name: Download cross sections
+        run: tools/ci/download-xs.sh
+
+      # The committed references were generated with one particular system
+      # math library, so a few libm-sensitive tests are expected to differ
+      # from them. The outputs of those tests are collected and compared
+      # across platforms in the "compare" job: they must be byte-identical.
+      - name: Regression tests
+        id: regression
+        continue-on-error: true
+        run: |
+          mkdir -p regression-outputs
+          pytest -v -rfE tests/regression_tests \
+            --junitxml=regression-outputs/junit.xml
+
+      # Every platform uploads a directory, even one that matched every
+      # reference, so that the comparison can require all platforms.
+      - name: Collect outputs of tests that differ from the references
+        run: |
+          echo "regression step outcome: ${{ steps.regression.outcome }}"
+          python - <<'EOF'
+          import shutil
+          from pathlib import Path
+          for src in sorted(Path('tests/regression_tests').rglob('results_error.dat')):
+              dst = Path('regression-outputs') / src
+              dst.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy(src, dst)
+              print(src.parent)
+          EOF
+
+      - name: Upload regression outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-outputs-${{ matrix.os }}
+          path: regression-outputs
+          if-no-files-found: error
+
+      - name: Track and tally digest
+        run: python tools/ci/track-digest.py digest-${{ matrix.os }}.json
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.os }}
+          path: digest-${{ matrix.os }}.json
+
+  compare:
+    needs: regression
+    runs-on: ubuntu-latest
+    name: "Compare digests"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+
+      - name: Download regression outputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: regression-outputs-*
+          path: regression-outputs
+
+      - name: Compare track and tally digests across platforms
+        run: python tools/ci/compare-digests.py digests/*.json
+
+      - name: Compare regression outputs across platforms
+        run: |
+          ls regression-outputs
+          test "$(ls -d regression-outputs/*/ | wc -l)" -eq 3
+          python tools/ci/compare-regression-outputs.py \
+            --json regression-comparison.json regression-outputs/*
+
+      - name: Upload comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-comparison
+          path: regression-comparison.json
+
+  # On x86-64 the backend is timed both as built for the baseline instruction
+  # set (software fma) and with the FMA instruction; arm64 always has FMA.
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            fma: OFF
+          - os: ubuntu-24.04
+            fma: ON
+          - os: ubuntu-24.04-arm
+            fma: AUTO
+          - os: macos-26
+            fma: AUTO
+    runs-on: ${{ matrix.os }}
+    name: "Benchmark system libm vs CORE-MATH (${{ matrix.os }}, fma=${{ matrix.fma }})"
+
+    steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.31'
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Environment variables
+        run: |
+          echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install hdf5 libpng libomp
+          echo "HDF5_ROOT=$(brew --prefix hdf5)" >> $GITHUB_ENV
+          echo "OpenMP_ROOT=$(brew --prefix libomp)" >> $GITHUB_ENV
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt -y update
+          sudo apt install -y libhdf5-serial-dev libpng-dev
+
+      - name: Build both variants
+        run: |
+          for variant in system coremath; do
+            if [ $variant = coremath ]; then
+              extra="-DOPENMC_USE_COREMATH=on -DOPENMC_COREMATH_FMA=${{ matrix.fma }}"
+            else
+              extra=
+            fi
+            cmake -S . -B build-$variant -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DOPENMC_ENABLE_STRICT_FP=on -DOPENMC_USE_OPENMP=on \
+              -DOPENMC_BUILD_TESTS=off -DHDF5_PREFER_PARALLEL=OFF $extra
+            cmake --build build-$variant --parallel 3
+            cmake --install build-$variant --prefix $PWD/install-$variant
+          done
+
+      - name: Install Python API
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+
+      - name: Cache cross sections
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/nndc_hdf5
+            ~/endf-b-vii.1
+          key: ${{ runner.os }}-${{ runner.arch }}-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
+
+      - name: Download cross sections
+        run: tools/ci/download-xs.sh
+
+      - name: Check both executables
+        run: |
+          for variant in system coremath; do
+            LD_LIBRARY_PATH=$PWD/install-$variant/lib DYLD_LIBRARY_PATH=$PWD/install-$variant/lib \
+              $PWD/install-$variant/bin/openmc --version
+          done
+
+      - name: Benchmark
+        run: |
+          python tools/ci/coremath-benchmark.py \
+            --system $PWD/install-system/bin/openmc \
+            --coremath $PWD/install-coremath/bin/openmc \
+            --repeats 3 --threads 2 \
+            --output benchmark-${{ matrix.os }}-fma-${{ matrix.fma }}.json
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ matrix.os }}-fma-${{ matrix.fma }}
+          path: benchmark-${{ matrix.os }}-fma-${{ matrix.fma }}.json

@@ -9,6 +9,7 @@
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/ifp.h"
+#include "openmc/math.h"
 #include "openmc/math_functions.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
@@ -391,7 +392,7 @@ void calculate_average_keff()
   } else {
     // Sample mean of keff
     simulation::k_sum[0] += simulation::k_generation[i];
-    simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
+    simulation::k_sum[1] += openmc::pow(simulation::k_generation[i], 2);
 
     // Determine mean
     simulation::keff = simulation::k_sum[0] / n;
@@ -408,9 +409,9 @@ void calculate_average_keff()
 
       // Standard deviation of the sample mean of k
       simulation::keff_std =
-        t_value *
-        std::sqrt(
-          (simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) / (n - 1));
+        t_value * std::sqrt((simulation::k_sum[1] / n -
+                              openmc::pow(simulation::keff, 2)) /
+                            (n - 1));
 
       // In some cases (such as an infinite medium problem), random ray
       // may estimate k exactly and in an unvarying manner between iterations.
@@ -606,7 +607,7 @@ void shannon_entropy()
     double H = 0.0;
     for (auto p_i : p) {
       if (p_i > 0.0) {
-        H -= p_i * std::log2(p_i);
+        H -= p_i * openmc::log2(p_i);
       }
     }
 

@@ -92,6 +92,36 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
     return args
 
 
+def _get_error_message(output):
+    """Truncate a raised exception message from C++ to be applied as a Python exception message
+
+    Parameters
+    ----------
+    output : str
+        Standard output and standard error of the OpenMC executable
+
+    Returns
+    -------
+    str
+        Error message to be applied as Exception text
+
+    """
+    if 'ERROR: ' in output:
+        _, _, error_msg = output.partition('ERROR: ')
+    elif 'what()' in output:
+        _, _, error_msg = output.partition('what(): ')
+    elif 'terminating due to uncaught exception of type ' in output:
+        # libc++ (e.g. macOS) reports "...of type std::runtime_error: msg"
+        _, _, error_msg = output.partition(
+            'terminating due to uncaught exception of type ')
+        _, sep, error_msg = error_msg.partition(': ')
+        if not sep or not error_msg.strip():
+            error_msg = 'OpenMC aborted unexpectedly.'
+    else:
+        error_msg = 'OpenMC aborted unexpectedly.'
+    return ' '.join(error_msg.split())
+
+
 def _run(args, output, cwd):
     # Launch a subprocess
     p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE,
@@ -113,17 +143,7 @@ def _run(args, output, cwd):
 
     # Raise an exception if return status is non-zero
     if p.returncode != 0:
-        # Get error message from output and simplify whitespace
-        output = ''.join(lines)
-        if 'ERROR: ' in output:
-            _, _, error_msg = output.partition('ERROR: ')
-        elif 'what()' in output:
-            _, _, error_msg = output.partition('what(): ')
-        else:
-            error_msg = 'OpenMC aborted unexpectedly.'
-        error_msg = ' '.join(error_msg.split())
-
-        raise RuntimeError(error_msg)
+        raise RuntimeError(_get_error_message(''.join(lines)))
 
 
 def plot_geometry(output=True, openmc_exec='openmc', cwd='.', path_input=None):

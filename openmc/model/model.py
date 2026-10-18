@@ -1472,10 +1472,8 @@ class Model:
                 **contour_kwargs
             )
 
-            # If only showing outline, set the axis limits and aspect explicitly
+            # If only showing outline, set the aspect explicitly
             if outline == 'only':
-                axes.set_xlim(x_min, x_max)
-                axes.set_ylim(y_min, y_max)
                 axes.set_aspect('equal')
 
         # Add legend showing which colors represent which material or cell
@@ -1531,6 +1529,10 @@ class Model:
                     xs.append(particle.r[x] * axis_scaling_factor[axis_units])
                     ys.append(particle.r[y] * axis_scaling_factor[axis_units])
             axes.scatter(xs, ys, **source_kwargs)
+
+        # Keep the requested view even when source points lie outside it.
+        axes.set_xlim(x_min, x_max)
+        axes.set_ylim(y_min, y_max)
 
         return axes
 

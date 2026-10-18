@@ -11,6 +11,17 @@ endif()
 find_dependency(fmt CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
 find_dependency(pugixml CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
 
+# libopenmc links against HDF5, which may be imported targets (e.g. hdf5-shared)
+# when HDF5 was found through its own CMake package
+if(NOT DEFINED HDF5_PREFER_PARALLEL)
+  set(HDF5_PREFER_PARALLEL @HDF5_PREFER_PARALLEL@)
+endif()
+# Older FindHDF5 versions require C to be enabled for their compiler checks
+if(NOT CMAKE_C_COMPILER_LOADED)
+  enable_language(C)
+endif()
+find_dependency(HDF5 COMPONENTS C HL)
+
 if(@OPENMC_USE_DAGMC@)
   find_dependency(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()

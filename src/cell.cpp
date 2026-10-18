@@ -948,12 +948,12 @@ std::string Region::str() const
 //==============================================================================
 
 std::pair<double, int32_t> Region::distance(
-  Position r, Direction u, int32_t on_surface) const
+  Position r, Direction u, int32_t on_surface, double max_distance) const
 {
   if (simple_) {
     return distance_to_nearest_surface(r, u, on_surface, false);
   } else {
-    return distance_complex(r, u, on_surface);
+    return distance_complex(r, u, on_surface, max_distance);
   }
 }
 
@@ -997,7 +997,7 @@ std::pair<double, int32_t> Region::distance_to_nearest_surface(Position r,
 //==============================================================================
 
 std::pair<double, int32_t> Region::distance_complex(
-  Position r, Direction u, int32_t on_surface) const
+  Position r, Direction u, int32_t on_surface, double max_distance) const
 {
   const bool in_region = contains_complex(r, u, on_surface);
   double total_distance {0.0};
@@ -1015,6 +1015,13 @@ std::pair<double, int32_t> Region::distance_complex(
     // the wrong side of a curved surface.
     r += distance * u;
     total_distance += distance;
+
+    // Stop searching once the boundary is known to be beyond the distance of
+    // interest
+    if (total_distance >= max_distance) {
+      return {INFTY, std::numeric_limits<int32_t>::max()};
+    }
+
     i_surf = std::abs(i_surf);
     const auto& surf {*model::surfaces[i_surf - 1]};
     if (u.dot(surf.normal(r)) <= 0.0) {

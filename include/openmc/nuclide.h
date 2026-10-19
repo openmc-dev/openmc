@@ -84,6 +84,10 @@ public:
   double collapse_rate(int MT, double temperature, span<const double> energy,
     span<const double> flux) const;
 
+  void set_xs(int MT, int T_index, const std::vector<double>& values);
+  void rebuild_derived_xs();
+  std::vector<double> get_xs(int MT, int T_index) const;
+  std::vector<double> get_energy_grid(int T_index) const;
   //! Return a ParticleType object representing this nuclide
   ParticleType particle_type() const { return {Z_, A_, metastable_}; }
 

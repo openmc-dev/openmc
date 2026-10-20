@@ -46,7 +46,7 @@ if(@OPENMC_USE_MPI@)
 endif()
 
 if(@OPENMC_USE_OPENMP@)
-  find_dependency(OpenMP REQUIRED)
+  find_dependency(OpenMP REQUIRED COMPONENTS CXX)
 endif()
 
 if(@OPENMC_USE_UWUW@ AND NOT ${DAGMC_BUILD_UWUW})

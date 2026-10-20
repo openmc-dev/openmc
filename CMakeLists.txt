@@ -128,7 +128,7 @@ endif()
 #===============================================================================
 
 if(OPENMC_USE_OPENMP)
-  find_package(OpenMP REQUIRED)
+  find_package(OpenMP REQUIRED COMPONENTS CXX)
 endif()
 
 #===============================================================================

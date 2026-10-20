@@ -167,6 +167,9 @@ least 10,000 particles per generation to avoid any bias in the estimate of
 External Source Distributions
 -----------------------------
 
+The sampling algorithms and mathematical derivations for the source classes
+are described in :ref:`methods_source_sampling`.
+
 External source distributions can be specified through the
 :attr:`Settings.source` attribute. If you have a single external source, you can
 create an instance of any of the subclasses of :class:`openmc.SourceBase`
@@ -393,6 +396,9 @@ A surface source file is read back like any other source file, with the
 Tokamak Plasma Sources
 ----------------------
 
+The volume Jacobian, radial distribution, and conditional poloidal sampling
+are derived in :ref:`methods_tokamak_source`.
+
 For fusion applications, the :class:`openmc.TokamakSource` class provides a
 native parametric neutron source for tokamak plasmas. Rather than specifying
 spatial, angular, and energy distributions separately, the source is defined by
@@ -441,6 +447,9 @@ are born at :math:`t=0`. The toroidal extent can be restricted with
 
 Stellarator Plasma Sources
 --------------------------
+
+The Fourier volume Jacobian and the radial and angular rejection algorithms
+are derived in :ref:`methods_stellarator_source`.
 
 For fully three-dimensional plasmas, the :class:`openmc.StellaratorSource` class
 samples neutron positions from the flux-surface Fourier representation shared by

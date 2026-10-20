@@ -192,7 +192,8 @@ def _get_products(ev, mt):
                 energy[i] = items[1]
                 lang = items[2]
                 if lang == 0:
-                    mu.append(Legendre(values))
+                    # Coefficients start at l = 1; a_0 = 1 is implied
+                    mu.append(Legendre(np.insert(values, 0, 1.0)))
                 elif lang == 12:
                     mu.append(Tabular(values[::2], values[1::2]))
                 elif lang == 14:

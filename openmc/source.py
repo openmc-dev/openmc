@@ -1374,21 +1374,21 @@ class StellaratorSource(SourceBase):
 
     Parameters
     ----------
-    rho : numpy.ndarray
+    rho : sequence of float
         Radial grid points :math:`\rho = \sqrt{s}`, must start at 0 and end
         at 1 and be strictly increasing.
-    emission_density : numpy.ndarray
+    emission_density : sequence of float
         Emission density :math:`S(\rho)` at each grid point (arbitrary units,
         must be >= 0). Only the shape matters; it is normalized internally.
-    mode_m : numpy.ndarray of int
+    mode_m : sequence of int
         Poloidal mode numbers :math:`m_k \ge 0`.
-    mode_n : numpy.ndarray of int
+    mode_n : sequence of int
         Toroidal mode numbers :math:`n_k` in units of the number of field
         periods (VMEC's ``xn``/``nfp``).
-    rmnc : numpy.ndarray
+    rmnc : sequence of sequence of float
         Cosine Fourier coefficients of :math:`R` in [cm] with shape
         ``(len(rho), len(mode_m))``.
-    zmns : numpy.ndarray
+    zmns : sequence of sequence of float
         Sine Fourier coefficients of :math:`Z` in [cm] with shape
         ``(len(rho), len(mode_m))``.
     energy : openmc.stats.Univariate or Sequence[openmc.stats.Univariate]
@@ -1397,10 +1397,10 @@ class StellaratorSource(SourceBase):
         stochastic interpolation between the two bracketing grid points).
     num_field_periods : int
         Number of field periods :math:`N_{fp}` (default: 1).
-    rmns : numpy.ndarray, optional
+    rmns : sequence of sequence of float, optional
         Sine Fourier coefficients of :math:`R` in [cm] for
         non-stellarator-symmetric equilibria.
-    zmnc : numpy.ndarray, optional
+    zmnc : sequence of sequence of float, optional
         Cosine Fourier coefficients of :math:`Z` in [cm] for
         non-stellarator-symmetric equilibria.
     time : openmc.stats.Univariate, optional

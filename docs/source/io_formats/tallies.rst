@@ -144,7 +144,7 @@ attributes/sub-elements:
     The type of the filter. Accepted options are "cell", "cellfrom",
     "cellborn", "surface", "material", "universe", "energy", "energyout",
     "mu", "polar", "azimuthal", "mesh", "distribcell", "delayedgroup",
-    "energyfunction", "particle", and "particleproduction".
+    "energyfunction", "particle", "particleproduction", and "lifetimemoment".
 
   :bins:
      A description of the bins for each type of filter can be found in
@@ -162,6 +162,10 @@ attributes/sub-elements:
     function. The function is described by a piecewise linear-linear set of
     (energy, y) values. This entry specifies the y values. (Only used
     for ``energyfunction`` filters)
+
+  :order:
+    The highest order of a functional expansion filter. (Only used for
+    functional expansion filters such as ``lifetimemoment`` filters)
 
 .. _filter_types:
 
@@ -316,6 +320,24 @@ should be set to:
 :energyfunction:
   ``energyfunction`` filters do not use the ``bins`` entry.  Instead
   they use ``energy`` and ``y``.
+
+:lifetimemoment:
+  ``lifetimemoment`` filters do not use the ``bins`` entry. Instead they use
+  ``order``, a non-negative integer :math:`N`, and have :math:`N + 1` bins.
+  Bin :math:`n` multiplies the score by :math:`\tau^n`, where :math:`\tau` is
+  the time in seconds since the particle was started from its source site
+  (see :ref:`usersguide_lifetime_moments`). For example, the zeroth, first,
+  and second moments are obtained with:
+
+  .. code-block:: xml
+
+      <filter id="1" type="lifetimemoment">
+        <order>2</order>
+      </filter>
+
+  A tally with this filter uses a collision estimator unless an analog
+  estimator is requested or required by another filter or score; a
+  track-length estimator cannot be used.
 
 :particle:
   A list of particle identifiers to tally, specified as strings (e.g.,

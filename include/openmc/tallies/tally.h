@@ -114,6 +114,21 @@ public:
 
   void init_triggers(pugi::xml_node node);
 
+  //! Replace the track-length estimator of a volume tally, with a warning, if
+  //! a filter of the tally cannot weight track-length estimates
+  //!
+  //! The estimator of a tally read from tallies.xml is chosen from its filters
+  //! and scores when the tally is constructed, whereas a tally created at run
+  //! time (e.g., through openmc.lib) keeps the estimator that it was given. The
+  //! replacement is the estimator that the same tally gets from tallies.xml:
+  //! the filters select one in their order, as in the constructor, and then
+  //! the scores in their order, as in set_scores(). The exception is a flux
+  //! tally whose surface, cellfrom or materialfrom filter was set after its
+  //! scores: it stays a volume tally, whereas tallies.xml makes it a surface
+  //! tally with an analog estimator. This is called when a simulation is
+  //! initialized.
+  void check_estimator();
+
   void init_results();
 
   void reset();

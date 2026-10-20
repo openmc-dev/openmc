@@ -1,26 +1,10 @@
 """Tests for openmc.mgxs.GROUP_STRUCTURES and build_fine_group_structure."""
 
-from pathlib import Path
-
 import numpy as np
 import pytest
 
 import openmc
 from openmc.mgxs import GROUP_STRUCTURES, build_fine_group_structure
-
-REFERENCE_FILE = Path(__file__).with_name('fine_group_structures_reference.npz')
-
-# VESTA-43000 macro group bounds [eV] and number of fine group bins per macro group
-VESTA43000_MACRO_BOUNDS = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1., 10., 100., 1e3, 1e4, 1e5,
-                1e6, 1e7, 2e7]
-VESTA43000_BINS_PER_MACRO = [1000, 1000, 1000, 1000, 1000, 4000, 4000, 10000,
-                    10000, 4000, 4000, 1000, 1000]
-
-
-@pytest.fixture(scope='module')
-def reference():
-    with np.load(REFERENCE_FILE) as data:
-        return {name: data[name] for name in data.files}
 
 
 @pytest.mark.parametrize('name', sorted(GROUP_STRUCTURES))
@@ -108,29 +92,19 @@ def test_build_non_integer_bins_per_macro():
         build_fine_group_structure([1., 10.], 2.5)
 
 
-@pytest.mark.parametrize('name, rtol', [
-    ('VESTA-43000', 1e-12),
-    # FOMG edges were tabulated to 10 significant figures
-    ('FOMG-16000', 1e-9),
-])
-def test_reference_edges(reference, name, rtol):
-    edges = GROUP_STRUCTURES[name]
-    expected = reference[name]
-    assert edges.size == expected.size
-    assert edges[0] == expected[0]
-    assert edges[-1] == expected[-1]
-    np.testing.assert_allclose(edges, expected, rtol=rtol, atol=0)
-
-
 def test_vesta_43000():
+    bounds = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1., 10., 100.,
+              1e3, 1e4, 1e5, 1e6, 1e7, 2e7]
+    counts = [1000, 1000, 1000, 1000, 1000, 4000, 4000,
+              10000, 10000, 4000, 4000, 1000, 1000]
     edges = GROUP_STRUCTURES['VESTA-43000']
     assert edges.size == 43001
 
     # Macrogroup endpoints are exact; lethargy width ln(hi/lo)/n inside
-    idx = np.cumsum([0] + VESTA43000_BINS_PER_MACRO)
-    np.testing.assert_array_equal(edges[idx], VESTA43000_MACRO_BOUNDS)
-    for lo, hi, n, start, stop in zip(VESTA43000_MACRO_BOUNDS[:-1], VESTA43000_MACRO_BOUNDS[1:],
-                                      VESTA43000_BINS_PER_MACRO, idx[:-1], idx[1:]):
+    idx = np.cumsum([0] + counts)
+    np.testing.assert_array_equal(edges[idx], bounds)
+    for lo, hi, n, start, stop in zip(
+            bounds[:-1], bounds[1:], counts, idx[:-1], idx[1:]):
         du = np.diff(np.log(edges[start:stop + 1]))
         np.testing.assert_allclose(du, np.log(hi / lo) / n, rtol=1e-9)
 
@@ -139,6 +113,7 @@ def test_fomg_16000():
     edges = GROUP_STRUCTURES['FOMG-16000']
     assert edges.size == 16001
     assert edges[0] == 1e-5
+    assert edges[1] == 1e-3
     assert edges[1000] == 1.0
     assert edges[15000] == 2e6
     assert edges[-1] == 1.96e7

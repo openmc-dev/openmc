@@ -477,14 +477,28 @@ Because Fourier evaluation is linear in the coefficients, at fixed angles
     Z_\rho=\frac{Z_{i+1}-Z_i}{h_i}
 
 are constant within the interval. It follows that :math:`\tau` is linear in
-:math:`\eta` and :math:`f=\sigma R\tau` is quadratic. Angular integration
-preserves this polynomial degree, so the differential volume within interval
-:math:`i` is also quadratic:
+:math:`\eta` and :math:`f=\sigma R\tau` is quadratic. The differential volume
+is the angular integral of this density. Denote its value at
+:math:`\rho=\rho_i+h_i\eta` by :math:`V'_i(\eta)`:
 
 .. math::
     :label: stellarator-source-volume-polynomial
 
-    V'_i(\eta)=A_0+A_1\eta+A_2\eta^2.
+    \begin{aligned}
+    V'_i(\eta)
+      &\equiv \left.\frac{dV}{d\rho}\right|_{\rho=\rho_i+h_i\eta} \\
+      &= \int_0^{2\pi}\!\int_0^{2\pi}
+         f_i(\eta,\theta,\zeta)\,d\theta\,d\zeta \\
+      &= A_0+A_1\eta+A_2\eta^2.
+    \end{aligned}
+
+Angular integration preserves the quadratic dependence on :math:`\eta`, so
+the integral and the polynomial are two expressions for the same function.
+The coefficients :math:`A_0`, :math:`A_1`, and :math:`A_2` are constant within
+each interval. The prime denotes differentiation with respect to :math:`\rho`;
+:math:`\eta` specifies where that derivative is evaluated. Since
+:math:`d\rho=h_i\,d\eta`, the corresponding volume element is
+:math:`dV=h_i V'_i(\eta)\,d\eta`.
 
 The derivative generally has different one-sided values at an interior radial
 surface because the coefficient slopes change there. Each interval uses its
@@ -494,8 +508,10 @@ adjacent intervals are kept separate.
 Computing Differential Volumes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Initialization evaluates :math:`f` at :math:`\eta=0,1/2,1` on a uniform
-angular grid. Its sizes are
+To determine the three polynomial coefficients in
+:eq:`stellarator-source-volume-polynomial`, initialization computes the angular
+integral at just three radial positions, :math:`\eta=0,1/2,1`. At each of
+these positions, it evaluates :math:`f_i` on a uniform angular grid with sizes
 
 .. math::
 
@@ -503,7 +519,8 @@ angular grid. Its sizes are
     N_\zeta=\max(64,8|n|_{\max}).
 
 The poloidal grid covers :math:`[0,2\pi)` and the toroidal grid covers one field
-period, :math:`[0,2\pi/N_{\mathrm{fp}})`. The full-torus integral is
+period, :math:`[0,2\pi/N_{\mathrm{fp}})`. The angular integral defining
+:math:`V'_i` is evaluated by the quadrature sum
 
 .. math::
 
@@ -517,14 +534,17 @@ and toroidal degrees at most three times the respective geometry mode limits.
 The trapezoidal grid therefore integrates this finite Fourier series exactly
 in exact arithmetic, provided the Jacobian has a consistent sign.
 
-Let :math:`v_0`, :math:`v_m`, and :math:`v_1` be these integrals at
-:math:`\eta=0,1/2,1`. Interpolation of the quadratic gives
+Let :math:`v_0=V'_i(0)`, :math:`v_m=V'_i(1/2)`, and :math:`v_1=V'_i(1)` be
+the three values obtained by quadrature. These determine the coefficients:
 
 .. math::
 
     A_0=v_0, \qquad
     A_1=4v_m-3v_0-v_1, \qquad
     A_2=2(v_0+v_1-2v_m).
+
+The resulting polynomial supplies :math:`V'_i(\eta)` at any radius within the
+interval without further angular integration.
 
 Only two adjacent surfaces' angular grids are held in memory at once. Their
 positions and poloidal derivatives give the interval's radial derivatives by
@@ -550,7 +570,8 @@ PDF in the local coordinate:
     c_3 &= \Delta S_i A_2,
     \end{aligned}
 
-where :math:`\Delta S_i=S_{i+1}-S_i`. Its integrated mass is
+where :math:`\Delta S_i=S_{i+1}-S_i`. Its integrated mass includes the change
+of variable :math:`d\rho=h_i\,d\eta`:
 
 .. math::
     :label: stellarator-source-interval-mass

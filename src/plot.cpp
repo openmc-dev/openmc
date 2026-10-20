@@ -22,6 +22,7 @@
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/math.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/openmp_interface.h"
@@ -1335,7 +1336,8 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   // effect. This is in units of cm. This seems to look good most of the
   // time. TODO let this variable be set through XML.
   constexpr double focal_plane_dist = 10.0;
-  const double dx = 2.0 * focal_plane_dist * std::tan(0.5 * horiz_fov_radians);
+  const double dx =
+    2.0 * focal_plane_dist * openmc::tan(0.5 * horiz_fov_radians);
   const double dy = p1 / p0 * dx;
 
   std::pair<Position, Direction> result;
@@ -1444,8 +1446,8 @@ ImageData WireframeRayTracePlot::create_image() const
             Position seg_color_vec(
               seg_color.red, seg_color.green, seg_color.blue);
             double mixing =
-              std::exp(-xs_[colormap_idx] *
-                       (segments[i + 1].length - segments[i].length));
+              openmc::exp(-xs_[colormap_idx] *
+                          (segments[i + 1].length - segments[i].length));
             current_color =
               current_color * mixing + (1.0 - mixing) * seg_color_vec;
           }

@@ -25,6 +25,7 @@
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/math.h"
 #include "openmc/math_functions.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/memory.h"
@@ -970,20 +971,20 @@ void TokamakSource::precompute_sampling_distributions()
 
   for (int i = 0; i < n_alpha; ++i) {
     double alpha = alpha_grid[i];
-    double sin_alpha = std::sin(alpha);
-    double cos_alpha = std::cos(alpha);
+    double sin_alpha = openmc::sin(alpha);
+    double cos_alpha = openmc::cos(alpha);
     double delta_sin_alpha = delta * sin_alpha;
     double psi = alpha + delta_sin_alpha;
-    double cos_psi = std::cos(psi);
+    double cos_psi = openmc::cos(psi);
 
     // Bernstein coefficients b0-b4
     double b0 = 1.0 + eps * Dt;
     double b1 = b0 + 0.5 * eps * cos_psi;
     double b2 = 1.0 + eps * cos_psi;
-    double b3 =
-      std::cos(delta_sin_alpha) + 0.25 * delta *
-                                    (std::cos(alpha - delta_sin_alpha) -
-                                      std::cos(3.0 * alpha + delta_sin_alpha));
+    double b3 = openmc::cos(delta_sin_alpha) +
+                0.25 * delta *
+                  (openmc::cos(alpha - delta_sin_alpha) -
+                    openmc::cos(3.0 * alpha + delta_sin_alpha));
     double b4 = b3 - 2.0 * Dt * cos_alpha;
 
     // 6 basis functions g_k(alpha) = b_i * b_j
@@ -1111,15 +1112,15 @@ Position TokamakSource::flux_to_cartesian(
   // y = R * sin(phi)
   // z = Z
 
-  double psi = alpha + triangularity_ * std::sin(alpha);
+  double psi = alpha + triangularity_ * openmc::sin(alpha);
   double r_over_a_sq = (r * r) / (minor_radius_ * minor_radius_);
 
-  double R =
-    major_radius_ + r * std::cos(psi) + shafranov_shift_ * (1.0 - r_over_a_sq);
-  double Z = elongation_ * r * std::sin(alpha);
+  double R = major_radius_ + r * openmc::cos(psi) +
+             shafranov_shift_ * (1.0 - r_over_a_sq);
+  double Z = elongation_ * r * openmc::sin(alpha);
 
-  double x = R * std::cos(phi);
-  double y = R * std::sin(phi);
+  double x = R * openmc::cos(phi);
+  double y = R * openmc::sin(phi);
   double z = Z;
 
   return {x, y, z};

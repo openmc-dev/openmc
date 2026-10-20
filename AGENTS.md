@@ -13,6 +13,7 @@ C++17/Python codebase where:
 
 ### C++ Component Structure
 - **Global vectors of unique_ptrs**: Core objects like `model::cells`, `model::universes`, `nuclides` are stored as `vector<unique_ptr<T>>` in nested namespaces (`openmc::model`, `openmc::simulation`, `openmc::settings`, `openmc::data`)
+- **Portable math**: call transcendental functions (`exp`, `log`, `pow`, `sin`, `cos`, ...) as `openmc::exp` etc. with `#include "openmc/math.h"`, never `std::exp`. By default these are the standard library functions; with `OPENMC_USE_COREMATH=ON` they are CORE-MATH's correctly rounded functions, which return the same bits on every platform (the main source of platform differences in transport results). `tests/unit_tests/test_portable_math_usage.py` enforces the rule.
 - **Custom container types**: OpenMC provides its own `vector`, `array`, `unique_ptr`, and `make_unique` in the `openmc::` namespace (defined in `vector.h`, `array.h`, `memory.h`). These are currently typedefs to `std::` equivalents but may become custom implementations for accelerator support. Always use `openmc::vector`, not `std::vector`.
 - **Geometry systems**:
   - **CSG (default)**: Arbitrarily complex Constructive Solid Geometry using `Surface`, `Region`, `Cell`, `Universe`, `Lattice`

@@ -87,7 +87,7 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
         args = mpi_args + args
 
     if path_input is not None:
-        args += [path_input]
+        args += [str(path_input)]
 
     return args
 

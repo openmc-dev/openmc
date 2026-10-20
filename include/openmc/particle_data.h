@@ -663,8 +663,10 @@ public:
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 
   // Post-collision data
-  // Secondary energy, including collision energy-balance adjustments.
-  double& bank_second_E() { return bank_second_E_; }
+  double& bank_second_E()
+  {
+    return bank_second_E_;
+  } // energy of last reaction secondaries
   const double& bank_second_E() const { return bank_second_E_; }
 
   int& n_bank() { return n_bank_; }        // number of banked fission sites

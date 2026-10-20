@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current version of the statepoint file format is 18.2.
+The current version of the statepoint file format is 18.3.
 
 **/**
 
@@ -35,8 +35,9 @@ The current version of the statepoint file format is 18.2.
              when `run_mode` is 'eigenvalue'.
            - **generations_per_batch** (*int*) -- Number of generations per
              batch. Only present when `run_mode` is 'eigenvalue'.
-           - **k_generation** (*double[]*) -- k-effective for each generation
-             simulated.
+           - **k_generation** (*double[][2]*) -- k-effective and its standard
+             deviation for each generation simulated. Files older than version
+             18.3 store only k-effective, as *double[]*.
            - **entropy** (*double[]*) -- Shannon entropy for each generation
              simulated.
            - **k_col_abs** (*double*) -- Sum of product of collision/absorption
@@ -49,8 +50,10 @@ The current version of the statepoint file format is 18.2.
              combined estimate of k-effective.
            - **n_realizations** (*int*) -- Number of realizations for global
              tallies.
-           - **global_tallies** (*double[][2]*) -- Accumulated sum and
-             sum-of-squares for each global tally.
+           - **global_tallies** (*double[4][2]*) -- Accumulated sum and
+             sum-of-squares for each global tally (k-collision, k-absorption,
+             k-tracklength and leakage). Files older than version 18.3 store
+             *double[4][3]*, with the current value, sum and sum-of-squares.
            - **source_bank** (Compound type) -- Source bank information for each
              particle. The compound type has fields ``r``, ``u``, ``E``,
              ``time``, ``wgt``, ``delayed_group``, ``surf_id``, and

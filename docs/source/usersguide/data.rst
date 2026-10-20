@@ -247,6 +247,23 @@ relaxation sublibrary files are required:
   u = openmc.data.IncidentPhoton.from_endf('photoat-092_U_000.endf',
                                            'atom-092_U_000.endf')
 
+The source library name, version, and release from each ENDF evaluation are
+retained separately. After saving and reloading the data, inspect the
+photoatomic source on :attr:`IncidentPhoton.source_metadata` and the
+relaxation source on :attr:`AtomicRelaxation.source_metadata`::
+
+  u.export_to_hdf5('U.h5')
+  restored = openmc.data.IncidentPhoton.from_hdf5('U.h5')
+  print(restored.source_metadata)
+  print(restored.atomic_relaxation.source_metadata)
+
+Each dictionary contains the available ``library`` (string), ``version``
+(integer), and ``release`` (integer) fields. These identify the respective
+evaluations, not the other bundled components such as Compton profiles or
+bremsstrahlung data. Files without this information, including older HDF5
+files, load with empty dictionaries. Source information is not inferred when
+reading ACE data.
+
 Once the HDF5 files have been generated, a library can be created using the
 :class:`DataLibrary` class as described in :ref:`create_xs_library`.
 

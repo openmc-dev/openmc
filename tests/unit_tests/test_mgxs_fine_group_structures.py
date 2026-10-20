@@ -127,20 +127,9 @@ def test_fomg_16000():
     np.testing.assert_allclose(np.diff(edges[15000:]), 17.6e3, rtol=1e-9)
 
 
-def test_vesta_100000():
-    # Check the definition only
-    edges = GROUP_STRUCTURES['VESTA-100000']
-    assert edges.size == 100001
-    assert edges[0] == 1e-5
-    assert edges[-1] == 2e7
-    np.testing.assert_allclose(np.diff(np.log(edges)),
-                               np.log(2e7 / 1e-5) / 100000, rtol=1e-9)
-
-
 @pytest.mark.parametrize('name, n_groups', [
     ('FOMG-16000', 16000),
     ('VESTA-43000', 43000),
-    ('VESTA-100000', 100000),
 ])
 def test_name_lookup(name, n_groups):
     assert openmc.EnergyFilter.from_group_structure(name).num_bins == n_groups

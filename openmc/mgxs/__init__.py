@@ -25,9 +25,8 @@ GROUP_STRUCTURES = {}
   intermediate and thermal reactor applications ([SAR1990]_)
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
   "TRIPOLI-315", "LLNL-616", "CCFE-709_" and "UKAEA-1102_"
-- multi-group binning fine energy structures, Fusion Optimized Multi-Group "FOMG-16000_",
-  LWR U238 Optimized "VESTA-43000_" and general uniform lethargy "VESTA-100000_"
-  ([MORGAN2013]_, [HAECK2007]_)
+- Multigroup binning fine energy structures, Fusion Optimized Multi-Group "FOMG-16000_",
+  and LWR U238 Optimized "VESTA-43000_" ([MORGAN2013]_, [HAECK2007]_)
 
 .. _CASMO: http://large.stanford.edu/courses/2013/ph241/dalvi1/docs/c5.physor2006.pdf
 .. _SCALE44: https://www-nds.iaea.org/publications/indc/indc-czr-0001.pdf
@@ -44,8 +43,7 @@ GROUP_STRUCTURES = {}
 .. _UKAEA-1102: https://fispact.ukaea.uk/wiki/UKAEA-1102_group_structure
 .. _ECCO-1968: https://serpent.vtt.fi/mediawiki/index.php/ECCO_1968-group_structure
 .. _FOMG-16000: https://doi.org/10.1016/j.anucene.2012.11.028
-.. _VESTA-43000: https://roma.sckcen.be/ws/portalfiles/portal/4558859/An_Optimum_Approach_to_Monte_Carlo_Burn_Up.pdf
-.. _VESTA-100000: https://roma.sckcen.be/ws/portalfiles/portal/4558859/An_Optimum_Approach_to_Monte_Carlo_Burn_Up.pdf
+.. _VESTA-43000: https://doi.org/10.13182/NSE07-A2695
 .. [SAR1990] Sartori, E., OECD/NEA Data Bank: Standard Energy Group Structures
    of Cross Section Libraries for Reactor Shielding, Reactor Cell and Fusion
    Neutronics Applications: VITAMIN-J, ECCO-33, ECCO-2000 and XMAS JEF/DOC-315
@@ -1363,6 +1361,5 @@ GROUP_STRUCTURES['FOMG-16000'] = build_fine_group_structure(
     [1e-5, 1e-3, 1e0, 2e6, 1.96e7], [1, 999, 14000, 1000],
     spacing=['linear', 'linear', 'log', 'linear'])
 GROUP_STRUCTURES['VESTA-43000'] = build_fine_group_structure(
-    [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0,  1e1, 1e2,  1e3,   1e4,  1e5,  1e6,  1e7, 2e7],
+    [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0,  1e1, 1e2,  1e3, 1e4, 1e5, 1e6, 1e7, 2e7],
     [1000, 1000, 1000, 1000, 1000, 4000, 4000, 10000, 10000, 4000, 4000, 1000, 1000])
-GROUP_STRUCTURES['VESTA-100000'] = build_fine_group_structure([1e-5, 2e7], 100000)

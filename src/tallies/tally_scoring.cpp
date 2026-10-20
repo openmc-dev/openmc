@@ -476,20 +476,13 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
         const DelayedGroupFilter& dg_filt {*dynamic_cast<DelayedGroupFilter*>(
           model::tally_filters[i_dg_filt].get())};
 
-        // Loop over delayed group bins until the corresponding bin is found
+        // Loop over delayed group bins until the corresponding bin is found.
+        // The helper applies the filter weights itself, so the score passed
+        // to it must not already include them.
         for (auto d_bin = 0; d_bin < dg_filt.n_bins(); ++d_bin) {
           if (dg_filt.groups()[d_bin] == g) {
-            // Find the filter index and weight for this filter combination
-            double filter_weight = 1.;
-            for (auto j = 0; j < tally.filters().size(); ++j) {
-              auto i_filt = tally.filters(j);
-              auto& match {p.filter_matches(i_filt)};
-              auto i_bin = match.i_bin_;
-              filter_weight *= match.weights_[i_bin];
-            }
-
-            score_fission_delayed_dg(i_tally, d_bin, score * filter_weight,
-              i_score, p.filter_matches());
+            score_fission_delayed_dg(
+              i_tally, d_bin, score, i_score, p.filter_matches());
           }
         }
 

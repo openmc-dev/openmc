@@ -97,8 +97,7 @@ def test_positron_cutoff_annihilation(run_in_tmpdir):
 
 @pytest.mark.parametrize('electron_treatment', ['led', 'ttb'])
 @pytest.mark.parametrize('shared_secondary', [False, True])
-def test_photon_cutoff_heating(run_in_tmpdir, electron_treatment,
-                              shared_secondary):
+def test_photon_cutoff_heating(run_in_tmpdir, electron_treatment, shared_secondary):
     """Scattered photons below the cutoff deposit their energy locally."""
     source_energy = 1.0e6
     # Stay below the pair-production threshold to isolate the photon cutoff.
@@ -112,5 +111,4 @@ def test_photon_cutoff_heating(run_in_tmpdir, electron_treatment,
 
     # A reflective medium absorbs all source energy. Both total and
     # nuclide-specific heating must include cutoff deposition.
-    assert heating.mean.ravel() == pytest.approx(
-        [source_energy, source_energy])
+    assert heating.mean.ravel() == pytest.approx([source_energy, source_energy])

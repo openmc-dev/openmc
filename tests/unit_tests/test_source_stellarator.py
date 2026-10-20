@@ -269,13 +269,15 @@ def test_stellarator_source_from_vmec(run_in_tmpdir, file_format):
     assert src.rmns is None
 
 
-@pytest.fixture(params=[0, 1], ids=['axisymmetric', 'stellarator'])
+@pytest.fixture(scope='module', params=[0, 1], ids=['axisymmetric', 'stellarator'])
 def desc_equilibrium(request):
     pytest.importorskip('desc')
     from desc.equilibrium import Equilibrium
 
     # Circular torus plus a nontrivial l=3 radial contribution.
-    eq = Equilibrium(L=3, M=2, N=request.param, NFP=3, sym=False)
+    # Replace the initial geometry below, so skip DESC's initial-guess checks.
+    eq = Equilibrium(L=3, M=2, N=request.param, NFP=3, sym=False,
+                     check_orientation=False, ensure_nested=False)
     r = np.zeros(eq.R_basis.num_modes)
     z = np.zeros(eq.Z_basis.num_modes)
     r[eq.R_basis.get_idx(0, 0, 0)] = 6.0
@@ -300,6 +302,8 @@ def test_stellarator_source_from_desc(desc_equilibrium, sym):
 
     eq = desc_equilibrium
     if sym:
+        # Keep the shared fixture asymmetric for the other conversion tests.
+        eq = eq.copy()
         eq.change_resolution(sym=True)
     src = openmc.StellaratorSource.from_desc(
         eq, lambda r: 1-r**2, openmc.stats.delta_function(14.07e6), n_rho=7)
@@ -312,19 +316,22 @@ def test_stellarator_source_from_desc(desc_equilibrium, sym):
     rng = np.random.default_rng(640)
     theta, zeta = rng.uniform(0, 2*np.pi, (2, 30))
     phase = src.mode_m[:, None]*theta - src.mode_n[:, None]*eq.NFP*zeta
-    for i, rho in enumerate(src.rho):
-        nodes = np.column_stack([np.full(theta.size, rho), theta, zeta])
-        # Supplying a Grid preserves rho=0 without the default axis shift.
-        grid = Grid(nodes)
-        expected_r = np.asarray(eq.R_basis.evaluate(grid) @ eq.R_lmn)*100
-        expected_z = np.asarray(eq.Z_basis.evaluate(grid) @ eq.Z_lmn)*100
-        r = src.rmnc[i] @ np.cos(phase)
-        z = src.zmns[i] @ np.sin(phase)
-        if not sym:
-            r += src.rmns[i] @ np.sin(phase)
-            z += src.zmnc[i] @ np.cos(phase)
-        np.testing.assert_allclose(r, expected_r, atol=1e-10, rtol=1e-12)
-        np.testing.assert_allclose(z, expected_z, atol=1e-10, rtol=1e-12)
+    # Evaluate all surfaces together to avoid repeated DESC/JAX dispatch.
+    nodes = np.column_stack([np.repeat(src.rho, theta.size),
+                             np.tile(theta, src.rho.size),
+                             np.tile(zeta, src.rho.size)])
+    # Supplying a Grid preserves rho=0 without the default axis shift.
+    grid = Grid(nodes)
+    shape = (src.rho.size, theta.size)
+    expected_r = np.asarray(eq.R_basis.evaluate(grid) @ eq.R_lmn).reshape(shape)*100
+    expected_z = np.asarray(eq.Z_basis.evaluate(grid) @ eq.Z_lmn).reshape(shape)*100
+    r = src.rmnc @ np.cos(phase)
+    z = src.zmns @ np.sin(phase)
+    if not sym:
+        r += src.rmns @ np.sin(phase)
+        z += src.zmnc @ np.cos(phase)
+    np.testing.assert_allclose(r, expected_r, atol=1e-10, rtol=1e-12)
+    np.testing.assert_allclose(z, expected_z, atol=1e-10, rtol=1e-12)
 
 
 @pytest.mark.parametrize('family', [False, True])

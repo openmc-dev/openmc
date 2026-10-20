@@ -529,10 +529,35 @@ period, :math:`[0,2\pi/N_{\mathrm{fp}})`. The angular integral defining
       \sum_{j=0}^{N_\theta-1}\sum_{k=0}^{N_\zeta-1}
       f_i(\eta,\theta_j,\zeta_k).
 
-The weight includes all field periods. Products in :math:`R\tau` have poloidal
-and toroidal degrees at most three times the respective geometry mode limits.
-The trapezoidal grid therefore integrates this finite Fourier series exactly
-in exact arithmetic, provided the Jacobian has a consistent sign.
+The weight includes all field periods. Exactness of this quadrature follows
+from discrete Fourier orthogonality, or the roots-of-unity identity:
+
+.. math::
+
+    \frac{1}{N}\sum_{j=0}^{N-1} e^{2\pi\mathrm{i}\ell j/N}
+    = \begin{cases}
+        1, & \ell \text{ is a multiple of } N, \\
+        0, & \text{otherwise}.
+      \end{cases}
+
+This identity follows from summing a finite geometric series. For a
+trigonometric polynomial with modes :math:`-K,\ldots,K`, choosing
+:math:`N>K` makes every nonconstant mode sum to zero. The periodic trapezoidal
+rule then returns exactly the integral of the constant mode. This result is
+stated in Corollary 3.3 of [TrefethenWeideman]_.
+
+Products in :math:`R\tau` have poloidal and toroidal degrees at most three
+times the respective geometry mode limits. Applying the identity independently
+in both angles gives sufficient conditions for exact integration:
+
+.. math::
+
+    N_\theta>3m_{\max}, \qquad N_\zeta>3|n|_{\max}.
+
+The grid sizes above satisfy these conditions. The quadrature is thus exact
+in exact arithmetic, provided the Jacobian has a consistent sign. Recovering
+only the integral requires fewer points than reconstructing the full Fourier
+series under the Nyquist sampling condition.
 
 Let :math:`v_0=V'_i(0)`, :math:`v_m=V'_i(1/2)`, and :math:`v_1=V'_i(1)` be
 the three values obtained by quadrature. These determine the coefficients:
@@ -739,3 +764,8 @@ biased, their corrections multiply. Mesh and point-cloud distributions can
 similarly change their discrete selection probabilities and apply the ratio
 of the original to the biased normalized probability. The derivation and
 available biasing mechanisms are described in :ref:`methods_source_biasing`.
+
+.. [TrefethenWeideman] Lloyd N. Trefethen and J. A. C. Weideman,
+   `The Exponentially Convergent Trapezoidal Rule
+   <https://people.maths.ox.ac.uk/trefethen/sirev56-3_385.pdf>`_,
+   *SIAM Review*, **56** (3), 385--458 (2014), Corollary 3.3, p. 398.

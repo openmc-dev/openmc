@@ -368,7 +368,11 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 void restart_set_keff()
 {
   if (simulation::restart_batch > settings::n_inactive) {
-    for (int i = settings::n_inactive; i < simulation::restart_batch; ++i) {
+    // k_generation has one entry per generation rather than per batch, so the
+    // active portion of the array must be indexed by generation
+    int i_start = settings::gen_per_batch * settings::n_inactive;
+    int i_end = settings::gen_per_batch * simulation::restart_batch;
+    for (int i = i_start; i < i_end; ++i) {
       simulation::k_sum[0] += simulation::k_generation[i];
       simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
     }

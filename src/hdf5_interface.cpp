@@ -406,8 +406,17 @@ hid_t open_object(hid_t group_id, const std::string& name)
 
 void read_attr(hid_t obj_id, const char* name, hid_t mem_type_id, void* buffer)
 {
+  // Without this, a missing attribute leaves the caller's buffer untouched and
+  // the run continues on whatever it held. That turns a data-format mismatch
+  // into silently wrong results rather than an error.
+  ensure_exists(obj_id, name, true);
+
   hid_t attr = H5Aopen(obj_id, name, H5P_DEFAULT);
-  H5Aread(attr, mem_type_id, buffer);
+  if (H5Aread(attr, mem_type_id, buffer) < 0) {
+    H5Aclose(attr);
+    fatal_error(fmt::format("Failed to read attribute \"{}\" of object {}",
+      name, object_name(obj_id)));
+  }
   H5Aclose(attr);
 }
 

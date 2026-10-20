@@ -38,6 +38,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+desc = ["desc-opt>=0.17.3"]
 depletion-mpi = ["mpi4py"]
 docs = [
     "breathe",

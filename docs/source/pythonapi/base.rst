@@ -28,6 +28,7 @@ Simulation Settings
    openmc.CompiledSource
    openmc.MeshSource
    openmc.TokamakSource
+   openmc.StellaratorSource
    openmc.SourceParticle
    openmc.VolumeCalculation
    openmc.Settings

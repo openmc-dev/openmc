@@ -398,6 +398,125 @@ private:
 };
 
 //==============================================================================
+//! Parametric stellarator plasma neutron source
+//!
+//! This source samples neutron positions from a 3-D stellarator plasma using
+//! the flux-surface Fourier representation shared by the VMEC and DESC
+//! equilibrium codes. The flux coordinates are (rho, theta, zeta), where
+//! rho = sqrt(s) is the square root of the normalized toroidal flux
+//! (proportional to the average minor radius), theta is the poloidal angle,
+//! and zeta is the toroidal angle, which coincides with the cylindrical
+//! azimuthal angle phi in both VMEC and DESC. The flux surfaces are
+//!
+//!   R(rho, theta, zeta) = sum_k [ Rc_k(rho) cos(m_k theta - n_k Nfp zeta)
+//!                               + Rs_k(rho) sin(m_k theta - n_k Nfp zeta) ]
+//!   Z(rho, theta, zeta) = sum_k [ Zs_k(rho) sin(m_k theta - n_k Nfp zeta)
+//!                               + Zc_k(rho) cos(m_k theta - n_k Nfp zeta) ]
+//!
+//! where Nfp is the number of field periods. For stellarator-symmetric
+//! equilibria only Rc and Zs are non-zero.
+//!
+//! With phi = zeta the volume element is dV = R |tau| drho dtheta dzeta with
+//! the poloidal-plane Jacobian
+//!
+//!   tau = dR/drho * dZ/dtheta - dR/dtheta * dZ/drho
+//!
+//! so for an emission density S(rho) [n/cm^3-s] that is constant on flux
+//! surfaces the joint sampling density is
+//!
+//!   p(rho, theta, zeta) ~ S(rho) * R * |tau|
+//!
+//! The sampling algorithm:
+//! 1. Sample rho from the marginal p(rho) ~ S(rho) * V'(rho), where
+//!    V'(rho) = int R |tau| dtheta dzeta is the differential volume, evaluated
+//!    by Fourier quadrature. Each radial bin is selected using its analytically
+//!    integrated cubic PDF, then rho is sampled within the bin by rejection.
+//! 2. Sample (theta, zeta) from the conditional p(theta, zeta | rho)
+//!    ~ R |tau| by rejection against a precomputed per-radial-bin majorant.
+//! 3. Sample energy and time from user-provided distribution(s).
+//! 4. Sample an isotropic direction and map to Cartesian coordinates via
+//!    x = R cos(zeta), y = R sin(zeta), z = Z.
+//!
+//! Fourier coefficients are interpolated linearly in rho between the surfaces
+//! provided on the rho grid; within a radial bin the density R*tau is then
+//! exactly quadratic in the interpolation parameter, which allows a rigorous
+//! per-bin rejection majorant to be constructed from three evaluations.
+//==============================================================================
+
+class StellaratorSource : public Source {
+public:
+  // Constructors
+  explicit StellaratorSource(pugi::xml_node node);
+
+  //! Sample from the stellarator source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
+private:
+  //==========================================================================
+  // Private methods
+
+  //! Precompute the radial CDF and per-bin rejection majorants
+  void precompute_sampling_distributions();
+
+  //! Evaluate the (signed) joint density f = R * tau at a point
+  //! \param bin Radial bin index (between rho grid points bin and bin+1)
+  //! \param t Interpolation parameter within the bin, in [0, 1]
+  //! \param theta Poloidal angle [rad]
+  //! \param zeta Toroidal angle [rad]
+  //! \param R_out If non-null, receives the major radius R [cm]
+  //! \param Z_out If non-null, receives the height Z [cm]
+  //! \return Signed density R * tau (positive after global sign fix)
+  double eval_density(int bin, double t, double theta, double zeta,
+    double* R_out = nullptr, double* Z_out = nullptr) const;
+
+  //! Sample energy from the distribution(s)
+  //! \param rho Normalized radial coordinate (for distribution selection)
+  //! \param seed Pseudorandom seed pointer
+  //! \return (Sampled energy [eV], importance weight)
+  std::pair<double, double> sample_energy(double rho, uint64_t* seed) const;
+
+  //==========================================================================
+  // Data members
+
+  // Radial grid and emission profile (input)
+  vector<double> rho_;              //!< Radial grid, rho = sqrt(s) in [0, 1]
+  vector<double> emission_density_; //!< Emission density S(rho) at grid points
+
+  // Fourier mode description (input)
+  vector<int> mode_m_;    //!< Poloidal mode numbers
+  vector<int> mode_n_;    //!< Toroidal mode numbers (per field period)
+  int num_field_periods_; //!< Number of field periods Nfp
+
+  // Fourier coefficient tables, flattened [n_rho x n_modes] row-major, [cm]
+  vector<double> rmnc_; //!< cos coefficients of R
+  vector<double> zmns_; //!< sin coefficients of Z
+  vector<double> rmns_; //!< sin coefficients of R (non-symmetric only)
+  vector<double> zmnc_; //!< cos coefficients of Z (non-symmetric only)
+  bool asym_ {false};   //!< Whether non-stellarator-symmetric terms present
+
+  // Energy distribution(s): either 1 for all rho, or one per rho point
+  vector<unique_ptr<Distribution>> energy_dists_;
+
+  // Time distribution (defaults to a delta distribution at t=0)
+  UPtrDist time_;
+
+  // Angular distribution (isotropic)
+  UPtrAngle angle_;
+
+  // Bound-normalized cubic radial PDFs and the distribution of bin masses.
+  vector<array<double, 4>> radial_pdf_;
+  DiscreteIndex radial_bins_;
+
+  // Per-radial-bin majorant of R*tau for rejection sampling (n_rho - 1)
+  vector<double> envelope_;
+
+  // Global sign of the flux-coordinate Jacobian (+1 or -1)
+  double jacobian_sign_ {1.0};
+};
+
+//==============================================================================
 // Functions
 //==============================================================================
 

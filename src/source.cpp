@@ -6,6 +6,7 @@
 
 #include <algorithm> // for max
 #include <cmath>     // for sin, cos, abs
+#include <numeric>   // for accumulate
 #include <utility>   // for move
 
 #ifdef HAS_DYNAMIC_LINKING
@@ -108,6 +109,8 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
       return make_unique<MeshSource>(node);
     } else if (source_type == "tokamak") {
       return make_unique<TokamakSource>(node);
+    } else if (source_type == "stellarator") {
+      return make_unique<StellaratorSource>(node);
     } else {
       fatal_error(fmt::format("Invalid source type '{}' found.", source_type));
     }
@@ -1156,6 +1159,509 @@ SourceSite TokamakSource::sample(uint64_t* seed) const
   // 6. Sample energy from distribution(s), applying the importance weight so
   // that biased distributions are handled correctly
   auto [E, E_wgt] = sample_energy(r_norm, seed);
+  site.E = E;
+
+  // 7. Sample particle creation time
+  auto [time, time_wgt] = time_->sample(seed);
+  site.time = time;
+
+  site.wgt *= E_wgt * time_wgt;
+
+  return site;
+}
+
+//==============================================================================
+// StellaratorSource implementation
+//==============================================================================
+
+namespace {
+
+//! Maximum over t in [0, 1] of the quadratic through q(0)=f0, q(1/2)=fh,
+//! q(1)=f1. Exact, since the sampled density is quadratic in the radial
+//! interpolation parameter within a bin.
+double quad_max01(double f0, double fh, double f1)
+{
+  double c = 2.0 * (f0 + f1 - 2.0 * fh);
+  double b = f1 - f0 - c;
+  double m = std::max(f0, f1);
+  if (c < 0.0) {
+    double t_star = -b / (2.0 * c);
+    if (t_star > 0.0 && t_star < 1.0) {
+      m = std::max(m, f0 + t_star * (b + t_star * c));
+    }
+  }
+  return m;
+}
+
+// Bernstein basis functions are nonnegative and sum to one on [0,1], so the
+// largest Bernstein coefficient bounds the cubic for rejection sampling.
+double cubic_rejection_bound(const array<double, 4>& c)
+{
+  double bound = std::max({c[0], c[0] + c[1] / 3,
+    c[0] + 2 * c[1] / 3 + c[2] / 3, c[0] + c[1] + c[2] + c[3]});
+  // Add a small relative margin for rounding in the bound and PDF evaluation.
+  return bound * (1.0 + 1.e-12);
+}
+
+} // namespace
+
+StellaratorSource::StellaratorSource(pugi::xml_node node) : Source(node)
+{
+  // Read number of field periods
+  if (check_for_node(node, "num_field_periods")) {
+    num_field_periods_ = std::stoi(get_node_value(node, "num_field_periods"));
+  } else {
+    num_field_periods_ = 1;
+  }
+
+  // Read radial grid and emission profile
+  rho_ = get_node_array<double>(node, "rho");
+  emission_density_ = get_node_array<double>(node, "emission_density");
+
+  // Read Fourier mode numbers and coefficient tables
+  mode_m_ = get_node_array<int>(node, "mode_m");
+  mode_n_ = get_node_array<int>(node, "mode_n");
+  rmnc_ = get_node_array<double>(node, "rmnc");
+  zmns_ = get_node_array<double>(node, "zmns");
+  if (check_for_node(node, "rmns") || check_for_node(node, "zmnc")) {
+    if (!check_for_node(node, "rmns") || !check_for_node(node, "zmnc")) {
+      fatal_error("StellaratorSource: rmns and zmnc must both be given for "
+                  "non-stellarator-symmetric equilibria.");
+    }
+    rmns_ = get_node_array<double>(node, "rmns");
+    zmnc_ = get_node_array<double>(node, "zmnc");
+    asym_ = true;
+  }
+
+  // Read energy distribution(s)
+  for (auto energy_node : node.children("energy")) {
+    energy_dists_.push_back(distribution_from_xml(energy_node));
+  }
+
+  // Read optional time distribution; default to a delta distribution at t=0
+  if (check_for_node(node, "time")) {
+    time_ = distribution_from_xml(node.child("time"));
+  } else {
+    double T[] {0.0};
+    double p[] {1.0};
+    time_ = UPtrDist {new Discrete {T, p, 1}};
+  }
+
+  // Validate inputs
+  size_t n_rho = rho_.size();
+  size_t n_modes = mode_m_.size();
+  if (num_field_periods_ < 1) {
+    fatal_error("StellaratorSource: num_field_periods must be >= 1.");
+  }
+  if (n_rho < 2) {
+    fatal_error(
+      "StellaratorSource: At least 2 radial points are required for profiles.");
+  }
+  if (rho_.front() != 0.0) {
+    fatal_error("StellaratorSource: rho must start at 0.");
+  }
+  if (rho_.back() != 1.0) {
+    fatal_error("StellaratorSource: rho must end at 1.");
+  }
+  for (size_t i = 1; i < n_rho; ++i) {
+    if (rho_[i] <= rho_[i - 1]) {
+      fatal_error("StellaratorSource: rho must be strictly increasing.");
+    }
+  }
+  if (emission_density_.size() != n_rho) {
+    fatal_error("StellaratorSource: emission_density and rho must have the "
+                "same length.");
+  }
+  for (double s : emission_density_) {
+    if (s < 0.0) {
+      fatal_error(
+        "StellaratorSource: emission_density values cannot be negative.");
+    }
+  }
+  if (std::none_of(emission_density_.begin(), emission_density_.end(),
+        [](double s) { return s > 0.0; })) {
+    fatal_error("StellaratorSource: emission_density must contain at least "
+                "one positive value.");
+  }
+  if (n_modes == 0) {
+    fatal_error("StellaratorSource: At least one Fourier mode is required.");
+  }
+  if (mode_n_.size() != n_modes) {
+    fatal_error(
+      "StellaratorSource: mode_m and mode_n must have the same length.");
+  }
+  for (int m : mode_m_) {
+    if (m < 0) {
+      fatal_error("StellaratorSource: poloidal mode numbers must be >= 0 in "
+                  "the combined Fourier form cos/sin(m*theta - n*Nfp*zeta).");
+    }
+  }
+  if (rmnc_.size() != n_rho * n_modes || zmns_.size() != n_rho * n_modes) {
+    fatal_error("StellaratorSource: rmnc and zmns must have length "
+                "len(rho)*len(mode_m).");
+  }
+  if (asym_ &&
+      (rmns_.size() != n_rho * n_modes || zmnc_.size() != n_rho * n_modes)) {
+    fatal_error("StellaratorSource: rmns and zmnc must have length "
+                "len(rho)*len(mode_m).");
+  }
+  if (energy_dists_.empty()) {
+    fatal_error(
+      "StellaratorSource: At least one energy distribution is required.");
+  }
+  if (energy_dists_.size() != 1 && energy_dists_.size() != n_rho) {
+    fatal_error("StellaratorSource: energy distributions must be either 1 "
+                "(for all rho) or match the number of rho points.");
+  }
+
+  // Initialize isotropic angular distribution
+  angle_ = UPtrAngle {new Isotropic()};
+
+  precompute_sampling_distributions();
+}
+
+void StellaratorSource::precompute_sampling_distributions()
+{
+  size_t n_rho = rho_.size();
+  size_t n_modes = mode_m_.size();
+  size_t n_bins = n_rho - 1;
+
+  // Angular quadrature grid. The density R*tau is a trigonometric polynomial
+  // of poloidal degree <= 3*m_max and toroidal degree <= 3*n_max per field
+  // period, so a uniform trapezoidal product rule with more points than the
+  // bandwidth integrates it exactly (discrete Fourier orthogonality). The
+  // denser grid below also estimates the angular maximum for rejection
+  // sampling; a heuristic safety factor allows for peaks between grid points.
+  int m_max = 0;
+  int n_max = 0;
+  for (size_t k = 0; k < n_modes; ++k) {
+    m_max = std::max(m_max, mode_m_[k]);
+    n_max = std::max(n_max, std::abs(mode_n_[k]));
+  }
+  int n_theta = std::max(64, 8 * m_max);
+  int n_zeta = std::max(64, 8 * n_max);
+  size_t n_grid = static_cast<size_t>(n_theta) * n_zeta;
+
+  // Per-mode trigonometric tables on the angle grid (zeta spans one field
+  // period; the geometry is periodic with period 2*pi/Nfp)
+  double dtheta = 2.0 * PI / n_theta;
+  double dzeta = 2.0 * PI / (num_field_periods_ * n_zeta);
+  vector<double> cos_mt(n_modes * n_theta), sin_mt(n_modes * n_theta);
+  vector<double> cos_nz(n_modes * n_zeta), sin_nz(n_modes * n_zeta);
+  for (size_t k = 0; k < n_modes; ++k) {
+    for (int i = 0; i < n_theta; ++i) {
+      double a = mode_m_[k] * i * dtheta;
+      cos_mt[k * n_theta + i] = std::cos(a);
+      sin_mt[k * n_theta + i] = std::sin(a);
+    }
+    for (int j = 0; j < n_zeta; ++j) {
+      double a = mode_n_[k] * num_field_periods_ * j * dzeta;
+      cos_nz[k * n_zeta + j] = std::cos(a);
+      sin_nz[k * n_zeta + j] = std::sin(a);
+    }
+  }
+
+  // Keep only adjacent surfaces, reusing the older surface's storage after
+  // processing each interval. Each surface is evaluated once.
+  vector<double> R_s(2 * n_grid), Z_s(2 * n_grid);
+  vector<double> Rt_s(2 * n_grid), Zt_s(2 * n_grid);
+
+  // Evaluate positions and poloidal derivatives at each angular grid point.
+  auto evaluate_surface = [&](size_t i) {
+    const double* rc = &rmnc_[i * n_modes];
+    const double* zs = &zmns_[i * n_modes];
+    const double* rs = asym_ ? &rmns_[i * n_modes] : nullptr;
+    const double* zc = asym_ ? &zmnc_[i * n_modes] : nullptr;
+    for (int it = 0; it < n_theta; ++it) {
+      for (int jz = 0; jz < n_zeta; ++jz) {
+        double R = 0.0, Z = 0.0, Rt = 0.0, Zt = 0.0;
+        for (size_t k = 0; k < n_modes; ++k) {
+          // cos/sin(m*theta - n*Nfp*zeta) via angle-addition from tables
+          double cm = cos_mt[k * n_theta + it];
+          double sm = sin_mt[k * n_theta + it];
+          double cn = cos_nz[k * n_zeta + jz];
+          double sn = sin_nz[k * n_zeta + jz];
+          double c = cm * cn + sm * sn;
+          double s = sm * cn - cm * sn;
+          double m = mode_m_[k];
+          R += rc[k] * c;
+          Rt -= m * rc[k] * s;
+          Z += zs[k] * s;
+          Zt += m * zs[k] * c;
+          if (asym_) {
+            R += rs[k] * s;
+            Rt += m * rs[k] * c;
+            Z += zc[k] * c;
+            Zt -= m * zc[k] * s;
+          }
+        }
+        if (R <= 0.0) {
+          fatal_error(
+            "StellaratorSource: flux surfaces reach R <= 0; check the "
+            "Fourier coefficients (units should be cm).");
+        }
+        size_t p = (i % 2) * n_grid + it * n_zeta + jz;
+        R_s[p] = R;
+        Z_s[p] = Z;
+        Rt_s[p] = Rt;
+        Zt_s[p] = Zt;
+      }
+    }
+  };
+
+  // Accumulate signed integrals and bounds for both orientations. The total
+  // volume determines the Jacobian sign after all intervals are processed.
+  double quad_wgt = 4.0 * PI * PI / n_grid; // full-torus angular weight
+  double v_tot = 0.0;
+  vector<double> vp_lo(n_bins), vp_mid(n_bins), vp_hi(n_bins);
+  vector<double> negative_envelope(n_bins);
+  envelope_.assign(n_bins, 0.0);
+  double f_peak = 0.0;
+  double f_min = 0.0;
+  evaluate_surface(0);
+  for (size_t b = 0; b < n_bins; ++b) {
+    evaluate_surface(b + 1);
+    double inv_drho = 1.0 / (rho_[b + 1] - rho_[b]);
+    size_t lo = (b % 2) * n_grid;
+    size_t hi = ((b + 1) % 2) * n_grid;
+    const double* R0 = &R_s[lo];
+    const double* R1 = &R_s[hi];
+    const double* Z0 = &Z_s[lo];
+    const double* Z1 = &Z_s[hi];
+    const double* Rt0 = &Rt_s[lo];
+    const double* Rt1 = &Rt_s[hi];
+    const double* Zt0 = &Zt_s[lo];
+    const double* Zt1 = &Zt_s[hi];
+    double s0 = 0.0, sh = 0.0, s1 = 0.0;
+    double env = 0.0;
+    double negative_env = 0.0;
+    for (size_t p = 0; p < n_grid; ++p) {
+      // Linear interpolation makes radial derivatives constant within a bin.
+      // R and the poloidal derivatives are linear, so R*tau is quadratic.
+      double Rr = (R1[p] - R0[p]) * inv_drho;
+      double Zr = (Z1[p] - Z0[p]) * inv_drho;
+      double f0 = R0[p] * (Rr * Zt0[p] - Rt0[p] * Zr);
+      double f1 = R1[p] * (Rr * Zt1[p] - Rt1[p] * Zr);
+      double Rh = 0.5 * (R0[p] + R1[p]);
+      double Rth = 0.5 * (Rt0[p] + Rt1[p]);
+      double Zth = 0.5 * (Zt0[p] + Zt1[p]);
+      double fh = Rh * (Rr * Zth - Rth * Zr);
+      s0 += f0;
+      sh += fh;
+      s1 += f1;
+
+      // Endpoints and midpoint determine the radial quadratic at this angle.
+      // Bound both signs until the global Jacobian orientation is known.
+      env = std::max(env, quad_max01(f0, fh, f1));
+      negative_env = std::max(negative_env, quad_max01(-f0, -fh, -f1));
+      f_peak = std::max({f_peak, f0, fh, f1});
+      f_min = std::min({f_min, f0, fh, f1});
+    }
+    vp_lo[b] = s0 * quad_wgt;
+    vp_mid[b] = sh * quad_wgt;
+    vp_hi[b] = s1 * quad_wgt;
+    v_tot += sh * quad_wgt * (rho_[b + 1] - rho_[b]);
+    // Heuristic allowance for angular peaks between quadrature points
+    envelope_[b] = 1.05 * env;
+    negative_envelope[b] = 1.05 * negative_env;
+  }
+  jacobian_sign_ = (v_tot >= 0.0) ? 1.0 : -1.0;
+  if (jacobian_sign_ < 0.0) {
+    // Reverse the integrals and extrema to use a positive volume element.
+    envelope_.swap(negative_envelope);
+    double old_peak = f_peak;
+    f_peak = -f_min;
+    f_min = -old_peak;
+    for (size_t b = 0; b < n_bins; ++b) {
+      vp_lo[b] = -vp_lo[b];
+      vp_mid[b] = -vp_mid[b];
+      vp_hi[b] = -vp_hi[b];
+    }
+  }
+  if (f_min < -1.0e-6 * f_peak) {
+    fatal_error(
+      "StellaratorSource: the flux-coordinate Jacobian changes sign within "
+      "the plasma volume; the flux surfaces self-intersect or the Fourier "
+      "coefficient tables are inconsistent.");
+  }
+
+  // Integrate S(rho)*V'(rho) independently on each radial interval. Scaling
+  // the emission profile by its maximum preserves the normalized distribution.
+  double s_max =
+    *std::max_element(emission_density_.begin(), emission_density_.end());
+  vector<double> masses(n_bins);
+  radial_pdf_.resize(n_bins);
+  for (size_t b = 0; b < n_bins; ++b) {
+    double h = rho_[b + 1] - rho_[b];
+    double v0 = vp_lo[b];
+    double vh = vp_mid[b];
+    double v1 = vp_hi[b];
+
+    // Recover V'(t) = a[0] + a[1]*t + a[2]*t^2 for t in [0, 1]. Each
+    // interval retains its own one-sided radial derivatives at the endpoints.
+    array<double, 3> a {v0, 4 * vh - 3 * v0 - v1, 2 * (v0 + v1 - 2 * vh)};
+
+    // A convex quadratic can have its minimum inside the interval.
+    double minimum = std::min(v0, v1);
+    if (a[2] > 0) {
+      double t = -a[1] / (2 * a[2]);
+      if (t > 0 && t < 1)
+        minimum = std::min(minimum, a[0] + t * (a[1] + t * a[2]));
+    }
+    if (!std::isfinite(v0 + vh + v1) || minimum < 0)
+      fatal_error("StellaratorSource: invalid differential volume polynomial.");
+    double s0 = emission_density_[b] / s_max;
+    double s1 = emission_density_[b + 1] / s_max;
+    double ds = s1 - s0;
+    // Simpson's rule exactly integrates the cubic S(rho)*V'(rho).
+    masses[b] = h * ((s0 / 6) * v0 + ((s0 + s1) / 3) * vh + (s1 / 6) * v1);
+
+    // Multiply V'(t) by the linear emission profile to form the radial PDF.
+    auto& c = radial_pdf_[b];
+    c = {s0 * a[0], s0 * a[1] + ds * a[0], s0 * a[2] + ds * a[1], ds * a[2]};
+    double bound = cubic_rejection_bound(c);
+    if (bound > 0) {
+      if (!std::isfinite(bound) || !std::isfinite(masses[b]) || masses[b] <= 0)
+        fatal_error("StellaratorSource: invalid radial interval mass.");
+      // Store the acceptance probability for uniform proposals within the bin.
+      for (double& v : c)
+        v /= bound;
+    }
+  }
+  // Select intervals by integrated probability, including their radial widths.
+  radial_bins_.assign({masses.data(), masses.size()});
+}
+
+double StellaratorSource::eval_density(int bin, double t, double theta,
+  double zeta, double* R_out, double* Z_out) const
+{
+  size_t n_modes = mode_m_.size();
+  // Coefficients at the two surfaces bracketing the sampled radial position
+  const double* rc0 = &rmnc_[bin * n_modes];
+  const double* rc1 = &rmnc_[(bin + 1) * n_modes];
+  const double* zs0 = &zmns_[bin * n_modes];
+  const double* zs1 = &zmns_[(bin + 1) * n_modes];
+  const double* rs0 = asym_ ? &rmns_[bin * n_modes] : nullptr;
+  const double* rs1 = asym_ ? &rmns_[(bin + 1) * n_modes] : nullptr;
+  const double* zc0 = asym_ ? &zmnc_[bin * n_modes] : nullptr;
+  const double* zc1 = asym_ ? &zmnc_[(bin + 1) * n_modes] : nullptr;
+  double inv_drho = 1.0 / (rho_[bin + 1] - rho_[bin]);
+
+  // Accumulate positions and derivatives; suffixes r and t denote rho and
+  // theta.
+  double R = 0.0, Rr = 0.0, Rt = 0.0;
+  double Z = 0.0, Zr = 0.0, Zt = 0.0;
+  for (size_t k = 0; k < n_modes; ++k) {
+    double a = mode_m_[k] * theta - mode_n_[k] * num_field_periods_ * zeta;
+    double c = std::cos(a);
+    double s = std::sin(a);
+    double m = mode_m_[k];
+
+    // Interpolate coefficients in t; their rho derivatives are the surface
+    // differences divided by the bin width. Angular derivatives act on the
+    // Fourier basis and introduce a factor of m.
+    double drc = rc1[k] - rc0[k];
+    double rc = rc0[k] + t * drc;
+    double dzs = zs1[k] - zs0[k];
+    double zs = zs0[k] + t * dzs;
+    R += rc * c;
+    Rr += drc * inv_drho * c;
+    Rt -= m * rc * s;
+    Z += zs * s;
+    Zr += dzs * inv_drho * s;
+    Zt += m * zs * c;
+    if (asym_) {
+      // Add the sine-R and cosine-Z terms for non-stellarator-symmetric shapes.
+      double drs = rs1[k] - rs0[k];
+      double rs = rs0[k] + t * drs;
+      double dzc = zc1[k] - zc0[k];
+      double zc = zc0[k] + t * dzc;
+      R += rs * s;
+      Rr += drs * inv_drho * s;
+      Rt += m * rs * c;
+      Z += zc * c;
+      Zr += dzc * inv_drho * c;
+      Zt -= m * zc * s;
+    }
+  }
+  // Reuse the evaluated position when an angular proposal is accepted.
+  if (R_out)
+    *R_out = R;
+  if (Z_out)
+    *Z_out = Z;
+
+  // Since zeta is the cylindrical azimuth, the volume Jacobian is R*tau,
+  // with tau = R_rho*Z_theta - R_theta*Z_rho. S(rho) cancels from the
+  // conditional angular density; the global sign accounts for handedness.
+  return jacobian_sign_ * R * (Rr * Zt - Rt * Zr);
+}
+
+std::pair<double, double> StellaratorSource::sample_energy(
+  double rho, uint64_t* seed) const
+{
+  if (energy_dists_.size() == 1) {
+    // Single distribution for all rho
+    return energy_dists_[0]->sample(seed);
+  }
+
+  // Multiple distributions: stochastic selection between bracketing points
+  size_t i = lower_bound_index(rho_.begin(), rho_.end(), rho);
+  if (i >= energy_dists_.size() - 1) {
+    return energy_dists_.back()->sample(seed);
+  }
+  double t = (rho - rho_[i]) / (rho_[i + 1] - rho_[i]);
+  size_t idx = (prn(seed) < t) ? i + 1 : i;
+  return energy_dists_[idx]->sample(seed);
+}
+
+SourceSite StellaratorSource::sample(uint64_t* seed) const
+{
+  SourceSite site;
+
+  // 1. Select a radial bin by its integrated mass
+  int bin = radial_bins_.sample(seed);
+  const auto& c = radial_pdf_[bin];
+
+  // 2. Sample uniformly within the radial bin and reject based on the PDF
+  double t = prn(seed);
+  int64_t n_reject = 0;
+  while (true) {
+    double pdf = c[0] + t * (c[1] + t * (c[2] + t * c[3]));
+    if (prn(seed) < pdf)
+      break;
+    if (++n_reject > MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+      fatal_error("StellaratorSource: exceeded the maximum number of "
+                  "rejections while sampling within a radial interval.");
+    }
+    // Retain the selected bin so rejection does not change its probability.
+    t = prn(seed);
+  }
+  double rho = rho_[bin] + t * (rho_[bin + 1] - rho_[bin]);
+
+  // 3. Rejection-sample (theta, zeta) from p(theta, zeta | rho) ~ R*tau
+  double env = envelope_[bin];
+  double R, Z, zeta;
+  n_reject = 0;
+  while (true) {
+    double theta = uniform_distribution(0.0, 2.0 * PI, seed);
+    zeta = uniform_distribution(0.0, 2.0 * PI, seed);
+    double f = eval_density(bin, t, theta, zeta, &R, &Z);
+    if (prn(seed) * env < f)
+      break;
+    if (++n_reject > MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+      fatal_error("StellaratorSource: exceeded the maximum number of "
+                  "rejections while sampling the poloidal/toroidal angles.");
+    }
+  }
+
+  // 4. Convert to Cartesian coordinates (zeta is the cylindrical angle)
+  site.r = {R * std::cos(zeta), R * std::sin(zeta), Z};
+
+  // 5. Sample isotropic direction
+  site.u = angle_->sample(seed).first;
+
+  // 6. Sample energy from distribution(s), applying the importance weight
+  auto [E, E_wgt] = sample_energy(rho, seed);
   site.E = E;
 
   // 7. Sample particle creation time

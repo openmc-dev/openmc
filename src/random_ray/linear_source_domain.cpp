@@ -306,7 +306,6 @@ double LinearSourceDomain::evaluate_flux_at_point(
 
   Position local_r = r - source_regions_.centroid(sr);
   MomentArray phi_linear = source_regions_.flux_moments_t(sr, g);
-  phi_linear *= 1.0 / (settings::n_batches - settings::n_inactive);
 
   MomentMatrix invM = source_regions_.mom_matrix(sr).inverse();
   MomentArray phi_solved = invM * phi_linear;

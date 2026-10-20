@@ -94,6 +94,10 @@ public:
 
   bool satisfies_spatial_constraints(Position r) const;
 
+  //! Whether the energy of a sampled site is a multigroup energy group index
+  //! rather than an energy in [eV]
+  virtual bool energy_is_group_index() const { return false; }
+
 protected:
   // Strategy used for rejecting sites when constraints are applied. KILL means
   // that sites are always accepted but if they don't satisfy constraints, they
@@ -183,11 +187,14 @@ public:
   void load_sites_from_file(
     const std::string& path); //!< Load source sites from file
 
+  bool energy_is_group_index() const override { return group_index_; }
+
 protected:
   SourceSite sample(uint64_t* seed) const override;
 
 private:
   vector<SourceSite> sites_; //!< Source sites
+  bool group_index_ {false}; //!< Whether site energies are group indices
 };
 
 //==============================================================================

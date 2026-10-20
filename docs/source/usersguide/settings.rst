@@ -352,6 +352,16 @@ source file can be manually generated with the :func:`openmc.write_source_file`
 function. This is particularly useful for coupling OpenMC with another program
 that generates a source to be used in OpenMC.
 
+In a multigroup simulation, the source point files and state points store the
+energy group index of each site rather than its energy, and source point files
+record this with an ``energy_mode`` attribute (see :ref:`io_source`). When a
+multigroup simulation reads such a file, each particle starts in its stored
+group; energy bounds given as source constraints are not applied to these sites,
+and a warning says so. A continuous-energy simulation cannot use such a file.
+Files without this record, such as surface source files and files written by
+:func:`openmc.write_source_file`, are read as energies in [eV], which a
+multigroup simulation converts to groups.
+
 Surface Sources
 +++++++++++++++
 

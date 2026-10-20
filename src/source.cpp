@@ -1618,10 +1618,12 @@ SourceSite StellaratorSource::sample(uint64_t* seed) const
 {
   SourceSite site;
 
-  // 1. Select a radial bin by its integrated mass, then sample within that bin.
+  // 1. Select a radial bin by its integrated mass
   int bin = radial_bins_.sample(seed);
-  double t = prn(seed);
   const auto& c = radial_pdf_[bin];
+
+  // 2. Sample uniformly within the radial bin and reject based on the PDF
+  double t = prn(seed);
   int64_t n_reject = 0;
   while (true) {
     double pdf = c[0] + t * (c[1] + t * (c[2] + t * c[3]));
@@ -1636,7 +1638,7 @@ SourceSite StellaratorSource::sample(uint64_t* seed) const
   }
   double rho = rho_[bin] + t * (rho_[bin + 1] - rho_[bin]);
 
-  // 2. Rejection-sample (theta, zeta) from p(theta, zeta | rho) ~ R*tau
+  // 3. Rejection-sample (theta, zeta) from p(theta, zeta | rho) ~ R*tau
   double env = envelope_[bin];
   double R, Z, zeta;
   n_reject = 0;
@@ -1652,17 +1654,17 @@ SourceSite StellaratorSource::sample(uint64_t* seed) const
     }
   }
 
-  // 3. Convert to Cartesian coordinates (zeta is the cylindrical angle)
+  // 4. Convert to Cartesian coordinates (zeta is the cylindrical angle)
   site.r = {R * std::cos(zeta), R * std::sin(zeta), Z};
 
-  // 4. Sample isotropic direction
+  // 5. Sample isotropic direction
   site.u = angle_->sample(seed).first;
 
-  // 5. Sample energy from distribution(s), applying the importance weight
+  // 6. Sample energy from distribution(s), applying the importance weight
   auto [E, E_wgt] = sample_energy(rho, seed);
   site.E = E;
 
-  // 6. Sample particle creation time
+  // 7. Sample particle creation time
   auto [time, time_wgt] = time_->sample(seed);
   site.time = time;
 

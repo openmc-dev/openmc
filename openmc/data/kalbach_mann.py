@@ -555,7 +555,7 @@ class KalbachMann(AngleEnergy):
 
             n_energy_out = int(ace.xss[idx + 1])
             data = ace.xss[idx + 2:idx + 2 + 5*n_energy_out].copy()
-            data.shape = (5, n_energy_out)
+            data = data.reshape(5, n_energy_out)
             data[0, :] *= EV_PER_MEV
 
             # Create continuous distribution
@@ -637,8 +637,7 @@ class KalbachMann(AngleEnergy):
             # TODO: split out discrete energies
             n_angle = items[3]
             n_energy_out = items[5]
-            values = np.asarray(values)
-            values.shape = (n_energy_out, n_angle + 2)
+            values = np.asarray(values).reshape(n_energy_out, n_angle + 2)
 
             # Outgoing energy distribution at the i-th incoming energy
             eout_i = values[:, 0]

@@ -116,7 +116,8 @@ def ascii_to_binary(ascii_file, binary_file):
         idx = 0
         while idx < len(lines):
             # check if it's a > 2.0.0 version header
-            if lines[idx].split()[0][1] == '.':
+            first_word = lines[idx].split()[0]
+            if first_word[0].isdigit() and first_word[1] == '.':
                 if lines[idx + 1].split()[3] == '3':
                     idx = idx + 3
                 else:
@@ -347,8 +348,8 @@ class Library(EqualityMixin):
             # line is empty, we are at end of file
 
             # check if it's a 2.0 style header
-            if lines[0].split()[0][1] == '.':
-                words = lines[0].split()
+            words = lines[0].split()
+            if words[0][0].isdigit() and words[0][1] == '.':
                 name = words[1]
                 words = lines[1].split()
                 atomic_weight_ratio = float(words[0])
@@ -358,7 +359,6 @@ class Library(EqualityMixin):
                     lines.pop(0)
                     lines.append(ace_file.readline())
             else:
-                words = lines[0].split()
                 name = words[0]
                 atomic_weight_ratio = float(words[1])
                 temperature = float(words[2])

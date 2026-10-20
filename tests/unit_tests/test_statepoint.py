@@ -36,6 +36,8 @@ def test_get_tally_filter_type(run_in_tmpdir):
     sp_filename = model.run()
 
     sp = openmc.StatePoint(sp_filename)
+    assert 'path' not in sp._f.attrs
+    assert sp.path == ''
 
     tally_found = sp.get_tally(filter_type=openmc.MeshFilter)
     assert tally_found.id == 1

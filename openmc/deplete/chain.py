@@ -18,7 +18,8 @@ from typing import List
 
 import lxml.etree as ET
 
-from openmc.checkvalue import check_type, check_length, check_greater_than, PathLike
+from openmc.checkvalue import (
+    check_type, check_length, check_greater_than, check_value, PathLike)
 from openmc.data import gnds_name, zam
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
@@ -118,6 +119,41 @@ REACTIONS = {
 }
 
 __all__ = ["Chain", "REACTIONS"]
+
+
+def _normalize_source_metadata(metadata):
+    """Validate and copy source records into a deterministic order."""
+    check_type('source metadata', metadata, Mapping)
+    normalized = {}
+    for component, records in metadata.items():
+        check_value('source component', component,
+                    ('neutron', 'decay', 'fission_yield'))
+        check_type('source records', records, list)
+        unique = set()
+        for record in records:
+            check_type('source record', record, Mapping)
+            if set(record) != {'library', 'version', 'release'}:
+                raise ValueError(
+                    'Source records require library, version, and release')
+            library = record['library']
+            check_type('source library', library, str)
+            if not library.strip():
+                raise ValueError('Source library must not be empty')
+            for name in ('version', 'release'):
+                value = record[name]
+                check_type(f'source {name}', value, Integral)
+                if isinstance(value, bool):
+                    raise TypeError(
+                        f'Source {name} must be an integer, not bool')
+                check_greater_than(f'source {name}', value, 0, equality=True)
+            unique.add((library, int(record['version']),
+                        int(record['release'])))
+        if unique:
+            normalized[component] = [
+                dict(library=library, version=version, release=release)
+                for library, version, release in sorted(unique)
+            ]
+    return dict(sorted(normalized.items()))
 
 
 def replace_missing(product, decay_data):
@@ -262,6 +298,14 @@ class Chain:
         Otherwise, an entry can be added for each material to be burned.
         Ordering should be identical to how the operator orders reaction
         rates for burnable materials.
+    source_metadata : dict of str to list of dict
+        Source libraries used to construct the chain, grouped by ``neutron``,
+        ``decay``, and ``fission_yield`` component. Each record contains a
+        ``library`` name and nonnegative integer ``version`` and ``release``.
+        Multiple records identify mixed-library inputs; missing components have
+        no recorded source. This describes construction inputs, not a complete
+        processing history or the transport cross sections used for reaction
+        rates. Defaults to an empty dictionary.
     """
 
     def __init__(self):
@@ -270,6 +314,7 @@ class Chain:
         self.nuclide_dict = {}
         self._fission_yields = None
         self._decay_matrix = None
+        self._source_metadata = {}
 
     def __contains__(self, nuclide):
         return nuclide in self.nuclide_dict
@@ -281,6 +326,15 @@ class Chain:
     def __len__(self):
         """Number of nuclides in chain."""
         return len(self.nuclides)
+
+    @property
+    def source_metadata(self):
+        """Source libraries used to construct each component of the chain."""
+        return self._source_metadata
+
+    @source_metadata.setter
+    def source_metadata(self, metadata):
+        self._source_metadata = _normalize_source_metadata(metadata)
 
     @property
     def stable_nuclides(self) -> List[Nuclide]:
@@ -357,6 +411,16 @@ class Chain:
 
         """
         transmutation_reactions = reactions
+        source_metadata = defaultdict(list)
+
+        def record_source(component, evaluation):
+            source = evaluation.info.get('library')
+            if source is not None:
+                library, version, release = source
+                record = dict(library=library, version=version,
+                              release=release)
+                if record not in source_metadata[component]:
+                    source_metadata[component].append(record)
 
         # Create dictionary mapping target to filename
         if progress:
@@ -364,6 +428,7 @@ class Chain:
         reactions = {}
         for f in neutron_files:
             evaluation = openmc.data.endf.as_evaluation(f)
+            record_source('neutron', evaluation)
             name = evaluation.gnds_name
             reactions[name] = {}
             for mf, mt, nc, mod in evaluation.reaction_list:
@@ -378,17 +443,21 @@ class Chain:
             print('Processing decay sub-library files...')
         decay_data = {}
         for f in decay_files:
-            data = openmc.data.Decay(f)
+            evaluation = openmc.data.endf.as_evaluation(f)
+            data = openmc.data.Decay(evaluation)
             # Skip decay data for neutron itself
             if data.nuclide['atomic_number'] == 0:
                 continue
+            record_source('decay', evaluation)
             decay_data[data.nuclide['name']] = data
 
         if progress:
             print('Processing fission product yield sub-library files...')
         fpy_data = {}
         for f in fpy_files:
-            data = openmc.data.FissionProductYields(f)
+            evaluation = openmc.data.endf.as_evaluation(f)
+            data = openmc.data.FissionProductYields(evaluation)
+            record_source('fission_yield', evaluation)
             fpy_data[data.nuclide['name']] = data
 
         if progress:
@@ -399,6 +468,7 @@ class Chain:
         missing_fp = []
 
         chain = cls()
+        chain.source_metadata = source_metadata
         for idx, parent in enumerate(sorted(decay_data, key=openmc.data.zam)):
             data = decay_data[parent]
 
@@ -557,6 +627,26 @@ class Chain:
         # Load XML tree
         root = ET.parse(str(filename))
 
+        metadata_elements = root.findall('source_metadata')
+        if len(metadata_elements) > 1:
+            raise ValueError(
+                'A depletion chain may have only one source_metadata element')
+        if metadata_elements:
+            metadata = defaultdict(list)
+            for source in metadata_elements[0]:
+                if not isinstance(source.tag, str):
+                    continue
+                if (source.tag != 'source' or set(source.attrib) !=
+                        {'component', 'library', 'version', 'release'}):
+                    raise ValueError(
+                        'Invalid depletion chain source metadata record')
+                metadata[source.get('component')].append({
+                    'library': source.get('library'),
+                    'version': int(source.get('version')),
+                    'release': int(source.get('release')),
+                })
+            chain.source_metadata = metadata
+
         for i, nuclide_elem in enumerate(root.findall('nuclide')):
             this_q = fission_q.get(get_text(nuclide_elem, "name"))
 
@@ -575,7 +665,15 @@ class Chain:
 
         """
 
+        # Validate again because callers may modify the metadata in place.
+        metadata = _normalize_source_metadata(self.source_metadata)
         root_elem = ET.Element('depletion_chain')
+        if metadata:
+            metadata_elem = ET.SubElement(root_elem, 'source_metadata')
+            for component, records in metadata.items():
+                for record in records:
+                    ET.SubElement(metadata_elem, 'source', component=component,
+                                  **{k: str(v) for k, v in record.items()})
         for nuclide in self.nuclides:
             root_elem.append(nuclide.to_xml_element())
 
@@ -1227,6 +1325,9 @@ class Chain:
         total destruction rate and decay rate of included isotopes
         will be preserved.
 
+        Source metadata is copied from the original chain. It records the
+        original construction inputs, not only sources for retained nuclides.
+
         Parameters
         ----------
         initial_isotopes : iterable of str
@@ -1259,6 +1360,7 @@ class Chain:
         name_sort = sorted(all_isotopes)
 
         new_chain = type(self)()
+        new_chain.source_metadata = self.source_metadata
 
         for idx, iso in enumerate(sorted(all_isotopes, key=openmc.data.zam)):
             previous = self[iso]

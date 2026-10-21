@@ -487,9 +487,10 @@ class VTKTestHarness(TolerantPyAPITestHarness):
         # Adjoint runs also write the forward solve, to a .forward.vtk file
         for vtk_file in sorted(glob.glob('*.vtk')):
             for name, values in read_vtk_arrays(vtk_file).items():
-                # Compare the flux and source fields; the other arrays (FSR
-                # and rank colors, materials, loads, weight windows) are
-                # visualization aids
+                # Compare the flux and source fields. The other arrays are
+                # random colors (FSRs, rank_subdomains), timings
+                # (measured_load), or not under test (Materials,
+                # weight_window_lower)
                 if name.startswith('flux_group_') or name in (
                         'total_fission_source', 'external_source'):
                     outstr += f'{vtk_file} {name}:\n'

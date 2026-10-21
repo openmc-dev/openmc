@@ -34,5 +34,9 @@ def test_random_ray_vtk(run_mode, shape):
             plot.width = (24.9, 24.9, 24.9)
             plot.pixels = (3, 3, 3)
         model.settings.random_ray['source_shape'] = shape
-        harness = MGXSTestHarness('statepoint.10.h5', model, plot)
+        # The linear source keeps its gradients at zero for the first ten
+        # batches, so put all the active batches after them
+        model.settings.inactive = 10
+        model.settings.batches = 15
+        harness = MGXSTestHarness('statepoint.15.h5', model, plot)
         harness.main()

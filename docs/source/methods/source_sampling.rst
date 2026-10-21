@@ -649,8 +649,10 @@ proportion to its acceptance rate. After acceptance,
 :math:`\rho=\rho_i+h_i\eta` has the required marginal
 :math:`p_\rho\propto S V'`.
 
-Conditional Angular Rejection
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _methods_stellarator_angular_sampling:
+
+Conditional Angular Sampling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 With :math:`\rho` fixed, the target PDF is
 
@@ -659,36 +661,176 @@ With :math:`\rho` fixed, the target PDF is
     p(\theta,\zeta\mid\rho)
       = \frac{f_i(\eta,\theta,\zeta)}{V'_i(\eta)}.
 
-At each angular grid point, the three radial evaluations determine the
-quadratic :math:`f_i(\eta)` throughout the interval. Its maximum is obtained
-from the endpoints and, for a concave quadratic, an interior vertex. The current
-angular envelope is
+The angular proposal uses a 32 by 32 partition of one field period, with a
+separate bound for each cell that varies with radius. To describe the cell
+geometry, introduce the field-period angle
+:math:`\varphi=N_{\mathrm{fp}}\zeta` and write
 
 .. math::
 
-    B_i^{\mathrm{ang}} = 1.05\max_{j,k}\max_{0\le\eta\le1}
-       f_i(\eta,\theta_j,\zeta_k).
+    F_i(\eta,\theta,\varphi)
+      = f_i(\eta,\theta,\varphi/N_{\mathrm{fp}}).
 
-The radial maximization here is exact in exact arithmetic. The angular maximum
-is estimated on a grid, with a 5% heuristic allowance for peaks between nodes.
-Exact Fourier quadrature of an integral does not establish an upper bound on
-the function. This envelope therefore does not provide a rigorous bound for
-every supported coefficient table; correctness of angular rejection requires
-it to bound the continuous angular density.
+Both :math:`\theta` and :math:`\varphi` range over :math:`[0,2\pi)`, so each
+cell has angular half-width :math:`d=\pi/32` in both coordinates. This cell grid
+is separate from the finer quadrature grid used during initialization. The
+quadrature grid resolves the density's Fourier coefficients; the cell grid
+defines regions for proposing samples. Integrating :math:`F_i` over the
+rescaled square gives :math:`V'_i(\eta)`: the factor
+:math:`d\varphi=N_{\mathrm{fp}}\,d\zeta` accounts for all field periods.
 
-The sampler proposes :math:`\theta=2\pi\xi_1` and
-:math:`\zeta=2\pi\xi_2` over the full torus, and accepts when
+Within a fixed radial interval, express the quadratic dependence on
+:math:`\eta` in the Bernstein basis:
+
+.. math::
+    :label: stellarator-source-angular-bernstein
+
+    \begin{aligned}
+    F_i(\eta,\theta,\varphi)
+      &= \sum_{j=0}^2 b_j(\eta)G_j(\theta,\varphi), \\
+    b_0(\eta)&=(1-\eta)^2, \qquad
+    b_1(\eta)=2\eta(1-\eta), \qquad b_2(\eta)=\eta^2.
+    \end{aligned}
+
+Suppressing the interval index on the three angular control functions, their
+values follow from the radial evaluations already available during setup:
 
 .. math::
 
-    \xi_3 B_i^{\mathrm{ang}} < f_i(\eta,\theta,\zeta).
+    \begin{aligned}
+    G_0 &= F_i(0,\theta,\varphi), \\
+    G_1 &= 2F_i(1/2,\theta,\varphi)
+           -\tfrac12[F_i(0,\theta,\varphi)+F_i(1,\theta,\varphi)], \\
+    G_2 &= F_i(1,\theta,\varphi).
+    \end{aligned}
 
-Rejected angles are redrawn while retaining both the radial interval and
-:math:`\rho`. If the envelope is valid, this produces the angular conditional
-PDF above. An underestimated envelope clips the peaks because acceptance
-cannot exceed one; the current sampling loop has no explicit check for that
-condition. The angular rejection limit detects excessive rejection, which is a
-different failure condition.
+This is an exact change of polynomial basis. The useful property is that
+:math:`b_j\ge0` and :math:`\sum_j b_j=1` on the interval. If a nonnegative
+constant :math:`U_{jc}` bounds :math:`G_j` throughout angular cell :math:`c`,
+then
+
+.. math::
+    :label: stellarator-source-cell-bound
+
+    B_c(\eta)=\sum_{j=0}^2 b_j(\eta)U_{jc}
+      \;\ge\; F_i(\eta,\theta,\varphi)
+      \quad\text{within cell }c.
+
+Thus three bounds computed once per cell produce a bound at every radius in
+the interval. The control functions :math:`G_j` can have negative values even
+when the density is nonnegative; they are bounded functions, not probability
+densities. Nonnegativity of the Bernstein basis weights is what preserves the
+upper-bound inequality.
+
+Bounding the Density on Angular Cells
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each :math:`G_j` is a finite Fourier series in the two angular coordinates:
+
+.. math::
+
+    G_j(\theta,\varphi)
+      = \sum_{m=-M}^{M}\sum_{n=-L}^{L}
+        \widehat G_{j,mn}e^{\mathrm{i}(m\theta+n\varphi)},
+    \qquad M=3m_{\max},\quad L=3|n|_{\max}.
+
+Initialization recovers these coefficients using separable discrete Fourier
+sums on the quadrature grid. Resolving all coefficients requires the stronger
+conditions :math:`N_\theta>2M` and :math:`N_\zeta>2L`, which the grid sizes
+above also satisfy. The implementation evaluates the sums directly and needs
+no external FFT library.
+
+Let :math:`\boldsymbol{a}_c=(\theta_c,\varphi_c)` be a cell center. Any point
+in the cell has displacement :math:`\boldsymbol{v}` with
+:math:`|v_\theta|,|v_\varphi|\le d`. Taylor's theorem gives the upper bound
+
+.. math::
+    :label: stellarator-source-cell-taylor
+
+    \begin{aligned}
+    G_j(\boldsymbol{a}_c+\boldsymbol{v})
+    &\le G_j(\boldsymbol{a}_c)
+       +d\left(|\partial_\theta G_j(\boldsymbol{a}_c)|
+              +|\partial_\varphi G_j(\boldsymbol{a}_c)|\right) \\
+    &\qquad +\frac{d^2}{2}\sum_{m,n}
+       |\widehat G_{j,mn}|(|m|+|n|)^2.
+    \end{aligned}
+
+To obtain the remainder term, consider the second derivative along the line
+from the center to the proposed point. Each Fourier term contributes a factor
+:math:`(mv_\theta+nv_\varphi)^2`, bounded by
+:math:`d^2(|m|+|n|)^2`. Summing absolute Fourier amplitudes bounds that
+derivative everywhere along the line. The center value and its first
+derivatives retain the cancellations among Fourier modes, allowing a tighter
+bound than separately bounding all factors of the Jacobian.
+
+OpenMC adds a roundoff allowance of
+:math:`10^{-10}\sum_{m,n}|\widehat G_{j,mn}|` to the right-hand side of
+:eq:`stellarator-source-cell-taylor`, then takes its maximum with zero to form
+:math:`U_{jc}`. Center values and derivatives are evaluated using all recovered
+Fourier coefficients, including frequencies above the cell grid's Nyquist
+limit. They are folded onto the cell-center grid with their phase and
+derivative factors preserved; the cell grid does not truncate the density.
+Bounds for both Jacobian orientations share these derivative bounds, with the
+center value changing sign. Initialization retains the bounds for the
+orientation determined by the total signed volume.
+
+Selecting and Sampling Angular Cells
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For each control function, define the sum of its cell bounds
+
+.. math::
+
+    T_j=\sum_c U_{jc}.
+
+Initialization builds three alias tables, one for each distribution
+:math:`U_{jc}/T_j`. At the sampled radius, OpenMC selects a control index
+:math:`j` with probability
+
+.. math::
+
+    P(j\mid\eta)=\frac{b_j(\eta)T_j}{\sum_k b_k(\eta)T_k},
+
+then selects a cell from that control's alias table. Summing over control
+indices shows that the resulting cell probability is
+
+.. math::
+
+    P(c\mid\eta)
+      =\sum_{j:T_j>0} P(j\mid\eta)\frac{U_{jc}}{T_j}
+      =\frac{B_c(\eta)}{\sum_{c'}B_{c'}(\eta)}.
+
+Components with :math:`T_j=0` have zero selection probability and require no
+alias table. This mixture samples the radius-dependent bounds using three
+fixed tables, avoiding construction of a new table for each sampled radius.
+
+The sampler proposes a point uniformly inside the chosen cell and accepts it
+when
+
+.. math::
+
+    \xi B_c(\eta) < F_i(\eta,\theta,\varphi).
+
+All cells have the same area, so the proposal density within a cell is
+proportional to :math:`B_c`. Multiplying it by the acceptance probability
+:math:`F_i/B_c` gives a density proportional to :math:`F_i`, as required.
+On rejection, both the control index and the cell are redrawn while retaining
+the radial interval and :math:`\rho`.
+
+After acceptance, an independently and uniformly chosen field-period index
+:math:`\ell\in\{0,\ldots,N_{\mathrm{fp}}-1\}` gives the full-torus angle
+
+.. math::
+
+    \zeta=\frac{\varphi+2\pi\ell}{N_{\mathrm{fp}}}.
+
+The sampled :math:`R` and :math:`Z` apply in every field period. The cell
+partition affects rejection efficiency while the accepted points follow the
+continuous Fourier density. The Taylor inequality supplies bounds in exact
+arithmetic; a runtime check terminates sampling if a density exceeds its cell
+bound. Nonfinite or negative densities and excessive rejection also produce
+errors.
 
 Sampling Sequence and Approximation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -698,8 +840,9 @@ The steps in the stellarator source's sampling method are:
 1. Select a radial interval using its integrated mass :math:`M_i`.
 2. Sample the local radial coordinate by cubic-PDF rejection within that
    interval, and calculate :math:`\rho`.
-3. Sample the poloidal and toroidal angles by conditional rejection at that
-   fixed radius.
+3. At that fixed radius, select a control index and an angular cell, propose
+   angles uniformly inside the cell, and reject using the local bound. Repeat
+   angular proposals until accepted, then choose a field period uniformly.
 4. Map the accepted position to :math:`(R\cos\zeta,R\sin\zeta,Z)`.
 5. Sample an isotropic flight direction.
 6. Sample energy from the common spectrum or the mixture of spectra bracketing
@@ -709,8 +852,9 @@ Radial integration and rejection sampling are consistent with the piecewise
 linear coefficient and emission tables, up to floating-point effects. Those
 tables approximate the underlying equilibrium and emission profile; increasing
 the number of radial surfaces can reduce interpolation error. The finite
-Fourier representation also limits the geometric detail retained. These input
-approximations are distinct from the angular-envelope condition above.
+Fourier representation also limits the geometric detail retained. The
+Bernstein representation and angular-cell partition introduce no additional
+approximation to this density; the angular bounds control rejection efficiency.
 
 The :meth:`~openmc.StellaratorSource.from_vmec` and
 :meth:`~openmc.StellaratorSource.from_desc` constructors prepare the coefficient

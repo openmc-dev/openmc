@@ -485,12 +485,15 @@ radial proposals are resampled within the same interval. The two angles are
 sampled from the conditional distribution :math:`p(\theta,\zeta|\rho) \propto
 R\,|\tau|` (with :math:`\tau` the poloidal-plane Jacobian) by rejection.
 
-Angular proposals use a 32 by 32 partition of one field period. Each cell has
-a bound that varies quadratically across the radial interval. OpenMC selects
+Angular proposals use a 32 by 32 partition of one field period in the two
+spatial angular coordinates. Each cell has a bound that varies quadratically
+across the radial interval. OpenMC selects
 cells in proportion to these bounds, samples uniformly inside the chosen cell,
 and accepts with probability equal to the density divided by the cell bound.
 Rejected angular proposals retain the radius and select a new cell. A uniformly
-chosen field period maps the accepted point to the full torus.
+chosen field period maps the accepted point to the full torus. The construction
+of the bounds and the Bernstein mixture used to select cells are derived in
+:ref:`methods_stellarator_angular_sampling`.
 
 The bounds are constructed during C++ initialization from the density's Fourier
 coefficients, using a Taylor bound on each cell. This requires no additional

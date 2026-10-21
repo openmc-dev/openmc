@@ -30,6 +30,21 @@ def colorize(diff):
             yield line
 
 
+def read_vtk_arrays(path):
+    """Read the point data arrays from a legacy binary VTK file."""
+    arrays = {}
+    with open(path, 'rb') as fh:
+        while line := fh.readline():
+            if line.startswith(b'POINT_DATA'):
+                n = int(line.split()[1])
+            elif line.startswith(b'SCALARS'):
+                _, name, dtype = line.decode().split()
+                fh.readline()  # LOOKUP_TABLE default
+                dtype = {'float': '>f4', 'int': '>i4'}[dtype]
+                arrays[name] = np.frombuffer(fh.read(4*n), dtype)
+    return arrays
+
+
 class TestHarness:
     """General class for running OpenMC regression tests."""
 
@@ -453,6 +468,39 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
             print(''.join(colorize(diff)))
             os.rename('results_test.dat', 'results_error.dat')
         assert compare, 'Results do not agree'
+
+
+class VTKTestHarness(TolerantPyAPITestHarness):
+    """Specialized harness for random ray tests that also check the flux and
+    source written to VTK files for a voxel plot.
+
+    """
+
+    def __init__(self, statepoint_name, model, plot):
+        super().__init__(statepoint_name, model)
+        # The base class removes all plots, so add back the one being tested
+        self._model.plots = [plot]
+
+    def _get_results(self):
+        """Digest the statepoint and VTK files and return as a string."""
+        outstr = super()._get_results()
+        # Adjoint runs also write the forward solve, to a .forward.vtk file
+        for vtk_file in sorted(glob.glob('*.vtk')):
+            for name, values in read_vtk_arrays(vtk_file).items():
+                # Compare the flux and source fields; the other arrays (FSR
+                # and rank colors, materials, loads, weight windows) are
+                # visualization aids
+                if name.startswith('flux_group_') or name in (
+                        'total_fission_source', 'external_source'):
+                    outstr += f'{vtk_file} {name}:\n'
+                    outstr += ''.join(f'{x:12.6E}\n' for x in values)
+        return outstr
+
+    def _cleanup(self):
+        """Delete the VTK files."""
+        super()._cleanup()
+        for f in glob.glob('*.vtk'):
+            os.remove(f)
 
 
 class WeightWindowPyAPITestHarness(PyAPITestHarness):

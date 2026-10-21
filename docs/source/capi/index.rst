@@ -1027,3 +1027,9 @@ Functions
    :type scores: const int*
    :return: Return status (negative if an error occurred)
    :rtype: int
+
+.. doxygenfunction:: openmc_temperature_field_set_temperature
+
+.. doxygenfunction:: openmc_temperature_field_get_mesh
+
+.. doxygenfunction:: openmc_temperature_field_get_temperature

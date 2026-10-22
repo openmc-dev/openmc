@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "openmc/cell.h"
+#include "openmc/particle_data.h"
 #include "openmc/surface.h"
 
 #include <pugixml.hpp>
@@ -108,9 +109,23 @@ TEST_CASE("Test region simplification")
 
   SECTION("Original bug case from issue #3685")
   {
-    // Input: "-1 2 (-3 4) | (-5 6)" was being incorrectly interpreted
+    // Input: "-1 2 (-3 4) | (-5 6)" was being incorrectly interpreted.
+    // Nested intersections are merged and redundant parentheses are dropped.
     auto region = openmc::Region("(-1 2 (-3 4) | (-5 6))", 0);
-    REQUIRE(region.str() == " ( ( -1 2 ( -3 4 ) ) | ( -5 6 ) )");
+    REQUIRE(region.str() == " ( -1 2 -3 4 ) | ( -5 6 )");
+  }
+
+  SECTION("Complement of a mixed expression")
+  {
+    // The complement applies to the grouped expression (1 2) | 3
+    auto region = openmc::Region("~(1 2 | 3)", 0);
+    REQUIRE(region.str() == " ( -1 | -2 ) -3");
+  }
+
+  SECTION("Complement of a parenthesized subexpression")
+  {
+    auto region = openmc::Region("4 ~(1 | 2 3)", 0);
+    REQUIRE(region.str() == " 4 -1 ( -2 | -3 )");
   }
 
   SECTION("Simple union - no extra parentheses needed")
@@ -203,6 +218,31 @@ TEST_CASE("Find boundary after virtual surface crossings")
 
     REQUIRE(distance == Catch::Approx(1.6));
     REQUIRE(surface == 2);
+  }
+}
+
+TEST_CASE("Find boundary with and without working space")
+{
+  MultiIntersectionFixture fixture;
+  openmc::Region region("-1 | -2", 0);
+
+  // A particle normally has working space for every complex region. When it
+  // does not, as can happen in event-based mode, the region is searched
+  // without it and the boundary found is the same.
+  openmc::GeometryState p;
+  openmc::Position r[] = {{1.0, 0.0, 0.0}, {7.0, 0.0, 0.0}, {4.2, 0.6, 0.0}};
+  openmc::Direction u[] = {{1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}};
+  int32_t on_surface[] = {0, 0, -2};
+  for (int i = 0; i < 3; ++i) {
+    auto expected = region.distance(r[i], u[i], on_surface[i]);
+    p.surface_states().clear();
+    auto without = region.distance(r[i], u[i], on_surface[i], &p);
+    p.surface_states().resize(2);
+    auto with = region.distance(r[i], u[i], on_surface[i], &p);
+    REQUIRE(without.first == Catch::Approx(expected.first));
+    REQUIRE(without.second == expected.second);
+    REQUIRE(with.first == expected.first);
+    REQUIRE(with.second == expected.second);
   }
 }
 

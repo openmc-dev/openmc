@@ -396,13 +396,6 @@ The position is then mapped to :math:`(R\cos\phi,R\sin\phi,Z)`. This
 construction samples the spatial coordinates without a rejection loop, with
 discretization error from the radial and poloidal tabulations.
 
-.. note::
-
-    The continuous integrals above give the required mixture weights. The
-    current implementation stores different values for :math:`I_2`,
-    :math:`I_4`, and :math:`I_5`; that mismatch introduces an additional error
-    in poloidal sampling beyond the tabulation error.
-
 .. _methods_stellarator_source:
 
 Stellarator Sources

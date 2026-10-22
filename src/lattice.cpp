@@ -104,33 +104,6 @@ void Lattice::adjust_indices()
 
 //==============================================================================
 
-int32_t Lattice::fill_offset_table(int32_t target_univ_id, int map,
-  std::unordered_map<int32_t, int32_t>& univ_count_memo)
-{
-  // If the offsets have already been determined for this "map", don't bother
-  // recalculating all of them and just return the total offset. Note that the
-  // offsets_ array doesn't actually include the offset accounting for the last
-  // universe, so we get the before-last offset for the given map and then
-  // explicitly add the count for the last universe.
-  if (offsets_[map * universes_.size() + this->begin().indx_] != C_NONE) {
-    int last_offset =
-      offsets_[(map + 1) * universes_.size() - this->begin().indx_ - 1];
-    int last_univ = this->back();
-    return last_offset +
-           count_universe_instances(last_univ, target_univ_id, univ_count_memo);
-  }
-
-  int32_t offset = 0;
-  for (LatticeIter it = begin(); it != end(); ++it) {
-    offsets_[map * universes_.size() + it.indx_] = offset;
-    offset += count_universe_instances(*it, target_univ_id, univ_count_memo);
-  }
-
-  return offset;
-}
-
-//==============================================================================
-
 void Lattice::to_hdf5(hid_t lattices_group) const
 {
   // Make a group for the lattice.
@@ -365,22 +338,6 @@ Direction RectLattice::get_normal(
     dir[2] = std::copysign(1.0, i_xyz[2]);
   }
   return dir;
-}
-
-//==============================================================================
-
-int32_t& RectLattice::offset(int map, const array<int, 3>& i_xyz)
-{
-  return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map +
-                  n_cells_[0] * n_cells_[1] * i_xyz[2] +
-                  n_cells_[0] * i_xyz[1] + i_xyz[0]];
-}
-
-//==============================================================================
-
-int32_t RectLattice::offset(int map, int indx) const
-{
-  return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map + indx];
 }
 
 //==============================================================================
@@ -1109,25 +1066,6 @@ bool HexLattice::is_valid_index(int indx) const
   int ix = indx - nx * ny * iz - nx * iy;
   array<int, 3> i_xyz {ix, iy, iz};
   return are_valid_indices(i_xyz);
-}
-
-//==============================================================================
-
-int32_t& HexLattice::offset(int map, const array<int, 3>& i_xyz)
-{
-  int nx {2 * n_rings_ - 1};
-  int ny {2 * n_rings_ - 1};
-  int nz {n_axial_};
-  return offsets_[nx * ny * nz * map + nx * ny * i_xyz[2] + nx * i_xyz[1] +
-                  i_xyz[0]];
-}
-
-int32_t HexLattice::offset(int map, int indx) const
-{
-  int nx {2 * n_rings_ - 1};
-  int ny {2 * n_rings_ - 1};
-  int nz {n_axial_};
-  return offsets_[nx * ny * nz * map + indx];
 }
 
 //==============================================================================

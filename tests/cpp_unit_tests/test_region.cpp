@@ -100,6 +100,65 @@ public:
   }
 };
 
+// Helper class for testing accumulated distance through virtual crossings
+class AccumulatedDistanceFixture {
+public:
+  AccumulatedDistanceFixture()
+  {
+    pugi::xml_document doc;
+    auto plane = doc.append_child("surface");
+    plane.append_attribute("id") = 1;
+    plane.append_attribute("type") = "x-plane";
+    plane.append_attribute("coeffs") = 0.0;
+
+    const double offsets[] {-57452.33336021505, 43403.32187479845,
+      62125.04976135607, 62125.04976135607};
+    for (int i = 0; i < 4; ++i) {
+      plane.attribute("id") = i + 1;
+      plane.attribute("coeffs") = offsets[i];
+      openmc::model::surfaces.push_back(
+        std::make_unique<openmc::SurfaceXPlane>(plane));
+      openmc::model::surface_map[i + 1] = i;
+    }
+  }
+
+  ~AccumulatedDistanceFixture()
+  {
+    openmc::model::surfaces.clear();
+    openmc::model::surface_map.clear();
+  }
+};
+
+// Helper class for testing coincident planes within a single region
+class CoincidentPlaneFixture {
+public:
+  CoincidentPlaneFixture()
+  {
+    pugi::xml_document doc;
+    auto plane = doc.append_child("surface");
+    plane.append_attribute("id") = 1;
+    plane.append_attribute("type") = "x-plane";
+    plane.append_attribute("coeffs") = 0.0;
+
+    // Surfaces 1 and 2 are the same plane with different IDs. Surface 3 is far
+    // away and is never reached.
+    const double offsets[] {2718.775540449465, 2718.775540449465, 1.0e9};
+    for (int i = 0; i < 3; ++i) {
+      plane.attribute("id") = i + 1;
+      plane.attribute("coeffs") = offsets[i];
+      openmc::model::surfaces.push_back(
+        std::make_unique<openmc::SurfaceXPlane>(plane));
+      openmc::model::surface_map[i + 1] = i;
+    }
+  }
+
+  ~CoincidentPlaneFixture()
+  {
+    openmc::model::surfaces.clear();
+    openmc::model::surface_map.clear();
+  }
+};
+
 } // anonymous namespace
 
 TEST_CASE("Test region simplification")
@@ -222,4 +281,61 @@ TEST_CASE("Ignore roundoff-scale virtual surface crossings")
 
   REQUIRE(distance == Catch::Approx(603.9161175466262));
   REQUIRE(surface == 1);
+}
+
+TEST_CASE("Maintain position consistency through virtual surface crossings")
+{
+  AccumulatedDistanceFixture fixture;
+  openmc::Region source("-1 | -2 | -3", 0);
+  openmc::Region destination("4", 0);
+
+  // Planes 1 and 2 are virtual crossings and plane 3 is the true boundary.
+  // Surface 4 is the same plane as seen from the destination cell.
+  //
+  // The coordinates are deliberate: a position accumulated step by step lands
+  // short of surface 3, and rounder values do not show the difference.
+  openmc::Position r {-85626.45049221347, 0.0, 0.0};
+  openmc::Direction u {0.9182609440159194, 0.39597580569397484, 0.0};
+
+  auto [distance, surface] = source.distance(r, u, 0);
+  r += distance * u;
+
+  REQUIRE(distance == Catch::Approx(160903.60938949839));
+  REQUIRE(surface == 3);
+  REQUIRE(destination.contains(r, u, surface));
+}
+
+TEST_CASE("Find boundary at coincident surfaces within one region")
+{
+  CoincidentPlaneFixture fixture;
+
+  // After about 166 m the first candidate crossing lands short of both planes,
+  // and the remaining step is lost to roundoff. The search must still return a
+  // distance that carries the particle across both planes.
+  const openmc::Position r_start {-9948.187586907628, 0.0, 0.0};
+  const openmc::Direction u {0.7623218202875262, 0.6471981476437588, 0.0};
+
+  SECTION("Leaving a union")
+  {
+    openmc::Region region("-1 | -2", 0);
+    auto [distance, surface] = region.distance(r_start, u, 0);
+    openmc::Position r = r_start;
+    r += distance * u;
+
+    REQUIRE(distance == Catch::Approx(16616.2935262426));
+    REQUIRE((surface == 1 || surface == 2));
+    REQUIRE_FALSE(region.contains(r, u, surface));
+  }
+
+  SECTION("Entering an intersection")
+  {
+    openmc::Region region("(1 2) | 3", 0);
+    auto [distance, surface] = region.distance(r_start, u, 0);
+    openmc::Position r = r_start;
+    r += distance * u;
+
+    REQUIRE(distance == Catch::Approx(16616.2935262426));
+    REQUIRE((surface == 1 || surface == 2));
+    REQUIRE(region.contains(r, u, surface));
+  }
 }

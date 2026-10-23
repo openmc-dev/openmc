@@ -89,6 +89,86 @@ that, consider the following:
   limit the number of threads that OpenBLAS uses internally; this can be done by
   setting the :envvar:`OPENBLAS_NUM_THREADS` environment variable to 1.
 
+Comparing Recorded Particle Histories
+------------------------------------
+
+``tools/dev/compare_tracks.py`` compares two completed, self-contained version-3.0
+or 3.1 track files using :class:`openmc.Tracks`. It reports the first difference
+in the recorded states without rerunning transport or changing its random-number
+stream. From a checkout with the OpenMC Python package installed, run::
+
+    python tools/dev/compare_tracks.py reference/tracks.h5 candidate/tracks.h5
+
+The JSON report has a ``status`` of ``match``, ``mismatch``, or ``invalid_input``.
+The corresponding exit codes are 0, 1, and 2. Save the report using shell
+redirection if needed. Both input files are read-only. Invalid file types,
+unsupported versions, malformed state schemas, and inconsistent particle
+offsets are reported as invalid input, rather than treated as matching data.
+Two files with no recorded histories are also invalid for this comparison.
+Version-3.0 particle indices are normalized to the corresponding PDG numbers
+used in version 3.1, so equivalent particle types compare equal across formats.
+
+Histories are aligned by their numeric ``(batch, generation, particle number)``
+identifier, independent of HDF5 dataset order. Within a history, particle tracks
+and their states are compared in recorded order. State fields are compared in
+the order ``r.x``, ``r.y``, ``r.z``, ``u.x``, ``u.y``, ``u.z``, ``E``, ``time``,
+``wgt``, ``cell_id``, ``cell_instance``, and ``material_id``. The earliest
+differing state takes precedence over field order. Common prefixes are checked
+before reporting an extra particle track or state. Missing histories, differing
+particle types, and differing record counts have distinct report kinds.
+
+A numerical mismatch includes the history identifier, zero-based
+``particle_index`` and ``state_index``, field name, values from both runs, and
+the binary64 bit patterns for floating-point fields. Finite floating-point
+values also include ``ulp_distance``: the number of representable steps between
+them, counting the two signed zeros as the same numeric point. For example,
+``1.0`` and its next larger representable value differ by one step. Signed zeros
+nevertheless compare unequal because their bits differ. NaNs and infinities
+are compared by bits, including NaN payloads, and have no finite ULP distance
+(``null`` in JSON). Floating-point values are represented as strings so that
+nonfinite values remain valid JSON. Integer fields compare exactly.
+
+The comparison ignores HDF5 padding, byte order, and incidental file attributes
+such as timestamps. It does not compare complete HDF5 file bytes. The reader
+loads both files into memory; select a small set of histories for a focused
+diagnostic run.
+
+For a cross-platform investigation, start with serial, single-threaded
+fixed-source runs and explicit track identifiers. For example, configure the
+same model before exporting it on each system:
+
+.. code-block:: python
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 2
+    model.settings.particles = 100
+    model.settings.seed = 1
+    model.settings.event_based = False
+    model.settings.shared_secondary_bank = False
+    model.settings.track = [(1, 1, 1), (1, 1, 2), (2, 1, 1)]
+
+Use the same source distribution and nuclear data, build with
+``OPENMC_ENABLE_STRICT_FP=ON``, and set ``OMP_NUM_THREADS=1``. Explicit
+:attr:`openmc.Settings.track` identifiers avoid relying on which histories a
+parallel run encounters before reaching ``max_tracks``. Repeat each native
+configuration before comparing platforms. Retain the source revision, compiler
+commands, build configuration, executable and input digests, dependency
+versions, RNG settings, and floating-point environment with each result.
+Strict compiler settings do not themselves make different system math libraries
+produce identical values.
+
+With the local secondary bank used above, ``particle_index=0`` denotes the
+primary particle and subsequent indices denote the recorded secondary
+execution sequence. These indices are not persistent genealogy IDs. Shared
+secondary-bank transport uses separate particle identifiers and should be
+investigated separately. The tool reports the first *recorded-state*
+difference, not necessarily the first differing numerical operation: track
+files do not contain operation operands, reaction identifiers, or RNG state.
+Use the reported history and its preceding matching states to narrow further
+debugger or operation-level tracing without introducing additional RNG draws.
+A match establishes equality of the selected recorded histories, not of every
+unrecorded operation or tally in the calculation.
+
 Debugging Tests in CI
 ---------------------
 

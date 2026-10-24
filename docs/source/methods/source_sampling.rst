@@ -16,8 +16,11 @@ This chapter describes the algorithms represented by the subclasses of
 :class:`openmc.SourceBase`. Input examples are given in
 :ref:`usersguide_source`. Unless otherwise stated, :math:`\xi` denotes an
 independent uniform random number on :math:`[0,1)`, generated as described in
-:ref:`methods_random_numbers`. Probability densities below are normalized with
-respect to the coordinates explicitly indicated.
+:ref:`methods_random_numbers`. Normalized probability densities are denoted by
+:math:`p` or :math:`f`, cumulative distribution functions by :math:`F`, and
+discrete selection probabilities by :math:`P`. A tilde on :math:`p` indicates
+an unnormalized density. Geometric volume factors are denoted by :math:`J`.
+Densities are defined with respect to the coordinates explicitly indicated.
 
 .. _methods_source_selection:
 
@@ -75,8 +78,9 @@ be continuous, discrete, or a mixture of distributions.
 Sampling One-Dimensional Distributions
 --------------------------------------
 
-For a normalized density :math:`f(x)`, inverse-transform sampling draws
-:math:`x=F^{-1}(\xi)`, where
+For a scalar random variable :math:`X` with cumulative distribution function
+:math:`F(x)=\Pr(X\le x)`, inverse-transform sampling draws
+:math:`x=F^{-1}(\xi)`. If the variable has a normalized density :math:`f`, then
 
 .. math::
 
@@ -86,7 +90,7 @@ OpenMC provides analytic distributions as well as tabulated distributions
 through :mod:`openmc.stats`. A tabulated distribution first selects an interval
 using its cumulative probability, then inverts the CDF within that interval
 according to the specified interpolation. For example, a linear-linear PDF on
-:math:`[x_i,x_{i+1}]` has
+:math:`[x_i,x_{i+1}]`, with :math:`f_i=f(x_i)`, has
 
 .. math::
 
@@ -163,13 +167,15 @@ Sources Defined on Meshes
 -------------------------
 
 A mesh distribution first selects an element, then draws a position uniformly
-within that element. If :math:`a_j` is the integrated strength assigned to
-element :math:`j`, with volume :math:`V_j`, the spatial PDF is
+within that element. Denote the region occupied by element :math:`j` by
+:math:`\mathcal D_j` and its volume by
+:math:`V_j=\operatorname{vol}(\mathcal D_j)`. If :math:`a_j` is
+the element's integrated strength, the spatial PDF is
 
 .. math::
 
     p_r(\mathbf{r}) = \frac{a_j}{\sum_k a_k}\frac{1}{V_j},
-    \qquad \mathbf{r}\in V_j.
+    \qquad \mathbf{r}\in\mathcal D_j.
 
 An :class:`openmc.IndependentSource` with a
 :class:`~openmc.stats.MeshSpatial` distribution uses the same direction, energy,
@@ -249,8 +255,10 @@ Radially Varying Spectra
 ------------------------
 
 Both plasma sources accept either one energy distribution or an energy
-distribution at every radial grid point. In an interval with local coordinate
-:math:`\eta\in[0,1]`, the conditional energy distribution is the mixture
+distribution at every radial grid point. Between grid points :math:`u_i` and
+:math:`u_{i+1}`, define the local coordinate
+:math:`\eta=(u-u_i)/(u_{i+1}-u_i)\in[0,1]`. The conditional energy distribution
+is the mixture
 
 .. math::
 
@@ -292,10 +300,11 @@ Differentiating the geometry gives
     &= \kappa r\,[G(\alpha)-2Dq\cos\alpha], \\
     G(\alpha)
     &= \cos(\delta\sin\alpha)
-       +\delta\sin\alpha\cos\alpha\sin\psi.
+       +\delta\sin\alpha\cos\alpha\sin\psi
     \end{aligned}
 
-The coordinate volume element is :math:`R` times this poloidal Jacobian.
+where subscripts :math:`r` and :math:`\alpha` denote partial derivatives. The
+coordinate volume element is :math:`R` times this poloidal Jacobian.
 Up to constants independent of :math:`q` and :math:`\alpha`, the joint density
 is therefore
 
@@ -408,7 +417,10 @@ The stellarator source uses flux coordinates :math:`(\rho,\theta,\zeta)`,
 where :math:`\rho=\sqrt{s}` for normalized toroidal flux :math:`s`,
 :math:`\theta` is a poloidal angle, and :math:`\zeta` equals the cylindrical
 azimuth. With :math:`N_{\mathrm{fp}}` field periods, define
-:math:`\chi_k=m_k\theta-n_kN_{\mathrm{fp}}\zeta`. The surfaces are
+:math:`\chi_k=m_k\theta-n_kN_{\mathrm{fp}}\zeta`, where :math:`m_k\ge0`
+and :math:`n_k` are the integer poloidal and toroidal mode numbers. Their
+maximum magnitudes are :math:`m_{\max}=\max_k m_k` and
+:math:`|n|_{\max}=\max_k|n_k|`. The surfaces are
 
 .. math::
     :label: stellarator-source-fourier
@@ -448,8 +460,8 @@ absolute value, so either convention is allowed. For a valid map, the sign is
 consistent throughout the plasma away from the magnetic axis, where the
 Jacobian vanishes. OpenMC determines this sign during initialization and sets
 :math:`\sigma=+1` for positive :math:`\tau` or :math:`\sigma=-1` for negative
-:math:`\tau`. It can then evaluate the positive sampling density as
-:math:`f=\sigma R\tau=R|\tau|`. Initialization checks for nonpositive radii
+:math:`\tau`. It can then evaluate the nonnegative volume factor as
+:math:`J=\sigma R\tau=R|\tau|`. Initialization checks for nonpositive radii
 and significant changes in the sign of :math:`\tau` on a setup grid.
 
 Interpolation Within a Radial Interval
@@ -457,12 +469,19 @@ Interpolation Within a Radial Interval
 
 On interval :math:`i`, define its width :math:`h_i=\rho_{i+1}-\rho_i` and local
 coordinate :math:`\eta=(\rho-\rho_i)/h_i`. Each Fourier coefficient :math:`C`
-and the emission profile are interpolated linearly:
+and the emission profile are interpolated linearly, using endpoint values
+:math:`C_i=C(\rho_i)` and :math:`S_i=S(\rho_i)`:
 
 .. math::
 
     C(\eta)=(1-\eta)C_i+\eta C_{i+1}, \qquad
     S(\eta)=S_i+\eta(S_{i+1}-S_i).
+
+Functions written with argument :math:`\eta` are evaluated at
+:math:`\rho=\rho_i+h_i\eta`. Throughout the following derivation, a single
+interval :math:`i` is considered at a time. Polynomial coefficients, control
+functions, and cell bounds depend on that interval; the index :math:`i` is
+suppressed where it is not written explicitly.
 
 Because Fourier evaluation is linear in the coefficients, at fixed angles
 :math:`R`, :math:`Z`, :math:`R_\theta`, and :math:`Z_\theta` are linear in
@@ -474,9 +493,15 @@ Because Fourier evaluation is linear in the coefficients, at fixed angles
     Z_\rho=\frac{Z_{i+1}-Z_i}{h_i}
 
 are constant within the interval. It follows that :math:`\tau` is linear in
-:math:`\eta` and :math:`f=\sigma R\tau` is quadratic. The differential volume
-is the angular integral of this density. Denote its value at
-:math:`\rho=\rho_i+h_i\eta` by :math:`V'_i(\eta)`:
+:math:`\eta` and :math:`J=\sigma R\tau` is quadratic. Define the local volume
+factor explicitly as
+
+.. math::
+
+    J_i(\eta,\theta,\zeta)=J(\rho_i+h_i\eta,\theta,\zeta).
+
+The differential volume is the angular integral of this factor. Denote its
+value at :math:`\rho=\rho_i+h_i\eta` by :math:`V'_i(\eta)`:
 
 .. math::
     :label: stellarator-source-volume-polynomial
@@ -485,7 +510,7 @@ is the angular integral of this density. Denote its value at
     V'_i(\eta)
       &\equiv \left.\frac{dV}{d\rho}\right|_{\rho=\rho_i+h_i\eta} \\
       &= \int_0^{2\pi}\!\int_0^{2\pi}
-         f_i(\eta,\theta,\zeta)\,d\theta\,d\zeta \\
+         J_i(\eta,\theta,\zeta)\,d\theta\,d\zeta \\
       &= A_0+A_1\eta+A_2\eta^2.
     \end{aligned}
 
@@ -508,7 +533,7 @@ Computing Differential Volumes
 To determine the three polynomial coefficients in
 :eq:`stellarator-source-volume-polynomial`, initialization computes the angular
 integral at just three radial positions, :math:`\eta=0,1/2,1`. At each of
-these positions, it evaluates :math:`f_i` on a uniform angular grid with sizes
+these positions, it evaluates :math:`J_i` on a uniform angular grid with sizes
 
 .. math::
 
@@ -524,7 +549,7 @@ period, :math:`[0,2\pi/N_{\mathrm{fp}})`. The angular integral defining
     V'_i(\eta)
     = \frac{4\pi^2}{N_\theta N_\zeta}
       \sum_{j=0}^{N_\theta-1}\sum_{k=0}^{N_\zeta-1}
-      f_i(\eta,\theta_j,\zeta_k).
+      J_i(\eta,\theta_j,\zeta_k).
 
 The weight includes all field periods. Exactness of this quadrature follows
 from discrete Fourier orthogonality, or the roots-of-unity identity:
@@ -578,13 +603,13 @@ Selecting and Sampling a Radial Interval
 
 Multiplying the linear emission profile by
 :eq:`stellarator-source-volume-polynomial` yields an unnormalized cubic radial
-PDF in the local coordinate:
+density with respect to :math:`d\rho`, expressed using the local coordinate:
 
 .. math::
     :label: stellarator-source-radial-polynomial
 
     \begin{aligned}
-    P_i(\eta) &= S(\eta)V'_i(\eta)
+    \widetilde p_i(\eta) &= S(\eta)V'_i(\eta)
                  = c_0+c_1\eta+c_2\eta^2+c_3\eta^3, \\
     c_0 &= S_i A_0, \\
     c_1 &= S_i A_1+\Delta S_i A_0, \\
@@ -599,7 +624,7 @@ of variable :math:`d\rho=h_i\,d\eta`:
     :label: stellarator-source-interval-mass
 
     \begin{aligned}
-    M_i &= h_i\int_0^1 P_i(\eta)\,d\eta \\
+    M_i &= h_i\int_0^1 \widetilde p_i(\eta)\,d\eta \\
         &= h_i\left(\frac{S_i v_0}{6}
            +\frac{(S_i+S_{i+1})v_m}{3}
            +\frac{S_{i+1}v_1}{6}\right).
@@ -611,13 +636,25 @@ alias table. A common scaling of all emission values cancels from these
 probabilities; the implementation divides them by their maximum before forming
 the masses and PDFs.
 
+Conditional on choosing interval :math:`i`, the normalized PDF with respect to
+:math:`d\eta` is
+
+.. math::
+
+    p(\eta\mid i)=\frac{h_i\widetilde p_i(\eta)}{M_i},
+    \qquad 0\le\eta\le1.
+
+The factor :math:`h_i` accounts for the change from :math:`\rho` to
+:math:`\eta`; it is constant within the selected interval and cancels from
+the rejection-sampling acceptance ratio.
+
 Within the selected interval, OpenMC uses uniform proposals
 :math:`\eta=\xi_1` with rejection sampling. An upper bound follows by writing
 the cubic in the Bernstein basis:
 
 .. math::
 
-    P_i(\eta) = \sum_{j=0}^{3}\beta_j
+    \widetilde p_i(\eta) = \sum_{j=0}^{3}\beta_j
        {3\choose j}\eta^j(1-\eta)^{3-j},
 
 where
@@ -632,13 +669,14 @@ where
     \end{aligned}
 
 The Bernstein basis functions are nonnegative and sum to one, so
-:math:`B_i^{r}=\max_j\beta_j` bounds :math:`P_i` throughout the interval.
+:math:`B_i^{\mathrm{rad}}=\max_j\beta_j` bounds :math:`\widetilde p_i`
+throughout the interval.
 The implementation adds a small relative margin for floating-point roundoff
 and stores the coefficients divided by that bound. A proposal is accepted when
 
 .. math::
 
-    \xi_2 < \frac{P_i(\eta)}{B_i^{r}}.
+    \xi_2 < \frac{\widetilde p_i(\eta)}{B_i^{\mathrm{rad}}}.
 
 On rejection, only :math:`\eta` is redrawn; the selected interval is retained.
 Selecting a new interval after a rejection would change its probability in
@@ -651,30 +689,41 @@ proportion to its acceptance rate. After acceptance,
 Conditional Angular Sampling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-With :math:`\rho` fixed, the target PDF is
+With :math:`\rho` fixed, the target PDF over the full torus,
+:math:`\theta,\zeta\in[0,2\pi)`, is
 
 .. math::
 
     p(\theta,\zeta\mid\rho)
-      = \frac{f_i(\eta,\theta,\zeta)}{V'_i(\eta)}.
+      = \frac{J_i(\eta,\theta,\zeta)}{V'_i(\eta)}.
 
 The angular proposal uses a 32 by 32 partition of one field period, with a
 separate bound for each cell that varies with radius. To describe the cell
-geometry, introduce the field-period angle
-:math:`\varphi=N_{\mathrm{fp}}\zeta` and write
+geometry, use a toroidal angle :math:`\zeta_0` restricted to the first field
+period and its rescaled counterpart :math:`\varphi`:
 
 .. math::
 
-    F_i(\eta,\theta,\varphi)
-      = f_i(\eta,\theta,\varphi/N_{\mathrm{fp}}).
+    \zeta_0\in[0,2\pi/N_{\mathrm{fp}}), \qquad
+    \varphi=N_{\mathrm{fp}}\zeta_0\in[0,2\pi).
+
+The geometric volume factor evaluated in these coordinates is
+
+.. math::
+
+    \widetilde J_i(\eta,\theta,\varphi)
+      = J_i(\eta,\theta,\zeta_0)
+      = J_i(\eta,\theta,\varphi/N_{\mathrm{fp}}).
 
 Both :math:`\theta` and :math:`\varphi` range over :math:`[0,2\pi)`, so each
 cell has angular half-width :math:`d=\pi/32` in both coordinates. This cell grid
 is separate from the finer quadrature grid used during initialization. The
 quadrature grid resolves the density's Fourier coefficients; the cell grid
-defines regions for proposing samples. Integrating :math:`F_i` over the
-rescaled square gives :math:`V'_i(\eta)`: the factor
-:math:`d\varphi=N_{\mathrm{fp}}\,d\zeta` accounts for all field periods.
+defines regions for proposing samples. Integrating :math:`\widetilde J_i`
+over the rescaled square gives :math:`V'_i(\eta)`: the factor
+:math:`d\varphi=N_{\mathrm{fp}}\,d\zeta_0` accounts for all field periods.
+The normalized angular PDF in the rescaled square is therefore
+:math:`p(\theta,\varphi\mid\rho)=\widetilde J_i/V'_i`.
 
 Within a fixed radial interval, express the quadratic dependence on
 :math:`\eta` in the Bernstein basis:
@@ -683,7 +732,7 @@ Within a fixed radial interval, express the quadratic dependence on
     :label: stellarator-source-angular-bernstein
 
     \begin{aligned}
-    F_i(\eta,\theta,\varphi)
+    \widetilde J_i(\eta,\theta,\varphi)
       &= \sum_{j=0}^2 b_j(\eta)G_j(\theta,\varphi), \\
     b_0(\eta)&=(1-\eta)^2, \qquad
     b_1(\eta)=2\eta(1-\eta), \qquad b_2(\eta)=\eta^2.
@@ -695,10 +744,10 @@ values follow from the radial evaluations already available during setup:
 .. math::
 
     \begin{aligned}
-    G_0 &= F_i(0,\theta,\varphi), \\
-    G_1 &= 2F_i(1/2,\theta,\varphi)
-           -\tfrac12[F_i(0,\theta,\varphi)+F_i(1,\theta,\varphi)], \\
-    G_2 &= F_i(1,\theta,\varphi).
+    G_0 &= \widetilde J_i(0,\theta,\varphi), \\
+    G_1 &= 2\widetilde J_i(1/2,\theta,\varphi)
+           -\tfrac12[\widetilde J_i(0,\theta,\varphi)+\widetilde J_i(1,\theta,\varphi)], \\
+    G_2 &= \widetilde J_i(1,\theta,\varphi).
     \end{aligned}
 
 This is an exact change of polynomial basis. The useful property is that
@@ -710,23 +759,23 @@ then
     :label: stellarator-source-cell-bound
 
     B_c(\eta)=\sum_{j=0}^2 b_j(\eta)U_{jc}
-      \;\ge\; F_i(\eta,\theta,\varphi)
+      \;\ge\; \widetilde J_i(\eta,\theta,\varphi)
       \quad\text{within cell }c.
 
 Thus three bounds computed once per cell produce a bound at every radius in
 the interval. For a valid geometry, the control functions :math:`G_j` are
 also nonnegative. This follows from the factorization
-:math:`F_i=R\widetilde\tau`, where :math:`\widetilde\tau=\sigma\tau` is the
-nonnegative poloidal Jacobian. Both factors are linear in :math:`\eta`.
-Writing their endpoint values as :math:`R_0,R_1` and
-:math:`\widetilde\tau_0,\widetilde\tau_1` gives
+:math:`\widetilde J_i=R\widetilde\tau`, where
+:math:`\widetilde\tau=\sigma\tau` is the nonnegative poloidal Jacobian.
+Both factors are linear in :math:`\eta`. Writing their endpoint values as
+:math:`R_i,R_{i+1}` and :math:`\widetilde\tau_i,\widetilde\tau_{i+1}` gives
 
 .. math::
 
     \begin{aligned}
-    G_0 &= R_0\widetilde\tau_0, \\
-    G_1 &= \tfrac12(R_0\widetilde\tau_1+R_1\widetilde\tau_0), \\
-    G_2 &= R_1\widetilde\tau_1.
+    G_0 &= R_i\widetilde\tau_i, \\
+    G_1 &= \tfrac12(R_i\widetilde\tau_{i+1}+R_{i+1}\widetilde\tau_i), \\
+    G_2 &= R_{i+1}\widetilde\tau_{i+1}.
     \end{aligned}
 
 Each expression is nonnegative because the endpoint radii are positive and
@@ -901,11 +950,12 @@ when
 
 .. math::
 
-    \xi B_c(\eta) < F_i(\eta,\theta,\varphi).
+    \xi B_c(\eta) < \widetilde J_i(\eta,\theta,\varphi).
 
 All cells have the same area, so the proposal density within a cell is
 proportional to :math:`B_c`. Multiplying it by the acceptance probability
-:math:`F_i/B_c` gives a density proportional to :math:`F_i`, as required.
+:math:`\widetilde J_i/B_c` gives a density proportional to
+:math:`\widetilde J_i`, as required.
 On rejection, both the control index and the cell are redrawn while retaining
 the radial interval and :math:`\rho`.
 
@@ -914,7 +964,8 @@ After acceptance, an independently and uniformly chosen field-period index
 
 .. math::
 
-    \zeta=\frac{\varphi+2\pi\ell}{N_{\mathrm{fp}}}.
+    \zeta=\zeta_0+\frac{2\pi\ell}{N_{\mathrm{fp}}}
+         =\frac{\varphi+2\pi\ell}{N_{\mathrm{fp}}}.
 
 The sampled :math:`R` and :math:`Z` apply in every field period. The cell
 partition affects rejection efficiency while the accepted points follow the
@@ -970,16 +1021,18 @@ distribution
 
 .. math::
 
-    p_{\mathcal{A}}(X) =
-    \frac{p(X)\,\mathbf{1}_{\mathcal{A}}(X)}
-         {\int_{\mathcal{A}}p(Y)\,dY},
+    p_{\mathcal{A}}(\boldsymbol{x}) =
+    \frac{p(\boldsymbol{x})\,\mathbf{1}_{\mathcal{A}}(\boldsymbol{x})}
+         {\int_{\mathcal{A}}p(\boldsymbol{y})\,d\boldsymbol{y}},
 
-where :math:`X` denotes the sampled phase-space variables. The base source
-wrapper repeats sampling until a candidate passes, or, with the ``kill``
-strategy, returns a failing candidate with weight zero. Independent sources
-handle constraints internally: they resample positions for spatial constraints
-and energies for energy constraints and the available energy range. Their time
-samples are drawn directly. Constraints on an element source in a
+where :math:`\boldsymbol{x}=(\mathbf{r},\mathbf{\Omega},E,t)` denotes a
+phase-space point and :math:`\mathbf{1}_{\mathcal A}` is one inside the
+acceptance region and zero outside it. The base source wrapper repeats
+sampling until a candidate passes, or, with the ``kill`` strategy, returns a
+failing candidate with weight zero. Independent sources handle constraints
+internally: they resample positions for spatial constraints and energies for
+energy constraints and the available energy range. Their time samples are drawn
+directly. Constraints on an element source in a
 :class:`openmc.MeshSource` are applied after selecting that element; constraints
 on the mesh source itself are checked by its outer wrapper. Similarly, selecting
 among multiple top-level sources precedes each source's constraint handling.
@@ -993,12 +1046,13 @@ reasonable.
 
 Source biasing draws from a proposal distribution :math:`g` in place of the
 desired density :math:`p`, with the correction
-:math:`w\leftarrow w\,p(X)/g(X)`. The proposal must cover every region where
-the desired distribution contributes. When multiple independent factors are
-biased, their corrections multiply. Mesh and point-cloud distributions can
-similarly change their discrete selection probabilities and apply the ratio
-of the original to the biased normalized probability. The derivation and
-available biasing mechanisms are described in :ref:`methods_source_biasing`.
+:math:`w\leftarrow w\,p(\boldsymbol{x})/g(\boldsymbol{x})`. The proposal must
+cover every region where the desired distribution contributes. When multiple
+independent factors are biased, their corrections multiply. Mesh and point-cloud
+distributions can similarly change their discrete selection probabilities and
+apply the ratio of the original to the biased normalized probability. The
+derivation and available biasing mechanisms are described in
+:ref:`methods_source_biasing`.
 
 .. [TrefethenWeideman] Lloyd N. Trefethen and J. A. C. Weideman,
    `The Exponentially Convergent Trapezoidal Rule

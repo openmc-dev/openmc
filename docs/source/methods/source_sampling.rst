@@ -449,8 +449,7 @@ cylindrical coordinates gives
 
 Here subscripts denote partial derivatives. The derivatives :math:`R_\zeta`
 and :math:`Z_\zeta` drop out of the determinant because the cylindrical azimuth
-is exactly :math:`\zeta`. Thus the joint coordinate PDF is
-:math:`p(\rho,\theta,\zeta)\propto S(\rho)R|\tau|`.
+is exactly :math:`\zeta`.
 
 The geometry must have positive :math:`R` and nested flux surfaces. The sign
 of :math:`\tau` depends on the convention for measuring the poloidal angle:
@@ -463,6 +462,46 @@ Jacobian vanishes. OpenMC determines this sign during initialization and sets
 :math:`\tau`. It can then evaluate the nonnegative volume factor as
 :math:`J=\sigma R\tau=R|\tau|`. Initialization checks for nonpositive radii
 and significant changes in the sign of :math:`\tau` on a setup grid.
+
+The role of :math:`J` is to convert a coordinate element into physical volume:
+
+.. math::
+
+    dV=J(\rho,\theta,\zeta)\,d\rho\,d\theta\,d\zeta.
+
+Multiplying by the emission density :math:`S(\rho)` gives the emission rate
+in that element. Define the differential volume and total emission rate as
+
+.. math::
+
+    V'(\rho)=\int_0^{2\pi}\!\int_0^{2\pi}
+                J(\rho,\theta,\zeta)\,d\theta\,d\zeta,
+    \qquad Q=\int S(u)V'(u)\,du,
+
+where the radial integral covers the tabulated radial range. The normalized
+joint PDF with respect to :math:`d\rho\,d\theta\,d\zeta` is therefore
+
+.. math::
+    :label: stellarator-source-joint
+
+    p(\rho,\theta,\zeta)
+      =\frac{S(\rho)J(\rho,\theta,\zeta)}{Q}.
+
+Integrating out the angles gives the radial marginal. Dividing the joint PDF
+by that marginal gives the conditional angular PDF:
+
+.. math::
+    :label: stellarator-source-factorization
+
+    p_\rho(\rho)=\frac{S(\rho)V'(\rho)}{Q}, \qquad
+    p(\theta,\zeta\mid\rho)
+      =\frac{J(\rho,\theta,\zeta)}{V'(\rho)}.
+
+Thus :math:`p(\rho,\theta,\zeta)=p_\rho(\rho)p(\theta,\zeta\mid\rho)`.
+OpenMC first samples :math:`\rho` from the radial marginal, then samples the
+angles at that radius. The emission profile affects the radial distribution
+and cancels from the conditional angular PDF. The following sections derive
+the interval polynomials and angular bounds used to sample these two factors.
 
 Interpolation Within a Radial Interval
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -500,15 +539,14 @@ factor explicitly as
 
     J_i(\eta,\theta,\zeta)=J(\rho_i+h_i\eta,\theta,\zeta).
 
-The differential volume is the angular integral of this factor. Denote its
-value at :math:`\rho=\rho_i+h_i\eta` by :math:`V'_i(\eta)`:
+The differential volume defined above therefore has the interval form
 
 .. math::
     :label: stellarator-source-volume-polynomial
 
     \begin{aligned}
     V'_i(\eta)
-      &\equiv \left.\frac{dV}{d\rho}\right|_{\rho=\rho_i+h_i\eta} \\
+      &\equiv V'(\rho_i+h_i\eta) \\
       &= \int_0^{2\pi}\!\int_0^{2\pi}
          J_i(\eta,\theta,\zeta)\,d\theta\,d\zeta \\
       &= A_0+A_1\eta+A_2\eta^2.
@@ -601,9 +639,11 @@ angular bounds needed for sampling.
 Selecting and Sampling a Radial Interval
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Multiplying the linear emission profile by
-:eq:`stellarator-source-volume-polynomial` yields an unnormalized cubic radial
-density with respect to :math:`d\rho`, expressed using the local coordinate:
+To sample the radial marginal in :eq:`stellarator-source-factorization`,
+multiply the linear emission profile by
+:eq:`stellarator-source-volume-polynomial`. This gives an unnormalized cubic
+radial density with respect to :math:`d\rho`, expressed using the local
+coordinate:
 
 .. math::
     :label: stellarator-source-radial-polynomial
@@ -630,11 +670,11 @@ of variable :math:`d\rho=h_i\,d\eta`:
            +\frac{S_{i+1}v_1}{6}\right).
     \end{aligned}
 
-The last expression is Simpson's rule, which is exact for a cubic. OpenMC
-selects interval :math:`i` with probability :math:`M_i/\sum_j M_j` using an
-alias table. A common scaling of all emission values cancels from these
-probabilities; the implementation divides them by their maximum before forming
-the masses and PDFs.
+The last expression is Simpson's rule, which is exact for a cubic. The masses
+sum to the total emission rate :math:`Q=\sum_i M_i`. OpenMC selects interval
+:math:`i` with probability :math:`M_i/Q` using an alias table. A common scaling
+of all emission values cancels from these probabilities; the implementation
+divides them by their maximum before forming the masses and PDFs.
 
 Conditional on choosing interval :math:`i`, the normalized PDF with respect to
 :math:`d\eta` is
@@ -681,25 +721,18 @@ and stores the coefficients divided by that bound. A proposal is accepted when
 On rejection, only :math:`\eta` is redrawn; the selected interval is retained.
 Selecting a new interval after a rejection would change its probability in
 proportion to its acceptance rate. After acceptance,
-:math:`\rho=\rho_i+h_i\eta` has the required marginal
-:math:`p_\rho\propto S V'`.
+:math:`\rho=\rho_i+h_i\eta` has the required radial marginal.
 
 .. _methods_stellarator_angular_sampling:
 
 Conditional Angular Sampling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-With :math:`\rho` fixed, the target PDF over the full torus,
-:math:`\theta,\zeta\in[0,2\pi)`, is
-
-.. math::
-
-    p(\theta,\zeta\mid\rho)
-      = \frac{J_i(\eta,\theta,\zeta)}{V'_i(\eta)}.
-
-The angular proposal uses a 32 by 32 partition of one field period, with a
-separate bound for each cell that varies with radius. To describe the cell
-geometry, use a toroidal angle :math:`\zeta_0` restricted to the first field
+With :math:`\rho` fixed, OpenMC samples the conditional angular PDF in
+:eq:`stellarator-source-factorization`. The angular proposal uses a 32 by 32
+partition of one field period, with a separate bound for each cell that varies
+with radius. To describe the cell geometry, use a toroidal angle
+:math:`\zeta_0` restricted to the first field
 period and its rescaled counterpart :math:`\varphi`:
 
 .. math::

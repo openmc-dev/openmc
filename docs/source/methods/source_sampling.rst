@@ -440,13 +440,17 @@ and :math:`Z_\zeta` drop out of the determinant because the cylindrical azimuth
 is exactly :math:`\zeta`. Thus the joint coordinate PDF is
 :math:`p(\rho,\theta,\zeta)\propto S(\rho)R|\tau|`.
 
-The map is assumed to have positive :math:`R`, nested surfaces, and a
-consistently oriented Jacobian away from the magnetic axis. Either orientation
-is allowed. Initialization determines a global sign :math:`\sigma` from a
-signed volume estimate and evaluates :math:`f=\sigma R\tau`, so that
-:math:`f=R|\tau|` for a valid map. Grid checks reject nonpositive radii or
-significant changes in Jacobian sign; these checks are not a global geometric
-certification.
+The geometry must have positive :math:`R` and nested flux surfaces. The sign
+of :math:`\tau` depends on the convention for measuring the poloidal angle:
+traversing a cross section clockwise or counterclockwise describes the same
+surface but gives opposite signs for :math:`\tau`. Physical volume uses its
+absolute value, so either convention is allowed. For a valid map, the sign is
+consistent throughout the plasma away from the magnetic axis, where the
+Jacobian vanishes. OpenMC determines this sign during initialization and sets
+:math:`\sigma=+1` for positive :math:`\tau` or :math:`\sigma=-1` for negative
+:math:`\tau`. It can then evaluate the positive sampling density as
+:math:`f=\sigma R\tau=R|\tau|`. Initialization checks for nonpositive radii
+and significant changes in the sign of :math:`\tau` on a setup grid.
 
 Interpolation Within a Radial Interval
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -839,14 +843,15 @@ Fourier modes, allowing a tighter bound than separately bounding all factors of
 the Jacobian. Taking absolute values in the slope and remainder terms makes
 the bound conservative; it need not equal a value attained inside the cell.
 
-Taking the maximum of the right-hand side of
-:eq:`stellarator-source-cell-taylor` gives a nonnegative bound :math:`U_{jc}`.
-Center values and derivatives are evaluated using all recovered Fourier
-coefficients. They are folded onto the cell-center grid with their phase and
-derivative factors preserved; the cell grid does not truncate the density.
-Bounds for both Jacobian orientations share these derivative bounds, with the
-center value changing sign. Initialization retains the bounds for the
-orientation determined by the total signed volume.
+For each control function :math:`G_j` and cell :math:`c`, OpenMC evaluates the
+right-hand side of :eq:`stellarator-source-cell-taylor` using the function's
+value and slopes at the cell center and the curvature bound :math:`C_j`.
+All Fourier coefficients contribute to these calculations, so the bound
+accounts for variation inside the cell as well as at its center. If the result
+is negative, OpenMC uses zero instead, giving a nonnegative bound
+:math:`U_{jc}` suitable for constructing the cell-selection probabilities.
+These bounds are stored during initialization and combined at the sampled
+radius as described below.
 
 Selecting and Sampling Angular Cells
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

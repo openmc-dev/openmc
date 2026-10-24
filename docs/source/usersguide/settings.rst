@@ -167,9 +167,6 @@ least 10,000 particles per generation to avoid any bias in the estimate of
 External Source Distributions
 -----------------------------
 
-The sampling algorithms and mathematical derivations for the source classes
-are described in :ref:`methods_source_sampling`.
-
 External source distributions can be specified through the
 :attr:`Settings.source` attribute. If you have a single external source, you can
 create an instance of any of the subclasses of :class:`openmc.SourceBase`
@@ -396,9 +393,6 @@ A surface source file is read back like any other source file, with the
 Tokamak Plasma Sources
 ----------------------
 
-The volume Jacobian, radial distribution, and conditional poloidal sampling
-are derived in :ref:`methods_tokamak_source`.
-
 For fusion applications, the :class:`openmc.TokamakSource` class provides a
 native parametric neutron source for tokamak plasmas. Rather than specifying
 spatial, angular, and energy distributions separately, the source is defined by
@@ -448,9 +442,6 @@ are born at :math:`t=0`. The toroidal extent can be restricted with
 Stellarator Plasma Sources
 --------------------------
 
-The Fourier volume Jacobian and the radial and angular rejection algorithms
-are derived in :ref:`methods_stellarator_source`.
-
 For fully three-dimensional plasmas, the :class:`openmc.StellaratorSource` class
 samples neutron positions from the flux-surface Fourier representation shared by
 the `VMEC <https://doi.org/10.1063/1.864116>`_ and `DESC
@@ -484,23 +475,6 @@ by rejection against a bound derived from its Bernstein coefficients. Rejected
 radial proposals are resampled within the same interval. The two angles are
 sampled from the conditional distribution :math:`p(\theta,\zeta|\rho) \propto
 R\,|\tau|` (with :math:`\tau` the poloidal-plane Jacobian) by rejection.
-
-Angular proposals use a 32 by 32 partition of one field period in the two
-spatial angular coordinates. Each cell has a bound that varies quadratically
-across the radial interval. OpenMC selects
-cells in proportion to these bounds, samples uniformly inside the chosen cell,
-and accepts with probability equal to the density divided by the cell bound.
-Rejected angular proposals retain the radius and select a new cell. A uniformly
-chosen field period maps the accepted point to the full torus. The construction
-of the bounds and the Bernstein mixture used to select cells are derived in
-:ref:`methods_stellarator_angular_sampling`.
-
-The bounds are constructed during C++ initialization from the density's Fourier
-coefficients, using a Taylor bound on each cell. This requires no additional
-dependencies or Python preprocessing. Sampling checks for a density exceeding
-its bound and reports an error if one is encountered. Bounds and alias tables
-require approximately 72 KiB per radial interval on a 64-bit platform, in
-addition to the geometry coefficients and temporary initialization arrays.
 
 Sources are most conveniently created directly from equilibrium code output::
 

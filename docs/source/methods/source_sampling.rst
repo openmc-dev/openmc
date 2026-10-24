@@ -839,12 +839,10 @@ Fourier modes, allowing a tighter bound than separately bounding all factors of
 the Jacobian. Taking absolute values in the slope and remainder terms makes
 the bound conservative; it need not equal a value attained inside the cell.
 
-OpenMC adds a roundoff allowance of
-:math:`10^{-10}\sum_{m,n}|\widehat G_{j,mn}|` to the right-hand side of
-:eq:`stellarator-source-cell-taylor`, then takes its maximum with zero to form
-:math:`U_{jc}`. Center values and derivatives are evaluated using all recovered
-Fourier coefficients, including frequencies above the cell grid's Nyquist
-limit. They are folded onto the cell-center grid with their phase and
+Taking the maximum of the right-hand side of
+:eq:`stellarator-source-cell-taylor` gives a nonnegative bound :math:`U_{jc}`.
+Center values and derivatives are evaluated using all recovered Fourier
+coefficients. They are folded onto the cell-center grid with their phase and
 derivative factors preserved; the cell grid does not truncate the density.
 Bounds for both Jacobian orientations share these derivative bounds, with the
 center value changing sign. Initialization retains the bounds for the

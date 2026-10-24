@@ -714,10 +714,25 @@ then
       \quad\text{within cell }c.
 
 Thus three bounds computed once per cell produce a bound at every radius in
-the interval. The control functions :math:`G_j` can have negative values even
-when the density is nonnegative; they are bounded functions, not probability
-densities. Nonnegativity of the Bernstein basis weights is what preserves the
-upper-bound inequality.
+the interval. For a valid geometry, the control functions :math:`G_j` are
+also nonnegative. This follows from the factorization
+:math:`F_i=R\widetilde\tau`, where :math:`\widetilde\tau=\sigma\tau` is the
+nonnegative poloidal Jacobian. Both factors are linear in :math:`\eta`.
+Writing their endpoint values as :math:`R_0,R_1` and
+:math:`\widetilde\tau_0,\widetilde\tau_1` gives
+
+.. math::
+
+    \begin{aligned}
+    G_0 &= R_0\widetilde\tau_0, \\
+    G_1 &= \tfrac12(R_0\widetilde\tau_1+R_1\widetilde\tau_0), \\
+    G_2 &= R_1\widetilde\tau_1.
+    \end{aligned}
+
+Each expression is nonnegative because the endpoint radii are positive and
+the endpoint values of :math:`\widetilde\tau` are nonnegative. The
+:math:`G_j` are unnormalized angular functions; the cell-selection
+probabilities are constructed from their bounds below.
 
 Bounding the Density on Angular Cells
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -847,11 +862,9 @@ For each control function :math:`G_j` and cell :math:`c`, OpenMC evaluates the
 right-hand side of :eq:`stellarator-source-cell-taylor` using the function's
 value and slopes at the cell center and the curvature bound :math:`C_j`.
 All Fourier coefficients contribute to these calculations, so the bound
-accounts for variation inside the cell as well as at its center. If the result
-is negative, OpenMC uses zero instead, giving a nonnegative bound
-:math:`U_{jc}` suitable for constructing the cell-selection probabilities.
-These bounds are stored during initialization and combined at the sampled
-radius as described below.
+accounts for variation inside the cell as well as at its center. The resulting
+bounds :math:`U_{jc}` are stored during initialization and combined at the
+sampled radius as described below.
 
 Selecting and Sampling Angular Cells
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

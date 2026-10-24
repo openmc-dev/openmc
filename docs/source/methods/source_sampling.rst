@@ -734,8 +734,90 @@ above also satisfy. The implementation evaluates the sums directly and needs
 no external FFT library.
 
 Let :math:`\boldsymbol{a}_c=(\theta_c,\varphi_c)` be a cell center. Any point
-in the cell has displacement :math:`\boldsymbol{v}` with
-:math:`|v_\theta|,|v_\varphi|\le d`. Taylor's theorem gives the upper bound
+in the cell can be written as :math:`\boldsymbol{a}_c+\boldsymbol{v}`, where
+:math:`|v_\theta|,|v_\varphi|\le d`. The goal is to bound the largest possible
+increase from :math:`G_j(\boldsymbol{a}_c)` over all such displacements. Taylor's
+theorem separates this increase into a contribution from the slope at the
+center and a remainder accounting for curvature.
+
+For a fixed displacement, reduce the problem to one dimension by following
+the straight line from the center to the point:
+
+.. math::
+
+    g(\lambda)=G_j(\boldsymbol{a}_c+\lambda\boldsymbol{v}),
+    \qquad 0\le\lambda\le1.
+
+Here :math:`\lambda` measures progress along the line; the radial coordinate
+:math:`\eta` remains fixed during angular sampling. Taylor's theorem with the
+Lagrange remainder gives
+
+.. math::
+    :label: stellarator-source-line-taylor
+
+    g(1)=g(0)+g'(0)+\frac12 g''(\lambda_*),
+    \qquad \lambda_*\in(0,1).
+
+This is an exact identity. The second derivative is evaluated at an unknown
+intermediate point, and its term accounts for the entire departure from the
+linear approximation. Bounding this derivative along the line therefore bounds
+the full remainder, including effects that a longer Taylor expansion would
+express through higher derivatives. No additional terms need to be neglected.
+
+The center value and slope follow from the chain rule:
+
+.. math::
+
+    \begin{aligned}
+    g(0)&=G_j(\boldsymbol{a}_c), \\
+    g'(0)&=v_\theta\partial_\theta G_j(\boldsymbol{a}_c)
+            +v_\varphi\partial_\varphi G_j(\boldsymbol{a}_c).
+    \end{aligned}
+
+Using the maximum displacement in each coordinate bounds the slope term by
+
+.. math::
+
+    g'(0)\le d\left(|\partial_\theta G_j(\boldsymbol{a}_c)|
+                    +|\partial_\varphi G_j(\boldsymbol{a}_c)|\right).
+
+To bound the remainder, differentiate the Fourier series twice along the line:
+
+.. math::
+
+    \begin{aligned}
+    g''(\lambda)
+      &= -\sum_{m,n}\widehat G_{j,mn}(mv_\theta+nv_\varphi)^2 \\
+      &\qquad\times e^{\mathrm{i}[m(\theta_c+\lambda v_\theta)
+                                  +n(\varphi_c+\lambda v_\varphi)]}.
+    \end{aligned}
+
+Each exponential has magnitude one. The triangle inequality then gives a
+bound valid at every point along the line:
+
+.. math::
+
+    |g''(\lambda)|\le\sum_{m,n}|\widehat G_{j,mn}|
+                                      |mv_\theta+nv_\varphi|^2.
+
+Because the point lies within the cell,
+
+.. math::
+
+    |mv_\theta+nv_\varphi|
+      \le |m|\,|v_\theta|+|n|\,|v_\varphi|
+      \le d(|m|+|n|).
+
+Consequently,
+
+.. math::
+
+    |g''(\lambda)|\le d^2 C_j, \qquad
+    C_j=\sum_{m,n}|\widehat G_{j,mn}|(|m|+|n|)^2.
+
+The quantity :math:`C_j` depends only on the Fourier coefficients and bounds
+curvature for every cell and displacement. Substituting this result and the
+slope bound into :eq:`stellarator-source-line-taylor` gives
 
 .. math::
     :label: stellarator-source-cell-taylor
@@ -745,17 +827,17 @@ in the cell has displacement :math:`\boldsymbol{v}` with
     &\le G_j(\boldsymbol{a}_c)
        +d\left(|\partial_\theta G_j(\boldsymbol{a}_c)|
               +|\partial_\varphi G_j(\boldsymbol{a}_c)|\right) \\
-    &\qquad +\frac{d^2}{2}\sum_{m,n}
-       |\widehat G_{j,mn}|(|m|+|n|)^2.
+    &\qquad +\frac{d^2}{2}C_j.
     \end{aligned}
 
-To obtain the remainder term, consider the second derivative along the line
-from the center to the proposed point. Each Fourier term contributes a factor
-:math:`(mv_\theta+nv_\varphi)^2`, bounded by
-:math:`d^2(|m|+|n|)^2`. Summing absolute Fourier amplitudes bounds that
-derivative everywhere along the line. The center value and its first
-derivatives retain the cancellations among Fourier modes, allowing a tighter
-bound than separately bounding all factors of the Jacobian.
+Every quantity on the right-hand side is available during initialization and
+is independent of the unknown displacement. The inequality therefore bounds
+the function throughout the cell, including peaks between evaluation points.
+The curvature allowance remains present even when the center gradient is zero.
+The center value and its first derivatives retain the cancellations among
+Fourier modes, allowing a tighter bound than separately bounding all factors of
+the Jacobian. Taking absolute values in the slope and remainder terms makes
+the bound conservative; it need not equal a value attained inside the cell.
 
 OpenMC adds a roundoff allowance of
 :math:`10^{-10}\sum_{m,n}|\widehat G_{j,mn}|` to the right-hand side of

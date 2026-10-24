@@ -1367,8 +1367,13 @@ class StellaratorSource(SourceBase):
     volume for the interpolated geometry) by integrating a cubic PDF in each
     radial interval and using rejection sampling within the selected interval.
     The two angles are then sampled from the conditional
-    :math:`p(\theta,\zeta|\rho) \propto R|\tau|` by rejection against a
-    precomputed per-radial-bin majorant.
+    :math:`p(\theta,\zeta|\rho) \propto R|\tau|` using a 32 by 32 angular
+    cell partition of one field period. Within each radial interval, a
+    quadratic Bernstein mixture selects cells in proportion to their
+    radius-dependent bounds. Angles are proposed uniformly within the selected
+    cell and accepted by rejection sampling against its bound. The bounds are
+    precomputed using Taylor bounds on the Fourier series of the three
+    Bernstein control functions. A field period is then chosen uniformly.
 
     .. versionadded:: 0.16.1
 

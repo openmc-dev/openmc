@@ -12,15 +12,14 @@ eigenvalue calculation, the external source supplies the initial population;
 subsequent generations use the fission bank as described in
 :ref:`method-successive-generations`.
 
-This chapter describes the algorithms represented by the subclasses of
+This section describes the algorithms represented by the subclasses of
 :class:`openmc.SourceBase`. Input examples are given in
 :ref:`usersguide_source`. Unless otherwise stated, :math:`\xi` denotes an
 independent uniform random number on :math:`[0,1)`, generated as described in
 :ref:`methods_random_numbers`. Normalized probability densities are denoted by
 :math:`p` or :math:`f`, cumulative distribution functions by :math:`F`, and
-discrete selection probabilities by :math:`P`. A tilde on :math:`p` indicates
-an unnormalized density. Geometric volume factors are denoted by :math:`J`.
-Densities are defined with respect to the coordinates explicitly indicated.
+discrete selection probabilities by :math:`P`. A tilde on :math:`p` indicates an
+unnormalized density.
 
 .. _methods_source_selection:
 

@@ -14,7 +14,6 @@
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
 #endif
 
-#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"

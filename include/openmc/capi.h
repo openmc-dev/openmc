@@ -272,6 +272,48 @@ int openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides);
 int openmc_tally_set_scores(int32_t index, int n, const char** scores);
 int openmc_tally_set_type(int32_t index, const char* type);
 int openmc_tally_set_writable(int32_t index, bool writable);
+
+//! Set a value at a given index in the temperature field
+//
+//! \param[in] index Index in the field
+//! \param[in] temperature Temperature value to apply
+//! \return Status (negative if an error occurred)
+int openmc_temperature_field_set_temperature(int32_t index, double temperature);
+
+//! Return the temperature field size (number of cells)
+//
+//! \return Number of cell in the temperature field
+size_t openmc_temperature_field_size();
+
+//! Get the value at a given index in the temperature field
+//
+//! \param[in] index Index in the field
+//! \param[out] temperature Temperature value at the given index
+//! \return Status (negative if an error occurred)
+int openmc_temperature_field_get_value(int32_t index, double* temperature);
+
+//! Set a value at a given index in the velocity field
+//
+//! \param[in] index Index in the field
+//! \param[in] vx X-axis velocity component to apply
+//! \param[in] vy Y-axis velocity component to apply
+//! \param[in] vz Z-axis velocity component to apply
+//! \return Status (negative if an error occurred)
+int openmc_velocity_field_set_velocity(
+  int32_t index, double vx, double vy, double vz);
+
+//! Return the velocity field size (number of cells)
+//
+//! \return Number of cell in the velocity field
+size_t openmc_velocity_field_size();
+
+//! Get the value at a given index in the velocity field
+//
+//! \param[in] index Index in the field
+//! \param[out] velocity Velocity value at the given index
+//! \return Status (negative if an error occurred)
+int openmc_velocity_field_get_value(int32_t index, double velocity[3]);
+
 int openmc_get_weight_windows_index(int32_t id, int32_t* idx);
 int openmc_weight_windows_get_id(int32_t index, int32_t* id);
 int openmc_weight_windows_set_id(int32_t index, int32_t id);

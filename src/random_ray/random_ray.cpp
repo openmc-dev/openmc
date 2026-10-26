@@ -294,6 +294,11 @@ void RandomRay::event_advance_ray()
   boundary() = distance_to_boundary(*this);
   double distance = boundary().distance();
 
+  // Define next event
+  next_event().clear();
+  next_event().event_type = EVENT_CROSS_SURFACE;
+  next_event().cross_surface_geometry = true;
+
 #ifdef OPENMC_MPI
   // Only consumed by calculate_rank_load(), which runs during the load
   // balancing window; past it these atomics would be pure contention on a

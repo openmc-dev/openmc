@@ -1,6 +1,8 @@
 set(TEST_NAMES
   test_atomic_mass
   test_distribution
+  test_dnp_drift
+  test_field
   test_file_utils
   test_tally
   test_interpolate
@@ -19,6 +21,10 @@ set(TEST_NAMES
 foreach(test ${TEST_NAMES})
   add_executable(${test} ${test}.cpp)
   target_link_libraries(${test} Catch2::Catch2WithMain libopenmc_test)
+  target_include_directories(${test} PRIVATE matchers)
+  if (OPENMC_USE_DAGMC)
+    target_compile_definitions(${test} PRIVATE OPENMC_DAGMC_ENABLED)
+  endif()
   add_test(NAME ${test} COMMAND ${test} WORKING_DIRECTORY ${UNIT_TEST_BIN_OUTPUT_DIR})
 
   # Catch2 uses exit code 4 when all test cases in a binary are skipped. Treat

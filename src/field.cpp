@@ -280,4 +280,25 @@ extern "C" int openmc_velocity_field_set_velocity(
   return 0;
 }
 
+extern "C" size_t openmc_velocity_field_size()
+{
+  return simulation::velocity_field->values().size();
+}
+
+extern "C" int openmc_velocity_field_get_value(
+  int32_t index, double velocity[3])
+{
+  if (index < 0 || index >= simulation::velocity_field->values().size()) {
+    set_errmsg("Index in velocity field is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  Direction v = simulation::velocity_field->value(index);
+  velocity[0] = v.x;
+  velocity[1] = v.y;
+  velocity[2] = v.z;
+
+  return 0;
+}
+
 } // namespace openmc

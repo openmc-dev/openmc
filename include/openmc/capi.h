@@ -301,6 +301,18 @@ int openmc_temperature_field_get_value(int32_t index, double* temperature);
 //! \return Status (negative if an error occurred)
 int openmc_velocity_field_set_velocity(int32_t index, double vx, double vy, double vz);
 
+//! Return the velocity field size (number of cells)
+//
+//! \return Number of cell in the velocity field
+size_t openmc_velocity_field_size();
+
+//! Get the value at a given index in the velocity field
+//
+//! \param[in] index Index in the field
+//! \param[out] velocity Velocity value at the given index
+//! \return Status (negative if an error occurred)
+int openmc_velocity_field_get_value(int32_t index, double velocity[3]);
+
 int openmc_get_weight_windows_index(int32_t id, int32_t* idx);
 int openmc_weight_windows_get_id(int32_t index, int32_t* id);
 int openmc_weight_windows_set_id(int32_t index, int32_t id);

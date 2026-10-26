@@ -299,7 +299,8 @@ int openmc_temperature_field_get_value(int32_t index, double* temperature);
 //! \param[in] vy Y-axis velocity component to apply
 //! \param[in] vz Z-axis velocity component to apply
 //! \return Status (negative if an error occurred)
-int openmc_velocity_field_set_velocity(int32_t index, double vx, double vy, double vz);
+int openmc_velocity_field_set_velocity(
+  int32_t index, double vx, double vy, double vz);
 
 //! Return the velocity field size (number of cells)
 //

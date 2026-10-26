@@ -4,6 +4,7 @@
 #ifndef OPENMC_MATH_FUNCTIONS_H
 #define OPENMC_MATH_FUNCTIONS_H
 
+#include <array>
 #include <cmath>
 #include <complex>
 #include <cstdlib>
@@ -258,6 +259,22 @@ double standard_normal_cdf(double z);
 //! \return true if a and b are approximately equal, false otherwise
 //==============================================================================
 bool isclose(double a, double b, double rel_tol, double abs_tol);
+
+//==============================================================================
+//! Eigenvalues and eigenvectors of a symmetric 3x3 matrix by cyclic Jacobi
+//! rotations.
+//!
+//! The same algorithm, with the same order of rotations and the same stopping
+//! criterion, is used by openmc.surface._symmetric_eigen in Python, so that
+//! both give the same quadric bounding boxes. Exact zeros in the matrix stay
+//! exact.
+//!
+//! \param a Symmetric matrix; overwritten (diagonalized in place)
+//! \param lambda Eigenvalues (unsorted)
+//! \param v Eigenvectors: v[i][k] is component i of eigenvector k
+//==============================================================================
+void symmetric_eigen(
+  double a[3][3], std::array<double, 3>& lambda, double v[3][3]);
 
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

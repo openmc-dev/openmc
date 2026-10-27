@@ -58,9 +58,10 @@ extern bool
 extern bool create_delayed_neutrons; //!< create delayed fission neutrons?
 extern bool cmfd_run;                //!< is a CMFD run?
 extern bool
-  delayed_photon_scaling; //!< Scale fission photon yield to include delayed
-extern bool entropy_on;   //!< calculate Shannon entropy?
-extern bool event_based;  //!< use event-based mode (instead of history-based)
+  delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
+extern bool delta_tracking; //!< use delta tracking
+extern bool entropy_on;     //!< calculate Shannon entropy?
+extern bool event_based;    //!< use event-based mode (instead of history-based)
 extern bool ifp_delayed_group_on; //!< Store delayed group IFP data?
 extern bool ifp_lifetime_on;      //!< Store lifetime IFP data?
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?

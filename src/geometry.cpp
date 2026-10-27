@@ -23,6 +23,7 @@ namespace model {
 
 int root_universe {-1};
 int n_coord_levels;
+int max_region_surfaces {0};
 
 vector<int64_t> overlap_check_count;
 
@@ -30,6 +31,14 @@ vector<OverlapKey> overlap_keys;
 std::unordered_map<OverlapKey, int, OverlapKeyHash> overlap_key_index;
 
 } // namespace model
+
+namespace {
+
+//! Most cells in the neighbor list of a cell in a universe whose cells are
+//! searched with a tree
+constexpr std::size_t MAX_TREE_NEIGHBORS {8};
+
+} // namespace
 
 //==============================================================================
 // Non-member functions
@@ -137,14 +146,17 @@ bool find_cell_inner(
 
       // Make sure the search cell is in the same universe.
       int i_universe = p.lowest_coord().universe();
-      if (model::cells[i_cell]->universe_ != i_universe)
+      const auto& c = *model::cells[i_cell];
+      if (c.universe_ != i_universe)
         continue;
 
       // Check if this cell contains the particle.
       Position r {p.r_local()};
       Direction u {p.u_local()};
       auto surf = p.surface();
-      if (model::cells[i_cell]->contains(r, u, surf)) {
+      if (!c.may_contain(r))
+        continue;
+      if (c.contains(r, u, surf)) {
         p.lowest_coord().cell() = i_cell;
         found = true;
         break;
@@ -301,6 +313,12 @@ bool neighbor_list_find_cell(GeometryState& p, bool verbose)
   auto i_cell = p.coord(coord_lvl).cell();
   Cell& c {*model::cells[i_cell]};
 
+  // A cell whose neighbor list is full, such as a matrix around many
+  // particles, is next to too many cells for the list to help, so its universe
+  // is searched directly
+  if (c.neighbors_.full())
+    return find_cell_inner(p, nullptr, verbose);
+
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.
   bool found = find_cell_inner(p, &c.neighbors_, verbose);
@@ -309,10 +327,16 @@ bool neighbor_list_find_cell(GeometryState& p, bool verbose)
 
   // The particle could not be found in the neighbor list.  Try searching all
   // cells in this universe, and update the neighbor list if we find a new
-  // neighboring cell.
+  // neighboring cell. In a universe whose cells are searched with a tree,
+  // neighbor lists are kept short, since a cell with many neighbors, such as
+  // a matrix around many particles, is found faster with the tree.
   found = find_cell_inner(p, nullptr, verbose);
-  if (found)
-    c.neighbors_.push_back(p.coord(coord_lvl).cell());
+  if (found) {
+    std::size_t max_size = model::universes[c.universe_]->has_cell_tree()
+                             ? MAX_TREE_NEIGHBORS
+                             : std::numeric_limits<std::size_t>::max();
+    c.neighbors_.push_back(p.coord(coord_lvl).cell(), max_size);
+  }
   return found;
 }
 

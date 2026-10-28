@@ -236,18 +236,42 @@ Unlike the continuous-energy mode, the multi-group mode does not explicitly
 track particles produced from scattering multiplication (i.e., :math:`(n,xn)`)
 reactions.  These are instead accounted for by adjusting the weight of the
 particle after the collision such that the correct total weight is maintained.
-The weight adjustment factor is optionally provided by the `multiplicity` data
-which is required to be provided in the form of a group-wise matrix.  This data
-is provided as a group-wise matrix since the probability of producing multiple
-particles in a scattering reaction depends on both the incoming energy, `g`, and
-the sampled outgoing energy, `g'`. This data represents the average number of
-particles emitted from a scattering reaction, given a scattering reaction has
-occurred:
+The optional `multiplicity` data is provided as a group-wise matrix, since the
+average number of particles produced in a scattering reaction can depend on both
+the incoming energy group, `g`, and the outgoing energy group, `g'`. Each entry
+is the ratio of the neutron-production cross section to the scattering-event
+cross section for that channel:
 
 .. math::
 
     multiplicity_{g \rightarrow g'} = \frac{\nu_{scatter}\sigma_{s,g \rightarrow g'}}{
     								   \sigma_{s,g \rightarrow g'}}
+
+When multiplicity data are provided, the scattering matrix contains neutron
+production cross sections. Let :math:`\nu_{g \rightarrow h}` denote the
+multiplicity for an incoming group `g` and outgoing group `h`. The outgoing group
+is sampled from the normalized production row:
+
+.. math::
+
+    P(g' \mid g) =
+    \frac{\nu_{g \rightarrow g'}\sigma_{s,g \rightarrow g'}}
+         {\sum_h \nu_{g \rightarrow h}\sigma_{s,g \rightarrow h}}.
+
+The particle weight is therefore multiplied by the ratio of total neutron
+production to total scattering events for the incoming group:
+
+.. math::
+
+    w' = w\frac{\sum_h \nu_{g \rightarrow h}\sigma_{s,g \rightarrow h}}
+                   {\sum_h \sigma_{s,g \rightarrow h}}.
+
+For consistent total and absorption cross sections, the denominator equals
+:math:`\sigma_{t,g} - \sigma_{a,g}`. This multiplier is independent of the sampled
+outgoing group. Multiplying by that channel's multiplicity instead would count
+its production bias a second time. If multiplicity is constant across the
+nonzero channels in a row, the weight multiplier reduces to that constant.
+The conditional angular distribution for each channel is unchanged.
 
 If this scattering multiplication information is not provided in the library
 then no weight adjustment will be performed. This is equivalent to neglecting

@@ -25,6 +25,10 @@ public:
   virtual ~ScattData() = default;
 
 protected:
+  // B_g / C_g: average production per event when sampling the production
+  // matrix.
+  vector<double> weight_mult_;
+
   //! \brief Initializes the attributes of the base class.
   void base_init(int order, const tensor::Tensor<int>& in_gmin,
     const tensor::Tensor<int>& in_gmax, const double_2dvec& in_energy,

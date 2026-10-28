@@ -119,6 +119,61 @@ def test_weightwindows(shared_secondary, subdir):
         test.main()
 
 
+def test_zero_bound_windows_play_no_game(tmp_path):
+    # A weight window lower bound of zero means no weight window information
+    # exists there (MCNP wwinp files use zero to turn the game off in a cell),
+    # so transport must proceed as if weight windows were disabled. Previously,
+    # zero-bound windows demanded a split at every checkpoint (weight/0 ->
+    # max_split), multiplying the particle population until terminated by the
+    # split or weight cutoff limits.
+    model = build_model(False)
+    for ww in model.settings.weight_windows:
+        ww.lower_ww_bounds = np.zeros_like(ww.lower_ww_bounds)
+        ww.upper_ww_bounds = np.zeros_like(ww.upper_ww_bounds)
+    sp_zero = model.run(cwd=tmp_path / 'zero_windows')
+
+    model.settings.weight_windows_on = False
+    sp_off = model.run(cwd=tmp_path / 'windows_off')
+
+    with openmc.StatePoint(sp_zero) as sp:
+        flux_zero = list(sp.tallies.values())[0].mean
+    with openmc.StatePoint(sp_off) as sp:
+        flux_off = list(sp.tallies.values())[0].mean
+
+    np.testing.assert_allclose(flux_zero, flux_off, rtol=1e-12)
+
+
+def test_zero_and_negative_bounds_equivalent(tmp_path):
+    # Zero and negative lower bounds both mean that no weight window
+    # information exists in a cell (generators mark such cells with -1, and
+    # MCNP wwinp files use zero), so they must produce identical transport.
+    # Unlike the all-zero case above, here particles are born under valid
+    # windows and encounter the no-information region in flight; previously a
+    # zero lower bound in that situation demanded a split at every checkpoint
+    # in the cell (weight/0 -> max_split), multiplying the particle population,
+    # while -1 played no game.
+    def run_with(bound_value, subdir):
+        model = build_model(False)
+        for ww in model.settings.weight_windows:
+            lb = np.array(ww.lower_ww_bounds, copy=True)
+            ub = np.array(ww.upper_ww_bounds, copy=True)
+            lb[3:, :, :, :] = bound_value
+            ub[3:, :, :, :] = bound_value
+            ww.lower_ww_bounds = lb
+            ww.upper_ww_bounds = ub
+        return model.run(cwd=tmp_path / subdir)
+
+    sp_zero = run_with(0.0, 'zero_region')
+    sp_negative = run_with(-1.0, 'negative_region')
+
+    with openmc.StatePoint(sp_zero) as sp:
+        flux_zero = list(sp.tallies.values())[0].mean
+    with openmc.StatePoint(sp_negative) as sp:
+        flux_negative = list(sp.tallies.values())[0].mean
+
+    np.testing.assert_allclose(flux_zero, flux_negative, rtol=1e-12)
+
+
 def test_wwinp_cylindrical():
 
     ww = openmc.WeightWindowsList.from_wwinp('ww_n_cyl.txt')[0]

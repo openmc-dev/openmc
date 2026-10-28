@@ -246,10 +246,34 @@ scattering angle:
     p_z = \frac{E - E' - EE'(1 - \mu)/(m_e c^2)}{-\alpha \sqrt{E^2 + E'^2 -
     2EE'\mu}},
 
-where :math:`\alpha` is the fine structure constant. The maximum momentum
-transferred, :math:`p_{z,\text{max}}`, can be calculated from :eq:`pz` using
-:math:`E' = E'_{\text{max}}`. The Compton profile of the :math:`i`-th electron
-subshell is defined as
+where :math:`\alpha` is the fine structure constant and :math:`p_z` is expressed
+in atomic momentum units, :math:`\alpha m_e c`. The maximum allowed value,
+:math:`p_{z,\text{max},i}`, can be calculated from :eq:`pz` using
+:math:`E' = E'_{\text{max}}`:
+
+.. math::
+    :label: pz-max
+
+    p_{z,\text{max},i} =
+    -\frac{1}{\alpha}
+    \frac{E_{b,i} - (E-E_{b,i})E(1-\mu)/(m_e c^2)}
+    {\sqrt{2E(E-E_{b,i})(1-\mu) + E_{b,i}^2}}.
+
+The minimum value, obtained when :math:`E'=0`, is
+:math:`p_{z,\text{min}}=-1/\alpha`. Thus, the kinematically allowed interval is
+
+.. math::
+
+    -\frac{1}{\alpha} \leq p_z \leq p_{z,\text{max},i}.
+
+Importantly, :math:`p_{z,\text{max},i}` may be negative. In that case, only the
+negative-momentum tail below :math:`p_{z,\text{max},i}` is allowed. The sign of
+:math:`p_z` also identifies the scattered-energy branch. If :math:`E_C` is the
+free-electron Compton energy from :eq:`compton-energy-angle`, then
+:math:`p_z < 0` corresponds to :math:`E' < E_C`, while :math:`p_z > 0`
+corresponds to :math:`E' > E_C`.
+
+The Compton profile of the :math:`i`-th electron subshell is defined as
 
 .. math::
     :label: compton-profile
@@ -258,27 +282,87 @@ subshell is defined as
 
 where :math:`\rho_i({\bf p})` is the initial electron momentum distribution.
 :math:`J_i(p_z)` can be interpreted as the probability density function of
-:math:`p_z`.
+:math:`p_z`. The tabulated profiles are symmetric and contain values only for
+nonnegative momentum. It is therefore convenient to define the half-profile
+integral
+
+.. math::
+    :label: integrated-compton-profile
+
+    K_i(p_z) = \int_0^{p_z} J_i(u)\,du, \qquad p_z \geq 0.
+
+The profile data end at a finite momentum :math:`p_{z,N}`. To cover the full
+kinematically allowed interval, OpenMC extrapolates the tail linearly on a
+log-linear scale:
+
+.. math::
+    :label: compton-profile-tail
+
+    J_i(p_z) = J_i(p_{z,N})\exp[a_i(p_z-p_{z,N})],
+    \qquad p_z > p_{z,N},
+
+where
+
+.. math::
+
+    a_i = \frac{\ln J_i(p_{z,N})-\ln J_i(p_{z,N-1})}
+    {p_{z,N}-p_{z,N-1}}.
+
+The extrapolated contribution to :math:`K_i` is integrated and inverted
+analytically. Each profile is normalized using both its tabulated part and the
+extrapolated tail, so that :math:`K_i(\infty)=1/2`.
 
 The Doppler broadened energy of the Compton-scattered photon can be sampled by
 selecting an electron shell, sampling a value of :math:`p_z` using the Compton
 profile, and calculating the scattered photon energy. The theory and methods
-used to do this are described in detail in LA-UR-04-0487_ and LA-UR-04-0488_.
-The sampling algorithm is summarized below:
+used to do this are described in detail in LA-UR-04-0487_, LA-UR-04-0488_, and
+Sec. 3.4.8 of Kaltiaisenaho_. The probability of selecting shell :math:`i` for
+a given incident energy and scattering angle is proportional to
+
+.. math::
+    :label: compton-shell-probability
+
+    f_i H(E-E_{b,i})
+    \int_{-1/\alpha}^{p_{z,\text{max},i}} J_i(p_z)\,dp_z,
+
+where :math:`f_i` is the number of electrons in the shell and :math:`H` is the
+Heaviside step function. Thus, the shell probability depends not only on its
+electron population and binding threshold, but also on the fraction of its
+momentum distribution that is kinematically accessible. The sampling algorithm
+is summarized below:
 
 1. Sample :math:`\mu` from :eq:`incoherent-xs` using the algorithm described in
    :ref:`incoherent-sampling`.
 
 2. Sample the electron subshell :math:`i` using the number of electrons per
-   shell as the probability mass function.
+   shell as the probability mass function. Reject the shell if
+   :math:`E \leq E_{b,i}`.
 
-3. Sample :math:`p_z` using :math:`J_i(p_z)` as the PDF.
+3. Calculate :math:`p_{z,\text{max},i}` and the integral in
+   :eq:`compton-shell-probability`. Accept the shell with probability equal to
+   this normalized profile integral; otherwise, repeat from step 2.
 
-4. Calculate :math:`E'` by solving :eq:`pz` for :math:`E'` using the sampled
-   value of :math:`p_z`.
+   This rejection method usually accepts quickly. After two unsuccessful
+   attempts, OpenMC instead evaluates the integral for every shell and samples
+   directly from the normalized probability mass function in
+   :eq:`compton-shell-probability`. This is statistically equivalent to
+   repeating steps 2 and 3, while avoiding excessive rejection for
+   near-forward scattering. The profile integrals are cached for subsequent
+   attempts at the same collision.
 
-5. If :math:`p_z < p_{z,\text{max}}` for shell :math:`i`, accept :math:`E'`.
-   Otherwise repeat from step 2.
+4. Sample a signed value of :math:`p_z` from :math:`J_i(p_z)`, conditional on
+   :math:`-1/\alpha \leq p_z \leq p_{z,\text{max},i}`. When the upper bound is
+   positive, choose between the negative and positive branches in proportion to
+   their integrated profile masses.
+
+5. Calculate :math:`E'` by solving :eq:`pz`. The quadratic has two mathematical
+   branches: select the lower positive root for :math:`p_z<0` and the upper
+   positive root for :math:`p_z>0`.
+
+6. Accept the result if :math:`\xi E \leq E'`, where
+   :math:`\xi\sim U(0,1)`. Otherwise, repeat from step 2. This rejection accounts
+   for the factor of :math:`E'` in the approximate relativistic impulse
+   approximation cross section.
 
 Compton Electrons
 +++++++++++++++++

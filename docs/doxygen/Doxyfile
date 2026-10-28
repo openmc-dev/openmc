@@ -1,0 +1,13 @@
+# Doxyfile 1.9.1
+
+# This file describes the settings to be used by the documentation system
+# doxygen (www.doxygen.org) for a project.
+
+# Difference with default Doxyfile 1.9.1
+PROJECT_NAME           = OpenMC
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+INPUT                  = ../../include/openmc/capi.h
+GENERATE_HTML          = NO
+GENERATE_LATEX         = NO
+GENERATE_XML           = YES

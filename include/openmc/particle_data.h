@@ -55,6 +55,7 @@ struct SourceSite {
   double wgt_born {1.0};
   double wgt_ww_born {-1.0};
   int64_t n_split {0};
+  int n_collision {0};
 };
 
 struct CollisionTrackSite {
@@ -582,10 +583,8 @@ public:
   // Methods and accessors
 
   // Cross section caches
-  NuclideMicroXS& neutron_xs(int i)
-  {
-    return neutron_xs_[i];
-  } // Microscopic neutron cross sections
+  // Microscopic neutron cross sections
+  NuclideMicroXS& neutron_xs(int i) { return neutron_xs_[i]; }
   const NuclideMicroXS& neutron_xs(int i) const { return neutron_xs_[i]; }
 
   // Microscopic photon cross sections

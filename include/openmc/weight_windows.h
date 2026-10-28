@@ -52,8 +52,12 @@ struct WeightWindow {
   double weight_cutoff {DEFAULT_WEIGHT_CUTOFF};
   int max_split {10};
 
-  //! Whether the weight window is in a valid state
-  bool is_valid() const { return lower_weight >= 0.0; }
+  //! Whether the weight window is in a valid state. A non-positive lower
+  //! bound indicates that no weight window information exists at this
+  //! location (generators mark such cells with -1, and a lower bound of zero
+  //! conventionally turns the weight window game off in a cell, as in MCNP
+  //! wwinp files), in which case no weight window game is played.
+  bool is_valid() const { return lower_weight > 0.0; }
 
   //! Adjust the weight window by a constant factor
   void scale(double factor)

@@ -185,7 +185,7 @@ def apply_time_correction(
     tally_std_dev = new_tally.std_dev.reshape(shape)
 
     # Apply TCF, broadcasting to the correct dimensions
-    tcf.shape = (1, -1, 1, 1, 1)
+    tcf = tcf.reshape(1, -1, 1, 1, 1)
     new_tally._mean = tally_mean * tcf
     new_tally._std_dev = tally_std_dev * tcf
 
@@ -207,8 +207,8 @@ def apply_time_correction(
         # scores)
         new_tally._sum = (tally_sum * tcf).reshape(shape)
         new_tally._sum_sq = (tally_sum_sq * (tcf*tcf)).reshape(shape)
-        new_tally._mean.shape = shape
-        new_tally._std_dev.shape = shape
+        new_tally._mean = new_tally._mean.reshape(shape)
+        new_tally._std_dev = new_tally._std_dev.reshape(shape)
 
     return new_tally
 

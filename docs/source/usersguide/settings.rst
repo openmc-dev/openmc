@@ -170,14 +170,19 @@ External Source Distributions
 External source distributions can be specified through the
 :attr:`Settings.source` attribute. If you have a single external source, you can
 create an instance of any of the subclasses of :class:`openmc.SourceBase`
-(:class:`openmc.IndependentSource`, :class:`openmc.FileSource`,
-:class:`openmc.CompiledSource`) and use it to set the :attr:`Settings.source`
-attribute. If you have multiple external sources with varying source strengths,
-:attr:`Settings.source` should be set to a list of :class:`openmc.SourceBase`
-objects.
+(:class:`openmc.IndependentSource`, :class:`openmc.MeshSource`,
+:class:`openmc.FileSource`, :class:`openmc.TokamakSource`,
+:class:`openmc.StellaratorSource`, or :class:`openmc.CompiledSource`) and use it
+to set the :attr:`Settings.source` attribute. If you have multiple external
+sources with varying source strengths, :attr:`Settings.source` should be set to
+a list of :class:`openmc.SourceBase` objects.
 
-The :class:`openmc.IndependentSource` class is the primary class for defining
-source distributions and has four main attributes that one can set:
+Sources with Independent Distributions
+--------------------------------------
+
+The :class:`openmc.IndependentSource` class samples position, direction, energy,
+and emission time independently of one another. Each distribution is specified
+separately through one of four attributes:
 :attr:`IndependentSource.space`, which defines the spatial distribution,
 :attr:`IndependentSource.angle`, which defines the angular distribution,
 :attr:`IndependentSource.energy`, which defines the energy distribution, and
@@ -239,6 +244,28 @@ would run::
   source.time = openmc.stats.Uniform(0, 1e-6)
   settings.source = source
 
+Sampling from an :class:`openmc.IndependentSource` may be biased
+for local or global variance reduction by modifying the
+:attr:`~openmc.IndependentSource.bias` attribute of each of its four main
+distributions. Further discussion of source biasing can be found in
+:ref:`source_biasing`.
+
+Finally, the :attr:`IndependentSource.particle` attribute can be used to
+indicate the source should be composed of particles other than neutrons. For
+example, the following would generate a photon source::
+
+  source = openmc.IndependentSource()
+  source.particle = 'photon'
+  ...
+
+  settings.source = source
+
+For a full list of all classes related to statistical distributions, see
+:ref:`pythonapi_stats`.
+
+Combining Sources
+-----------------
+
 All subclasses of :class:`openmc.SourceBase` have a :attr:`SourceBase.strength`
 attribute that indicates the relative strength of a source distribution if
 multiple are used. For example, to create two sources, one that should be
@@ -271,25 +298,6 @@ option::
 
   settings.source = [src1, src2]
   settings.uniform_source_sampling = True
-
-Additionally, sampling from an :class:`openmc.IndependentSource` may be biased
-for local or global variance reduction by modifying the
-:attr:`~openmc.IndependentSource.bias` attribute of each of its four main
-distributions. Further discussion of source biasing can be found in
-:ref:`source_biasing`.
-
-Finally, the :attr:`IndependentSource.particle` attribute can be used to
-indicate the source should be composed of particles other than neutrons. For
-example, the following would generate a photon source::
-
-  source = openmc.IndependentSource()
-  source.particle = 'photon'
-  ...
-
-  settings.source = source
-
-For a full list of all classes related to statistical distributions, see
-:ref:`pythonapi_stats`.
 
 File-based Sources
 ------------------
@@ -375,6 +383,131 @@ As an example, to write a maximum of three surface source files:::
       'max_source_files': 3
   }
 
+A surface source file is read back like any other source file, with the
+:class:`openmc.FileSource` class::
+
+  settings.source = openmc.FileSource('surface_source.h5')
+
+.. _usersguide_tokamak_source:
+
+Tokamak Plasma Sources
+----------------------
+
+For fusion applications, the :class:`openmc.TokamakSource` class provides a
+native parametric neutron source for tokamak plasmas. Rather than specifying
+spatial, angular, and energy distributions separately, the source is defined by
+the plasma geometry (using a `Miller-style flux-surface parameterization
+<https://doi.org/10.1063/1.872666>`_) and a radial emission profile. Source
+sites are sampled directly from the plasma volume without rejection.
+
+The plasma shape is described by the major radius :math:`R_0`, minor radius
+:math:`a`, elongation :math:`\kappa`, triangularity :math:`\delta`, and
+Shafranov shift :math:`\Delta`. The neutron birth profile is given as an
+emission density :math:`S(r/a)` tabulated on a normalized minor-radius grid that
+runs from 0 (magnetic axis) to 1 (last closed flux surface); only the shape of
+the profile matters, since it is normalized internally. The emission density is
+linearly interpolated between the supplied points and refined internally for
+radial sampling. For example::
+
+  import numpy as np
+
+  r_over_a = np.linspace(0.0, 1.0, 50)
+  emission = (1.0 - r_over_a**2)**2  # peaked on-axis profile
+
+  source = openmc.TokamakSource(
+      major_radius=620.0,    # cm
+      minor_radius=200.0,    # cm
+      elongation=1.8,
+      triangularity=0.45,
+      shafranov_shift=10.0,  # cm
+      r_over_a=r_over_a,
+      emission_density=emission,
+      energy=openmc.stats.muir(e0=14.08e6, m_rat=5.0, kt=20000.0),
+  )
+
+  settings.source = source
+
+The ``energy`` argument accepts either a single
+:class:`~openmc.stats.Univariate` distribution applied at all radii, or a
+sequence with one distribution per ``r_over_a`` grid point to model a
+radially-varying neutron spectrum (energies are then sampled by stochastic
+interpolation between the two distributions bracketing the sampled radius). A
+time distribution can be given with the ``time`` argument; by default, particles
+are born at :math:`t=0`. The toroidal extent can be restricted with
+``phi_start`` and ``phi_extent`` to model a sector of the plasma, and
+``vertical_shift`` translates the plasma center along the z-axis.
+
+.. _usersguide_stellarator_source:
+
+Stellarator Plasma Sources
+--------------------------
+
+For fully three-dimensional plasmas, the :class:`openmc.StellaratorSource` class
+samples neutron positions from the flux-surface Fourier representation shared by
+the `VMEC <https://doi.org/10.1063/1.864116>`_ and `DESC
+<https://doi.org/10.1088/1741-4326/ac6b06>`_ equilibrium codes. The plasma is
+described in flux coordinates :math:`(\rho, \theta, \zeta)`, where :math:`\rho =
+\sqrt{s}` is the square root of the normalized toroidal flux (proportional to
+the average minor radius), :math:`\theta` is the poloidal angle, and
+:math:`\zeta` is the toroidal angle (identical to the cylindrical azimuthal
+angle in both codes). The user provides the Fourier coefficients of
+:math:`R(\rho,\theta,\zeta)` and :math:`Z(\rho,\theta,\zeta)` on a radial grid
+together with an emission density :math:`S(\rho)` that is constant on flux
+surfaces. The cylindrical coordinates are represented as
+
+.. math::
+
+    \begin{aligned}
+    R &= \sum_k \left[ R^c_k(\rho) \cos(m_k\theta - n_k N_{fp} \zeta)
+         + R^s_k(\rho) \sin(m_k\theta - n_k N_{fp}\zeta) \right] \\
+    Z &= \sum_k \left[ Z^s_k(\rho) \sin(m_k\theta - n_k N_{fp}\zeta)
+         + Z^c_k(\rho) \cos(m_k\theta - n_k N_{fp}\zeta) \right]
+    \end{aligned}
+
+where :math:`k` indexes Fourier modes, :math:`m_k` and :math:`n_k` are the
+poloidal and toroidal mode numbers, and :math:`N_{fp}` is the number of field
+periods. Superscripts :math:`c` and :math:`s` denote cosine and sine coefficients.
+
+Fourier coefficients and emission are interpolated linearly in :math:`\rho`.
+The cubic marginal density :math:`S(\rho)\, V'(\rho)` is integrated analytically
+to select an interval, then sampled within that interval
+by rejection against a bound derived from its Bernstein coefficients. Rejected
+radial proposals are resampled within the same interval. The two angles are
+sampled from the conditional distribution :math:`p(\theta,\zeta|\rho) \propto
+R\,|\tau|` (with :math:`\tau` the poloidal-plane Jacobian) by rejection.
+
+Sources are most conveniently created directly from equilibrium code output::
+
+  # From a VMEC wout NetCDF file
+  source = openmc.StellaratorSource.from_vmec(
+      'wout_w7x.nc',
+      emission_density=lambda rho: (1.0 - rho**2)**2,
+      energy=openmc.stats.muir(e0=14.08e6, m_rat=5.0, kt=20000.0),
+  )
+
+  # From a DESC equilibrium object or HDF5 output file
+  source = openmc.StellaratorSource.from_desc(
+      eq,  # a desc.equilibrium.Equilibrium or path to a DESC HDF5 file
+      emission_density=lambda rho: (1.0 - rho**2)**2,
+      energy=openmc.stats.muir(e0=14.08e6, m_rat=5.0, kt=20000.0),
+  )
+
+The ``from_desc`` constructor requires the optional ``desc-opt`` package,
+available through ``pip install openmc[desc]`` or
+``conda install -c conda-forge desc-opt``. DESC loads its own files and performs
+the spectral conversion. An equilibrium family uses its last member. DESC is
+not required to import OpenMC, read the resulting source XML, or run transport.
+The first call can incur DESC/JAX initialization and compilation overhead;
+reusing an already-loaded equilibrium avoids repeated file loading.
+
+The ``emission_density`` argument accepts either a callable evaluated on the
+radial grid or an array with one value per radial surface; only its shape
+matters, since it is normalized internally. The Fourier coefficient tables can
+also be passed directly to the constructor (in centimeters) for equilibria from
+other sources. As with :class:`openmc.TokamakSource`, the ``energy`` argument
+accepts a single distribution or one distribution per radial grid point, and a
+``time`` distribution may optionally be given.
+
 .. _compiled_source:
 
 Compiled Sources
@@ -440,7 +573,7 @@ OpenMC shared library. This can be done by writing a CMakeLists.txt file:
 
    cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
    project(openmc_sources CXX)
-   add_library(source SHARED source_ring.cpp)
+   add_library(source MODULE source_ring.cpp)
    find_package(OpenMC REQUIRED HINTS <path to openmc>)
    target_link_libraries(source OpenMC::libopenmc)
 
@@ -615,9 +748,11 @@ The way in which OpenMC handles secondary charged particles can be specified
 with the :attr:`Settings.electron_treatment` attribute. By default, the
 :ref:`thick-target bremsstrahlung <ttb>` (TTB) approximation is used to generate
 bremsstrahlung radiation emitted by electrons and positrons created in photon
-interactions. To neglect secondary bremsstrahlung photons and instead deposit
-all energy from electrons locally, the local energy deposition option can be
-selected::
+interactions. Electron and positron secondaries created by photon interactions
+are processed at their birth site rather than transported as separate charged
+particle tracks. To neglect secondary bremsstrahlung photons and instead
+deposit all energy from electrons locally, the local energy deposition option
+can be selected::
 
   settings.electron_treatment = 'led'
 

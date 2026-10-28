@@ -5,6 +5,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "openmc/tensor.h"
 #include "pugixml.hpp"
@@ -155,7 +156,7 @@ struct IdData {
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
     Filter* filter = nullptr, FilterMatch* match = nullptr);
-  void set_overlap(size_t y, size_t x);
+  void set_overlap(size_t y, size_t x, int overlap_idx);
 
   // Members
   tensor::Tensor<int32_t> data_; //!< 2D array of cell & material ids
@@ -168,7 +169,7 @@ struct PropertyData {
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
     Filter* filter = nullptr, FilterMatch* match = nullptr);
-  void set_overlap(size_t y, size_t x);
+  void set_overlap(size_t y, size_t x, int overlap_idx);
 
   // Members
   tensor::Tensor<double> data_; //!< 2D array of temperature & density data
@@ -181,7 +182,7 @@ struct RasterData {
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
     Filter* filter = nullptr, FilterMatch* match = nullptr);
-  void set_overlap(size_t y, size_t x);
+  void set_overlap(size_t y, size_t x, int overlap_idx);
 
   // Members
   tensor::Tensor<int32_t>
@@ -278,8 +279,11 @@ T SlicePlotBase::get_map(int32_t filter_index) const
         if (found_cell) {
           data.set_value(y, x, p, j, filter, &match);
         }
-        if (show_overlaps_ && check_cell_overlap(p, false)) {
-          data.set_overlap(y, x);
+        if (show_overlaps_) {
+          int overlap_idx = check_cell_overlap(p, false);
+          if (overlap_idx >= 0) {
+            data.set_overlap(y, x, overlap_idx);
+          }
         }
       } // inner for
     }

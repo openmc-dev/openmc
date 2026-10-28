@@ -7,9 +7,12 @@
 #include <atomic>
 #include <limits>
 #include <unordered_set>
+#include <utility> // for pair
 
 #include "pugixml.hpp"
 
+#include "openmc/array.h"
+#include "openmc/distribution.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
 #include "openmc/memory.h"
@@ -89,6 +92,8 @@ public:
 
   static unique_ptr<Source> create(pugi::xml_node node);
 
+  bool satisfies_spatial_constraints(Position r) const;
+
 protected:
   // Strategy used for rejecting sites when constraints are applied. KILL means
   // that sites are always accepted but if they don't satisfy constraints, they
@@ -101,7 +106,6 @@ protected:
 
   // Methods for constraints
   void read_constraints(pugi::xml_node node);
-  bool satisfies_spatial_constraints(Position r) const;
   bool satisfies_energy_constraints(double E) const;
   bool satisfies_time_constraints(double time) const;
 
@@ -258,6 +262,258 @@ private:
   // Data members
   unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
   vector<unique_ptr<IndependentSource>> sources_; //!< Source distributions
+};
+
+//==============================================================================
+//! Parametric tokamak plasma neutron source
+//!
+//! This source samples neutron positions from a tokamak plasma geometry using
+//! Miller-style flux surface parameterization with user-specified emission
+//! profiles and energy distributions.
+//!
+//! Flux surface parameterization:
+//!   R = R0 + r*cos(alpha + delta*sin(alpha)) + Delta*(1 - (r/a)^2)
+//!   Z = kappa * r * sin(alpha)
+//!
+//! The sampling algorithm:
+//! 1. Sample minor radius r from precomputed CDF of S(r) * Jacobian
+//! 2. Sample poloidal angle alpha from conditional P(alpha|r) using mixture
+//!    of precomputed CDFs weighted by functions of r
+//! 3. Sample energy and time from user-provided distribution(s)
+//! 4. Sample isotropic direction
+//! 5. Sample toroidal angle phi uniformly in [phi_start, phi_start +
+//! phi_extent]
+//! 6. Transform (r, alpha, phi) to Cartesian (x, y, z), applying the optional
+//!    vertical shift of the plasma center
+//!
+//! The user provides the emission density S(r) directly (e.g., from transport
+//! codes like TRANSP, ASTRA, etc.), allowing full flexibility in reaction
+//! physics calculations. S(r) is a profile in arbitrary units sampled on the
+//! r_over_a grid; only its shape matters, since it is normalized internally.
+//! Energy distributions can be specified as either a single distribution for
+//! all r, or one distribution per radial point.
+//==============================================================================
+
+class TokamakSource : public Source {
+public:
+  // Constructors
+  explicit TokamakSource(pugi::xml_node node);
+
+  //! Sample from the tokamak source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
+private:
+  //==========================================================================
+  // Private methods
+
+  //! Precompute data structures for efficient sampling
+  void precompute_sampling_distributions();
+
+  //! Sample minor radius from marginal CDF
+  //! \param seed Pseudorandom seed pointer
+  //! \return Sampled r/a value
+  double sample_r_over_a(uint64_t* seed) const;
+
+  //! Sample poloidal angle given r using mixture of precomputed CDFs
+  //! \param r_norm Normalized minor radius r/a
+  //! \param seed Pseudorandom seed pointer
+  //! \return Sampled poloidal angle alpha [rad]
+  double sample_poloidal_angle(double r_norm, uint64_t* seed) const;
+
+  //! Compute the k-th mixture weight w_k(r) * I_hat_k for poloidal sampling
+  //! \param k Basis function index (0-5)
+  //! \param r Normalized minor radius r/a
+  //! \return Mixture weight for component k
+  double mixture_weight(int k, double r) const;
+
+  //! Sample energy from the distribution(s)
+  //! \param r_norm Normalized minor radius r/a (for distribution selection)
+  //! \param seed Pseudorandom seed pointer
+  //! \return (Sampled energy [eV], importance weight)
+  std::pair<double, double> sample_energy(double r_norm, uint64_t* seed) const;
+
+  //! Transform from flux coordinates (r, alpha, phi) to Cartesian (x, y, z)
+  //! \param r Minor radius [cm]
+  //! \param alpha Poloidal angle [rad]
+  //! \param phi Toroidal angle [rad]
+  //! \return Position in Cartesian coordinates [cm]
+  Position flux_to_cartesian(double r, double alpha, double phi) const;
+
+  //==========================================================================
+  // Data members
+
+  // Emission profile (input)
+  vector<double> r_over_a_;         //!< Normalized minor radius grid points
+  vector<double> emission_density_; //!< Emission density S(r) at grid points
+
+  // Energy distribution(s): either 1 for all r, or one per r point
+  vector<unique_ptr<Distribution>> energy_dists_;
+
+  // Time distribution (defaults to a delta distribution at t=0)
+  UPtrDist time_;
+
+  // Angular distribution (isotropic)
+  UPtrAngle angle_;
+
+  // Tokamak geometry parameters
+  double major_radius_;    //!< Major radius R0 [cm]
+  double minor_radius_;    //!< Minor radius a [cm]
+  double elongation_;      //!< Elongation kappa
+  double triangularity_;   //!< Triangularity delta
+  double shafranov_shift_; //!< Shafranov shift Delta [cm]
+  double vertical_shift_;  //!< Vertical shift of plasma center [cm]
+
+  // Normalized geometry parameters (precomputed for efficiency)
+  double epsilon_;     //!< Inverse aspect ratio a/R0
+  double delta_tilde_; //!< Normalized Shafranov shift Delta/a
+
+  // Toroidal angle bounds
+  double phi_start_;  //!< Starting toroidal angle [rad]
+  double phi_extent_; //!< Toroidal angle extent [rad]
+
+  // Precomputed distribution for radial sampling
+  unique_ptr<Tabular> radial_dist_;
+
+  // Coefficients of the radial geometric polynomial: A*r - B*r^2 - C*r^3
+  // Also used as the analytical normalization for poloidal mixture weights
+  double radial_poly_a_; //!< 1 + ε·Δ̃
+  double radial_poly_b_; //!< (3/8)·c₁·ε
+  double radial_poly_c_; //!< 2·ε·Δ̃
+
+  // Precomputed Bernstein basis functions for poloidal angle sampling.
+  // Using the factorization f(r_tilde, alpha) = R_tilde x J_tilde where:
+  //   R_tilde = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2  (Bernstein quadratic)
+  //   J_tilde = b3*(1-r) + b4*r                      (Bernstein linear)
+  // The product gives 6 non-negative basis functions g_k(alpha) with
+  // weights w_k(r_tilde) that are products of Bernstein polynomials.
+  // Distributions are tabulated on [0, pi] exploiting up-down symmetry.
+  static constexpr int N_POLOIDAL_BASIS = 6; //!< Number of basis functions
+  int n_alpha_; //!< Number of poloidal angle grid points
+  array<unique_ptr<Tabular>, N_POLOIDAL_BASIS>
+    poloidal_dists_; //!< Distributions for each basis function g_k(alpha)
+  array<double, N_POLOIDAL_BASIS>
+    poloidal_integrals_; //!< Integrals of g_k(alpha) over [0, pi]
+};
+
+//==============================================================================
+//! Parametric stellarator plasma neutron source
+//!
+//! This source samples neutron positions from a 3-D stellarator plasma using
+//! the flux-surface Fourier representation shared by the VMEC and DESC
+//! equilibrium codes. The flux coordinates are (rho, theta, zeta), where
+//! rho = sqrt(s) is the square root of the normalized toroidal flux
+//! (proportional to the average minor radius), theta is the poloidal angle,
+//! and zeta is the toroidal angle, which coincides with the cylindrical
+//! azimuthal angle phi in both VMEC and DESC. The flux surfaces are
+//!
+//!   R(rho, theta, zeta) = sum_k [ Rc_k(rho) cos(m_k theta - n_k Nfp zeta)
+//!                               + Rs_k(rho) sin(m_k theta - n_k Nfp zeta) ]
+//!   Z(rho, theta, zeta) = sum_k [ Zs_k(rho) sin(m_k theta - n_k Nfp zeta)
+//!                               + Zc_k(rho) cos(m_k theta - n_k Nfp zeta) ]
+//!
+//! where Nfp is the number of field periods. For stellarator-symmetric
+//! equilibria only Rc and Zs are non-zero.
+//!
+//! With phi = zeta the volume element is dV = R |tau| drho dtheta dzeta with
+//! the poloidal-plane Jacobian
+//!
+//!   tau = dR/drho * dZ/dtheta - dR/dtheta * dZ/drho
+//!
+//! so for an emission density S(rho) [n/cm^3-s] that is constant on flux
+//! surfaces the joint sampling density is
+//!
+//!   p(rho, theta, zeta) ~ S(rho) * R * |tau|
+//!
+//! The sampling algorithm:
+//! 1. Sample rho from the marginal p(rho) ~ S(rho) * V'(rho), where
+//!    V'(rho) = int R |tau| dtheta dzeta is the differential volume, evaluated
+//!    by Fourier quadrature. Each radial bin is selected using its analytically
+//!    integrated cubic PDF, then rho is sampled within the bin by rejection.
+//! 2. Sample (theta, zeta) from the conditional p(theta, zeta | rho)
+//!    ~ R |tau| by rejection against a precomputed per-radial-bin majorant.
+//! 3. Sample energy and time from user-provided distribution(s).
+//! 4. Sample an isotropic direction and map to Cartesian coordinates via
+//!    x = R cos(zeta), y = R sin(zeta), z = Z.
+//!
+//! Fourier coefficients are interpolated linearly in rho between the surfaces
+//! provided on the rho grid; within a radial bin the density R*tau is then
+//! exactly quadratic in the interpolation parameter, which allows a rigorous
+//! per-bin rejection majorant to be constructed from three evaluations.
+//==============================================================================
+
+class StellaratorSource : public Source {
+public:
+  // Constructors
+  explicit StellaratorSource(pugi::xml_node node);
+
+  //! Sample from the stellarator source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
+private:
+  //==========================================================================
+  // Private methods
+
+  //! Precompute the radial CDF and per-bin rejection majorants
+  void precompute_sampling_distributions();
+
+  //! Evaluate the (signed) joint density f = R * tau at a point
+  //! \param bin Radial bin index (between rho grid points bin and bin+1)
+  //! \param t Interpolation parameter within the bin, in [0, 1]
+  //! \param theta Poloidal angle [rad]
+  //! \param zeta Toroidal angle [rad]
+  //! \param R_out If non-null, receives the major radius R [cm]
+  //! \param Z_out If non-null, receives the height Z [cm]
+  //! \return Signed density R * tau (positive after global sign fix)
+  double eval_density(int bin, double t, double theta, double zeta,
+    double* R_out = nullptr, double* Z_out = nullptr) const;
+
+  //! Sample energy from the distribution(s)
+  //! \param rho Normalized radial coordinate (for distribution selection)
+  //! \param seed Pseudorandom seed pointer
+  //! \return (Sampled energy [eV], importance weight)
+  std::pair<double, double> sample_energy(double rho, uint64_t* seed) const;
+
+  //==========================================================================
+  // Data members
+
+  // Radial grid and emission profile (input)
+  vector<double> rho_;              //!< Radial grid, rho = sqrt(s) in [0, 1]
+  vector<double> emission_density_; //!< Emission density S(rho) at grid points
+
+  // Fourier mode description (input)
+  vector<int> mode_m_;    //!< Poloidal mode numbers
+  vector<int> mode_n_;    //!< Toroidal mode numbers (per field period)
+  int num_field_periods_; //!< Number of field periods Nfp
+
+  // Fourier coefficient tables, flattened [n_rho x n_modes] row-major, [cm]
+  vector<double> rmnc_; //!< cos coefficients of R
+  vector<double> zmns_; //!< sin coefficients of Z
+  vector<double> rmns_; //!< sin coefficients of R (non-symmetric only)
+  vector<double> zmnc_; //!< cos coefficients of Z (non-symmetric only)
+  bool asym_ {false};   //!< Whether non-stellarator-symmetric terms present
+
+  // Energy distribution(s): either 1 for all rho, or one per rho point
+  vector<unique_ptr<Distribution>> energy_dists_;
+
+  // Time distribution (defaults to a delta distribution at t=0)
+  UPtrDist time_;
+
+  // Angular distribution (isotropic)
+  UPtrAngle angle_;
+
+  // Bound-normalized cubic radial PDFs and the distribution of bin masses.
+  vector<array<double, 4>> radial_pdf_;
+  DiscreteIndex radial_bins_;
+
+  // Per-radial-bin majorant of R*tau for rejection sampling (n_rho - 1)
+  vector<double> envelope_;
+
+  // Global sign of the flux-coordinate Jacobian (+1 or -1)
+  double jacobian_sign_ {1.0};
 };
 
 //==============================================================================

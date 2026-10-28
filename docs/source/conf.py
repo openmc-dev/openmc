@@ -11,7 +11,10 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import os
+from pathlib import Path
+import subprocess
+import sys
 
 # Determine if we're on Read the Docs server
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
@@ -37,6 +40,7 @@ sys.path.insert(0, os.path.abspath('../..'))
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
+    'breathe',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
@@ -47,6 +51,8 @@ extensions = [
 ]
 if not on_rtd:
     extensions.append('sphinxcontrib.rsvgconverter')
+    doxygen_dir = Path(__file__).parents[1] / 'doxygen'
+    subprocess.run(['doxygen'], cwd=doxygen_dir, check=True)
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -117,6 +123,11 @@ pygments_style = 'tango'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
+# -- Options breathe + doxygen -------------------------------------------------
+
+breathe_projects = {"OpenMC": "../doxygen/xml"}
+breathe_default_project = "OpenMC"
+breathe_domain_by_file_pattern = {"*capi.h": "c"}
 
 # -- Options for HTML output ---------------------------------------------------
 

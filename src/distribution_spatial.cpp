@@ -262,9 +262,11 @@ std::pair<Position, double> SphericalIndependent::sample(uint64_t* seed) const
 MeshSpatial::MeshSpatial(pugi::xml_node node)
 {
 
-  if (get_node_value(node, "type", true, true) != "mesh") {
-    fatal_error(fmt::format(
-      "Incorrect spatial type '{}' for a MeshSpatial distribution"));
+  auto spatial_type = get_node_value(node, "type", true, true);
+  if (spatial_type != "mesh") {
+    fatal_error(
+      fmt::format("Incorrect spatial type '{}' for a MeshSpatial distribution",
+        spatial_type));
   }
 
   // No in-tet distributions implemented, could include distributions for the
@@ -272,8 +274,6 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
   // Get pointer to spatial distribution
   mesh_idx_ = model::mesh_map.at(mesh_id);
-
-  const auto mesh_ptr = model::meshes.at(mesh_idx_).get();
 
   check_element_types();
 

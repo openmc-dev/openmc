@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import openmc.data
+from openmc.deplete import Chain, Nuclide
 
 
 def test_data_library(tmpdir):
@@ -134,7 +135,8 @@ def test_zam():
     with pytest.raises(ValueError):
         openmc.data.zam('Am242-m1')
 
-def test_half_life():
+
+def test_half_life(tmp_path):
     assert openmc.data.half_life('H2') is None
     assert openmc.data.half_life('U235') == pytest.approx(2.22102e16)
     assert openmc.data.half_life('Am242') == pytest.approx(57672.0)
@@ -143,3 +145,32 @@ def test_half_life():
     assert openmc.data.decay_constant('U235') == pytest.approx(log(2.0)/2.22102e16)
     assert openmc.data.decay_constant('Am242') == pytest.approx(log(2.0)/57672.0)
     assert openmc.data.decay_constant('Am242_m1') == pytest.approx(log(2.0)/4449622000.0)
+
+    # Create minimal chain with H3 and Am242 to test half-life and decay
+    # constant retrieval from chain file
+    chain = Chain()
+    h3 = Nuclide("H3")
+    h3.half_life = 1.0
+    chain.add_nuclide(h3)
+    am242 = Nuclide("Am242")
+    chain.add_nuclide(am242)
+
+    assert openmc.data.half_life('H3', chain_file=chain) == 1.0
+    assert openmc.data.decay_constant('H3', chain_file=chain) == pytest.approx(log(2.0))
+
+    # Nuclides that are present but stable in the chain should not fall back to
+    # ENDF/B-VIII.0 data.
+    assert openmc.data.half_life('Am242', chain_file=chain) is None
+    assert openmc.data.decay_constant('Am242', chain_file=chain) == 0.0
+
+    # Nuclides missing from the chain fall back to ENDF/B-VIII.0 data.
+    assert openmc.data.half_life('U235', chain_file=chain) == pytest.approx(2.22102e16)
+
+    chain_path = tmp_path / "chain.xml"
+    chain.export_to_xml(chain_path)
+    assert openmc.data.half_life('H3', chain_file=chain_path) == 1.0
+
+    endf_h3 = openmc.data.half_life('H3')
+    with openmc.config.patch('chain_file', chain_path):
+        assert openmc.data.half_life('H3', chain_file=None) == 1.0
+        assert openmc.data.half_life('H3', chain_file=False) == endf_h3

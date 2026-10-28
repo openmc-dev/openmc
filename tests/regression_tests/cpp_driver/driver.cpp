@@ -26,7 +26,7 @@ int main(int argc, char** argv)
   int err = openmc_init(argc, argv, nullptr);
 #endif
   if (err)
-    fatal_error(openmc_err_msg);
+    fatal_error(openmc_get_err_msg());
 
   // create a new cell filter
   auto cell_filter = Filter::create<CellFilter>();

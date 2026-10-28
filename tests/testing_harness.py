@@ -3,6 +3,7 @@ import filecmp
 import glob
 import h5py
 import hashlib
+import math
 import os
 import shutil
 
@@ -27,6 +28,21 @@ def colorize(diff):
             yield Fore.BLUE + line + Fore.RESET
         else:
             yield line
+
+
+def read_vtk_arrays(path):
+    """Read the point data arrays from a legacy binary VTK file."""
+    arrays = {}
+    with open(path, 'rb') as fh:
+        while line := fh.readline():
+            if line.startswith(b'POINT_DATA'):
+                n = int(line.split()[1])
+            elif line.startswith(b'SCALARS'):
+                _, name, dtype = line.decode().split()
+                fh.readline()  # LOOKUP_TABLE default
+                dtype = {'float': '>f4', 'int': '>i4'}[dtype]
+                arrays[name] = np.frombuffer(fh.read(4*n), dtype)
+    return arrays
 
 
 class TestHarness:
@@ -143,7 +159,8 @@ class TestHarness:
     def _cleanup(self):
         """Delete statepoints, tally, and test files."""
         output = glob.glob('statepoint.*.h5')
-        output += ['tallies.out', 'results_test.dat', 'summary.h5']
+        output += ['tallies.out', 'tallies.forward.out']
+        output += ['results_test.dat', 'summary.h5']
         output += glob.glob('volume_*.h5')
         for f in output:
             if os.path.exists(f):
@@ -415,7 +432,7 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
         def compare_tokens(token1, token2):
             if isfloat(token1) and isfloat(token2):
                 float1, float2 = float(token1), float(token2)
-                return abs(float1 - float2) <= tolerance * max(abs(float1), abs(float2))
+                return math.isclose(float1, float2, rel_tol=tolerance, abs_tol=0.0)
             else:
                 return token1 == token2
 
@@ -451,6 +468,40 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
             print(''.join(colorize(diff)))
             os.rename('results_test.dat', 'results_error.dat')
         assert compare, 'Results do not agree'
+
+
+class VTKTestHarness(TolerantPyAPITestHarness):
+    """Specialized harness for random ray tests that also check the flux and
+    source written to VTK files for a voxel plot.
+
+    """
+
+    def __init__(self, statepoint_name, model, plot):
+        super().__init__(statepoint_name, model)
+        # The base class removes all plots, so add back the one being tested
+        self._model.plots = [plot]
+
+    def _get_results(self):
+        """Digest the statepoint and VTK files and return as a string."""
+        outstr = super()._get_results()
+        # Adjoint runs also write the forward solve, to a .forward.vtk file
+        for vtk_file in sorted(glob.glob('*.vtk')):
+            for name, values in read_vtk_arrays(vtk_file).items():
+                # Compare the flux and source fields. The other arrays are
+                # random colors (FSRs, rank_subdomains), timings
+                # (measured_load), or not under test (Materials,
+                # weight_window_lower)
+                if name.startswith('flux_group_') or name in (
+                        'total_fission_source', 'external_source'):
+                    outstr += f'{vtk_file} {name}:\n'
+                    outstr += ''.join(f'{x:12.6E}\n' for x in values)
+        return outstr
+
+    def _cleanup(self):
+        """Delete the VTK files."""
+        super()._cleanup()
+        for f in glob.glob('*.vtk'):
+            os.remove(f)
 
 
 class WeightWindowPyAPITestHarness(PyAPITestHarness):

@@ -86,6 +86,8 @@ public:
   // Compton profile data
   tensor::Tensor<double> profile_pdf_;
   tensor::Tensor<double> profile_cdf_;
+  tensor::Tensor<double> profile_tail_slope_;
+  tensor::Tensor<double> profile_negative_mass_; //!< Mass from -1/alpha to 0
   tensor::Tensor<double> binding_energy_;
   tensor::Tensor<double> electron_pdf_;
 
@@ -110,8 +112,32 @@ public:
   static constexpr int MAX_STACK_SIZE =
     7; //!< maximum possible size of atomic relaxation stack
 private:
+  struct ShellKinematics {
+    double pz_max;       //!< Upper bound in Kaltiaisenaho Eq. (3.73)
+    double c_limit;      //!< Half-profile integral K_i(|pz_max|), Eq. (3.117)
+    double profile_mass; //!< Accessible profile mass, Eq. (3.118)
+  };
+
   void compton_doppler(
     double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const;
+
+  //! Determine pz_max and the accessible profile mass (Eqs. 3.73, 3.118)
+  ShellKinematics compton_shell_kinematics(
+    double alpha, double mu, double E, int i_shell) const;
+
+  //! Sample pz and E' for a selected shell (Eqs. 3.120-3.127)
+  bool sample_compton_momentum(double alpha, double mu, double E, int i_shell,
+    const ShellKinematics& kinematics, double* E_out, uint64_t* seed) const;
+
+  //! Sample from the shell PMF in Kaltiaisenaho Eq. (3.116)
+  bool compton_doppler_conditional(double alpha, double mu, double E,
+    double* E_out, int* i_shell, uint64_t* seed) const;
+
+  //! Evaluate K_i(pz), the normalized half-profile integral (Eq. 3.117)
+  double compton_profile_cdf(int i_shell, double pz) const;
+
+  //! Invert K_i using the inverse transforms of Eqs. (3.123) and (3.126)
+  double invert_compton_profile_cdf(int i_shell, double c) const;
 
   //! Calculate the maximum size of the vacancy stack in atomic relaxation
   //
@@ -126,6 +152,21 @@ private:
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+namespace detail {
+
+//! Integrate an exponentially extrapolated Compton-profile tail
+double compton_profile_tail_integral(
+  double pz, double pz_last, double profile_last, double slope);
+
+//! Invert an exponentially extrapolated Compton-profile tail integral
+double invert_compton_profile_tail(
+  double integral, double pz_last, double profile_last, double slope);
+
+//! Calculate the outgoing-to-incident energy ratio for signed electron momentum
+double compton_energy_ratio(double alpha, double mu, double pz);
+
+} // namespace detail
 
 std::pair<double, double> klein_nishina(double alpha, uint64_t* seed);
 

@@ -38,9 +38,19 @@
     <filter id="2" type="particle">
       <bins>photon</bins>
     </filter>
+    <filter id="3" type="energyout">
+      <bins>1000.0 100000.0 500000.0 2000000.0</bins>
+    </filter>
+    <filter id="4" type="legendre">
+      <order>1</order>
+    </filter>
     <tally id="1" name="photon">
       <filters>1 2</filters>
       <scores>flux total absorption scatter nu-scatter inverse-velocity</scores>
+    </tally>
+    <tally id="2" name="photon transfer">
+      <filters>1 3 4 2</filters>
+      <scores>scatter nu-scatter</scores>
     </tally>
   </tallies>
 </model>

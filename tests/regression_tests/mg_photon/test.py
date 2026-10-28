@@ -2,10 +2,14 @@
 
 A reflective cube with a spatially uniform, isotropic source behaves as an
 infinite medium, so the group track lengths (volume-integrated fluxes) per
-source photon follow from a group balance and can be checked exactly. The
-library uses P1 scattering and a top group that produces more photons than it
-scatters (a row-constant multiplicity), which exercises angular sampling and
-the weight multiplicity used to represent secondary photon production.
+source photon follow from a group balance and can be checked exactly.
+The library uses P1 scattering and a top group that produces more photons
+than it scatters, represented by a weight multiplicity that is either given
+explicitly or derived by OpenMC when left out of the library. Besides the
+tracklength reaction rates, an analog tally checks the group-to-group scatter
+and nu-scatter matrices and their P1 moments: the scalar flux in an infinite
+medium does not depend on the scattering anisotropy, so it cannot detect
+errors in the angular sampling on its own.
 
 """
 from pathlib import Path
@@ -54,15 +58,18 @@ def _exact_track_lengths():
     return np.linalg.solve(np.diag(TOTAL) - PRODUCTION.T, source)
 
 
-def _make_model():
+def _make_model(multiplicity='explicit', survival_biasing=False,
+                absorption=ABSORPTION):
     groups = openmc.mgxs.EnergyGroups(group_edges=GROUP_EDGES)
     photon = openmc.XSdata('photon', groups)
     photon.order = 1
     photon.set_total(TOTAL)
-    photon.set_absorption(ABSORPTION)
+    photon.set_absorption(absorption)
     photon.set_scatter_matrix(
         np.stack([PRODUCTION, MU_BAR * PRODUCTION], axis=-1))
-    photon.set_multiplicity_matrix(_multiplicity())
+    if multiplicity == 'explicit':
+        photon.set_multiplicity_matrix(_multiplicity())
+    # Otherwise the multiplicity is derived when OpenMC reads the library.
     # No inverse velocity is given, so photons must default to 1/c
 
     library = openmc.MGXSLibrary(groups, particle_type='photon')
@@ -82,14 +89,24 @@ def _make_model():
     model.materials = openmc.Materials([material])
     model.materials.cross_sections = 'mgxs.h5'
 
+    energy_filter = openmc.EnergyFilter(GROUP_EDGES)
+    particle_filter = openmc.ParticleFilter('photon')
+
     tally = openmc.Tally(name='photon')
-    tally.filters = [
-        openmc.EnergyFilter(GROUP_EDGES),
-        openmc.ParticleFilter('photon'),
-    ]
+    tally.filters = [energy_filter, particle_filter]
     tally.scores = ['flux', 'total', 'absorption', 'scatter', 'nu-scatter',
                     'inverse-velocity']
-    model.tallies.append(tally)
+
+    # The outgoing energy and Legendre filters make this tally analog
+    transfer = openmc.Tally(name='photon transfer')
+    transfer.filters = [
+        energy_filter,
+        openmc.EnergyoutFilter(GROUP_EDGES),
+        openmc.LegendreFilter(1),
+        particle_filter,
+    ]
+    transfer.scores = ['scatter', 'nu-scatter']
+    model.tallies = openmc.Tallies([tally, transfer])
 
     model.settings.energy_mode = 'multi-group'
     model.settings.run_mode = 'fixed source'
@@ -100,20 +117,38 @@ def _make_model():
         particle='photon',
         space=openmc.stats.Box((-5.0, -5.0, -5.0), (5.0, 5.0, 5.0)),
         energy=openmc.stats.Discrete([1.0e6], [1.0]))
+    if survival_biasing:
+        model.settings.survival_biasing = True
 
     return model
 
 
-@pytest.fixture
-def model():
-    return _make_model()
+def _assert_matches(name, mean, std_dev, reference):
+    """Compare tally means to exact values within 5 standard deviations.
+
+    Bins where the exact value is zero (upscatter) can never receive a
+    score, so they must be exactly zero.
+
+    """
+    zero = reference == 0.0
+    if np.any(mean[zero] != 0.0):
+        raise AssertionError(
+            f"Multigroup photon '{name}' scored bins that must be empty: "
+            f"{mean}")
+    deviation = np.abs(mean[~zero] - reference[~zero]) / std_dev[~zero]
+    if np.any(deviation > 5.0):
+        raise AssertionError(
+            f"Multigroup photon '{name}' disagrees with the infinite-medium "
+            f"solution: {mean} vs. {reference} ({deviation} standard "
+            "deviations)")
 
 
-class MGPhotonTestHarness(PyAPITestHarness):
-    """Check exact infinite-medium answers before the regression comparison"""
+def _check_exact_solution(statepoint_path):
+    """Check every tally in the statepoint against the exact solution"""
+    exact = _exact_track_lengths()
 
-    def _get_results(self, hash_output=False):
-        exact = _exact_track_lengths()
+    with openmc.StatePoint(statepoint_path) as statepoint:
+        tally = statepoint.get_tally(name='photon')
         expected = {
             'flux': exact,
             'total': TOTAL * exact,
@@ -122,33 +157,52 @@ class MGPhotonTestHarness(PyAPITestHarness):
             'nu-scatter': PRODUCTION.sum(axis=1) * exact,
         }
 
-        with openmc.StatePoint(self._sp_name) as statepoint:
-            tally = statepoint.get_tally(name='photon')
+        # Energy filter bins run from low to high energy, so reverse them
+        # to match the group ordering of the library
+        for score, reference in expected.items():
+            mean = tally.get_values(scores=[score]).ravel()[::-1]
+            std_dev = tally.get_values(
+                scores=[score], value='std_dev').ravel()[::-1]
+            _assert_matches(score, mean, std_dev, reference)
 
-            # Energy filter bins run from low to high energy, so reverse them
-            # to match the group ordering of the library
-            for score, reference in expected.items():
-                mean = tally.get_values(scores=[score]).ravel()[::-1]
-                std_dev = tally.get_values(
-                    scores=[score], value='std_dev').ravel()[::-1]
-                deviation = np.abs(mean - reference) / std_dev
-                if np.any(deviation > 5.0):
-                    raise AssertionError(
-                        f"Multigroup photon '{score}' disagrees with the "
-                        f"infinite-medium solution: {mean} vs. {reference} "
-                        f"({deviation} standard deviations)")
+        # Photons travel at the speed of light, so the inverse-velocity
+        # score must equal flux / c in every group
+        flux = tally.get_values(scores=['flux']).ravel()
+        inverse_velocity = tally.get_values(
+            scores=['inverse-velocity']).ravel()
+        if not np.allclose(SPEED_OF_LIGHT * inverse_velocity, flux,
+                           rtol=1e-10):
+            raise AssertionError(
+                'Multigroup photons are not moving at the speed of light: '
+                f'flux / inverse-velocity = {flux / inverse_velocity}')
 
-            # Photons travel at the speed of light, so the inverse-velocity
-            # score must equal flux / c in every group
-            flux = tally.get_values(scores=['flux']).ravel()
-            inverse_velocity = tally.get_values(
-                scores=['inverse-velocity']).ravel()
-            if not np.allclose(SPEED_OF_LIGHT * inverse_velocity, flux,
-                               rtol=1e-10):
-                raise AssertionError(
-                    'Multigroup photons are not moving at the speed of light: '
-                    f'flux / inverse-velocity = {flux / inverse_velocity}')
+        # Group-to-group transfer. Each analog nu-scatter event scores the
+        # multiplicity of the sampled transfer, and every transfer has the
+        # mean cosine MU_BAR, so the P1 moments are MU_BAR times the P0 ones.
+        nu_scatter = exact[:, np.newaxis] * PRODUCTION
+        transfer_expected = {
+            'scatter': nu_scatter / _multiplicity(),
+            'nu-scatter': nu_scatter,
+        }
+        transfer = statepoint.get_tally(name='photon transfer')
+        # Axes: energy in, energy out, Legendre order, particle, nuclide, score
+        means = transfer.get_reshaped_data(value='mean')
+        std_devs = transfer.get_reshaped_data(value='std_dev')
+        for score, p0 in transfer_expected.items():
+            i = transfer.get_score_index(score)
+            for order, reference in enumerate([p0, MU_BAR * p0]):
+                _assert_matches(
+                    f'{score} P{order} matrix',
+                    means[::-1, ::-1, order, 0, 0, i],
+                    std_devs[::-1, ::-1, order, 0, 0, i],
+                    reference)
 
+
+class MGPhotonTestHarness(PyAPITestHarness):
+    """Check exact infinite-medium answers before the regression comparison"""
+
+    def _get_results(self, hash_output=False):
+        _check_exact_solution(self._sp_name)
         return super()._get_results(hash_output)
 
     def _cleanup(self):
@@ -156,9 +210,24 @@ class MGPhotonTestHarness(PyAPITestHarness):
         Path('mgxs.h5').unlink(missing_ok=True)
 
 
-def test_mg_photon(model):
-    harness = MGPhotonTestHarness('statepoint.20.h5', model)
+# The derived multiplicity equals the explicit row-constant one, and without
+# survival biasing the multiplicity only scales particle weights, so both
+# libraries must reproduce the same inputs_true.dat and results_true.dat.
+@pytest.mark.parametrize('multiplicity', ['explicit', 'derived'])
+def test_mg_photon(multiplicity):
+    openmc.reset_auto_ids()
+    harness = MGPhotonTestHarness(
+        'statepoint.20.h5', _make_model(multiplicity))
     harness.main()
+
+
+def test_mg_photon_survival_biasing(tmp_path):
+    """Survival biasing must leave the exact answers unchanged"""
+    with change_directory(tmp_path):
+        model = _make_model(survival_biasing=True)
+        statepoint = model.run(
+            openmc_exec=config['exe'], event_based=config['event'])
+        _check_exact_solution(statepoint)
 
 
 @pytest.mark.parametrize(
@@ -168,11 +237,20 @@ def test_mg_photon(model):
         ('energy below library', 'outside the MGXS group structure'),
         ('source mismatch', 'does not match'),
         ('pulse-height tally', 'Pulse-height tallies are not supported'),
+        ('no scattering', 'produces photons but has no scattering'),
     ],
 )
 def test_mg_photon_validation(tmp_path, invalid_input, error):
     with change_directory(tmp_path):
-        model = _make_model()
+        if invalid_input == 'no scattering':
+            # A group that only absorbs leaves nothing to carry its photon
+            # production when the multiplicity has to be derived
+            absorption = ABSORPTION.copy()
+            absorption[-1] = TOTAL[-1]
+            model = _make_model('derived', absorption=absorption)
+        else:
+            model = _make_model()
+
         source = model.settings.source[0]
         if invalid_input == 'energy above library':
             source.energy = openmc.stats.Discrete([3.0e6], [1.0])
@@ -180,7 +258,7 @@ def test_mg_photon_validation(tmp_path, invalid_input, error):
             source.energy = openmc.stats.Discrete([500.0], [1.0])
         elif invalid_input == 'source mismatch':
             source.particle = 'neutron'
-        else:
+        elif invalid_input == 'pulse-height tally':
             cells = list(model.geometry.get_all_cells().values())
             tally = openmc.Tally()
             tally.filters = [

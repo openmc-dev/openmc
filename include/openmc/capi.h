@@ -390,18 +390,6 @@ int openmc_cram_solve(int n, const int* indptr, const int* indices,
   const double* data, const double* n0, double dt, int order, int substeps,
   double* result);
 
-// Error codes
-extern int OPENMC_E_UNASSIGNED;
-extern int OPENMC_E_ALLOCATE;
-extern int OPENMC_E_OUT_OF_BOUNDS;
-extern int OPENMC_E_INVALID_SIZE;
-extern int OPENMC_E_INVALID_ARGUMENT;
-extern int OPENMC_E_INVALID_TYPE;
-extern int OPENMC_E_INVALID_ID;
-extern int OPENMC_E_GEOMETRY;
-extern int OPENMC_E_DATA;
-extern int OPENMC_E_PHYSICS;
-extern int OPENMC_E_WARNING;
 //! Get whether an optional build feature is enabled.
 //!
 //! Supported feature names are ``dagmc``, ``libmesh``, ``strict_fp``, and

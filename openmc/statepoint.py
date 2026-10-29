@@ -85,6 +85,17 @@ class StatePoint:
         .. versionadded:: 0.13.1
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
+    multiplication : uncertainties.UFloat or float
+        Estimator for the total multiplication :math:`M` of the initial source
+        neutrons, computed from the generation-wise estimates :math:`k_j` of
+        the :math:`N` inactive generations as
+
+        .. math::
+            M = 1 + \sum_{n=1}^{N} \prod_{j=1}^{n} k_j,
+
+        where the last term is multiplied by :math:`1/(1 - k_{eff})` to account
+        for all later generations, which are assumed to have reached the
+        fundamental mode. Equal to 1.0 when there are no inactive generations.
     n_batches : int
         Number of batches
     n_inactive : int
@@ -111,6 +122,16 @@ class StatePoint:
         'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
         the position, direction, energy, weight, delayed group, surface ID and
         particle type of the source site, respectively.
+    source_efficiency : uncertainties.UFloat or float
+        Source efficiency factor :math:`g^*`, the ratio of the multiplication
+        of the initial source to that of a source already in the fundamental
+        mode, estimated from the generation-wise estimates :math:`k_j` of the
+        :math:`N` inactive generations as
+
+        .. math::
+            g^* = \prod_{j=1}^{N} \frac{k_j}{k_{eff}}.
+
+        Equal to 1.0 when there are no inactive generations.
     source_present : bool
         Indicate whether source sites are present
     sparse : bool
@@ -247,8 +268,14 @@ class StatePoint:
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']
-            gt['sum'] = data[:,1]
-            gt['sum_sq'] = data[:,2]
+            # Files older than version 18.3 store (value, sum, sum_sq) for
+            # each global tally; newer ones store only (sum, sum_sq)
+            if self._file_version < (18, 3):
+                gt['sum'] = data[:, 1]
+                gt['sum_sq'] = data[:, 2]
+            else:
+                gt['sum'] = data[:, 0]
+                gt['sum_sq'] = data[:, 1]
 
             # Calculate mean and sample standard deviation of mean
             n = self.n_realizations
@@ -269,9 +296,30 @@ class StatePoint:
     @property
     def k_generation(self):
         if self.run_mode == 'eigenvalue':
-            return self._f['k_generation'][()]
+            arr = self._f['k_generation'][()]
+            # Files older than version 18.3 store only k for each generation;
+            # newer ones store k and its standard deviation
+            if arr.ndim == 1:
+                return arr
+            elif arr.ndim == 2:
+                return uarray(arr[:, 0], arr[:, 1])
+            else:
+                raise ValueError(
+                    f'k_generation shape ({arr.shape}) must be either 1d or 2d')
         else:
             return None
+
+    @property
+    def _file_version(self):
+        """Major and minor version of the statepoint file format"""
+        return tuple(int(v) for v in self._f.attrs['version'])
+
+    def _k_generation_inactive(self):
+        """Generation-wise k estimates for the inactive generations"""
+        n_gen = self.n_inactive*self.generations_per_batch
+        # Use an object array so that plain floats from files older than
+        # version 18.3 can be combined with the ufloat keff
+        return np.asarray(self.k_generation[:n_gen], dtype=object)
 
     @property
     def keff(self):
@@ -322,6 +370,18 @@ class StatePoint:
             self._meshes_read = True
 
         return self._meshes
+        
+    @property
+    def multiplication(self):
+        if self.run_mode == 'eigenvalue':
+            k_inactive = self._k_generation_inactive()
+            if len(k_inactive) == 0:
+                return 1.0
+            cumprod = np.cumprod(k_inactive)
+            cumprod[-1] *= 1/(1-self.keff)
+            return 1.0+np.sum(cumprod)
+        else:
+            return None
 
     @property
     def n_batches(self):
@@ -370,6 +430,16 @@ class StatePoint:
     @property
     def source(self):
         return self._f['source_bank'][()] if self.source_present else None
+        
+    @property
+    def source_efficiency(self):
+        if self.run_mode == 'eigenvalue':
+            k_inactive = self._k_generation_inactive()
+            if len(k_inactive) == 0:
+                return 1.0
+            return np.prod(k_inactive/self.keff)
+        else:
+            return None
 
     @property
     def source_present(self):

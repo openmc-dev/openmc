@@ -156,13 +156,6 @@ with :func:`cram.CRAM48` being the default.
 .. autosummary::
    :toctree: generated
    :nosignatures:
-   :template: myintegrator.rst
-
-   cram.IPFCramSolver
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
    :template: myfunction.rst
 
    cram.CRAM16
@@ -275,8 +268,8 @@ transport-independent depletion) back on to the :class:`abc.TransportOperator`
    abc.FissionYieldHelper
    abc.ReactionRateHelper
 
-Custom integrators or depletion solvers can be developed by subclassing from
-the following abstract base classes:
+Custom integrators can be developed by subclassing from the following abstract
+base classes:
 
 .. autosummary::
    :toctree: generated
@@ -285,7 +278,6 @@ the following abstract base classes:
 
    abc.Integrator
    abc.SIIntegrator
-   abc.DepSystemSolver
 
 R2S Automation
 --------------

@@ -314,10 +314,11 @@ void ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
 }
 
 double ThermalData::sample_energy_and_pdf(const NuclideMicroXS& micro_xs,
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+  double E_in, double mu, double& E_out, uint64_t* seed, bool is_com,
+  double awr) const
 {
   return sample_dist(micro_xs, E_in, seed)
-    .sample_energy_and_pdf(E_in, mu, E_out, seed);
+    .sample_energy_and_pdf(E_in, mu, E_out, seed, is_com, awr);
 }
 
 void free_memory_thermal()

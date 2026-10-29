@@ -133,6 +133,7 @@ Constructing Tallies
    openmc.MeshBornFilter
    openmc.MeshMaterialFilter
    openmc.MeshSurfaceFilter
+   openmc.PointFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
    openmc.ParticleProductionFilter

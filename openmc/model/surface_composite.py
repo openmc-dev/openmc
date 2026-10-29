@@ -646,6 +646,19 @@ class RectangularParallelepiped(CompositeSurface):
         self.ymax = openmc.YPlane(y0=ymax, **kwargs)
         self.zmin = openmc.ZPlane(z0=zmin, **kwargs)
         self.zmax = openmc.ZPlane(z0=zmax, **kwargs)
+        if kwargs.get('boundary_type') == 'periodic':
+            self.xmin.periodic_surface = self.xmax
+            self.ymin.periodic_surface = self.ymax
+            self.zmin.periodic_surface = self.zmax
+
+    @CompositeSurface.boundary_type.setter
+    def boundary_type(self, boundary_type):
+        for name in self._surface_names:
+            getattr(self, name).boundary_type = boundary_type
+        if boundary_type == 'periodic':
+            self.xmin.periodic_surface = self.xmax
+            self.ymin.periodic_surface = self.ymax
+            self.zmin.periodic_surface = self.zmax
 
     def __neg__(self):
         return -self.xmax & +self.xmin & -self.ymax & +self.ymin & -self.zmax & +self.zmin

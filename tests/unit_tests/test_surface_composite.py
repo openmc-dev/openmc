@@ -54,6 +54,21 @@ def test_rectangular_parallelepiped():
     repr(s)
 
 
+def test_rectangular_parallelepiped_periodic():
+    s = openmc.model.RectangularParallelepiped(
+        -3., 3., -3., 3., -3., 3., boundary_type='periodic')
+    assert s.boundary_type == 'periodic'
+    assert s.xmin.periodic_surface == s.xmax
+    assert s.ymin.periodic_surface == s.ymax
+    assert s.zmin.periodic_surface == s.zmax
+
+    s.boundary_type = 'vacuum'
+    assert s.xmin.boundary_type == 'vacuum'
+
+    s.boundary_type = 'periodic'
+    assert s.xmin.periodic_surface == s.xmax
+
+
 @pytest.mark.parametrize(
     "axis, indices", [
         ("X", [0, 1, 2]),

@@ -45,3 +45,27 @@ def test_rotational_periodic_bc(angle):
 
     # Run the model
     model.run()
+
+
+def test_rectangular_parallelepiped_periodic(run_in_tmpdir):
+    """Regression test for issue #3966."""
+    mat = openmc.Material(density=1.0, density_units='g/cm3')
+    mat.add_nuclide('H1', 1.0)
+
+    inner = openmc.model.RectangularParallelepiped(
+        -3., 3., -3., 3., -3., 3., boundary_type='periodic')
+    outer = openmc.model.RectangularParallelepiped(
+        -4., 4., -4., 4., -4., 4., boundary_type='periodic')
+
+    cell_inner = openmc.Cell(fill=mat, region=-inner)
+    cell_outer = openmc.Cell(fill=mat, region=+inner & -outer)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell_inner, cell_outer])
+    model.settings.particles = 100
+    model.settings.batches = 2
+    model.settings.inactive = 1
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.IndependentSource(
+        energy=openmc.stats.delta_function(1.0e4)
+    )
+    model.run()

@@ -56,6 +56,7 @@ struct SourceSite {
   double wgt_ww_born {-1.0};
   int64_t n_split {0};
   int n_collision {0};
+  double lifetime {0.0}; //!< time since birth of the neutron's generation [s]
 };
 
 struct CollisionTrackSite {

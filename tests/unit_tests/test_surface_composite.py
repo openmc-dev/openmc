@@ -69,6 +69,17 @@ def test_rectangular_parallelepiped_periodic():
     assert s.xmin.periodic_surface == s.xmax
 
 
+@pytest.mark.parametrize("inplace", [False, True])
+def test_rectangular_parallelepiped_periodic_transform(inplace):
+    s = openmc.model.RectangularParallelepiped(
+        -3., 3., -3., 3., -3., 3., boundary_type='periodic')
+    for t in (s.translate((1., 2., 3.), inplace=inplace),
+              s.rotate((0., 0., 30.), inplace=inplace)):
+        for lo, hi in (('xmin', 'xmax'), ('ymin', 'ymax'), ('zmin', 'zmax')):
+            assert getattr(t, lo).periodic_surface is getattr(t, hi)
+            assert getattr(t, hi).periodic_surface is getattr(t, lo)
+
+
 @pytest.mark.parametrize(
     "axis, indices", [
         ("X", [0, 1, 2]),

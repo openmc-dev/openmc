@@ -850,6 +850,9 @@ void SourceBias::to_hdf5(hid_t group) const
 {
   hid_t sb_group = create_group(group, fmt::format("source_bias_{}", ww_id_));
 
+  write_attribute(
+    sb_group, "energy_distribution_type", energy_distribution_type_);
+
   write_dataset(
     sb_group, "spatial_mesh", model::meshes[spatial_mesh_idx_]->id());
   write_dataset(sb_group, "angle_mesh",
@@ -860,11 +863,34 @@ void SourceBias::to_hdf5(hid_t group) const
   const int64_t spatial_bins = flux_.shape(0);
   const int64_t angle_bins = flux_.shape(1);
   const int64_t energy_bins = flux_.shape(2);
+  const int64_t n_atoms = static_cast<int64_t>(discrete_energies_.size());
+
+  const bool has_continuum = (energy_distribution_type_ != "discrete");
+  const int64_t n_cont_e = has_continuum ? energy_bins : 0;
 
   tensor::Tensor<double> biased_strength({static_cast<size_t>(spatial_bins),
-    static_cast<size_t>(angle_bins), static_cast<size_t>(energy_bins)});
+    static_cast<size_t>(angle_bins), static_cast<size_t>(n_cont_e)});
   tensor::Tensor<double> weights({static_cast<size_t>(spatial_bins),
-    static_cast<size_t>(angle_bins), static_cast<size_t>(energy_bins)});
+    static_cast<size_t>(angle_bins), static_cast<size_t>(n_cont_e)});
+
+  tensor::Tensor<double> biased_discrete, wgts_discrete;
+  if (n_atoms > 0) {
+    biased_discrete = tensor::Tensor<double>({static_cast<size_t>(spatial_bins),
+      static_cast<size_t>(angle_bins), static_cast<size_t>(n_atoms)});
+    wgts_discrete = tensor::Tensor<double>({static_cast<size_t>(spatial_bins),
+      static_cast<size_t>(angle_bins), static_cast<size_t>(n_atoms)});
+  }
+
+  // Function to get the energy group containing a discrete energy value
+  auto group_of = [&](double E) -> int64_t {
+    if (energy_bins <= 1)
+      return 0;
+    if (E <= energy_bounds_.front())
+      return 0;
+    if (E >= energy_bounds_.back())
+      return energy_bins - 1;
+    return lower_bound_index(energy_bounds_.begin(), energy_bounds_.end(), E);
+  };
 
   // Calculate biasing parameters and simultaneously check to see if any
   // voxels containing probability mass associated with the unbiased source
@@ -873,7 +899,7 @@ void SourceBias::to_hdf5(hid_t group) const
   double total_missed_S = 0.0;
   for (int64_t m = 0; m < spatial_bins; ++m) {
     for (int64_t a = 0; a < angle_bins; ++a) {
-      for (int64_t e = 0; e < energy_bins; ++e) {
+      for (int64_t e = 0; e < n_cont_e; ++e) {
         double psi = flux_(m, a, e);
         double b = psi * unbiased_strength_(m, a, e);
         biased_strength(m, a, e) = b;
@@ -885,6 +911,22 @@ void SourceBias::to_hdf5(hid_t group) const
     }
   }
 
+  // Do the same for any discrete emission energies of the unbiased
+  // source spectrum, using the adjoint angular flux of the group containing
+  // the discrete energy to determine biased source strength
+  for (int64_t k = 0; k < n_atoms; ++k) {
+    int64_t g = group_of(discrete_energies_[k]);
+    for (int64_t m = 0; m < spatial_bins; ++m)
+      for (int64_t a = 0; a < angle_bins; ++a) {
+        double psi = flux_(m, a, g);
+        double b = psi * unbiased_strength_discrete_(m, a, k);
+        biased_discrete(m, a, k) = b;
+        total_strength += b;
+        if (psi <= 0.0)
+          total_missed_S += unbiased_strength_discrete_(m, a, k);
+      }
+  }
+
   if (total_missed_S > TINY_BIT) {
     fatal_error(fmt::format("Biased source does not sample whole support of "
                             "the unbiased source. Probability mass lost in "
@@ -894,22 +936,34 @@ void SourceBias::to_hdf5(hid_t group) const
 
   // Rescale biased strengths so that they add up to probability 1.0.
   // This would be done anyway by the DiscreteIndex inside of CorrelatedSource
-  // when sampling a phase space bin, but the normalization should be done
-  // beforehand so that source's .strength() attribute still appears as 1.0.
-  // Also apply sample weight of (total_strength / psi) so that total
-  // probability mass still equals 1.0.
+  // when sampling a phase space bin.
+  // Also apply sample weight of (total_strength / psi) so that expected mass
+  // per voxel equals the unbiased strength in each voxel.
   for (int64_t m = 0; m < spatial_bins; ++m) {
     for (int64_t a = 0; a < angle_bins; ++a) {
-      for (int64_t e = 0; e < energy_bins; ++e) {
+      for (int64_t e = 0; e < n_cont_e; ++e) {
         double psi = flux_(m, a, e);
         weights(m, a, e) = psi > 0.0 ? total_strength / psi : 0.0;
         biased_strength(m, a, e) /= total_strength;
+      }
+
+      for (int64_t k = 0; k < n_atoms; ++k) {
+        double psi = flux_(m, a, group_of(discrete_energies_[k]));
+        wgts_discrete(m, a, k) = psi > 0.0 ? total_strength / psi : 0.0;
+        biased_discrete(m, a, k) /= total_strength;
       }
     }
   }
 
   write_dataset(sb_group, "biased_source_strength", biased_strength);
   write_dataset(sb_group, "weights", weights);
+
+  if (energy_distribution_type_ != "continuous") {
+    write_dataset(sb_group, "discrete_energies", discrete_energies_);
+
+    write_dataset(sb_group, "biased_source_strength_discrete", biased_discrete);
+    write_dataset(sb_group, "weights_discrete", wgts_discrete);
+  }
 
   close_group(sb_group);
 }
@@ -1086,6 +1140,34 @@ void SourceBias::load_forward_source_mesh(const std::string& path)
   }
 
   read_dataset<double>(file, "unbiased_source_strength", unbiased_strength_);
+
+  // Read source strengths at discrete energies if source is mixed or discrete
+  if (attribute_exists(file, "energy_distribution_type")) {
+    read_attribute(file, "energy_distribution_type", energy_distribution_type_);
+  } else {
+    energy_distribution_type_ = "continuous";
+  }
+
+  if (object_exists(file, "discrete_energies")) {
+    read_dataset<double>(file, "discrete_energies", discrete_energies_);
+    read_dataset<double>(
+      file, "unbiased_source_strength_discrete", unbiased_strength_discrete_);
+
+    if (discrete_energies_.size() > 0 &&
+        energy_distribution_type_ == "continuous") {
+      fatal_error(fmt::format(
+        "Forward source mesh for biasing has type 'continuous' but contains "
+        "{} discrete emission energies.",
+        discrete_energies_.size()));
+    } else if (energy_distribution_type_ != "continuous" &&
+               discrete_energies_.size() == 0) {
+      fatal_error("Forward source mesh for biasing has 'discrete' or 'mixed' "
+                  "type but contains zero discrete emission energies.");
+    }
+  } else if (energy_distribution_type_ != "continuous") {
+    fatal_error("Forward source mesh for biasing has 'discrete' or 'mixed' "
+                "type but discrete emission energies could not be found.");
+  }
 
   file_close(file);
 }

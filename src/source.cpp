@@ -712,12 +712,6 @@ SourceSite MeshSource::sample(uint64_t* seed) const
 
 CorrelatedSource::CorrelatedSource(pugi::xml_node node) : Source(node)
 {
-  // Note: Source(node) reads strength/constraints from XML for consistency
-  // with other source types, but neither is actually used at sample time --
-  // strength() is overridden to derive strength from the voxel data, and
-  // constraints_applied() == true means domain/energy/time constraints are
-  // never re-checked (the imported voxel probabilities are assumed to reflect
-  // only phase space actually populated by the original source).
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
   if (model::mesh_map.count(mesh_id) == 0) {
     fatal_error(fmt::format(
@@ -748,45 +742,66 @@ CorrelatedSource::CorrelatedSource(pugi::xml_node node) : Source(node)
     angle_mesh_idx_ = C_NONE;
   }
 
-  if (check_for_node(node, "group_bounds")) {
-    group_bounds_ = get_node_array<double>(node, "group_bounds");
+  if (check_for_node(node, "energy_distribution_type")) {
+    energy_distribution_type_ =
+      get_node_value(node, "energy_distribution_type");
   }
 
   spatial_bins_ = model::meshes[spatial_mesh_idx_]->n_bins();
   angle_bins_ =
     angle_mesh_idx_ == C_NONE ? 1 : model::meshes[angle_mesh_idx_]->n_bins();
-  energy_bins_ = group_bounds_.empty() ? 1 : group_bounds_.size() - 1;
 
-  size_t n_voxels =
-    static_cast<size_t>(spatial_bins_ * angle_bins_ * energy_bins_);
+  // Voxel strengths and weights are flattened in row-major (spatial, angle,
+  // energy) order, with the continuous-energy phase space voxels first,
+  // then the discrete-energy block
+  vector<double> strengths;
+  if (check_for_node(node, "strengths")) {
+    group_bounds_ = get_node_array<double>(node, "group_bounds");
+    if (group_bounds_.size() < 2) {
+      fatal_error("CorrelatedSource 'group_bounds' must contain at least two "
+                  "entries.");
+    }
+    energy_bins_ = static_cast<int64_t>(group_bounds_.size()) - 1;
+    n_continuum_voxels_ = spatial_bins_ * angle_bins_ * energy_bins_;
 
-  // "strengths" flattened in row-major (spatial, angle, energy) order
-  vector<double> strengths = get_node_array<double>(node, "strengths");
-  if (strengths.size() != n_voxels) {
-    fatal_error(fmt::format(
-      "Number of entries in the 'strengths' array for a CorrelatedSource "
-      "({}) does not match the number of (spatial, angle, energy) voxels "
-      "implied by its mesh(es) and energy bounds ({}).",
-      strengths.size(), n_voxels));
-  }
-  double total_strength =
-    std::accumulate(strengths.begin(), strengths.end(), 0.0);
-  if (std::fabs(total_strength - 1.0) > FP_PRECISION) {
-    for (auto& element : strengths) {
-      element /= total_strength;
+    strengths = get_node_array<double>(node, "strengths");
+    weights_ = get_node_array<double>(node, "weights");
+    if (static_cast<int64_t>(strengths.size()) != n_continuum_voxels_ ||
+        static_cast<int64_t>(weights_.size()) != n_continuum_voxels_) {
+      fatal_error(fmt::format(
+        "CorrelatedSource continuum strength/weight arrays ({}, {} entries) "
+        "do not match the number of (spatial, angle, energy) voxels ({}).",
+        strengths.size(), weights_.size(), n_continuum_voxels_));
     }
   }
 
-  weights_ = get_node_array<double>(node, "weights");
-  if (weights_.size() != n_voxels) {
-    fatal_error(fmt::format(
-      "Number of entries in the 'weights' array for a CorrelatedSource "
-      "({}) does not match the number of (spatial, angle, energy) voxels "
-      "implied by its mesh(es) and energy bounds ({}).",
-      weights_.size(), n_voxels));
+  // Append the discrete (atom) block, if present
+  if (check_for_node(node, "discrete_energies")) {
+    discrete_energies_ = get_node_array<double>(node, "discrete_energies");
+    n_discrete_ = static_cast<int64_t>(discrete_energies_.size());
+
+    auto s_disc = get_node_array<double>(node, "strengths_discrete");
+    auto w_disc = get_node_array<double>(node, "weights_discrete");
+    int64_t n_disc_vox = spatial_bins_ * angle_bins_ * n_discrete_;
+    if (static_cast<int64_t>(s_disc.size()) != n_disc_vox ||
+        static_cast<int64_t>(w_disc.size()) != n_disc_vox) {
+      fatal_error(fmt::format(
+        "CorrelatedSource discrete strength/weight arrays ({}, {} entries) "
+        "do not match the number of (spatial, angle, atom) voxels ({}).",
+        s_disc.size(), w_disc.size(), n_disc_vox));
+    }
+    strengths.insert(strengths.end(), s_disc.begin(), s_disc.end());
+    weights_.insert(weights_.end(), w_disc.begin(), w_disc.end());
   }
 
-  voxel_dist_.assign(strengths);
+  auto is_negative = [](int x) { return x < 0; };
+  if (std::any_of(strengths.begin(), strengths.end(), is_negative) ||
+      std::any_of(weights_.begin(), weights_.end(), is_negative)) {
+    fatal_error("CorrelatedSource requires all continuum/discrete voxel "
+                "strengths and weights to be nonnegative.");
+  }
+
+  voxel_dist_.assign(strengths); // performs normalization
 
   if (check_for_node(node, "particle")) {
     auto tmp_str = get_node_value(node, "particle", false, true);
@@ -802,9 +817,25 @@ SourceSite CorrelatedSource::sample(uint64_t* seed) const
 
   // Select a phase-space voxel (m, a, g)
   size_t flat = voxel_dist_.sample(seed);
-  int64_t g = static_cast<int64_t>(flat % energy_bins_);
-  int64_t a = static_cast<int64_t>((flat / energy_bins_) % angle_bins_);
-  int64_t m = static_cast<int64_t>(flat / (energy_bins_ * angle_bins_));
+  int64_t m, a;
+  bool discrete = static_cast<int64_t>(flat) >= n_continuum_voxels_;
+
+  if (!discrete) {
+    int64_t g = static_cast<int64_t>(flat % energy_bins_);
+    a = static_cast<int64_t>((flat / energy_bins_) % angle_bins_);
+    m = static_cast<int64_t>(flat / (energy_bins_ * angle_bins_));
+    double e_lo = group_bounds_[g];
+    double e_hi = group_bounds_[g + 1];
+    // sample uniformly in lethargy, except if e_lo is 0
+    site.E =
+      (e_lo > 0.0) ? e_lo * std::pow(e_hi / e_lo, prn(seed)) : e_hi * prn(seed);
+  } else {
+    int64_t j = static_cast<int64_t>(flat) - n_continuum_voxels_;
+    int64_t k = j % n_discrete_;
+    a = (j / n_discrete_) % angle_bins_;
+    m = j / (n_discrete_ * angle_bins_);
+    site.E = discrete_energies_[k];
+  }
 
   // Sample a position uniformly within the selected spatial mesh element
   site.r = model::meshes[spatial_mesh_idx_]->sample_element(
@@ -817,13 +848,6 @@ SourceSite CorrelatedSource::sample(uint64_t* seed) const
       static_cast<int32_t>(a), seed);
   } else {
     site.u = isotropic_direction(seed);
-  }
-
-  // Energy is sampled from the selected group uniformly in lethargy
-  if (!group_bounds_.empty()) {
-    double e_lo = group_bounds_[g];
-    double e_hi = group_bounds_[g + 1];
-    site.E = e_lo * std::pow(e_hi / e_lo, prn(seed));
   }
 
   site.wgt = weights_[flat];

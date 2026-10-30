@@ -272,11 +272,15 @@ private:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t spatial_mesh_idx_;        //!< Index into model::meshes
-  int32_t angle_mesh_idx_;          //!< Index into model::meshes, or C_NONE
-  vector<double> energy_bounds_;    //!< Energy group boundaries [eV]
-  int32_t ww_id_;                   //!< ID of the associated WeightWindows
-  std::string forward_source_mesh_; //!< Path to unbiased source strengths file
+  int32_t spatial_mesh_idx_;         //!< Index into model::meshes
+  int32_t angle_mesh_idx_;           //!< Index into model::meshes, or C_NONE
+  vector<double> energy_bounds_;     //!< Energy group boundaries [eV]
+  vector<double> discrete_energies_; //!< Energies of a Discrete-type unbiased
+                                     //!< source spectrum
+  int32_t ww_id_;                    //!< ID of the associated WeightWindows
+  std::string forward_source_mesh_;  //!< Path to unbiased source strengths file
+
+  std::string energy_distribution_type_ {"continuous"}; //!< Source dist type
 
   //! Un-normalized mean flux. Shape: (spatial_bins, angle_bins,
   //! energy_bins). angle_bins == 1 when angle_mesh_idx_ == C_NONE.
@@ -286,6 +290,11 @@ private:
   //! of (spatial mesh element, angular mesh element, energy group), assuming
   //! isotropic emission when angle_mesh_idx_ == C_NONE.
   tensor::Tensor<double> unbiased_strength_;
+
+  //! Estimated relative strength of the unbiased external source as a function
+  //! of (spatial mesh element, angular mesh element, emission energy), given
+  //! a source with discrete energies rather than a continuous spectrum.
+  tensor::Tensor<double> unbiased_strength_discrete_;
 };
 
 class WeightWindowsGenerator {

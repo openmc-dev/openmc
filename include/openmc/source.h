@@ -239,8 +239,6 @@ public:
   //! \return Sampled site
   SourceSite sample(uint64_t* seed) const override;
 
-  double strength() const override { return voxel_dist_.integral(); }
-
   // Accessors
   int32_t spatial_mesh_idx() const { return spatial_mesh_idx_; }
   int32_t angle_mesh_idx() const { return angle_mesh_idx_; }
@@ -250,16 +248,25 @@ private:
   // Data members
   int32_t spatial_mesh_idx_ {C_NONE}; //!< Index into model::meshes
   int32_t angle_mesh_idx_ {C_NONE};   //!< Index into model::meshes, or C_NONE
-  vector<double> group_bounds_;       //!< Energy group boundaries [eV]
+  vector<double> group_bounds_;       //!< Continuum energy group bounds [eV]
 
   int64_t spatial_bins_ {0};
   int64_t angle_bins_ {1};
-  int64_t energy_bins_ {1};
+  int64_t energy_bins_ {0};
+
+  int64_t n_discrete_ {0};           //!< Number of discrete source energies
+  vector<double> discrete_energies_; //!< Discrete source energies E_k [eV]
+  int64_t n_continuum_voxels_ {0};   //!< Phase space voxels not associated
+                                     //!< with a discrete emission energy
+  std::string energy_distribution_type_ {
+    "continuous"}; //!< One of {"continuous", "discrete", "mixed"}
 
   ParticleType particle_ {ParticleType::neutron()}; //!< Particle type emitted
 
   //! Selects a flat index into (spatial, angle, energy) space, in row-major
   //! (spatial, angle, energy) order, weighted by the "strengths" array.
+  //! The distribution spans continuum voxels first, followed by any voxels
+  //! with discrete (deterministic) emission energy.
   DiscreteIndex voxel_dist_;
 
   //! Per-voxel weight (1 / flux), indexed the same way as voxel_dist_.

@@ -584,11 +584,14 @@ public:
 
   // Cross section caches
   // Microscopic neutron cross sections
-  NuclideMicroXS& neutron_xs(int i) { return neutron_xs_[i]; }
-  const NuclideMicroXS& neutron_xs(int i) const { return neutron_xs_[i]; }
+  NuclideMicroXS& neutron_xs(int i_nuclide) { return neutron_xs_[i_nuclide]; }
+  const NuclideMicroXS& neutron_xs(int i_nuclide) const
+  {
+    return neutron_xs_[i_nuclide];
+  }
 
   // Microscopic photon cross sections
-  ElementMicroXS& photon_xs(int i) { return photon_xs_[i]; }
+  ElementMicroXS& photon_xs(int i_element) { return photon_xs_[i_element]; }
 
   // Macroscopic cross sections
   MacroXS& macro_xs() { return macro_xs_; }

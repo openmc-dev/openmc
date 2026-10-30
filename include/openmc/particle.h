@@ -125,6 +125,15 @@ public:
   //! \param[in] ncrystal_xs Thermal scattering xs from NCrystal
   void update_neutron_xs(int i_nuclide, int i_grid = C_NONE, int i_sab = C_NONE,
     double sab_frac = 0.0, double ncrystal_xs = -1.0);
+
+  //! Update the microscopic cross section cache of an element
+  //
+  //! Evaluates the element's cross sections at the particle's energy unless
+  //! the cache already holds them, which is what transport leaves behind for
+  //! the elements present where the particle last collided.
+  //!
+  //! \param[in] i_element Index in data::elements
+  void update_photon_xs(int i_element);
 };
 
 //============================================================================

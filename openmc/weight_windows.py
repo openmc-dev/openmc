@@ -507,7 +507,7 @@ class WeightWindowGenerator:
         Whether to perform automated biasing of fixed sources via FW-CADIS.
     forward_source_mesh_file : Pathlike
         Path to a forward source mesh file storing unbiased source strengths 
-        in each phase space voxel.
+        in each phase space voxel. Required for automated source biasing.
     angular_biasing_quadrature : :class:`openmc.UnitSpherePointset`, optional
         Optional set of angles to generate source biasing parameters on. 
         Defaults to None for biasing as a function of space and energy only.

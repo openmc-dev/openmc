@@ -985,93 +985,13 @@ void SourceBias::compute_unbiased_strength(int64_t n_samples_per_source)
     }
   }
 
-  // A precomputed file takes priority over sampling model::external_sources
   if (file_exists(forward_source_mesh_)) {
     load_forward_source_mesh(forward_source_mesh_);
-    return;
+  } else {
+    fatal_error(fmt::format(
+      "Could not locate forward source mesh file '{}'.", forward_source_mesh_))
   }
-
-  Mesh* spatial_mesh = model::meshes[spatial_mesh_idx_].get();
-  Mesh* angle_mesh =
-    angle_mesh_idx_ == C_NONE ? nullptr : model::meshes[angle_mesh_idx_].get();
-
-  // Normalize by total strength across all forward external sources
-  double total_strength = 0.0;
-  for (const auto& source_ptr : model::external_sources) {
-    auto* is = dynamic_cast<IndependentSource*>(source_ptr.get());
-    if (!is) {
-      fatal_error("Computing an unbiased source strength distribution "
-                  "requires all external sources to be independent "
-                  "sources.");
-    }
-    total_strength += is->strength();
-  }
-  if (total_strength <= 0.0) {
-    fatal_error("Total external source strength must be positive to "
-                "compute an unbiased source strength distribution.");
-  }
-
-  // Fixed local seed, not part of the sequence used for transport
-  uint64_t seed = 1;
-
-  tensor::Tensor<double> spatial_angle_counts(
-    {static_cast<size_t>(spatial_bins), static_cast<size_t>(angle_bins)});
-
-  for (const auto& source_ptr : model::external_sources) {
-    Source* s = source_ptr.get();
-    auto* is = dynamic_cast<IndependentSource*>(s);
-    double relative_strength = is->strength() / total_strength;
-
-    auto* energy_dist = dynamic_cast<Discrete*>(is->energy());
-    if (!energy_dist) {
-      fatal_error(
-        "Source biasing requires all external sources to use a Discrete "
-        "(multigroup) energy distribution, matching the requirement for "
-        "random ray fixed source problems.");
-    }
-    vector<double> group_prob(energy_bins, 0.0);
-    const auto& e_vals = energy_dist->x();
-    const auto& e_probs = energy_dist->prob();
-    for (std::size_t i = 0; i < e_vals.size(); ++i) {
-      int g = data::mg.get_group_index(e_vals[i]);
-      if (g >= 0 && g < energy_bins)
-        group_prob[g] += e_probs[i];
-    }
-
-    // Monte Carlo estimate of the joint (spatial, angular) distribution.
-    // Energy is not sampled when solver type is Random Ray.
-    for (int64_t m = 0; m < spatial_bins; ++m) {
-      for (int64_t a = 0; a < angle_bins; ++a) {
-        spatial_angle_counts(m, a) = 0.0;
-      }
-    }
-
-    for (int64_t i = 0; i < n_samples_per_source; ++i) {
-      SourceSite site = is->sample(&seed);
-
-      int32_t m = spatial_mesh->get_bin(site.r);
-      if (m < 0)
-        continue;
-
-      int32_t a = angle_mesh ? angle_mesh->get_bin(site.u) : 0;
-      if (angle_mesh && a < 0)
-        continue;
-
-      spatial_angle_counts(m, a) += 1.0;
-    }
-
-    for (int64_t m = 0; m < spatial_bins; ++m) {
-      for (int64_t a = 0; a < angle_bins; ++a) {
-        double frac = spatial_angle_counts(m, a) / n_samples_per_source;
-        if (frac == 0.0)
-          continue;
-        for (int64_t e = 0; e < energy_bins; ++e) {
-          unbiased_strength_(m, a, e) +=
-            relative_strength * frac * group_prob[e];
-        }
-      }
-    }
-  }
+  return;
 }
 
 void SourceBias::load_forward_source_mesh(const std::string& path)

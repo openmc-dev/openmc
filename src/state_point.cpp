@@ -15,6 +15,7 @@
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
@@ -370,7 +371,7 @@ void restart_set_keff()
   if (simulation::restart_batch > settings::n_inactive) {
     for (int i = settings::n_inactive; i < simulation::restart_batch; ++i) {
       simulation::k_sum[0] += simulation::k_generation[i];
-      simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
+      simulation::k_sum[1] += openmc::pow(simulation::k_generation[i], 2);
     }
     int n = settings::gen_per_batch * simulation::n_realizations;
     simulation::keff = simulation::k_sum[0] / n;

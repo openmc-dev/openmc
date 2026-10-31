@@ -5,6 +5,7 @@
 #include "openmc/constants.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
@@ -289,7 +290,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
                                 "for element " +
                                 name_ + " are not valid for extrapolation."};
     }
-    double slope = std::log(profile_last / profile_prev) / (pz_last - pz_prev);
+    double slope =
+      openmc::log(profile_last / profile_prev) / (pz_last - pz_prev);
     if (!std::isfinite(slope) || slope >= 0.0) {
       throw std::runtime_error {"The final two values of the Compton profile "
                                 "for element " +
@@ -342,15 +344,15 @@ PhotonInteraction::PhotonInteraction(hid_t group)
         E.cbegin(), E.cend(), settings::energy_cutoff[photon]);
 
       // calculate interpolation factor
-      double f = (std::log(cutoff) - std::log(E(i_grid))) /
-                 (std::log(E(i_grid + 1)) - std::log(E(i_grid)));
+      double f = (openmc::log(cutoff) - openmc::log(E(i_grid))) /
+                 (openmc::log(E(i_grid + 1)) - openmc::log(E(i_grid)));
 
       // Interpolate bremsstrahlung DCS at the cutoff energy and truncate
       tensor::Tensor<double> dcs({n_e - i_grid, n_k});
       for (int i = 0; i < n_k; ++i) {
-        double y = std::exp(
-          std::log(dcs_(i_grid, i)) +
-          f * (std::log(dcs_(i_grid + 1, i)) - std::log(dcs_(i_grid, i))));
+        double y = openmc::exp(
+          openmc::log(dcs_(i_grid, i)) + f * (openmc::log(dcs_(i_grid + 1, i)) -
+                                               openmc::log(dcs_(i_grid, i))));
         tensor::View<double> col_i = dcs.slice(tensor::all, i);
         col_i(0) = y;
         for (int j = i_grid + 1; j < n_e; ++j) {
@@ -397,7 +399,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   // represent zero as exp(-500) to avoid log-log interpolation errors. For
   // values below exp(-499) we store the log as -900, for which exp(-900)
   // evaluates to zero.
-  double limit = std::exp(-499.0);
+  double limit = openmc::exp(-499.0);
   energy_ = tensor::log(energy_);
   coherent_ = tensor::where(coherent_ > limit, tensor::log(coherent_), -900.0);
   incoherent_ =
@@ -713,7 +715,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   // Perform binary search on the element energy grid in order to determine
   // which points to interpolate between
   int n_grid = energy_.size();
-  double log_E = std::log(p.E());
+  double log_E = openmc::log(p.E());
   int i_grid;
   if (log_E <= energy_[0]) {
     i_grid = 0;
@@ -738,11 +740,11 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   xs.interp_factor = f;
 
   // Calculate microscopic coherent cross section
-  xs.coherent = std::exp(
+  xs.coherent = openmc::exp(
     coherent_(i_grid) + f * (coherent_(i_grid + 1) - coherent_(i_grid)));
 
   // Calculate microscopic incoherent cross section
-  xs.incoherent = std::exp(
+  xs.incoherent = openmc::exp(
     incoherent_(i_grid) + f * (incoherent_(i_grid + 1) - incoherent_(i_grid)));
 
   // Calculate microscopic photoelectric cross section
@@ -753,10 +755,10 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   for (int i = 0; i < xs_upper.size(); ++i)
     if (xs_lower(i) != 0)
       xs.photoelectric +=
-        std::exp(xs_lower(i) + f * (xs_upper(i) - xs_lower(i)));
+        openmc::exp(xs_lower(i) + f * (xs_upper(i) - xs_lower(i)));
 
   // Calculate microscopic pair production cross section
-  xs.pair_production = std::exp(
+  xs.pair_production = openmc::exp(
     pair_production_total_(i_grid) +
     f * (pair_production_total_(i_grid + 1) - pair_production_total_(i_grid)));
 
@@ -771,7 +773,7 @@ double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t* seed) const
   double mu;
   while (true) {
     // Determine maximum value of x^2
-    double x2_max = std::pow(MASS_ELECTRON_EV / PLANCK_C * alpha, 2);
+    double x2_max = openmc::pow(MASS_ELECTRON_EV / PLANCK_C * alpha, 2);
 
     // Determine F(x^2_max, Z)
     double F_max = coherent_int_form_factor_(x2_max);
@@ -848,10 +850,10 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   // energy is given by p = 2*(1/2 - e)^2*phi_1(e) + phi_2(e), where phi_1 and
   // phi_2 are non-negative and maximum at e = 1/2.
   double b = 2.0 * r[Z_] / alpha;
-  double t1 = 2.0 * std::log(1.0 + b * b);
-  double t2 = b * std::atan(1.0 / b);
-  double t3 = b * b * (4.0 - 4.0 * t2 - 3.0 * std::log(1.0 + 1.0 / (b * b)));
-  double t4 = 4.0 * std::log(r[Z_]) - 4.0 * c + f;
+  double t1 = 2.0 * openmc::log(1.0 + b * b);
+  double t2 = b * openmc::atan(1.0 / b);
+  double t3 = b * b * (4.0 - 4.0 * t2 - 3.0 * openmc::log(1.0 + 1.0 / (b * b)));
+  double t4 = 4.0 * openmc::log(r[Z_]) - 4.0 * c + f;
   double phi1_max = 7.0 / 3.0 - t1 - 6.0 * t2 - t3 + t4;
   double phi2_max = 11.0 / 6.0 - t1 - 3.0 * t2 + 0.5 * t3 + t4;
 
@@ -862,7 +864,7 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   // U_1 = phi_1(e)/phi_1(1/2) and U_2 = phi_2(e)/phi_2(1/2) are valid
   // rejection functions. The reduced energy can now be sampled using a
   // combination of the composition and rejection methods.
-  double u1 = 2.0 / 3.0 * std::pow(0.5 - 1.0 / alpha, 2) * phi1_max;
+  double u1 = 2.0 / 3.0 * openmc::pow(0.5 - 1.0 / alpha, 2) * phi1_max;
   double u2 = phi2_max;
   double e;
   while (true) {
@@ -875,9 +877,10 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
       i = 1;
 
       // Sample e from pi_1 using the inverse transform method
-      e = rn >= 0.5
-            ? 0.5 + (0.5 - 1.0 / alpha) * std::pow(2.0 * rn - 1.0, 1.0 / 3.0)
-            : 0.5 - (0.5 - 1.0 / alpha) * std::pow(1.0 - 2.0 * rn, 1.0 / 3.0);
+      e =
+        rn >= 0.5
+          ? 0.5 + (0.5 - 1.0 / alpha) * openmc::pow(2.0 * rn - 1.0, 1.0 / 3.0)
+          : 0.5 - (0.5 - 1.0 / alpha) * openmc::pow(1.0 - 2.0 * rn, 1.0 / 3.0);
     } else {
       i = 2;
 
@@ -887,9 +890,9 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
 
     // Calculate phi_i(e) and deliver e if rn <= U_i(e)
     b = r[Z_] / (2.0 * alpha * e * (1.0 - e));
-    t1 = 2.0 * std::log(1.0 + b * b);
-    t2 = b * std::atan(1.0 / b);
-    t3 = b * b * (4.0 - 4.0 * t2 - 3.0 * std::log(1.0 + 1.0 / (b * b)));
+    t1 = 2.0 * openmc::log(1.0 + b * b);
+    t2 = b * openmc::atan(1.0 / b);
+    t3 = b * b * (4.0 - 4.0 * t2 - 3.0 * openmc::log(1.0 + 1.0 / (b * b)));
     if (i == 1) {
       double phi1 = 7.0 / 3.0 - t1 - 6.0 * t2 - t3 + t4;
       if (prn(seed) <= phi1 / phi1_max)
@@ -990,13 +993,13 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 double detail::compton_profile_tail_integral(
   double pz, double pz_last, double profile_last, double slope)
 {
-  return profile_last * std::expm1(slope * (pz - pz_last)) / slope;
+  return profile_last * openmc::expm1(slope * (pz - pz_last)) / slope;
 }
 
 double detail::invert_compton_profile_tail(
   double integral, double pz_last, double profile_last, double slope)
 {
-  return pz_last + std::log1p(slope * integral / profile_last) / slope;
+  return pz_last + openmc::log1p(slope * integral / profile_last) / slope;
 }
 
 double detail::compton_energy_ratio(double alpha, double mu, double pz)
@@ -1085,10 +1088,10 @@ std::pair<double, double> klein_nishina(double alpha, uint64_t* seed)
 
   } else {
     // Koblinger's direct method
-    double gamma = 1.0 - std::pow(beta, -2);
+    double gamma = 1.0 - openmc::pow(beta, -2);
     double s =
       prn(seed) * (4.0 / alpha + 0.5 * gamma +
-                    (1.0 - (1.0 + beta) / (alpha * alpha)) * std::log(beta));
+                    (1.0 - (1.0 + beta) / (alpha * alpha)) * openmc::log(beta));
     if (s <= 2.0 / alpha) {
       // For first term, x = 1 + 2ar
       // Therefore, a' = a/(1 + 2ar)
@@ -1104,7 +1107,7 @@ std::pair<double, double> klein_nishina(double alpha, uint64_t* seed)
     } else {
       // For third term, x = beta^r
       // Therefore, a' = a/beta^r
-      alpha_out = alpha / std::pow(beta, prn(seed));
+      alpha_out = alpha / openmc::pow(beta, prn(seed));
     }
 
     // Calculate cosine of scattering angle based on basic relation

@@ -52,7 +52,6 @@ public:
 
   int num_energy_groups_;
   int num_delayed_groups_;
-  ParticleType particle_type_ {ParticleType::neutron()};
   vector<std::string> xs_names_;            // available names in HDF5 file
   vector<std::string> xs_to_read_;          // XS which appear in materials
   vector<vector<double>> xs_temps_to_read_; // temperatures used
@@ -65,6 +64,7 @@ public:
   vector<vector<double>> nuc_temps_; // all available temperatures
   vector<double>
     default_inverse_velocity_; // approximate default inverse-velocity data
+  ParticleType particle_type_ {ParticleType::neutron()};
 };
 
 namespace data {

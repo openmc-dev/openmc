@@ -19,18 +19,39 @@ from openmc.checkvalue import (check_greater_than, check_value, check_less_than,
 class CompositeSurface(ABC):
     """Multiple primitive surfaces combined into a composite surface"""
 
+    def _periodic_pairs(self):
+        """Names of component surfaces that are periodic with each other"""
+        components = {id(getattr(self, name)): name
+                      for name in self._surface_names}
+        pairs = []
+        for name in self._surface_names:
+            partner = getattr(getattr(self, name), 'periodic_surface', None)
+            if partner is not None and id(partner) in components:
+                pairs.append((name, components[id(partner)]))
+        return pairs
+
+    def _restore_periodic_pairs(self, pairs):
+        # Transforming a component can replace it with a new surface (or a
+        # copy of its partner), so point each pair back at its new partner.
+        for name, partner_name in pairs:
+            getattr(self, name).periodic_surface = getattr(self, partner_name)
+
     def translate(self, vector, inplace=False):
+        pairs = self._periodic_pairs()
         surf = self if inplace else copy(self)
         for name in self._surface_names:
             s = getattr(surf, name)
             setattr(surf, name, s.translate(vector, inplace))
+        surf._restore_periodic_pairs(pairs)
         return surf
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        pairs = self._periodic_pairs()
         surf = self if inplace else copy(self)
         for name in self._surface_names:
             s = getattr(surf, name)
             setattr(surf, name, s.rotate(rotation, pivot, order, inplace))
+        surf._restore_periodic_pairs(pairs)
         return surf
 
     @property
@@ -646,6 +667,19 @@ class RectangularParallelepiped(CompositeSurface):
         self.ymax = openmc.YPlane(y0=ymax, **kwargs)
         self.zmin = openmc.ZPlane(z0=zmin, **kwargs)
         self.zmax = openmc.ZPlane(z0=zmax, **kwargs)
+        if kwargs.get('boundary_type') == 'periodic':
+            self.xmin.periodic_surface = self.xmax
+            self.ymin.periodic_surface = self.ymax
+            self.zmin.periodic_surface = self.zmax
+
+    @CompositeSurface.boundary_type.setter
+    def boundary_type(self, boundary_type):
+        for name in self._surface_names:
+            getattr(self, name).boundary_type = boundary_type
+        if boundary_type == 'periodic':
+            self.xmin.periodic_surface = self.xmax
+            self.ymin.periodic_surface = self.ymax
+            self.zmin.periodic_surface = self.zmax
 
     def __neg__(self):
         return -self.xmax & +self.xmin & -self.ymax & +self.ymin & -self.zmax & +self.zmin

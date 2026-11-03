@@ -279,9 +279,23 @@ void Particle::event_advance()
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
 
+  // Photons below the energy cutoff (e.g., sampled from a source) are not
+  // transported. They collide at their current position, where the energy
+  // cutoff check in sample_photon_reaction deposits their energy locally. In a
+  // void there is nowhere to deposit the energy, so they are simply killed.
+  bool photon_below_cutoff =
+    type().is_photon() &&
+    E() < settings::energy_cutoff[type().transport_index()];
+  if (photon_below_cutoff && material() == MATERIAL_VOID) {
+    wgt() = 0.0;
+    return;
+  }
+
   // Sample a distance to collision
-  if (type() == ParticleType::electron() ||
-      type() == ParticleType::positron()) {
+  if (photon_below_cutoff) {
+    collision_distance() = 0.0;
+  } else if (type() == ParticleType::electron() ||
+             type() == ParticleType::positron()) {
     collision_distance() = material() == MATERIAL_VOID ? INFINITY : 0.0;
   } else if (macro_xs().total == 0.0) {
     collision_distance() = INFINITY;

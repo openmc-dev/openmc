@@ -641,6 +641,7 @@ void free_memory_geometry()
   model::lattice_map.clear();
 
   model::overlap_check_count.clear();
+  model::max_region_surfaces = 0;
 }
 
 } // namespace openmc

@@ -30,7 +30,7 @@ class _SourceSite(Structure):
                 ('surf_id', c_int),
                 ('particle', c_int32),
                 ('parent_nuclide', c_int),
-                ('parent_id', c_int64),
+                ('ancestor_index', c_int64),
                 ('progeny_id', c_int64),
                 ('wgt_born', c_double),
                 ('wgt_ww_born', c_double),

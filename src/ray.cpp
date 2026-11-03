@@ -125,10 +125,7 @@ void Ray::trace()
     surface() = boundary().surface();
     // Initialize last cells from the current cell, because the cell() variable
     // does not contain the data for the case of a single-segment ray
-    for (int j = 0; j < n_coord(); ++j) {
-      cell_last(j) = coord(j).cell();
-    }
-    n_coord_last() = n_coord();
+    this->save_current_cells_as_last();
     n_coord() = boundary().coord_level();
     if (boundary().lattice_translation()[0] != 0 ||
         boundary().lattice_translation()[1] != 0 ||

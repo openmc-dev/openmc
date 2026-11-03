@@ -37,7 +37,7 @@ struct RayBufferContainer {
   int cell_instance;
   int n_coord_last;
   int material;
-  int material_last;
+  int material_xs_cache;
   double sqrtkT;
   double sqrtkT_last;
 
@@ -74,7 +74,7 @@ struct RayExchangeData {
   int cell_instance;
   int n_coord_last;
   int material;
-  int material_last;
+  int material_xs_cache;
   double sqrtkT;
   double sqrtkT_last;
 

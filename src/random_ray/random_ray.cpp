@@ -926,7 +926,7 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
   cell_instance() = data.cell_instance;
   n_coord_last() = data.n_coord_last;
   material() = data.material;
-  material_last() = data.material_last;
+  material_xs_cache() = data.material_xs_cache;
   sqrtkT() = data.sqrtkT;
   sqrtkT_last() = data.sqrtkT_last;
   surface() = data.surface;
@@ -1150,7 +1150,7 @@ void RandomRay::pack_ray_for_buffer(
   exchange_data_.cell_instance = cell_instance();
   exchange_data_.n_coord_last = n_coord_last();
   exchange_data_.material = material();
-  exchange_data_.material_last = material_last();
+  exchange_data_.material_xs_cache = material_xs_cache();
   exchange_data_.sqrtkT = sqrtkT();
   exchange_data_.sqrtkT_last = sqrtkT_last();
 

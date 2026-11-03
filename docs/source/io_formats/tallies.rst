@@ -142,9 +142,9 @@ attributes/sub-elements:
 
   :type:
     The type of the filter. Accepted options are "cell", "cellfrom",
-    "cellborn", "surface", "material", "universe", "energy", "energyout",
-    "mu", "polar", "azimuthal", "mesh", "distribcell", "delayedgroup",
-    "energyfunction", "particle", and "particleproduction".
+    "cellborn", "surface", "material", "materialfrom", "universe", "energy",
+    "energyout", "mu", "polar", "azimuthal", "mesh", "distribcell",
+    "delayedgroup", "energyfunction", "particle", and "particleproduction".
 
   :bins:
      A description of the bins for each type of filter can be found in
@@ -197,6 +197,23 @@ should be set to:
 
 :material:
   A list of unique IDs for materials in which the tally should be accumulated.
+
+:materialfrom:
+  This filter bins events by the material the particle came from, i.e., the
+  material of the cell it occupied before it last changed cell. A list of
+  material IDs should be given. It is the material analogue of ``cellfrom``
+  and reads the same particle attribute, so the two give consistent
+  decompositions of the same score.
+
+  Combined with a ``flux`` score this filter tallies a partial current at a
+  surface crossing, and should be used together with a cell or surface filter
+  that defines the other side of the crossing; it should not be used in
+  combination with a mesh filter. With any other score it decomposes a
+  volumetric tally by the material the scoring particle arrived from. In that
+  case, note that the "from" material is updated only when the particle enters
+  a new cell and *not* on collision, so a particle that collides repeatedly
+  without leaving a cell keeps scoring in the bin of the material it
+  originally arrived from.
 
 :universe:
   A list of unique IDs for universes in which the tally should be accumulated.

@@ -74,7 +74,7 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain)
   rd.cell_instance = rbc.cell_instance;
   rd.n_coord_last = rbc.n_coord_last;
   rd.material = rbc.material;
-  rd.material_last = rbc.material_last;
+  rd.material_xs_cache = rbc.material_xs_cache;
   rd.sqrtkT = rbc.sqrtkT;
   rd.sqrtkT_last = rbc.sqrtkT_last;
 

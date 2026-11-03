@@ -652,10 +652,10 @@ remove its incident photon and produce secondary photons.
 
 Photon random ray transport currently requires isotropic P0 production data and
 an :class:`openmc.IndependentSource` that emits photons. Photon eigenvalue and
-adjoint calculations, coupled neutron--photon random ray solves, higher-order
-photon production, and collision-based multigroup photon transport are not
-supported. As with neutron fixed-source random ray calculations, inactive
-batches are needed to converge the scattering and production source.
+adjoint calculations, coupled neutron--photon random ray solves, and
+higher-order photon production are not supported. As with neutron fixed-source
+random ray calculations, inactive batches are needed to converge the scattering
+and production source.
 
 .. _mgxs_gen:
 

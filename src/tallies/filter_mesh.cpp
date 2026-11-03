@@ -49,6 +49,7 @@ void MeshFilter::get_all_bins(
 
   // check if particle is in a mesh universe
   // for the mesh on this filter
+  #ifdef OPENMC_XDG_ENABLED
   if (model::universes[p.lowest_coord().universe()]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
     auto univ = dynamic_cast<const XDGMeshUniverse*>(
       model::universes[p.lowest_coord().universe()].get());
@@ -62,6 +63,7 @@ void MeshFilter::get_all_bins(
       return;
     }
   }
+  #endif
 
   // apply translation if present
   if (translated_) {

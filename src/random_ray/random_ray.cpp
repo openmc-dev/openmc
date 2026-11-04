@@ -385,7 +385,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
     // If there's no mesh being applied to this cell, then
     // we just attenuate the flux as normal, and set
     // the mesh bin to 0
-    attenuate_flux_inner(distance, is_active, sr, 0, r());
+    attenuate_flux_inner(distance, is_active, sr, 0, r(), distance);
   } else {
     // If there is a mesh being applied to this cell, then
     // we loop over all the bin crossings and attenuate
@@ -432,8 +432,8 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
         continue;
       }
 
-      attenuate_flux_inner(
-        physical_length, is_active, sr, mesh_bins_[b], start);
+      attenuate_flux_inner(physical_length, is_active, sr, mesh_bins_[b], start,
+        offset + distance);
 
       start += physical_length * u();
 
@@ -473,8 +473,8 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
   }
 }
 
-void RandomRay::attenuate_flux_inner(
-  double distance, bool is_active, int64_t sr, int mesh_bin, Position r)
+void RandomRay::attenuate_flux_inner(double distance, bool is_active,
+  int64_t sr, int mesh_bin, Position r, double segment_length)
 {
   SourceRegionKey sr_key {sr, mesh_bin};
   Position midpoint = r + u() * (distance / 2.0);
@@ -489,15 +489,18 @@ void RandomRay::attenuate_flux_inner(
     if (owner != mpi::rank) {
       // A segment can run slightly past a lattice plane, as the distance to a
       // boundary keeps a higher-level one within a relative tolerance. A piece
-      // past the plane is not in this source region, and a ray restarted there
-      // can be lost, so it is skipped, as a new source region there would be
-      // in get_subdivided_source_region_handle.
-      GeometryState gs;
-      gs.r() = midpoint;
-      gs.u() = {1.0, 0.0, 0.0};
-      if (!exhaustive_find_cell(gs) ||
-          domain_->lookup_base_source_region_idx(gs) != sr) {
-        return;
+      // short enough to have its midpoint past the plane is not in this source
+      // region, and a ray restarted there can be lost, so it is skipped, as a
+      // new source region there would be in
+      // get_subdivided_source_region_handle.
+      if (distance <= 2.0 * FP_REL_PRECISION * segment_length) {
+        GeometryState gs;
+        gs.r() = midpoint;
+        gs.u() = {1.0, 0.0, 0.0};
+        if (!exhaustive_find_cell(gs) ||
+            domain_->lookup_base_source_region_idx(gs) != sr) {
+          return;
+        }
       }
       is_local_ = false;
       owner_rank_ = owner;

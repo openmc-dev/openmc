@@ -61,8 +61,10 @@ public:
   double sample(double E, uint64_t* seed) const override;
 
 private:
-  double threshold_;  //!< Energy threshold in lab, (A + 1)/A * |Q|
-  double mass_ratio_; //!< (A/(A+1))^2
+  //! The scattering law is E_out = a*(E_in-b-c*E_in*E_in)
+  double a_; //!< a coefficient of the scattering law
+  double b_; //!< b coefficient of the scattering law
+  double c_; //!< c coefficient of the scattering law
 };
 
 //===============================================================================

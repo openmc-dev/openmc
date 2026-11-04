@@ -313,13 +313,12 @@ class Geometry:
 
         if meshes is None:
             meshes = {}
-        meshes.update(_read_meshes(path))
 
         with set_xml_input_path(path):
             parser = ET.XMLParser(huge_tree=True)
             tree = ET.parse(path, parser=parser)
             root = tree.getroot()
-
+            meshes.update(_read_meshes(root))
             return cls.from_xml_element(root, materials, meshes)
 
     def find(self, point) -> list:

@@ -370,7 +370,7 @@ int openmc_properties_import(const char* filename);
 
 //! Get whether an optional build feature is enabled.
 //!
-//! Supported feature names are ``dagmc``, ``libmesh``, ``strict_fp``, and
+//! Supported feature names are ``dagmc``, ``xdg``, ``libmesh``, ``strict_fp``, and
 //! ``uwuw``.
 //! \param feature Name of the feature to query
 //! \param enabled Whether the feature is enabled

@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" name="no-void fuel" depletable="true">
+      <density value="10.29769" units="g/cc"/>
+      <nuclide name="U234" ao="0.93120485"/>
+      <nuclide name="U235" ao="0.00055815"/>
+      <nuclide name="U238" ao="0.022408"/>
+      <nuclide name="O16" ao="0.045829"/>
+    </material>
+    <material id="2" name="clad">
+      <density value="6.55" units="g/cc"/>
+      <nuclide name="Zr90" ao="0.021827"/>
+      <nuclide name="Zr91" ao="0.00476"/>
+      <nuclide name="Zr92" ao="0.0072758"/>
+      <nuclide name="Zr94" ao="0.0073734"/>
+      <nuclide name="Zr96" ao="0.0011879"/>
+    </material>
+    <material id="3" name="water">
+      <density value="0.740582" units="g/cc"/>
+      <nuclide name="H1" ao="0.049457"/>
+      <nuclide name="O16" ao="0.024672"/>
+      <nuclide name="B10" ao="8.0042e-06"/>
+      <nuclide name="B11" ao="3.2218e-05"/>
+      <sab name="c_H_in_H2O"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" fill="4" region="1 -2 3 -4 5 -6" universe="5"/>
+    <lattice id="4">
+      <pitch>24.0 24.0</pitch>
+      <dimension>2 2</dimension>
+      <lower_left>-24.0 -24.0</lower_left>
+      <universes>
+6 6 
+6 6 </universes>
+    </lattice>
+    <mesh id="1" type="unstructured" library="moab" interface="xdg">
+      <filename>dagmc.h5m</filename>
+    </mesh>
+    <surface id="1" name="left" type="x-plane" boundary="reflective" coeffs="-24.0"/>
+    <surface id="2" name="right" type="x-plane" boundary="reflective" coeffs="24.0"/>
+    <surface id="3" name="front" type="y-plane" boundary="reflective" coeffs="-24.0"/>
+    <surface id="4" name="back" type="y-plane" boundary="reflective" coeffs="24.0"/>
+    <surface id="5" name="bottom" type="z-plane" boundary="reflective" coeffs="-10.0"/>
+    <surface id="6" name="top" type="z-plane" boundary="reflective" coeffs="10.0"/>
+    <xdg_universe id="6" auto_geom_ids="true" mesh="1" type="surface_mesh"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-10.0 -10.0 -24.0 10.0 10.0 24.0</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+    <output>
+      <summary>false</summary>
+    </output>
+  </settings>
+  <tallies>
+    <filter id="1" type="cellinstance">
+      <bins>4 0 4 1 4 2 4 3 4 4</bins>
+    </filter>
+    <tally id="1" name="cell instance tally">
+      <filters>1</filters>
+      <scores>scatter</scores>
+    </tally>
+  </tallies>
+</model>

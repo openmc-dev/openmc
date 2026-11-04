@@ -13,6 +13,8 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def pin_lattice_model():
+    openmc.reset_auto_ids()
+
     ### MATERIALS ###
     fuel = openmc.Material(name='no-void fuel')
     fuel.set_density('g/cc', 10.29769)
@@ -91,7 +93,47 @@ def pin_lattice_model():
 
     return model
 
+test_libs = []
+if openmc.lib.feature_enabled('dagmc'):
+    test_libs.append('dagmc')
+if openmc.lib.feature_enabled('xdg'):
+    test_libs.append('xdg')
 
-def test_univ(pin_lattice_model):
-    harness = PyAPITestHarness('statepoint.10.h5', model=pin_lattice_model)
+
+def _convert_dagmc_universes(model):
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            mesh = openmc.UnstructuredMesh(univ.filename, library='moab')
+            mesh.interface= 'xdg'
+            xdg_univ = openmc.XDGUniverse(mesh)
+            xdg_univ.auto_geom_ids = univ.auto_geom_ids
+            xdg_univ.auto_mat_ids = univ.auto_mat_ids
+
+            if univ == model.geometry.root_universe:
+                model.geometry.root_universe = xdg_univ
+                continue
+
+            found = False
+            for cell in model.geometry.get_all_cells().values():
+                if cell.fill == univ:
+                    cell.fill = xdg_univ
+                    found = True
+                    break
+
+            for lattice in model.geometry.get_all_lattices().values():
+                for i, row in enumerate(lattice.universes):
+                    for j, col in enumerate(row):
+                        if col == univ:
+                            lattice.universes[i][j] = xdg_univ
+                            found = True
+            if not found:
+                raise RuntimeError(f"Could not find cell containing universe {univ}")
+
+
+@pytest.mark.parametrize("interface", test_libs)
+def test_univ(pin_lattice_model, interface):
+    if interface == 'xdg':
+        _convert_dagmc_universes(pin_lattice_model)
+    input_file = f'inputs_{interface}.dat'
+    harness = PyAPITestHarness('statepoint.10.h5', pin_lattice_model, input_file)
     harness.main()

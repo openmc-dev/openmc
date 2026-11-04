@@ -536,7 +536,7 @@ elseif(OPENMC_USE_UWUW)
 endif()
 
 if(OPENMC_USE_XDG)
-  target_compile_definitions(libopenmc_objects PRIVATE OPENMC_XDG_ENABLED)
+  target_compile_definitions(libopenmc_objects PUBLIC OPENMC_XDG_ENABLED)
   target_link_libraries(libopenmc_objects PUBLIC xdg::xdg)
 endif()
 

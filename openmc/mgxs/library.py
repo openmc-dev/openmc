@@ -16,32 +16,6 @@ from ..tallies import ESTIMATOR_TYPES
 ROOM_TEMPERATURE_KELVIN = 294.0
 
 
-def _set_photon_multiplicity(xsdata, temperature):
-    """Set an effective photon scattering multiplicity on an XSdata object."""
-    i = xsdata._temperature_index(temperature)
-    total = xsdata.total[i]
-    absorption = xsdata.absorption[i]
-    production = xsdata.scatter_matrix[i][:, :, 0]
-
-    if not all(np.all(np.isfinite(x))
-               for x in (total, absorption, production)):
-        raise ValueError('Photon MGXS data contains non-finite values.')
-
-    scatter = total - absorption
-    production_sum = np.sum(production, axis=1)
-    active = (scatter > 0.0) & (production_sum > 0.0)
-    empty = (scatter == 0.0) & (production_sum == 0.0)
-    if not np.all(active | empty):
-        raise ValueError(
-            'Photon MGXS data has inconsistent total, absorption, and '
-            'production cross sections.')
-
-    multiplicity = np.ones_like(production)
-    multiplicity[active, :] = (
-        production_sum[active] / scatter[active])[:, np.newaxis]
-    xsdata.set_multiplicity_matrix(multiplicity, temperature)
-
-
 class Library:
     """A multi-energy-group and multi-delayed-group cross section library for
     some energy group structure.
@@ -1276,7 +1250,27 @@ class Library:
             xsdata.set_scatter_matrix_mgxs(
                 production, temperature=temperature, xs_type=xs_type,
                 nuclide=[nuclide], subdomain=subdomain)
-            _set_photon_multiplicity(xsdata, temperature)
+            i = xsdata._temperature_index(temperature)
+            total = xsdata.total[i]
+            absorption = xsdata.absorption[i]
+            production = xsdata.scatter_matrix[i][:, :, 0]
+            if not all(np.all(np.isfinite(x))
+                       for x in (total, absorption, production)):
+                raise ValueError('Photon MGXS data contains non-finite values.')
+
+            scatter = total - absorption
+            production_sum = np.sum(production, axis=1)
+            active = (scatter > 0.0) & (production_sum > 0.0)
+            empty = (scatter == 0.0) & (production_sum == 0.0)
+            if not np.all(active | empty):
+                raise ValueError(
+                    'Photon MGXS data has inconsistent total, absorption, and '
+                    'production cross sections.')
+
+            multiplicity = np.ones_like(production)
+            multiplicity[active, :] = (
+                production_sum[active] / scatter[active])[:, np.newaxis]
+            xsdata.set_multiplicity_matrix(multiplicity, temperature)
             using_multiplicity = False
 
         # If multiplicity matrix is available, prefer that

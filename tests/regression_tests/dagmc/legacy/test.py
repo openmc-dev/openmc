@@ -71,9 +71,9 @@ def _convert_dagmc_universes(model):
                 continue
 
             found = False
-            for c_id, cell in model.geometry.get_all_cells().items():
-                if cell.universe == univ:
-                    cell.universe = xdg_univ
+            for cell in model.geometry.get_all_cells().items():
+                if cell.fill == univ:
+                    cell.fill = xdg_univ
                     found = True
                     break
             if not found:

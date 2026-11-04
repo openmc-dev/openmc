@@ -2178,6 +2178,12 @@ void FlatSourceDomain::set_fw_adjoint_sources()
   // forward flux, below which we assume the flux would be physically
   // undetectable.
 
+  // The forward sources are done with. A source region that the adjoint solve
+  // discovers (one that rays only crossed in their dead zones, so not kept from
+  // the forward solve) has no forward flux, so it gets no source.
+  external_volumetric_source_map_.clear();
+  external_point_source_map_.clear();
+
   // First, find the maximum forward flux value
   double max_flux = 0.0;
 #pragma omp parallel for reduction(max : max_flux)

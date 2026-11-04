@@ -272,10 +272,7 @@ public:
     return mesh_or_lattice_translation_;
   }
 
-  array<int, 3>& mesh_translation()
-  {
-    return mesh_or_lattice_translation_;
-  }
+  array<int, 3>& mesh_translation() { return mesh_or_lattice_translation_; }
 
   int mesh_translation(int i) const { return mesh_or_lattice_translation_[i]; }
 
@@ -488,9 +485,8 @@ private:
 #endif
 
 #if defined(OPENMC_DAGMC_ENABLED) || defined(OPENMC_XDG_ENABLED)
- Direction last_dir_;
+  Direction last_dir_;
 #endif
-
 };
 
 //============================================================================

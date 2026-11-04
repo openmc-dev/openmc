@@ -353,13 +353,15 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
-  #ifdef OPENMC_XDG_ENABLED
-  if (model::universes[lowest_coord().universe()]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
-    const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(model::universes[lowest_coord().universe()].get());
+#ifdef OPENMC_XDG_ENABLED
+  if (model::universes[lowest_coord().universe()]->geom_type() ==
+      GeometryType::XDG_VOLUME_MESH) {
+    const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(
+      model::universes[lowest_coord().universe()].get());
     xdg_mesh_univ->next_cell(*this);
     return;
   }
-  #endif
+#endif
 
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
@@ -722,8 +724,10 @@ void Particle::cross_surface(const Surface& surf)
 #endif
 
 #ifdef OPENMC_XDG_ENABLED
-  if (model::universes[lowest_coord().universe()]->geom_type() == GeometryType::XDG_SURFACE_MESH) {
-    const auto* xdg_univ = dynamic_cast<const XDGUniverse*>(model::universes[lowest_coord().universe()].get());
+  if (model::universes[lowest_coord().universe()]->geom_type() ==
+      GeometryType::XDG_SURFACE_MESH) {
+    const auto* xdg_univ = dynamic_cast<const XDGUniverse*>(
+      model::universes[lowest_coord().universe()].get());
     xdg_univ->next_cell(*this);
     return;
   }

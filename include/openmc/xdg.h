@@ -15,7 +15,6 @@ void read_xdg_mesh_universes(pugi::xml_node node);
 
 } // namespace openmc
 
-
 #ifdef OPENMC_XDG_ENABLED
 
 #include "xdg/xdg.h"
@@ -119,17 +118,17 @@ public:
   //! \return Volume of the bin
   double volume(int bin) const override;
 
-
-  //! Get the distance to the nearest boundary for a given position and direction
-  //! \param[in] g GeometryState object containing position and direction
-  //! \return NextMeshCell struct containing distance, face index, and next indices
+  //! Get the distance to the nearest boundary for a given position and
+  //! direction \param[in] g GeometryState object containing position and
+  //! direction \return NextMeshCell struct containing distance, face index, and
+  //! next indices
   NextMeshCell distance_to_bin_boundary(GeometryState& g) const;
 
-  //! Get the distance to the nearest boundary for a given position and direction
-  //! \param[in] r Position to check
-  //! \param[in] u Direction to check
+  //! Get the distance to the nearest boundary for a given position and
+  //! direction \param[in] r Position to check \param[in] u Direction to check
   //! \return Distance to the nearest boundary
-  NextMeshCell distance_to_bin_boundary(int bin, const Position& r, const Direction& u) const;
+  NextMeshCell distance_to_bin_boundary(
+    int bin, const Position& r, const Direction& u) const;
 
 private:
   void initialize() override;
@@ -145,23 +144,27 @@ private:
 
 class XDGGeometryObject {
 public:
-  XDGGeometryObject(std::shared_ptr<xdg::XDG> xdg_ptr, xdg::MeshID xdg_id) :
-    xdg_ptr_{xdg_ptr}, xdg_id_{xdg_id} {}
+  XDGGeometryObject(std::shared_ptr<xdg::XDG> xdg_ptr, xdg::MeshID xdg_id)
+    : xdg_ptr_ {xdg_ptr}, xdg_id_ {xdg_id}
+  {}
 
   // Accessor methods
   xdg::MeshID xdg_id() const { return xdg_id_; }
   const std::shared_ptr<xdg::XDG>& xdg_ptr() const { return xdg_ptr_; }
 
 private:
-  std::shared_ptr<xdg::XDG> xdg_ptr_;      //!< Pointer to XDG instance
-  xdg::MeshID xdg_id_;                     //!< XDG ID
+  std::shared_ptr<xdg::XDG> xdg_ptr_; //!< Pointer to XDG instance
+  xdg::MeshID xdg_id_;                //!< XDG ID
 };
 
 class XDGSurface : public XDGGeometryObject, public Surface {
 public:
   XDGSurface(std::shared_ptr<xdg::XDG> dag_ptr, xdg::MeshID xdg_id);
 
-  GeometryType geom_type() const override { return GeometryType::XDG_SURFACE_MESH; }
+  GeometryType geom_type() const override
+  {
+    return GeometryType::XDG_SURFACE_MESH;
+  }
 
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
@@ -176,7 +179,10 @@ class XDGCell : public XDGGeometryObject, public Cell {
 public:
   XDGCell(const std::shared_ptr<xdg::XDG>& xdg_ptr, xdg::MeshID xdg_id);
 
-  GeometryType geom_type() const override { return GeometryType::XDG_SURFACE_MESH; }
+  GeometryType geom_type() const override
+  {
+    return GeometryType::XDG_SURFACE_MESH;
+  }
 
   bool contains(Position r, Direction u, int32_t on_surface) const override;
 
@@ -193,7 +199,10 @@ class XDGUniverse : public Universe {
 public:
   explicit XDGUniverse(pugi::xml_node node);
 
-  GeometryType geom_type() const override { return GeometryType::XDG_SURFACE_MESH; }
+  GeometryType geom_type() const override
+  {
+    return GeometryType::XDG_SURFACE_MESH;
+  }
 
   //! Create a new XDG universe
   //! \param[in] filename Name of the XDG file
@@ -251,8 +260,7 @@ public:
   void to_hdf5(hid_t universes_group) const override;
 
   // Data Members
-  std::shared_ptr<xdg::XDG>
-    xdg_instance_;        //!< XDG Instance for this universe
+  std::shared_ptr<xdg::XDG> xdg_instance_; //!< XDG Instance for this universe
   int32_t cell_idx_offset_; //!< An offset to the start of the cells in this
                             //!< universe in OpenMC's cell vector
   int32_t surf_idx_offset_; //!< An offset to the start of the surfaces in this
@@ -263,13 +271,19 @@ public:
 
   // Accessors
   int32_t mesh_idx() const { return mesh_idx_; }
-  const XDGMesh* xdg_mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_idx_].get()); }
+  const XDGMesh* xdg_mesh() const
+  {
+    return dynamic_cast<const XDGMesh*>(model::meshes[mesh_idx_].get());
+  }
   const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
-  const std::shared_ptr<xdg::XDG>& xdg_ptr() const { return xdg_mesh()->xdg_instance(); }
+  const std::shared_ptr<xdg::XDG>& xdg_ptr() const
+  {
+    return xdg_mesh()->xdg_instance();
+  }
 
 private:
   void set_id();        //!< Deduce the universe id from model::universes
-  void init_xdg();    //!< Create and initialise XDG pointer
+  void init_xdg();      //!< Create and initialise XDG pointer
   void init_metadata(); //!< Create and initialise dagmcMetaData pointer
   void init_geometry(); //!< Create cells and surfaces from XDG entities
 
@@ -288,11 +302,14 @@ private:
 
 class XDGMeshUniverse : public Universe {
 
-  public:
+public:
   // constructors
   XDGMeshUniverse() = default;
 
-  GeometryType geom_type() const override { return GeometryType::XDG_VOLUME_MESH; }
+  GeometryType geom_type() const override
+  {
+    return GeometryType::XDG_VOLUME_MESH;
+  }
 
   explicit XDGMeshUniverse(pugi::xml_node node);
 
@@ -315,15 +332,25 @@ class XDGMeshUniverse : public Universe {
   int32_t outer_material() const { return outer_material_; }
   int32_t& outer_material() { return outer_material_; }
 
-  const std::unordered_map<xdg::MeshID, std::vector<int32_t>>& element_material_map() const { return element_material_map_; }
+  const std::unordered_map<xdg::MeshID, std::vector<int32_t>>&
+  element_material_map() const
+  {
+    return element_material_map_;
+  }
 
   // Accessors
   int32_t mesh_idx() const { return mesh_idx_; }
   const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
-  const XDGMesh* xdg_mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_idx_].get()); }
-  const std::shared_ptr<xdg::XDG>& xdg_instance() const { return xdg_mesh()->xdg_instance(); }
+  const XDGMesh* xdg_mesh() const
+  {
+    return dynamic_cast<const XDGMesh*>(model::meshes[mesh_idx_].get());
+  }
+  const std::shared_ptr<xdg::XDG>& xdg_instance() const
+  {
+    return xdg_mesh()->xdg_instance();
+  }
 
-  protected:
+protected:
   int32_t mesh_idx_;
   std::string name_;
   std::unordered_map<xdg::MeshID, std::vector<int32_t>> element_material_map_;
@@ -331,50 +358,65 @@ class XDGMeshUniverse : public Universe {
 };
 
 class XDGMeshCell : public Cell {
-  public:
-  XDGMeshCell(int32_t mesh, int32_t element_idx) : mesh_(mesh), elem_idx_(element_idx)
+public:
+  XDGMeshCell(int32_t mesh, int32_t element_idx)
+    : mesh_(mesh), elem_idx_(element_idx)
   {}
 
-  GeometryType geom_type() const override { return GeometryType::XDG_VOLUME_MESH; }
+  GeometryType geom_type() const override
+  {
+    return GeometryType::XDG_VOLUME_MESH;
+  }
 
   virtual bool contains(
-  Position r, Direction u, int32_t on_surface) const override
+    Position r, Direction u, int32_t on_surface) const override
   {
     int mesh_bin = model::meshes[mesh_]->get_bin(r);
-    return mesh_bin == elem_idx_-1;
+    return mesh_bin == elem_idx_ - 1;
   };
 
-  virtual std::pair<double, int32_t> distance(
-  Position r, Direction u, int32_t on_surface, GeometryState* p) const override
+  virtual std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, GeometryState* p) const override
   {
     // if this element is the background, determine
     // if the particle might re-enter the mesh
     if (elem_idx_ == C_NONE) {
       auto ipc = xdg_ptr()->mesh_manager()->implicit_complement();
-      auto ipc_elem = xdg_ptr()->ray_fire(ipc, {r.x, r.y, r.z}, {u.x, u.y, u.z});
+      auto ipc_elem =
+        xdg_ptr()->ray_fire(ipc, {r.x, r.y, r.z}, {u.x, u.y, u.z});
       if (ipc_elem.first == C_NONE) {
         return {INFTY, elem_idx_};
       }
-      // if the particle will re-enter the mesh, return the distance to the surface
-      // of the implicit complement
+      // if the particle will re-enter the mesh, return the distance to the
+      // surface of the implicit complement
       auto new_r = r + u * (ipc_elem.second + TINY_BIT);
       auto next_element = xdg_ptr()->find_element({new_r.x, new_r.y, new_r.z});
       return {ipc_elem.second, next_element};
     }
-    auto result =xdg_ptr()->mesh_manager()->next_element(elem_idx_, {r.x, r.y, r.z}, {u.x, u.y, u.z});
+    auto result = xdg_ptr()->mesh_manager()->next_element(
+      elem_idx_, {r.x, r.y, r.z}, {u.x, u.y, u.z});
     return {result.second, result.first};
   }
 
   virtual int32_t material(int32_t instance) const override
   {
     return material_[0];
-    // const auto& element_materials = mesh_univ()->element_material_map().at(elem_idx_);
-    // return element_materials.size() > 1 ? element_materials[instance] : element_materials[0];
+    // const auto& element_materials =
+    // mesh_univ()->element_material_map().at(elem_idx_); return
+    // element_materials.size() > 1 ? element_materials[instance] :
+    // element_materials[0];
   }
 
-  const XDGMeshUniverse* mesh_univ() const { return dynamic_cast<const XDGMeshUniverse*>(model::universes[universe_idx_].get()); }
+  const XDGMeshUniverse* mesh_univ() const
+  {
+    return dynamic_cast<const XDGMeshUniverse*>(
+      model::universes[universe_idx_].get());
+  }
 
-  const XDGMesh* xdg_mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_].get()); }
+  const XDGMesh* xdg_mesh() const
+  {
+    return dynamic_cast<const XDGMesh*>(model::meshes[mesh_].get());
+  }
 
   const xdg::XDG* xdg_ptr() const { return xdg_mesh()->xdg_instance().get(); }
 
@@ -382,17 +424,17 @@ class XDGMeshCell : public Cell {
 
   virtual BoundingBox bounding_box() const override { return BoundingBox {}; };
 
-  protected:
+protected:
   int32_t universe_idx_;
   int32_t mesh_;
   int32_t elem_idx_;
 };
 
-  //==============================================================================
-  // Non-member functions
-  //==============================================================================
+//==============================================================================
+// Non-member functions
+//==============================================================================
 
-  int32_t xdg_next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
+int32_t xdg_next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 

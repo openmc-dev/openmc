@@ -125,7 +125,7 @@ void XDGUniverse::init_xdg()
   else
     fatal_error("Unknown XDG library specified: " + library());
 
-    // load the XDG geometry
+  // load the XDG geometry
   if (!file_exists(filename())) {
     fatal_error("Geometry XDG file '" + filename() + "' does not exist!");
   }
@@ -151,7 +151,7 @@ void XDGUniverse::init_geometry()
 
   for (auto volume : xdg_ptr()->mesh_manager()->volumes()) {
     auto c = std::make_unique<XDGCell>(xdg_ptr(), volume);
-    c->id_ =     c->id_ = adjust_geometry_ids_ ? next_cell_id++ : volume;
+    c->id_ = c->id_ = adjust_geometry_ids_ ? next_cell_id++ : volume;
     c->universe_ = this->id_;
 
     auto in_map = model::cell_map.find(c->id_);
@@ -172,10 +172,15 @@ void XDGUniverse::init_geometry()
 
     // determine volume material assignment
     std::string mat_str;
-    if (!xdg_ptr()->mesh_manager()->volume_has_property(volume, xdg::PropertyType::MATERIAL)) {
-      fatal_error(fmt::format("XDG Volume {} has no material assignment."), c->id_);
+    if (!xdg_ptr()->mesh_manager()->volume_has_property(
+          volume, xdg::PropertyType::MATERIAL)) {
+      fatal_error(
+        fmt::format("XDG Volume {} has no material assignment."), c->id_);
     } else {
-      mat_str = xdg_ptr()->mesh_manager()->get_volume_property(volume, xdg::PropertyType::MATERIAL).value;
+      mat_str = xdg_ptr()
+                  ->mesh_manager()
+                  ->get_volume_property(volume, xdg::PropertyType::MATERIAL)
+                  .value;
     }
 
     to_lower(mat_str);
@@ -185,9 +190,12 @@ void XDGUniverse::init_geometry()
     // ----Temperatures-----
 
     // if the temperature property is set on the XDG volume, use that
-    if (xdg_ptr()->mesh_manager()->volume_has_property(volume, xdg::PropertyType::TEMPERATURE)) {
+    if (xdg_ptr()->mesh_manager()->volume_has_property(
+          volume, xdg::PropertyType::TEMPERATURE)) {
       // read the temperature from the file (assumed to be in K)
-      xdg::Property xdg_temperature = xdg_ptr()->mesh_manager()->get_volume_property(volume, xdg::PropertyType::TEMPERATURE);
+      xdg::Property xdg_temperature =
+        xdg_ptr()->mesh_manager()->get_volume_property(
+          volume, xdg::PropertyType::TEMPERATURE);
       double temperature = std::stod(xdg_temperature.value);
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temperature));
     } else { // otherwise, set the temperature as usual
@@ -195,8 +203,8 @@ void XDGUniverse::init_geometry()
       if (mat->temperature() > 0.0) {
         c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
       } else {
-      c->sqrtkT_.push_back(
-        std::sqrt(K_BOLTZMANN * settings::temperature_default));
+        c->sqrtkT_.push_back(
+          std::sqrt(K_BOLTZMANN * settings::temperature_default));
       }
     }
     model::cells.emplace_back(std::move(c));
@@ -222,8 +230,10 @@ void XDGUniverse::init_geometry()
     s->surf_source_ = contains(settings::source_write_surf_id, s->id_);
 
     // ----- Boundary Conditions--------
-    if (xdg_ptr()->mesh_manager()->surface_has_property(surface, xdg::PropertyType::BOUNDARY_CONDITION)) {
-      xdg::Property xdg_bc = xdg_ptr()->mesh_manager()->get_surface_property(surface, xdg::PropertyType::BOUNDARY_CONDITION);
+    if (xdg_ptr()->mesh_manager()->surface_has_property(
+          surface, xdg::PropertyType::BOUNDARY_CONDITION)) {
+      xdg::Property xdg_bc = xdg_ptr()->mesh_manager()->get_surface_property(
+        surface, xdg::PropertyType::BOUNDARY_CONDITION);
       std::string bc_value = xdg_bc.value;
       to_lower(bc_value);
 
@@ -233,10 +243,11 @@ void XDGUniverse::init_geometry()
       } else if (bc_value == "vacuum" || "xdg_boundary") {
         s->bc_ = make_unique<VacuumBC>();
       } else if (bc_value == "reflective" || bc_value == "reflect" ||
-                bc_value == "reflecting") {
+                 bc_value == "reflecting") {
         s->bc_ = make_unique<ReflectiveBC>();
       } else if (bc_value == "periodic") {
-        fatal_error("Periodic boundary condition not supported in XDG geometry.");
+        fatal_error(
+          "Periodic boundary condition not supported in XDG geometry.");
       } else {
         fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
                                 "on surface {}",
@@ -374,12 +385,15 @@ void XDGUniverse::to_hdf5(hid_t universes_group) const
 
 void XDGUniverse::next_cell(Particle& p) const
 {
-  const auto* xdg_surface = dynamic_cast<const XDGSurface*>(model::surfaces[p.surface_index()].get());
-  const auto* xdg_cell = dynamic_cast<const XDGCell*>(model::cells[p.cell_last(p.n_coord() - 1)].get());
+  const auto* xdg_surface =
+    dynamic_cast<const XDGSurface*>(model::surfaces[p.surface_index()].get());
+  const auto* xdg_cell = dynamic_cast<const XDGCell*>(
+    model::cells[p.cell_last(p.n_coord() - 1)].get());
 
   xdg::MeshID xdg_surface_id = xdg_surface->xdg_id();
   xdg::MeshID xdg_cell_id = xdg_cell->xdg_id();
-  xdg::MeshID next_volume = xdg_ptr()->mesh_manager()->next_volume(xdg_cell->xdg_id(), xdg_surface->xdg_id());
+  xdg::MeshID next_volume = xdg_ptr()->mesh_manager()->next_volume(
+    xdg_cell->xdg_id(), xdg_surface->xdg_id());
   int32_t next_cell = cell_index_map_.at(next_volume);
 
   // save material, temperature, and density multiplier
@@ -403,7 +417,8 @@ void XDGUniverse::assign_material(
   std::string& mat_string, std::unique_ptr<XDGCell>& c) const
 {
   // material void checks
-  if (mat_string == "void" || mat_string == "vacuum" || mat_string == "graveyard") {
+  if (mat_string == "void" || mat_string == "vacuum" ||
+      mat_string == "graveyard") {
     c->material_.push_back(MATERIAL_VOID);
     return;
   }
@@ -496,16 +511,18 @@ std::pair<double, int32_t> XDGCell::distance(
   int surf_idx = -1;
   double dist = INFINITY;
 
-
   // create the ray
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  std::pair<double, xdg::MeshID> result = xdg_ptr()->ray_fire(xdg_id(), pnt, dir, INFTY, xdg::HitOrientation::EXITING, &p->xdg_prev_elements());
+  std::pair<double, xdg::MeshID> result = xdg_ptr()->ray_fire(xdg_id(), pnt,
+    dir, INFTY, xdg::HitOrientation::EXITING, &p->xdg_prev_elements());
   if (result.second > 0) {
     surf_idx = xdg_univ->surface_index(result.second);
     dist = result.first;
     // TODO: reduce complexity of these calls
-  } else if (model::cell_map[this->id_] != xdg_univ->implicit_complement_idx() || is_root_universe(xdg_univ->id_)) {
+  } else if (model::cell_map[this->id_] !=
+               xdg_univ->implicit_complement_idx() ||
+             is_root_universe(xdg_univ->id_)) {
     // surface boundary conditions are ignored for projection plotting, meaning
     // that the particle may move through the graveyard (bounding) volume and
     // into the implicit complement on the other side where no intersection will
@@ -543,7 +560,8 @@ void XDGCell::to_hdf5_inner(hid_t group_id) const
 
 BoundingBox XDGCell::bounding_box() const
 {
-  xdg::BoundingBox bbox = xdg_ptr()->mesh_manager()->volume_bounding_box(xdg_id());
+  xdg::BoundingBox bbox =
+    xdg_ptr()->mesh_manager()->volume_bounding_box(xdg_id());
   return {{bbox[0], bbox[1], bbox[2]}, {bbox[3], bbox[4], bbox[5]}};
 }
 
@@ -564,7 +582,8 @@ double XDGSurface::distance(Position r, Direction u, bool coincident) const
 {
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  std::pair<double, xdg::MeshID> result = xdg_ptr()->ray_fire(xdg_id(), pnt, dir);
+  std::pair<double, xdg::MeshID> result =
+    xdg_ptr()->ray_fire(xdg_id(), pnt, dir);
   return result.first < 0.0 ? INFTY : result.first;
 }
 
@@ -578,7 +597,8 @@ Direction XDGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
   p->xdg_prev_elements() = {p->xdg_prev_elements().back()};
   double pnt[3] = {r.x, r.y, r.z};
-  xdg::Direction normal = xdg_ptr()->surface_normal(xdg_id(), pnt, &p->xdg_prev_elements());
+  xdg::Direction normal =
+    xdg_ptr()->surface_normal(xdg_id(), pnt, &p->xdg_prev_elements());
   p->u_last() = u.reflect({normal[0], normal[1], normal[2]});
   return p->u_last();
 }
@@ -591,7 +611,8 @@ void read_xdg_universes(pugi::xml_node node)
 {
   for (pugi::xml_node xdg_node : node.children("xdg_universe")) {
     if (!check_for_node(xdg_node, "type")) {
-      fatal_error(fmt::format("XDG type is not specified for universe {}", xdg_node.attribute("id").as_int()));
+      fatal_error(fmt::format("XDG type is not specified for universe {}",
+        xdg_node.attribute("id").as_int()));
     }
     std::string type = get_node_value(xdg_node, "type");
     if (type == "surface_mesh") {
@@ -601,7 +622,8 @@ void read_xdg_universes(pugi::xml_node node)
     } else {
       fatal_error(fmt::format("Invalid XDG universe type: {}", type));
     }
-    model::universe_map[model::universes.back()->id_] = model::universes.size() - 1;
+    model::universe_map[model::universes.back()->id_] =
+      model::universes.size() - 1;
   }
 }
 
@@ -628,7 +650,8 @@ int32_t xdg_next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
   auto cellp = dynamic_cast<XDGCell*>(model::cells[curr_cell].get());
   auto univp = static_cast<XDGUniverse*>(model::universes[univ].get());
 
-  xdg::MeshID next_volume = univp->xdg_ptr()->mesh_manager()->next_volume(cellp->xdg_id(), surfp->xdg_id());
+  xdg::MeshID next_volume = univp->xdg_ptr()->mesh_manager()->next_volume(
+    cellp->xdg_id(), surfp->xdg_id());
   return univp->cell_index(next_volume);
 }
 
@@ -664,14 +687,16 @@ XDGMeshUniverse::XDGMeshUniverse(pugi::xml_node node)
 int32_t XDGMeshUniverse::match_material(const std::string& material_name) const
 {
   int32_t mat_idx {MATERIAL_INVALID};
-  if (material_name == "void" || material_name == "vacuum" || material_name == "graveyard") {
+  if (material_name == "void" || material_name == "vacuum" ||
+      material_name == "graveyard") {
     return MATERIAL_VOID;
   }
 
   // attempt to assign material by name
   mat_idx = get_material_by_name(material_name);
   if (mat_idx != MATERIAL_INVALID) {
-    write_message(fmt::format("Assigning material {} by name", material_name), 10);
+    write_message(
+      fmt::format("Assigning material {} by name", material_name), 10);
     return mat_idx;
   }
 
@@ -685,7 +710,8 @@ int32_t XDGMeshUniverse::match_material(const std::string& material_name) const
     // continue to next step
   }
 
-  fatal_error(fmt::format("Material with name/ID '{}' not found", material_name));
+  fatal_error(
+    fmt::format("Material with name/ID '{}' not found", material_name));
   return MATERIAL_INVALID;
 }
 
@@ -696,11 +722,11 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
   //   cell_fills = get_node_array<std::string>(node, "fills");
   // }
 
-
   // int n_bins = mesh->n_bins();
   // if (cell_fills.size() != 1 && cell_fills.size() != n_bins) {
   //   fatal_error(
-  //     fmt::format("Invalid number of cell fills provided for structured mesh "
+  //     fmt::format("Invalid number of cell fills provided for structured mesh
+  //     "
   //                 "universe {}. Must be 1 or {}",
   //       id_, n_bins));
   // }
@@ -715,12 +741,14 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
   cells_.resize(xdg_instance()->mesh_manager()->num_volume_elements(), C_NONE);
   // loop over all volumes in the xdg instance
   for (const auto& volume : xdg_instance()->mesh_manager()->volumes()) {
-    const auto& material = xdg_instance()->mesh_manager()->get_volume_property(volume, xdg::PropertyType::MATERIAL);
+    const auto& material = xdg_instance()->mesh_manager()->get_volume_property(
+      volume, xdg::PropertyType::MATERIAL);
     std::string mat_str = material.value;
     int32_t mat_idx = match_material(to_lower(mat_str));
 
     // go over all elements in the volume and assign the material to the element
-    for (const auto& element : xdg_instance()->mesh_manager()->get_volume_elements(volume)) {
+    for (const auto& element :
+      xdg_instance()->mesh_manager()->get_volume_elements(volume)) {
       element_material_map_[element].push_back(mat_idx);
       // create a cell for the element
       model::cells.push_back(std::make_unique<XDGMeshCell>(mesh_idx_, element));
@@ -735,7 +763,8 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
       } else {
         c->material_.push_back(MATERIAL_VOID);
       }
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
+      c->sqrtkT_.push_back(
+        std::sqrt(K_BOLTZMANN * settings::temperature_default));
       int32_t element_idx = xdg_mesh()->mesh_id_to_bin(element);
       cells_[element_idx] = model::cell_map[c->id_];
     }
@@ -744,7 +773,8 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
   // create a cell for the exterior of the mesh
   if (check_for_node(node, "background_material")) {
     // get id of outer material
-    outer_material_ = match_material(get_node_value(node, "background_material"));
+    outer_material_ =
+      match_material(get_node_value(node, "background_material"));
     if (outer_material_ == MATERIAL_INVALID) {
       outer_material_ = MATERIAL_VOID;
     }
@@ -815,9 +845,9 @@ void XDGMeshUniverse::next_cell(Particle& p) const
                   "{} \n\tDirection: {} {} {}",
         p.id(), p.r()[0], p.r()[1], p.r()[2], p.u()[0], p.u()[1], p.u()[2]),
       10);
-      // treat mesh exit as vacuum boundary for now
-      // p.wgt() = 0.0;
-      // return;
+    // treat mesh exit as vacuum boundary for now
+    // p.wgt() = 0.0;
+    // return;
     next_mesh_idx = C_NONE;
     next_cell_idx = cells_[cells_.size() - 1];
   }
@@ -1087,7 +1117,8 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
   Direction u {g.u().x, g.u().y, g.u().z};
   if (bin == C_NONE || bin == xdg_->mesh_manager()->implicit_complement()) {
     auto ipc = xdg_->mesh_manager()->implicit_complement();
-    auto ipc_elem = xdg_->ray_fire(ipc, {r.x, r.y, r.z}, {u.x, u.y, u.z}, INFTY, xdg::HitOrientation::EXITING, &g.xdg_prev_elements());
+    auto ipc_elem = xdg_->ray_fire(ipc, {r.x, r.y, r.z}, {u.x, u.y, u.z}, INFTY,
+      xdg::HitOrientation::EXITING, &g.xdg_prev_elements());
     if (ipc_elem.second == C_NONE) {
       return {INFTY, -1, {-1, 0, 0}};
     }
@@ -1100,7 +1131,8 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
   return {dist.second, -1, {mesh_id_to_bin(dist.first), 0, 0}};
 }
 
-NextMeshCell XDGMesh::distance_to_bin_boundary(int bin, const Position& r, const Direction& u) const
+NextMeshCell XDGMesh::distance_to_bin_boundary(
+  int bin, const Position& r, const Direction& u) const
 {
   if (bin == C_NONE || bin == xdg_->mesh_manager()->implicit_complement()) {
     auto ipc = xdg_->mesh_manager()->implicit_complement();
@@ -1116,7 +1148,6 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(int bin, const Position& r, const
   auto dist = xdg_->next_element(mesh_id, {r.x, r.y, r.z}, {u.x, u.y, u.z});
   return {dist.second, -1, {dist.first, 0, 0}};
 }
-
 
 } // namespace openmc
 

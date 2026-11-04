@@ -286,7 +286,8 @@ bool neighbor_list_find_cell(GeometryState& p, bool verbose)
 {
 
   // A CSG crossing can move the particle into another instance of the same
-  // CAD (DAGMC/XDG) universe, where the previous facet history is no longer valid.
+  // CAD (DAGMC/XDG) universe, where the previous facet history is no longer
+  // valid.
 #ifdef OPENMC_DAGMC_ENABLED
   if (p.surface() != SURFACE_NONE) {
     const auto& surf = model::surfaces[p.surface_index()];
@@ -452,13 +453,17 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
     const Direction& u {coord.u()};
     Cell& c {*model::cells[coord.cell()]};
 
-    // Different logic applies for a mesh-based universe
-    #ifdef OPENMC_XDG_ENABLED
-    if (model::universes[coord.universe()]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
-      const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(model::universes[coord.universe()].get());
+// Different logic applies for a mesh-based universe
+#ifdef OPENMC_XDG_ENABLED
+    if (model::universes[coord.universe()]->geom_type() ==
+        GeometryType::XDG_VOLUME_MESH) {
+      const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(
+        model::universes[coord.universe()].get());
       auto mesh_dist = xdg_mesh_univ->xdg_mesh()->distance_to_bin_boundary(p);
 
-      if (info.distance() == INFINITY || (info.distance() - mesh_dist.distance) / info.distance() >= FP_REL_PRECISION) {
+      if (info.distance() == INFINITY ||
+          (info.distance() - mesh_dist.distance) / info.distance() >=
+            FP_REL_PRECISION) {
         info.distance() = mesh_dist.distance;
         info.mesh_translation() = mesh_dist.next_ijk;
         info.surface() = 0;
@@ -466,7 +471,7 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
       }
       return info;
     }
-    #endif
+#endif
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p.surface(), &p);

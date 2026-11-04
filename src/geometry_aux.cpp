@@ -435,7 +435,8 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
     for (const auto& univ : model::universes) {
 
       // all CAD/mesh unviverses are limited to material-filled cells
-      if (univ->geom_type() != GeometryType::CSG) continue;
+      if (univ->geom_type() != GeometryType::CSG)
+        continue;
 
       int32_t offset = 0;
       for (int32_t cell_indx : univ->cells_) {

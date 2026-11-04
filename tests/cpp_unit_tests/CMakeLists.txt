@@ -13,6 +13,7 @@ set(TEST_NAMES
   test_surface
   test_tensor
   test_geometry
+  test_weight_windows
   # Add additional unit test files here
 )
 
@@ -26,6 +27,8 @@ foreach(test ${TEST_NAMES})
   # dependency is unavailable.
   set_tests_properties(${test} PROPERTIES SKIP_RETURN_CODE 4)
 endforeach()
+
+set_tests_properties(test_weight_windows PROPERTIES TIMEOUT 30)
 
 if(OPENMC_USE_XDG)
   target_compile_definitions(test_mesh PRIVATE OPENMC_XDG_ENABLED)

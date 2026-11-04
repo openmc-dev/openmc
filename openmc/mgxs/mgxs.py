@@ -2218,6 +2218,11 @@ class MatrixMGXS(MGXS):
     and are therefore represented by matrices. Examples of this include the
     scattering and nu-fission matrices.
 
+    On a sliced matrix, incoming and outgoing group indices are numbered
+    independently over the bins remaining on each axis, starting at one for
+    the highest-energy bin. This numbering applies to subsequent calls to
+    :meth:`get_xs` and :meth:`get_slice`.
+
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations.
@@ -2225,6 +2230,21 @@ class MatrixMGXS(MGXS):
     .. note:: Users should instantiate the subclasses of this abstract class.
 
     """
+    def _get_group_bins(self, groups, filter_type):
+        """Map groups to the bins remaining on one matrix axis."""
+        cv.check_iterable_type('groups', groups, Integral)
+        energy_filter = next(
+            tally.find_filter(filter_type) for tally in self.tallies.values()
+            if tally.contains_filter(filter_type))
+        bins = energy_filter.bins
+        for group in groups:
+            cv.check_greater_than('group', group, 0)
+            cv.check_less_than('group', group, len(bins), equality=True)
+        # Matrix tallies store bins from low to high energy, while group 1
+        # denotes the highest-energy bin remaining on the selected axis.
+        return tuple(tuple(bins[-group])
+                     for group in sorted(groups, reverse=True))
+
     @property
     def _dont_squeeze(self):
         """Create a tuple of axes which should not be removed during the get_xs
@@ -2325,21 +2345,15 @@ class MatrixMGXS(MGXS):
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(in_groups, str):
-            cv.check_iterable_type('groups', in_groups, Integral)
             filters.append(openmc.EnergyFilter)
-            energy_bins = [self.energy_groups.get_group_bounds(group)
-                           for group in in_groups]
-            energy_bins.sort()
-            filter_bins.append(tuple(energy_bins))
+            filter_bins.append(self._get_group_bins(
+                in_groups, openmc.EnergyFilter))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(out_groups, str):
-            cv.check_iterable_type('groups', out_groups, Integral)
             filters.append(openmc.EnergyoutFilter)
-            energyout_bins = [self.energy_groups.get_group_bounds(group)
-                              for group in out_groups]
-            energyout_bins.sort()
-            filter_bins.append(tuple(energyout_bins))
+            filter_bins.append(self._get_group_bins(
+                out_groups, openmc.EnergyoutFilter))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
@@ -2452,25 +2466,20 @@ class MatrixMGXS(MGXS):
 
         """
 
-        # Call super class method and null out derived tallies
-        slice_xs = super().get_slice(nuclides, in_groups)
-        slice_xs._rxn_rate_tally = None
-        slice_xs._xs_tally = None
-
-        # Slice outgoing energy groups if needed
-        if len(out_groups) != 0:
-            filter_bins = [self.energy_groups.get_group_bounds(group)
-                           for group in out_groups]
-            filter_bins.sort()
-            filter_bins = [tuple(filter_bins)]
-
-            # Slice each of the tallies across energyout groups
+        # Slice nuclides first, then select each energy axis independently.
+        slice_xs = super().get_slice(nuclides)
+        for groups, filter_type in ((in_groups, openmc.EnergyFilter),
+                                    (out_groups, openmc.EnergyoutFilter)):
+            if len(groups) == 0:
+                continue
+            bins = self._get_group_bins(groups, filter_type)
             for tally_type, tally in slice_xs.tallies.items():
-                if tally.contains_filter(openmc.EnergyoutFilter):
-                    tally_slice = tally.get_slice(
-                        filters=[openmc.EnergyoutFilter],
-                        filter_bins=filter_bins)
-                    slice_xs.tallies[tally_type] = tally_slice
+                if tally.contains_filter(filter_type):
+                    slice_xs.tallies[tally_type] = tally.get_slice(
+                        filters=[filter_type], filter_bins=[bins])
+
+            if filter_type is openmc.EnergyFilter:
+                slice_xs.energy_groups = EnergyGroups(np.unique(bins))
 
         slice_xs.sparse = self.sparse
         return slice_xs
@@ -4530,7 +4539,7 @@ class ScatterMatrixXS(MatrixMGXS):
         """
 
         # Call super class method and null out derived tallies
-        slice_xs = super().get_slice(nuclides, in_groups)
+        slice_xs = super().get_slice(nuclides, in_groups, out_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
@@ -4547,22 +4556,6 @@ class ScatterMatrixXS(MatrixMGXS):
             slice_xs.tallies[self.rxn_type] = \
                 slice_xs.tallies[self.rxn_type].get_slice(
                     filters=[openmc.LegendreFilter], filter_bins=filter_bins)
-
-        # Slice outgoing energy groups if needed
-        if len(out_groups) != 0:
-            filter_bins = []
-            for group in out_groups:
-                group_bounds = self.energy_groups.get_group_bounds(group)
-                filter_bins.append(group_bounds)
-            filter_bins = [tuple(filter_bins)]
-
-            # Slice each of the tallies across energyout groups
-            for tally_type, tally in slice_xs.tallies.items():
-                if tally.contains_filter(openmc.EnergyoutFilter):
-                    tally_slice = tally.get_slice(
-                        filters=[openmc.EnergyoutFilter],
-                        filter_bins=filter_bins)
-                    slice_xs.tallies[tally_type] = tally_slice
 
         slice_xs.sparse = self.sparse
         return slice_xs
@@ -4656,20 +4649,15 @@ class ScatterMatrixXS(MatrixMGXS):
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(in_groups, str):
-            cv.check_iterable_type('groups', in_groups, Integral)
             filters.append(openmc.EnergyFilter)
-            energy_bins = []
-            for group in in_groups:
-                energy_bins.append(
-                    (self.energy_groups.get_group_bounds(group),))
-            filter_bins.append(tuple(energy_bins))
+            filter_bins.append(self._get_group_bins(
+                in_groups, openmc.EnergyFilter))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(out_groups, str):
-            cv.check_iterable_type('groups', out_groups, Integral)
-            for group in out_groups:
-                filters.append(openmc.EnergyoutFilter)
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+            filters.append(openmc.EnergyoutFilter)
+            filter_bins.append(self._get_group_bins(
+                out_groups, openmc.EnergyoutFilter))
 
         # Construct CrossScore for requested scattering moment
         if self.scatter_format == SCATTER_LEGENDRE:
@@ -4696,15 +4684,16 @@ class ScatterMatrixXS(MatrixMGXS):
             query_nuclides = ['total']
 
         # Use tally summation if user requested the sum for all nuclides
-        scores = self.xs_tally.scores
+        xs_tally = self.xs_tally
+        scores = xs_tally.scores
         if nuclides == 'sum' or nuclides == ['sum']:
-            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            xs_tally = xs_tally.summation(nuclides=query_nuclides)
             xs = xs_tally.get_values(scores=scores, filters=filters,
                                      filter_bins=filter_bins, value=value)
         else:
-            xs = self.xs_tally.get_values(scores=scores, filters=filters,
-                                          filter_bins=filter_bins,
-                                          nuclides=query_nuclides, value=value)
+            xs = xs_tally.get_values(scores=scores, filters=filters,
+                                     filter_bins=filter_bins,
+                                     nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
         if xs_type == 'micro' and self._divide_by_density:
@@ -4719,12 +4708,14 @@ class ScatterMatrixXS(MatrixMGXS):
         xs = np.nan_to_num(xs)
 
         if in_groups == 'all':
-            num_in_groups = self.num_groups
+            energy_filter = xs_tally.find_filter(openmc.EnergyFilter)
+            num_in_groups = energy_filter.num_bins
         else:
             num_in_groups = len(in_groups)
 
         if out_groups == 'all':
-            num_out_groups = self.num_groups
+            energyout_filter = xs_tally.find_filter(openmc.EnergyoutFilter)
+            num_out_groups = energyout_filter.num_bins
         else:
             num_out_groups = len(out_groups)
 

@@ -38,7 +38,8 @@ class Library:
         If true, computes cross sections for each nuclide in each domain
     particle_type : {'neutron', 'photon'}, optional
         Particle type for which cross sections are computed. If not specified,
-        tallies are not filtered by particle type.
+        tallies are not filtered by particle type. Selecting photons sets
+        :attr:`correction` to None.
     mgxs_types : Iterable of str
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     name : str, optional
@@ -52,7 +53,8 @@ class Library:
     by_nuclide : bool
         If true, computes cross sections for each nuclide in each domain
     particle_type : openmc.ParticleType or None
-        Particle type for which cross sections are computed
+        Particle type for which cross sections are computed. Setting this to
+        ``'photon'`` also sets :attr:`correction` to None.
     mgxs_types : Iterable of str
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
@@ -247,11 +249,6 @@ class Library:
 
     @property
     def particle_type(self):
-        """Particle type used by the library's tallies.
-
-        Setting this property to ``'photon'`` also disables the neutron-only
-        P0 transport correction.
-        """
         return self._particle_type
 
     @particle_type.setter

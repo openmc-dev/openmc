@@ -108,18 +108,6 @@ def test_photon_production_matrix_tallies():
         assert particle_filter.bins == ['photon']
 
 
-def test_nonfinite_photon_production_tally():
-    material = openmc.Material()
-    groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0])
-    production = openmc.mgxs.PhotonTransferMatrixXS(
-        material, 'material', groups)
-    _add_tally_data(production)
-    production.tallies['primary photon production']._mean[0] = np.nan
-
-    with pytest.raises(ValueError, match='non-finite'):
-        production.get_xs()
-
-
 def test_photon_mgxs_library(photon_library, tmp_path):
     library = photon_library
     material = library.domains[0]

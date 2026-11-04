@@ -9,6 +9,7 @@ import numpy as np
 
 import openmc
 from openmc.data import IncidentNeutron
+from openmc.data.data import EV_PER_MEV, NEUTRON_MASS_EV
 from openmc.data.kalbach_mann import _separation_energy, _AtomicRepresentation
 from openmc.data import kalbach_slope
 from openmc.data import KalbachMann
@@ -103,16 +104,18 @@ def test_kalbach_slope():
     energy_projectile = 10.2  # [eV]
     energy_emitted = 5.4  # [eV]
 
-    # Check that NotImplementedError is raised if the projectile is not
-    # a neutron
-    with pytest.raises(NotImplementedError):
-        kalbach_slope(
-            energy_projectile=energy_projectile,
-            energy_emitted=energy_emitted,
-            za_projectile=1000,
-            za_emitted=1,
-            za_target=6012
-        )
+    # Only neutron (ZA=1) and photon (ZA=0) projectiles are covered by these
+    # systematics. Anything else must say so rather than returning a number or
+    # failing as a KeyError from inside za_to_M.
+    for za_projectile in (1000, 1001, 1003, 2003, 2004):
+        with pytest.raises(NotImplementedError):
+            kalbach_slope(
+                energy_projectile=energy_projectile,
+                energy_emitted=energy_emitted,
+                za_projectile=za_projectile,
+                za_emitted=1,
+                za_target=6012
+            )
 
     assert kalbach_slope(
         energy_projectile=energy_projectile,
@@ -121,6 +124,51 @@ def test_kalbach_slope():
         za_emitted=1003,
         za_target=6012
     ) == pytest.approx(0.8409921475)
+
+
+@pytest.mark.parametrize('e_gamma,e_b_cm', [
+    (15.0e6, 3.0e6), (40.0e6, 10.0e6), (100.0e6, 90.0e6)])
+def test_kalbach_slope_photon(e_gamma, e_b_cm):
+    """Eq. 6.5 of the ENDF-6 Formats Manual (BNL-224854-2023, section 6.2):
+
+        a_gamma = a_n(E_gamma, E_b_cm) * sqrt(E_gamma/(2 m_n))
+                  * min(4, max(1, 9.3/sqrt(E_b_cm)))
+
+    with E_b_cm and m_n in MeV, and a_n evaluated by plugging E_gamma into the
+    incident-neutron slot. Both of those are easy to get subtly wrong -- the
+    emission channel energy epsilon_b and the true photon compound system are
+    the tempting substitutions, and both are incorrect here -- so the formula
+    is pinned against an independent evaluation.
+    """
+    slope_n = kalbach_slope(e_gamma, e_b_cm, 1, 1, 82208)
+    expected = (slope_n*np.sqrt(e_gamma/(2.0*NEUTRON_MASS_EV))
+                * min(4.0, max(1.0, 9.3/np.sqrt(e_b_cm/EV_PER_MEV))))
+
+    got = kalbach_slope(e_gamma, e_b_cm, 0, 1, 82208)
+    assert got == pytest.approx(expected, rel=1e-12)
+    # A photon carries less momentum than a nucleon of the same energy
+    assert 0.0 < got < slope_n
+
+
+def test_kalbach_slope_photon_clip_saturates():
+    """The clipping factor saturates at 4 below 5.41 MeV and at 1 above
+    86.5 MeV, so the ratio to the unclipped scaling is flat outside that
+    window."""
+    def ratio(e_b_cm):
+        return (kalbach_slope(20.0e6, e_b_cm, 0, 1, 82208)
+                / kalbach_slope(20.0e6, e_b_cm, 1, 1, 82208))
+
+    assert ratio(1.0e6) == pytest.approx(ratio(3.0e6), rel=1e-12)
+    assert ratio(9.0e7) == pytest.approx(ratio(1.0e8), rel=1e-12)
+
+
+def test_kalbach_slope_photon_zero_outgoing_energy():
+    """A zero outgoing energy is a normal first grid point of an ENDF
+    LAW=1/LANG=2 table, and must not raise a divide-by-zero warning."""
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        assert kalbach_slope(15.0e6, 0.0, 0, 1, 82208) >= 0.0
 
 
 @pytest.mark.parametrize(

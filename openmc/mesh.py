@@ -2770,7 +2770,8 @@ class UnstructuredMesh(MeshBase):
         elements, and their node order must not be mirrored. This is not
         checked: at such a place, a track loses length, which random ray mode
         counts as outside of the mesh, while tallies in Monte Carlo mode are
-        low; a mirrored element can also make a run print warnings without end.
+        low; a mirrored element can also make a run print warnings without end
+        or run out of memory.
         The native libMesh interface takes a point within libMesh's tolerance of
         an element to be in it. In random ray mode, where one point decides the
         bin of a whole source region, that can occasionally put its flux in a

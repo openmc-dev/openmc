@@ -58,6 +58,27 @@ def model():
 
     return model
 
+def _convert_dagmc_universes(model):
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            mesh = openmc.UnstructuredMesh(univ.filename, library='moab')
+            mesh.interface= 'xdg'
+            xdg_univ = openmc.XDGUniverse(mesh)
+
+
+            if univ == model.geometry.root_universe:
+                model.geometry.root_universe = xdg_univ
+                continue
+
+            found = False
+            for c_id, cell in model.geometry.get_all_cells().items():
+                if cell.universe == univ:
+                    cell.universe = xdg_univ
+                    found = True
+                    break
+            if not found:
+                raise RuntimeError(f"Could not find cell containing universe {univ}")
+
 
 def test_missing_material_id(model):
     # remove the last material, which is identified by ID in the DAGMC file
@@ -101,7 +122,16 @@ def test_surf_source(model):
     rad = np.sqrt(xs**2 + ys**2)
     assert np.allclose(rad, 7.0)
 
+test_libs = []
+if openmc.lib.feature_enabled('dagmc'):
+    test_libs.append('dagmc')
+if openmc.lib.feature_enabled('xdg'):
+    test_libs.append('xdg')
 
-def test_dagmc(model):
-    harness = PyAPITestHarness('statepoint.5.h5', model)
+@pytest.mark.parametrize("interface", test_libs)
+def test_dagmc(model, interface):
+    if interface == 'xdg':
+        _convert_dagmc_universes(model)
+    input_file = f'inputs_{interface}.dat'
+    harness = PyAPITestHarness('statepoint.5.h5', model, input_file)
     harness.main()

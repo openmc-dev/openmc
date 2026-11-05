@@ -16,6 +16,17 @@ namespace openmc {
 class BoundaryInfo;
 class GeometryState;
 
+//! LOCATE handles arbitrary positions and directions. REUSE requires a bin
+//! maintained by transport, including C_NONE for positions outside the field.
+//! Initialization, periodic mapping, and recovery must establish the bin before
+//! using REUSE; ordinary transmission preserves it between mesh boundaries.
+enum class TemperatureFieldMode { LOCATE, REUSE };
+
+//! Set temperature from the field bin, or the current cell when outside the
+//! field.
+void update_temperature(GeometryState& p,
+  TemperatureFieldMode field_mode = TemperatureFieldMode::LOCATE);
+
 //==============================================================================
 //! OverlapKey to store cell and universe data of a single overlap, along with
 //! a functor for hashing an OverlapKey into an unordered_map.
@@ -94,12 +105,14 @@ int cell_instance_at_level(const GeometryState& p, int level);
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
-bool exhaustive_find_cell(GeometryState& p, bool verbose = false);
+bool exhaustive_find_cell(GeometryState& p, bool verbose = false,
+  TemperatureFieldMode field_mode = TemperatureFieldMode::LOCATE);
 
 //==============================================================================
 //! Locate a particle starting from its current coordinate level.
 //==============================================================================
-bool neighbor_list_find_cell(GeometryState& p, bool verbose = false);
+bool neighbor_list_find_cell(GeometryState& p, bool verbose = false,
+  TemperatureFieldMode field_mode = TemperatureFieldMode::LOCATE);
 
 //==============================================================================
 //! Reconcile the current cell after a direction change near a surface.
@@ -113,8 +126,9 @@ void reconcile_cell_after_collision(GeometryState& p);
 //! Move a particle into a new lattice tile.
 //==============================================================================
 
-void cross_lattice(
-  GeometryState& p, const BoundaryInfo& boundary, bool verbose = false);
+void cross_lattice(GeometryState& p, const BoundaryInfo& boundary,
+  bool verbose = false,
+  TemperatureFieldMode field_mode = TemperatureFieldMode::LOCATE);
 
 //==============================================================================
 //! Find the next boundary a particle will intersect.

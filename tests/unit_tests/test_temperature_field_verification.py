@@ -29,10 +29,13 @@ def _compare_models(model, reference, directory):
     expected = _run(reference, directory / 'reference')
     assert len(actual) == len(expected)
     for field_value, reference_value in zip(actual, expected):
+        assert np.isfinite(field_value).all()
+        assert np.isfinite(reference_value).all()
         # Both configurations stop at the same interfaces. Permit only
         # accumulated floating-point rounding, not statistical discrepancies.
-        np.testing.assert_allclose(field_value, reference_value, rtol=1.e-12,
-                                   atol=0, err_msg='Field/cell temperature mismatch')
+        np.testing.assert_allclose(
+            field_value, reference_value, rtol=1.e-12, atol=0,
+            err_msg='Field/cell temperature mismatch')
 
 
 @pytest.mark.parametrize('builder', [
@@ -44,11 +47,13 @@ def test_transport_equivalence(builder, tmp_path):
     _compare_models(builder(), builder(reference=True), tmp_path)
 
 
-@pytest.mark.skipif(not openmc.lib.feature_enabled('dagmc'), reason='DAGMC is disabled')
+@pytest.mark.skipif(
+    not openmc.lib.feature_enabled('dagmc'), reason='DAGMC is disabled')
 def test_dagmc_transport_equivalence(tmp_path):
     assets = Path(__file__).with_name('temperature_field')
     field_mesh = (Path(__file__).parents[1] / 'regression_tests' /
-                  'temperature_field/dagmc/nested_cubes_cell_reflecting.h5m')
+                  'temperature_field' / 'dagmc' /
+                  'nested_cubes_cell_reflecting.h5m')
     model = dagmc_nested_cubes_reflective(field_mesh)
     reference = dagmc_nested_cubes_reflective(
         assets / 'nested_cubes_multicell_reflecting.h5m', reference=True)

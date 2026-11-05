@@ -971,7 +971,7 @@ void transport_history_based_single_particle(Particle& p)
         p.event_collide();
         break;
       case TransportEvent::GEOMETRY:
-        p.event_cross_surface();
+        p.event_cross_surface(result);
         break;
       case TransportEvent::TEMPERATURE_FIELD:
         p.event_cross_temperature_field(result.next_temperature_field_bin);

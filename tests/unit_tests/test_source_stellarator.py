@@ -198,9 +198,9 @@ def test_stellarator_source_axisymmetric_sampling(run_in_tmpdir):
 def test_stellarator_source_angular_cells(run_in_tmpdir, nfp, orientation):
     """A phase-shifted tube has analytic angular and radial marginals.
 
-    Its narrow peaks exceed the old grid maximum plus 5% envelope. Two radial
-    surfaces exercise the zero axis component and the full quadratic mixture;
-    toroidal density harmonics exceed the cell grid's Nyquist frequency.
+    Two radial surfaces exercise the zero axis component and the full quadratic
+    mixture; toroidal density harmonics exceed the cell grid's Nyquist
+    frequency.
     """
     r0, a, epsilon, k, phase = 600., 40., .9, 8, np.pi / 8
     rho = np.array([0., 1.])

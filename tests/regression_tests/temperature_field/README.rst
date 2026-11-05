@@ -25,7 +25,7 @@ directly stored in the DAGMC file created with a modified version of
 StellarMesh.
 
 Independent comparisons against explicit cell-temperature models are integration
-tests in ``tests/unit_tests/test_temperature_field_verification.py``. They compare
-the two configurations directly, without golden files, so regenerating these
-regressions cannot change the expected equivalence. Run those integration tests
-when updating regression references.
+tests in ``tests/unit_tests/test_temperature_field_verification.py``. They
+compare the two configurations directly, without golden files, so regenerating
+these regressions cannot change the expected equivalence. Run those integration
+tests when updating regression references.

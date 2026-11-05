@@ -33,8 +33,7 @@ def _finish_model(model, mesh, temperature_field, lower_left, upper_right):
     settings = openmc.Settings()
     settings.batches = 20
     settings.particles = 200
-    if temperature_field is not None:
-        settings.temperature_field = temperature_field
+    settings.temperature_field = temperature_field
     settings.source = openmc.IndependentSource(
         space=openmc.stats.Box(lower_left, upper_right),
         constraints={"fissionable": True},
@@ -61,47 +60,26 @@ def _box(lower_left, upper_right, **kwargs):
     )
 
 
-def _temperature_cells(material, box):
-    """Explicit cell temperatures, independently ordered with x varying fastest."""
-    xmid = openmc.XPlane(x0=2.5)
-    ymid = openmc.YPlane(y0=2.5)
-    zmid = openmc.ZPlane(z0=2.5)
-    cells = []
-    for z in range(2):
-        for y in range(2):
-            for x in range(2):
-                region = (-box & (+xmid if x else -xmid)
-                          & (+ymid if y else -ymid)
-                          & (+zmid if z else -zmid))
-                cell = openmc.Cell(fill=material, region=region)
-                cell.temperature = 294.0 + 100.0 * (x + 2*y + 4*z)
-                cells.append(cell)
-    return cells
-
-
-def csg_single_cube_reflective(reference=False):
+def csg_single_cube_reflective():
     model, material, mesh, temperature_field = _temperature_field_components()
     box = _box(FIELD_LOWER_LEFT, FIELD_UPPER_RIGHT, boundary_type="reflective")
     model.geometry = openmc.Geometry([openmc.Cell(fill=material, region=-box)])
-    if reference:
-        model.geometry = openmc.Geometry(_temperature_cells(material, box))
-        temperature_field = None
     return _finish_model(
         model, mesh, temperature_field, FIELD_LOWER_LEFT, FIELD_UPPER_RIGHT
     )
 
 
-def csg_nested_cubes_periodic(reference=False):
+def csg_nested_cubes_periodic():
     model, material, mesh, temperature_field = _temperature_field_components()
     field_box = _box(FIELD_LOWER_LEFT, FIELD_UPPER_RIGHT)
     field_cell = openmc.Cell(fill=material, region=-field_box)
 
-    xmin = openmc.XPlane(x0=OUTER_LOWER_LEFT[0], boundary_type="periodic")
-    xmax = openmc.XPlane(x0=OUTER_UPPER_RIGHT[0], boundary_type="periodic")
-    ymin = openmc.YPlane(y0=OUTER_LOWER_LEFT[1], boundary_type="periodic")
-    ymax = openmc.YPlane(y0=OUTER_UPPER_RIGHT[1], boundary_type="periodic")
-    zmin = openmc.ZPlane(z0=OUTER_LOWER_LEFT[2], boundary_type="periodic")
-    zmax = openmc.ZPlane(z0=OUTER_UPPER_RIGHT[2], boundary_type="periodic")
+    xmin = openmc.XPlane(OUTER_LOWER_LEFT[0], boundary_type="periodic")
+    xmax = openmc.XPlane(OUTER_UPPER_RIGHT[0], boundary_type="periodic")
+    ymin = openmc.YPlane(OUTER_LOWER_LEFT[1], boundary_type="periodic")
+    ymax = openmc.YPlane(OUTER_UPPER_RIGHT[1], boundary_type="periodic")
+    zmin = openmc.ZPlane(OUTER_LOWER_LEFT[2], boundary_type="periodic")
+    zmax = openmc.ZPlane(OUTER_UPPER_RIGHT[2], boundary_type="periodic")
     xmin.periodic_surface = xmax
     ymin.periodic_surface = ymax
     zmin.periodic_surface = zmax
@@ -110,16 +88,12 @@ def csg_nested_cubes_periodic(reference=False):
     outer_cell = openmc.Cell(fill=material, region=outer_region & +field_box)
     outer_cell.temperature = 250.0
     model.geometry = openmc.Geometry([field_cell, outer_cell])
-    if reference:
-        model.geometry = openmc.Geometry(
-            _temperature_cells(material, field_box) + [outer_cell])
-        temperature_field = None
     return _finish_model(
         model, mesh, temperature_field, OUTER_LOWER_LEFT, OUTER_UPPER_RIGHT
     )
 
 
-def lattice_nested_cubes_vacuum(reference=False):
+def lattice_nested_cubes_vacuum():
     model, material, mesh, temperature_field = _temperature_field_components()
     lattice_box = openmc.model.RectangularParallelepiped(
         -1.75, 1.75, -1.75, 1.75, -1.75, 1.75
@@ -135,44 +109,23 @@ def lattice_nested_cubes_vacuum(reference=False):
         [[universe, universe], [universe, universe]],
     ]
     lattice.outer = openmc.Universe(cells=[openmc.Cell(fill=material)])
-    if reference:
-        universes = []
-        for z in range(2):
-            layer = []
-            # RectLattice arrays list y rows from high to low.
-            for y in (1, 0):
-                row = []
-                for x in range(2):
-                    cell = openmc.Cell(fill=material, region=-lattice_box)
-                    cell.temperature = 294.0 + 100.0 * (x + 2*y + 4*z)
-                    row.append(openmc.Universe(cells=[cell]))
-                layer.append(row)
-            universes.append(layer)
-        lattice.universes = universes
-        outer_cell = openmc.Cell(fill=material)
-        outer_cell.temperature = 250.0
-        lattice.outer = openmc.Universe(cells=[outer_cell])
-        temperature_field = None
 
     outer_box = _box(OUTER_LOWER_LEFT, OUTER_UPPER_RIGHT, boundary_type="vacuum")
     outer_cell = openmc.Cell(fill=lattice, region=-outer_box)
-    if not reference:
-        outer_cell.temperature = 250.0
+    outer_cell.temperature = 250.0
     model.geometry = openmc.Geometry([outer_cell])
     return _finish_model(
         model, mesh, temperature_field, OUTER_LOWER_LEFT, OUTER_UPPER_RIGHT
     )
 
 
-def dagmc_nested_cubes_reflective(filename, reference=False):
+def dagmc_nested_cubes_reflective(filename):
     model, _, mesh, temperature_field = _temperature_field_components(
         material_name="fuel"
     )
     model.geometry = openmc.Geometry(
         openmc.DAGMCUniverse(filename=filename, auto_geom_ids=True)
     )
-    if reference:
-        temperature_field = None
     return _finish_model(
         model, mesh, temperature_field, OUTER_LOWER_LEFT, OUTER_UPPER_RIGHT
     )

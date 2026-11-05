@@ -2571,8 +2571,8 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   SourceRegionHandle handle {*sr_ptr};
   handle.key() = sr_key;
 
-  // Tallies locate the source region by the point just checked to lie in it,
-  // not by the midpoint of whichever ray happens to lock it first
+  // Tallies locate the source region by this point, which was just checked to
+  // lie in it
   handle.position() = r + TINY_BIT * u;
 
   // Determine the material

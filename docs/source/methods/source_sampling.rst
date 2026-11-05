@@ -265,11 +265,14 @@ is the mixture
 
 OpenMC selects distribution :math:`i+1` with probability :math:`\eta` and
 distribution :math:`i` otherwise, then samples energy from the selected
-distribution. This interpolates the distributions, rather than interpolating
-two sampled energies. Both classes sample an isotropic flight direction and a
-separate time distribution, which defaults to a point mass at zero. Importance
-weights returned by the energy and time distributions multiply the site's
-weight.
+distribution. This interpolates the distributions, rather than interpolating two
+sampled energies. Mixing spectra with different means adds variance and can
+broaden the emission spectrum between radial grid points. Refining the radial
+grid can reduce this broadening when the spectra vary smoothly.
+
+Both classes sample an isotropic flight direction and a separate time
+distribution, which defaults to a point mass at zero. Importance weights
+returned by the energy and time distributions multiply the site's weight.
 
 .. _methods_tokamak_source:
 

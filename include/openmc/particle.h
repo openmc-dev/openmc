@@ -29,7 +29,6 @@ enum class TransportEvent : uint8_t {
 
 struct AdvanceResult {
   TransportEvent event {TransportEvent::COLLISION};
-  // A geometry event can also cross the field mesh within FP_COINCIDENT.
   bool temperature_field_crossing {false};
   int next_temperature_field_bin {C_NONE};
 };

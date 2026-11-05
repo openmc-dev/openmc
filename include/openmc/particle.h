@@ -20,7 +20,15 @@ namespace openmc {
 // Forward declare the Surface class for use in Particle::cross_vacuum_bc, etc.
 class Surface;
 
+enum class TransportEvent {
+  COLLISION,
+  GEOMETRY,
+  TEMPERATURE_FIELD,
+  TIME_CUTOFF
+};
+
 struct AdvanceResult {
+  TransportEvent event {TransportEvent::COLLISION};
   bool temperature_field_crossing {false};
   int next_temperature_field_bin {C_NONE};
 };

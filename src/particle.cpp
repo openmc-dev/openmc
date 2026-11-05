@@ -310,6 +310,14 @@ AdvanceResult Particle::event_advance()
   double distance =
     std::min({boundary().distance(), collision_distance(), distance_cutoff});
 
+  if (distance == distance_cutoff) {
+    result.event = TransportEvent::TIME_CUTOFF;
+  } else if (collision_distance() > boundary().distance()) {
+    result.event = result.temperature_field_crossing
+                     ? TransportEvent::TEMPERATURE_FIELD
+                     : TransportEvent::GEOMETRY;
+  }
+
   // Advance particle in space and time
   this->move_distance(distance);
   double dt = distance / speed;

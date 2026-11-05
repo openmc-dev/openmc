@@ -966,14 +966,18 @@ void transport_history_based_single_particle(Particle& p)
       result = p.event_advance();
     }
     if (p.alive()) {
-      if (p.collision_distance() > p.boundary().distance()) {
-        if (result.temperature_field_crossing) {
-          p.event_cross_temperature_field(result.next_temperature_field_bin);
-        } else {
-          p.event_cross_surface();
-        }
-      } else if (p.alive()) {
+      switch (result.event) {
+      case TransportEvent::COLLISION:
         p.event_collide();
+        break;
+      case TransportEvent::GEOMETRY:
+        p.event_cross_surface();
+        break;
+      case TransportEvent::TEMPERATURE_FIELD:
+        p.event_cross_temperature_field(result.next_temperature_field_bin);
+        break;
+      case TransportEvent::TIME_CUTOFF:
+        break;
       }
     }
     p.event_check_limit_and_revive();

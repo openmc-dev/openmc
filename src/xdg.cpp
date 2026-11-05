@@ -113,6 +113,12 @@ void XDGMesh::initialize()
     xdg_->mesh_manager()->load_file(filename_);
     xdg_->mesh_manager()->init();
     xdg_->mesh_manager()->parse_metadata();
+
+    // A file with only surfaces, such as a DAGMC geometry, loads without error
+    if (xdg_->mesh_manager()->num_volume_elements() == 0) {
+      fatal_error(fmt::format(
+        "Mesh file \"{}\" for mesh {} has no volume elements", filename_, id_));
+    }
   }
 
   // Cache the number of volume element surfaces.

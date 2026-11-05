@@ -1115,7 +1115,8 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
   int bin = coord.mesh_cell_index();
   Position r {g.r().x, g.r().y, g.r().z};
   Direction u {g.u().x, g.u().y, g.u().z};
-  if (bin == C_NONE || bin == xdg_->mesh_manager()->implicit_complement()) {
+  // if the bin corresponds to the implicit complement, handle separately
+  if (bin == C_NONE) {
     auto ipc = xdg_->mesh_manager()->implicit_complement();
     auto ipc_elem = xdg_->ray_fire(ipc, {r.x, r.y, r.z}, {u.x, u.y, u.z}, INFTY,
       xdg::HitOrientation::EXITING, &g.xdg_prev_elements());
@@ -1134,7 +1135,8 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
 NextMeshCell XDGMesh::distance_to_bin_boundary(
   int bin, const Position& r, const Direction& u) const
 {
-  if (bin == C_NONE || bin == xdg_->mesh_manager()->implicit_complement()) {
+  // if the bin corresponds to the implicit complement, handle separately
+  if (bin == C_NONE) {
     auto ipc = xdg_->mesh_manager()->implicit_complement();
     auto ipc_elem = xdg_->ray_fire(ipc, {r.x, r.y, r.z}, {u.x, u.y, u.z});
     if (ipc_elem.second == C_NONE) {

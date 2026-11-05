@@ -1,12 +1,10 @@
-from pathlib import Path
-
 import openmc
 import pytest
 
-from tests.regression_tests.temperature_field.models import (
+from tests.temperature_field import (
     dagmc_nested_cubes_reflective,
 )
-from tests.regression_tests.temperature_field.harness import TemperatureFieldTestHarness
+from tests.testing_harness import PyAPITestHarness
 
 
 pytestmark = pytest.mark.skipif(
@@ -20,7 +18,5 @@ def temperature_field_model():
 
 
 def test_temperature_field(temperature_field_model):
-    reference = dagmc_nested_cubes_reflective(
-        Path('nested_cubes_multicell_reflecting.h5m').resolve(), reference=True)
-    harness = TemperatureFieldTestHarness(temperature_field_model, reference)
+    harness = PyAPITestHarness('statepoint.20.h5', temperature_field_model)
     harness.main()

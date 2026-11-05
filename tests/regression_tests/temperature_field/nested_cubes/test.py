@@ -1,7 +1,7 @@
 import pytest
 
-from tests.regression_tests.temperature_field.models import csg_nested_cubes_periodic
-from tests.regression_tests.temperature_field.harness import TemperatureFieldTestHarness
+from tests.temperature_field import csg_nested_cubes_periodic
+from tests.testing_harness import PyAPITestHarness
 
 
 @pytest.fixture
@@ -10,6 +10,5 @@ def temperature_field_model():
 
 
 def test_temperature_field(temperature_field_model):
-    harness = TemperatureFieldTestHarness(
-        temperature_field_model, csg_nested_cubes_periodic(reference=True))
+    harness = PyAPITestHarness('statepoint.20.h5', temperature_field_model)
     harness.main()

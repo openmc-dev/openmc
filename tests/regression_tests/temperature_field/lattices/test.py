@@ -1,7 +1,7 @@
 import pytest
 
-from tests.regression_tests.temperature_field.models import lattice_nested_cubes_vacuum
-from tests.regression_tests.temperature_field.harness import TemperatureFieldTestHarness
+from tests.temperature_field import lattice_nested_cubes_vacuum
+from tests.testing_harness import PyAPITestHarness
 
 
 @pytest.fixture
@@ -10,6 +10,5 @@ def temperature_field_model():
 
 
 def test_temperature_field(temperature_field_model):
-    harness = TemperatureFieldTestHarness(
-        temperature_field_model, lattice_nested_cubes_vacuum(reference=True))
+    harness = PyAPITestHarness('statepoint.20.h5', temperature_field_model)
     harness.main()

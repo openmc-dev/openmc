@@ -24,15 +24,8 @@ For the DAGMC geometry, the boundary conditions and temperature values are
 directly stored in the DAGMC file created with a modified version of
 StellarMesh.
 
-Each test also runs an independent model using explicit cell temperatures and
-compares the formatted eigenvalue and tally results exactly. The reference
-models are adapted from Joffrey Dorville's `verification models
-<https://github.com/JoffreyDorville/temperature_field_verification>`_. The
-DAGMC reference file ``nested_cubes_multicell_reflecting.h5m`` comes from the
-``openmc_models/dagmc/nested_cubes/reflective_bc`` directory of that repository.
-The checked-in mesh avoids requiring CAD-generation software during testing.
-
-The equivalence comparison runs during both normal testing and ``--update``.
-Neither input nor result baselines are replaced unless it succeeds. Model
-changes that alter the random histories require investigating the difference
-before changing the comparison or regenerating reference files.
+Independent comparisons against explicit cell-temperature models are integration
+tests in ``tests/unit_tests/test_temperature_field_verification.py``. They compare
+the two configurations directly, without golden files, so regenerating these
+regressions cannot change the expected equivalence. Run those integration tests
+when updating regression references.

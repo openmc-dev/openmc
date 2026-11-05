@@ -16,7 +16,7 @@
     <mesh id="1" type="unstructured" library="moab" interface="xdg">
       <filename>dagmc.h5m</filename>
     </mesh>
-    <xdg_universe id="2" mesh="1" type="surface_mesh"/>
+    <xdg_universe id="1" mesh="1" type="surface_mesh"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

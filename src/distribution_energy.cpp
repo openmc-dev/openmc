@@ -174,14 +174,14 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
   int n_energy_out = distribution_[l].e_out.size();
   int n_discrete = distribution_[l].n_discrete;
   double r1 = prn(seed);
-  double c_k = distribution_[l].c[0];
+  const auto& cdf = distribution_[l].c;
+  double c_k = cdf[0];
   int k = 0;
   int end = n_energy_out - 2;
 
   // Discrete portion
   if (n_discrete > 0) {
     // Select the first discrete line whose CDF value exceeds r1
-    const auto& cdf = distribution_[l].c;
     k =
       std::upper_bound(cdf.begin(), cdf.begin() + n_discrete, r1) - cdf.begin();
     if (k < n_discrete) {
@@ -194,10 +194,11 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
   // Continuous portion
   if (n_discrete < end) {
-    int idx = upper_bound_index(distribution_[l].c.begin() + n_discrete + 1,
-      distribution_[l].c.begin() + end + 1, r1);
-    k = idx + n_discrete + 1;
-    c_k = distribution_[l].c[k];
+    // Select the bin whose upper CDF value is the first to exceed r1
+    k = std::upper_bound(
+          cdf.begin() + n_discrete + 1, cdf.begin() + end + 1, r1) -
+        cdf.begin() - 1;
+    c_k = cdf[k];
   }
 
   double E_l_k = distribution_[l].e_out[k];

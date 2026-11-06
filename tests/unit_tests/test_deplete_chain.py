@@ -1,13 +1,17 @@
 """Tests for openmc.deplete.Chain class."""
 
 from collections.abc import Mapping
+from copy import deepcopy
 from itertools import product
 from math import log
 import os
 from pathlib import Path
 import warnings
 
+import endf
+from lxml import etree as ET
 import numpy as np
+from openmc.data.endf import Evaluation
 from openmc.mpi import comm
 from openmc.deplete import Chain, reaction_rates, nuclide, cram, pool
 from openmc.stats import Discrete
@@ -68,6 +72,202 @@ def test_init():
 
     assert isinstance(chain.nuclides, list)
     assert isinstance(chain.nuclide_dict, Mapping)
+    assert chain.source_metadata == {}
+
+
+@pytest.fixture
+def component_sources():
+    return {
+        'neutron': [{'library': 'ENDF/B', 'version': 8, 'release': 1}],
+        'decay': [{'library': 'ENDF/B', 'version': 7, 'release': 1}],
+        'fission_yield': [{'library': 'JEFF', 'version': 3, 'release': 3}],
+    }
+
+
+@pytest.mark.parametrize('input_type', ['filename', 'evaluation', 'material'])
+def test_from_endf_source_metadata(endf_data, input_type):
+    """Read component identities from actual evaluation headers."""
+    directory = Path(endf_data)
+    paths = {
+        'neutron': directory / 'neutrons/n-001_H_001.endf',
+        'decay': directory / 'decay/dec-001_H_001.endf',
+        'fission_yield': directory / 'nfy/nfy-092_U_235.endf',
+    }
+    expected = {}
+    inputs = {}
+    for component, path in paths.items():
+        library, version, release = Evaluation(path).info['library']
+        expected[component] = [{
+            'library': library, 'version': version, 'release': release}]
+        if input_type == 'filename':
+            inputs[component] = path
+        elif input_type == 'evaluation':
+            inputs[component] = Evaluation(path)
+        else:
+            inputs[component] = endf.Material(str(path))
+
+    chain = Chain.from_endf(
+        iter([inputs['decay']]), iter([inputs['fission_yield']]),
+        iter([inputs['neutron']]), reactions=(), progress=False)
+    assert chain.source_metadata == expected
+    assert list(chain.nuclide_dict) == ['H1']
+
+
+def test_from_endf_mixed_sources(endf_data):
+    """Retain distinct source records instead of reporting one library."""
+    directory = Path(endf_data)
+    decay = Evaluation(directory / 'decay/dec-001_H_001.endf')
+    first = Evaluation(directory / 'neutrons/n-001_H_001.endf')
+    second = Evaluation(directory / 'neutrons/n-001_H_002.endf')
+    first.info['library'] = ('ENDF/B', 8, 1)
+    second.info['library'] = ('JEFF', 3, 3)
+    chain = Chain.from_endf([decay], [], [second, first, first],
+                           reactions=(), progress=False)
+    assert chain.source_metadata['neutron'] == [
+        {'library': 'ENDF/B', 'version': 8, 'release': 1},
+        {'library': 'JEFF', 'version': 3, 'release': 3},
+    ]
+    assert 'fission_yield' not in chain.source_metadata
+    assert chain.source_metadata['decay'] == [
+        dict(zip(('library', 'version', 'release'), decay.info['library']))]
+
+
+def test_from_endf_missing_source_metadata(endf_data):
+    evaluation = Evaluation(Path(endf_data) / 'decay/dec-001_H_001.endf')
+    del evaluation.info['library']
+    chain = Chain.from_endf([evaluation], [], [], progress=False)
+    assert list(chain.nuclide_dict) == ['H1']
+    assert chain.source_metadata == {}
+
+
+def test_from_endf_sources_single_parse(endf_data, monkeypatch):
+    directory = Path(endf_data)
+    paths = [directory / 'decay/dec-001_H_001.endf',
+             directory / 'nfy/nfy-092_U_235.endf',
+             directory / 'neutrons/n-001_H_001.endf']
+    original_init = Evaluation.__init__
+    parsed = []
+
+    def record_init(self, source):
+        if isinstance(source, (str, os.PathLike)):
+            parsed.append(Path(source))
+        original_init(self, source)
+
+    monkeypatch.setattr(Evaluation, '__init__', record_init)
+    Chain.from_endf(*(iter([path]) for path in paths),
+                    reactions=(), progress=False)
+    assert sorted(parsed) == sorted(paths)
+
+
+def test_source_metadata_roundtrip(tmp_path, component_sources):
+    filename = tmp_path / 'chain.xml'
+    filename.write_text(_TEST_CHAIN)
+    chain = Chain.from_xml(filename)
+    assert chain.source_metadata == {}
+    chain.source_metadata = component_sources
+    chain.export_to_xml(filename)
+    loaded = Chain.from_xml(filename)
+    assert loaded.source_metadata == component_sources
+
+    # Every numerical and structural nuclide record remains unchanged.
+    expected = ET.fromstring(_TEST_CHAIN)
+    actual = ET.parse(filename)
+    assert [ET.tostring(n) for n in actual.findall('nuclide')] == [
+        ET.tostring(n) for n in expected.findall('nuclide')]
+    assert loaded.reactions == chain.reactions
+    assert (loaded.get_default_fission_yields() ==
+            chain.get_default_fission_yields())
+    np.testing.assert_array_equal(
+        loaded.decay_matrix.toarray(), chain.decay_matrix.toarray())
+    assert Chain.from_xml(filename, {'C': 1.5e8})['C'].reactions[0].Q == 1.5e8
+
+    # Removing optional provenance restores the exact legacy serialization.
+    loaded.source_metadata = {}
+    loaded.export_to_xml(filename)
+    assert filename.read_text() == _TEST_CHAIN
+
+
+def test_source_metadata_deterministic(tmp_path, component_sources):
+    first = Chain()
+    first.source_metadata = component_sources
+    second = Chain()
+    second.source_metadata = {
+        component: records * 2
+        for component, records in reversed(list(component_sources.items()))}
+    first_path, second_path = tmp_path / 'first.xml', tmp_path / 'second.xml'
+    first.export_to_xml(first_path)
+    second.export_to_xml(second_path)
+    assert first_path.read_bytes() == second_path.read_bytes()
+    assert Chain.from_xml(first_path).source_metadata == component_sources
+
+
+def test_source_metadata_assignment_and_escaping(tmp_path, component_sources):
+    chain = Chain()
+    component_sources['neutron'][0]['library'] = 'Library "A" & B <C>'
+    chain.source_metadata = component_sources
+    component_sources['neutron'][0]['version'] = 99
+    assert chain.source_metadata['neutron'][0]['version'] == 8
+    filename = tmp_path / 'chain.xml'
+    chain.export_to_xml(filename)
+    assert Chain.from_xml(filename).source_metadata == chain.source_metadata
+
+    chain.source_metadata = {'neutron': []}
+    chain.export_to_xml(filename)
+    assert Chain.from_xml(filename).source_metadata == {}
+    assert b'source_metadata' not in filename.read_bytes()
+
+
+def test_reduced_source_metadata(gnd_simple_chain, component_sources):
+    chain = deepcopy(gnd_simple_chain)
+    chain.source_metadata = component_sources
+    reduced = chain.reduce(['U235'], level=0)
+    assert reduced.source_metadata == component_sources
+    reduced.source_metadata['neutron'][0]['version'] = 99
+    reduced.source_metadata['decay'].clear()
+    assert chain.source_metadata == component_sources
+
+
+@pytest.mark.parametrize('record', [
+    {}, {'library': 'ENDF/B', 'version': 8},
+    {'library': '', 'version': 8, 'release': 1},
+    {'library': 'ENDF/B', 'version': True, 'release': 1},
+    {'library': 'ENDF/B', 'version': -1, 'release': 1},
+    {'library': 'ENDF/B', 'version': 8, 'release': 1.5},
+    {'library': 'ENDF/B\x00', 'version': 8, 'release': 1},
+    {'library': 'ENDF/B\ud800', 'version': 8, 'release': 1},
+])
+def test_invalid_source_metadata_preserves_output(tmp_path, record):
+    filename = tmp_path / 'chain.xml'
+    filename.write_text(_TEST_CHAIN)
+    chain = Chain()
+    chain.source_metadata['neutron'] = [record]
+    with pytest.raises((TypeError, ValueError, UnicodeError)):
+        chain.export_to_xml(filename)
+    assert filename.read_text() == _TEST_CHAIN
+
+
+@pytest.mark.parametrize('content', [
+    '<source component="neutron" library="ENDF/B" version="8"/>',
+    '<source component="unknown" library="ENDF/B" version="8" release="1"/>',
+    '<source component="decay" library="ENDF/B" version="bad" release="1"/>',
+    '<source component="decay" library="ENDF/B" version="-1" release="1"/>',
+    '<unexpected component="neutron" library="ENDF/B" '
+    'version="8" release="1"/>',
+])
+def test_invalid_source_metadata_xml(tmp_path, content):
+    filename = tmp_path / 'chain.xml'
+    filename.write_text('<depletion_chain><source_metadata>' + content +
+                        '</source_metadata></depletion_chain>')
+    with pytest.raises(ValueError):
+        Chain.from_xml(filename)
+
+
+def test_duplicate_source_metadata_xml(tmp_path):
+    filename = tmp_path / 'chain.xml'
+    filename.write_text('<depletion_chain><source_metadata/>'
+                        '<source_metadata/></depletion_chain>')
+    with pytest.raises(ValueError, match='only one source_metadata'):
+        Chain.from_xml(filename)
 
 
 def test_len():

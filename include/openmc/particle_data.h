@@ -669,16 +669,19 @@ public:
   } // energy of last reaction secondaries
   const double& bank_second_E() const { return bank_second_E_; }
 
-  int& n_bank() { return n_bank_; }        // number of banked fission sites
-  double& wgt_bank() { return wgt_bank_; } // weight of banked fission sites
+  // Fission neutrons recorded in nu_bank() for analog fission tallies: those
+  // stored in the fission or secondary bank and delayed neutrons that are not
+  // banked because they would be emitted after the time cutoff
+  int& n_bank() { return n_bank_; }        // number of fission neutrons
+  double& wgt_bank() { return wgt_bank_; } // weight of fission neutrons
   int* n_delayed_bank()
   {
     return n_delayed_bank_;
-  } // number of delayed fission sites
+  } // number of delayed fission neutrons
   int& n_delayed_bank(int i)
   {
     return n_delayed_bank_[i];
-  } // number of delayed fission sites
+  } // number of delayed fission neutrons
 
   // Index of cell particle is born in
   int& cell_born() { return cell_born_; }

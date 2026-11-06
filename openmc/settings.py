@@ -84,7 +84,10 @@ class Settings:
         assigned to particles that are not killed after Russian roulette. Value
         of energy should be a float indicating energy in eV below which particle
         type will be killed. Value of time should be a float in seconds.
-        Particles will be killed exactly at the specified time. Value for
+        Particles will be killed exactly at the specified time. Delayed fission
+        neutrons that would be emitted after the 'time_neutron' cutoff are not
+        banked, but analog fission tallies count them as produced, as the
+        track-length and collision estimators do. Value for
         'survival_normalization' is a bool indicating whether or not the weight
         cutoff parameters will be applied relative to the particle's starting
         weight or to its current weight.

@@ -599,7 +599,7 @@ Direction XDGSurface::reflect(Position r, Direction u, GeometryState* p) const
   double pnt[3] = {r.x, r.y, r.z};
   xdg::Direction normal =
     xdg_ptr()->surface_normal(xdg_id(), pnt, &p->xdg_prev_elements());
-   return u.reflect({normal[0], normal[1], normal[2]});
+  return u.reflect({normal[0], normal[1], normal[2]});
 }
 
 //==============================================================================

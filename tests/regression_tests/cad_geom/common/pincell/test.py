@@ -13,8 +13,16 @@ pytestmark = pytest.mark.skipif(
     not openmc.lib.feature_enabled('dagmc'),
     reason="DAGMC CAD geometry is not enabled.")
 
-def test_missing_material_id(cad_pincell_model):
-    model = cad_pincell_model()
+
+test_libs = []
+if openmc.lib.feature_enabled('dagmc'):
+    test_libs.append('dagmc')
+if openmc.lib.feature_enabled('xdg'):
+    test_libs.append('xdg')
+
+@pytest.mark.parametrize('interface', test_libs)
+def test_missing_material_id(cad_pincell_model, interface):
+    model = cad_pincell_model(interface)
     # remove the last material, which is identified by ID in the DAGMC file
     model.materials = model.materials[:-1]
     with pytest.raises(RuntimeError) as exec_info:
@@ -23,8 +31,9 @@ def test_missing_material_id(cad_pincell_model):
     assert exp_error_msg in str(exec_info.value)
 
 
-def test_missing_material_name(cad_pincell_model):
-    model = cad_pincell_model()
+@pytest.mark.parametrize('interface', test_libs)
+def test_missing_material_name(cad_pincell_model, interface):
+    model = cad_pincell_model(interface)
     # remove the first material, which is identified by name in the DAGMC file
     model.materials = model.materials[1:]
     with pytest.raises(RuntimeError) as exec_info:
@@ -32,8 +41,8 @@ def test_missing_material_name(cad_pincell_model):
     exp_error_msg = "Material with name/ID 'no-void fuel' not found for volume (cell) 1"
     assert exp_error_msg in str(exec_info.value)
 
-
-def test_surf_source(cad_pincell_model):
+@pytest.mark.parametrize('interface', test_libs)
+def test_surf_source(cad_pincell_model, interface):
     model = cad_pincell_model()
     # create a surface source read on this model to ensure
     # particles are being generated correctly
@@ -58,15 +67,9 @@ def test_surf_source(cad_pincell_model):
     rad = np.sqrt(xs**2 + ys**2)
     assert np.allclose(rad, 7.0)
 
-test_libs = []
-if openmc.lib.feature_enabled('dagmc'):
-    test_libs.append('dagmc')
-if openmc.lib.feature_enabled('xdg'):
-    test_libs.append('xdg')
-
 
 @pytest.mark.parametrize("interface", test_libs)
-def test_dagmc(cad_pincell_model, interface):
+def test_transport(cad_pincell_model, interface):
     input_file = f'inputs_{interface}.dat'
     model = cad_pincell_model(interface)
     harness = PyAPITestHarness('statepoint.5.h5', model, input_file)

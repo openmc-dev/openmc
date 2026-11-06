@@ -27,14 +27,14 @@
   </materials>
   <geometry>
     <cell id="1" fill="4" region="1 -2 3 -4 5 -6" universe="5"/>
-    <dagmc_universe id="1" auto_geom_ids="true" filename="dagmc.h5m"/>
+    <dagmc_universe id="3" auto_geom_ids="true" filename="dagmc.h5m"/>
     <lattice id="4">
       <pitch>24.0 24.0</pitch>
       <dimension>2 2</dimension>
       <lower_left>-24.0 -24.0</lower_left>
       <universes>
-1 1 
-1 1 </universes>
+3 3 
+3 3 </universes>
     </lattice>
     <surface id="1" name="left" type="x-plane" boundary="reflective" coeffs="-24.0"/>
     <surface id="2" name="right" type="x-plane" boundary="reflective" coeffs="24.0"/>

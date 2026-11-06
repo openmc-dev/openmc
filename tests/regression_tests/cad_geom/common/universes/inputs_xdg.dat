@@ -32,8 +32,8 @@
       <dimension>2 2</dimension>
       <lower_left>-24.0 -24.0</lower_left>
       <universes>
-6 6 
-6 6 </universes>
+3 3 
+3 3 </universes>
     </lattice>
     <mesh id="1" type="unstructured" library="moab" interface="xdg">
       <filename>dagmc.h5m</filename>
@@ -44,7 +44,7 @@
     <surface id="4" name="back" type="y-plane" boundary="reflective" coeffs="24.0"/>
     <surface id="5" name="bottom" type="z-plane" boundary="reflective" coeffs="-10.0"/>
     <surface id="6" name="top" type="z-plane" boundary="reflective" coeffs="10.0"/>
-    <xdg_universe id="6" auto_geom_ids="true" mesh="1" type="surface_mesh"/>
+    <xdg_universe id="3" auto_geom_ids="true" mesh="1" type="surface_mesh"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

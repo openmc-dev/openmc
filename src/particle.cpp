@@ -198,6 +198,11 @@ void Particle::from_source(const SourceSite* src)
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
+
+  if (settings::temperature_field_on) {
+    temperature_field_bin() =
+      simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+  }
 }
 
 void Particle::event_calculate_xs()
@@ -226,6 +231,9 @@ void Particle::event_calculate_xs()
         "Could not find the cell containing particle " + std::to_string(id()));
       return;
     }
+
+    if (settings::temperature_field_on)
+      update_temperature();
 
     // Set birth cell attribute
     if (cell_born() == C_NONE)
@@ -290,11 +298,18 @@ AdvanceResult Particle::event_advance()
   // If a temperature field is active, treat its nearest mesh surface as a
   // transport boundary.
   AdvanceResult result;
+  result.geometry_crossing = true;
   if (settings::temperature_field_on) {
     const auto crossing = simulation::temperature_field.next_mesh_crossing(
       temperature_field_bin(), r(), u());
     if (crossing.distance < boundary().distance() - FP_COINCIDENT) {
       boundary().distance() = crossing.distance;
+      result.geometry_crossing = false;
+      result.temperature_field_crossing = true;
+      result.next_temperature_field_bin = crossing.next_bin;
+    } else if (crossing.distance < INFTY &&
+               std::abs(crossing.distance - boundary().distance()) <=
+                 FP_COINCIDENT) {
       result.temperature_field_crossing = true;
       result.next_temperature_field_bin = crossing.next_bin;
     }
@@ -311,11 +326,11 @@ AdvanceResult Particle::event_advance()
     std::min({boundary().distance(), collision_distance(), distance_cutoff});
 
   if (distance == distance_cutoff) {
-    result.event = TransportEvent::TIME_CUTOFF;
-  } else if (collision_distance() > boundary().distance()) {
-    result.event = result.temperature_field_crossing
-                     ? TransportEvent::TEMPERATURE_FIELD
-                     : TransportEvent::GEOMETRY;
+    result = {};
+    result.time_cutoff = true;
+  } else if (collision_distance() <= boundary().distance()) {
+    result = {};
+    result.collision = true;
   }
 
   // Advance particle in space and time
@@ -353,29 +368,32 @@ AdvanceResult Particle::event_advance()
   if (distance > TINY_BIT)
     surface() = SURFACE_NONE;
 
+  if (result.temperature_field_crossing) {
+    sqrtkT_last() = sqrtkT();
+    temperature_field_bin() = result.next_temperature_field_bin;
+#ifdef OPENMC_DAGMC_ENABLED
+    // A mesh-only stop truncates the ray; geometry crossings manage history.
+    if (!result.geometry_crossing)
+      history().reset();
+#endif
+  }
+
   return result;
 }
 
-void Particle::event_cross_temperature_field(int next_bin)
+void Particle::update_temperature()
 {
-  sqrtkT_last() = sqrtkT();
-  temperature_field_bin() = next_bin;
-
-  if (next_bin != C_NONE) {
-    sqrtkT() = simulation::temperature_field.get_sqrtkT(next_bin);
+  if (settings::temperature_field_on && temperature_field_bin() != C_NONE) {
+    sqrtkT() =
+      simulation::temperature_field.get_sqrtkT(temperature_field_bin());
   } else {
-    int i_cell = lowest_coord().cell();
-    Cell& c {*model::cells[i_cell]};
-    sqrtkT() = c.sqrtkT(cell_instance());
+    sqrtkT() = model::cells[lowest_coord().cell()]->sqrtkT(cell_instance());
   }
-
-#ifdef OPENMC_DAGMC_ENABLED
-  history().reset();
-#endif
 }
 
 void Particle::event_cross_surface()
 {
+  sqrtkT_last() = sqrtkT();
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
     cell_last(j) = coord(j).cell();
@@ -394,6 +412,8 @@ void Particle::event_cross_surface()
     int i_lattice = coord(boundary().coord_level() - 1).lattice();
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
+    if (settings::temperature_field_on && alive())
+      update_temperature();
     event() = TallyEvent::LATTICE;
 
     // Score cell to cell partial currents
@@ -418,6 +438,8 @@ void Particle::event_cross_surface()
       add_surf_source_to_bank(*this, surf);
     }
     this->cross_surface(surf);
+    if (settings::temperature_field_on && alive())
+      update_temperature();
     // If no BC, add particle to surface source after crossing surface
     if (surf.surf_source_ && !surf.bc_) {
       add_surf_source_to_bank(*this, surf);
@@ -529,8 +551,15 @@ void Particle::event_collide()
   history().reset();
 #endif
 
-  if (near_surface && alive())
+  if (near_surface && alive()) {
+    sqrtkT_last() = sqrtkT();
     reconcile_cell_after_collision(*this);
+    if (settings::temperature_field_on && alive()) {
+      temperature_field_bin() =
+        simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+      update_temperature();
+    }
+  }
 }
 
 void Particle::event_revive_from_secondary(const SourceSite& site)
@@ -565,6 +594,8 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
                      std::to_string(id()));
         return;
       }
+      if (settings::temperature_field_on)
+        update_temperature();
       // Set birth cell attribute
       if (cell_born() == C_NONE)
         cell_born() = lowest_coord().cell();
@@ -734,16 +765,7 @@ void Particle::cross_surface(const Surface& surf)
       cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
 
     material() = cell->material(cell_instance());
-    int tf_bin = C_NONE;
-    if (settings::temperature_field_on) {
-      tf_bin = simulation::temperature_field.get_bin(r() + TINY_BIT * u());
-    }
-    temperature_field_bin() = tf_bin;
-    if (tf_bin != C_NONE) {
-      sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
-    } else {
-      sqrtkT() = cell->sqrtkT(cell_instance());
-    }
+    sqrtkT() = cell->sqrtkT(cell_instance());
     density_mult() = cell->density_mult(cell_instance());
     return;
   }
@@ -779,6 +801,10 @@ void Particle::cross_surface(const Surface& surf)
                    " crossed surface " + std::to_string(surf.id_) +
                    " it could not be located in any cell and it did not leak.");
       return;
+    }
+    if (settings::temperature_field_on) {
+      temperature_field_bin() =
+        simulation::temperature_field.get_bin(r() + TINY_BIT * u());
     }
   }
 }
@@ -840,6 +866,10 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 
   // Set the new particle direction
   u() = new_u;
+  if (settings::temperature_field_on) {
+    temperature_field_bin() =
+      simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+  }
 
   // Reassign particle's cell and surface
   coord(0).cell() = cell_last(0);
@@ -891,6 +921,10 @@ void Particle::cross_periodic_bc(
   // Adjust the particle's location and direction.
   r() = new_r;
   u() = new_u;
+  if (settings::temperature_field_on) {
+    temperature_field_bin() =
+      simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+  }
 
   // Reassign particle's surface
   surface() = new_surface;

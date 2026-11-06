@@ -9,7 +9,6 @@
 #include "openmc/error.h"
 #include "openmc/lattice.h"
 #include "openmc/settings.h"
-#include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
 
@@ -201,19 +200,9 @@ bool find_cell_inner(
       p.material_last() = p.material();
       p.material() = c.material(p.cell_instance());
 
-      // Set the temperature.
+      // Set the cell temperature. Transport applies any field override.
       p.sqrtkT_last() = p.sqrtkT();
-      int tf_bin = C_NONE;
-      if (settings::temperature_field_on) {
-        tf_bin =
-          simulation::temperature_field.get_bin(p.r() + TINY_BIT * p.u());
-      }
-      p.temperature_field_bin() = tf_bin;
-      if (tf_bin != C_NONE) {
-        p.sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
-      } else {
-        p.sqrtkT() = c.sqrtkT(p.cell_instance());
-      }
+      p.sqrtkT() = c.sqrtkT(p.cell_instance());
 
       // Set the density multiplier.
       p.density_mult_last() = p.density_mult();

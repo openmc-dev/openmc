@@ -118,19 +118,16 @@ void process_advance_particle_events()
     Particle& p = simulation::particles[buffer_idx];
     if (p.alive()) {
       AdvanceResult result = p.event_advance();
-      switch (result.event) {
-      case TransportEvent::COLLISION:
+      if (result.collision) {
         simulation::collision_queue.thread_safe_append({p, buffer_idx});
         continue;
-      case TransportEvent::GEOMETRY:
+      }
+      if (result.geometry_crossing) {
         simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
         continue;
-      case TransportEvent::TEMPERATURE_FIELD:
-        p.event_cross_temperature_field(result.next_temperature_field_bin);
-        break;
-      case TransportEvent::TIME_CUTOFF:
-        break;
       }
+      if (result.temperature_field_crossing)
+        p.update_temperature();
     }
     p.event_check_limit_and_revive();
     if (p.alive())

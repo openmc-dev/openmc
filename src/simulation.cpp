@@ -966,18 +966,12 @@ void transport_history_based_single_particle(Particle& p)
       result = p.event_advance();
     }
     if (p.alive()) {
-      switch (result.event) {
-      case TransportEvent::COLLISION:
+      if (result.collision) {
         p.event_collide();
-        break;
-      case TransportEvent::GEOMETRY:
+      } else if (result.geometry_crossing) {
         p.event_cross_surface();
-        break;
-      case TransportEvent::TEMPERATURE_FIELD:
-        p.event_cross_temperature_field(result.next_temperature_field_bin);
-        break;
-      case TransportEvent::TIME_CUTOFF:
-        break;
+      } else if (result.temperature_field_crossing) {
+        p.update_temperature();
       }
     }
     p.event_check_limit_and_revive();

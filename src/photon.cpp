@@ -935,12 +935,8 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
   // Push the initial hole onto the stack
   holes[n_holes++] = i_shell;
 
-  // Fluorescent photons below the photon energy cutoff are not created, and
-  // Auger electrons below it cannot produce bremsstrahlung photons above it, so
-  // emissions below the cutoff have no effect. Since every particle emitted
-  // while filling a hole, and every hole it leaves behind, has an energy less
-  // than the binding energy of that hole, holes whose binding energy is below
-  // the cutoff can be skipped along with the rest of their cascade.
+  // Cascades from vacancies below the photon cutoff cannot produce transported
+  // photons, either directly or through Auger-electron bremsstrahlung.
   double E_cutoff =
     settings::energy_cutoff[ParticleType::photon().transport_index()];
 

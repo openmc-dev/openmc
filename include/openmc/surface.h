@@ -320,6 +320,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;

@@ -1,5 +1,7 @@
 #include "openmc/surface.h"
 
+#include <algorithm> // for max, min
+#include <array>
 #include <cmath>
 #include <complex>
 #include <initializer_list>
@@ -991,6 +993,82 @@ Direction SurfaceQuadric::normal(Position r) const
   const double& z = r.z;
   return {2.0 * A_ * x + D_ * y + F_ * z + G_,
     2.0 * B_ * y + D_ * x + E_ * z + H_, 2.0 * C_ * z + E_ * y + F_ * x + J_};
+}
+
+BoundingBox SurfaceQuadric::bounding_box(bool pos_side) const
+{
+  // The half-space is bounded in a direction only if the quadratic form is
+  // semidefinite with the sign of the half-space: (x - c)^T M (x - c) <= rho
+  // with M positive semidefinite, as for the inside of a cylinder along any
+  // axis or of an ellipsoid. Along coordinate i it then extends to
+  // c_i +- sqrt(rho M+_ii), unless the null space of M has a component along
+  // that coordinate. The same steps as _quadric_bounding_box in
+  // openmc/surface.py.
+  double sign = pos_side ? -1.0 : 1.0;
+  double m[3][3] = {{sign * A_, sign * 0.5 * D_, sign * 0.5 * F_},
+    {sign * 0.5 * D_, sign * B_, sign * 0.5 * E_},
+    {sign * 0.5 * F_, sign * 0.5 * E_, sign * C_}};
+  std::array<double, 3> lambda;
+  double vec[3][3];
+  symmetric_eigen(m, lambda, vec);
+  double scale =
+    std::max({std::abs(lambda[0]), std::abs(lambda[1]), std::abs(lambda[2])});
+  if (scale == 0.0 ||
+      std::min({lambda[0], lambda[1], lambda[2]}) < -1e-12 * scale)
+    return {};
+  std::array<bool, 3> null;
+  for (int n = 0; n < 3; ++n)
+    null[n] = lambda[n] <= 1e-12 * scale;
+
+  // The linear term must lie in the range of M, otherwise the half-space is
+  // unbounded along the null space (a paraboloid)
+  double lin[3] = {sign * G_, sign * H_, sign * J_};
+  double lin_norm =
+    std::sqrt(lin[0] * lin[0] + lin[1] * lin[1] + lin[2] * lin[2]);
+  std::array<double, 3> proj;
+  for (int n = 0; n < 3; ++n) {
+    proj[n] = 0.0;
+    for (int i = 0; i < 3; ++i)
+      proj[n] += lin[i] * vec[i][n];
+    if (null[n] && std::abs(proj[n]) > 1e-12 * lin_norm)
+      return {};
+  }
+
+  // Centre and size: (x - center)^T M (x - center) <= rho
+  double center[3];
+  for (int i = 0; i < 3; ++i) {
+    double sum = 0.0;
+    for (int n = 0; n < 3; ++n)
+      if (!null[n])
+        sum += proj[n] / lambda[n] * vec[i][n];
+    center[i] = -0.5 * sum;
+  }
+  double rho = 0.0;
+  for (int n = 0; n < 3; ++n)
+    if (!null[n])
+      rho += proj[n] * proj[n] / lambda[n];
+  rho = -sign * K_ + 0.25 * rho;
+  if (rho < 0.0)
+    return {};
+
+  BoundingBox box;
+  for (int i = 0; i < 3; ++i) {
+    double in_null = 0.0;
+    double m_plus = 0.0;
+    for (int n = 0; n < 3; ++n) {
+      if (null[n]) {
+        in_null += vec[i][n] * vec[i][n];
+      } else {
+        m_plus += vec[i][n] * vec[i][n] / lambda[n];
+      }
+    }
+    if (in_null > 1e-24)
+      continue;
+    double w = std::sqrt(rho * m_plus);
+    box.min[i] = center[i] - w;
+    box.max[i] = center[i] + w;
+  }
+  return box;
 }
 
 void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const

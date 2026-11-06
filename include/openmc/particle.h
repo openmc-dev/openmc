@@ -20,13 +20,10 @@ namespace openmc {
 // Forward declare the Surface class for use in Particle::cross_vacuum_bc, etc.
 class Surface;
 
-// Collision and cutoff are exclusive; the two crossing flags can coexist.
-struct AdvanceResult {
-  bool collision {false};
-  bool geometry_crossing {false};
-  bool temperature_field_crossing {false};
-  bool time_cutoff {false};
-  int next_temperature_field_bin {C_NONE};
+enum class TransportEvent {
+  NONE, //!< No collision or geometry handler needed.
+  COLLISION,
+  GEOMETRY
 };
 
 /*
@@ -79,7 +76,7 @@ public:
 
   // Coarse-grained particle events
   void event_calculate_xs();
-  AdvanceResult event_advance();
+  TransportEvent event_advance();
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary(const SourceSite& site);

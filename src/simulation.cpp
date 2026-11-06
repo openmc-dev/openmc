@@ -961,15 +961,20 @@ void transport_history_based_single_particle(Particle& p)
 {
   while (p.alive()) {
     p.event_calculate_xs();
-    AdvanceResult result;
+    TransportEvent event = TransportEvent::NONE;
     if (p.alive()) {
-      result = p.event_advance();
+      event = p.event_advance();
     }
     if (p.alive()) {
-      if (result.collision) {
+      switch (event) {
+      case TransportEvent::COLLISION:
         p.event_collide();
-      } else if (result.geometry_crossing) {
+        break;
+      case TransportEvent::GEOMETRY:
         p.event_cross_surface();
+        break;
+      case TransportEvent::NONE:
+        break;
       }
     }
     p.event_check_limit_and_revive();

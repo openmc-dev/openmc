@@ -281,7 +281,7 @@ void Particle::event_calculate_xs()
   }
 }
 
-AdvanceResult Particle::event_advance()
+TransportEvent Particle::event_advance()
 {
   // Find the distance to the nearest geometry boundary
   boundary() = distance_to_boundary(*this);
@@ -298,21 +298,22 @@ AdvanceResult Particle::event_advance()
 
   // If a temperature field is active, treat its nearest mesh surface as a
   // transport boundary.
-  AdvanceResult result;
-  result.geometry_crossing = true;
+  TransportEvent event = TransportEvent::GEOMETRY;
+  bool temperature_field_crossing = false;
+  int next_temperature_field_bin = C_NONE;
   if (settings::temperature_field_on) {
     const auto crossing = simulation::temperature_field.next_mesh_crossing(
       temperature_field_bin(), r(), u());
     if (crossing.distance < boundary().distance() - FP_COINCIDENT) {
       boundary().distance() = crossing.distance;
-      result.geometry_crossing = false;
-      result.temperature_field_crossing = true;
-      result.next_temperature_field_bin = crossing.next_bin;
+      event = TransportEvent::NONE;
+      temperature_field_crossing = true;
+      next_temperature_field_bin = crossing.next_bin;
     } else if (crossing.distance < INFTY &&
                std::abs(crossing.distance - boundary().distance()) <=
                  FP_COINCIDENT) {
-      result.temperature_field_crossing = true;
-      result.next_temperature_field_bin = crossing.next_bin;
+      temperature_field_crossing = true;
+      next_temperature_field_bin = crossing.next_bin;
     }
   }
 
@@ -327,11 +328,11 @@ AdvanceResult Particle::event_advance()
     std::min({boundary().distance(), collision_distance(), distance_cutoff});
 
   if (distance == distance_cutoff) {
-    result = {};
-    result.time_cutoff = true;
+    event = TransportEvent::NONE;
+    temperature_field_crossing = false;
   } else if (collision_distance() <= boundary().distance()) {
-    result = {};
-    result.collision = true;
+    event = TransportEvent::COLLISION;
+    temperature_field_crossing = false;
   }
 
   // Advance particle in space and time
@@ -369,17 +370,17 @@ AdvanceResult Particle::event_advance()
   if (distance > TINY_BIT)
     surface() = SURFACE_NONE;
 
-  if (result.temperature_field_crossing) {
+  if (temperature_field_crossing) {
     sqrtkT_last() = sqrtkT();
-    temperature_field_bin() = result.next_temperature_field_bin;
+    temperature_field_bin() = next_temperature_field_bin;
 #ifdef OPENMC_DAGMC_ENABLED
     // A mesh-only stop truncates the ray; geometry crossings manage history.
-    if (!result.geometry_crossing)
+    if (event == TransportEvent::NONE)
       history().reset();
 #endif
   }
 
-  return result;
+  return event;
 }
 
 void Particle::update_temperature()

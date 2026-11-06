@@ -962,9 +962,6 @@ void apply_weight_windows(Particle& p)
   auto [ww_found, ww] = search_weight_window(p);
   if (ww_found && ww.is_valid()) {
     apply_weight_window(p, ww);
-  } else {
-    if (p.wgt_ww_born() == -1.0)
-      p.wgt_ww_born() = 1.0;
   }
 }
 
@@ -977,14 +974,14 @@ void apply_weight_window(Particle& p, WeightWindow weight_window)
   if (p.E() <= 0 || !p.alive())
     return;
 
-  // If particle has not yet had its birth weight window value set, set it to
-  // the current weight window.
+  // If no valid weight window has been applied to the particle yet, establish
+  // its reference value from the current window.
   if (p.wgt_ww_born() == -1.0)
     p.wgt_ww_born() =
       (weight_window.lower_weight + weight_window.upper_weight) / 2;
 
-  // Normalize weight windows based on particle's starting weight
-  // and the value of the weight window the particle was born in.
+  // Normalize weight windows to the particle's starting weight using the
+  // reference value from its first valid weight window.
   weight_window.scale(p.wgt_born() / p.wgt_ww_born());
 
   // get the paramters

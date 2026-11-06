@@ -126,8 +126,6 @@ void process_advance_particle_events()
         simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
         continue;
       }
-      if (result.temperature_field_crossing)
-        p.update_temperature();
     }
     p.event_check_limit_and_revive();
     if (p.alive())

@@ -188,25 +188,39 @@ TEST_CASE("Advance flags describe only the selected events")
                                            : previous_bin));
 }
 
-TEST_CASE("A field-only crossing assigns the bin before applying temperature")
+TEST_CASE("A field-only crossing defers temperature to the XS stage")
 {
+  const bool event_based = GENERATE(false, true);
+  CAPTURE(event_based);
   FieldTransportFixture fixture;
-  Particle p;
+  init_event_queues(1);
+  auto& p = simulation::particles[0];
   fixture.initialize(p);
   const double previous = p.sqrtkT();
   fixture.mesh->lookups = 0;
-  auto result = p.event_advance();
-  REQUIRE(result.temperature_field_crossing);
-  REQUIRE_FALSE(result.geometry_crossing);
+  if (event_based) {
+    simulation::advance_particle_queue.thread_safe_append({p, 0});
+    process_advance_particle_events();
+    REQUIRE(simulation::surface_crossing_queue.size() == 0);
+    REQUIRE(simulation::calculate_nonfuel_xs_queue.size() == 1);
+    REQUIRE(p.n_event() == 1);
+  } else {
+    auto result = p.event_advance();
+    REQUIRE(result.temperature_field_crossing);
+    REQUIRE_FALSE(result.geometry_crossing);
+  }
   REQUIRE(p.temperature_field_bin() == 1);
   REQUIRE(p.sqrtkT() == previous);
-  p.update_temperature();
+  if (event_based)
+    process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+  else
+    p.event_calculate_xs();
   REQUIRE(p.sqrtkT() == simulation::temperature_field.get_sqrtkT(1));
   REQUIRE(p.sqrtkT_last() == previous);
   REQUIRE(fixture.mesh->lookups == 0);
 }
 
-TEST_CASE("Geometry crossings preserve bins and apply destination temperatures")
+TEST_CASE("Geometry crossings defer field temperature to the XS stage")
 {
   const double split = GENERATE(-1.0, 0.0, 0.5, 1.0, 2.0);
   const bool event_based = GENERATE(false, true);
@@ -246,6 +260,12 @@ TEST_CASE("Geometry crossings preserve bins and apply destination temperatures")
   }
   REQUIRE(p.lowest_coord().cell() == 1);
   REQUIRE(p.temperature_field_bin() == bin);
+  REQUIRE(p.sqrtkT() == std::sqrt(275 * K_BOLTZMANN));
+  REQUIRE(p.sqrtkT_last() == previous);
+  if (event_based)
+    process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+  else
+    p.event_calculate_xs();
   const double expected = bin == C_NONE
                             ? std::sqrt(275 * K_BOLTZMANN)
                             : simulation::temperature_field.get_sqrtkT(bin);
@@ -292,6 +312,12 @@ TEST_CASE("Boundary conditions correct the incoming field prediction")
   } else {
     const int bin = bc == "periodic" ? 0 : 1;
     REQUIRE(p.temperature_field_bin() == bin);
+    REQUIRE(p.sqrtkT() == std::sqrt(250 * K_BOLTZMANN));
+    REQUIRE(p.sqrtkT_last() == previous);
+    if (event_based)
+      process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+    else
+      p.event_calculate_xs();
     REQUIRE(p.sqrtkT() == simulation::temperature_field.get_sqrtkT(bin));
     REQUIRE(p.sqrtkT_last() == previous);
     REQUIRE(fixture.mesh->lookups == 1);
@@ -324,6 +350,9 @@ TEST_CASE("Periodic mapping relocates the bin without a field crossing")
   p.event_cross_surface();
   const int bin = lower < 0 ? 0 : C_NONE;
   REQUIRE(p.temperature_field_bin() == bin);
+  REQUIRE(p.sqrtkT() == std::sqrt(250 * K_BOLTZMANN));
+  REQUIRE(p.sqrtkT_last() == previous);
+  p.event_calculate_xs();
   const double expected = bin == C_NONE
                             ? std::sqrt(250 * K_BOLTZMANN)
                             : simulation::temperature_field.get_sqrtkT(bin);
@@ -354,6 +383,8 @@ TEST_CASE("Reflection at a mesh corner resolves the outgoing bin")
   REQUIRE(p.temperature_field_bin() == 3);
   p.event_cross_surface();
   REQUIRE(p.temperature_field_bin() == 2);
+  REQUIRE(p.sqrtkT() == std::sqrt(250 * K_BOLTZMANN));
+  p.event_calculate_xs();
   REQUIRE(p.sqrtkT() == simulation::temperature_field.get_sqrtkT(2));
 }
 
@@ -380,7 +411,7 @@ TEST_CASE("Sources initialize the field bin once, including secondary sources")
   p.event_revive_from_secondary(secondary);
   if (pulse_height) {
     REQUIRE(p.lowest_coord().cell() == 0);
-    REQUIRE(p.sqrtkT() == simulation::temperature_field.get_sqrtkT(1));
+    REQUIRE(p.sqrtkT() == std::sqrt(250 * K_BOLTZMANN));
     REQUIRE(p.pht_storage()[0] == -secondary.E);
   }
   p.event_calculate_xs();
@@ -401,7 +432,7 @@ TEST_CASE("Geometry queries preserve the bin and assign cell temperatures")
   REQUIRE(fixture.mesh->lookups == 0);
 }
 
-TEST_CASE("Lattice crossings preserve bins and apply the field temperature")
+TEST_CASE("Lattice crossings defer field temperature to the XS stage")
 {
   const double start = GENERATE(-1.25, -0.25, 0.75, 1.75);
   FieldTransportFixture fixture(R"(<geometry>
@@ -421,6 +452,7 @@ TEST_CASE("Lattice crossings preserve bins and apply the field temperature")
   p.event_cross_surface();
   const int bin = start < -1 || start > 1 ? C_NONE : start < 0 ? 0 : 1;
   REQUIRE(p.temperature_field_bin() == bin);
+  p.event_calculate_xs();
   const double expected = bin == C_NONE
                             ? std::sqrt(275 * K_BOLTZMANN)
                             : simulation::temperature_field.get_sqrtkT(bin);

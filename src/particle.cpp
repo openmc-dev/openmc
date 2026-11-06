@@ -232,9 +232,6 @@ void Particle::event_calculate_xs()
       return;
     }
 
-    if (settings::temperature_field_on)
-      update_temperature();
-
     // Set birth cell attribute
     if (cell_born() == C_NONE)
       cell_born() = lowest_coord().cell();
@@ -252,6 +249,10 @@ void Particle::event_calculate_xs()
 
   if (settings::check_overlaps)
     check_cell_overlap(*this);
+
+  // Resolve the field temperature before checking the cross-section cache.
+  if (settings::temperature_field_on)
+    update_temperature();
 
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
@@ -412,8 +413,6 @@ void Particle::event_cross_surface()
     int i_lattice = coord(boundary().coord_level() - 1).lattice();
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
-    if (settings::temperature_field_on && alive())
-      update_temperature();
     event() = TallyEvent::LATTICE;
 
     // Score cell to cell partial currents
@@ -438,8 +437,6 @@ void Particle::event_cross_surface()
       add_surf_source_to_bank(*this, surf);
     }
     this->cross_surface(surf);
-    if (settings::temperature_field_on && alive())
-      update_temperature();
     // If no BC, add particle to surface source after crossing surface
     if (surf.surf_source_ && !surf.bc_) {
       add_surf_source_to_bank(*this, surf);
@@ -557,7 +554,6 @@ void Particle::event_collide()
     if (settings::temperature_field_on && alive()) {
       temperature_field_bin() =
         simulation::temperature_field.get_bin(r() + TINY_BIT * u());
-      update_temperature();
     }
   }
 }
@@ -594,8 +590,6 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
                      std::to_string(id()));
         return;
       }
-      if (settings::temperature_field_on)
-        update_temperature();
       // Set birth cell attribute
       if (cell_born() == C_NONE)
         cell_born() = lowest_coord().cell();

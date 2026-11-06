@@ -970,8 +970,6 @@ void transport_history_based_single_particle(Particle& p)
         p.event_collide();
       } else if (result.geometry_crossing) {
         p.event_cross_surface();
-      } else if (result.temperature_field_crossing) {
-        p.update_temperature();
       }
     }
     p.event_check_limit_and_revive();

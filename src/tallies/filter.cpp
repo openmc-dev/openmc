@@ -21,6 +21,7 @@
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_energyfunc.h"
 #include "openmc/tallies/filter_legendre.h"
+#include "openmc/tallies/filter_lifetime_moment.h"
 #include "openmc/tallies/filter_material.h"
 #include "openmc/tallies/filter_materialfrom.h"
 #include "openmc/tallies/filter_mesh.h"
@@ -128,6 +129,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<EnergyoutFilter>(id);
   } else if (type == "legendre") {
     return Filter::create<LegendreFilter>(id);
+  } else if (type == "lifetimemoment") {
+    return Filter::create<LifetimeMomentFilter>(id);
   } else if (type == "material") {
     return Filter::create<MaterialFilter>(id);
   } else if (type == "materialfrom") {

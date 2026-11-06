@@ -63,7 +63,7 @@ TEST_CASE("Test alias sampling method for pugixml constructor")
   // Initialize discrete distribution and seed
   openmc::Discrete dist(energy);
   uint64_t seed = openmc::init_seed(0, 0);
-  auto sample = dist.sample(&seed).first;
+  dist.sample(&seed);
 
   // Assertions
   REQUIRE(dist.x().size() == 3);
@@ -80,6 +80,31 @@ TEST_CASE("Test alias sampling method for pugixml constructor")
       dist.prob()[i], Catch::Matchers::WithinAbs(correct_prob[i], 1e-12));
     REQUIRE(dist.alias()[i] == correct_alias[i]);
   }
+}
+
+TEST_CASE("Test sampling a large linear-linear tabular distribution")
+{
+  constexpr int n_points = 10001;
+  constexpr int n_samples = 200000;
+  openmc::vector<double> x(n_points);
+  openmc::vector<double> p(n_points);
+  for (int i = 0; i < n_points; ++i) {
+    x[i] = static_cast<double>(i) / (n_points - 1);
+    p[i] = 2.0 * x[i];
+  }
+
+  openmc::Tabular dist(
+    x.data(), p.data(), n_points, openmc::Interpolation::lin_lin);
+  uint64_t seed = openmc::init_seed(0, 0);
+
+  double mean = 0.0;
+  for (int i = 0; i < n_samples; ++i) {
+    mean += dist.sample(&seed).first;
+  }
+  mean /= n_samples;
+
+  // The normalized PDF is 2x on [0, 1], which has a mean of 2/3.
+  REQUIRE_THAT(mean, Catch::Matchers::WithinAbs(2.0 / 3.0, 0.003));
 }
 
 TEST_CASE("Test construction of SpatialBox with parameters")

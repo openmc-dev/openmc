@@ -17,7 +17,7 @@ INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
 
 
 def sum_functions(funcs):
-    """Add tabulated/polynomials functions together
+    """Add tabulated/polynomial functions together.
 
     Parameters
     ----------
@@ -46,8 +46,11 @@ def sum_functions(funcs):
         # Take the union of all energies (sorted)
         x = reduce(np.union1d, xs)
 
-        # Evaluate each function and add together
-        y = sum(f(x) for f in funcs)
+        # Evaluate each function and add together. Use a floating-point
+        # accumulator so that integer-valued grids do not truncate results.
+        y = np.zeros_like(x, dtype=float)
+        for f in funcs:
+            y += f(x)
         return Tabulated1D(x, y)
     else:
         # If no tabulated functions are present, we need to combine the
@@ -111,6 +114,11 @@ class Tabulated1D(Function1D):
     >>> [f(xi) for xi in numpy.linspace(0, 10, 5)]
     [4.0, 4.25, 4.5, 4.75, 5.0]
 
+    ENDF-6 only defines the function on its tabulated domain. By convention,
+    OpenMC returns zero when evaluating outside that domain. This behavior is
+    used when combining threshold reactions on a union energy grid and applies
+    to both scalar and array arguments.
+
     Parameters
     ----------
     x : Iterable of float
@@ -160,8 +168,13 @@ class Tabulated1D(Function1D):
 
         x = np.array(x)
 
-        # Create output array
-        y = np.zeros_like(x)
+        if not np.all(np.isfinite(x)):
+            raise ValueError('Interpolation points must be finite')
+
+        # Create output array.  Use a floating-point dtype so that
+        # interpolated values are not truncated when the input is an
+        # integer-valued array.
+        y = np.zeros_like(x, dtype=float)
 
         # Get indices for interpolation
         idx = np.searchsorted(self.x, x, side='right') - 1
@@ -204,15 +217,26 @@ class Tabulated1D(Function1D):
 
         # In some cases, x values might be outside the tabulated region due only
         # to precision, so we check if they're close and set them equal if so.
-        y[np.isclose(x, self.x[0], atol=1e-14)] = self.y[0]
-        y[np.isclose(x, self.x[-1], atol=1e-14)] = self.y[-1]
+        y[np.isclose(x, self.x[0], rtol=0.0, atol=1e-14)] = self.y[0]
+        y[np.isclose(x, self.x[-1], rtol=0.0, atol=1e-14)] = self.y[-1]
 
         return y
 
     def _interpolate_scalar(self, x):
-        if x <= self._x[0]:
+        if not np.isfinite(x):
+            raise ValueError('Interpolation point must be finite')
+
+        if x < self._x[0]:
+            if np.isclose(x, self.x[0], rtol=0.0, atol=1e-14):
+                return self._y[0]
+            return 0.0
+        elif x > self._x[-1]:
+            if np.isclose(x, self.x[-1], rtol=0.0, atol=1e-14):
+                return self._y[-1]
+            return 0.0
+        elif x == self._x[0]:
             return self._y[0]
-        elif x >= self._x[-1]:
+        elif x == self._x[-1]:
             return self._y[-1]
 
         # Get the index for interpolation

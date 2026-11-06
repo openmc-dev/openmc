@@ -9,7 +9,7 @@ from tests.regression_tests import config
 
 
 class MGXSTestHarness(PyAPITestHarness):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, scatter_mgxs_type=None, **kwargs):
         # Generate inputs using parent class routine
         super().__init__(*args, **kwargs)
 
@@ -19,8 +19,8 @@ class MGXSTestHarness(PyAPITestHarness):
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = False
-        self.mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission matrix',
-                                    'nu-scatter matrix', 'multiplicity matrix']
+        self.mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission matrix']
+        self.mgxs_lib.mgxs_types += scatter_mgxs_type
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.correction = None
         self.mgxs_lib.legendre_order = 3
@@ -69,9 +69,23 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
-def test_mgxs_library_ce_to_mg():
+def test_mgxs_library_ce_to_mg_multiplicity_matrix():
     # Set the input set to use the pincell model
     model = pwr_pin_cell()
 
-    harness = MGXSTestHarness('statepoint.10.h5', model)
+    harness = MGXSTestHarness(
+        'statepoint.10.h5', model,
+        inputs_true='inputs_true_multiplicity_matrix.dat',
+        scatter_mgxs_type=['nu-scatter matrix', 'multiplicity matrix']
+    )
+    harness.main()
+
+
+def test_mgxs_library_ce_to_mg_scatter_matrix():
+    # Set the input set to use the pincell model
+    model = pwr_pin_cell()
+
+    harness = MGXSTestHarness('statepoint.10.h5', model,
+                              inputs_true='inputs_true_scatter_matrix.dat',
+                              scatter_mgxs_type=['scatter matrix'])
     harness.main()

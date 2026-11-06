@@ -577,7 +577,7 @@ class Integrator(ABC):
         factorizations may be reused across them, improving accuracy for
         nuclides with large decay-constant × timestep products.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
         previous simulation. Defaults to `False`. When `False`, the depletion
@@ -1028,11 +1028,6 @@ class Integrator(ABC):
             self.transfer_rates = TransferRates(
                 self.operator, materials, len(self.timesteps))
 
-        if self.external_source_rates is not None and destination_material:
-            raise ValueError('Currently is not possible to set a transfer rate '
-                             'with destination matrial in combination with '
-                             'external source rates.')
-
         self.transfer_rates.set_transfer_rate(
             material, components, transfer_rate, transfer_rate_units,
             timesteps, destination_material)
@@ -1073,11 +1068,6 @@ class Integrator(ABC):
                 materials = self.operator.materials
             self.external_source_rates = ExternalSourceRates(
                 self.operator, materials, len(self.timesteps))
-
-        if self.transfer_rates is not None and self.transfer_rates.index_transfer:
-            raise ValueError('Currently is not possible to set an external '
-                             'source rate in combination with transfer rates '
-                             'with destination matrial.')
 
         self.external_source_rates.set_external_source_rate(
             material, composition, rate, rate_units, timesteps)
@@ -1202,7 +1192,7 @@ class Integrator(ABC):
         ...     target=1.0
         ... )
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
 
         """
         self._keff_search_control = _KeffSearchControl(
@@ -1266,7 +1256,7 @@ class SIIntegrator(Integrator):
         factorizations may be reused across them, improving accuracy for
         nuclides with large decay-constant × timestep products.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
         previous simulation. Defaults to `False`. If `False`, all time steps and

@@ -38,7 +38,8 @@ def test_random_ray_auto_convert_source_energy(method, source_type):
 
         # Convert to a multi-group model
         model.convert_to_multigroup(
-            method=method, groups='CASMO-8', nparticles=100,
+            method=method, groups='CASMO-8',
+            particles=100,
             overwrite_mgxs_library=False, mgxs_path="mgxs.h5",
             source_energy=source_energy
         )

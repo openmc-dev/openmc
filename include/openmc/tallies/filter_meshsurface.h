@@ -22,21 +22,6 @@ public:
   // Accessors
 
   void set_mesh(int32_t mesh) override;
-
-  enum class MeshDir {
-    OUT_LEFT,   // x min
-    IN_LEFT,    // x min
-    OUT_RIGHT,  // x max
-    IN_RIGHT,   // x max
-    OUT_BACK,   // y min
-    IN_BACK,    // y min
-    OUT_FRONT,  // y max
-    IN_FRONT,   // y max
-    OUT_BOTTOM, // z min
-    IN_BOTTOM,  // z min
-    OUT_TOP,    // z max
-    IN_TOP      // z max
-  };
 };
 
 } // namespace openmc

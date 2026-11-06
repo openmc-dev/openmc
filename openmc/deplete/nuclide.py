@@ -245,6 +245,11 @@ class Nuclide:
 
         # Check for sources
         for src_elem in element.iter('source'):
+            # Skip source elements with empty parameters
+            parameters = src_elem.find('parameters')
+            if parameters is not None and not (parameters.text or '').strip():
+                continue
+
             particle = get_text(src_elem, "particle")
             distribution = Univariate.from_xml_element(src_elem)
             nuc.sources[particle] = distribution

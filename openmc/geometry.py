@@ -11,6 +11,7 @@ import openmc
 import openmc._xml as xml
 from .plots import add_plot_params
 from .checkvalue import check_type, check_less_than, check_greater_than, PathLike
+from .utility_funcs import set_xml_input_path
 
 
 class Geometry:
@@ -290,11 +291,12 @@ class Geometry:
         if isinstance(materials, (str, os.PathLike)):
             materials = openmc.Materials.from_xml(materials)
 
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
 
-        return cls.from_xml_element(root, materials)
+            return cls.from_xml_element(root, materials)
 
     def find(self, point) -> list:
         """Find cells/universes/lattices which contain a given point

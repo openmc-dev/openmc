@@ -1,12 +1,29 @@
-get_filename_component(OpenMC_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" DIRECTORY)
+@PACKAGE_INIT@
 
-# Compute the install prefix from this file's location
-get_filename_component(_OPENMC_PREFIX "${OpenMC_CMAKE_DIR}/../../.." ABSOLUTE)
+include("${CMAKE_CURRENT_LIST_DIR}/OpenMCConfigVersion.cmake")
+include(CMakeFindDependencyMacro)
 
-find_package(fmt CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
-find_package(pugixml CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
+# Explicitly calculate prefix if it was not generated above
+if(NOT DEFINED PACKAGE_PREFIX_DIR)
+  get_filename_component(PACKAGE_PREFIX_DIR "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
+endif()
+
+find_dependency(fmt CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
+find_dependency(pugixml CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
+
+# libopenmc links against HDF5, which may be imported targets (e.g. hdf5-shared)
+# when HDF5 was found through its own CMake package
+if(NOT DEFINED HDF5_PREFER_PARALLEL)
+  set(HDF5_PREFER_PARALLEL @HDF5_PREFER_PARALLEL@)
+endif()
+# Older FindHDF5 versions require C to be enabled for their compiler checks
+if(NOT CMAKE_C_COMPILER_LOADED)
+  enable_language(C)
+endif()
+find_dependency(HDF5 COMPONENTS C HL)
+
 if(@OPENMC_USE_DAGMC@)
-  find_package(DAGMC REQUIRED HINTS @DAGMC_DIR@)
+  find_dependency(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()
 
 if(@OPENMC_USE_LIBMESH@)
@@ -16,20 +33,28 @@ if(@OPENMC_USE_LIBMESH@)
   pkg_check_modules(LIBMESH REQUIRED @LIBMESH_PC_FILE@>=1.7.0 IMPORTED_TARGET)
 endif()
 
-find_package(PNG)
+if("@PNG_FOUND@")
+  find_dependency(PNG)
+endif()
 
-if(NOT TARGET OpenMC::libopenmc)
-  include("${OpenMC_CMAKE_DIR}/OpenMCTargets.cmake")
+if(@OPENMC_USE_XDG@)
+  find_dependency(XDG REQUIRED HINTS @XDG_DIR@)
 endif()
 
 if(@OPENMC_USE_MPI@)
-  find_package(MPI REQUIRED)
+  find_dependency(MPI REQUIRED)
 endif()
 
 if(@OPENMC_USE_OPENMP@)
-  find_package(OpenMP REQUIRED)
+  find_dependency(OpenMP REQUIRED COMPONENTS CXX)
 endif()
 
 if(@OPENMC_USE_UWUW@ AND NOT ${DAGMC_BUILD_UWUW})
   message(FATAL_ERROR "UWUW is enabled in OpenMC but the DAGMC installation discovered was not configured with UWUW.")
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/OpenMCTargets.cmake")
+
+if(NOT OpenMC_FIND_QUIETLY)
+    message(STATUS "Found OpenMC: ${PACKAGE_VERSION} (found in ${PACKAGE_PREFIX_DIR})")
 endif()

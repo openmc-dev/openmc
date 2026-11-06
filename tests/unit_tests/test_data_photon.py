@@ -149,3 +149,27 @@ def test_photodat_only(run_in_tmpdir, endf_data):
     photoatomic_file = endf_dir / 'photoat' / 'photoat-001_H_000.endf'
     data = openmc.data.IncidentPhoton.from_endf(photoatomic_file)
     data.export_to_hdf5('tmp.h5', 'w')
+
+
+def test_from_endf_material(endf_data):
+    endf_dir = Path(endf_data)
+    photoatomic_file = endf_dir / 'photoat' / 'photoat-001_H_000.endf'
+    relaxation_file = endf_dir / 'atomic_relax' / 'atom-001_H_000.endf'
+    photoatomic = openmc.data.endf.get_evaluations(photoatomic_file)[0]
+    relaxation = openmc.data.endf.get_evaluations(relaxation_file)[0]
+
+    data = openmc.data.IncidentPhoton.from_endf(photoatomic, relaxation)
+
+    assert data.atomic_number == 1
+    assert 502 in data.reactions
+    assert data.atomic_relaxation.binding_energy['K'] == pytest.approx(13.61)
+
+
+def test_atomic_relaxation_from_endf_material(endf_data):
+    filename = Path(endf_data) / 'atomic_relax' / 'atom-001_H_000.endf'
+    material = openmc.data.endf.get_evaluations(filename)[0]
+
+    data = openmc.data.AtomicRelaxation.from_endf(material)
+
+    assert data.binding_energy['K'] == pytest.approx(13.61)
+    assert data.num_electrons['K'] == pytest.approx(1.0)

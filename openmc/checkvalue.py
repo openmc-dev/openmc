@@ -1,6 +1,7 @@
 import copy
 import os
 from collections.abc import Iterable
+from numbers import Real
 
 import numpy as np
 
@@ -80,7 +81,18 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
     max_depth : int
         The maximum number of layers of nested iterables there should be before
         reaching the ultimately contained items
+
+    Notes
+    -----
+    For NumPy floating-point arrays with an allowed number of dimensions, the
+    dtype guarantees the element type and the per-element scan is skipped when
+    *expected_type* is :class:`numbers.Real` or :class:`float`.
     """
+    if (isinstance(value, np.ndarray) and value.dtype.kind == 'f'
+            and min_depth <= value.ndim <= max_depth
+            and expected_type in (Real, float)):
+        return
+
     # Initialize the tree at the very first item.
     tree = [value]
     index = [0]

@@ -3,6 +3,7 @@ import filecmp
 import glob
 import h5py
 import hashlib
+import math
 import os
 import shutil
 
@@ -27,6 +28,21 @@ def colorize(diff):
             yield Fore.BLUE + line + Fore.RESET
         else:
             yield line
+
+
+def read_vtk_arrays(path):
+    """Read the point data arrays from a legacy binary VTK file."""
+    arrays = {}
+    with open(path, 'rb') as fh:
+        while line := fh.readline():
+            if line.startswith(b'POINT_DATA'):
+                n = int(line.split()[1])
+            elif line.startswith(b'SCALARS'):
+                _, name, dtype = line.decode().split()
+                fh.readline()  # LOOKUP_TABLE default
+                dtype = {'float': '>f4', 'int': '>i4'}[dtype]
+                arrays[name] = np.frombuffer(fh.read(4*n), dtype)
+    return arrays
 
 
 class TestHarness:
@@ -143,7 +159,8 @@ class TestHarness:
     def _cleanup(self):
         """Delete statepoints, tally, and test files."""
         output = glob.glob('statepoint.*.h5')
-        output += ['tallies.out', 'results_test.dat', 'summary.h5']
+        output += ['tallies.out', 'tallies.forward.out']
+        output += ['results_test.dat', 'summary.h5']
         output += glob.glob('volume_*.h5')
         for f in output:
             if os.path.exists(f):
@@ -415,7 +432,7 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
         def compare_tokens(token1, token2):
             if isfloat(token1) and isfloat(token2):
                 float1, float2 = float(token1), float(token2)
-                return abs(float1 - float2) <= tolerance * max(abs(float1), abs(float2))
+                return math.isclose(float1, float2, rel_tol=tolerance, abs_tol=0.0)
             else:
                 return token1 == token2
 
@@ -451,6 +468,40 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
             print(''.join(colorize(diff)))
             os.rename('results_test.dat', 'results_error.dat')
         assert compare, 'Results do not agree'
+
+
+class VTKTestHarness(TolerantPyAPITestHarness):
+    """Specialized harness for random ray tests that also check the flux and
+    source written to VTK files for a voxel plot.
+
+    """
+
+    def __init__(self, statepoint_name, model, plot):
+        super().__init__(statepoint_name, model)
+        # The base class removes all plots, so add back the one being tested
+        self._model.plots = [plot]
+
+    def _get_results(self):
+        """Digest the statepoint and VTK files and return as a string."""
+        outstr = super()._get_results()
+        # Adjoint runs also write the forward solve, to a .forward.vtk file
+        for vtk_file in sorted(glob.glob('*.vtk')):
+            for name, values in read_vtk_arrays(vtk_file).items():
+                # Compare the flux and source fields. The other arrays are
+                # random colors (FSRs, rank_subdomains), timings
+                # (measured_load), or not under test (Materials,
+                # weight_window_lower)
+                if name.startswith('flux_group_') or name in (
+                        'total_fission_source', 'external_source'):
+                    outstr += f'{vtk_file} {name}:\n'
+                    outstr += ''.join(f'{x:12.6E}\n' for x in values)
+        return outstr
+
+    def _cleanup(self):
+        """Delete the VTK files."""
+        super()._cleanup()
+        for f in glob.glob('*.vtk'):
+            os.remove(f)
 
 
 class WeightWindowPyAPITestHarness(PyAPITestHarness):
@@ -546,19 +597,19 @@ class CollisionTrackTestHarness(PyAPITestHarness):
 
     def _test_output_created(self):
         """Make sure collision_track.h5 has also been created."""
-        super()._test_output_created()
         if self._model.settings.collision_track:
             assert os.path.exists(
                 "collision_track.h5"
             ), "collision_track file has not been created."
 
-    def _compare_output(self):
+    def _compare_results(self):
         """Compare collision_track.h5 files."""
         if self._model.settings.collision_track:
             collision_track_true = self._return_collision_track_data(
                 "collision_track_true.h5")
             collision_track_test = self._return_collision_track_data(
                 "collision_track.h5")
+            assert collision_track_true.shape == collision_track_test.shape
             np.testing.assert_allclose(
                 collision_track_true, collision_track_test, rtol=1e-07)
 
@@ -582,15 +633,18 @@ class CollisionTrackTestHarness(PyAPITestHarness):
 
     def _overwrite_results(self):
         """Also add the 'collision_track.h5' file during overwriting."""
-        super()._overwrite_results()
         if os.path.exists("collision_track.h5"):
             shutil.copyfile("collision_track.h5", "collision_track_true.h5")
+
+    def _write_results(self, results_string):
+        # The result file for this test are written by the OpenMC executable itself
+        pass
 
     @staticmethod
     def _return_collision_track_data(filepath):
         """
-        Read a collision_track file and return a sorted array composed
-        of flatten arrays of collision information.
+        Read a collision_track file and return a sorted array composed of
+        flattened collision records.
 
         Parameters
         ----------
@@ -600,42 +654,58 @@ class CollisionTrackTestHarness(PyAPITestHarness):
         Returns
         -------
         data : np.array
-            Sorted array composed of flatten arrays of collision_track data for
-            each collision information
+            Sorted array composed of flattened collision-track records.
         """
-        data = []
-        keys = []
-
-        # Read source file
         source = openmc.read_collision_track_file(filepath)
-        for src in source:
-            r = src['r']
-            u = src['u']
-            e = src['E']
-            de = src['dE']
-            time = src['time']
-            wgt = src['wgt']
-            delayed_group = src['delayed_group']
-            cell_id = src['cell_id']
-            nuclide_id = src['nuclide_id']
-            material_id = src['material_id']
-            universe_id = src['universe_id']
-            n_collision = src['n_collision']
-            event_mt = src['event_mt']
-            key = (
-                f"{r[0]:.10e} {r[1]:.10e} {r[2]:.10e} {u[0]:.10e} {u[1]:.10e} {u[2]:.10e}"
-                f"{e:.10e} {de:.10e}  {time:.10e} {wgt:.10e} {event_mt} {delayed_group} {cell_id}"
-                f"{nuclide_id} {material_id} {universe_id} {n_collision} "
-            )
-            keys.append(key)
-            values = [*r, *u, e, de, time, wgt, event_mt,
-                      delayed_group, cell_id, nuclide_id, material_id,
-                      universe_id, n_collision]
-            assert len(values) == 17
-            data.append(values)
+        columns = [
+            source['r']['x'],
+            source['r']['y'],
+            source['r']['z'],
+            source['u']['x'],
+            source['u']['y'],
+            source['u']['z'],
+            source['E'],
+            source['dE'],
+            source['time'],
+            source['wgt'],
+            source['event_mt'],
+            source['delayed_group'],
+            source['cell_id'],
+            source['nuclide_id'],
+            source['material_id'],
+            source['universe_id'],
+            source['n_collision'],
+            source['particle'],
+            source['parent_id'],
+            source['progeny_id'],
+        ]
+        data = np.column_stack(columns)
 
-        data = np.array(data)
-        keys = np.array(keys)
-        sorted_idx = np.argsort(keys, kind='stable')
+        # Sort by the complete record, prioritizing stable integer identifiers
+        # before floating-point fields. This removes dependence on the order in
+        # which threads append otherwise reproducible collision records.
+        sort_columns = [
+            source['parent_id'],
+            source['progeny_id'],
+            source['n_collision'],
+            source['particle'],
+            source['cell_id'],
+            source['material_id'],
+            source['universe_id'],
+            source['nuclide_id'],
+            source['event_mt'],
+            source['delayed_group'],
+            source['r']['x'],
+            source['r']['y'],
+            source['r']['z'],
+            source['u']['x'],
+            source['u']['y'],
+            source['u']['z'],
+            source['E'],
+            source['dE'],
+            source['time'],
+            source['wgt'],
+        ]
+        sorted_idx = np.lexsort(tuple(reversed(sort_columns)))
 
         return data[sorted_idx]

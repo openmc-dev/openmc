@@ -18,20 +18,10 @@
 
 namespace openmc {
 
-inline void set_errmsg(const char* message)
-{
-  std::strcpy(openmc_err_msg, message);
-}
-
-inline void set_errmsg(const std::string& message)
-{
-  std::strcpy(openmc_err_msg, message.c_str());
-}
-
-inline void set_errmsg(const std::stringstream& message)
-{
-  std::strcpy(openmc_err_msg, message.str().c_str());
-}
+void set_errmsg(const char* message);
+void set_errmsg(const std::string& message);
+void set_errmsg(const std::stringstream& message);
+const char* get_errmsg();
 
 [[noreturn]] void fatal_error(const std::string& message, int err = -1);
 
@@ -64,14 +54,14 @@ void write_message(
   int level, const std::string& message, const Params&... fmt_args)
 {
   if (settings::verbosity >= level) {
-    write_message(fmt::format(message, fmt_args...));
+    write_message(fmt::format(fmt::runtime(message), fmt_args...));
   }
 }
 
 template<typename... Params>
 void write_message(const std::string& message, const Params&... fmt_args)
 {
-  write_message(fmt::format(message, fmt_args...));
+  write_message(fmt::format(fmt::runtime(message), fmt_args...));
 }
 
 #ifdef OPENMC_MPI

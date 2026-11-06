@@ -84,14 +84,19 @@ public:
   double collapse_rate(int MT, double temperature, span<const double> energy,
     span<const double> flux) const;
 
+  //! Return a ParticleType object representing this nuclide
+  ParticleType particle_type() const { return {Z_, A_, metastable_}; }
+
   //============================================================================
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"
   int Z_;            //!< Atomic number
   int A_;            //!< Mass number
   int metastable_;   //!< Metastable state
-  double awr_;       //!< Atomic weight ratio
-  int64_t index_;    //!< Index in the nuclides array
+  //! Target excitation [eV]; NaN if unavailable.
+  double excitation_energy_ {FP_UNSET};
+  double awr_;    //!< Atomic weight ratio
+  int64_t index_; //!< Index in the nuclides array
 
   // Temperature dependent cross section data
   vector<double> kTs_;                //!< temperatures in eV (k*T)

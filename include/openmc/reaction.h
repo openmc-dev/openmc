@@ -8,6 +8,7 @@
 
 #include "hdf5.h"
 
+#include "openmc/constants.h"
 #include "openmc/particle_data.h"
 #include "openmc/reaction_product.h"
 #include "openmc/span.h"
@@ -58,11 +59,14 @@ public:
     vector<double> value;
   };
 
-  int mt_;                           //!< ENDF MT value
-  double q_value_;                   //!< Reaction Q value in [eV]
-  bool scatter_in_cm_;               //!< scattering system in center-of-mass?
-  bool redundant_;                   //!< redundant reaction?
-  vector<TemperatureXS> xs_;         //!< Cross section at each temperature
+  int mt_;            //!< ENDF MT value
+  double q_reaction_; //!< Reaction Q value in [eV]
+  //! Evaluated ENDF QM [eV]; NaN if unavailable (negative Q values are valid).
+  double q_mass_difference_ {FP_UNSET};
+  int breakup_flag_ {-1};    //!< ENDF LR; -1 if unavailable, 0 for no breakup
+  bool scatter_in_cm_;       //!< scattering system in center-of-mass?
+  bool redundant_;           //!< redundant reaction?
+  vector<TemperatureXS> xs_; //!< Cross section at each temperature
   vector<ReactionProduct> products_; //!< Reaction products
 };
 

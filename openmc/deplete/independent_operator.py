@@ -339,8 +339,12 @@ class IndependentOperator(OpenMCOperator):
 
             for i_nuc in nuc_index:
                 nuc = self.nuc_ind_map[i_nuc]
+                if nuc not in xs._index_nuc:
+                    continue
                 for i_rx in react_index:
                     rx = self.rx_ind_map[i_rx]
+                    if rx not in xs._index_rx:
+                        continue
 
                     # Determine reaction rate by multiplying xs in [b] by flux
                     # in [n-cm/src] to give [(reactions/src)*b-cm/atom]
@@ -439,13 +443,3 @@ class IndependentOperator(OpenMCOperator):
 
                             nuclides.append(nuc)
                             densities.append(val)
-                        else:
-                            # Only output warnings if values are significantly
-                            # negative. CRAM does not guarantee positive
-                            # values.
-                            if val < -1.0e-21:
-                                print(f'WARNING: nuclide {nuc} in material'
-                                      f'{mat} is negative (density = {val}'
-
-                                      ' atom/b-cm)')
-                            number_i[mat, nuc] = 0.0

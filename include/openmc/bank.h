@@ -34,17 +34,23 @@ extern vector<vector<double>> ifp_fission_lifetime_bank;
 
 extern vector<int64_t> progeny_per_particle;
 
+extern SharedArray<SourceSite> shared_secondary_bank_read;
+extern SharedArray<SourceSite> shared_secondary_bank_write;
+
 } // namespace simulation
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-void sort_fission_bank();
+void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank);
 
 void free_memory_bank();
 
 void init_fission_bank(int64_t max);
+
+int64_t synchronize_global_secondary_bank(
+  SharedArray<SourceSite>& shared_secondary_bank);
 
 } // namespace openmc
 

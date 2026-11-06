@@ -15,7 +15,7 @@ from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
-from .utility_funcs import input_path
+from .utility_funcs import input_path, set_xml_input_path
 from .volume import VolumeCalculation
 from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
 
@@ -67,6 +67,10 @@ class Settings:
                     (ex: ["(n,fission)", 2, "(n,2n)"] ). (list of str or int)
         :deposited_E_threshold: Number to define the minimum deposited energy during
                      per collision to trigger banking. (float)
+    create_delayed_neutrons : bool
+        Whether delayed neutrons are created in fission.
+
+        .. versionadded:: 0.13.3
     create_fission_neutrons : bool
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
@@ -198,11 +202,20 @@ class Settings:
             specified by a :class:`openmc.SourceBase` object.
         :volume_estimator:
             Choice of volume estimator for the random ray solver. Options are
-            'naive', 'simulation_averaged', or 'hybrid'.
-            The default is 'hybrid'.
+            'naive', 'simulation_averaged', 'hybrid', 'adaptive',
+            'strict_adaptive', or 'auto'. The default is 'auto', which
+            selects 'adaptive' for standard solves and 'strict_adaptive' for
+            solves whose results feed variance reduction (weight window
+            generation and adjoint workflows).
         :source_shape:
             Assumed shape of the source distribution within each source region.
             Options are 'flat' (default), 'linear', or 'linear_xy'.
+        :source_gradient_limiter:
+            Whether to rescale linear source gradients as needed so that the
+            source shape modeled within each source region remains
+            non-negative over the region's bounding box, as sampled by the
+            rays that have crossed it (bool). The default is 'False'. Only
+            used when the source shape is 'linear' or 'linear_xy'.
         :volume_normalized_flux_tallies:
             Whether to normalize flux tallies by volume (bool). The default is
             'False'. When enabled, flux tallies will be reported in units of
@@ -237,7 +250,7 @@ class Settings:
             also tends to dampen the convergence rate of the solver, thus requiring
             more iterations to converge.
         :adjoint_source:
-            Source object used to define localized adjoint source/detector response 
+            Source object used to define localized adjoint source/detector response
             function.
 
         .. versionadded:: 0.15.0
@@ -256,8 +269,15 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
-    stride : int
-        Number of random numbers allocated for each source particle history
+    shared_secondary_bank : bool
+        Whether to use a shared secondary particle bank. When enabled,
+        secondary particles are collected into a global bank, sorted for
+        reproducibility, and load-balanced across MPI ranks between
+        generations. If not specified, the shared secondary bank is
+        enabled automatically for fixed-source simulations with weight
+        windows active, and disabled otherwise.
+
+        .. versionadded:: 0.16.0
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     source_rejection_fraction : float
@@ -277,10 +297,15 @@ class Settings:
         Options for writing state points. Acceptable keys are:
 
         :batches: list of batches at which to write statepoint files
+    stride : int
+        Number of random numbers allocated for each source particle history
     surf_source_read : dict
         Options for reading surface source points. Acceptable keys are:
 
         :path: Path to surface source file (str).
+
+        .. deprecated:: 0.17.0
+            Use :class:`openmc.FileSource` as a source distribution instead.
     surf_source_write : dict
         Options for writing surface source points. Acceptable keys are:
 
@@ -373,10 +398,6 @@ class Settings:
 
         .. versionadded:: 0.14.0
 
-    create_delayed_neutrons : bool
-        Whether delayed neutrons are created in fission.
-
-        .. versionadded:: 0.13.3
     weight_windows_on : bool
         Whether weight windows are enabled
 
@@ -482,6 +503,7 @@ class Settings:
         self._weight_window_generators = cv.CheckedList(
             WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
+        self._shared_secondary_bank = None
         self._weight_windows_file = None
         self._weight_window_checkpoints = {}
         self._max_history_splits = None
@@ -875,6 +897,13 @@ class Settings:
 
     @surf_source_read.setter
     def surf_source_read(self, ssr: dict):
+        warnings.warn(
+            "The surf_source_read attribute has been deprecated. Use a "
+            "FileSource as a source distribution instead, i.e., "
+            "settings.source = openmc.FileSource('surface_source.h5'), which "
+            "additionally supports a source strength and source constraints.",
+            FutureWarning, stacklevel=2
+        )
         cv.check_type('surface source reading options', ssr, Mapping)
         for key, value in ssr.items():
             cv.check_value('surface source reading key', key,
@@ -1307,6 +1336,15 @@ class Settings:
         self._weight_windows_on = value
 
     @property
+    def shared_secondary_bank(self) -> bool:
+        return self._shared_secondary_bank
+
+    @shared_secondary_bank.setter
+    def shared_secondary_bank(self, value: bool):
+        cv.check_type('shared secondary bank', value, bool)
+        self._shared_secondary_bank = value
+
+    @property
     def weight_window_checkpoints(self) -> dict:
         return self._weight_window_checkpoints
 
@@ -1397,12 +1435,15 @@ class Settings:
             elif key == 'volume_estimator':
                 cv.check_value('volume estimator', value,
                                ('naive', 'simulation_averaged',
-                                'hybrid'))
+                                'hybrid', 'adaptive', 'strict_adaptive',
+                                'auto'))
             elif key == 'source_shape':
                 cv.check_value('source shape', value,
                                ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
                 cv.check_type('volume normalized flux tallies', value, bool)
+            elif key == 'source_gradient_limiter':
+                cv.check_type('source gradient limiter', value, bool)
             elif key == 'adjoint':
                 cv.check_type('adjoint', value, bool)
             elif key == 'source_region_meshes':
@@ -1924,6 +1965,11 @@ class Settings:
             elem = ET.SubElement(root, "weight_windows_on")
             elem.text = str(self._weight_windows_on).lower()
 
+    def _create_shared_secondary_bank_subelement(self, root):
+        if self._shared_secondary_bank is not None:
+            elem = ET.SubElement(root, "shared_secondary_bank")
+            elem.text = str(self._shared_secondary_bank).lower()
+
     def _create_weight_window_generators_subelement(self, root, mesh_memo=None):
         if not self.weight_window_generators:
             return
@@ -2007,11 +2053,11 @@ class Settings:
                         path = f"./mesh[@id='{mesh.id}']"
                         if root.find(path) is None:
                             root.append(mesh.to_xml_element())
-                            if mesh_memo is not None:    
+                            if mesh_memo is not None:
                                 mesh_memo.add(mesh.id)
                 elif key == 'adjoint_source':
                     subelement = ET.SubElement(element, 'adjoint_source')
-                    # Check that all entries are valid SourceBase instances, in case 
+                    # Check that all entries are valid SourceBase instances, in case
                     # the random_ray setter was not used to populate dict entries.
                     if not isinstance(value, MutableSequence):
                         value = [value]
@@ -2430,6 +2476,11 @@ class Settings:
         if text is not None:
             self.weight_windows_on = text in ('true', '1')
 
+    def _shared_secondary_bank_from_xml_element(self, root):
+        text = get_text(root, 'shared_secondary_bank')
+        if text is not None:
+            self.shared_secondary_bank = text in ('true', '1')
+
     def _weight_windows_file_from_xml_element(self, root):
         text = get_text(root, 'weight_windows_file')
         if text is not None:
@@ -2484,6 +2535,10 @@ class Settings:
                     )
                 elif child.tag == 'adjoint':
                     self.random_ray['adjoint'] = (
+                        child.text in ('true', '1')
+                    )
+                elif child.tag == 'source_gradient_limiter':
+                    self.random_ray['source_gradient_limiter'] = (
                         child.text in ('true', '1')
                     )
                 elif child.tag == 'adjoint_source':
@@ -2597,6 +2652,7 @@ class Settings:
         self._create_write_initial_source_subelement(element)
         self._create_weight_windows_subelement(element, mesh_memo)
         self._create_weight_windows_on_subelement(element)
+        self._create_shared_secondary_bank_subelement(element)
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
         self._create_weight_window_checkpoints_subelement(element)
@@ -2714,6 +2770,7 @@ class Settings:
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
         settings._weight_windows_on_from_xml_element(elem)
+        settings._shared_secondary_bank_from_xml_element(elem)
         settings._weight_windows_file_from_xml_element(elem)
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)
@@ -2744,8 +2801,9 @@ class Settings:
             Settings object
 
         """
-        parser = ET.XMLParser(huge_tree=True)
-        tree = ET.parse(path, parser=parser)
-        root = tree.getroot()
-        meshes = _read_meshes(root)
-        return cls.from_xml_element(root, meshes)
+        with set_xml_input_path(path):
+            parser = ET.XMLParser(huge_tree=True)
+            tree = ET.parse(path, parser=parser)
+            root = tree.getroot()
+            meshes = _read_meshes(root)
+            return cls.from_xml_element(root, meshes)

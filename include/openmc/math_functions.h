@@ -213,6 +213,20 @@ double exprel(double x);
 //! \return log(1+x)/x without loss of precision near 0
 double log1prel(double x);
 
+//! Evaluate the cylindrical Bessel function of the first kind J_n(x)
+//!
+//! Uses std::cyl_bessel_j where available (e.g., libstdc++). On standard
+//! library implementations lacking the C++17 special math functions (e.g.,
+//! libc++ on Apple Clang/LLVM), falls back to the ascending power series,
+//! which converges to machine precision for the small arguments (|x| <= 2)
+//! used in OpenMC. Unlike std::cyl_bessel_j, negative arguments are handled
+//! via the parity relation J_n(-x) = (-1)^n J_n(x).
+//!
+//! \param n Non-negative integer order of the Bessel function
+//! \param x Real argument
+//! \return J_n(x)
+double cyl_bessel_j(int n, double x);
+
 //! Helper function to get index and interpolation function on an incident
 //! energy grid
 //!
@@ -232,6 +246,18 @@ void get_energy_index(
 //==============================================================================
 
 double standard_normal_cdf(double z);
+
+//==============================================================================
+//! Return true if two floating-point values are approximately equal within a
+//! combined relative and absolute tolerance.
+//!
+//! \param a first floating point value
+//! \param b second floating point value
+//! \param rel_tol relative tolerance
+//! \param abs_tol absolute tolerance
+//! \return true if a and b are approximately equal, false otherwise
+//==============================================================================
+bool isclose(double a, double b, double rel_tol, double abs_tol);
 
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

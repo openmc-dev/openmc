@@ -659,6 +659,12 @@ class ParticleFilter(Filter):
 
 
 class ParticleProductionFilter(Filter):
+    """Filter secondary-particle production events.
+
+    .. versionadded:: 0.16.0
+
+    """
+
     filter_type = 'particleproduction'
 
 
@@ -667,6 +673,12 @@ class PolarFilter(Filter):
 
 
 class ReactionFilter(Filter):
+    """Filter tally events by reaction type.
+
+    .. versionadded:: 0.16.0
+
+    """
+
     filter_type = 'reaction'
 
 

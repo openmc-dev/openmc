@@ -100,6 +100,28 @@ def test_fpy(u235_yields):
     ufloat_close(thermal['I135'], ufloat(0.0292737, 0.000819663))
 
 
+def test_decay_from_endf_material(endf_data):
+    filename = os.path.join(endf_data, 'decay', 'dec-041_Nb_090.endf')
+    material = openmc.data.endf.get_evaluations(filename)[0]
+
+    data = openmc.data.Decay.from_endf(material)
+
+    assert data.nuclide['name'] == 'Nb90'
+    assert not data.nuclide['stable']
+    assert len(data.modes) == 2
+
+
+def test_fpy_from_endf_material(endf_data):
+    filename = os.path.join(endf_data, 'nfy', 'nfy-092_U_235.endf')
+    material = openmc.data.endf.get_evaluations(filename)[0]
+
+    data = openmc.data.FissionProductYields.from_endf(material)
+
+    assert data.nuclide['name'] == 'U235'
+    assert data.energies == pytest.approx([0.0253, 500.e3, 1.4e7])
+    assert 'I135' in data.cumulative[0]
+
+
 def test_sources(ba137m, nb90):
     # Running .sources twice should give same objects
     sources = ba137m.sources
@@ -133,16 +155,16 @@ def test_decay_photon_energy():
     with pytest.raises(DataError):
         openmc.data.decay_photon_energy('I135')
 
-    # Set chain file to simple chain
-    openmc.config['chain_file'] = Path(__file__).parents[1] / "chain_simple.xml"
+    # Temporarily Set chain file to simple chain
+    with openmc.config.patch('chain_file', Path(__file__).parents[1] / 'chain_simple.xml'):
 
-    # Check strength of I135 source and presence of specific spectral line
-    src = openmc.data.decay_photon_energy('I135')
-    assert isinstance(src, openmc.stats.Discrete)
-    assert src.integral() == pytest.approx(3.920996223799345e-05)
-    assert 1260409. in src.x
+        # Check strength of I135 source and presence of specific spectral line
+        src = openmc.data.decay_photon_energy('I135')
+        assert isinstance(src, openmc.stats.Discrete)
+        assert src.integral() == pytest.approx(3.920996223799345e-05)
+        assert 1260409. in src.x
 
-    # Check Xe135 source, which should be tabular
-    src = openmc.data.decay_photon_energy('Xe135')
-    assert isinstance(src, openmc.stats.Tabular)
-    assert src.integral() == pytest.approx(2.076506258964966e-05)
+        # Check Xe135 source, which should be tabular
+        src = openmc.data.decay_photon_energy('Xe135')
+        assert isinstance(src, openmc.stats.Tabular)
+        assert src.integral() == pytest.approx(2.076506258964966e-05)

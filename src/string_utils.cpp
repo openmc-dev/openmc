@@ -29,10 +29,11 @@ std::string to_element(const std::string& name)
   return name.substr(0, pos);
 }
 
-void to_lower(std::string& str)
+std::string& to_lower(std::string& str)
 {
   for (int i = 0; i < str.size(); i++)
     str[i] = std::tolower(str[i]);
+  return str;
 }
 
 int word_count(const std::string& str)

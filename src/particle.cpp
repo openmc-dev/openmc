@@ -38,6 +38,10 @@
 #include "DagMC.hpp"
 #endif
 
+#ifdef OPENMC_XDG_ENABLED
+#include "openmc/xdg.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -162,6 +166,9 @@ void Particle::from_source(const SourceSite* src)
   lifetime() = 0.0;
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
+#endif
+#ifdef OPENMC_XDG_ENABLED
+  xdg_prev_elements().clear();
 #endif
 
   // Copy attributes from source bank site
@@ -346,6 +353,16 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
+#ifdef OPENMC_XDG_ENABLED
+  if (model::universes[lowest_coord().universe()]->geom_type() ==
+      GeometryType::XDG_VOLUME_MESH) {
+    const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(
+      model::universes[lowest_coord().universe()].get());
+    xdg_mesh_univ->next_cell(*this);
+    return;
+  }
+#endif
+
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
@@ -488,6 +505,9 @@ void Particle::event_collide()
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
+#ifdef OPENMC_XDG_ENABLED
+  xdg_prev_elements().clear();
+#endif
 
   if (near_surface && alive())
     reconcile_cell_after_collision(*this);
@@ -566,6 +586,9 @@ void Particle::event_death()
 {
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
+#endif
+#ifdef OPENMC_XDG_ENABLED
+  xdg_prev_elements().clear();
 #endif
 
   // Finish particle track output.
@@ -700,6 +723,16 @@ void Particle::cross_surface(const Surface& surf)
   }
 #endif
 
+#ifdef OPENMC_XDG_ENABLED
+  if (model::universes[lowest_coord().universe()]->geom_type() ==
+      GeometryType::XDG_SURFACE_MESH) {
+    const auto* xdg_univ = dynamic_cast<const XDGUniverse*>(
+      model::universes[lowest_coord().universe()].get());
+    xdg_univ->next_cell(*this);
+    return;
+  }
+#endif
+
   bool verbose = settings::verbosity >= 10 || trace();
   if (neighbor_list_find_cell(*this, verbose)) {
     return;
@@ -802,6 +835,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
   if (surf.geom_type() != GeometryType::DAG &&
+      surf.geom_type() != GeometryType::XDG_SURFACE_MESH &&
       !neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after reflecting from surface " +
                  std::to_string(surf.id_) + ".");

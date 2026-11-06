@@ -313,7 +313,7 @@ public:
   //! taking into account presence of distribcell material
   //! \param[in] instance of the cell
   //! \return material index
-  int32_t material(int32_t instance) const
+  virtual int32_t material(int32_t instance) const
   {
     // If distributed materials are used, then each instance has its own
     // material definition. If distributed materials are not used, then

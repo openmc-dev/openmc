@@ -2785,7 +2785,7 @@ class Settings:
         return settings
 
     @classmethod
-    def from_xml(cls, path: PathLike = 'settings.xml'):
+    def from_xml(cls, path: PathLike = 'settings.xml', meshes=None):
         """Generate settings from XML file
 
         .. versionadded:: 0.13.0
@@ -2794,6 +2794,10 @@ class Settings:
         ----------
         path : str, optional
             Path to settings XML file
+        meshes : dict or None
+            A dictionary with mesh IDs as keys and mesh instances as values that
+            have already been read from XML. Pre-existing meshes are used
+            and new meshes are added to when creating tally objects.
 
         Returns
         -------
@@ -2805,5 +2809,7 @@ class Settings:
             parser = ET.XMLParser(huge_tree=True)
             tree = ET.parse(path, parser=parser)
             root = tree.getroot()
-            meshes = _read_meshes(root)
+            if meshes is None:
+                meshes = {}
+            meshes.update(_read_meshes(root))
             return cls.from_xml_element(root, meshes)

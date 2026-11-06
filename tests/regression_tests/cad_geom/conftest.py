@@ -2,7 +2,17 @@ from pathlib import Path
 import numpy as np
 
 import openmc
+import openmc.lib
 import pytest
+
+# used throughout this section of testing to ensure tests are
+# skipped if the required CAD geometry library is not enabled
+@pytest.fixture(autouse=True)
+def skip_if_lib_disabled(request):
+    if 'interface' in request.fixturenames:
+        interface_value = request.getfixturevalue('interface')
+        if not openmc.lib.feature_enabled(interface_value):
+            pytest.skip(f"{interface_value} library is not enabled")
 
 
 @pytest.fixture()

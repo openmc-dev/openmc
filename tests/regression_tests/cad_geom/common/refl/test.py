@@ -4,11 +4,6 @@ from openmc.stats import Box
 import pytest
 from tests.testing_harness import PyAPITestHarness
 
-test_libs = []
-if openmc.lib.feature_enabled('dagmc'):
-    test_libs.append('dagmc')
-if openmc.lib.feature_enabled('xdg'):
-    test_libs.append('xdg')
 
 @pytest.fixture()
 def refl_pincell():
@@ -61,7 +56,8 @@ def refl_pincell():
 
     return _refl_pincell
 
-@pytest.mark.parametrize("interface", test_libs)
+
+@pytest.mark.parametrize("interface", ['dagmc', 'xdg'])
 def test_refl(refl_pincell, interface):
     input = f'inputs_{interface}.dat'
     harness = PyAPITestHarness('statepoint.5.h5', refl_pincell(interface), input)

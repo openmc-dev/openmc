@@ -1,26 +1,12 @@
 from pathlib import Path
 
-import openmc
-import openmc.lib
-
 import h5py
 import numpy as np
 import pytest
 
 from tests.testing_harness import PyAPITestHarness, config
 
-pytestmark = pytest.mark.skipif(
-    not openmc.lib.feature_enabled('dagmc'),
-    reason="DAGMC CAD geometry is not enabled.")
-
-
-test_libs = []
-if openmc.lib.feature_enabled('dagmc'):
-    test_libs.append('dagmc')
-if openmc.lib.feature_enabled('xdg'):
-    test_libs.append('xdg')
-
-@pytest.mark.parametrize('interface', test_libs)
+@pytest.mark.parametrize('interface', ['dagmc', 'xdg'])
 def test_missing_material_id(cad_pincell_model, interface):
     model = cad_pincell_model(interface)
     # remove the last material, which is identified by ID in the DAGMC file
@@ -31,7 +17,7 @@ def test_missing_material_id(cad_pincell_model, interface):
     assert exp_error_msg in str(exec_info.value)
 
 
-@pytest.mark.parametrize('interface', test_libs)
+@pytest.mark.parametrize('interface', ['dagmc', 'xdg'])
 def test_missing_material_name(cad_pincell_model, interface):
     model = cad_pincell_model(interface)
     # remove the first material, which is identified by name in the DAGMC file
@@ -41,9 +27,9 @@ def test_missing_material_name(cad_pincell_model, interface):
     exp_error_msg = "Material with name/ID 'no-void fuel' not found for volume (cell) 1"
     assert exp_error_msg in str(exec_info.value)
 
-@pytest.mark.parametrize('interface', test_libs)
+@pytest.mark.parametrize('interface', ['dagmc', 'xdg'])
 def test_surf_source(cad_pincell_model, interface):
-    model = cad_pincell_model()
+    model = cad_pincell_model(interface)
     # create a surface source read on this model to ensure
     # particles are being generated correctly
     n = 100
@@ -68,7 +54,7 @@ def test_surf_source(cad_pincell_model, interface):
     assert np.allclose(rad, 7.0)
 
 
-@pytest.mark.parametrize("interface", test_libs)
+@pytest.mark.parametrize("interface", ['dagmc', 'xdg'])
 def test_transport(cad_pincell_model, interface):
     input_file = f'inputs_{interface}.dat'
     model = cad_pincell_model(interface)

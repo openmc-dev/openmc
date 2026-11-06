@@ -83,7 +83,7 @@ public:
   void event_check_limit_and_revive();
   void event_death();
 
-  //! Apply the current cell/field temperature without changing sqrtkT_last().
+  //! Apply the current cell/field temperature
   void update_temperature();
 
   //! pulse-height recording

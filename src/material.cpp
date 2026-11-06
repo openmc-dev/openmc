@@ -827,6 +827,8 @@ void Material::calculate_xs(Particle& p) const
 
 void Material::calculate_neutron_xs(Particle& p) const
 {
+  assert(p.type().is_neutron());
+
   // Find energy index on energy grid
   int neutron = ParticleType::neutron().transport_index();
   int i_grid =
@@ -901,6 +903,8 @@ void Material::calculate_neutron_xs(Particle& p) const
 
 void Material::calculate_photon_xs(Particle& p) const
 {
+  assert(p.type().is_photon());
+
   p.macro_xs().coherent = 0.0;
   p.macro_xs().incoherent = 0.0;
   p.macro_xs().photoelectric = 0.0;

@@ -5,10 +5,6 @@ from openmc.stats import Box
 import pytest
 from tests.testing_harness import PyAPITestHarness
 
-pytestmark = pytest.mark.skipif(
-    not openmc.lib.feature_enabled('uwuw'),
-    reason="UWUW is not enabled.")
-
 class UWUWTest(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,6 +21,21 @@ class UWUWTest(PyAPITestHarness):
         # geometry
         dag_univ = openmc.DAGMCUniverse("dagmc.h5m", auto_geom_ids=True)
         self._model.geometry = openmc.Geometry(dag_univ)
+
+        # materials
+        u235 = openmc.Material(name="fuel")
+        u235.add_nuclide('U235', 1.0, 'ao')
+        u235.set_density('g/cc', 11)
+        u235.id = 40
+
+        water = openmc.Material(name="moderator")
+        water.add_nuclide('H1', 2.0, 'ao')
+        water.add_nuclide('O16', 1.0, 'ao')
+        water.set_density('g/cc', 1.0)
+        water.add_s_alpha_beta('c_H_in_H2O')
+        water.id = 41
+
+        self._model.materials = openmc.Materials([u235, water])
 
         # tally
         tally = openmc.Tally()

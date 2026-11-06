@@ -21,9 +21,9 @@ namespace openmc {
 class Surface;
 
 enum class TransportEvent {
-  NONE, //!< No collision or geometry handler needed.
+  NONE, //!< No collision or surface crossing handler needed.
   COLLISION,
-  GEOMETRY
+  SURFACE_CROSSING
 };
 
 /*

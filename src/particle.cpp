@@ -296,7 +296,7 @@ TransportEvent Particle::event_advance()
 
   // If a temperature field is active, treat its nearest mesh surface as a
   // transport boundary.
-  TransportEvent event = TransportEvent::GEOMETRY;
+  TransportEvent event = TransportEvent::SURFACE_CROSSING;
   bool temperature_field_crossing = false;
   int next_temperature_field_bin = C_NONE;
   if (settings::temperature_field_on) {

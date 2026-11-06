@@ -118,7 +118,7 @@ void process_advance_particle_events()
     Particle& p = simulation::particles[buffer_idx];
     if (p.alive()) {
       switch (p.event_advance()) {
-      case TransportEvent::GEOMETRY:
+      case TransportEvent::SURFACE_CROSSING:
         simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
         continue;
       case TransportEvent::COLLISION:

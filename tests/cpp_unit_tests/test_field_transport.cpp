@@ -134,7 +134,7 @@ TEST_CASE("Advance selects the transport event and updates the field bin")
   SECTION("Geometry without a field")
   {
     settings::temperature_field_on = false;
-    expected = TransportEvent::GEOMETRY;
+    expected = TransportEvent::SURFACE_CROSSING;
     expected_x = 2;
   }
   SECTION("Collision before the candidate mesh crossing")
@@ -156,7 +156,7 @@ TEST_CASE("Advance selects the transport event and updates the field bin")
   SECTION("Coincident geometry and field crossing")
   {
     fixture.initialize(p, {1.25, 0, 0});
-    expected = TransportEvent::GEOMETRY;
+    expected = TransportEvent::SURFACE_CROSSING;
     expected_bin = C_NONE;
     expected_x = 2;
   }
@@ -252,7 +252,7 @@ TEST_CASE("Geometry crossings defer field temperature to the XS stage")
     REQUIRE(p.n_event() == 1);
     REQUIRE(simulation::calculate_nonfuel_xs_queue.size() == 1);
   } else {
-    REQUIRE(p.event_advance() == TransportEvent::GEOMETRY);
+    REQUIRE(p.event_advance() == TransportEvent::SURFACE_CROSSING);
     REQUIRE(p.temperature_field_bin() == bin);
     REQUIRE(p.sqrtkT() == previous);
     p.event_cross_surface();
@@ -295,7 +295,7 @@ TEST_CASE("Boundary conditions defer field-bin correction to the XS stage")
     process_advance_particle_events();
     REQUIRE(simulation::surface_crossing_queue.size() == 1);
   } else {
-    REQUIRE(p.event_advance() == TransportEvent::GEOMETRY);
+    REQUIRE(p.event_advance() == TransportEvent::SURFACE_CROSSING);
   }
   REQUIRE(p.temperature_field_bin() == C_NONE);
   REQUIRE(p.sqrtkT() == previous);
@@ -343,7 +343,7 @@ TEST_CASE("Periodic mapping defers relocation and caches outside results")
   const double previous = p.sqrtkT();
   fixture.mesh->lookups = 0;
   const int previous_bin = p.temperature_field_bin();
-  REQUIRE(p.event_advance() == TransportEvent::GEOMETRY);
+  REQUIRE(p.event_advance() == TransportEvent::SURFACE_CROSSING);
   REQUIRE(p.temperature_field_bin() == previous_bin);
   p.event_cross_surface();
   const int bin = lower < 0 ? 0 : C_NONE;
@@ -381,7 +381,7 @@ TEST_CASE("Reflection at a mesh corner resolves the outgoing bin")
   const double u = std::sqrt(0.5);
   fixture.initialize(p, {0.5, -0.5, 0}, {u, u, 0});
   fixture.mesh->lookups = 0;
-  REQUIRE(p.event_advance() == TransportEvent::GEOMETRY);
+  REQUIRE(p.event_advance() == TransportEvent::SURFACE_CROSSING);
   REQUIRE(p.temperature_field_bin() == 3);
   p.event_cross_surface();
   REQUIRE(fixture.mesh->lookups == 0);
@@ -453,7 +453,7 @@ TEST_CASE("Lattice crossings defer field temperature to the XS stage")
   Particle p;
   fixture.initialize(p, {start, 0, 0});
   fixture.mesh->lookups = 0;
-  REQUIRE(p.event_advance() == TransportEvent::GEOMETRY);
+  REQUIRE(p.event_advance() == TransportEvent::SURFACE_CROSSING);
   p.event_cross_surface();
   const int bin = start < -1 || start > 1 ? C_NONE : start < 0 ? 0 : 1;
   REQUIRE(p.temperature_field_bin() == bin);

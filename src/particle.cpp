@@ -199,10 +199,8 @@ void Particle::from_source(const SourceSite* src)
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
 
-  if (settings::temperature_field_on) {
-    temperature_field_bin() =
-      simulation::temperature_field.get_bin(r() + TINY_BIT * u());
-  }
+  if (settings::temperature_field_on)
+    temperature_field_bin() = FIELD_BIN_UNKNOWN;
 }
 
 void Particle::event_calculate_xs()
@@ -385,9 +383,16 @@ TransportEvent Particle::event_advance()
 
 void Particle::update_temperature()
 {
-  if (settings::temperature_field_on && temperature_field_bin() != C_NONE) {
-    sqrtkT() =
-      simulation::temperature_field.get_sqrtkT(temperature_field_bin());
+  // If temperature field enabled but the bin is not set, determine the bin
+  // based on the particle's current position
+  auto& bin = temperature_field_bin();
+  if (settings::temperature_field_on && bin == FIELD_BIN_UNKNOWN) {
+    bin = simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+  }
+
+  // Set the particle's sqrt(kT) based on the field or the cell's temperature
+  if (settings::temperature_field_on && bin != C_NONE) {
+    sqrtkT() = simulation::temperature_field.get_sqrtkT(bin);
   } else {
     sqrtkT() = model::cells[lowest_coord().cell()]->sqrtkT(cell_instance());
   }
@@ -552,10 +557,8 @@ void Particle::event_collide()
   if (near_surface && alive()) {
     sqrtkT_last() = sqrtkT();
     reconcile_cell_after_collision(*this);
-    if (settings::temperature_field_on && alive()) {
-      temperature_field_bin() =
-        simulation::temperature_field.get_bin(r() + TINY_BIT * u());
-    }
+    if (settings::temperature_field_on && alive())
+      temperature_field_bin() = FIELD_BIN_UNKNOWN;
   }
 }
 
@@ -797,10 +800,8 @@ void Particle::cross_surface(const Surface& surf)
                    " it could not be located in any cell and it did not leak.");
       return;
     }
-    if (settings::temperature_field_on) {
-      temperature_field_bin() =
-        simulation::temperature_field.get_bin(r() + TINY_BIT * u());
-    }
+    if (settings::temperature_field_on)
+      temperature_field_bin() = FIELD_BIN_UNKNOWN;
   }
 }
 
@@ -861,10 +862,8 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 
   // Set the new particle direction
   u() = new_u;
-  if (settings::temperature_field_on) {
-    temperature_field_bin() =
-      simulation::temperature_field.get_bin(r() + TINY_BIT * u());
-  }
+  if (settings::temperature_field_on)
+    temperature_field_bin() = FIELD_BIN_UNKNOWN;
 
   // Reassign particle's cell and surface
   coord(0).cell() = cell_last(0);
@@ -916,10 +915,8 @@ void Particle::cross_periodic_bc(
   // Adjust the particle's location and direction.
   r() = new_r;
   u() = new_u;
-  if (settings::temperature_field_on) {
-    temperature_field_bin() =
-      simulation::temperature_field.get_bin(r() + TINY_BIT * u());
-  }
+  if (settings::temperature_field_on)
+    temperature_field_bin() = FIELD_BIN_UNKNOWN;
 
   // Reassign particle's surface
   surface() = new_surface;

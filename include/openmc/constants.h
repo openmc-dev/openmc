@@ -341,6 +341,7 @@ enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
 
 // Miscellaneous
 constexpr int C_NONE {-1};
+constexpr int FIELD_BIN_UNKNOWN {-2};
 
 // Default value of generation for IFP
 constexpr int DEFAULT_IFP_N_GENERATION {10};

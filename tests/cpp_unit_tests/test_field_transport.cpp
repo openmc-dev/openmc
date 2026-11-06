@@ -88,7 +88,9 @@ public:
     source.E = 1.e6;
     source.wgt = 1;
     source.particle = ParticleType::neutron();
+    const int lookups = mesh->lookups;
     p.from_source(&source);
+    REQUIRE(mesh->lookups == lookups);
     p.stream() = STREAM_TRACKING;
     p.seeds(0) = 123;
     p.event_calculate_xs();
@@ -271,7 +273,7 @@ TEST_CASE("Geometry crossings defer field temperature to the XS stage")
   REQUIRE(fixture.mesh->lookups == 0);
 }
 
-TEST_CASE("Boundary conditions correct the incoming field prediction")
+TEST_CASE("Boundary conditions defer field-bin correction to the XS stage")
 {
   const std::string bc = GENERATE("reflective", "white", "periodic", "vacuum");
   const bool event_based = GENERATE(false, true);
@@ -306,20 +308,21 @@ TEST_CASE("Boundary conditions correct the incoming field prediction")
     REQUIRE(fixture.mesh->lookups == 0);
   } else {
     const int bin = bc == "periodic" ? 0 : 1;
-    REQUIRE(p.temperature_field_bin() == bin);
+    REQUIRE(fixture.mesh->lookups == 0);
     REQUIRE(p.sqrtkT() == std::sqrt(250 * K_BOLTZMANN));
     REQUIRE(p.sqrtkT_last() == previous);
     if (event_based)
       process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
     else
       p.event_calculate_xs();
+    REQUIRE(p.temperature_field_bin() == bin);
     REQUIRE(p.sqrtkT() == simulation::temperature_field.get_sqrtkT(bin));
     REQUIRE(p.sqrtkT_last() == previous);
     REQUIRE(fixture.mesh->lookups == 1);
   }
 }
 
-TEST_CASE("Periodic mapping relocates the bin without a field crossing")
+TEST_CASE("Periodic mapping defers relocation and caches outside results")
 {
   const double lower = GENERATE(-1.0, 1.0);
   FieldTransportFixture fixture(R"(<geometry>
@@ -344,15 +347,20 @@ TEST_CASE("Periodic mapping relocates the bin without a field crossing")
   REQUIRE(p.temperature_field_bin() == previous_bin);
   p.event_cross_surface();
   const int bin = lower < 0 ? 0 : C_NONE;
-  REQUIRE(p.temperature_field_bin() == bin);
+  REQUIRE(fixture.mesh->lookups == 0);
   REQUIRE(p.sqrtkT() == std::sqrt(250 * K_BOLTZMANN));
   REQUIRE(p.sqrtkT_last() == previous);
   p.event_calculate_xs();
+  REQUIRE(p.temperature_field_bin() == bin);
   const double expected = bin == C_NONE
                             ? std::sqrt(250 * K_BOLTZMANN)
                             : simulation::temperature_field.get_sqrtkT(bin);
   REQUIRE(p.sqrtkT() == expected);
   REQUIRE(p.sqrtkT_last() == previous);
+  REQUIRE(fixture.mesh->lookups == 1);
+  p.event_calculate_xs();
+  REQUIRE(p.temperature_field_bin() == bin);
+  REQUIRE(p.sqrtkT() == expected);
   REQUIRE(fixture.mesh->lookups == 1);
 }
 
@@ -372,13 +380,16 @@ TEST_CASE("Reflection at a mesh corner resolves the outgoing bin")
   Particle p;
   const double u = std::sqrt(0.5);
   fixture.initialize(p, {0.5, -0.5, 0}, {u, u, 0});
+  fixture.mesh->lookups = 0;
   REQUIRE(p.event_advance() == TransportEvent::GEOMETRY);
   REQUIRE(p.temperature_field_bin() == 3);
   p.event_cross_surface();
-  REQUIRE(p.temperature_field_bin() == 2);
+  REQUIRE(fixture.mesh->lookups == 0);
   REQUIRE(p.sqrtkT() == std::sqrt(250 * K_BOLTZMANN));
   p.event_calculate_xs();
+  REQUIRE(p.temperature_field_bin() == 2);
   REQUIRE(p.sqrtkT() == simulation::temperature_field.get_sqrtkT(2));
+  REQUIRE(fixture.mesh->lookups == 1);
 }
 
 TEST_CASE("Sources initialize the field bin once, including secondary sources")
@@ -402,6 +413,7 @@ TEST_CASE("Sources initialize the field bin once, including secondary sources")
   secondary.wgt = 1;
   secondary.particle = ParticleType::photon();
   p.event_revive_from_secondary(secondary);
+  REQUIRE(fixture.mesh->lookups == 0);
   if (pulse_height) {
     REQUIRE(p.lowest_coord().cell() == 0);
     REQUIRE(p.sqrtkT() == std::sqrt(250 * K_BOLTZMANN));

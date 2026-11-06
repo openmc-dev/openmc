@@ -20,7 +20,7 @@ namespace openmc {
 // Forward declare the Surface class for use in Particle::cross_vacuum_bc, etc.
 class Surface;
 
-enum class TransportEvent : uint8_t {
+enum class TransportEvent {
   COLLISION,
   GEOMETRY,
   TEMPERATURE_FIELD,
@@ -85,7 +85,7 @@ public:
   void event_calculate_xs();
   AdvanceResult event_advance();
   void event_cross_temperature_field(int next_bin);
-  void event_cross_surface(const AdvanceResult& result = {});
+  void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary(const SourceSite& site);
   void event_check_limit_and_revive();

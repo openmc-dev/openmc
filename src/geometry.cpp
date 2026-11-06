@@ -124,25 +124,8 @@ int cell_instance_at_level(const GeometryState& p, int level)
 
 //==============================================================================
 
-void update_temperature(GeometryState& p, TemperatureFieldMode field_mode)
-{
-  p.sqrtkT_last() = p.sqrtkT();
-  if (settings::temperature_field_on) {
-    if (field_mode == TemperatureFieldMode::LOCATE) {
-      p.temperature_field_bin() =
-        simulation::temperature_field.get_bin(p.r() + TINY_BIT * p.u());
-    }
-    if (p.temperature_field_bin() != C_NONE) {
-      p.sqrtkT() =
-        simulation::temperature_field.get_sqrtkT(p.temperature_field_bin());
-      return;
-    }
-  }
-  p.sqrtkT() = model::cells[p.lowest_coord().cell()]->sqrtkT(p.cell_instance());
-}
-
-bool find_cell_inner(GeometryState& p, const NeighborList* neighbor_list,
-  bool verbose, TemperatureFieldMode field_mode)
+bool find_cell_inner(
+  GeometryState& p, const NeighborList* neighbor_list, bool verbose)
 {
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
@@ -219,7 +202,18 @@ bool find_cell_inner(GeometryState& p, const NeighborList* neighbor_list,
       p.material() = c.material(p.cell_instance());
 
       // Set the temperature.
-      update_temperature(p, field_mode);
+      p.sqrtkT_last() = p.sqrtkT();
+      int tf_bin = C_NONE;
+      if (settings::temperature_field_on) {
+        tf_bin =
+          simulation::temperature_field.get_bin(p.r() + TINY_BIT * p.u());
+      }
+      p.temperature_field_bin() = tf_bin;
+      if (tf_bin != C_NONE) {
+        p.sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
+      } else {
+        p.sqrtkT() = c.sqrtkT(p.cell_instance());
+      }
 
       // Set the density multiplier.
       p.density_mult_last() = p.density_mult();
@@ -298,8 +292,7 @@ bool find_cell_inner(GeometryState& p, const NeighborList* neighbor_list,
 
 //==============================================================================
 
-bool neighbor_list_find_cell(
-  GeometryState& p, bool verbose, TemperatureFieldMode field_mode)
+bool neighbor_list_find_cell(GeometryState& p, bool verbose)
 {
 
 #ifdef OPENMC_DAGMC_ENABLED
@@ -324,14 +317,14 @@ bool neighbor_list_find_cell(
 
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.
-  bool found = find_cell_inner(p, &c.neighbors_, verbose, field_mode);
+  bool found = find_cell_inner(p, &c.neighbors_, verbose);
   if (found)
     return found;
 
   // The particle could not be found in the neighbor list.  Try searching all
   // cells in this universe, and update the neighbor list if we find a new
   // neighboring cell.
-  found = find_cell_inner(p, nullptr, verbose, field_mode);
+  found = find_cell_inner(p, nullptr, verbose);
   if (found)
     c.neighbors_.push_back(p.coord(coord_lvl).cell());
   return found;
@@ -370,8 +363,7 @@ void reconcile_cell_after_collision(GeometryState& p)
   }
 }
 
-bool exhaustive_find_cell(
-  GeometryState& p, bool verbose, TemperatureFieldMode field_mode)
+bool exhaustive_find_cell(GeometryState& p, bool verbose)
 {
   int i_universe = p.lowest_coord().universe();
   if (i_universe == C_NONE) {
@@ -383,13 +375,12 @@ bool exhaustive_find_cell(
   for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
     p.coord(i).reset();
   }
-  return find_cell_inner(p, nullptr, verbose, field_mode);
+  return find_cell_inner(p, nullptr, verbose);
 }
 
 //==============================================================================
 
-void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose,
-  TemperatureFieldMode field_mode)
+void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)
 {
   auto& coord {p.lowest_coord()};
   auto& lat {*model::lattices[coord.lattice()]};
@@ -420,7 +411,7 @@ void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose,
   if (!lat.are_valid_indices(coord.lattice_index())) {
     // The particle is outside the lattice.  Search for it from the base coords.
     p.n_coord() = 1;
-    bool found = exhaustive_find_cell(p, false, field_mode);
+    bool found = exhaustive_find_cell(p);
 
     if (!found) {
       p.mark_as_lost(fmt::format("Particle {} could not be located after "
@@ -431,13 +422,13 @@ void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose,
   } else {
     // Find cell in next lattice element.
     p.lowest_coord().universe() = lat[coord.lattice_index()];
-    bool found = exhaustive_find_cell(p, false, field_mode);
+    bool found = exhaustive_find_cell(p);
 
     if (!found) {
       // A particle crossing the corner of a lattice tile may not be found.  In
       // this case, search for it from the base coords.
       p.n_coord() = 1;
-      bool found = exhaustive_find_cell(p, false, field_mode);
+      bool found = exhaustive_find_cell(p);
       if (!found) {
         p.mark_as_lost(fmt::format("Particle {} could not be located after "
                                    "crossing a boundary of lattice {}",

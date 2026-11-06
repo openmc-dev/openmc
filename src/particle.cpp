@@ -290,18 +290,11 @@ AdvanceResult Particle::event_advance()
   // If a temperature field is active, treat its nearest mesh surface as a
   // transport boundary.
   AdvanceResult result;
-  result.event = TransportEvent::GEOMETRY;
   if (settings::temperature_field_on) {
     const auto crossing = simulation::temperature_field.next_mesh_crossing(
       temperature_field_bin(), r(), u());
     if (crossing.distance < boundary().distance() - FP_COINCIDENT) {
       boundary().distance() = crossing.distance;
-      result.temperature_field_crossing = true;
-      result.next_temperature_field_bin = crossing.next_bin;
-      result.event = TransportEvent::TEMPERATURE_FIELD;
-    } else if (crossing.distance < INFTY &&
-               std::abs(crossing.distance - boundary().distance()) <=
-                 FP_COINCIDENT) {
       result.temperature_field_crossing = true;
       result.next_temperature_field_bin = crossing.next_bin;
     }
@@ -319,8 +312,10 @@ AdvanceResult Particle::event_advance()
 
   if (distance == distance_cutoff) {
     result.event = TransportEvent::TIME_CUTOFF;
-  } else if (collision_distance() <= boundary().distance()) {
-    result.event = TransportEvent::COLLISION;
+  } else if (collision_distance() > boundary().distance()) {
+    result.event = result.temperature_field_crossing
+                     ? TransportEvent::TEMPERATURE_FIELD
+                     : TransportEvent::GEOMETRY;
   }
 
   // Advance particle in space and time
@@ -363,18 +358,24 @@ AdvanceResult Particle::event_advance()
 
 void Particle::event_cross_temperature_field(int next_bin)
 {
+  sqrtkT_last() = sqrtkT();
   temperature_field_bin() = next_bin;
-  update_temperature(*this, TemperatureFieldMode::REUSE);
+
+  if (next_bin != C_NONE) {
+    sqrtkT() = simulation::temperature_field.get_sqrtkT(next_bin);
+  } else {
+    int i_cell = lowest_coord().cell();
+    Cell& c {*model::cells[i_cell]};
+    sqrtkT() = c.sqrtkT(cell_instance());
+  }
 
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
 }
 
-void Particle::event_cross_surface(const AdvanceResult& result)
+void Particle::event_cross_surface()
 {
-  const double previous_temperature = sqrtkT();
-  const Surface* crossed_surface = nullptr;
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
     cell_last(j) = coord(j).cell();
@@ -392,7 +393,7 @@ void Particle::event_cross_surface(const AdvanceResult& result)
 
     int i_lattice = coord(boundary().coord_level() - 1).lattice();
     bool verbose = settings::verbosity >= 10 || trace();
-    cross_lattice(*this, boundary(), verbose, TemperatureFieldMode::REUSE);
+    cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
 
     // Score cell to cell partial currents
@@ -410,7 +411,6 @@ void Particle::event_cross_surface(const AdvanceResult& result)
   } else {
 
     const auto& surf {*model::surfaces[surface_index()].get()};
-    crossed_surface = &surf;
 
     // Particle crosses surface
     // If BC, add particle to surface source before crossing surface
@@ -433,19 +433,6 @@ void Particle::event_cross_surface(const AdvanceResult& result)
       normal /= normal.norm();
       score_surface_tally(*this, model::active_surface_tallies, normal);
     }
-  }
-  if (settings::temperature_field_on && alive() &&
-      result.temperature_field_crossing) {
-    if (crossed_surface && crossed_surface->bc_) {
-      // Periodic mapping already relocated the bin. Reflection must resolve
-      // the outgoing direction, especially at a mesh edge or corner.
-      if (crossed_surface->bc_->type() != "periodic")
-        update_temperature(*this);
-    } else {
-      temperature_field_bin() = result.next_temperature_field_bin;
-      update_temperature(*this, TemperatureFieldMode::REUSE);
-    }
-    sqrtkT_last() = previous_temperature;
   }
 }
 
@@ -747,14 +734,23 @@ void Particle::cross_surface(const Surface& surf)
       cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
 
     material() = cell->material(cell_instance());
-    update_temperature(*this, TemperatureFieldMode::REUSE);
+    int tf_bin = C_NONE;
+    if (settings::temperature_field_on) {
+      tf_bin = simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+    }
+    temperature_field_bin() = tf_bin;
+    if (tf_bin != C_NONE) {
+      sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin);
+    } else {
+      sqrtkT() = cell->sqrtkT(cell_instance());
+    }
     density_mult() = cell->density_mult(cell_instance());
     return;
   }
 #endif
 
   bool verbose = settings::verbosity >= 10 || trace();
-  if (neighbor_list_find_cell(*this, verbose, TemperatureFieldMode::REUSE)) {
+  if (neighbor_list_find_cell(*this, verbose)) {
     return;
   }
 
@@ -763,8 +759,7 @@ void Particle::cross_surface(const Surface& surf)
 
   // Remove lower coordinate levels
   n_coord() = 1;
-  bool found =
-    exhaustive_find_cell(*this, verbose, TemperatureFieldMode::REUSE);
+  bool found = exhaustive_find_cell(*this, verbose);
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
@@ -856,7 +851,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
   if (surf.geom_type() != GeometryType::DAG &&
-      !neighbor_list_find_cell(*this, false, TemperatureFieldMode::REUSE)) {
+      !neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after reflecting from surface " +
                  std::to_string(surf.id_) + ".");
     return;
@@ -903,12 +898,7 @@ void Particle::cross_periodic_bc(
   // Figure out what cell particle is in now
   n_coord() = 1;
 
-  if (settings::temperature_field_on) {
-    temperature_field_bin() =
-      simulation::temperature_field.get_bin(r() + TINY_BIT * u());
-  }
-
-  if (!neighbor_list_find_cell(*this, false, TemperatureFieldMode::REUSE)) {
+  if (!neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after hitting periodic "
                  "boundary on surface " +
                  std::to_string(surf.id_) + ".");

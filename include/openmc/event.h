@@ -51,11 +51,6 @@ struct EventQueueItem {
   }
 };
 
-struct SurfaceCrossingQueueItem {
-  int64_t idx;
-  AdvanceResult advance;
-};
-
 //==============================================================================
 // Global variable declarations
 //==============================================================================
@@ -69,7 +64,7 @@ namespace simulation {
 extern SharedArray<EventQueueItem> calculate_fuel_xs_queue;
 extern SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 extern SharedArray<EventQueueItem> advance_particle_queue;
-extern SharedArray<SurfaceCrossingQueueItem> surface_crossing_queue;
+extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
 
 // Particle buffer

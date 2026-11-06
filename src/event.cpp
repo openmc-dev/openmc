@@ -18,7 +18,7 @@ namespace simulation {
 SharedArray<EventQueueItem> calculate_fuel_xs_queue;
 SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 SharedArray<EventQueueItem> advance_particle_queue;
-SharedArray<SurfaceCrossingQueueItem> surface_crossing_queue;
+SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 
 vector<Particle> particles;
@@ -123,8 +123,7 @@ void process_advance_particle_events()
         simulation::collision_queue.thread_safe_append({p, buffer_idx});
         continue;
       case TransportEvent::GEOMETRY:
-        simulation::surface_crossing_queue.thread_safe_append(
-          {buffer_idx, result});
+        simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
         continue;
       case TransportEvent::TEMPERATURE_FIELD:
         p.event_cross_temperature_field(result.next_temperature_field_bin);
@@ -151,7 +150,7 @@ void process_surface_crossing_events()
   for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
-    p.event_cross_surface(simulation::surface_crossing_queue[i].advance);
+    p.event_cross_surface();
     p.event_check_limit_and_revive();
     if (p.alive())
       dispatch_xs_event(buffer_idx);

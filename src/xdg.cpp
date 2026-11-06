@@ -224,7 +224,7 @@ void XDGUniverse::init_geometry()
   next_surf_id++;
 
   for (auto surface : xdg_ptr()->mesh_manager()->surfaces()) {
-    auto s = std::make_unique<XDGSurface>(xdg_instance_, surface);
+    auto s = std::make_unique<XDGSurface>(xdg_ptr(), surface);
     s->id_ = adjust_geometry_ids_ ? next_surf_id++ : surface;
 
     s->surf_source_ = contains(settings::source_write_surf_id, s->id_);
@@ -240,7 +240,7 @@ void XDGUniverse::init_geometry()
       if (bc_value.empty() || bc_value == "transmit" ||
           bc_value == "transmission") {
         // set to transmission by default (nullptr)
-      } else if (bc_value == "vacuum" || "xdg_boundary") {
+      } else if (bc_value == "vacuum" || bc_value == "xdg_boundary") {
         s->bc_ = make_unique<VacuumBC>();
       } else if (bc_value == "reflective" || bc_value == "reflect" ||
                  bc_value == "reflecting") {
@@ -599,8 +599,7 @@ Direction XDGSurface::reflect(Position r, Direction u, GeometryState* p) const
   double pnt[3] = {r.x, r.y, r.z};
   xdg::Direction normal =
     xdg_ptr()->surface_normal(xdg_id(), pnt, &p->xdg_prev_elements());
-  p->u_last() = u.reflect({normal[0], normal[1], normal[2]});
-  return p->u_last();
+   return u.reflect({normal[0], normal[1], normal[2]});
 }
 
 //==============================================================================

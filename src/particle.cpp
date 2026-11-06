@@ -834,7 +834,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // the lower universes.
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
-  if (surf.geom_type() != GeometryType::DAG &&
+  if (surf.geom_type() != GeometryType::DAG && surf.geom_type() != GeometryType::XDG_SURFACE_MESH &&
       !neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after reflecting from surface " +
                  std::to_string(surf.id_) + ".");

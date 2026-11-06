@@ -49,7 +49,7 @@ def feature_enabled(feature: str) -> bool:
 
     Parameters
     ----------
-    feature : {'dagmc', 'libmesh', 'strict_fp', 'uwuw'}
+    feature : {'dagmc', 'libmesh', 'strict_fp', 'uwuw', 'xdg'}
         Feature to query.
 
     Returns

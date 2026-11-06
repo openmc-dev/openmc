@@ -1,5 +1,7 @@
 import os
 import hashlib
+from pathlib import Path
+
 import pytest
 import openmc
 import openmc.lib
@@ -97,6 +99,13 @@ def run_in_tmpdir(tmpdir):
 @pytest.fixture(scope="module")
 def endf_data():
     return os.environ['OPENMC_ENDF_DATA']
+
+@pytest.fixture(scope='session')
+def ww_files():
+    """Canonical neutron and photon weight-window test data paths."""
+    root = Path(__file__).parent / 'regression_tests' / 'weightwindows'
+    return (root / 'ww_n.txt', root / 'ww_p.txt')
+
 
 @pytest.fixture(scope='session', autouse=True)
 def resolve_paths():

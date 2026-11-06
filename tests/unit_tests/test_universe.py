@@ -198,7 +198,8 @@ def test_dagmc_universe_from_hdf5_without_filename(run_in_tmpdir):
         group.attrs['auto_mat_ids'] = 1
         group.attrs['length_multiplier'] = 1.0
 
-        univ = openmc.DAGMCUniverse.from_hdf5(group)
+        with openmc.config.patch('resolve_paths', True):
+            univ = openmc.DAGMCUniverse.from_hdf5(group)
 
     assert univ.id == 1
     assert univ.filename == Path()

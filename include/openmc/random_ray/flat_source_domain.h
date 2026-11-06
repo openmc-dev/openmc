@@ -76,6 +76,7 @@ public:
   void compute_k_eff();
   virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
+  bool is_geometry_3D();
 
   int64_t add_source_to_scalar_flux();
   virtual void batch_reset();
@@ -85,6 +86,7 @@ public:
   virtual void accumulate_iteration_flux();
   void demotion_step();
   void output_to_vtk() const;
+  void output_to_vtk_decomp() const;
   void convert_external_sources(bool use_adjoint_sources);
   void count_external_source_regions();
   void set_fw_adjoint_sources();
@@ -122,6 +124,9 @@ public:
   static bool volume_normalized_flux_tallies_;
   // If the user wants outputs based on the adjoint flux
   static bool adjoint_requested_;
+  // If the user wants linear source gradients rescaled so the modeled source
+  // stays non-negative over each source region
+  static bool source_gradient_limiter_;
   // The solve currently being executed
   static RandomRaySolve solve_;
   static bool fw_cadis_local_;

@@ -527,8 +527,8 @@ extern "C" int openmc_statepoint_load(const char* filename)
             results.shape(2), results.data());
 
           read_dataset(tally_group, "n_realizations", tally->n_realizations_);
-          close_group(tally_group);
         }
+        close_group(tally_group);
       }
       close_group(tallies_group);
     }

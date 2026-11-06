@@ -471,13 +471,17 @@ void process_charged_secondary(
   Particle& p, Direction u, double E, ParticleType type)
 {
   int idx = type.transport_index();
-  if (idx == C_NONE || E < settings::energy_cutoff[idx])
+  if (idx == C_NONE)
     return;
 
-  if (settings::electron_treatment == ElectronTreatment::TTB) {
+  // Below the energy cutoff, the kinetic energy is deposited locally without
+  // producing bremsstrahlung
+  if (E >= settings::energy_cutoff[idx] &&
+      settings::electron_treatment == ElectronTreatment::TTB) {
     thick_target_bremsstrahlung(p, type, u, E);
   }
 
+  // A positron annihilates regardless of its kinetic energy
   if (type == ParticleType::positron()) {
     Direction photon_u = isotropic_direction(p.current_seed());
     p.create_secondary(

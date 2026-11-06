@@ -522,8 +522,8 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   // shape[j] gives the number of bins for filter storage position j.
 
   // Row-major strides for the 3 filter dimensions
-  const int stride0 = shape[1] * shape[2];
-  const int stride1 = shape[2];
+  const int64_t stride0 = static_cast<int64_t>(shape[1]) * shape[2];
+  const int64_t stride1 = shape[2];
 
   tensor::Tensor<double> sum(
     {static_cast<size_t>(e_bins), static_cast<size_t>(mesh_bins)});
@@ -542,7 +542,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       idx[transpose[2]] = static_cast<int>(m);
 
       // Compute flat filter combination index (row-major over filter dims)
-      int flat = idx[0] * stride0 + idx[1] * stride1 + idx[2];
+      int64_t flat = idx[0] * stride0 + idx[1] * stride1 + idx[2];
 
       sum(e, m) = results(flat, score_index, i_sum);
       sum_sq(e, m) = results(flat, score_index, i_sum_sq);

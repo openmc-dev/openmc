@@ -12,6 +12,7 @@ Theory and Methodology
     geometry
     cross_sections
     random_numbers
+    source_sampling
     neutron_physics
     photon_physics
     charged_particles_physics

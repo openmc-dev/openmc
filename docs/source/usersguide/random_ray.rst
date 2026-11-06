@@ -979,6 +979,21 @@ in the :attr:`openmc.Settings.random_ray` dictionary to ``'linear'`` as::
 LS enables the use of coarser mesh discretizations and lower ray populations,
 offsetting the increased computation per ray.
 
+In poorly sampled source regions, fitted gradients can become spuriously
+steep, producing negative sources that may destabilize optically thin,
+scattering-dominated problems. If this occurs, a gradient limiter can be
+enabled as::
+
+    settings.random_ray['source_gradient_limiter'] = True
+
+The limiter rescales a region's gradient as needed so that the modeled
+source stays non-negative over the region's bounding box, as sampled by
+the rays that have crossed it, preserving the region's mean emission. The
+limiter is off by default, as limiting also clips physically steep source
+shapes such as those found in optically thick regions of deep-penetration
+problems; see the :ref:`methods documentation
+<methods_random_ray_gradient_limiter>` for details.
+
 While OpenMC has no specific mode for 2D simulations, such simulations can be
 performed implicitly by leaving one of the dimensions of the geometry unbounded
 or by imposing reflective boundary conditions with no variation in between them

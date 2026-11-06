@@ -201,7 +201,9 @@ time.
     *Default*: 0.0
 
   :energy_positron:
-    The energy under which positrons will be killed.
+    The energy under which positrons will be killed. A killed positron
+    deposits its kinetic energy locally but still produces a pair of
+    annihilation photons.
 
     *Default*: 0.0
 
@@ -634,6 +636,20 @@ found in the :ref:`random ray user guide <random_ray>`.
 
     *Default*: None
 
+  :source_shape:
+    Specifies the assumed shape of the source distribution within each
+    source region. Options are "flat", "linear", or "linear_xy".
+
+    *Default*: flat
+
+  :source_gradient_limiter:
+    Specifies whether to rescale linear source gradients as needed so that
+    the source shape modeled within each source region remains non-negative
+    over the region's bounding box, as sampled by the rays that have crossed
+    it (bool). Only used when the source shape is "linear" or "linear_xy".
+
+    *Default*: false
+
   :volume_normalized_flux_tallies:
     Specifies whether to normalize flux tallies by volume (bool). The
     default is 'False'. When enabled, flux tallies will be reported in units
@@ -782,8 +798,8 @@ attributes/sub-elements:
 
   :type:
     Indicator of source type. One of ``independent``, ``file``, ``compiled``,
-    ``mesh``, or ``tokamak``. The type of the source will be determined by this
-    attribute if it is present.
+    ``mesh``, ``tokamak``, or ``stellarator``. The type of the source will be
+    determined by this attribute if it is present.
 
   :particle:
     The source particle type, specified as a PDG number or a string alias (e.g.,
@@ -1020,8 +1036,9 @@ attributes/sub-elements:
     ``<source>`` sub-elements should correspond to the number of mesh elements.
 
   For a source with ``type="tokamak"``, the spatial distribution is described by
-  a Miller-style flux-surface parameterization and the following sub-elements
-  are used instead of the ``space`` element:
+  a Miller-style flux-surface parameterization (see
+  :ref:`usersguide_tokamak_source`). The following sub-elements are used instead
+  of the ``space`` element:
 
   :major_radius:
     The major radius :math:`R_0` of the plasma in [cm].
@@ -1085,6 +1102,70 @@ attributes/sub-elements:
     probability proportional to the proximity of the radius to each grid point
     (stochastic interpolation). Each follows the format of a univariate
     probability distribution (see :ref:`univariate`).
+
+  :time:
+    An optional ``time`` sub-element specifying the time distribution of source
+    particles, following the format of a univariate probability distribution
+    (see :ref:`univariate`).
+
+    *Default*: particles are born at :math:`t=0`
+
+  For a source with ``type="stellarator"``, the spatial distribution uses the
+  flux-surface Fourier representation described in
+  :ref:`usersguide_stellarator_source`. The following sub-elements are used
+  instead of the ``space`` element:
+
+  :num_field_periods:
+    The number of field periods :math:`N_{fp}`.
+
+    *Default*: 1
+
+  :rho:
+    A list of radial grid points :math:`\rho = \sqrt{s}`. Must be strictly
+    increasing, start at 0, and end at 1.
+
+  :emission_density:
+    A list of neutron emission densities :math:`S(\rho)` evaluated at each
+    ``rho`` grid point (arbitrary units, must be non-negative). Only the shape
+    matters, since the profile is normalized internally. Must have the same
+    length as ``rho`` and contain at least one positive value.
+
+  :mode_m:
+    A list of poloidal mode numbers :math:`m_k` (must be non-negative).
+
+  :mode_n:
+    A list of toroidal mode numbers :math:`n_k` in units of the number of
+    field periods (i.e., VMEC's ``xn`` divided by ``nfp``). Must have the same
+    length as ``mode_m``.
+
+  :rmnc:
+    The cosine Fourier coefficients of :math:`R` in [cm], flattened row-major
+    with the surface index varying slowest (length
+    ``len(rho)*len(mode_m)``).
+
+  :zmns:
+    The sine Fourier coefficients of :math:`Z` in [cm], in the same layout as
+    ``rmnc``.
+
+  :rmns:
+    The sine Fourier coefficients of :math:`R` in [cm] for
+    non-stellarator-symmetric equilibria. If given, ``zmnc`` must also be
+    given.
+
+    *Default*: None
+
+  :zmnc:
+    The cosine Fourier coefficients of :math:`Z` in [cm] for
+    non-stellarator-symmetric equilibria. If given, ``rmns`` must also be
+    given.
+
+    *Default*: None
+
+  :energy:
+    For a stellarator source, one or more ``energy`` sub-elements specify the
+    neutron energy distribution(s) with the same semantics as for the tokamak
+    source: either a single distribution used at all radii, or exactly one
+    distribution per ``rho`` grid point.
 
   :time:
     An optional ``time`` sub-element specifying the time distribution of source

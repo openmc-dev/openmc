@@ -221,8 +221,8 @@ field based on a regular mesh:
    settings = openmc.Settings()
    settings.temperature_field = temperature_field
 
-.. note:: Temperature fields are currently limited to
-          :class:`~openmc.RegularMesh` and
+.. note:: Temperature fields are supported only in continuous-energy mode and
+          are currently limited to :class:`~openmc.RegularMesh` and
           :class:`~openmc.RectilinearMesh`.
 
 Temperatures in the field can also be changed while the library is in

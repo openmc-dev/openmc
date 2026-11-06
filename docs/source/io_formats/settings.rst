@@ -1489,8 +1489,9 @@ a material default temperature.
 The ``<temperature_field>`` element specifies temperatures in a model in Kelvin
 using a temperature field based on a geometric mesh. Temperatures declared using
 a temperature field take precedence over all other temperature definition (cell,
-material, and global). Currently, only regular and rectilinear meshes are
-supported. This element has the following sub-elements:
+material, and global). Temperature fields are supported only in continuous-energy
+mode, using regular or rectilinear meshes. This element has the following
+sub-elements:
 
   :mesh:
     The ID of the geometric mesh on which the temperature field is defined.

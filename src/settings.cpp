@@ -857,6 +857,11 @@ void read_settings_xml(pugi::xml_node root)
 
   // Temperature field
   if (check_for_node(root, "temperature_field")) {
+    if (!run_CE) {
+      throw std::runtime_error(
+        "Temperature fields are not supported in multi-group mode.");
+    }
+
     // The random ray solver does not apply temperature fields. Leave the flag
     // off here so that every consumer of the field -- cross section loading,
     // transport, plotting -- agrees that it is not in use, rather than each

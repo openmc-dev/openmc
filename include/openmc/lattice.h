@@ -10,6 +10,7 @@
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
+#include "openmc/distribcell_offsets.h"
 #include "openmc/memory.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
@@ -50,7 +51,13 @@ public:
   LatticeType type_;
   vector<int32_t> universes_;         //!< Universes filling each lattice tile
   int32_t outer_ {NO_OUTER_UNIVERSE}; //!< Universe tiled outside the lattice
-  vector<int32_t> offsets_;           //!< Distribcell offset table
+
+  //! Sorted distributed cell maps of the universes in the tiles and the outer
+  //! universe
+  vector<int32_t> distribcell_maps_;
+
+  vector<int32_t> offset_values_;      //!< Distribcell offsets of all tiles
+  vector<DistribcellOffsets> offsets_; //!< Distribcell offsets of each tile
 
   explicit Lattice(pugi::xml_node lat_node);
 
@@ -67,17 +74,6 @@ public:
 
   //! Convert internal universe values from IDs to indices using universe_map.
   void adjust_indices();
-
-  //! Allocate offset table for distribcell.
-  void allocate_offset_table(int n_maps)
-  {
-    offsets_.resize(n_maps * universes_.size());
-    std::fill(offsets_.begin(), offsets_.end(), C_NONE);
-  }
-
-  //! Populate the distribcell offset tables.
-  int32_t fill_offset_table(int32_t target_univ_id, int map,
-    std::unordered_map<int32_t, int32_t>& univ_count_memo);
 
   //! \brief Check lattice indices.
   //! \param i_xyz[3] The indices for a lattice tile.
@@ -135,14 +131,17 @@ public:
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return Distribcell offset i.e. the largest instance number for the target
   //!  cell found in the geometry tree under this lattice tile.
-  virtual int32_t& offset(int map, const array<int, 3>& i_xyz) = 0;
+  int32_t offset(int map, const array<int, 3>& i_xyz) const
+  {
+    return offset(map, get_flat_index(i_xyz));
+  }
 
   //! \brief Get the distribcell offset for a lattice tile.
   //! \param The map index for the target cell.
   //! \param indx The index for a lattice tile.
   //! \return Distribcell offset i.e. the largest instance number for the target
   //!  cell found in the geometry tree for this lattice index.
-  virtual int32_t offset(int map, int indx) const = 0;
+  int32_t offset(int map, int indx) const { return offsets_[indx][map]; }
 
   //! \brief Convert an array index to a useful human-readable string.
   //! \param indx The index for a lattice tile.
@@ -234,10 +233,6 @@ public:
   Direction get_normal(
     const array<int, 3>& i_xyz, bool& is_valid) const override;
 
-  int32_t& offset(int map, const array<int, 3>& i_xyz) override;
-
-  int32_t offset(int map, int indx) const override;
-
   std::string index_to_string(int indx) const override;
 
   void to_hdf5_inner(hid_t group_id) const override;
@@ -283,10 +278,6 @@ public:
     const array<int, 3>& i_xyz, bool& is_valid) const override;
 
   bool is_valid_index(int indx) const override;
-
-  int32_t& offset(int map, const array<int, 3>& i_xyz) override;
-
-  int32_t offset(int map, int indx) const override;
 
   std::string index_to_string(int indx) const override;
 

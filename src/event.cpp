@@ -118,12 +118,12 @@ void process_advance_particle_events()
     Particle& p = simulation::particles[buffer_idx];
     if (p.alive()) {
       AdvanceResult result = p.event_advance();
-      if (result.collision) {
-        simulation::collision_queue.thread_safe_append({p, buffer_idx});
-        continue;
-      }
       if (result.geometry_crossing) {
         simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
+        continue;
+      }
+      if (result.collision) {
+        simulation::collision_queue.thread_safe_append({p, buffer_idx});
         continue;
       }
     }

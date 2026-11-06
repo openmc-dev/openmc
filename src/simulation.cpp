@@ -970,7 +970,7 @@ void transport_history_based_single_particle(Particle& p)
       case TransportEvent::COLLISION:
         p.event_collide();
         break;
-      case TransportEvent::GEOMETRY:
+      case TransportEvent::SURFACE_CROSSING:
         p.event_cross_surface();
         break;
       case TransportEvent::NONE:

@@ -75,6 +75,11 @@ void initialize_generation();
 void initialize_particle_track(
   Particle& p, int64_t index_source, bool is_secondary);
 
+//! Helper function for initialize_history() that is called independently elsewhere
+void initialize_history_partial(Particle& p);
+
+void initialize_history_in_part(Particle& p);
+
 //! Finalize a batch
 //!
 //! Handles synchronization and accumulation of tallies, calculation of Shannon

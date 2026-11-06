@@ -1,6 +1,6 @@
 #include "openmc/distribution_energy.h"
 
-#include <algorithm> // for max, min, copy, move
+#include <algorithm> // for max, min, copy, move, upper_bound
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
 
@@ -180,15 +180,16 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
   // Discrete portion
   if (n_discrete > 0) {
-    int idx = upper_bound_index(
-      distribution_[l].c.begin(), distribution_[l].c.begin() + n_discrete, r1);
-    if (idx + 1 < n_discrete) {
-      k = idx + 1;
+    // Select the first discrete line whose CDF value exceeds r1
+    const auto& cdf = distribution_[l].c;
+    k =
+      std::upper_bound(cdf.begin(), cdf.begin() + n_discrete, r1) - cdf.begin();
+    if (k < n_discrete) {
       end = k;
     } else {
       k = n_discrete - 1;
     }
-    c_k = distribution_[l].c[k];
+    c_k = cdf[k];
   }
 
   // Continuous portion

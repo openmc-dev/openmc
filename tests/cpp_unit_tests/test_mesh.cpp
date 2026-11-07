@@ -1,6 +1,8 @@
 #include <cstdio>
+#include <filesystem>
 #include <iostream>
 #include <string>
+#include <utility>
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -8,8 +10,47 @@
 
 #include "openmc/hdf5_interface.h"
 #include "openmc/mesh.h"
+#include "openmc/xdg.h"
+
+#ifdef OPENMC_XDG_ENABLED
+#include "xdg/config.h"
+#endif
 
 using namespace openmc;
+
+#ifdef OPENMC_XDG_ENABLED
+TEST_CASE("XDG surface bins include every element face")
+{
+  const auto mesh_dir = std::filesystem::path(__FILE__).parent_path() /
+                        "../regression_tests/unstructured_mesh";
+  for (const std::string library : {"moab", "libmesh"}) {
+    auto backend =
+      library == "moab" ? xdg::MeshLibrary::MOAB : xdg::MeshLibrary::LIBMESH;
+    if (!xdg::XDGConfig::config().mesh_manager_enabled(backend))
+      continue;
+
+    for (auto [filename, expected] : {std::pair {"test_mesh_tets.e", 48000},
+           std::pair {"test_mesh_hexes.e", 6000}}) {
+      DYNAMIC_SECTION(library << " " << filename)
+      {
+        pugi::xml_document doc;
+        auto node = doc.append_child("mesh");
+        node.append_attribute("id") = 1;
+        node.append_child("filename").text() =
+          (mesh_dir / filename).string().c_str();
+        node.append_child("library").text() = library.c_str();
+        XDGMesh mesh(node);
+        CHECK(mesh.n_surface_bins() == expected);
+
+        // Wrapping an initialized instance must also populate the cache,
+        // without loading a file or initializing the mesh manager again.
+        XDGMesh external(mesh.xdg_instance());
+        CHECK(external.n_surface_bins() == expected);
+      }
+    }
+  }
+}
+#endif
 
 TEST_CASE("Test mesh hdf5 roundtrip - regular")
 {

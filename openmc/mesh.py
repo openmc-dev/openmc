@@ -305,7 +305,7 @@ class MeshBase(IDManagerMixin, ABC):
             return CylindricalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'spherical':
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
-        elif mesh_type == 'unstructured':
+        elif mesh_type in ('unstructured', 'xdg'):
             return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
@@ -451,7 +451,10 @@ class MeshBase(IDManagerMixin, ABC):
         This method works by raytracing repeatedly through the mesh to count the
         estimated volume of each material in all mesh elements. Three sets of
         rays are used: one set parallel to the x-axis, one parallel to the
-        y-axis, and one parallel to the z-axis.
+        y-axis, and one parallel to the z-axis. Regions of the mesh that are
+        outside the model geometry are treated as void, equivalent to a cell
+        with no material. Universe fills within the model must still define all
+        enclosed space.
 
         .. versionadded:: 0.15.1
 
@@ -2760,10 +2763,15 @@ class UnstructuredMesh(MeshBase):
     ----------
     filename : path-like
         Location of the unstructured mesh file. Supported files for 'moab'
-        library are .h5 and .vtk. Supported files for 'libmesh' library are
-        exodus mesh files .exo.
-    library : {'moab', 'libmesh'}
-        Mesh library used for the unstructured mesh tally
+        library include .h5m, .h5, .vtk, and Exodus files. Supported files for
+        'libmesh' include Exodus files (.e, .exo, and .ex2).
+    library : {'moab', 'libmesh'}, optional
+        Mesh library used for the unstructured mesh tally. If omitted, inferred
+        from the filename extension (case-insensitive): .h5m, .h5, and .vtk
+        select 'moab'; .e, .exo, and .ex2 select 'libmesh'. Other extensions
+        require an explicit library. An explicit value overrides inference,
+        including for Exodus files that can be read by either backend. Inference
+        occurs only at construction, independently of the mesh interface.
     mesh_id : int
         Unique identifier for the mesh
     name : str
@@ -2788,6 +2796,13 @@ class UnstructuredMesh(MeshBase):
         Multiplicative factor to apply to mesh coordinates
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
+    interface : {'native', 'xdg'}
+        Interface type for the unstructured mesh. The value 'native' indicates
+        that the C++ implementation interfaces directly with the indicated mesh
+        library. The value 'xdg' indicates that the C++ implementation
+        interfaces with the mesh library through the XDG interface, enabling
+        consistent behavior across different mesh libraries. The default value
+        is 'native'.
     options : str
         Special options that control spatial search data structures used. This
         is currently only used to set `parameters
@@ -2827,16 +2842,28 @@ class UnstructuredMesh(MeshBase):
     _VTK_TET = 10
     _VTK_HEX = 12
 
-    def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
+    def __init__(self, filename: PathLike, library: str | None = None,
+                 mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
                  options: str | None = None):
         super().__init__(mesh_id, name)
         self.filename = filename
+        if library is None:
+            extension = Path(self.filename).suffix.lower()
+            if extension in {'.h5m', '.h5', '.vtk'}:
+                library = 'moab'
+            elif extension in {'.e', '.exo', '.ex2'}:
+                library = 'libmesh'
+            else:
+                raise ValueError(
+                    f"Cannot infer mesh library from filename {str(filename)!r}; "
+                    "specify library='moab' or library='libmesh'.")
         self._volumes = None
         self._n_elements = None
         self._conectivity = None
         self._vertices = None
         self.library = library
+        self.interface = 'native'
         self._output = False
         self.length_multiplier = length_multiplier
         self.options = options
@@ -2859,6 +2886,15 @@ class UnstructuredMesh(MeshBase):
     def library(self, lib: str):
         cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
         self._library = lib
+
+    @property
+    def interface(self):
+        return self._interface
+
+    @interface.setter
+    def interface(self, interface: str):
+        cv.check_value('Unstructured mesh interface', interface, ('native', 'xdg'))
+        self._interface = interface
 
     @property
     def options(self) -> str | None:
@@ -2981,6 +3017,7 @@ class UnstructuredMesh(MeshBase):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
         string += '{: <16}=\t{}\n'.format('\tMesh Library', self.library)
+        string += '{: <16}=\t{}\n'.format('\tInterface', self.interface)
         if self.length_multiplier != 1.0:
             string += '{: <16}=\t{}\n'.format('\tLength multiplier',
                                               self.length_multiplier)
@@ -3276,20 +3313,22 @@ class UnstructuredMesh(MeshBase):
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
-        filename = group["filename"][()].decode()
+        filename = group["filename"][()].decode() if "filename" in group else ""
         library = group["library"][()].decode()
-        if "options" in group.attrs:
-            options = group.attrs['options'].decode()
-        else:
-            options = None
 
-        mesh = cls(
-            filename=filename,
-            library=library,
-            mesh_id=mesh_id,
-            name=name,
-            options=options,
-        )
+        kwargs = {'filename': filename,
+                  'library': library,
+                  'mesh_id': mesh_id,
+                  'name': name}
+
+        if "options" in group.attrs:
+            kwargs['options'] = group.attrs['options'].decode()
+
+        mesh = cls(**kwargs)
+
+        if "interface" in group:
+            mesh.interface = group["interface"][()].decode()
+
         mesh._has_statepoint_data = True
         vol_data = group["volumes"][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -3325,6 +3364,9 @@ class UnstructuredMesh(MeshBase):
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
 
+        if self.interface != 'native':
+            element.set("interface", self.interface)
+
         if self._length_multiplier != 1.0:
             element.set("length_multiplier", str(self.length_multiplier))
 
@@ -3349,8 +3391,11 @@ class UnstructuredMesh(MeshBase):
         library = get_text(elem, 'library')
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
         options = get_text(elem, "options")
-
-        return cls(filename, library, mesh_id, '', length_multiplier, options)
+        out = cls(filename, library, mesh_id, '', length_multiplier, options)
+        interface = get_text(elem, "interface")
+        if interface is not None:
+            out.interface = interface
+        return out
 
 
 def _read_meshes(elem):

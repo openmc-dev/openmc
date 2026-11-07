@@ -119,6 +119,7 @@
       </ray_source>
       <volume_normalized_flux_tallies>false</volume_normalized_flux_tallies>
       <source_shape>linear_xy</source_shape>
+      <volume_estimator>hybrid</volume_estimator>
     </random_ray>
   </settings>
   <tallies>

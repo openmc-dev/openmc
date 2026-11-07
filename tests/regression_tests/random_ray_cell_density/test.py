@@ -39,5 +39,6 @@ def test_random_ray_basic(run_mode):
                     cell.density = 1e3
 
             # Gold file was generated with manually scaled source cross sections.
+            model.settings.random_ray['volume_estimator'] = 'hybrid'
             harness = MGXSTestHarness('statepoint.10.h5', model)
             harness.main()

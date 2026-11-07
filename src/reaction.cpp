@@ -25,7 +25,17 @@ namespace openmc {
 Reaction::Reaction(
   hid_t group, const vector<int>& temperatures, std::string name)
 {
-  read_attribute(group, "Q_value", q_value_);
+  if (attribute_exists(group, "q_reaction")) {
+    read_attribute(group, "q_reaction", q_reaction_);
+  } else {
+    read_attribute(group, "Q_value", q_reaction_);
+  }
+  if (attribute_exists(group, "q_mass_difference")) {
+    read_attribute(group, "q_mass_difference", q_mass_difference_);
+  }
+  if (attribute_exists(group, "breakup_flag")) {
+    read_attribute(group, "breakup_flag", breakup_flag_);
+  }
   read_attribute(group, "mt", mt_);
   int tmp;
   read_attribute(group, "center_of_mass", tmp);

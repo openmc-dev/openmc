@@ -490,18 +490,12 @@ double Mgxs::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
           val = xs_t->chi_delayed(a, 0, gin, *gout);
         }
       } else {
-        if (dg != nullptr) {
-          val = 0.;
-          for (int g = 0; g < xs_t->delayed_nu_fission.shape(2); g++) {
-            val += xs_t->delayed_nu_fission(a, *dg, gin, g);
-          }
-        } else {
-          val = 0.;
-          for (int g = 0; g < xs_t->delayed_nu_fission.shape(2); g++) {
-            for (int d = 0; d < xs_t->delayed_nu_fission.shape(3); d++) {
-              val += xs_t->delayed_nu_fission(a, d, gin, g);
-            }
-          }
+        // sum of chi_delayed over outgoing groups; chi_delayed has shape
+        // [angle][delayed group][in group][out group]
+        const int d = (dg != nullptr) ? *dg : 0;
+        val = 0.;
+        for (int g = 0; g < xs_t->chi_delayed.shape(3); g++) {
+          val += xs_t->chi_delayed(a, d, gin, g);
         }
       }
     } else {

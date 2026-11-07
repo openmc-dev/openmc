@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review OpenMC Code"
+  short_description: "Review OpenMC changes for correctness and quality"
+  default_prompt: "Use $reviewing-openmc-code to review the requested OpenMC code changes and report actionable findings."

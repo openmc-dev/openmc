@@ -34,10 +34,11 @@ Terminology
 
 - A *Contributor* is any individual creating or commenting on an issue or pull
   request.
-- A *Committer* is a subset of contributors who are authorized to review and
-  merge pull requests.
+- A *Committer* is a subset of contributors who are authorized to review pull
+  requests, including approving them or requesting changes.
 - The *TC* (Technical Committee) is a group of committers who have the authority
-  to make decisions on behalf of the project team in order to resolve disputes.
+  to merge pull requests and to make decisions on behalf of the project team in
+  order to resolve disputes.
 - The *Project Lead* is a single individual who has the authority to make a final
   decision when the TC is unable to reach consensus.
 
@@ -46,7 +47,11 @@ Contribution Process
 
 Any change to the OpenMC repository must be made through a pull request (PR).
 This applies to all changes to documentation, code, binary files, etc. Even long
-term committers and TC members must use pull requests.
+term committers and TC members must use pull requests. If an AI tool helped
+produce a pull request, the author must disclose each model used in the PR
+description. Suggested details include the harness (e.g., Claude Code), model
+(e.g., GPT-6-Sol), and reasoning effort (e.g., xhigh). The pull request template
+provides an AI Assistance section for this disclosure.
 
 No pull request may be merged without being independently reviewed.
 
@@ -60,9 +65,9 @@ extended if they are unable to review the change within 36 hours.
 During review, a committer may request that a specific contributor who is most
 versed in a particular area review the PR before it can be merged.
 
-A pull request can be merged by any committer, but only if no objections are
-raised by any other committer. In the case of an objection being raised, all
-involved committers should seek consensus through discussion and compromise.
+Only TC members may merge pull requests, and only if no objections are raised by
+any committer. In the case of an objection being raised, all involved committers
+should seek consensus through discussion and compromise.
 
 In the case of an objection being raised in a pull request by another committer,
 all involved committers should seek to arrive at a consensus by way of
@@ -115,6 +120,14 @@ The TC consists of the following individuals:
 - `John Tramm <https://github.com/jtramm>`_
 
 The Project Lead is Paul Romano.
+
+Reporting Security Vulnerabilities
+----------------------------------
+
+Please report suspected security vulnerabilities privately by emailing
+`openmc@anl.gov <mailto:openmc@anl.gov>`_. Do not report security
+vulnerabilities through public GitHub issues. Include a description of the
+vulnerability, affected versions, and steps to reproduce it if available.
 
 Next Steps
 ----------

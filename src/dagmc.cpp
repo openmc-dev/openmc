@@ -857,12 +857,15 @@ std::pair<double, int32_t> DAGCell::distance(
       dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
   } else if (!dagmc_ptr_->is_implicit_complement(vol) ||
              is_root_universe(dag_univ->id_)) {
-    // surface boundary conditions are ignored for projection plotting, meaning
+    // Surface boundary conditions are ignored for projection plotting, meaning
     // that the particle may move through the graveyard (bounding) volume and
-    // into the implicit complement on the other side where no intersection will
-    // be found. Treating this as a lost particle is problematic when plotting.
-    // Instead, the infinite distance and invalid surface index are returned.
-    if (settings::run_mode == RunMode::PLOTTING)
+    // into the implicit complement on the other side where no intersection
+    // will be found. A no-hit result is also expected when querying root cells
+    // for the next boundary from undefined space, when no containing cell is
+    // assigned. In both cases, return an infinite distance and invalid surface
+    // index rather than marking a particle as lost.
+    if (settings::run_mode == RunMode::PLOTTING ||
+        p->lowest_coord().cell() == C_NONE)
       return {INFTY, -1};
 
     // the particle should be marked as lost immediately if an intersection

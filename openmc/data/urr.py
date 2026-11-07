@@ -205,8 +205,7 @@ class ProbabilityTables(EqualityMixin):
         idx += N
 
         # Get probability tables
-        table = ace.xss[idx : idx+N*6*M].copy()
-        table.shape = (N, 6, M)
+        table = ace.xss[idx : idx+N*6*M].copy().reshape(N, 6, M)
 
         # Convert units on heating numbers
         table[:,5,:] *= EV_PER_MEV

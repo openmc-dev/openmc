@@ -62,6 +62,7 @@ _dll.openmc_init.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
+_dll.openmc_get_current_batch.restype = c_int
 _dll.openmc_initialize_mesh_egrid.argtypes = [
     c_int, _array_1d_int, c_double
 ]
@@ -158,7 +159,7 @@ def current_batch():
         Current batch of the simulation
 
     """
-    return c_int.in_dll(_dll, 'current_batch').value
+    return _dll.openmc_get_current_batch()
 
 
 def export_properties(filename=None, output=True):
@@ -757,19 +758,6 @@ class TemporarySession:
             self.comm.barrier()
             if hasattr(self, '_tmp_dir'):
                 self._tmp_dir.cleanup()
-
-
-class _DLLGlobal:
-    """Data descriptor that exposes global variables from libopenmc."""
-    def __init__(self, ctype, name):
-        self.ctype = ctype
-        self.name = name
-
-    def __get__(self, instance, owner):
-        return self.ctype.in_dll(_dll, self.name).value
-
-    def __set__(self, instance, value):
-        self.ctype.in_dll(_dll, self.name).value = value
 
 
 class _FortranObject:

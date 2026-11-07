@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 import copy
 from numbers import Integral
 import os
@@ -55,6 +55,34 @@ class Library:
         The spatial domain(s) for which MGXS in the Library are computed
     correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'
+    transport_correction_ratios : dict or None
+        The per-group transport correction ratios
+        :math:`r_g = \\sigma_{tr,g} / \\sigma_{t,g}` applied when the library is
+        written to an :class:`openmc.MGXSLibrary`. This is a nested dictionary
+        keyed first by domain type (e.g., ``'material'``) and then by domain
+        ID, whose values are iterables of per-group ratios (one ratio per
+        energy group, ordered from fast to thermal to match the
+        :class:`openmc.XSdata` group indexing). When a ``'transport'`` or
+        ``'nu-transport'`` MGXS type has been tallied,
+        :meth:`load_from_statepoint` fills this in automatically from the
+        tallied data; entries supplied by the user beforehand are preserved and
+        never overwritten. Explicit assignment may also be used to provide or
+        edit the ratios directly. For each listed domain the transport-corrected
+        total cross section is set to :math:`\\sigma_{tr,g} = r_g \\sigma_{t,g}`
+        and the same change is applied to the in-group (diagonal) :math:`P_0`
+        element of the scattering matrix, preserving the absorption balance.
+        These stored ratios, rather than a correction derived directly from the
+        tallies during data extraction, are what determine the transport
+        correction, so editing an entry after :meth:`load_from_statepoint`
+        changes the correction that is applied. When :attr:`correction` is
+        ``None`` the plain :math:`\\sigma_{t,g}` is taken from the ``'total'``
+        MGXS already written to the dataset; when :attr:`correction` is
+        ``'P0'`` it is recovered from the transport MGXS. A ``'legendre'``
+        :attr:`scatter_format` is required, and the ``'P0'`` recovery is only
+        performed for isotropic data. Domains without an entry are left
+        uncorrected. Defaults to ``None``.
+
+        .. versionadded:: 0.16.1
     scatter_format : {'legendre', 'histogram'}
         Representation of the angular scattering distribution (default is
         'legendre')
@@ -116,6 +144,7 @@ class Library:
         self._nuclides = None
         self._num_delayed_groups = 0
         self._correction = 'P0'
+        self._transport_correction_ratios = None
         self._scatter_format = 'legendre'
         self._legendre_order = 0
         self._histogram_bins = 16
@@ -146,6 +175,8 @@ class Library:
             clone._domain_type = self.domain_type
             clone._domains = copy.deepcopy(self.domains)
             clone._correction = self.correction
+            clone._transport_correction_ratios = \
+                copy.deepcopy(self._transport_correction_ratios)
             clone._scatter_format = self.scatter_format
             clone._legendre_order = self.legendre_order
             clone._histogram_bins = self.histogram_bins
@@ -366,6 +397,58 @@ class Library:
             warn(msg)
 
         self._correction = correction
+
+    @property
+    def transport_correction_ratios(self):
+        return self._transport_correction_ratios
+
+    @transport_correction_ratios.setter
+    def transport_correction_ratios(self, ratios):
+        if ratios is None:
+            self._transport_correction_ratios = None
+            return
+
+        cv.check_type('transport_correction_ratios', ratios, Mapping)
+
+        normalized = {}
+        for domain_type, domain_ratios in ratios.items():
+            cv.check_value('transport_correction_ratios domain type',
+                           domain_type, openmc.mgxs.DOMAIN_TYPES)
+            cv.check_type(f'transport_correction_ratios["{domain_type}"]',
+                          domain_ratios, Mapping)
+
+            normalized[domain_type] = {}
+            for domain_id, group_ratios in domain_ratios.items():
+                cv.check_type('transport correction ratio domain ID',
+                              domain_id, Integral)
+
+                try:
+                    arr = np.asarray(group_ratios, dtype=float)
+                except (ValueError, TypeError):
+                    raise ValueError(
+                        'Transport correction ratios for domain '
+                        f'{domain_id} must be a 1-D iterable of real numbers.')
+
+                if arr.ndim != 1:
+                    raise ValueError(
+                        'Transport correction ratios for domain '
+                        f'{domain_id} must be a 1-D iterable (one ratio per '
+                        'energy group).')
+
+                if np.any(arr <= 0.0):
+                    raise ValueError(
+                        'Transport correction ratios for domain '
+                        f'{domain_id} must be positive.')
+
+                # Validate the number of groups when it is already known
+                if self._energy_groups is not None:
+                    cv.check_length(
+                        'transport correction ratios for domain '
+                        f'{domain_id}', arr, self.num_groups, self.num_groups)
+
+                normalized[domain_type][int(domain_id)] = arr
+
+        self._transport_correction_ratios = normalized
 
     @property
     def scatter_format(self):
@@ -640,6 +723,11 @@ class Library:
                 mgxs = self.get_mgxs(domain, mgxs_type)
                 mgxs.load_from_statepoint(statepoint)
                 mgxs.sparse = self.sparse
+
+        # Record the transport correction ratios implied by any tallied
+        # transport-corrected total cross section (see the
+        # transport_correction_ratios attribute)
+        self._store_computed_transport_correction_ratios()
 
     def get_mgxs(self, domain, mgxs_type):
         """Return the MGXS object for some domain and reaction rate type.
@@ -953,6 +1041,245 @@ class Library:
         # Load and return pickled Library object
         with open(full_filename, 'rb') as f:
             return pickle.load(f)
+
+    def _uncorrected_total_xs(self, transport_mgxs, nuclides, xs_type='macro',
+                              subdomains='all'):
+        """Recover the plain total cross section from a transport MGXS.
+
+        A :class:`openmc.mgxs.TransportXS` tallies both the total reaction rate
+        and the flux, so the un-corrected total cross section can be recovered
+        as ``tallies['total'] / tallies['flux (tracklength)']``. The transport
+        MGXS's own :meth:`~openmc.mgxs.MGXS.get_xs` machinery is reused (by
+        temporarily overriding its cached cross-section tally) so that the
+        energy-group ordering and nuclide handling match the transport-
+        corrected cross section exactly.
+
+        Parameters
+        ----------
+        transport_mgxs : openmc.mgxs.TransportXS
+            The transport MGXS whose plain total cross section is wanted
+        nuclides : str or Iterable of str
+            The ``nuclides`` argument to forward to
+            :meth:`~openmc.mgxs.MGXS.get_xs` (e.g., ``'total'``, ``'sum'`` or a
+            list with a single nuclide name)
+        xs_type : {'macro', 'micro'}
+            The ``xs_type`` argument to forward to
+            :meth:`~openmc.mgxs.MGXS.get_xs`
+        subdomains : Iterable of int or 'all'
+            The ``subdomains`` argument to forward to
+            :meth:`~openmc.mgxs.MGXS.get_xs`
+
+        Returns
+        -------
+        numpy.ndarray
+            The plain total cross section (one value per energy group)
+
+        """
+
+        saved_xs_tally = transport_mgxs._xs_tally
+        saved_rxn_rate_tally = transport_mgxs._rxn_rate_tally
+        try:
+            transport_mgxs._xs_tally = (
+                transport_mgxs.tallies['total'] /
+                transport_mgxs.tallies['flux (tracklength)'])
+            transport_mgxs._compute_xs()
+            return transport_mgxs.get_xs(nuclides=nuclides, xs_type=xs_type,
+                                         subdomains=subdomains)
+        finally:
+            transport_mgxs._xs_tally = saved_xs_tally
+            transport_mgxs._rxn_rate_tally = saved_rxn_rate_tally
+
+    def _store_computed_transport_correction_ratios(self):
+        """Populate transport_correction_ratios from tallied transport data.
+
+        When a transport-type MGXS (``'transport'`` or ``'nu-transport'``) has
+        been tallied, the per-group transport correction ratio
+        :math:`r_g = \\sigma_{tr,g} / \\sigma_{t,g}` is computed for each domain
+        and stored in :attr:`transport_correction_ratios`. The transport-
+        corrected total :math:`\\sigma_{tr}` is the transport MGXS itself, while
+        the plain total :math:`\\sigma_t` is recovered from the same MGXS's flux
+        and total tallies (see :meth:`_uncorrected_total_xs`).
+
+        Ratios that the user already supplied for a domain are never
+        overwritten. Only isotropic, single-subdomain data (one ratio per
+        energy group) is handled; angle-dependent or multi-subdomain domains
+        are skipped.
+
+        """
+
+        # One ratio per group is only well defined for isotropic data
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            return
+
+        # Use the transport-corrected total that matches the scattering
+        # multiplicity treatment when both flavors are available
+        if 'nu-transport' in self.mgxs_types:
+            transport_type = 'nu-transport'
+        elif 'transport' in self.mgxs_types:
+            transport_type = 'transport'
+        else:
+            return
+
+        nuclides = 'sum' if self.by_nuclide else 'total'
+
+        # Start from any existing (e.g., user-provided) ratios so they are
+        # preserved, and never overwrite an entry the user already set
+        ratios = copy.deepcopy(self._transport_correction_ratios) or {}
+        domain_ratios = ratios.get(self.domain_type, {})
+
+        for domain in self.domains:
+            if domain.id in domain_ratios:
+                continue
+
+            transport_mgxs = self.get_mgxs(domain, transport_type)
+            sigma_tr = np.asarray(
+                transport_mgxs.get_xs(nuclides=nuclides, xs_type='macro'),
+                dtype=float)
+            sigma_t = np.asarray(
+                self._uncorrected_total_xs(transport_mgxs, nuclides),
+                dtype=float)
+
+            # Only isotropic, single-subdomain data yields one ratio per group
+            if sigma_tr.shape != (self.num_groups,) or \
+                    sigma_t.shape != (self.num_groups,):
+                continue
+
+            # Default to unity (no correction) where the total vanishes
+            ratio = np.ones(self.num_groups)
+            nonzero = sigma_t > 0.0
+            ratio[nonzero] = sigma_tr[nonzero] / sigma_t[nonzero]
+            domain_ratios[domain.id] = ratio
+
+        if domain_ratios:
+            ratios[self.domain_type] = domain_ratios
+            self._transport_correction_ratios = ratios
+
+    def _get_transport_correction_ratios(self, domain):
+        """Return the per-group transport correction ratios for a domain.
+
+        Parameters
+        ----------
+        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
+            The domain of interest
+
+        Returns
+        -------
+        numpy.ndarray or None
+            The transport correction ratios (one per energy group) for the
+            domain, or None if none were provided.
+
+        """
+
+        if not self._transport_correction_ratios:
+            return None
+
+        domain_ratios = self._transport_correction_ratios.get(self.domain_type)
+        if not domain_ratios:
+            return None
+
+        return domain_ratios.get(domain.id)
+
+    def _apply_transport_correction_ratios(self, xsdata, domain, temperature,
+                                            nuclide='total', xs_type='macro',
+                                            subdomain='all'):
+        """Apply the stored transport correction ratios to an XSdata object.
+
+        For each energy group ``g`` the transport-corrected total cross section
+        is set to :math:`r_g \\sigma_{t,g}`, where :math:`\\sigma_{t,g}` is the
+        plain total cross section and :math:`r_g` is the stored ratio. The same
+        change is applied to the in-group (diagonal) :math:`P_0` element of the
+        scattering matrix, so the absorption balance (total minus out-scatter)
+        is preserved.
+
+        Because the total and the scattering diagonal are shifted by the same
+        amount, the stored ratios rather than a correction derived directly
+        from the tallies during data extraction are what determine the
+        transport correction. Editing an entry in
+        :attr:`transport_correction_ratios` after
+        :meth:`load_from_statepoint` therefore changes the correction applied
+        here.
+
+        When :attr:`correction` is ``None`` the total already in ``xsdata`` is
+        the plain :math:`\\sigma_t`. When :attr:`correction` is ``'P0'`` the
+        total is the tally-based transport-corrected :math:`\\sigma_{tr}`, so
+        the plain :math:`\\sigma_t` is recovered from the transport MGXS (see
+        :meth:`_uncorrected_total_xs`); this recovery is only performed for
+        isotropic data, matching the ratios computed by
+        :meth:`_store_computed_transport_correction_ratios`.
+
+        Parameters
+        ----------
+        xsdata : openmc.XSdata
+            The dataset to correct in place
+        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
+            The domain the dataset describes
+        temperature : float
+            Temperature (in Kelvin) of the data to correct
+        nuclide : str
+            The nuclide the dataset describes (or ``'total'`` for material-wise
+            data); used to recover the plain total cross section
+        xs_type : {'macro', 'micro'}
+            Whether the dataset holds macroscopic or microscopic cross sections
+        subdomain : Iterable of int or 'all'
+            The subdomain the dataset describes (for mesh domains)
+
+        """
+
+        ratios = self._get_transport_correction_ratios(domain)
+        if ratios is None:
+            return
+
+        # A legendre scattering matrix is needed to correct the P0 diagonal,
+        # and exactly one ratio per energy group is required.
+        if self.scatter_format != 'legendre':
+            return
+        if len(ratios) != self.num_groups:
+            return
+
+        i = xsdata._temperature_index(temperature)
+        current_total = xsdata._total[i]
+        if current_total is None:
+            return
+
+        # Determine the plain total cross section sigma_t.
+        if self.correction is None:
+            # The total already in xsdata is the plain total.
+            sigma_t = current_total
+        else:
+            # The total in xsdata is the tally-corrected transport total, so
+            # recover the plain total from the transport MGXS. The stored
+            # ratios are only computed for isotropic data.
+            if xsdata.representation == 'angle':
+                return
+            if 'nu-transport' in self.mgxs_types:
+                transport_type = 'nu-transport'
+            elif 'transport' in self.mgxs_types:
+                transport_type = 'transport'
+            else:
+                return
+            transport_mgxs = self.get_mgxs(domain, transport_type)
+            sigma_t = np.asarray(
+                self._uncorrected_total_xs(transport_mgxs, [nuclide], xs_type,
+                                           subdomain), dtype=float)
+            if sigma_t.size != np.size(current_total):
+                return
+            sigma_t = sigma_t.reshape(np.shape(current_total))
+
+        # Set the transport-corrected total to r * sigma_t and shift the P0
+        # scattering diagonal by the same amount. ratios has shape (G,) and
+        # broadcasts against the trailing group axis for both the isotropic and
+        # angle representations.
+        target_total = ratios * sigma_t
+        delta = target_total - current_total
+        xsdata._total[i] = target_total
+
+        scatter_matrix = xsdata._scatter_matrix[i]
+        if scatter_matrix is not None:
+            groups = np.arange(self.num_groups)
+            if xsdata.representation == 'angle':
+                scatter_matrix[:, :, groups, groups, 0] += delta
+            else:
+                scatter_matrix[groups, groups, 0] += delta
 
     def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
                    subdomain=None, apply_domain_chi=False, temperature=ROOM_TEMPERATURE_KELVIN):
@@ -1303,6 +1630,12 @@ class Library:
                                                nuclide=[nuclide],
                                                subdomain=subdomain)
 
+        # Apply the stored transport correction ratios to the total cross
+        # section and the scattering matrix diagonal
+        self._apply_transport_correction_ratios(
+            xsdata, domain, temperature, nuclide=nuclide, xs_type=xs_type,
+            subdomain=subdomain)
+
         return xsdata
 
     def create_mg_library(self, xs_type='macro', xsdata_names=None,
@@ -1638,6 +1971,36 @@ class Library:
         if 'absorption' not in self.mgxs_types:
             error_flag = True
             warn('An "absorption" MGXS type is required but not provided.')
+
+        # Validate the transport correction ratios that will be applied to the
+        # exported data. The plain total cross section they require is already
+        # guaranteed by the total/transport checks above (a 'total' MGXS when
+        # correction is None, a 'transport'/'nu-transport' MGXS otherwise), so
+        # only the ratio-specific requirements are checked here.
+        if self._transport_correction_ratios:
+            if self.scatter_format != 'legendre':
+                error_flag = True
+                warn('transport_correction_ratios require a "legendre" '
+                     'scatter_format.')
+
+            domain_ratios = \
+                self._transport_correction_ratios.get(self.domain_type)
+            if not domain_ratios:
+                warn('The transport_correction_ratios do not contain any '
+                     f'entries for the "{self.domain_type}" domain type, so '
+                     'no transport correction will be applied.')
+            else:
+                domain_ids = [domain.id for domain in self.domains]
+                for domain_id, ratios in domain_ratios.items():
+                    if domain_id not in domain_ids:
+                        warn(f'Domain {domain_id} in '
+                             'transport_correction_ratios is not in the '
+                             'Library and will be ignored.')
+                    elif len(ratios) != self.num_groups:
+                        error_flag = True
+                        warn(f'Expected {self.num_groups} transport '
+                             f'correction ratios for domain {domain_id} but '
+                             f'got {len(ratios)}.')
 
         if error_flag:
             raise ValueError('Invalid MGXS configuration encountered.')

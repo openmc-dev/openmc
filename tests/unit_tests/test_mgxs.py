@@ -5,6 +5,33 @@ import openmc
 
 
 @pytest.mark.parametrize('mgxs_class', [
+    openmc.mgxs.TransportXS, openmc.mgxs.DiffusionCoefficient])
+@pytest.mark.parametrize('nu', [False, True])
+@pytest.mark.parametrize('attributes', [
+    ('rxn_rate_tally', 'xs_tally'), ('xs_tally', 'rxn_rate_tally')])
+def test_transport_preserves_scatter_tally(mgxs_class, nu, attributes):
+    groups = openmc.mgxs.EnergyGroups([0.0, 1.0, 2.0])
+    mgxs = mgxs_class(openmc.Material(), 'material', groups, nu=nu)
+    for key, tally in mgxs.tallies.items():
+        tally._derived = True
+        tally._mean = np.full(tally.shape, 4.0 if key == 'total' else 1.0)
+        tally._std_dev = np.zeros(tally.shape)
+
+    scatter = mgxs.tallies['scatter-1']
+    energyout = scatter.find_filter(openmc.EnergyoutFilter)
+    for attribute in attributes:
+        getattr(mgxs, attribute)
+        assert scatter.find_filter(openmc.EnergyoutFilter) is energyout
+    expected = 1.0 / 9.0 if isinstance(
+        mgxs, openmc.mgxs.DiffusionCoefficient) else 3.0
+    assert np.allclose(mgxs.get_xs(), expected)
+    if isinstance(mgxs, openmc.mgxs.DiffusionCoefficient):
+        coarse = openmc.mgxs.EnergyGroups([0.0, 2.0])
+        assert np.allclose(mgxs.get_condensed_xs(coarse).get_xs(), expected)
+        assert scatter.find_filter(openmc.EnergyoutFilter) is energyout
+
+
+@pytest.mark.parametrize('mgxs_class', [
     openmc.mgxs.PhotonTransferMatrixXS,
     openmc.mgxs.NuFissionMatrixXS,
     openmc.mgxs.ScatterMatrixXS,

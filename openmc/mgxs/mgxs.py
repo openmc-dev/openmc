@@ -2833,16 +2833,15 @@ class TransportXS(MGXS):
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
             # Switch EnergyoutFilter to EnergyFilter.
-            p1_tally = self.tallies['scatter-1']
+            p1_tally = self.tallies['scatter-1'].get_slice(
+                filters=[openmc.LegendreFilter], filter_bins=[('P1',)],
+                squeeze=True)
             old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
             _replace_filter(
                 p1_tally, openmc.EnergyoutFilter, new_filt)
 
-            # Slice Legendre expansion filter and change name of score
-            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                                          filter_bins=[('P1',)],
-                                          squeeze=True)
+            # Rename the score for the transport correction.
             p1_tally._scores = ['scatter-1']
 
             self._rxn_rate_tally = self.tallies['total'] - p1_tally
@@ -2859,16 +2858,15 @@ class TransportXS(MGXS):
                 raise ValueError(msg)
 
             # Switch EnergyoutFilter to EnergyFilter.
-            p1_tally = self.tallies['scatter-1']
+            p1_tally = self.tallies['scatter-1'].get_slice(
+                filters=[openmc.LegendreFilter], filter_bins=[('P1',)],
+                squeeze=True)
             old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
             _replace_filter(
                 p1_tally, openmc.EnergyoutFilter, new_filt)
 
-            # Slice Legendre expansion filter and change name of score
-            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                                          filter_bins=[('P1',)],
-                                          squeeze=True)
+            # Rename the score for the transport correction.
             p1_tally._scores = ['scatter-1']
 
             # Compute total cross section
@@ -3049,16 +3047,15 @@ class DiffusionCoefficient(TransportXS):
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
             # Switch EnergyoutFilter to EnergyFilter.
-            p1_tally = self.tallies['scatter-1']
+            p1_tally = self.tallies['scatter-1'].get_slice(
+                filters=[openmc.LegendreFilter], filter_bins=[('P1',)],
+                squeeze=True)
             old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
             _replace_filter(
                 p1_tally, openmc.EnergyoutFilter, new_filt)
 
-            # Slice Legendre expansion filter and change name of score
-            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                                          filter_bins=[('P1',)],
-                                          squeeze=True)
+            # Rename the score for the transport correction.
             p1_tally._scores = ['scatter-1']
 
             transport = self.tallies['total'] - p1_tally
@@ -3079,14 +3076,14 @@ class DiffusionCoefficient(TransportXS):
             # If 'scatter-1' is not in tallies, it is because the transport correction has
             # already occurred on this MGXS in another function or in a previous call to this function.
             if 'scatter-1' in self.tallies:
-                p1_tally = self.tallies['scatter-1']
+                p1_tally = self.tallies['scatter-1'].get_slice(
+                    filters=[openmc.LegendreFilter], filter_bins=[('P1',)],
+                    squeeze=True)
                 old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
                 new_filt = openmc.EnergyFilter(old_filt.values)
                 _replace_filter(
                     p1_tally, openmc.EnergyoutFilter, new_filt)
 
-                p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                    filter_bins=[('P1',)],squeeze=True)
                 p1_tally._scores = ['scatter-1']
                 total_xs = self.tallies['total'] / self.tallies['flux (tracklength)']
                 trans_corr = p1_tally / self.tallies['flux (analog)']
@@ -3130,14 +3127,13 @@ class DiffusionCoefficient(TransportXS):
         # If 'scatter-1' is not in tallies, it is because the transport correction has
         # already occurred on this MGXS in another function or in a previous call to this function.
         if 'scatter-1' in self.tallies:
-            p1_tally = self.tallies['scatter-1']
+            p1_tally = self.tallies['scatter-1'].get_slice(
+                filters=[openmc.LegendreFilter], filter_bins=[('P1',)],
+                squeeze=True)
             old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
             _replace_filter(
                 p1_tally, openmc.EnergyoutFilter, new_filt)
-            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                                          filter_bins=[('P1',)],
-                                          squeeze=True)
             p1_tally._scores = ['scatter-1']
             total_xs = self.tallies['total'] / self.tallies['flux (tracklength)']
             trans_corr = p1_tally / self.tallies['flux (analog)']

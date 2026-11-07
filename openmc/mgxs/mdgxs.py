@@ -493,6 +493,7 @@ class MDGXS(MGXS):
             for group in groups:
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 energy_bins.append(group_bounds)
+            energy_bins.sort()
             filter_bins.append(tuple(energy_bins))
             filters.append(openmc.EnergyFilter)
 
@@ -508,12 +509,12 @@ class MDGXS(MGXS):
         # Slice each of the tallies across nuclides and energy groups
         for tally_type, tally in slice_xs.tallies.items():
             slice_nuclides = [nuc for nuc in nuclides if nuc in tally.nuclides]
-            if filters != []:
-                tally_slice = tally.get_slice(filters=filters,
-                                              filter_bins=filter_bins,
-                                              nuclides=slice_nuclides)
-            else:
-                tally_slice = tally.get_slice(nuclides=slice_nuclides)
+            indices = [i for i, filt in enumerate(filters)
+                       if tally.contains_filter(filt)]
+            tally_slice = tally.get_slice(
+                filters=[filters[i] for i in indices],
+                filter_bins=[filter_bins[i] for i in indices],
+                nuclides=slice_nuclides)
             slice_xs.tallies[tally_type] = tally_slice
 
         # Assign sliced energy group structure to sliced MDGXS
@@ -1157,6 +1158,7 @@ class ChiDelayed(MDGXS):
             for group in groups:
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 energy_bins.append(group_bounds)
+            energy_bins.sort()
             filter_bins.append(tuple(energy_bins))
             filters.append(openmc.EnergyoutFilter)
 
@@ -1173,8 +1175,8 @@ class ChiDelayed(MDGXS):
             slice_xs._tallies['delayed-nu-fission-out'] = tally_slice
 
         # Add energy filter back to nu-fission-in tallies
-        self.tallies['delayed-nu-fission-in'].add_filter(energy_filter)
-        slice_xs._tallies['delayed-nu-fission-in'].add_filter(energy_filter)
+        self.tallies['delayed-nu-fission-in'].filters.append(energy_filter)
+        slice_xs._tallies['delayed-nu-fission-in'].filters.append(energy_filter)
 
         slice_xs.sparse = self.sparse
         return slice_xs
@@ -2439,6 +2441,7 @@ class MatrixMDGXS(MDGXS):
             for group in out_groups:
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 filter_bins.append(group_bounds)
+            filter_bins.sort()
             filter_bins = [tuple(filter_bins)]
 
             # Slice each of the tallies across energyout groups

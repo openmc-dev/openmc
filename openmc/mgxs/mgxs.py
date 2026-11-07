@@ -5767,6 +5767,7 @@ class Chi(MGXS):
             for group in groups:
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 filter_bins.append(group_bounds)
+            filter_bins.sort()
             filter_bins = [tuple(filter_bins)]
 
             # Slice nu-fission-out tally along energyout filter
@@ -5776,8 +5777,8 @@ class Chi(MGXS):
             slice_xs._tallies['nu-fission-out'] = tally_slice
 
         # Add energy filter back to nu-fission-in tallies
-        self.tallies['nu-fission-in'].add_filter(energy_filter)
-        slice_xs._tallies['nu-fission-in'].add_filter(energy_filter)
+        self.tallies['nu-fission-in'].filters.append(energy_filter)
+        slice_xs._tallies['nu-fission-in'].filters.append(energy_filter)
 
         slice_xs.sparse = self.sparse
         return slice_xs

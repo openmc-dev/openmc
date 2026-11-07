@@ -5,6 +5,35 @@ import openmc
 
 
 @pytest.mark.parametrize('mgxs_class', [
+    openmc.mgxs.Chi, openmc.mgxs.ChiDelayed,
+    openmc.mgxs.DelayedNuFissionXS, openmc.mgxs.DelayedNuFissionMatrixXS])
+@pytest.mark.parametrize('selection', [[1, 2], [2, 1]])
+def test_fission_slice_group_order(mgxs_class, selection):
+    groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0, 1000.0])
+    kwargs = {'delayed_groups': [1, 2]} if issubclass(
+        mgxs_class, openmc.mgxs.MDGXS) else {}
+    mgxs = mgxs_class(openmc.Material(), 'material', groups, **kwargs)
+    for key, tally in mgxs.tallies.items():
+        tally._derived = True
+        tally._mean = np.ones(tally.shape)
+        tally._std_dev = np.zeros(tally.shape)
+        if key == 'delayed-nu-fission' or tally.contains_filter(
+                openmc.EnergyoutFilter):
+            tally._mean = np.arange(1.0, tally.num_filter_bins + 1).reshape(
+                tally.shape)
+
+    original = mgxs.get_xs()
+    if isinstance(mgxs, openmc.mgxs.MatrixMDGXS):
+        sliced = mgxs.get_slice(in_groups=selection, out_groups=selection)
+        expected = original[..., :2, :2]
+    else:
+        sliced = mgxs.get_slice(groups=selection)
+        expected = original[..., :2]
+    assert np.array_equal(sliced.get_xs(), expected)
+    assert np.array_equal(mgxs.get_xs(), original)
+
+
+@pytest.mark.parametrize('mgxs_class', [
     openmc.mgxs.TransportXS, openmc.mgxs.DiffusionCoefficient])
 @pytest.mark.parametrize('nu', [False, True])
 @pytest.mark.parametrize('attributes', [

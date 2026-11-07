@@ -1087,6 +1087,37 @@ def test_convert_to_multigroup_preserves_material_names(run_in_tmpdir):
     assert len(set(macro)) == 2
 
 
+def test_convert_to_multigroup_cell_wise(run_in_tmpdir):
+    """cell_wise clones the material in each cell so two cells sharing one
+    material end up with distinct (spatially-resolved) cross sections rather than a
+    single shared set."""
+    water = openmc.Material(name="water")
+    water.add_element("H", 2.0)
+    water.add_element("O", 1.0)
+    water.set_density("g/cm3", 1.0)
+
+    s1 = openmc.Sphere(r=1.0)
+    s2 = openmc.Sphere(r=2.0, boundary_type="vacuum")
+    c1 = openmc.Cell(fill=water, region=-s1)
+    c2 = openmc.Cell(fill=water, region=+s1 & -s2)  # same material, distinct cell
+    model = openmc.Model(openmc.Geometry([c1, c2]), openmc.Materials([water]))
+
+    # Pre-create the library so MGXS generation (and transport) is skipped; this
+    # exercises the per-cell material cloning and macroscopic assignment only.
+    Path("mgxs.h5").touch()
+    model.convert_to_multigroup(method="cell_wise", mgxs_path="mgxs.h5")
+
+    # Each cell now holds its own cloned material reading a distinct macroscopic.
+    assert len(model.materials) == 2
+    assert c1.fill is not c2.fill
+    assert c1.fill._macroscopic == f"water_{c1.fill.id}"
+    assert c2.fill._macroscopic == f"water_{c2.fill.id}"
+    assert c1.fill._macroscopic != c2.fill._macroscopic
+    # The user's original material object is left untouched.
+    assert water.name == "water"
+    assert model.settings.energy_mode == "multi-group"
+
+
 class _GenerationCaptured(Exception):
     """Raised by the patched MGXS library builder to end generation early."""
 
@@ -1199,6 +1230,26 @@ def test_convert_to_multigroup_weight_windows(run_in_tmpdir, monkeypatch):
             monkeypatch, model, method='stochastic_slab',
             weight_windows_file=ww_path)
     assert gen.weight_windows_file is None
+
+
+def test_convert_to_multigroup_cell_wise_settings(run_in_tmpdir, monkeypatch):
+    # "cell_wise" runs the same full-geometry continuous energy simulation as
+    # "material_wise", so it inherits the model's settings and run mode and
+    # accepts a weight windows file
+    model = _steel_water_model()
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
+    ww_path = Path('ww.h5').resolve()
+
+    gen = _capture_generation_settings(
+        monkeypatch, model, method='cell_wise', particles=777,
+        weight_windows_file=ww_path)
+
+    assert gen.particles == 777
+    assert gen.batches == 200  # generation default
+    assert gen.run_mode == 'fixed source'
+    assert len(gen.source) == 1
+    assert gen.weight_windows_file == ww_path
 
 
 def test_convert_to_multigroup_validation(run_in_tmpdir):

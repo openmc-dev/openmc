@@ -55,6 +55,7 @@ class TRISO(openmc.Cell):
 
     def __init__(self, outer_radius, fill, center=(0., 0., 0.)):
         self._surface = openmc.Sphere(r=outer_radius)
+        self._triso_particle = False
         super().__init__(fill=fill, region=-self._surface)
         self.center = np.asarray(center)
 
@@ -802,7 +803,7 @@ class _SphericalShell(_Container):
             q[:] = (q - c)*ll[0]/r + c
 
 
-def create_triso_lattice(trisos, lower_left, pitch, shape, background):
+def create_triso_lattice(trisos, lower_left, pitch, shape, background, virtual=False):
     """Create a lattice containing TRISO particles for optimized tracking.
 
     Parameters
@@ -818,6 +819,11 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     background : openmc.Material
         A background material that is used anywhere within the lattice but
         outside a TRISO particle
+    virtual : bool
+        If True, create a virtual lattice where each cell is repeated
+        according to the pitch and shape. This is useful for creating a
+        lattice with a very large number of elements.
+        Default is False.
 
     Returns
     -------
@@ -825,6 +831,12 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
         A lattice containing the TRISO particles
 
     """
+
+    if virtual:
+        real_pitch = copy.deepcopy(pitch)
+        real_shape = copy.deepcopy(shape)
+        pitch = [real_pitch[i]*real_shape[i] for i in range(len(real_pitch))]
+        shape = [1 for i in range(len(real_shape))]
 
     lattice = openmc.RectLattice()
     lattice.lower_left = lower_left
@@ -845,6 +857,8 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
                                                 y0=t._surface.y0,
                                                 z0=t._surface.z0)
                 t_copy.region = -t_copy._surface
+                if virtual:
+                    t_copy._triso_particle = True
                 triso_locations[idx].append(t_copy)
             else:
                 warnings.warn('TRISO particle is partially or completely '
@@ -858,6 +872,12 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
             background_cell = openmc.Cell(fill=background, region=outside_trisos)
         else:
             background_cell = openmc.Cell(fill=background)
+
+        if virtual:
+            background_cell.virtual_lattice = True
+            background_cell.pitch = real_pitch
+            background_cell.shape = real_shape
+            background_cell.lower_left = [-pitch[i]/2 for i in range(len(pitch))]
 
         u = openmc.Universe()
         u.add_cell(background_cell)

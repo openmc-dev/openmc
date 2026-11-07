@@ -40,6 +40,9 @@ public:
   std::string name_;                 //!< User-defined name
   unique_ptr<BoundaryCondition> bc_; //!< Boundary condition
   bool surf_source_ {false}; //!< Activate source banking for the surface?
+  int triso_base_index_;
+  int triso_particle_index_ = -1;
+  bool is_triso_surface_ = false;
 
   explicit Surface(pugi::xml_node surf_node);
   Surface();
@@ -79,6 +82,15 @@ public:
   //!   exactly on the surface.
   virtual double distance(Position r, Direction u, bool coincident) const = 0;
 
+  virtual bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const
+  {
+    return {};
+  };
+  virtual void connect_to_triso_base(int triso_index, std::string key) {};
+  virtual vector<double> get_center() const { return {}; };
+  virtual double get_radius() const { return {}; };
+
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
   //! \return Normal direction
@@ -117,6 +129,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_;
@@ -135,6 +149,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
   double y0_;
@@ -153,6 +169,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
   double z0_;
@@ -170,6 +188,8 @@ public:
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   void to_hdf5_inner(hid_t group_id) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
@@ -190,6 +210,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
   double y0_, z0_, radius_;
@@ -209,6 +231,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, z0_, radius_;
@@ -228,6 +252,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, radius_;
@@ -247,9 +273,15 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
+  vector<double> get_center() const override;
+  double get_radius() const override;
+  void connect_to_triso_base(int triso_index, std::string key) override;
 
   double x0_, y0_, z0_, radius_;
+  // int triso_base_index_ = -1;
 };
 
 //==============================================================================
@@ -266,6 +298,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -284,6 +318,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -302,6 +338,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -320,6 +358,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
@@ -338,6 +378,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, z0_, A_, B_, C_;
@@ -356,6 +398,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, z0_, A_, B_, C_;
@@ -374,6 +418,8 @@ public:
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
+  bool triso_in_mesh(
+    vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, z0_, A_, B_, C_;

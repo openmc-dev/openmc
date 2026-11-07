@@ -1,6 +1,7 @@
 #include "openmc/summary.h"
 
 #include <fmt/core.h>
+#include <map>
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"
@@ -93,24 +94,138 @@ void write_nuclides(hid_t file)
   close_group(macro_group);
 }
 
+void write_triso_particles(hid_t geom_group)
+{
+  // Collect all TRISO surfaces and group by background cell ID
+  std::map<int32_t, vector<int32_t>> bg_to_surfs;
+  for (int i = 0; i < model::surfaces.size(); ++i) {
+    const auto& surf = model::surfaces[i];
+    if (surf->is_triso_surface_) {
+      bg_to_surfs[surf->triso_base_index_].push_back(i);
+    }
+  }
+
+  int n_groups = bg_to_surfs.size();
+  if (n_groups == 0)
+    return;
+
+  // Count total TRISO particles
+  int n_triso = 0;
+  for (const auto& [bg_id, surfs] : bg_to_surfs) {
+    n_triso += surfs.size();
+  }
+
+  // Build flat arrays
+  vector<double> positions(n_triso * 4);
+  vector<int32_t> surface_ids(n_triso);
+  vector<int32_t> cell_ids(n_triso);
+  vector<int32_t> fill_universes(n_triso);
+  vector<int32_t> group_offsets(n_groups + 1);
+
+  int idx = 0;
+  int g = 0;
+  group_offsets[0] = 0;
+
+  for (const auto& [bg_cell_id, surfs] : bg_to_surfs) {
+    for (const auto& i_surf : surfs) {
+      const auto& surf = model::surfaces[i_surf];
+      vector<double> center = surf->get_center();
+      double radius = surf->get_radius();
+      positions[idx * 4 + 0] = center[0];
+      positions[idx * 4 + 1] = center[1];
+      positions[idx * 4 + 2] = center[2];
+      positions[idx * 4 + 3] = radius;
+      surface_ids[idx] = surf->id_;
+      // Get TRISO particle cell via triso_particle_index_
+      int32_t i_cell = model::cell_map.at(surf->triso_particle_index_);
+      const auto& cell = model::cells[i_cell];
+      cell_ids[idx] = cell->id_;
+      fill_universes[idx] = model::universes[cell->fill_]->id_;
+      ++idx;
+    }
+    group_offsets[g + 1] = idx;
+    ++g;
+  }
+
+  // Write compact TRISO data to HDF5
+  hid_t triso_group = create_group(geom_group, "triso_particles");
+  write_attribute(triso_group, "n_groups", n_groups);
+  write_attribute(triso_group, "n_triso", n_triso);
+
+  // Write positions as 2D dataset [n_triso, 4]
+  hsize_t pos_dims[] = {static_cast<hsize_t>(n_triso), 4};
+  write_dataset_lowlevel(triso_group, 2, pos_dims, "positions",
+    H5TypeMap<double>::type_id, H5S_ALL, false, positions.data());
+
+  write_dataset(triso_group, "surface_ids", surface_ids);
+  write_dataset(triso_group, "cell_ids", cell_ids);
+  write_dataset(triso_group, "fill_universes", fill_universes);
+  write_dataset(triso_group, "group_offsets", group_offsets);
+
+  // Write per-group metadata (background cell info)
+  hid_t groups_group = create_group(triso_group, "groups");
+  g = 0;
+  for (const auto& [bg_cell_id, surfs] : bg_to_surfs) {
+    auto grp = create_group(groups_group, std::to_string(g));
+
+    int32_t i_bg_cell = model::cell_map.at(bg_cell_id);
+    const auto& bg_cell = model::cells[i_bg_cell];
+
+    write_dataset(grp, "background_cell_id", bg_cell->id_);
+    write_dataset(grp, "background_material_id",
+      model::materials[bg_cell->material_[0]]->id_);
+    write_dataset(
+      grp, "background_universe_id", model::universes[bg_cell->universe_]->id_);
+    write_dataset(grp, "vl_lower_left", bg_cell->vl_lower_left_);
+    write_dataset(grp, "vl_pitch", bg_cell->vl_pitch_);
+    write_dataset(grp, "vl_shape", bg_cell->vl_shape_);
+
+    close_group(grp);
+    ++g;
+  }
+  close_group(groups_group);
+  close_group(triso_group);
+}
+
 void write_geometry(hid_t file)
 {
   auto geom_group = create_group(file, "geometry");
 
-  write_attribute(geom_group, "n_cells", model::cells.size());
-  write_attribute(geom_group, "n_surfaces", model::surfaces.size());
+  // Count non-TRISO cells and surfaces for accurate counts
+  int n_cells = 0;
+  int n_surfaces = 0;
+  for (const auto& c : model::cells) {
+    if (!c->triso_particle_ && !c->virtual_lattice_)
+      ++n_cells;
+  }
+  for (const auto& surf : model::surfaces) {
+    if (!surf->is_triso_surface_)
+      ++n_surfaces;
+  }
+
+  write_attribute(geom_group, "n_cells", n_cells);
+  write_attribute(geom_group, "n_surfaces", n_surfaces);
   write_attribute(geom_group, "n_universes", model::universes.size());
   write_attribute(geom_group, "n_lattices", model::lattices.size());
 
   auto cells_group = create_group(geom_group, "cells");
-  for (const auto& c : model::cells)
+  for (const auto& c : model::cells) {
+    if (c->triso_particle_ || c->virtual_lattice_)
+      continue;
     c->to_hdf5(cells_group);
+  }
   close_group(cells_group);
 
   auto surfaces_group = create_group(geom_group, "surfaces");
-  for (const auto& surf : model::surfaces)
+  for (const auto& surf : model::surfaces) {
+    if (surf->is_triso_surface_)
+      continue;
     surf->to_hdf5(surfaces_group);
+  }
   close_group(surfaces_group);
+
+  // Write compact TRISO particle data
+  write_triso_particles(geom_group);
 
   auto universes_group = create_group(geom_group, "universes");
   for (const auto& u : model::universes)

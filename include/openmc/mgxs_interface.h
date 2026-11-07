@@ -6,6 +6,7 @@
 
 #include "openmc/hdf5_interface.h"
 #include "openmc/mgxs.h"
+#include "openmc/particle_type.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -63,6 +64,7 @@ public:
   vector<vector<double>> nuc_temps_; // all available temperatures
   vector<double>
     default_inverse_velocity_; // approximate default inverse-velocity data
+  ParticleType particle_type_ {ParticleType::neutron()};
 };
 
 namespace data {

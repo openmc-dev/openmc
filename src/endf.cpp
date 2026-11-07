@@ -10,6 +10,7 @@
 #include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math.h"
 #include "openmc/search.h"
 
 namespace openmc {
@@ -285,14 +286,14 @@ double Tabulated1D::operator()(double x) const
     r = (x - x0) / (x1 - x0);
     return y0 + r * (y1 - y0);
   case Interpolation::lin_log:
-    r = log(x / x0) / log(x1 / x0);
+    r = openmc::log(x / x0) / openmc::log(x1 / x0);
     return y0 + r * (y1 - y0);
   case Interpolation::log_lin:
     r = (x - x0) / (x1 - x0);
-    return y0 * exp(r * log(y1 / y0));
+    return y0 * openmc::exp(r * openmc::log(y1 / y0));
   case Interpolation::log_log:
-    r = log(x / x0) / log(x1 / x0);
-    return y0 * exp(r * log(y1 / y0));
+    r = openmc::log(x / x0) / openmc::log(x1 / x0);
+    return y0 * openmc::exp(r * openmc::log(y1 / y0));
   default:
     throw std::runtime_error {"Invalid interpolation scheme."};
   }
@@ -346,7 +347,7 @@ double IncoherentElasticXS::operator()(double E) const
 {
   // Determine cross section using ENDF-102, Eq. (7.5)
   double W = debye_waller_;
-  return bound_xs_ / 2.0 * ((1 - std::exp(-4.0 * E * W)) / (2.0 * E * W));
+  return bound_xs_ / 2.0 * ((1 - openmc::exp(-4.0 * E * W)) / (2.0 * E * W));
 }
 
 //==============================================================================

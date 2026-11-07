@@ -5,6 +5,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/math.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
@@ -114,7 +115,8 @@ std::pair<Direction, double> PolarAzimuthal::sample_impl(
     return {-u_ref_, weight};
 
   double f = std::sqrt(1 - mu * mu);
-  return {mu * u_ref_ + f * std::cos(phi) * v_ref_ + f * std::sin(phi) * w_ref_,
+  return {
+    mu * u_ref_ + f * openmc::cos(phi) * v_ref_ + f * openmc::sin(phi) * w_ref_,
     weight};
 }
 
@@ -127,7 +129,7 @@ double PolarAzimuthal::evaluate(Direction u) const
     double sin_theta = std::sqrt(sin_theta_sq);
     double cos_phi = u.dot(v_ref_) / sin_theta;
     double sin_phi = u.dot(w_ref_) / sin_theta;
-    phi = std::atan2(sin_phi, cos_phi);
+    phi = openmc::atan2(sin_phi, cos_phi);
     if (phi < 0.0)
       phi += 2.0 * PI;
   }
@@ -161,8 +163,8 @@ Direction isotropic_direction(uint64_t* seed)
 {
   double phi = uniform_distribution(0., 2.0 * PI, seed);
   double mu = uniform_distribution(-1., 1., seed);
-  return {mu, std::sqrt(1.0 - mu * mu) * std::cos(phi),
-    std::sqrt(1.0 - mu * mu) * std::sin(phi)};
+  return {mu, std::sqrt(1.0 - mu * mu) * openmc::cos(phi),
+    std::sqrt(1.0 - mu * mu) * openmc::sin(phi)};
 }
 
 std::pair<Direction, double> Isotropic::sample(uint64_t* seed) const

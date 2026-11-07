@@ -50,6 +50,11 @@ Do not use C-style casting. Always use the C++-style casts ``static_cast``,
 ``const_cast``, or ``reinterpret_cast``. (See `ES.49
 <https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es49-if-you-must-use-a-cast-use-a-named-cast>`_)
 
+Call transcendental math functions (``exp``, ``log``, ``pow``, ``sin``,
+``cos``, ...) through the ``openmc`` namespace with ``#include
+"openmc/math.h"`` rather than through ``std::``, so that the correctly rounded backend can
+replace the system math library (see :ref:`devguide_portable_math`).
+
 Source Files
 ------------
 

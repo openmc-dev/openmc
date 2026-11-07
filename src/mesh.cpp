@@ -28,6 +28,7 @@
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/math.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/openmp_interface.h"
@@ -97,7 +98,7 @@ inline bool check_intersection_point(double x1, double x0, double y1, double y0,
   double z1, double z0, Position& r, double& min_distance)
 {
   double dist =
-    std::pow(x1 - x0, 2) + std::pow(y1 - y0, 2) + std::pow(z1 - z0, 2);
+    openmc::pow(x1 - x0, 2) + openmc::pow(y1 - y0, 2) + openmc::pow(z1 - z0, 2);
   if (dist < min_distance) {
     r.x = x1;
     r.y = y1;
@@ -1983,13 +1984,13 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   r = local_coords(r);
 
   Position mapped_r;
-  mapped_r[0] = std::hypot(r.x, r.y);
+  mapped_r[0] = openmc::hypot(r.x, r.y);
   mapped_r[2] = r[2];
 
   if (mapped_r[0] < FP_PRECISION) {
     mapped_r[1] = 0.0;
   } else {
-    mapped_r[1] = std::atan2(r.y, r.x);
+    mapped_r[1] = openmc::atan2(r.y, r.x);
     if (mapped_r[1] < 0)
       mapped_r[1] += 2 * PI;
   }
@@ -2019,8 +2020,8 @@ Position CylindricalMesh::sample_element(
   double phi = uniform_distribution(phi_min, phi_max, seed);
   double z = uniform_distribution(z_min, z_max, seed);
 
-  double x = r * std::cos(phi);
-  double y = r * std::sin(phi);
+  double x = r * openmc::cos(phi);
+  double y = r * openmc::sin(phi);
 
   return origin_ + Position(x, y, z);
 }
@@ -2087,8 +2088,8 @@ double CylindricalMesh::find_phi_crossing(
   // => (y + s * v) * cos(p0) = (x + s * u) * sin(p0)
   // = s * (v * cos(p0) - u * sin(p0)) = - (y * cos(p0) - x * sin(p0))
 
-  const double c0 = std::cos(p0);
-  const double s0 = std::sin(p0);
+  const double c0 = openmc::cos(p0);
+  const double s0 = openmc::sin(p0);
 
   const double denominator = (u.x * s0 - u.y * c0);
 
@@ -2287,8 +2288,8 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
     mapped_r[1] = 0.0;
     mapped_r[2] = 0.0;
   } else {
-    mapped_r[1] = std::acos(r.z / mapped_r.x);
-    mapped_r[2] = std::atan2(r.y, r.x);
+    mapped_r[1] = openmc::acos(r.z / mapped_r.x);
+    mapped_r[2] = openmc::atan2(r.y, r.x);
     if (mapped_r[2] < 0)
       mapped_r[2] += 2 * PI;
   }
@@ -2314,16 +2315,16 @@ Position SphericalMesh::sample_element(
   double phi_max = this->phi(ijk[2]);
 
   double cos_theta =
-    uniform_distribution(std::cos(theta_min), std::cos(theta_max), seed);
-  double sin_theta = std::sin(std::acos(cos_theta));
+    uniform_distribution(openmc::cos(theta_min), openmc::cos(theta_max), seed);
+  double sin_theta = openmc::sin(openmc::acos(cos_theta));
   double phi = uniform_distribution(phi_min, phi_max, seed);
-  double r_min_cub = std::pow(r_min, 3);
-  double r_max_cub = std::pow(r_max, 3);
+  double r_min_cub = openmc::pow(r_min, 3);
+  double r_max_cub = openmc::pow(r_max, 3);
   // might be faster to do rejection here?
-  double r = std::cbrt(uniform_distribution(r_min_cub, r_max_cub, seed));
+  double r = openmc::cbrt(uniform_distribution(r_min_cub, r_max_cub, seed));
 
-  double x = r * std::cos(phi) * sin_theta;
-  double y = r * std::sin(phi) * sin_theta;
+  double x = r * openmc::cos(phi) * sin_theta;
+  double y = r * openmc::sin(phi) * sin_theta;
   double z = r * cos_theta;
 
   return origin_ + Position(x, y, z);
@@ -2376,7 +2377,7 @@ double SphericalMesh::find_theta_crossing(
   // b = r*u * cos(theta)^2 - u.z * r.z
   // c = r*r * cos(theta)^2 - r.z^2
 
-  const double cos_t = std::cos(grid_[1][shell]);
+  const double cos_t = openmc::cos(grid_[1][shell]);
   const bool sgn = std::signbit(cos_t);
   const double cos_t_2 = cos_t * cos_t;
 
@@ -2440,8 +2441,8 @@ double SphericalMesh::find_phi_crossing(
   // => (y + s * v) * cos(p0) = (x + s * u) * sin(p0)
   // = s * (v * cos(p0) - u * sin(p0)) = - (y * cos(p0) - x * sin(p0))
 
-  const double c0 = std::cos(p0);
-  const double s0 = std::sin(p0);
+  const double c0 = openmc::cos(p0);
+  const double s0 = openmc::sin(p0);
 
   const double denominator = (u.x * s0 - u.y * c0);
 
@@ -2562,7 +2563,7 @@ double SphericalMesh::volume(const MeshIndex& ijk) const
   double phi_o = grid_[2][ijk[2]];
 
   return (1.0 / 3.0) * (r_o * r_o * r_o - r_i * r_i * r_i) *
-         (std::cos(theta_i) - std::cos(theta_o)) * (phi_o - phi_i);
+         (openmc::cos(theta_i) - openmc::cos(theta_o)) * (phi_o - phi_i);
 }
 
 //==============================================================================

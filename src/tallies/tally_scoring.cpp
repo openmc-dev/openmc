@@ -6,6 +6,7 @@
 #include "openmc/error.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
+#include "openmc/math.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
@@ -2446,7 +2447,7 @@ void score_tracklength_tally_general(
             // Determine log union grid index
             if (i_log_union == C_NONE) {
               int neutron = ParticleType::neutron().transport_index();
-              i_log_union = std::log(p.E() / data::energy_min[neutron]) /
+              i_log_union = openmc::log(p.E() / data::energy_min[neutron]) /
                             simulation::log_spacing;
             }
             // Update micro xs cache
@@ -2576,7 +2577,7 @@ void score_collision_tally(Particle& p)
             // Determine log union grid index
             if (i_log_union == C_NONE) {
               int neutron = ParticleType::neutron().transport_index();
-              i_log_union = std::log(p.E() / data::energy_min[neutron]) /
+              i_log_union = openmc::log(p.E() / data::energy_min[neutron]) /
                             simulation::log_spacing;
             }
             // Update micro xs cache

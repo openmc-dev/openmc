@@ -475,6 +475,23 @@ OPENMC_ENABLE_STRICT_FP
   suite. By default (off), the compiler is free to use all optimizations for
   best performance. (Default: off)
 
+.. _cmake_coremath:
+
+OPENMC_USE_COREMATH
+  Uses the correctly rounded transcendental functions of the `CORE-MATH
+  <https://core-math.gitlabpages.inria.fr/>`_ project for ``exp``, ``log``,
+  ``sin``, ``pow`` and the other transcendental functions in the transport code
+  instead of the system math library. The sources are fetched from the upstream
+  repository at a pinned commit, hash-verified, and compiled into OpenMC.
+  Because every result is correctly rounded, these functions return the same
+  values on every platform and compiler, which the system libraries do not
+  guarantee; this removes the main source of platform differences in transport
+  results (see the developer's guide for what remains outside it).
+  Requires GCC or Clang. See :ref:`devguide_portable_math` for details and the
+  related options ``OPENMC_COREMATH_SOURCE_DIR`` (build from a local checkout
+  without network access) and ``OPENMC_COREMATH_FMA`` (use of the FMA
+  instruction on x86-64). (Default: off)
+
 OPENMC_FORCE_FETCHCONTENT
   Forces OpenMC to download and build its pinned versions of fmt, pugixml, and
   Catch2 rather than searching for installed packages. Catch2 is only needed

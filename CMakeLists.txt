@@ -40,6 +40,7 @@ option(OPENMC_USE_MPI         "Enable MPI"                                      
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 option(OPENMC_FORCE_FETCHCONTENT "Fetch dependencies instead of finding packages"  OFF)
 option(OPENMC_ENABLE_STRICT_FP "Enable strict FP flags to improve test portability"  OFF)
+option(OPENMC_USE_COREMATH    "Use correctly rounded CORE-MATH transcendental functions" OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
 message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
@@ -51,6 +52,7 @@ message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 message(STATUS "OPENMC_FORCE_FETCHCONTENT ${OPENMC_FORCE_FETCHCONTENT}")
 message(STATUS "OPENMC_ENABLE_STRICT_FP ${OPENMC_ENABLE_STRICT_FP}")
+message(STATUS "OPENMC_USE_COREMATH ${OPENMC_USE_COREMATH}")
 
 # Warnings for options removed along with the vendored git submodules
 if(DEFINED OPENMC_FORCE_VENDORED_LIBS)
@@ -292,6 +294,10 @@ endif()
 #===============================================================================
 
 include(cmake/Dependencies.cmake)
+
+if(OPENMC_USE_COREMATH)
+  include(cmake/CoreMath.cmake)
+endif()
 
 #===============================================================================
 # RPATH information
@@ -573,6 +579,10 @@ endif()
 if (OPENMC_ENABLE_STRICT_FP)
   target_compile_definitions(libopenmc_objects PRIVATE OPENMC_ENABLE_STRICT_FP)
 endif()
+if (OPENMC_USE_COREMATH)
+  target_compile_definitions(libopenmc_objects PUBLIC OPENMC_COREMATH)
+  target_link_libraries(libopenmc_objects PUBLIC coremath)
+endif()
 
 if(OPENMC_BUILD_TESTS)
   # Add cpp tests directory
@@ -614,6 +624,12 @@ install(TARGETS openmc libopenmc libopenmc_objects
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
+if(OPENMC_USE_COREMATH)
+  install(TARGETS coremath
+    EXPORT openmc-targets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  )
+endif()
 install(EXPORT openmc-targets
   FILE OpenMCTargets.cmake
   NAMESPACE OpenMC::

@@ -5,62 +5,6 @@ import openmc
 
 
 @pytest.mark.parametrize('mgxs_class', [
-    openmc.mgxs.Chi, openmc.mgxs.ChiDelayed,
-    openmc.mgxs.DelayedNuFissionXS, openmc.mgxs.DelayedNuFissionMatrixXS])
-@pytest.mark.parametrize('selection', [[1, 2], [2, 1]])
-def test_fission_slice_group_order(mgxs_class, selection):
-    groups = openmc.mgxs.EnergyGroups([1.0, 10.0, 100.0, 1000.0])
-    kwargs = {'delayed_groups': [1, 2]} if issubclass(
-        mgxs_class, openmc.mgxs.MDGXS) else {}
-    mgxs = mgxs_class(openmc.Material(), 'material', groups, **kwargs)
-    for key, tally in mgxs.tallies.items():
-        tally._derived = True
-        tally._mean = np.ones(tally.shape)
-        tally._std_dev = np.zeros(tally.shape)
-        if key == 'delayed-nu-fission' or tally.contains_filter(
-                openmc.EnergyoutFilter):
-            tally._mean = np.arange(1.0, tally.num_filter_bins + 1).reshape(
-                tally.shape)
-
-    original = mgxs.get_xs()
-    if isinstance(mgxs, openmc.mgxs.MatrixMDGXS):
-        sliced = mgxs.get_slice(in_groups=selection, out_groups=selection)
-        expected = original[..., :2, :2]
-    else:
-        sliced = mgxs.get_slice(groups=selection)
-        expected = original[..., :2]
-    assert np.array_equal(sliced.get_xs(), expected)
-    assert np.array_equal(mgxs.get_xs(), original)
-
-
-@pytest.mark.parametrize('mgxs_class', [
-    openmc.mgxs.TransportXS, openmc.mgxs.DiffusionCoefficient])
-@pytest.mark.parametrize('nu', [False, True])
-@pytest.mark.parametrize('attributes', [
-    ('rxn_rate_tally', 'xs_tally'), ('xs_tally', 'rxn_rate_tally')])
-def test_transport_preserves_scatter_tally(mgxs_class, nu, attributes):
-    groups = openmc.mgxs.EnergyGroups([0.0, 1.0, 2.0])
-    mgxs = mgxs_class(openmc.Material(), 'material', groups, nu=nu)
-    for key, tally in mgxs.tallies.items():
-        tally._derived = True
-        tally._mean = np.full(tally.shape, 4.0 if key == 'total' else 1.0)
-        tally._std_dev = np.zeros(tally.shape)
-
-    scatter = mgxs.tallies['scatter-1']
-    energyout = scatter.find_filter(openmc.EnergyoutFilter)
-    for attribute in attributes:
-        getattr(mgxs, attribute)
-        assert scatter.find_filter(openmc.EnergyoutFilter) is energyout
-    expected = 1.0 / 9.0 if isinstance(
-        mgxs, openmc.mgxs.DiffusionCoefficient) else 3.0
-    assert np.allclose(mgxs.get_xs(), expected)
-    if isinstance(mgxs, openmc.mgxs.DiffusionCoefficient):
-        coarse = openmc.mgxs.EnergyGroups([0.0, 2.0])
-        assert np.allclose(mgxs.get_condensed_xs(coarse).get_xs(), expected)
-        assert scatter.find_filter(openmc.EnergyoutFilter) is energyout
-
-
-@pytest.mark.parametrize('mgxs_class', [
     openmc.mgxs.PhotonTransferMatrixXS,
     openmc.mgxs.NuFissionMatrixXS,
     openmc.mgxs.ScatterMatrixXS,

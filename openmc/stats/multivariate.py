@@ -582,7 +582,11 @@ class SphericalIndependent(Spatial):
         r = Univariate.from_xml_element(elem.find('r'))
         cos_theta = Univariate.from_xml_element(elem.find('cos_theta'))
         phi = Univariate.from_xml_element(elem.find('phi'))
-        origin = get_elem_list(elem, "origin", float) or [0.0, 0.0, 0.0]
+        if 'origin' in elem.attrib or elem.find('origin') is not None:
+            origin = get_elem_list(elem, 'origin', float) or []
+            cv.check_length('origin coordinates', origin, 3, 3)
+        else:
+            origin = (0.0, 0.0, 0.0)
         return cls(r, cos_theta, phi, origin=origin)
 
 

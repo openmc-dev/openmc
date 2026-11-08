@@ -112,7 +112,7 @@ class PolarAzimuthal(UnitSphere):
     @reference_vwu.setter
     def reference_vwu(self, vwu):
         cv.check_type('reference v direction', vwu, Iterable, Real)
-        vwu = np.asarray(vwu)
+        vwu = np.asarray(vwu, dtype=float)
         uvw = self.reference_uvw
         cv.check_greater_than('reference v direction must not be parallel to reference u direction', np.linalg.norm(np.cross(vwu,uvw)), 1e-6*np.linalg.norm(vwu))
         vwu -= vwu.dot(uvw)*uvw

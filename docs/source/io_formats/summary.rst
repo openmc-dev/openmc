@@ -32,9 +32,12 @@ The current version of the summary file format is 6.1.
              specified, the default universe (0) is assigned.
            - **fill_type** (*char[]*) -- Type of fill for the cell. Can be
              'material', 'universe', or 'lattice'.
+           - **fill** (*int*) -- Unique ID of the universe filling the
+             cell. This dataset is present only if fill_type is set to
+             'universe'.
            - **material** (*int* or *int[]*) -- Unique ID of the material(s)
              assigned to the cell. This dataset is present only if fill_type is
-             set to 'normal'.  The value '-1' signifies void material.  The data
+             set to 'material'.  The value '-1' signifies void material.  The data
              is an array if the cell uses distributed materials, otherwise it is
              a scalar.
            - **temperature** (*double[]*) -- Temperature of the cell in Kelvin.

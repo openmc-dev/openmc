@@ -1232,8 +1232,7 @@ void FlatSourceDomain::random_ray_tally()
 double FlatSourceDomain::evaluate_flux_at_point(
   Position r, int64_t sr, int g) const
 {
-  return source_regions_.scalar_flux_final(sr, g) /
-         (settings::n_batches - settings::n_inactive);
+  return source_regions_.scalar_flux_final(sr, g);
 }
 
 // Outputs all basic material, FSR ID, multigroup flux, and

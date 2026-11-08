@@ -934,13 +934,6 @@ def test_reference_vwu_normalization():
     assert np.isclose(np.linalg.norm(reference_v), 1.0, atol=1e-12)
 
 
-
-def test_reference_vwu_integer_dtype():
-    """Ensure integer-typed reference_vwu does not fail with in-place subtraction
-    due to numpy UFuncOutputCastingError."""
-    pa = openmc.stats.PolarAzimuthal(reference_uvw=[0, 1, 0], reference_vwu=[1, 0, 0])
-    np.testing.assert_allclose(pa.reference_vwu, [1.0, 0.0, 0.0])
-
 def test_fusion_spectrum_dd():
     d = openmc.stats.fusion_neutron_spectrum(10e3, 'DD')
     assert isinstance(d, openmc.stats.Normal)

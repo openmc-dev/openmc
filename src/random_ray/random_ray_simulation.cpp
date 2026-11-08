@@ -548,6 +548,10 @@ void RandomRaySimulation::simulate()
   for (uint64_t se = 0; se < domain_->n_source_elements(); se++) {
     domain_->source_regions_.scalar_flux_final(se) *=
       source_normalization_factor;
+    if (domain_->source_regions_.is_linear()) {
+      domain_->source_regions_.flux_moments_t(se) *=
+        source_normalization_factor;
+    }
   }
 
   // Finalize OpenMC

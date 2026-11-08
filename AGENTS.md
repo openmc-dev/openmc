@@ -213,6 +213,7 @@ Regression tests compare OpenMC output against reference data. **Prefer using ex
 - **PyAPITestHarness**: Standard harness for Python API tests. Compares `inputs_true.dat` (XML hash) and `results_true.dat` (statepoint k-eff and tally values). Requires `model.xml` generation.
 - **HashedPyAPITestHarness**: Like PyAPITestHarness but hashes the results for compact comparison
 - **TolerantPyAPITestHarness**: For tests with floating-point non-associativity (e.g., random ray solver with single precision). Uses relative tolerance comparisons.
+- **VTKTestHarness**: Like TolerantPyAPITestHarness but keeps one voxel plot and also compares the flux and source arrays of the random ray VTK files
 - **WeightWindowPyAPITestHarness**: Compares weight window bounds from `weight_windows.h5`
 - **CollisionTrackTestHarness**: Compares collision track data from `collision_track.h5` against `collision_track_true.h5`
 - **TestHarness**: Base harness for XML-based tests (no Python model building)

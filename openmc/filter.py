@@ -2735,7 +2735,7 @@ class EnergyFunctionFilter(Filter):
                 'Quadratic interpolation requires 3 or more values.')
 
         if val == 'cubic' and len(self.energy) < 4:
-            raise ValueError('Cubic interpolation requires 3 or more values.')
+            raise ValueError('Cubic interpolation requires 4 or more values.')
 
         self._interpolation = val
 

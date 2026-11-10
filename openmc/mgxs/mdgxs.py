@@ -570,11 +570,19 @@ class MDGXS(MGXS):
             The nuclides of the cross-sections to include in the report. This
             may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
-            nuclides in the spatial domain. The special string 'sum' will report
+            nuclides in the spatial domain. The special string 'sum' reports
             the cross sections summed over all nuclides. Defaults to 'all'.
-        xs_type: {'macro', 'micro'}
+        xs_type : {'macro', 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns.
-            Defaults to 'macro'.
+            Defaults to 'macro'. This option does not change decay-rate values
+            or units; decay rates are always reported in s^-1.
+
+        Notes
+        -----
+        For each requested subdomain and nuclide, decay rates are reported once
+        per delayed group and angular bin, without energy-group labels. If
+        delayed groups are not specified, the report contains the combined
+        decay rate for each angular bin.
 
         """
 
@@ -673,22 +681,27 @@ class MDGXS(MGXS):
                         for pol in range(len(polar_bins) - 1):
                             pol_low, pol_high = polar_bins[pol: pol + 2]
                             for azi in range(len(azimuthal_bins) - 1):
-                                azi_low, azi_high = azimuthal_bins[azi: azi + 2]
-                                string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
-                                    pol_low, pol_high) + \
-                                    '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
-                                    azi_low, azi_high) + '\n'
+                                azi_low, azi_high = (
+                                    azimuthal_bins[azi: azi + 2])
+                                string += (
+                                    '\t\tPolar Angle: [{0:5f} - {1:5f}]'
+                                    .format(pol_low, pol_high)
+                                    + '\tAzimuthal Angle: [{0:5f} - {1:5f}]'
+                                    .format(azi_low, azi_high) + '\n')
                                 if self.rxn_type == 'decay-rate':
-                                    string += ('\t\tDecay Rate: '
-                                               f'{average_xs[pol, azi, 0]:.2e} +/- '
-                                               f'{rel_err_xs[pol, azi, 0]:.2e}%\n')
+                                    string += (
+                                        '\t\tDecay Rate: '
+                                        f'{average_xs[pol, azi, 0]:.2e} +/- '
+                                        f'{rel_err_xs[pol, azi, 0]:.2e}%\n')
                                 else:
                                     for group in range(1, self.num_groups + 1):
                                         bounds = (self.energy_groups
                                                   .get_group_bounds(group))
                                         string += '\t' + template.format(
                                             '', group, bounds[0], bounds[1])
-                                        string += '{:.2e} +/- {:.2e}%\n'.format(
+                                        string += (
+                                            '{:.2e} +/- {:.2e}%\n'
+                                        ).format(
                                             average_xs[pol, azi, group - 1],
                                             rel_err_xs[pol, azi, group - 1])
                                 string += '\n'
@@ -700,7 +713,8 @@ class MDGXS(MGXS):
                         # Loop over energy groups ranges
                         for group in range(1, self.num_groups + 1):
                             bounds = self.energy_groups.get_group_bounds(group)
-                            string += template.format('', group, bounds[0], bounds[1])
+                            string += template.format(
+                                '', group, bounds[0], bounds[1])
                             string += '{:.2e} +/- {:.2e}%\n'.format(
                                 average_xs[0, 0, group - 1],
                                 rel_err_xs[0, 0, group - 1])
@@ -2559,15 +2573,14 @@ class MatrixMDGXS(MDGXS):
 
                         template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
-                        average_xs = self.get_xs(nuclides=query_nuclides,
-                                                 subdomains=[subdomain],
-                                                 xs_type=xs_type, value='mean',
-                                                 delayed_groups=[delayed_group])
-                        rel_err_xs = self.get_xs(nuclides=query_nuclides,
-                                                 subdomains=[subdomain],
-                                                 xs_type=xs_type,
-                                                 value='rel_err',
-                                                 delayed_groups=[delayed_group])
+                        average_xs = self.get_xs(
+                            nuclides=query_nuclides, subdomains=[subdomain],
+                            xs_type=xs_type, value='mean',
+                            delayed_groups=[delayed_group])
+                        rel_err_xs = self.get_xs(
+                            nuclides=query_nuclides, subdomains=[subdomain],
+                            xs_type=xs_type, value='rel_err',
+                            delayed_groups=[delayed_group])
                         # get_xs retains the selected delayed-group axis.
                         average_xs = np.squeeze(average_xs, axis=-3)
                         rel_err_xs = np.squeeze(rel_err_xs, axis=-3) * 100.

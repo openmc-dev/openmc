@@ -2234,8 +2234,10 @@ class MatrixMGXS(MGXS):
         """Map groups to the bins remaining on one matrix axis."""
         cv.check_iterable_type('groups', groups, Integral)
         energy_filter = next(
-            tally.find_filter(filter_type) for tally in self.tallies.values()
-            if tally.contains_filter(filter_type))
+            (tally.find_filter(filter_type) for tally in self.tallies.values()
+             if tally.contains_filter(filter_type)), None)
+        if energy_filter is None:
+            energy_filter = self.xs_tally.find_filter(filter_type)
         bins = energy_filter.bins
         for group in groups:
             cv.check_greater_than('group', group, 0)

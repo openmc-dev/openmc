@@ -1259,6 +1259,13 @@ class Library:
             production_sum = np.sum(production, axis=1)
             active = (scatter > 0.0) & (production_sum > 0.0)
             empty = (scatter == 0.0) & (production_sum == 0.0)
+            missing = (scatter > 0.0) & (production_sum == 0.0)
+            if np.any(missing):
+                groups = (np.flatnonzero(missing) + 1).tolist()
+                raise ValueError(
+                    f'Photon MGXS data for {xsdata_name} has positive scatter '
+                    f'but no production in groups {groups}. Increase the '
+                    'particle count or check the outgoing energy bounds.')
             if not np.all(active | empty):
                 raise ValueError(
                     'Photon MGXS data has inconsistent total, absorption, and '

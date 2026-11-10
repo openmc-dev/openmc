@@ -136,30 +136,54 @@ def get_hexagonal_prism(*args, **kwargs):
 cylinder_from_points = Cylinder.from_points
 
 
-def subdivide(surfaces):
+def subdivide(surfaces, include_first=True, include_last=True):
     """Create regions separated by a series of surfaces.
 
-    This function allows regions to be constructed from a set of a surfaces that
-    are "in order". For example, if you had four instances of
+    This function allows regions to be constructed from surfaces that are
+    "in order". For example, if you had four instances of
     :class:`openmc.ZPlane` at z=-10, z=-5, z=5, and z=10, this function would
-    return a list of regions corresponding to z < -10, -10 < z < -5, -5 < z < 5,
-    5 < z < 10, and 10 < z. That is, for n surfaces, n+1 regions are returned.
+    return regions corresponding to z < -10, -10 < z < -5, -5 < z < 5,
+    5 < z < 10, and 10 < z. By default, n surfaces produce n+1 regions.
+    The first and last regions can be omitted independently using
+    ``include_first`` and ``include_last``.
 
     Parameters
     ----------
     surfaces : sequence of openmc.Surface
-        Surfaces separating regions
+        Nonempty sequence of surfaces separating regions
+    include_first : bool, optional
+        Whether to include the region on the negative side of the first
+        surface. Defaults to True.
+    include_last : bool, optional
+        Whether to include the region on the positive side of the last
+        surface. Defaults to True.
 
     Returns
     -------
     list of openmc.Region
-        Regions formed by the given surfaces
+        Regions formed by the given surfaces, in order. With a single surface,
+        excluding both end regions returns an empty list.
+
+    Examples
+    --------
+    Divide the space between two bounding planes without including the
+    exterior regions:
+
+    >>> planes = [openmc.ZPlane(z0=z) for z in (-10., -5., 5., 10.)]
+    >>> regions = openmc.model.subdivide(
+    ...     planes, include_first=False, include_last=False)
+    >>> len(regions)
+    3
 
     """
-    regions = [-surfaces[0]]
+    check_type('include_first', include_first, bool)
+    check_type('include_last', include_last, bool)
+
+    regions = [-surfaces[0]] if include_first else []
     for s0, s1 in zip(surfaces[:-1], surfaces[1:]):
         regions.append(+s0 & -s1)
-    regions.append(+surfaces[-1])
+    if include_last:
+        regions.append(+surfaces[-1])
     return regions
 
 

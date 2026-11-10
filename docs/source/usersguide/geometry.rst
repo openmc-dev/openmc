@@ -157,6 +157,24 @@ work::
   (array([-0.8660254,       -inf,       -inf]),
    array([ 0.8660254,        inf,        inf]))
 
+Subdividing Regions
+-------------------
+
+The :func:`openmc.model.subdivide` function creates regions between an ordered
+sequence of surfaces. By default, it also includes the region on the negative
+side of the first surface and the region on the positive side of the last
+surface. To divide only the space between bounding planes, omit both end
+regions::
+
+  planes = [openmc.ZPlane(z0=z) for z in (-10., -5., 5., 10.)]
+  regions = openmc.model.subdivide(
+      planes, include_first=False, include_last=False)
+
+This creates three regions: -10 < z < -5, -5 < z < 5, and 5 < z < 10. Set only
+``include_first=False`` or ``include_last=False`` to omit just one end region.
+The same options apply to other ordered surfaces, such as concentric cylinders
+or spheres.
+
 Boundary Conditions
 -------------------
 

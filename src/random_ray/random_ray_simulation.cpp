@@ -33,12 +33,29 @@ namespace openmc {
 // that may cause erroneous/misleading output or crashes from the solver.
 void validate_random_ray_inputs()
 {
+  const ParticleType particle_type = data::mg.particle_type_;
+  if (particle_type.is_photon()) {
+    if (settings::run_mode != RunMode::FIXED_SOURCE) {
+      fatal_error(
+        "Photon random ray transport is only supported in fixed-source mode.");
+    }
+    if (FlatSourceDomain::adjoint_requested_) {
+      fatal_error("Adjoint photon random ray transport is not supported.");
+    }
+  }
+
   // Validate tallies
   ///////////////////////////////////////////////////////////////////
   for (auto& tally : model::tallies) {
 
     // Validate score types
     for (auto score_bin : tally->scores_) {
+      if (particle_type.is_photon() &&
+          (score_bin == SCORE_FISSION || score_bin == SCORE_NU_FISSION ||
+            score_bin == SCORE_KAPPA_FISSION)) {
+        fatal_error("Fission tally scores are not supported for photon random "
+                    "ray transport.");
+      }
       switch (score_bin) {
       case SCORE_FLUX:
       case SCORE_TOTAL:
@@ -154,6 +171,13 @@ void validate_random_ray_inputs()
         fatal_error(
           "Only IndependentSource external source types are allowed in "
           "random ray mode");
+      }
+
+      if (is->particle_type() != particle_type) {
+        fatal_error(fmt::format(
+          "External source particle type '{}' does not match the '{}' MGXS "
+          "library used for random ray transport.",
+          is->particle_type().str(), particle_type.str()));
       }
 
       // Check for isotropic source
@@ -422,7 +446,7 @@ void RandomRaySimulation::simulate()
     simulation::total_weight = 1.0;
 
     // Update source term (scattering + fission)
-    domain_->update_all_neutron_sources();
+    domain_->update_all_particle_sources();
 
     // Reset scalar fluxes, iteration volume tallies, and region hit flags
     // to zero

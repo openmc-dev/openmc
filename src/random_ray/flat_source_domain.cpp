@@ -255,7 +255,7 @@ void FlatSourceDomain::demotion_step()
   // reports the settled decisions exactly.
 }
 
-void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
+void FlatSourceDomain::update_single_particle_source(SourceRegionHandle& srh)
 {
   // Reset all source regions to zero (important for void regions)
   for (int g = 0; g < negroups_; g++) {
@@ -284,7 +284,8 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
         double chi = chi_[material_offset + g_out];
 
         scatter_source += sigma_s * scalar_flux;
-        if (settings::create_fission_neutrons) {
+        if (data::mg.particle_type_.is_neutron() &&
+            settings::create_fission_neutrons) {
           fission_source += nu_sigma_f * scalar_flux * chi;
         }
       }
@@ -303,14 +304,14 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
 
 // Compute new estimate of scattering + fission sources in each source region
 // based on the flux estimate from the previous iteration.
-void FlatSourceDomain::update_all_neutron_sources()
+void FlatSourceDomain::update_all_particle_sources()
 {
   simulation::time_update_src.start();
 
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
-    update_single_neutron_source(srh);
+    update_single_particle_source(srh);
   }
 
   simulation::time_update_src.stop();
@@ -917,6 +918,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
     // crossing through this source region is used to estabilish
     // the spatial location of the source region
     Particle p;
+    p.type() = data::mg.particle_type_;
     p.r() = source_regions_.position(sr);
     p.r_last() = source_regions_.position(sr);
     p.u() = {1.0, 0.0, 0.0};
@@ -997,7 +999,7 @@ void FlatSourceDomain::reset_tally_volumes()
 // In fixed source mode, due to the way that volumetric fixed sources are
 // converted and applied as volumetric sources in one or more source regions,
 // we need to perform an additional normalization step to ensure that the
-// reported scalar fluxes are in units per source neutron. This allows for
+// reported scalar fluxes are in units per source particle. This allows for
 // direct comparison of reported tallies to Monte Carlo flux results.
 // This factor needs to be computed at each iteration, as it is based on the
 // volume estimate of each FSR, which improves over the course of the
@@ -1006,19 +1008,19 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
 {
   // Eigenvalue mode normalization
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    // Normalize fluxes by total number of fission neutrons produced. This
+    // Normalize fluxes by total number of fission particles produced. This
     // ensures consistent scaling of the eigenvector such that its magnitude is
     // comparable to the eigenvector produced by the Monte Carlo solver.
     // Multiplying by the eigenvalue is unintuitive, but it is necessary.
-    // If the eigenvalue is 1.2, per starting source neutron, you will
-    // generate 1.2 neutrons. Thus if we normalize to generating only ONE
+    // If the eigenvalue is 1.2, per starting source particle, you will
+    // generate 1.2 particles. Thus if we normalize to generating only ONE
     // neutron in total for the whole domain, then we don't actually have enough
-    // flux to generate the required 1.2 neutrons. We only know the flux
-    // required to generate 1 neutron (which would have required less than one
-    // starting neutron). Thus, you have to scale the flux up by the eigenvalue
-    // such that 1.2 neutrons are generated, so as to be consistent with the
-    // bookkeeping in MC which is all done per starting source neutron (not per
-    // neutron produced).
+    // flux to generate the required 1.2 particles. We only know the flux
+    // required to generate 1 particle (which would have required less than one
+    // starting particle). Thus, you have to scale the flux up by the eigenvalue
+    // such that 1.2 particles are generated, so as to be consistent with the
+    // bookkeeping in MC which is all done per starting source particle (not per
+    // particle produced).
     return k_eff_ / (fission_rate_ * simulation_volume_);
   }
 
@@ -1313,6 +1315,7 @@ void FlatSourceDomain::output_to_vtk() const
           sample.y = ll.y + y_delta / 2.0 + y * y_delta;
           sample.x = ll.x + x_delta / 2.0 + x * x_delta;
           Particle p;
+          p.type() = data::mg.particle_type_;
           p.r() = sample;
           p.r_last() = sample;
           p.E() = 1.0;
@@ -2635,7 +2638,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   }
 
   // Compute the combined source term
-  update_single_neutron_source(handle);
+  update_single_particle_source(handle);
 
   // Unlock the parallel map. Note: we may be tempted to release
   // this lock earlier, and then just use the source region's lock to protect

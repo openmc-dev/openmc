@@ -61,9 +61,9 @@ void free_memory()
   if (mpi::master) {
     free_memory_cmfd();
   }
-  if (settings::event_based) {
-    free_event_queues();
-  }
+  // Settings are reset before this function is called. Always clear event
+  // particles so that model-dependent caches are recreated on the next run.
+  free_event_queues();
 }
 
 } // namespace openmc

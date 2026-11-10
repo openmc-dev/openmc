@@ -820,13 +820,11 @@ def test_material_volumes_outside_geometry():
 
 
 @pytest.mark.skipif(not openmc.lib.feature_enabled('dagmc'), reason="DAGMC not enabled.")
-def test_material_volumes_outside_dagmc_geometry():
+def test_material_volumes_outside_dagmc_geometry(dagmc_pincell_path):
     """Test a mesh extending outside a root DAGMC universe."""
     openmc.reset_auto_ids()
 
-    dagmc_path = (Path(__file__).parents[1] /
-                  'regression_tests/dagmc/legacy/dagmc.h5m')
-    dagmc_universe = openmc.DAGMCUniverse(dagmc_path)
+    dagmc_universe = openmc.DAGMCUniverse(dagmc_pincell_path)
 
     fuel = openmc.Material(name='no-void fuel')
     fuel.add_nuclide('U235', 0.03)

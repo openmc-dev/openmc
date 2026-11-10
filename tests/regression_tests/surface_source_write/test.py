@@ -887,10 +887,9 @@ def test_surface_source_cell_event_based(
     harness.main()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", dagmc_pincell_path)
 def model_dagmc_1():
-    """Model based on the mesh file 'dagmc.h5m' available from
-    tests/regression_tests/dagmc/legacy.
+    """Model based on a pincell DAGMC mesh file
 
     """
     openmc.reset_auto_ids()
@@ -919,7 +918,7 @@ def model_dagmc_1():
     # Geometry
     # =============================================================================
 
-    dagmc_univ = openmc.DAGMCUniverse(Path("../../dagmc/legacy/dagmc.h5m"))
+    dagmc_univ = openmc.DAGMCUniverse(dagmc_pincell_path)
     model.geometry = openmc.Geometry(dagmc_univ)
 
     # =============================================================================
@@ -940,7 +939,7 @@ def model_dagmc_1():
 
 
 @pytest.fixture(scope="module")
-def model_dagmc_2():
+def model_dagmc_2(dagmc_pincell_path):
     """Model based on the mesh file 'dagmc.h5m' available from
     tests/regression_tests/dagmc/legacy.
 
@@ -974,7 +973,7 @@ def model_dagmc_2():
     # Geometry
     # =============================================================================
 
-    dagmc_univ = openmc.DAGMCUniverse(Path("../../dagmc/legacy/dagmc.h5m"))
+    dagmc_univ = openmc.DAGMCUniverse(dagmc_pincell_path)
 
     # -----------------------------------------------------------------------------
     # Box 1

@@ -84,6 +84,15 @@ public:
   double collapse_rate(int MT, double temperature, span<const double> energy,
     span<const double> flux) const;
 
+  //! Calculate group-averaged cross sections for a reaction
+  //
+  //! \param[in]  MT          ENDF MT value for desired reaction
+  //! \param[in]  temperature Temperature in [K]
+  //! \param[in]  energy      Energy group boundaries in [eV] (size n_groups+1)
+  //! \param[out] xs          Group-averaged cross section in each energy group
+  void group_xs(int MT, double temperature, span<const double> energy,
+    span<double> xs) const;
+
   //! Return a ParticleType object representing this nuclide
   ParticleType particle_type() const { return {Z_, A_, metastable_}; }
 

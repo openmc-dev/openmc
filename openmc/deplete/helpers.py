@@ -9,7 +9,7 @@ from itertools import product
 from numbers import Real
 import sys
 
-from numpy import dot, zeros, newaxis, asarray
+from numpy import dot, zeros, newaxis, asarray, ix_
 
 from openmc.mpi import comm
 from openmc.checkvalue import check_type, check_greater_than
@@ -235,6 +235,10 @@ class FluxCollapseHelper(ReactionRateHelper):
 
     .. versionadded:: 0.12.1
 
+    .. versionchanged:: 0.15.4
+        Flux-collapsed rates reuse a group cross section table built once per
+        material temperature instead of collapsing each pair every step.
+
     Parameters
     ----------
     n_nucs : int
@@ -255,15 +259,24 @@ class FluxCollapseHelper(ReactionRateHelper):
     nuclides : list of str
         All nuclides with desired reaction rates.
 
+    Notes
+    -----
+    One group cross section table is cached per distinct material temperature,
+    which suits a handful of temperatures but not hundreds of distinct ones.
+
     """
     def __init__(self, n_nucs, n_reacts, energies, reactions=None, nuclides=None):
         super().__init__(n_nucs, n_reacts)
         self._energies = asarray(energies)
+        self._xs_tables = {}  # group XS tables cached by temperature
         self._reactions_direct = list(reactions) if reactions is not None else []
         self._nuclides_direct = list(nuclides) if nuclides is not None else None
 
     @ReactionRateHelper.nuclides.setter
     def nuclides(self, nuclides):
+        # Invalidate cached tables when the nuclide set changes (rare)
+        if nuclides != self._nuclides:
+            self._xs_tables = {}
         ReactionRateHelper.nuclides.fset(self, nuclides)
         if self._reactions_direct and self._nuclides_direct is None:
             self._rate_tally.nuclides = nuclides
@@ -347,6 +360,16 @@ class FluxCollapseHelper(ReactionRateHelper):
         if self._reactions_direct:
             self._rate_tally_means_cache = None
 
+    def _table(self, temperature):
+        """Return the cached group cross section table for a temperature."""
+        if temperature not in self._xs_tables:
+            # Lazy import avoids the microxs -> coupled_operator -> helpers cycle
+            from .microxs import _build_xs_table_ce
+            self._xs_tables[temperature] = _build_xs_table_ce(
+                self.nuclides, self._scores, self._energies, temperature,
+                set(self.nuclides))
+        return self._xs_tables[temperature]
+
     def get_material_rates(self, mat_index, nuc_index, react_index):
         """Return an array of reaction rates for a material
 
@@ -384,20 +407,16 @@ class FluxCollapseHelper(ReactionRateHelper):
 
         mat = self._materials[mat_index]
 
-        for name, i_nuc in zip(self.nuclides, nuc_index):
-            for mt, score, i_rx in zip(self._mts, self._scores, react_index):
-                if score in self._reactions_direct and name in nuclides_direct:
-                    # Get reaction rate from tally
-                    i_rx_direct = direct_rx_index[score]
-                    i_nuc_direct = direct_nuc_index[name]
-                    self._results_cache[i_nuc, i_rx] = rx_rates[i_nuc_direct, i_rx_direct]
-                else:
-                    # Use flux to collapse reaction rate (per N)
-                    nuc = openmc.lib.nuclides[name]
-                    rate_per_nuc = nuc.collapse_rate(
-                        mt, mat.temperature, self._energies, flux)
+        # One matvec gives all flux-mode rates, in (nuclides, scores) order
+        self._results_cache[ix_(nuc_index, react_index)] = \
+            self._table(mat.temperature).collapse(flux)
 
-                    self._results_cache[i_nuc, i_rx] = rate_per_nuc
+        # Overwrite the (nuclide, reaction) pairs tallied directly
+        for name, i_nuc in zip(self.nuclides, nuc_index):
+            for score, i_rx in zip(self._scores, react_index):
+                if score in self._reactions_direct and name in nuclides_direct:
+                    self._results_cache[i_nuc, i_rx] = rx_rates[
+                        direct_nuc_index[name], direct_rx_index[score]]
 
         return self._results_cache
 

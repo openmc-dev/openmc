@@ -887,8 +887,8 @@ def test_surface_source_cell_event_based(
     harness.main()
 
 
-@pytest.fixture(scope="module", dagmc_pincell_path)
-def model_dagmc_1():
+@pytest.fixture(scope="module")
+def model_dagmc_1(dagmc_pincell_path):
     """Model based on a pincell DAGMC mesh file
 
     """

@@ -119,6 +119,26 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   for (size_t i = 0; i < total.size(); i++)
     if (total.data()[i] == 0.0)
       total.data()[i] = 1.e-10;
+
+  // Photon libraries fold secondary photons into the scatter matrix and store
+  // no multiplicity. Derive the group-wise one the MC collision game needs.
+  if (data::mg.particle_type_.is_photon() &&
+      !object_exists(xsdata_grp, "scatter_data/multiplicity_matrix")) {
+    for (size_t a = 0; a < n_ang; a++) {
+      for (size_t g = 0; g < energy_groups; g++) {
+        double production = scatter[a]->scattxs[g];
+        if (production <= 0.0)
+          continue;
+        double removal = total(a, g) - absorption(a, g);
+        if (removal <= 0.0)
+          fatal_error(fmt::format("Photon group {} produces photons but has "
+                                  "no scattering to carry them.",
+            g + 1));
+        std::fill(scatter[a]->mult[g].begin(), scatter[a]->mult[g].end(),
+          production / removal);
+      }
+    }
+  }
 }
 
 //==============================================================================

@@ -4,6 +4,19 @@ import pytest
 import openmc
 
 
+@pytest.mark.parametrize('mgxs_type', [
+    'scatter matrix', 'nu-scatter matrix', 'consistent scatter matrix',
+    'consistent nu-scatter matrix', 'scatter probability matrix',
+])
+@pytest.mark.parametrize('axis', ['in_groups', 'out_groups'])
+def test_matrix_slice_requires_full_groups(mgxs_type, axis):
+    mgxs = openmc.mgxs.MGXS.get_mgxs(mgxs_type)
+    if mgxs_type.startswith('consistent'):
+        mgxs.correction = None
+    with pytest.raises(ValueError, match=r'Use get_xs\(\)'):
+        mgxs.get_slice(**{axis: [1]})
+
+
 @pytest.mark.parametrize('mgxs_class', [
     openmc.mgxs.PhotonTransferMatrixXS,
     openmc.mgxs.NuFissionMatrixXS,

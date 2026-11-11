@@ -2466,7 +2466,25 @@ class MatrixMGXS(MGXS):
             requested for the nuclide(s) and/or energy group(s) requested in
             the parameters.
 
+        Raises
+        ------
+        ValueError
+            If energy groups are selected for a matrix whose correction or
+            normalization requires all groups. Use :meth:`get_xs` to select
+            values from the full matrix.
+
         """
+
+        if len(in_groups) or len(out_groups):
+            if (isinstance(self, ScatterProbabilityMatrix) or
+                isinstance(self, ScatterMatrixXS) and (
+                    self.formulation == 'consistent' or (
+                        self.scatter_format == SCATTER_LEGENDRE and
+                        self.correction == 'P0' and self.legendre_order == 0))):
+                raise ValueError(
+                    'Energy-group slicing requires full-group correction or '
+                    'normalization data for this matrix. Use get_xs() with '
+                    'in_groups/out_groups to select values instead.')
 
         # Slice nuclides first, then select each energy axis independently.
         slice_xs = super().get_slice(nuclides)

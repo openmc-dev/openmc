@@ -662,6 +662,25 @@ class MDGXS(MGXS):
                                              delayed_groups=[delayed_group])
                     rel_err_xs = rel_err_xs * 100.
 
+                    # get_xs keeps the axis of the one delayed group requested,
+                    # so drop it to index by (polar, azimuthal,) energy group
+                    if self.num_polar > 1 or self.num_azimuthal > 1:
+                        shape = (self.num_polar, self.num_azimuthal, -1)
+                    else:
+                        shape = (-1,)
+                    average_xs = np.reshape(average_xs, shape)
+                    rel_err_xs = np.reshape(rel_err_xs, shape)
+
+                    # Energy-independent data, such as the decay rate, has one
+                    # value that covers all of the energy groups
+                    num_values = average_xs.shape[-1]
+                    if num_values == self.num_groups:
+                        bounds_list = [self.energy_groups.get_group_bounds(g)
+                                       for g in range(1, num_values + 1)]
+                    else:
+                        edges = self.energy_groups.group_edges
+                        bounds_list = [(edges[0], edges[-1])]
+
                     if self.num_polar > 1 or self.num_azimuthal > 1:
                         # Loop over polar, azimuthal, and energy group ranges
                         for pol in range(len(polar_bins) - 1):
@@ -672,9 +691,8 @@ class MDGXS(MGXS):
                                     pol_low, pol_high) + \
                                     '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
                                     azi_low, azi_high) + '\n'
-                                for group in range(1, self.num_groups + 1):
-                                    bounds = \
-                                        self.energy_groups.get_group_bounds(group)
+                                for group in range(1, num_values + 1):
+                                    bounds = bounds_list[group - 1]
                                     string += '\t' + template.format('', group,
                                                                      bounds[0],
                                                                      bounds[1])
@@ -685,8 +703,8 @@ class MDGXS(MGXS):
                                 string += '\n'
                     else:
                         # Loop over energy groups ranges
-                        for group in range(1, self.num_groups+1):
-                            bounds = self.energy_groups.get_group_bounds(group)
+                        for group in range(1, num_values + 1):
+                            bounds = bounds_list[group - 1]
                             string += template.format('', group, bounds[0], bounds[1])
                             string += '{0:.2e} +/- {1:.2e}%'.format(
                                 average_xs[group - 1], rel_err_xs[group - 1])
@@ -2555,6 +2573,15 @@ class MatrixMDGXS(MDGXS):
                                                  value='rel_err',
                                                  delayed_groups=[delayed_group])
                         rel_err_xs = rel_err_xs * 100.
+
+                        # get_xs keeps the axis of the one delayed group
+                        # requested, so drop it to index by (polar, azimuthal,)
+                        # incoming and outgoing energy group
+                        shape = (self.num_groups, self.num_groups)
+                        if self.num_polar > 1 or self.num_azimuthal > 1:
+                            shape = (self.num_polar, self.num_azimuthal) + shape
+                        average_xs = np.reshape(average_xs, shape)
+                        rel_err_xs = np.reshape(rel_err_xs, shape)
 
                         if self.num_polar > 1 or self.num_azimuthal > 1:
                             # Loop over polar, azi, and in/out group ranges

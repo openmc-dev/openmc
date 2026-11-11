@@ -57,6 +57,8 @@ class MDGXS(MGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
+    particle_type : {None, 'neutron', 'photon'}, optional
+        Particle type used by the tallies. Defaults to no particle filter.
 
     Attributes
     ----------
@@ -130,9 +132,9 @@ class MDGXS(MGXS):
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
+                 num_polar=1, num_azimuthal=1, particle_type=None):
         super().__init__(domain, domain_type, energy_groups, by_nuclide, name,
-                         num_polar, num_azimuthal)
+                         num_polar, num_azimuthal, particle_type)
 
         self._delayed_groups = None
 
@@ -148,6 +150,7 @@ class MDGXS(MGXS):
             clone._name = self.name
             clone._rxn_type = self.rxn_type
             clone._by_nuclide = self.by_nuclide
+            clone._particle_type = self.particle_type
             clone._nuclides = copy.deepcopy(self._nuclides)
             clone._domain = self.domain
             clone._domain_type = self.domain_type
@@ -227,7 +230,7 @@ class MDGXS(MGXS):
     @staticmethod
     def get_mgxs(mdgxs_type, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
+                 num_polar=1, num_azimuthal=1, particle_type=None):
         """Return a MDGXS subclass object for some energy group structure within
         some spatial domain for some reaction type.
 
@@ -259,6 +262,8 @@ class MDGXS(MGXS):
         num_azimuthal : Integral, optional
             Number of equi-width azimuthal angle bins for angle discretization;
             defaults to one bin
+        particle_type : {None, 'neutron', 'photon'}, optional
+            Particle type used by the tallies. Defaults to no particle filter.
         Returns
         -------
         openmc.mgxs.MDGXS
@@ -287,6 +292,8 @@ class MDGXS(MGXS):
         mdgxs.name = name
         mdgxs.num_polar = num_polar
         mdgxs.num_azimuthal = num_azimuthal
+        if particle_type is not None:
+            mdgxs.particle_type = particle_type
         return mdgxs
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
@@ -486,6 +493,7 @@ class MDGXS(MGXS):
             for group in groups:
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 energy_bins.append(group_bounds)
+            energy_bins.sort()
             filter_bins.append(tuple(energy_bins))
             filters.append(openmc.EnergyFilter)
 
@@ -501,12 +509,12 @@ class MDGXS(MGXS):
         # Slice each of the tallies across nuclides and energy groups
         for tally_type, tally in slice_xs.tallies.items():
             slice_nuclides = [nuc for nuc in nuclides if nuc in tally.nuclides]
-            if filters != []:
-                tally_slice = tally.get_slice(filters=filters,
-                                              filter_bins=filter_bins,
-                                              nuclides=slice_nuclides)
-            else:
-                tally_slice = tally.get_slice(nuclides=slice_nuclides)
+            indices = [i for i, filt in enumerate(filters)
+                       if tally.contains_filter(filt)]
+            tally_slice = tally.get_slice(
+                filters=[filters[i] for i in indices],
+                filter_bins=[filter_bins[i] for i in indices],
+                nuclides=slice_nuclides)
             slice_xs.tallies[tally_type] = tally_slice
 
         # Assign sliced energy group structure to sliced MDGXS
@@ -1150,6 +1158,7 @@ class ChiDelayed(MDGXS):
             for group in groups:
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 energy_bins.append(group_bounds)
+            energy_bins.sort()
             filter_bins.append(tuple(energy_bins))
             filters.append(openmc.EnergyoutFilter)
 
@@ -1166,8 +1175,8 @@ class ChiDelayed(MDGXS):
             slice_xs._tallies['delayed-nu-fission-out'] = tally_slice
 
         # Add energy filter back to nu-fission-in tallies
-        self.tallies['delayed-nu-fission-in'].add_filter(energy_filter)
-        slice_xs._tallies['delayed-nu-fission-in'].add_filter(energy_filter)
+        self.tallies['delayed-nu-fission-in'].filters.append(energy_filter)
+        slice_xs._tallies['delayed-nu-fission-in'].filters.append(energy_filter)
 
         slice_xs.sparse = self.sparse
         return slice_xs
@@ -2432,6 +2441,7 @@ class MatrixMDGXS(MDGXS):
             for group in out_groups:
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 filter_bins.append(group_bounds)
+            filter_bins.sort()
             filter_bins = [tuple(filter_bins)]
 
             # Slice each of the tallies across energyout groups

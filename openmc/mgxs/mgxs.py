@@ -2247,6 +2247,27 @@ class MatrixMGXS(MGXS):
         return tuple(tuple(bins[-group])
                      for group in sorted(groups, reverse=True))
 
+    def _check_slice_groups(self, in_groups, out_groups,
+                            legendre_order='same'):
+        """Reject selections that discard correction or normalization data."""
+        scatter = isinstance(self, ScatterMatrixXS)
+        normalize = (isinstance(self, ScatterProbabilityMatrix) or
+                     (scatter and self.formulation == 'consistent'))
+        if scatter and legendre_order == 'same':
+            legendre_order = self.legendre_order
+        p0 = (scatter and self.scatter_format == SCATTER_LEGENDRE and
+              self.correction == 'P0' and legendre_order == 0)
+        for groups, filter_type, needs_all in (
+                (in_groups, openmc.EnergyFilter, p0),
+                (out_groups, openmc.EnergyoutFilter, p0 or normalize)):
+            if needs_all and len(groups):
+                count = self.xs_tally.find_filter(filter_type).num_bins
+                if sorted(groups) != list(range(1, count + 1)):
+                    raise ValueError(
+                        'Energy-group slicing requires full-group correction '
+                        'or normalization data for this matrix. Use get_xs() '
+                        'with in_groups/out_groups to select values instead.')
+
     @property
     def _dont_squeeze(self):
         """Create a tuple of axes which should not be removed during the get_xs
@@ -2469,22 +2490,13 @@ class MatrixMGXS(MGXS):
         Raises
         ------
         ValueError
-            If energy groups are selected for a matrix whose correction or
-            normalization requires all groups. Use :meth:`get_xs` to select
+            If selected groups omit data needed for correction or
+            normalization. Use :meth:`get_xs` to select
             values from the full matrix.
 
         """
 
-        if len(in_groups) or len(out_groups):
-            if (isinstance(self, ScatterProbabilityMatrix) or
-                isinstance(self, ScatterMatrixXS) and (
-                    self.formulation == 'consistent' or (
-                        self.scatter_format == SCATTER_LEGENDRE and
-                        self.correction == 'P0' and self.legendre_order == 0))):
-                raise ValueError(
-                    'Energy-group slicing requires full-group correction or '
-                    'normalization data for this matrix. Use get_xs() with '
-                    'in_groups/out_groups to select values instead.')
+        self._check_slice_groups(in_groups, out_groups)
 
         # Slice nuclides first, then select each energy axis independently.
         slice_xs = super().get_slice(nuclides)
@@ -4564,6 +4576,7 @@ class ScatterMatrixXS(MatrixMGXS):
             cv.check_type('legendre_order', legendre_order, Integral)
             cv.check_less_than('legendre_order', legendre_order,
                                self.legendre_order, equality=True)
+            self._check_slice_groups(in_groups, out_groups, legendre_order)
             slice_xs.legendre_order = legendre_order
 
             # Slice the scattering tally

@@ -578,10 +578,6 @@ class MDGXS(MGXS):
 
         """
 
-        if self.delayed_groups is None:
-            super().print_xs(subdomains, nuclides, xs_type)
-            return
-
         # Construct a collection of the subdomains to report
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
@@ -644,26 +640,31 @@ class MDGXS(MGXS):
                 # Add the cross section header
                 string += f'{xs_header: <16}\n'
 
-                for delayed_group in self.delayed_groups:
+                # Without delayed groups, the data covers all of them at once
+                for delayed_group in self.delayed_groups or [None]:
 
-                    template = '{0: <12}Delayed Group {1}:\t'
-                    string += template.format('', delayed_group)
-                    string += '\n'
+                    if delayed_group is None:
+                        groups_arg = 'all'
+                    else:
+                        groups_arg = [delayed_group]
+                        template = '{0: <12}Delayed Group {1}:\t'
+                        string += template.format('', delayed_group)
+                        string += '\n'
 
                     template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]:\t'
 
                     average_xs = self.get_xs(nuclides=[nuclide],
                                              subdomains=[subdomain],
                                              xs_type=xs_type, value='mean',
-                                             delayed_groups=[delayed_group])
+                                             delayed_groups=groups_arg)
                     rel_err_xs = self.get_xs(nuclides=[nuclide],
                                              subdomains=[subdomain],
                                              xs_type=xs_type, value='rel_err',
-                                             delayed_groups=[delayed_group])
+                                             delayed_groups=groups_arg)
                     rel_err_xs = rel_err_xs * 100.
 
-                    # get_xs keeps the axis of the one delayed group requested,
-                    # so drop it to index by (polar, azimuthal,) energy group
+                    # get_xs keeps a delayed group axis of length one, so drop
+                    # it to index by (polar, azimuthal,) energy group
                     if self.num_polar > 1 or self.num_azimuthal > 1:
                         shape = (self.num_polar, self.num_azimuthal, -1)
                     else:
@@ -2628,6 +2629,13 @@ class MatrixMDGXS(MDGXS):
                                              subdomains=[subdomain],
                                              xs_type=xs_type, value='rel_err')
                     rel_err_xs = rel_err_xs * 100.
+
+                    # get_xs keeps a delayed group axis of length one here too
+                    shape = (self.num_groups, self.num_groups)
+                    if self.num_polar > 1 or self.num_azimuthal > 1:
+                        shape = (self.num_polar, self.num_azimuthal) + shape
+                    average_xs = np.reshape(average_xs, shape)
+                    rel_err_xs = np.reshape(rel_err_xs, shape)
 
                     if self.num_polar > 1 or self.num_azimuthal > 1:
                         # Loop over polar, azi, and in/out energy group ranges

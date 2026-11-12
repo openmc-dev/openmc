@@ -21,7 +21,7 @@
 #include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
-#include "openmc/particle_data.h"
+#include "openmc/particle.h"
 #include "openmc/settings.h"
 #include "openmc/xml_interface.h"
 
@@ -545,9 +545,13 @@ std::pair<double, int32_t> CSGCell::distance(
       "{}) in direction ({}, {}, {}). Identical surfaces in the cell's region "
       "can cause this; Geometry.merge_surfaces removes them.",
       id_, r.x, r.y, r.z, u.x, u.y, u.z);
-    if (p) {
-      p->mark_as_lost(
-        fmt::format("Particle {} was lost. {}", p->id(), message));
+    // A transport particle is lost. Geometry-only ray tracing (plots and mesh
+    // material volumes) treats an infinite distance as the end of the ray, so
+    // it only gets a warning instead of the fatal error of
+    // GeometryState::mark_as_lost
+    if (auto particle = dynamic_cast<Particle*>(p)) {
+      particle->mark_as_lost(
+        fmt::format("Particle {} was lost. {}", particle->id(), message));
     } else {
       warning(message);
     }
@@ -735,7 +739,7 @@ Region::Region(std::string region_spec, int32_t cell_id)
     // crossing, which bounds the number of steps
     auto n_halfspaces = std::count_if(expression_.begin(), expression_.end(),
       [](int32_t token) { return token < OP_UNION; });
-    max_search_steps_ = 4 * n_halfspaces + 1;
+    max_search_steps_ = 4 * static_cast<int>(n_halfspaces) + 1;
 
   } else {
     simple_ = true;

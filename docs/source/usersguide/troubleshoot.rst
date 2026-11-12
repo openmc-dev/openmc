@@ -112,6 +112,16 @@ Working with the unique integer IDs of cells may be cumbersome; if you provide
 names to your cells, these names will show up in the Plot Explorer, which will
 aid geometry debugging.
 
+Particles can also be lost when a geometry contains identical surfaces, for
+example the same cylinder created separately for two cells. OpenMC knows which
+side of a surface a particle is on only for the surface it just crossed, and
+roundoff can put the particle on the wrong side of an identical copy. This can
+place a particle in the wrong cell or, far from the origin, keep the search for
+a cell's boundary from terminating, which OpenMC reports as a lost particle.
+Reuse the same :class:`openmc.Surface` object wherever a surface is needed, or
+create the :class:`openmc.Geometry` with ``merge_surfaces=True`` so that
+identical surfaces are merged when the model is exported.
+
 Another method to check for overlapping cells in a geometry is to run the problem in
 geometry debugging mode with the ``-g``, ``-geometry-debug``, or
 ``--geometry-debug`` command-line options.  This will enable checks for

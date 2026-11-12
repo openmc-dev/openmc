@@ -713,7 +713,9 @@ class StructuredMesh(MeshBase):
             elements.
         curvilinear : bool
             Whether or not to write curvilinear elements. Only applies to
-            ``SphericalMesh`` and ``CylindricalMesh``.
+            ``SphericalMesh`` and ``CylindricalMesh`` written to the legacy
+            ``.vtk`` format; the VTKHDF format always uses linear elements and
+            a warning is issued if this option is set.
 
         Raises
         ------
@@ -744,6 +746,12 @@ class StructuredMesh(MeshBase):
            >>> mesh.write_data_to_vtk({'heating': heating})
         """
         if Path(filename).suffix == ".vtkhdf":
+            if curvilinear and not isinstance(self, (RegularMesh, RectilinearMesh)):
+                warnings.warn(
+                    "Curvilinear elements are not supported for the VTKHDF "
+                    f"format; mesh {self.id} will be written with linear "
+                    "elements.", stacklevel=2
+                )
             self._write_vtk_hdf5(filename, datasets, volume_normalization)
             return None
 

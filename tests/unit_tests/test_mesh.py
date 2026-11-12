@@ -1511,6 +1511,24 @@ def test_write_vtkhdf_nonuniform_volume_normalization(run_in_tmpdir, kind,
     np.testing.assert_allclose(written, (data / mesh.volumes).T.ravel())
 
 
+@pytest.mark.parametrize("kind", list(VTKHDF_MESHES))
+def test_write_vtkhdf_curvilinear_warning(run_in_tmpdir, recwarn, kind):
+    """VTKHDF output warns that curvilinear elements are not written.
+
+    The option only changes the legacy output of cylindrical and spherical
+    meshes, so only those meshes warn.
+    """
+    mesh = VTKHDF_MESHES[kind]()
+    filename = f"curvilinear_{kind}.vtkhdf"
+    mesh.write_data_to_vtk(filename, curvilinear=True)
+
+    curvilinear_warnings = [w for w in recwarn
+                            if "Curvilinear elements" in str(w.message)]
+    expect_warning = kind in ("cylindrical", "spherical")
+    assert len(curvilinear_warnings) == int(expect_warning)
+    assert Path(filename).exists()
+
+
 @pytest.mark.parametrize(
     "x_grid,y_grid,z_grid,data,expected", [
         (

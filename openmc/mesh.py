@@ -3406,14 +3406,18 @@ class UnstructuredMesh(MeshBase):
                     )
 
             if volume_normalization:
+                # normalize copies so that the caller's arrays are unchanged
+                normalized = {}
                 for name, data in datasets.items():
                     if np.issubdtype(data.dtype, np.integer):
                         warnings.warn(
                             f'Integer data set "{name}" will '
                             "not be volume-normalized."
                         )
-                        continue
-                    data /= self.volumes
+                        normalized[name] = data
+                    else:
+                        normalized[name] = data / self.volumes
+                datasets = normalized
 
             # add data to the mesh
             for name, data in datasets.items():
@@ -3511,7 +3515,9 @@ class UnstructuredMesh(MeshBase):
             for name, data in datasets.items():
                 data = np.asarray(data, dtype="float64")
                 if volume_normalization:
-                    data /= self.volumes
+                    # divide out of place so that the caller's array is
+                    # unchanged
+                    data = data / self.volumes
                 cell_data_group.create_dataset(
                     name, data=data, dtype="float64", chunks=True
                 )

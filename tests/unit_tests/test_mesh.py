@@ -553,10 +553,11 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     reader.SetFileName(str(filename))
     reader.Update()
 
-    # Get mean from file and make sure it matches original data
+    # Get mean from file and make sure it matches the original data divided
+    # by the element volumes (volume normalization is on by default)
     arr = reader.GetOutput().GetCellData().GetArray("mean")
     mean = np.array([arr.GetTuple1(i) for i in range(ref_data.size)])
-    np.testing.assert_almost_equal(mean, ref_data)
+    np.testing.assert_almost_equal(mean, ref_data / simple_umesh.volumes)
 
     # attempt to apply a dataset with an improper size to a VTK write
     with pytest.raises(ValueError, match='Cannot apply dataset "mean"'):

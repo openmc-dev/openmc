@@ -1480,6 +1480,36 @@ def test_write_vtkhdf_default_volume_normalization_for_vtkhdf(run_in_tmpdir):
         saved, (data / cell_volume).T.ravel().reshape(2, 2, 2))
 
 
+@pytest.mark.parametrize("flat", [False, True], ids=["3d", "flat"])
+@pytest.mark.parametrize("kind", ["rectilinear", "cylindrical", "spherical"])
+def test_write_vtkhdf_nonuniform_volume_normalization(run_in_tmpdir, kind,
+                                                      flat):
+    """Each value must be divided by the volume of its own element.
+
+    The element volumes differ, so pairing values and volumes in the wrong
+    order changes the written data.
+    """
+    if kind == "rectilinear":
+        mesh = openmc.RectilinearMesh()
+        mesh.x_grid = [0., 1., 3.]
+        mesh.y_grid = [0., 2., 3., 7.]
+        mesh.z_grid = [-1., 0., 4., 5., 9.]
+    else:
+        mesh = VTKHDF_MESHES[kind]()
+    assert np.unique(np.round(mesh.volumes, 12)).size > 1
+
+    rng = np.random.default_rng(7)
+    data = rng.random(mesh.dimension)
+    # flat tally data is ordered with the first mesh index varying fastest
+    dataset = data.T.ravel() if flat else data
+    filename = f"nonuniform_{kind}.vtkhdf"
+    mesh.write_data_to_vtk(filename, {"values": dataset})
+
+    with h5py.File(filename, "r") as f:
+        written = f["VTKHDF"]["CellData"]["values"][()]
+    np.testing.assert_allclose(written, (data / mesh.volumes).T.ravel())
+
+
 @pytest.mark.parametrize(
     "x_grid,y_grid,z_grid,data,expected", [
         (

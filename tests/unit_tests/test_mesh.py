@@ -1202,6 +1202,7 @@ def test_regular_mesh_get_indices_at_coords():
     assert len(result_1d) == 1
     assert result_1d == (5,)
 
+
 def _read_vtkhdf(filename):
     """Read a VTKHDF file with VTK, skipping the test if VTK is unavailable"""
     vtk = pytest.importorskip("vtk")

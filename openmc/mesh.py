@@ -2007,7 +2007,6 @@ class RectilinearMesh(StructuredMesh):
 
         return tuple(indices)
 
-
     @classmethod
     def from_bounding_box(
         cls,
@@ -2489,7 +2488,6 @@ class CylindricalMesh(StructuredMesh):
         return arr
 
 
-
 class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
 
@@ -2936,7 +2934,6 @@ class SphericalMesh(StructuredMesh):
         ))
 
         return (r_index, theta_index, phi_index)
-
 
 
 def require_statepoint_data(func):

@@ -360,6 +360,10 @@ const std::unique_ptr<Mesh>& Mesh::create(T dataset)
     model::meshes.push_back(make_unique<CylindricalMesh>(dataset));
   } else if (mesh_type == SphericalMesh::mesh_type) {
     model::meshes.push_back(make_unique<SphericalMesh>(dataset));
+  } else if (mesh_type == UnitSpherePointset::mesh_type) {
+    model::meshes.push_back(make_unique<UnitSpherePointset>(dataset));
+  } else if (mesh_type == UnitSphereTriangularMesh::mesh_type) {
+    model::meshes.push_back(make_unique<UnitSphereTriangularMesh>(dataset));
   } else if (mesh_type == UnstructuredMesh::mesh_type) {
     model::meshes.push_back(UnstructuredMesh::create(dataset));
   } else {
@@ -2566,6 +2570,271 @@ double SphericalMesh::volume(const MeshIndex& ijk) const
 }
 
 //==============================================================================
+// Unit sphere pointset mesh implementation
+//==============================================================================
+
+const std::string UnitSpherePointset::mesh_type = "angular_pointset";
+
+UnitSpherePointset::UnitSpherePointset(vector<Direction> points)
+  : points_(std::move(points))
+{}
+
+UnitSpherePointset::UnitSpherePointset(pugi::xml_node node) : AngularMesh(node)
+{
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != mesh_type)
+      fatal_error(fmt::format("Invalid mesh type: {}", temp));
+  }
+
+  vector<double> flat = get_node_array<double>(node, "points");
+  if (flat.size() % 3 != 0) {
+    fatal_error(fmt::format("Point array for unit sphere pointset mesh {} "
+                            "does not contain a whole number of points.",
+      id_));
+  }
+  int n = static_cast<int>(flat.size() / 3);
+  points_.reserve(n);
+  for (int i = 0; i < n; ++i)
+    points_.push_back({flat[3 * i], flat[3 * i + 1], flat[3 * i + 2]});
+}
+
+UnitSpherePointset::UnitSpherePointset(hid_t group) : AngularMesh(group)
+{
+  if (object_exists(group, "type")) {
+    std::string temp;
+    read_dataset(group, "type", temp);
+    if (temp != mesh_type)
+      fatal_error(fmt::format("Invalid mesh type: {}", temp));
+  }
+
+  vector<double> flat;
+  read_dataset(group, "points", flat);
+  int n = static_cast<int>(flat.size() / 3);
+  points_.reserve(n);
+  for (int i = 0; i < n; ++i)
+    points_.push_back({flat[3 * i], flat[3 * i + 1], flat[3 * i + 2]});
+}
+
+void UnitSpherePointset::to_hdf5_inner(hid_t mesh_group) const
+{
+  int n = this->n_bins();
+  vector<double> flat(3 * n);
+  for (int i = 0; i < n; ++i) {
+    flat[3 * i + 0] = points_[i].x;
+    flat[3 * i + 1] = points_[i].y;
+    flat[3 * i + 2] = points_[i].z;
+  }
+  write_dataset(mesh_group, "points", flat);
+}
+
+int UnitSpherePointset::get_bin(Direction u) const
+{
+  int best = -1;
+  double best_dot = -2.0;
+  for (int i = 0; i < this->n_bins(); ++i) {
+    double d = points_[i].dot(u);
+    if (d > best_dot) {
+      best_dot = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
+//==============================================================================
+// Unit sphere triangular mesh implementation
+//==============================================================================
+
+const std::string UnitSphereTriangularMesh::mesh_type = "angular_triangular";
+
+UnitSphereTriangularMesh::UnitSphereTriangularMesh(vector<double> vertices)
+  : vertices_(std::move(vertices))
+{
+  if (vertices.size() % 9 != 0) {
+    fatal_error(fmt::format("Vertex array for triangular unit sphere mesh {} "
+                            "does not describe a whole number of triangles.",
+      id_));
+  }
+
+  // Calculate spherical triangle areas if provided only vertices
+  int n = this->n_bins();
+  areas_.resize(n);
+
+  for (int i = 0; i < n; ++i) {
+    int offset = 9 * i;
+
+    Direction a {
+      vertices_[offset], vertices_[offset + 1], vertices_[offset + 2]};
+
+    Direction b {
+      vertices_[offset + 3], vertices_[offset + 4], vertices_[offset + 5]};
+
+    Direction c {
+      vertices_[offset + 6], vertices_[offset + 7], vertices_[offset + 8]};
+
+    double num = a.dot(b.cross(c));
+    double denom = 1.0 + a.dot(b) + b.dot(c) + c.dot(a);
+    double area = 2.0 * std::atan2(num, denom);
+
+    if (area <= 0.0) {
+      fatal_error(fmt::format(
+        "Triangle {} in UnitSphereTriangularMesh has non-positive area.", i));
+    }
+
+    areas_[i] = area;
+  }
+}
+
+UnitSphereTriangularMesh::UnitSphereTriangularMesh(pugi::xml_node node)
+  : AngularMesh(node)
+{
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != mesh_type)
+      fatal_error(fmt::format("Invalid mesh type: {}", temp));
+  }
+
+  vertices_ = get_node_array<double>(node, "vertices");
+  if (vertices_.size() % 9 != 0) {
+    fatal_error(fmt::format("Vertex array for triangular unit sphere mesh {} "
+                            "does not describe a whole number of triangles.",
+      id_));
+  }
+
+  areas_ = get_node_array<double>(node, "areas");
+  if (areas_.size() != vertices_.size() / 9) {
+    fatal_error(fmt::format("Area array for triangular unit sphere mesh {} "
+                            "contains the wrong number of elements.",
+      id_));
+  }
+
+  for (int i = 0; i < this->n_bins(); ++i) {
+    if (areas_[i] <= 0.0) {
+      fatal_error(fmt::format(
+        "Triangle {} in UnitSphereTriangularMesh has non-positive area.", i));
+    }
+  }
+}
+
+UnitSphereTriangularMesh::UnitSphereTriangularMesh(hid_t group)
+  : AngularMesh(group)
+{
+  // Check mesh type
+  if (object_exists(group, "type")) {
+    std::string temp;
+    read_dataset(group, "type", temp);
+
+    if (temp != mesh_type) {
+      fatal_error(fmt::format("Invalid mesh type: {}", temp));
+    }
+  }
+
+  read_dataset(group, "vertices", vertices_);
+
+  if (vertices_.size() % 9 != 0) {
+    fatal_error(fmt::format(
+      "Vertex dataset for UnitSphereTriangularMesh {} does not contain "
+      "a whole number of triangles.",
+      id_));
+  }
+
+  read_dataset(group, "areas", areas_);
+
+  if (areas_.size() != static_cast<size_t>(this->n_bins())) {
+    fatal_error(
+      fmt::format("Number of triangle areas ({}) does not match number of "
+                  "triangles ({}) for UnitSphereTriangularMesh {}.",
+        areas_.size(), this->n_bins(), id_));
+  }
+
+  for (int i = 0; i < this->n_bins(); ++i) {
+    if (areas_[i] <= 0.0) {
+      fatal_error(fmt::format("Triangle {} in UnitSphereTriangularMesh {} has "
+                              "non-positive area.",
+        i, id_));
+    }
+  }
+}
+
+void UnitSphereTriangularMesh::to_hdf5_inner(hid_t mesh_group) const
+{
+  write_dataset(mesh_group, "vertices", vertices_);
+  write_dataset(mesh_group, "areas", areas_);
+}
+
+Direction UnitSphereTriangularMesh::sample_element(
+  int32_t bin, uint64_t* seed) const
+{
+  int offset = 9 * bin;
+
+  Direction a {vertices_[offset], vertices_[offset + 1], vertices_[offset + 2]};
+
+  Direction b {
+    vertices_[offset + 3], vertices_[offset + 4], vertices_[offset + 5]};
+
+  Direction c {
+    vertices_[offset + 6], vertices_[offset + 7], vertices_[offset + 8]};
+
+  // Step 0: deterministic quantities
+  double cos_c_arc = a.dot(b);
+
+  // Component of c orthogonal to a
+  Direction c_orth_a = c - a.dot(c) * a;
+
+  c_orth_a /= c_orth_a.norm();
+
+  Direction n_BA = b.cross(a);
+  n_BA /= n_BA.norm();
+
+  Direction n_AC = a.cross(c);
+  n_AC /= n_AC.norm();
+
+  double cos_a = n_BA.dot(n_AC);
+  cos_a = std::clamp(cos_a, -1.0, 1.0);
+
+  double alpha = std::acos(cos_a);
+  double sin_a = std::sin(alpha);
+
+  // Find area of subtriangle
+  double sub_area = prn(seed) * areas_[bin];
+
+  double s = std::sin(sub_area - alpha);
+  double t = std::cos(sub_area - alpha);
+
+  double u = t - cos_a;
+  double v = s + sin_a * cos_c_arc;
+
+  // Let q be the cosine of the new edge length b-hat
+  double numer = (v * t - u * s) * cos_a - v;
+  double denom = (v * s + u * t) * sin_a;
+  double q = numer / denom;
+  q = std::clamp(q, -1.0, 1.0);
+
+  // Compute the third vertex of the subtriangle
+  double sin_b_hat = std::sqrt(std::max(0.0, 1.0 - q * q));
+
+  Direction c_hat = q * a + sin_b_hat * c_orth_a;
+
+  // Use the other random variable to select cos(theta)
+  double z = 1.0 - prn(seed) * (1 - c_hat.dot(b));
+  z = std::clamp(z, -1.0, 1.0);
+
+  // Construct corresponding point on the sphere
+  Direction c_hat_orth_b = c_hat - c_hat.dot(b) * b;
+  c_hat_orth_b /= c_hat_orth_b.norm();
+
+  double sqrt_term = std::sqrt(std::max(0.0, 1.0 - z * z));
+
+  Direction P = z * b + sqrt_term * c_hat_orth_b;
+
+  // error-check: make sure P is a unit vector
+  P /= P.norm();
+
+  return P;
+}
+
+//==============================================================================
 // Helper functions for the C API
 //==============================================================================
 
@@ -2677,6 +2946,18 @@ extern "C" int openmc_add_unstructured_mesh(const char filename[],
   model::meshes.back()->set_id(id);
   *index = model::meshes.size() - 1;
 
+  return 0;
+}
+
+extern "C" int openmc_mesh_get_bin(
+  int32_t index, const double xyz[3], int32_t* bin)
+{
+  if (index < 0 || index >= model::meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  Position r {xyz[0], xyz[1], xyz[2]};
+  *bin = model::meshes[index]->get_bin(r);
   return 0;
 }
 

@@ -1577,6 +1577,290 @@ class Model:
             return openmc.lib.sample_external_source(
                 n_samples=n_samples, prn_seed=prn_seed, as_array=as_array
             )
+        
+    def write_forward_source_mesh(
+        self,
+        space_mesh: openmc.MeshBase,
+        angle_mesh: openmc.UnitSpherePointset | None,
+        energy_bins: Sequence[float],
+        min_samples: int = 10000,
+        min_samples_per_voxel: float = 30.0,
+        max_samples: int | None = None,
+        filename: PathLike = 'forward_source_mesh.h5',
+        **init_kwargs,
+    ) -> None:
+        """Precompute this source's strength on a (space, angle, energy) grid 
+        and write it to an HDF5 file for FW-CADIS source biasing.
+
+        This is meant to accommodate biasing sources that aren't 
+        :class:`IndependentSource` instances, under the assumption that a 
+        geometrically simpler "lookalike" :class:`IndependentSource` is used 
+        in the Random Ray solve to estimate adjoint source strengths.
+
+        Parameters
+        ----------
+        space_mesh : openmc.MeshBase
+            Spatial mesh to bin sampled source positions into. Should match
+            the mesh that will be used for the corresponding random ray
+            source-biasing tally.
+        angle_mesh : openmc.MeshBase or None
+            Angular mesh (over the unit sphere) to bin sampled source
+            directions into. If None, emission is recorded as a single
+            (isotropic) angle bin.
+        energy_bins : sequence of float
+            Ascending energy group boundaries in [eV], matching the group
+            structure used for the corresponding random ray source-biasing
+            tally.
+        min_samples : int
+            Number of source sites to sample.
+        min_samples_per_voxel : float
+            Minimum median number of samples per occupied (spatial, angle,
+            energy) voxel.
+        max_samples : int or None
+            Maximum total number of source sites sampled. Issues a warning  
+            if this cap is reached before min_samples_per_voxel is
+            satisfied. Defaults to ``10 * min_samples``.
+        filename : path-like
+            Path to write the resulting HDF5 file to.
+        **init_kwargs
+            Keyword arguments passed to :func:`openmc.lib.init` (via
+            :class:`openmc.lib.TemporarySession`)
+        """
+        import openmc.lib
+
+        # Verify that the model run mode is fixed source
+        if self.settings.run_mode != 'fixed source':
+            raise ValueError(
+                f'Forward source mesh cannot be written in '
+                f'{self.settings.run_mode} mode (requires ''fixed source'').')
+        
+        if self.settings.energy_mode == 'multi-group':
+            raise RuntimeError(
+                "Forward source meshes can only be generated in continuous-energy mode.")
+
+        min_samples = int(min_samples)
+        if max_samples is None:
+            max_samples = 10 * min_samples
+        if max_samples < min_samples:
+            raise ValueError(
+                f'max_samples ({max_samples}) must be >= min_samples '
+                f'({min_samples}).')
+
+        # Determine energy distribution type of the forward source
+        # (continuous, discrete, mixed). 
+        # 
+        # This first function returns a tuple (atoms, has_continuous)
+        # where atoms is a Set of discrete energies, and has_continuous
+        # indicates whether there is a continuous portion to the support.
+        def _support_type(dist):
+            # DecaySpectrum could be either Discrete or Tabular underneath
+            if isinstance(dist, openmc.stats.DecaySpectrum):
+                recast = dist.to_distribution()
+                if recast is None:
+                    return set(), False
+                return _support_type(recast)
+
+            sup = dist.support
+            if isinstance(sup, set):
+                return set(sup), False
+            if isinstance(sup, dict):
+                return set(sup.get('discrete', set())), bool(sup.get('continuous'))
+            if isinstance(sup, tuple):
+                return set(), True
+            raise TypeError(f"Unrecognized support type for {type(dist).__name__}")
+
+        # Extract the individual energy distribution objects from a given source
+        def _extract_energy_dist(source):
+            if isinstance(source, openmc.IndependentSource):
+                return [source.energy] if source.energy is not None else []
+            elif isinstance(source, openmc.TokamakSource):
+                return list(source.energy)
+            elif isinstance(source, openmc.MeshSource):
+                dists = []
+                for sub in np.asarray(source.sources).ravel(order='F'):
+                    dists.extend(_extract_energy_dist(sub))
+                return dists
+            else:
+                raise AttributeError(
+                    f"Cannot extract energy distribution of {type(source).__name__}")
+        
+        # Function to iterate through sources and return all discrete energies, 
+        # plus whether its support has any continuous part. In the event that a 
+        # source was not classifiable, the default behavior treats the sources 
+        # as having only continuous support.
+        def _collect_source_atoms(sources):
+            atoms = set()
+            has_continuous = False
+            try:
+                for src in sources:
+                    dists = _extract_energy_dist(src)
+                    if not dists:
+                        has_continuous = True  # source has default Watt dist
+                    for d in dists:
+                        a, c = _support_type(d)
+                        atoms |= a
+                        has_continuous |= c
+            except (AttributeError, TypeError, NotImplementedError):
+                return np.empty(0), False, False
+            return np.array(sorted(atoms), dtype=float), has_continuous, True
+        
+        atoms, has_continuous, classifiable = _collect_source_atoms(
+            self.settings.source)
+        if not classifiable:
+            warnings.warn(
+                "Could not determine the support type of at least one forward " \
+                "source energy distribution. Source energy distribution will " \
+                "be treated as continuous. ")
+        n_atoms = atoms.size
+    
+        if n_atoms == 0:
+            energy_distribution = 'continuous'
+        elif has_continuous:
+            energy_distribution = 'mixed'
+        else:
+            energy_distribution = 'discrete'
+        
+        energy_bins = np.asarray(energy_bins, dtype=float)
+        if energy_bins.ndim != 1 or energy_bins.size < 2:
+            raise ValueError(
+                'energy_bins must be a 1-D sequence with at least two '
+                'entries.')
+        n_energy = energy_bins.size - 1
+
+        n_space = space_mesh.n_elements
+        n_angle = angle_mesh.n_elements if angle_mesh is not None else 1
+
+        # Attach the meshes to a dummy tally so that openmc.lib mesh 
+        # objects exist for bin lookup later.
+        filters = [openmc.MeshFilter(space_mesh)]
+        if angle_mesh is not None:
+            filters.append(openmc.MeshAngularFilter(angle_mesh))
+        dummy_tally = openmc.Tally()
+        dummy_tally.filters = filters
+        dummy_tally.scores = ['flux']
+        dummy_tally_id = dummy_tally.id
+        self.tallies.append(dummy_tally)
+
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
+        counts = np.zeros((n_space, n_angle, n_energy))
+        counts_discrete = np.zeros((n_space, n_angle, n_atoms))
+        n_drawn = 0
+        median = 0.0
+
+        # Helper function to return the flattened mesh bin index of each 
+        # sample, or -1 for points not inside the mesh
+        def _mesh_bin_indices(lib_mesh, points: np.ndarray) -> np.ndarray:
+            bins = np.empty(len(points), dtype=int)
+            for i, p in enumerate(points):
+                bins[i] = lib_mesh.get_bin(p)
+            return bins
+        
+        # Helper function to map each sample's energy to the index of an
+        # "atom" in a discrete source energy spectrum. If a match is not 
+        # found, an index of -1 is assigned, corresponding to the continuum.
+        def _atom_indices(E):
+            if n_atoms == 0:
+                return np.full(E.shape, -1, dtype=int)
+            pos = np.searchsorted(atoms, E)
+            best = np.full(E.shape, -1, dtype=int)
+            for c in (np.clip(pos - 1, 0, n_atoms - 1),
+                      np.clip(pos, 0, n_atoms - 1)):
+                close = np.isclose(E, atoms[c], rtol=1.0e-9, atol=0.0)
+                best = np.where(close & (best < 0), c, best)
+            return best
+
+        with openmc.lib.TemporarySession(self, **init_kwargs):
+            space_lib_mesh = openmc.lib.meshes[space_mesh.id]
+            angle_lib_mesh = (
+                openmc.lib.meshes[angle_mesh.id]
+                if angle_mesh is not None else None
+            )
+
+            while True:
+                batch_size = min(min_samples, max_samples - n_drawn)
+                if batch_size <= 0:
+                    break
+
+                data = openmc.lib.sample_external_source(
+                    n_samples=batch_size, as_array=True)
+                n_drawn += batch_size
+
+                r = np.asarray(data['r'])
+                u = np.asarray(data['u'])
+                E = data['E']
+
+                space_bin = _mesh_bin_indices(space_lib_mesh, r)
+                valid = space_bin >= 0
+
+                if angle_lib_mesh is not None:
+                    angle_bin = _mesh_bin_indices(angle_lib_mesh, u)
+                    valid &= angle_bin >= 0
+                else:
+                    angle_bin = np.zeros(len(r), dtype=int)
+
+                # Identify samples coming from discrete source energies, if any
+                atom_bin = _atom_indices(E)
+                is_disc = atom_bin >= 0
+
+                cont = valid & ~is_disc
+                energy_bin = np.digitize(E, energy_bins) - 1
+                cont &= (energy_bin >= 0) & (energy_bin < n_energy)
+                np.add.at(counts,
+                          (space_bin[cont], angle_bin[cont], energy_bin[cont]), 1.0)
+
+                if n_atoms:
+                    disc = valid & is_disc
+                    np.add.at(counts_discrete,
+                              (space_bin[disc], angle_bin[disc], atom_bin[disc]), 1.0)
+
+                occupied = np.concatenate(
+                    [counts[counts != 0], counts_discrete[counts_discrete != 0]])
+
+                # Compute median samples per voxel among voxels sampled at 
+                # least once so far
+                if occupied.size:
+                    median = np.median(occupied)
+
+                if median >= min_samples_per_voxel or n_drawn >= max_samples:
+                    break
+
+        if median < min_samples_per_voxel:
+            warnings.warn(
+                f"write_source_mesh reached max_samples ({max_samples}) "
+                f"with a median count of only {median:.1f} samples per "
+                f"occupied voxel (targeted {min_samples_per_voxel}). "
+                "Consider raising max_samples or coarsening "
+                "space_mesh/angle_mesh/energy_bins."
+            )
+
+        # Normalize by the total number of samples drawn, including rejected 
+        # sites, so that the mesh accurately describes source support falling 
+        # only inside space_mesh/angle_mesh/energy_bins
+        S = counts / n_drawn
+        S_discrete = counts_discrete / n_drawn
+
+        with h5py.File(filename, 'w') as fh:
+            fh.attrs['filetype'] = np.bytes_('forward_source')
+            fh.attrs['version'] = np.array([1, 0])
+            fh.attrs['energy_distribution_type'] = np.bytes_(energy_distribution)
+            fh.create_dataset('spatial_mesh', data=space_mesh.id)
+            # -1 used for angle-independent biasing
+            fh.create_dataset(
+                'angle_mesh',
+                data=angle_mesh.id if angle_mesh is not None else -1)
+            fh.create_dataset('energy_bounds', data=energy_bins)
+            fh.create_dataset('unbiased_source_strength', data=S)
+            if n_atoms:
+                fh.create_dataset('discrete_energies', data=atoms)
+                fh.create_dataset('unbiased_source_strength_discrete', data=S_discrete)
+        
+        # Remove the dummy tally from earlier
+        for i, tally in enumerate(self.tallies):
+            if tally.id == dummy_tally_id:
+                del self.tallies[i]
+                break
 
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
         """Apply results from a statepoint to tally objects on the Model

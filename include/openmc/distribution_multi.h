@@ -8,6 +8,7 @@
 #include "openmc/distribution.h"
 #include "openmc/error.h"
 #include "openmc/position.h"
+#include "openmc/mesh.h"
 
 namespace openmc {
 
@@ -133,6 +134,46 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return (sampled direction, sample weight)
   std::pair<Direction, double> sample(uint64_t* seed) const override;
+};
+
+//==============================================================================
+//! MeshAngular distribution
+//==============================================================================
+
+class MeshAngular : public UnitSphereDistribution {
+public:
+  MeshAngular() {};
+  explicit MeshAngular(pugi::xml_node node);
+
+  //! Sample a direction from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return (sampled Direction, sample weight)
+  std::pair<Direction, double> sample(uint64_t* seed) const override;
+
+  //! Sample the mesh for an element and direction from that element
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled element index and direction within that element
+  std::pair<int32_t, Direction> sample_mesh(uint64_t* seed) const;
+
+  //! Sample a mesh element
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled element index
+  int32_t sample_element_index(uint64_t* seed) const;
+
+  //! Ensure that mesh elements are spherical triangles
+  void check_element_types() const;
+
+  // Accessors
+  const Mesh* mesh() const { return model::meshes.at(mesh_idx_).get(); }
+  int32_t n_sources() const { return this->mesh()->n_bins(); }
+
+  double total_strength() { return this->elem_idx_dist_.integral(); }
+
+private:
+  int32_t mesh_idx_ {C_NONE};
+  DiscreteIndex elem_idx_dist_; //!< Distribution of mesh element indices
+  vector<double> weight_;       //!< Importance weights (empty if unbiased)
+  Direction v_ref_ {1.0, 0.0, 0.0}; //!< reference direction
 };
 
 using UPtrAngle = unique_ptr<UnitSphereDistribution>;

@@ -42,6 +42,7 @@ void ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
   // normalize reflected u to ensure no floating point error leads to
   // unnormalized directions
   u /= u.norm();
+  p.direction_changed();
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);
@@ -60,6 +61,7 @@ void WhiteBC::handle_particle(Particle& p, const Surface& surf) const
   // normalize outgoing u to ensure no floating point error leads to
   // unnormalized directions
   u /= u.norm();
+  p.direction_changed();
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);
@@ -246,6 +248,7 @@ void RotationalPeriodicBC::handle_particle(
   new_u[zero_axis_idx_] = u[zero_axis_idx_];
   new_u[axis_1_idx_] = cos_theta * u[axis_1_idx_] - sin_theta * u[axis_2_idx_];
   new_u[axis_2_idx_] = sin_theta * u[axis_1_idx_] + cos_theta * u[axis_2_idx_];
+  p.direction_changed();
 
   // normalize new_u to ensure no floating point error leads to unnormalized
   // directions

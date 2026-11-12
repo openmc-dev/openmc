@@ -148,6 +148,7 @@ int openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh);
 int openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh);
 int openmc_mesh_filter_get_translation(int32_t index, double translation[3]);
 int openmc_mesh_filter_set_translation(int32_t index, double translation[3]);
+int openmc_mesh_get_bin(int32_t index, const double xyz[3], int32_t* bin);
 int openmc_mesh_get_id(int32_t index, int32_t* id);
 int openmc_mesh_set_id(int32_t index, int32_t id);
 int openmc_mesh_get_name(int32_t index, const char** name);
@@ -156,6 +157,8 @@ int openmc_mesh_get_n_elements(int32_t index, size_t* n);
 int openmc_mesh_get_volumes(int32_t index, double* volumes);
 int openmc_mesh_material_volumes(int32_t index, int nx, int ny, int nz,
   int max_mats, int32_t* materials, double* volumes, double* bboxes);
+int openmc_meshangular_filter_get_mesh(int32_t index, int32_t* index_mesh);
+int openmc_meshangular_filter_set_mesh(int32_t index, int32_t index_mesh);
 int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
 int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
 int openmc_cylindrical_mesh_get_origin(int32_t index, double origin[3]);

@@ -60,6 +60,9 @@ _dll.openmc_mesh_bounding_box.argtypes = [
     c_int32, POINTER(c_double), POINTER(c_double)]
 _dll.openmc_mesh_bounding_box.restype = c_int
 _dll.openmc_mesh_bounding_box.errcheck = _error_handler
+_dll.openmc_mesh_get_bin.argtypes = [c_int32, POINTER(c_double), POINTER(c_int32)]
+_dll.openmc_mesh_get_bin.restype = c_int
+_dll.openmc_mesh_get_bin.errcheck = _error_handler
 _dll.openmc_mesh_material_volumes.argtypes = [
     c_int32, c_int, c_int, c_int, c_int, arr_2d_int32, arr_2d_double,
     c_void_p]
@@ -274,6 +277,29 @@ class Mesh(_FortranObjectWithID):
         ll[ll == -inf] = -np.inf
         ur[ur == -inf] = -np.inf
         return BoundingBox(ll, ur)
+    
+    def get_bin(self, xyz) -> int:
+        """Return the index of the mesh element containing a point.
+
+        Parameters
+        ----------
+        xyz : iterable of float
+            Cartesian coordinates of a point (e.g. a position, or a
+            Cartesian direction vector if this mesh is used to discretize
+            the unit sphere)
+
+        Returns
+        -------
+        int
+            Index of the mesh element containing the point, or -1 if the
+            point is not inside any element of the mesh
+
+        """
+        xyz = np.asarray(xyz, dtype=np.double)
+        bin_ = c_int32()
+        _dll.openmc_mesh_get_bin(
+            self._index, xyz.ctypes.data_as(POINTER(c_double)), bin_)
+        return bin_.value
 
     def material_volumes(
             self,
@@ -927,13 +953,20 @@ class UnstructuredMesh(Mesh):
             options, mesh_id, index)
         return cls(index=index.value)
 
+class UnitSpherePointset(Mesh):
+    pass
+
+class UnitSphereTriangularMesh(Mesh):
+    pass
 
 _MESH_TYPE_MAP = {
     'regular': RegularMesh,
     'rectilinear': RectilinearMesh,
     'cylindrical': CylindricalMesh,
     'spherical': SphericalMesh,
-    'unstructured': UnstructuredMesh
+    'unstructured': UnstructuredMesh,
+    'angular_pointset': UnitSpherePointset,
+    'angular_triangular': UnitSphereTriangularMesh
 }
 
 

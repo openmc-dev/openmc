@@ -19,11 +19,10 @@ from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_elem_list, get_text
-from .mesh import MeshBase, StructuredMesh, UnstructuredMesh
+from .mesh import MeshBase, StructuredMesh, UnstructuredMesh, UnitSpherePointset, UnitSphereTriangularMesh, triangulate_unit_sphere_mesh
 from .particle_type import ParticleType
 from .statepoint import _VERSION_STATEPOINT
 from .utility_funcs import input_path
-
 
 class SourceBase(ABC):
     """Base class for external sources
@@ -205,6 +204,8 @@ class SourceBase(ABC):
                 return FileSource.from_xml_element(elem)
             elif source_type == 'mesh':
                 return MeshSource.from_xml_element(elem, meshes)
+            elif source_type == 'correlated':
+                return CorrelatedSource.from_xml_element(elem, meshes)
             elif source_type == 'tokamak':
                 return TokamakSource.from_xml_element(elem)
             elif source_type == 'stellarator':
@@ -662,6 +663,482 @@ class MeshSource(SourceBase):
             e) for e in elem.iterchildren('source')]
         constraints = cls._get_constraints(elem)
         return cls(mesh, sources, constraints=constraints)
+    
+class CorrelatedSource(SourceBase):
+    """A source with correlated spatial, angular, and energy distributions.
+
+    The sampling probabilities and weights associated with each voxel in a 
+    particular phase space discretization are usually supplied by a source bias 
+    file constructed by the FW-CADIS :class:`WeightWindowGenerator`. This file, 
+    by default named "source_bias.h5", stores a biased source strength 
+    B(r, Omega, g) and a per-voxel weight, as well as IDs of a spatial mesh and 
+    optional angular mesh, and an energy group structure. If the unbiased 
+    forward source had a discrete or mixed energy spectrum, the file also 
+    contains the discrete emission energy values and the biased source strengths 
+    and weights associated with each.
+
+    During sampling, the strengths assigned to each phase space voxel 
+    (r, Omega, g) are used to construct a discrete probability mass function,
+    and after a particular voxel has been selected, samples are drawn uniformly 
+    from its interior. If there is no triangular unit sphere mesh to partition 
+    angle, particles are emitted isotropically. In the case of a 
+    continuous-energy source spectrum, the energy of the sampled source site is
+    sampled uniformly in lethargy over the particular group, or uniformly in 
+    energy if the group's lower bound is zero. Finally, the sample is assigned 
+    the weight associated with the voxel it came from.
+    
+    If the angular mesh read from the source bias file is an instance of 
+    :class:`UnitSpherePointset`, it is converted upon initialization to
+    a :class:`UnitSphereTriangularMesh`, which is necessary for the sampling 
+    algorithm. See :func:`triangulate_unit_sphere_mesh` for the method by which 
+    this is done.
+
+    This class may also be instantiated and supplied a spatial mesh, energy 
+    group structure, optional angular mesh and discrete energy values, and 
+    source strengths and weights associated with each phase space voxel from 
+    within the Python API. In this case, only a :class:TriangularUnitSphereMesh
+    may be provided to partition angle, with source strength and weight data 
+    calculated accordingly.
+
+    .. versionadded:: TODO
+
+    Parameters
+    ----------
+    filename : path-like or None
+        Path to a "source_bias.h5" file.
+    particle : str or int or openmc.ParticleType
+        Source particle type (name, PDG number, or type). Overridden by the
+        particle type recorded in the source bias file, if present.
+    strength : float
+        Total strength multiplier of the source (default is 1.0).
+    constraints : dict
+        Constraints on sampled source particles.
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        Spatial mesh source positions are sampled from.
+    angle_mesh : openmc.MeshBase or None
+        Angular mesh source directions are sampled over (a
+        UnitSphereTriangularMesh if anisotropic), or None if emission is 
+        isotropic.
+    energy_bounds : numpy.ndarray or None
+        Energy group boundaries [eV], or None if the source energy distribution 
+        is discrete.
+    energy_distribution_type : {'continuous', 'discrete', 'mixed'}
+        Support type of the source's energy distribution. Distribution is 
+        treated as 'continuous' by default.
+    strengths : numpy.ndarray
+        Source probabilities B(r, Omega, g) associated with each phase-space
+        voxel with a continuous energy distribution, flattened in row-major 
+        (spatial, angle, energy) order.
+    weights : numpy.ndarray
+        Per-voxel weights (1 / flux) of continuum voxels, in the same order as 
+        `strengths`.
+    discrete_energies : numpy.ndarray or None
+        Discrete emission energies [eV] associated with a 'discrete' or 'mixed'
+        source spectrum, or None if the source spectrum is continuous only.
+    strengths_discrete : numpy.ndarray
+        Source probabilities B(r, Omega, E_k) associated with a finite 
+        space-angle voxel (r, Omega) and a particular discrete source 
+        energy E_k, flattened in row-major (spatial, angle, energy) order.
+    weights_discrete : numpy.ndarray
+        Weights corresponding to samples using a discrete energy distribution.
+    strength : float
+        Total strength multiplier of the source, not to be confused with 
+        `strengths`
+    type : str
+        Indicator of source type: 'correlated'
+    particle : openmc.ParticleType
+        Source particle type (name, PDG number, or type). Overridden by the
+        particle type recorded in the source bias file, if present.
+
+    """
+
+    def __init__(
+        self,
+        filename: PathLike | None = None,
+        strength: float | None = 1.0,
+        particle: str | int | ParticleType = 'neutron',
+        constraints: dict[str, Any] | None = None,
+    ):
+        super().__init__(strength=strength, constraints=constraints)
+        self._mesh = None
+        self._angle_mesh = None
+        self._energy_bounds = None
+        self._energy_distribution_type = 'continuous'
+        self._discrete_energies = None
+        self._strengths = None
+        self._weights = None
+        self._strengths_discrete = None
+        self._weights_discrete = None
+        self.particle = particle
+        if filename is not None:
+            self._load(filename)
+
+    @property
+    def type(self) -> str:
+        return "correlated"
+    
+    @property
+    def particle(self) -> ParticleType:
+        return self._particle
+
+    @particle.setter
+    def particle(self, particle):
+        self._particle = ParticleType(particle)
+    
+    @property
+    def energy_distribution_type(self) -> str:
+        return self._energy_distribution_type
+    
+    @energy_distribution_type.setter
+    def energy_distribution_type(self, dist_type):
+        if isinstance(dist_type, bytes):
+            dist_type = dist_type.decode()
+        if dist_type not in {'continuous', 'discrete', 'mixed'}:
+            raise ValueError(
+                f"Unknown energy distribution type '{dist_type}' given for " 
+                f"CorrelatedSource. Accepted types are 'continuous', "
+                f"'discrete', and 'mixed'.")
+        
+        self._energy_distribution_type = dist_type
+
+    @property
+    def mesh(self) -> MeshBase:
+        return self._mesh
+    
+    @mesh.setter
+    def mesh(self, m):
+        cv.check_type("spatial mesh", m, MeshBase)
+        self._mesh = m
+
+    @property
+    def angle_mesh(self) -> MeshBase | None:
+        return self._angle_mesh
+    
+    @angle_mesh.setter
+    def angle_mesh(self, m):
+        cv.check_type("angular mesh", m, UnitSphereTriangularMesh, none_ok=True)
+        self._angle_mesh = m
+
+    @property
+    def energy_bounds(self) -> np.ndarray | None:
+        return self._energy_bounds
+    
+    @energy_bounds.setter
+    def energy_bounds(self, e):
+        if e is not None:
+            e = np.asarray(e, dtype=float).ravel()
+            bad = e < 0.0
+            if not np.all(np.isfinite(e)) or np.any(bad):
+                raise ValueError(
+                    "CorrelatedSource.energy_bounds entries must be finite "
+                    "and nonnegative.")
+
+        self._energy_bounds = e
+    
+    @property
+    def discrete_energies(self) -> np.ndarray | None:
+        return self._discrete_energies
+    
+    @discrete_energies.setter
+    def discrete_energies(self, e):
+        if e is not None:
+            e = np.asarray(e, dtype=float).ravel()
+            bad = e <= 0.0
+            if not np.all(np.isfinite(e)) or np.any(bad):
+                raise ValueError(
+                    "CorrelatedSource.discrete_energies entries must be finite "
+                    "and positive.")
+
+        self._discrete_energies = e
+
+    @property
+    def strengths(self) -> np.ndarray:
+        return self._strengths
+    
+    @strengths.setter
+    def strengths(self, s):
+        if s is not None:
+            s = np.asarray(s, dtype=float).ravel()
+            bad = s < 0.0
+            if not np.all(np.isfinite(s)) or np.any(bad):
+                raise ValueError(
+                    "CorrelatedSource.strengths entries must be finite "
+                    "and positive.")
+
+        self._strengths = s
+
+    @property
+    def weights(self) -> np.ndarray:
+        return self._weights
+    
+    @weights.setter
+    def weights(self, w):
+        if w is not None:
+            w = np.asarray(w, dtype=float).ravel()
+            bad = w < 0.0
+            if not np.all(np.isfinite(w)) or np.any(bad):
+                raise ValueError(
+                    "CorrelatedSource.weights entries must be finite "
+                    "and positive.")
+
+        self._weights = w
+    
+    @property
+    def strengths_discrete(self) -> np.ndarray | None:
+        return self._strengths_discrete
+    
+    @strengths_discrete.setter
+    def strengths_discrete(self, s):
+        if s is not None:
+            s = np.asarray(s, dtype=float).ravel()
+            bad = s < 0.0
+            if not np.all(np.isfinite(s)) or np.any(bad):
+                raise ValueError(
+                    "CorrelatedSource.strengths_discrete entries must be finite "
+                    "and positive.")
+            
+        self._strengths_discrete = s
+    
+    @property
+    def weights_discrete(self) -> np.ndarray | None:
+        return self._weights_discrete
+    
+    @weights_discrete.setter
+    def weights_discrete(self, w):
+        if w is not None:
+            w = np.asarray(w, dtype=float).ravel()
+            bad = w < 0.0
+            if not np.all(np.isfinite(w)) or np.any(bad):
+                raise ValueError(
+                    "CorrelatedSource.weights_discrete entries must be finite "
+                    "and positive.")
+
+        self._weights_discrete = w
+
+    @property
+    def strength(self) -> float:
+        return float(np.sum(self._strengths))
+
+    @strength.setter
+    def strength(self, val):
+        if val is not None:
+            cv.check_type('correlated source strength', val, Real)
+            current = self.strength if self.strength != 0.0 else 1.0
+            self._strengths = self._strengths * (val / current)
+
+    def _load(self, filename: PathLike):
+        # Read source_bias.h5, triangulating the angular mesh if needed
+
+        filename = Path(filename)
+
+        with h5py.File(filename, 'r') as fh:
+            filetype = fh.attrs['filetype']
+            if isinstance(filetype, bytes):
+                filetype = filetype.decode()
+            if filetype != 'source_bias':
+                raise ValueError(
+                    f"File '{filename}' is not a source bias file "
+                    f"(filetype='{filetype}').")
+
+            sb_names = [k for k in fh.keys() if k.startswith('source_bias_')]
+            if len(sb_names) != 1:
+                raise ValueError(
+                    f"File '{filename}' contains {len(sb_names)} source "
+                    "bias groups; CorrelatedSource supports only one.")
+            sb_group = fh[sb_names[0]]
+            mesh_group = fh['meshes']
+
+            self.energy_distribution_type = sb_group.attrs.get(
+                'energy_distribution_type', b'continuous')
+
+            blocks = {} # dict to separate parameters based on distribution support
+            if self.energy_distribution_type != 'discrete':
+                energy_bounds = sb_group['energy_bounds'][()]
+                blocks['continuum'] = (sb_group['biased_source_strength'][()],
+                                       sb_group['weights'][()])
+            if self.energy_distribution_type != 'continuous':
+                discrete_energies = sb_group['discrete_energies'][()]
+                blocks['discrete'] = (
+                    sb_group['biased_source_strength_discrete'][()],
+                    sb_group['weights_discrete'][()])
+
+            # Particle type reader for if photon SB is eventually implemented
+            particle = sb_group.attrs.get('particle_type')
+            if particle is not None:
+                if isinstance(particle, bytes):
+                    particle = particle.decode()
+                self.particle = particle
+
+            spatial_mesh_id = int(sb_group['spatial_mesh'][()])
+            angle_mesh_id = int(sb_group['angle_mesh'][()])
+            spatial_mesh = MeshBase.from_hdf5(
+                mesh_group[f'mesh {spatial_mesh_id}'])
+            angle_mesh = (MeshBase.from_hdf5(mesh_group[f'mesh {angle_mesh_id}'])
+                          if angle_mesh_id != -1 else None)
+
+        if isinstance(angle_mesh, UnitSpherePointset):
+            # triangulate_unit_sphere_mesh expects point-major data, with the
+            # angle/point dimension leading. Triangulate both datasets at
+            # once for efficiency
+            shapes = [s.shape for s, _ in blocks.values()]
+            n_cols = [n_s * n_e for n_s, _, n_e in shapes]
+
+            def point_major(arrays):
+                return np.concatenate(
+                    [np.moveaxis(a, 1, 0).reshape(a.shape[1], n)
+                     for a, n in zip(arrays, n_cols)], axis=1)
+
+            angle_mesh, new_s, new_w = triangulate_unit_sphere_mesh(
+                angle_mesh,
+                data=point_major([s for s, _ in blocks.values()]),
+                broadcast_data=point_major([w for _, w in blocks.values()]))
+
+            # Split the columns back into blocks and restore
+            # (spatial, angle, energy) ordering
+            n_angle = angle_mesh.n_elements
+            splits = np.cumsum(n_cols)[:-1]
+            for key, (n_s, _, n_e), s, w in zip(
+                    list(blocks), shapes,
+                    np.split(new_s, splits, axis=1),
+                    np.split(new_w, splits, axis=1)):
+                blocks[key] = tuple(
+                    np.moveaxis(x.reshape(n_angle, n_s, n_e), 0, 1)
+                    for x in (s, w))
+
+        self.mesh = spatial_mesh
+        self.angle_mesh = angle_mesh
+        if 'continuum' in blocks:
+            self.energy_bounds = energy_bounds
+            self.strengths, self.weights = blocks['continuum']
+        if 'discrete' in blocks:
+            self.discrete_energies = discrete_energies
+            self.strengths_discrete, self.weights_discrete = blocks['discrete']
+
+    def populate_xml_element(self, elem: ET.Element):
+        """Add necessary source information to an XML element
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
+        if self.mesh is None:
+            raise ValueError("CorrelatedSource.mesh must be set before export.")
+        if self.strengths is None and self.discrete_energies is None:
+            raise ValueError(
+                "CorrelatedSource requires a continuum block ('strengths'), "
+                "a discrete block ('discrete_energies'), or both.")
+        
+        elem.set("particle", str(self.particle))
+        elem.set("mesh", str(self.mesh.id))
+        n_space_angle = self.mesh.n_elements
+        if self.angle_mesh is not None:
+            elem.set("angle_mesh", str(self.angle_mesh.id))
+            n_space_angle *= self.angle_mesh.n_elements
+
+        def write_array(tag, attr, n_expected=None):
+            values = getattr(self, attr)
+            if values is None:
+                raise ValueError(f"CorrelatedSource.{attr} must be set when "
+                                 "its energy distribution type is present.")
+            if n_expected is not None and len(values) != n_expected:
+                raise ValueError(
+                    f"Length of CorrelatedSource.{attr} ({len(values)}) does "
+                    f"not match the number of phase-space voxels "
+                    f"({n_expected}).")
+            ET.SubElement(elem, tag).text = ' '.join(str(x) for x in values)
+
+        # Continuum values
+        if self.strengths is not None:
+            if self.energy_distribution_type == 'discrete':
+                raise ValueError(
+                    f"CorrelatedSource has energy distribution type 'discrete' "
+                    f"but was found to contain a 'strengths' array with "
+                    f"{len(self.strengths)} elements.")
+            write_array('group_bounds', 'energy_bounds')
+            n_cont = n_space_angle * (len(self.energy_bounds) - 1)
+            write_array('strengths', 'strengths', n_cont)
+            write_array('weights', 'weights', n_cont)
+
+        # Discrete values
+        if self.discrete_energies is not None:
+            if self.energy_distribution_type == 'continuous':
+                raise ValueError(
+                    f"CorrelatedSource has energy distribution type 'continuous' "
+                    f"but was found to contain a 'discrete_energies' array with "
+                    f"{len(self.discrete_energies)} elements.")
+            n_disc = n_space_angle * len(self.discrete_energies)
+            write_array('discrete_energies', 'discrete_energies')
+            write_array('strengths_discrete', 'strengths_discrete', n_disc)
+            write_array('weights_discrete', 'weights_discrete', n_disc)
+        
+        elem.set("energy_distribution_type", self.energy_distribution_type)
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element, meshes) -> CorrelatedSource:
+        """
+        Generate CorrelatedSource from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        meshes : dict
+            A dictionary with mesh IDs as keys and openmc.MeshBase instances
+            as values
+
+        Returns
+        -------
+        openmc.CorrelatedSource
+            CorrelatedSource generated from the XML element
+
+        """
+        source = cls(constraints=cls._get_constraints(elem))
+
+        # Total source strength multiplier, not a probability array
+        strength = get_text(elem, 'strength')
+        if strength is not None:
+            source.strength = float(strength)
+
+        particle = get_text(elem, 'particle')
+        if particle is not None:
+            source.particle = particle
+
+        source.mesh = meshes[int(get_text(elem, 'mesh'))]
+
+        angle_mesh_id = get_text(elem, 'angle_mesh')
+        source.angle_mesh = (
+            meshes[int(angle_mesh_id)] if angle_mesh_id is not None else None)
+
+        dist_type = get_text(elem, 'energy_distribution_type')
+        source.energy_distribution_type = (
+            dist_type if dist_type is not None else 'continuous')
+
+        if elem.find('strengths') is not None:
+            if source.energy_distribution_type == 'discrete':
+                raise ValueError(
+                    "Continuum 'strengths' array found on CorrelatedSource with "
+                    "energy distribution type 'discrete'.")
+            source.energy_bounds = get_elem_list(elem, 'group_bounds', float)
+            source.strengths = get_elem_list(elem, 'strengths', float)
+            source.weights = get_elem_list(elem, 'weights', float)
+        if elem.find('discrete_energies') is not None:
+            if source.energy_distribution_type == 'continuous':
+                raise ValueError(
+                    "'discrete_energies' array found on CorrelatedSource with "
+                    "energy distribution type 'continuous'.")
+            source.discrete_energies = get_elem_list(
+                elem, 'discrete_energies', float)
+            source.strengths_discrete = get_elem_list(
+                elem, 'strengths_discrete', float)
+            source.weights_discrete = get_elem_list(
+                elem, 'weights_discrete', float)
+
+        return source
 
 
 def Source(*args, **kwargs):

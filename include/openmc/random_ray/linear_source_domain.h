@@ -21,7 +21,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
   void update_single_neutron_source(SourceRegionHandle& srh) override;
-  void normalize_scalar_flux_and_volumes(
+  void normalize_flux_and_volumes(
     double total_active_distance_per_iteration) override;
 
   void batch_reset() override;

@@ -61,6 +61,8 @@ class UnitSphere(ABC):
             return Isotropic.from_xml_element(elem)
         elif distribution == 'monodirectional':
             return Monodirectional.from_xml_element(elem)
+        elif distribution == 'mesh-angular':
+            return MeshAngular.from_xml_element(elem)
 
 
 class PolarAzimuthal(UnitSphere):
@@ -328,6 +330,119 @@ class Monodirectional(UnitSphere):
         if uvw is not None:
             monodirectional.reference_uvw = uvw
         return monodirectional
+
+
+class MeshAngular(UnitSphere):
+    """Mesh-based angular distribution.
+    
+    """
+    def __init__(self, mesh, strengths=None, bias: Sequence[float] | None = None):
+        self.mesh = mesh
+        self.strengths = strengths
+        self.bias = bias
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, mesh):
+        if mesh is not None:
+            cv.check_type('mesh instance', mesh, UnitSphereTriangularMesh)
+        self._mesh = mesh
+
+    @property
+    def strengths(self):
+        return self._strengths
+
+    @strengths.setter
+    def strengths(self, given_strengths):
+        if given_strengths is not None:
+            cv.check_type('strengths array passed in', given_strengths, Iterable, Real)
+            given_strengths = np.asarray(given_strengths, dtype=float).flatten()
+            if len(given_strengths) != len(self.mesh.n_elements):
+                raise AttributeError(
+                    "Strengths array must have same dimension as angular mesh.")
+            else:
+                self._strengths = given_strengths
+        else:
+            # Default to isotropic
+            self._strengths = (1/(4*PI)) * self.mesh.volumes 
+
+    @property
+    def bias(self):
+        return self._bias
+
+    @bias.setter
+    def bias(self, given_bias):
+        if given_bias is not None:
+            cv.check_type('Biasing strengths array', given_bias, Iterable, Real)
+            bias_array = np.asarray(given_bias, dtype=float).flatten()
+            if bias_array.size != self.strengths.size:
+                raise ValueError(
+                    'Bias strengths array must have same size as strengths array.')
+            else:
+                self._bias = bias_array
+        else:
+            self._bias = None
+
+    @property
+    def num_strength_bins(self):
+        if self.strengths is None:
+            raise ValueError('Strengths are not set')
+        return self.strengths.size
+
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing spatial distribution data
+
+        """
+        element = ET.Element('space')
+
+        element.set('type', 'mesh-angular')
+        element.set("mesh_id", str(self.mesh.id))
+
+        if self.strengths is not None:
+            subelement = ET.SubElement(element, 'strengths')
+            subelement.text = ' '.join(str(e) for e in self.strengths)
+
+        if self.bias is not None:
+            Univariate._append_array_bias_to_xml(self, element)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem, meshes):
+        """Generate spatial distribution from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        meshes : dict
+            A dictionary with mesh IDs as keys and openmc.MeshBase instances as
+            values
+
+        Returns
+        -------
+        openmc.stats.MeshSpatial
+            Spatial distribution generated from XML element
+
+        """
+
+        mesh_id = int(get_text(elem, "mesh_id"))
+
+        # check if this mesh has been read in from another location already
+        if mesh_id not in meshes:
+            raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
+
+        strengths = get_elem_list(elem, 'strengths', float)
+        bias_strengths = Univariate._read_array_bias_from_xml(elem)
+        return cls(meshes[mesh_id], strengths, bias=bias_strengths)
 
 
 class Spatial(ABC):

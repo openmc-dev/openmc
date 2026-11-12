@@ -11,6 +11,7 @@ from typing import Protocol
 import h5py
 import lxml.etree as ET
 import numpy as np
+from scipy.spatial import SphericalVoronoi
 
 import openmc
 import openmc.checkvalue as cv
@@ -307,6 +308,10 @@ class MeshBase(IDManagerMixin, ABC):
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type in ('unstructured', 'xdg'):
             return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
+        elif mesh_type == 'angular_pointset':
+            return UnitSpherePointset.from_hdf5(group, mesh_id, mesh_name)
+        elif mesh_type == 'angular_triangular':
+            return UnitSphereTriangularMesh.from_hdf5(group, mesh_id, mesh_name)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
@@ -354,6 +359,10 @@ class MeshBase(IDManagerMixin, ABC):
             mesh = SphericalMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
             mesh = UnstructuredMesh.from_xml_element(elem)
+        elif mesh_type == 'angular_pointset':
+            mesh = UnitSpherePointset.from_xml_element(elem)
+        elif mesh_type == 'angular_triangular':
+            mesh = UnitSphereTriangularMesh.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
 
@@ -3396,6 +3405,852 @@ class UnstructuredMesh(MeshBase):
         if interface is not None:
             out.interface = interface
         return out
+
+class AngularMesh(MeshBase):
+    """Base class for angular meshes of the unit sphere.
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    lower_left : Iterable of float
+        The lower-left coordinates ([-1.0, -1.0, -1.0] for the unit sphere)
+    upper_right : Iterable of float
+        The upper-right coordinates ([1.0, 1.0, 1.0] for the unit sphere)
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1, 1), ...]
+    n_elements : int
+        Number of elements in the mesh
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @property
+    @abstractmethod
+    def dimension(self):
+        pass
+
+    @property
+    @abstractmethod
+    def n_dimension(self):
+        pass
+
+    @property
+    @abstractmethod
+    def axis_labels(self):
+        """tuple of str : Names of the mesh axes, one per dimension."""
+        pass
+
+    @property
+    def n_elements(self):
+        pass
+    
+    # override non-applicable methods of MeshBase
+    def get_homogenized_materials(self, *args, **kwargs):
+        raise NotImplementedError(
+            "Material attributes are not available for angular meshes.")
+
+    def material_volumes(self, *args, **kwargs):
+        raise NotImplementedError(
+            "Material attributes are not available for angular meshes.")
+
+class UnitSpherePointset(AngularMesh):
+    """Set of points on the unit sphere. Used for mesh-based angular flux 
+    tallying based on a Voronoi diagram generated from the pointset.
+
+    Parameters
+    ----------
+    points : iterable of float
+        Unit-vector endpoints constituting the mesh. Must be either a numpy 
+        array or a nested list and have shape (N,3), where each row provides 
+        the [x, y, z] components of one such vector.
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    points : numpy array of float
+        Array storing the direction vectors constituting the mesh.
+    """
+    def __init__(
+            self, 
+            points, 
+            mesh_id: int | None = None,
+            name: str = '',
+        ):
+        super().__init__(mesh_id, name)
+        self.points = points
+
+    @property
+    def points(self):
+        return self._points
+    
+    @points.setter
+    def points(self, pts):
+        cv.check_type("unit vector pointset", pts, Iterable, Real)
+        pts = np.asarray(pts)
+        if pts.shape != (len(pts),3):
+            raise ValueError(
+                "Unit vector array for UnitSpherePointset must have shape (N,3).")
+        self._points = pts
+
+    @property
+    def n_elements(self):
+        return len(self.points)
+    
+    @property
+    def dimension(self):
+        return (self.n_elements,)
+
+    @property
+    def n_dimension(self):
+        return 2
+    
+    @property
+    def lower_left(self):
+        return np.array((-1., -1., -1.))
+    
+    @property
+    def upper_right(self):
+        return np.array((1., 1., 1.))
+    
+    @property
+    def axis_labels(self):
+        return ('element_index',)
+    
+    @property
+    def indices(self):
+        return [(i,) for i in range(self.n_elements)]
+    
+    @classmethod
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
+        points = np.asarray(group['points'][()])
+        n = points.size // 3
+        points = points.reshape(n, 3)
+
+        return cls(points, mesh_id=mesh_id, name=name)
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing mesh data
+
+        """
+        element = super().to_xml_element()
+        element.set("type", "angular_pointset")
+
+        # flatten to a (3*N,) array
+        pts = self.points.flatten()
+
+        subelement = ET.SubElement(element, "points")
+        subelement.text = ' '.join(map(str, pts))
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate a unit sphere pointset from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.UnitSpherePointset
+            Unit-sphere pointset object
+
+        """
+        mesh_id = int(get_text(elem, 'id'))
+
+        points = np.array(get_elem_list(elem, "points", float))
+        n = points.size // 3
+        points = points.reshape(n, 3)
+
+        return cls(points, mesh_id=mesh_id)
+    
+class SphericalTriangle:
+    '''
+    Primitive class storing information about a triangle defined by three 
+    points on the surface of the unit sphere. Used to construct MeshAngular 
+    distributions.
+
+    On the unit sphere, the (surface) area of a spherical triangle is equal to 
+    its "spherical excess." For a triangle with dihedral angles alpha, beta, 
+    and gamma, the spherical excess is: 
+
+        E = alpha + beta + gamma - pi
+    
+    Citation: Van Oosterom, A; Strackee, J (1983), "The Solid Angle of a Plane 
+    Triangle". IEEE Transactions on Biomedical Engineering, BME-30 (2): 
+    125–126. doi:10.1109/TBME.1983.325207
+
+    Parameters
+    ----------
+    vertices : iterable of float
+        Unit-vector vertices of the triangle. Must be either a numpy 
+        array or a nested list and have shape (3,3), where each row provides 
+        the [x, y, z] components of one such vector.
+    area : float, optional
+        Surface area of the triangle, equal to the solid angle it subtends 
+        with respect to the origin. Will be automatically calculated if not 
+        provided.
+
+    Attributes
+    ---------- 
+    vertices : numpy array of shape (3, 3)
+        Array wherein each row stores the coordinates of one of the 3 corners 
+        of the triangle
+    area : float
+        Area of the triangle
+    '''
+    def __init__(
+            self, 
+            vertices, 
+            area=None
+        ):
+        self._vertices = vertices
+
+        if area is None:
+            a, b, c = self.vertices
+            num = np.dot(a, np.cross(b, c))
+            denom = 1 + np.dot(a, b) + np.dot(b, c) + np.dot(c, a)
+            area = 2 * np.arctan2(num, denom)
+
+        self._area = area
+    
+    @property
+    def vertices(self):
+        return self._vertices
+
+    @vertices.setter
+    def vertices(self, pointset):
+        cv.check_type("angular mesh vertices", pointset, Iterable, Real)
+        pointset = np.asarray(pointset)
+        if pointset.shape != (3,3):
+            raise ValueError(
+                "Vertex array for SphericalTriangle must have shape (3,3).")
+        self._vertices = pointset
+
+    @property
+    def area(self):
+        return self._area
+
+    @area.setter
+    def area(self, a):
+        cv.check_type("SphericalTriangle area", a, Real)
+        cv.check_greater_than("SphericalTriangle area", a, 0.0)
+        self._area = a
+
+    def centroid(self):
+        """Return centroid of SphericalTriangle."""
+        centroid = self.vertices.mean(axis=0)
+        return centroid / np.linalg.norm(centroid)
+
+class UnitSphereTriangularMesh(AngularMesh):
+    """Basic triangular mesh of the surface of the unit sphere. Used to 
+    construct MeshAngular distributions.
+
+    Parameters
+    ----------
+    triangles : iterable of SphericalTriangle
+        Triangular mesh cells on the unit sphere
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    triangles : numpy array of SphericalTriangle
+        Triangular mesh cells on the unit sphere
+    """
+    def __init__(
+            self, 
+            triangles, 
+            mesh_id: int | None = None,
+            name: str = '',
+        ):
+        super().__init__(mesh_id, name)
+        self.triangles = triangles
+
+    @property
+    def triangles(self):
+        return self._triangles
+    
+    @triangles.setter
+    def triangles(self, tris):
+        cv.check_type("angular mesh cells", tris, Iterable, SphericalTriangle)
+        tris = np.asarray(tris).flatten()
+        # Check that the set is at least large enough to tile the unit sphere
+        cv.check_greater_than("angular mesh size", len(tris), 4, True)
+        self._triangles = tris
+
+    @property
+    def n_elements(self):
+        return len(self.triangles)
+    
+    @property
+    def dimension(self):
+        return (self.n_elements,)
+
+    @property
+    def n_dimension(self):
+        return 2
+    
+    @property
+    def lower_left(self):
+        return np.array((-1., -1., -1.))
+    
+    @property
+    def upper_right(self):
+        return np.array((1., 1., 1.))
+    
+    @property
+    def axis_labels(self):
+        return ('element_index',)
+    
+    @property
+    def indices(self):
+        return [(i,) for i in range(self.n_elements)]
+    
+    @property
+    def centroids(self):
+        return np.array([tri.centroid() for tri in self.triangles])
+    
+    @property
+    def vertices(self):
+        """Return all unique vertices of the mesh in one (N,3) array."""
+        verts = np.concatenate([tri.vertices for tri in self.triangles], axis=0)
+        verts = np.unique(verts, axis=0)
+        return verts
+
+    @property
+    def volumes(self):
+        """Area of each SphericalTriangle in the mesh."""
+        return np.array([tri.area for tri in self.triangles])
+    
+    def sample_element(self, element_idx, seed=None):
+        """Sample a direction uniformly from within a given SphericalTriangle 
+        in the mesh.
+
+        Uses the sampling algorithm of Arvo, James, “Analytic Methods for 
+        Simulated Light Transport.” PhD Thesis, Yale University, December 1995.
+
+        Parameters
+        ----------
+        element_idx : int
+            Index of the triangular mesh element to sample from.
+        seed : int or None
+            Initial random number seed.
+
+        Returns
+        -------
+        numpy.ndarray
+            Sampled direction in Cartesian coordinates.
+
+        """
+        rng = np.random.RandomState(seed)
+        tri = self.triangles[element_idx]
+        # Step 0: compute deterministic quantities:
+        # the cosine of the arclength c (from A to B),
+        # the (normalized) component of C orthogonal to A,
+        # and dihedral angle alpha (& sines/cosines)
+        A = np.array(tri.vertices[0])
+        B = np.array(tri.vertices[1])
+        C = np.array(tri.vertices[2])
+
+        cos_c_arc = np.dot(A, B) # used later
+        c_orth_a = C - np.dot(C, A)*A
+        c_orth_a /= np.linalg.norm(c_orth_a) # used later
+        
+        n_BA = np.cross(B,A)
+        n_BA /= np.linalg.norm(n_BA)
+        n_AC = np.cross(A, C)
+        n_AC /= np.linalg.norm(n_AC)
+
+        cos_a = np.clip(np.dot(n_BA, n_AC), -1.0, 1.0) # used later
+        alpha = np.acos(cos_a) # used later
+        sin_a = np.sin(alpha) # used later
+
+        # Find area of subtriangle
+        sub_area = rng.uniform(0., 1.0, 1)*tri.area
+
+        # Save the sine and cosine of the angle (A-hat) - alpha
+        s = np.sin(sub_area - alpha)
+        t = np.cos(sub_area - alpha)
+
+        # Compute the pair (u,v) that determines beta-hat
+        u = t - cos_a
+        v = s + sin_a*cos_c_arc
+
+        # Let q be the cosine of the new edge length b-hat
+        numer = (v*t - u*s)*cos_a - v
+        denom = (v*s + u*t)*sin_a
+        q = np.clip(numer/denom, -1.0, 1.0)
+
+        # Compute the third vertex of the subtriangle
+        C_hat = q*A + np.sqrt(1 - q**2)*c_orth_a
+
+        # Use the other random variable to select cos(theta)
+        z = 1 - rng.uniform(0., 1.0, 1)*(1 - np.dot(C_hat, B))
+        z = np.clip(z, -1.0, 1.0)
+
+        # Construct corresponding point on the sphere
+        c_hat_orth_b = C_hat - np.dot(C_hat, B)*B
+        c_hat_orth_b /= np.linalg.norm(c_hat_orth_b)
+
+        P = z*B + np.sqrt(1 - z**2)*c_hat_orth_b
+        
+        # error-check: make sure P is a unit vector
+        mag_p = np.linalg.norm(P)
+        if np.abs(mag_p - 1.0) > 1e-14:
+            print(f"P (magnitude {mag_p}) was not a unit vector!")
+            P /= mag_p
+        
+        return P
+    
+    @classmethod
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
+        tri_verts = np.asarray(group['vertices'][()])
+        areas = np.asarray(group['areas'][()])
+        n = len(areas)
+        tri_verts = tri_verts.reshape(n, 3, 3)
+
+        triangles = [
+            SphericalTriangle(tri_verts[i], area=float(areas[i]))
+            for i in range(n)
+        ]
+
+        return cls(triangles, mesh_id=mesh_id, name=name)
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing mesh data
+
+        """
+        element = super().to_xml_element()
+        element.set("type", "angular_triangular")
+
+        # Flatten to a (3*N, 3) array
+        all_vertices = np.concatenate(
+            [tri.vertices for tri in self.triangles], axis=0)
+
+        subelement = ET.SubElement(element, "vertices")
+        subelement.text = ' '.join(map(str, all_vertices.flatten()))
+
+        subelement = ET.SubElement(element, "areas")
+        subelement.text = ' '.join(str(tri.area) for tri in self.triangles)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate an angular mesh from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.AngularMesh
+            Angular mesh object
+
+        """
+        mesh_id = int(get_text(elem, 'id'))
+
+        flat_vertices = np.array(get_elem_list(elem, "vertices", float))
+        areas = get_elem_list(elem, "areas", float)
+
+        n = flat_vertices.size // 9
+        tri_vertices = flat_vertices.reshape(n, 3, 3)
+
+        triangles = [
+            SphericalTriangle(tri_vertices[i], area=areas[i])
+            for i in range(n)
+        ]
+
+        return cls(triangles, mesh_id=mesh_id)
+    
+def _spherical_triangle_area(a, b, c):
+    num = np.dot(a, np.cross(b, c))
+    denom = 1 + np.dot(a, b) + np.dot(b, c) + np.dot(c, a)
+    return 2 * np.arctan2(num, denom)
+
+def _signed_area_2d(pts):
+    # shoelace formula for polygon area, positive for CCW vertex orientation
+    x = pts[:, 0]
+    y = pts[:, 1]
+    return 0.5 * np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y)
+
+def _delaunay_triangulate_convex_2d(points_2d):
+    """Perform a Delaunay triangulation of the vertices of a polygon (in 
+    CCW order) via edge flipping.
+
+    Begin by calculating the fan triangulation from vertex 0, then 
+    flip any edge that violates the condition that no other vertex 
+    may be inside the circumcircle of a given triangle. Returns a list of 
+    index triples into points_2d.
+    """
+    n = len(points_2d)
+    if n == 3:
+        return [(0, 1, 2)]
+
+    triangles = [[0, i, i + 1] for i in range(1, n - 1)]
+
+    def shared_edge(t1, t2):
+        shared = [v for v in t1 if v in t2]
+        return tuple(shared) if len(shared) == 2 else None
+
+    max_sweeps = n * n
+    for _ in range(max_sweeps):
+        changed = False
+        for ai in range(len(triangles)):
+            for bi in range(ai + 1, len(triangles)):
+                t_a, t_b = triangles[ai], triangles[bi]
+                edge = shared_edge(t_a, t_b)
+                if edge is None:
+                    continue
+                u, v = edge
+                opp_a = [p for p in t_a if p not in edge][0]
+                opp_b = [p for p in t_b if p not in edge][0]
+
+                pu, pv = points_2d[u], points_2d[v]
+                po_a, po_b = points_2d[opp_a], points_2d[opp_b]
+
+                # Orient (pu, pv, po_a) CCW before the in-circle test
+                if _signed_area_2d(np.array([pu, pv, po_a])) < 0:
+                    pu, pv = pv, pu
+                    u, v = v, u
+
+                # Test whether point po_b lies inside the circumcircle of
+                # triangle pu-pv-po_a
+                ax, ay = pu[0] - po_b[0], pu[1] - po_b[1]
+                bx, by = pv[0] - po_b[0], pv[1] - po_b[1]
+                cx, cy = po_a[0] - po_b[0], po_a[1] - po_b[1]
+                det = (
+                    (ax * ax + ay * ay) * (bx * cy - cx * by)
+                    - (bx * bx + by * by) * (ax * cy - cx * ay)
+                    + (cx * cx + cy * cy) * (ax * by - bx * ay)
+                )
+                if det <= 1e-12:
+                    continue
+
+                # flip the shared edge u-v for opp_a-opp_b
+                new_t1 = [opp_a, opp_b, u]
+                new_t2 = [opp_a, opp_b, v]
+                if _signed_area_2d(
+                        np.array([points_2d[i] for i in new_t1])) < 0:
+                    new_t1 = new_t1[::-1]
+                if _signed_area_2d(
+                        np.array([points_2d[i] for i in new_t2])) < 0:
+                    new_t2 = new_t2[::-1]
+                triangles[ai] = new_t1
+                triangles[bi] = new_t2
+                changed = True
+
+        if not changed:
+            break
+
+    return [tuple(t) for t in triangles]
+
+
+def _ear_clip_2d(points_2d):
+    """Perform an ear-clipping triangulation of a simple polygon given its
+    vertices in CCW order. Returns a list of index triples into points_2d.
+
+    Falls back to fan triangulation from vertex 0 for any vertices left over if 
+    no ear can be found, in case of a degeneracy (e.g. points nearly collinear 
+    on a great-circle arc).
+    """
+    n = len(points_2d)
+    indices = list(range(n))
+    triangles = []
+
+    while len(indices) > 3:
+        m = len(indices)
+        ear_found = False
+        for ii in range(m):
+            i_prev = indices[(ii - 1) % m]
+            i_curr = indices[ii]
+            i_next = indices[(ii + 1) % m]
+            a, b, c = points_2d[i_prev], points_2d[i_curr], points_2d[i_next]
+
+            cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+            if not cross > 0:
+                continue
+
+            # Make sure there are no other polygon vertices inside the
+            # candidate triangle
+            occupied = False
+            for k in indices:
+                if k in (i_prev, i_curr, i_next):
+                    continue
+
+                def _sign(p1, p2, p3):
+                    return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+            
+                d1 = _sign(points_2d[k], a, b)
+                d2 = _sign(points_2d[k], b, c)
+                d3 = _sign(points_2d[k], c, a)
+                has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
+                has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
+                
+                # determine if point p lies inside (or on the boundary of)
+                # triangle abc, assuming a, b, c are given in CCW order
+                if not (has_neg and has_pos):
+                    occupied = True
+                    break
+            if occupied:
+                continue
+
+            triangles.append((i_prev, i_curr, i_next))
+            indices.pop(ii)
+            ear_found = True
+            break
+
+        if not ear_found:
+            # fall back to fan triangulation of remaining polygon
+            for ii in range(1, len(indices) - 1):
+                triangles.append((indices[0], indices[ii], indices[ii + 1]))
+            indices = []
+            break
+
+    if len(indices) == 3:
+        triangles.append(tuple(indices))
+
+    return triangles
+
+def triangulate_unit_sphere_mesh(mesh, data=None, broadcast_data=None, method='delaunay'):
+    """Convert a UnitSpherePointset to a UnitSphereTriangularMesh.
+
+    This function takes a UnitSpherePointset, as well as optional dataset(s)
+    defined on said mesh, and converts it to a triangular mesh of the unit 
+    sphere by performing a Delaunay, ear-clipping, or star triangulation of 
+    the Voronoi cells generated by the UnitSpherePointset. 
+
+    By default, a Delaunay triangulation of the vertices of each region in 
+    the spherical Voronoi diagram is performed. The ear-clipping and star 
+    triangulation algorithms may be selected instead for faster execution, but 
+    do not offer the same optimization of triangle shape for sampling. Star 
+    triangulation additionally produces m triangles from a Voronoi cell with m 
+    vertices, while Delaunay and ear-clipping algorithms yield (m-2) triangles.
+    
+    Two different methods are also provided for redistributing scalar data onto 
+    the triangulated mesh:
+
+    - Data provided in the `data` field is treated as extensive 
+      (e.g. a probability mass or reaction rate): new values are computed 
+      based on each new mesh cell's area fraction of the original Voronoi 
+      cell, so that summing the new values over all triangles belonging to a 
+      given original point reproduces that point's original value.
+    - `broadcast_data` is treated as intensive: each triangle within a 
+      subdivided Voronoi cell inherits the parent point's value, unchanged.
+
+    Both `data` and `broadcast_data` must have as their leading axis the 
+    dimension which indexes along the pointset (i.e., being of size N); any 
+    trailing axes are carried through unchanged.
+
+    Parameters
+    ----------
+    mesh : UnitSpherePointset
+        Pointset mesh of N points
+    data : numpy.ndarray, optional
+        Extensive per-point data of shape (N, ...) to redistribute
+        proportionally to area.
+    broadcast_data : numpy.ndarray, optional
+        Intensive per-point data of shape (N, ...) to copy unchanged onto
+        every new triangle belonging to its parent point.
+    method : {'delaunay', 'ear clipping', 'star'}
+        Method by which to perform the triangulation of the Voronoi region
+        about each point.
+
+    Returns
+    -------
+    new_mesh : UnitSphereTriangularMesh
+        Angular mesh of M SphericalTriangle cells
+    new_data : (M, ...) ndarray of float
+        Only returned if `data` was provided.
+    new_broadcast_data : (M, ...) ndarray of float
+        Only returned if `broadcast_data` was provided.
+    """
+    cv.check_type("mesh for triangulation", mesh, UnitSpherePointset)
+    n_points = len(mesh.points)
+
+    if data is not None:
+        data = np.asarray(data)
+        if data.shape[0] != n_points:
+            raise ValueError(
+                f"First dimension of data array ({data.shape[0]}) does not "
+                f"match number of points in UnitSpherePointset for "
+                f"triangulation (expected {n_points})"
+            )
+        new_data = []
+
+    if broadcast_data is not None:
+        broadcast_data = np.asarray(broadcast_data)
+        if broadcast_data.shape[0] != n_points:
+            raise ValueError(
+                f"First dimension of broadcast_data array "
+                f"({broadcast_data.shape[0]}) does not match number of "
+                f"points in UnitSpherePointset for triangulation "
+                f"(expected {n_points})"
+            )
+        new_broadcast_data = []
+
+    sv = SphericalVoronoi(mesh.points)
+    sv.sort_vertices_of_regions()
+
+    faces = []
+
+    for pole_index, region in enumerate(sv.regions):
+
+        pole = mesh.points[pole_index]
+        verts = sv.vertices[region]
+        _, unique_idx = np.unique(np.round(verts, decimals=10), axis=0,
+                                   return_index=True)
+        verts = verts[np.sort(unique_idx)]
+
+        n = len(verts)
+
+        ref = verts[0] - np.dot(pole, verts[0]) * pole
+        ref_norm = np.linalg.norm(ref)
+        if ref_norm < 1e-10:
+            # verts[0] happens to be (nearly) parallel to pole; fall back
+            # to a different, guaranteed non-parallel reference vector
+            fallback = (np.array([1.0, 0.0, 0.0]) if abs(pole[0]) < 0.9
+                        else np.array([0.0, 1.0, 0.0]))
+            ref = fallback - np.dot(pole, fallback) * pole
+            ref_norm = np.linalg.norm(ref)
+        ref /= ref_norm
+        # Second basis vector in the plane normal to the pole, used for 
+        # Delaunay and ear-clipping triangulation
+        perp = np.cross(pole, ref)
+
+        angles = np.empty(n)
+        coords_2d = np.empty((n, 2)) # vertex coordinates for Delaunay
+                                     # and ear-clipping
+        for i in range(n):
+            v = verts[i] - np.dot(pole, verts[i]) * pole
+            v_norm = np.linalg.norm(v)
+            if v_norm > 1e-10:
+                v = v / v_norm
+            cos_a = np.clip(np.dot(ref, v), -1.0, 1.0)
+            sin_a = np.dot(pole, np.cross(ref, v))
+            angles[i] = np.arctan2(sin_a, cos_a)
+            coords_2d[i] = (np.dot(ref, v), np.dot(perp, v))
+
+        order = np.argsort(angles)			  
+        verts = verts[order]
+        coords_2d = coords_2d[order]
+
+        # Get areas corresponding to a star (centroid-fan) triangulation of 
+        # the region and use them to determine correct vertex winding
+        def _fan_areas(verts):
+            areas = np.empty(n)
+            for i in range(n):
+                v1 = verts[i]
+                v2 = verts[(i + 1) % n]
+                areas[i] = _spherical_triangle_area(pole, v1, v2)
+                                                                                
+            return areas
+
+        areas = _fan_areas(verts)
+
+        # The sort above gives a consistent winding linking all triangles 
+        # but not the overall rotational sense of the winding. Check sign and 
+        # flip if needed.
+        if areas.sum() < 0:
+            verts = verts[::-1]
+            coords_2d = coords_2d[::-1]
+            areas = _fan_areas(verts)
+
+        total_area = areas.sum()
+
+        if method == 'star':
+            for i in range(n):
+                v1 = verts[i]
+                v2 = verts[(i + 1) % n]
+                faces.append(SphericalTriangle(
+                    vertices=np.stack((pole, v1, v2)), area=areas[i]))
+                if data is not None:
+                    new_data.append(data[pole_index] * areas[i] / total_area)
+                if broadcast_data is not None:
+                    new_broadcast_data.append(broadcast_data[pole_index])
+        else:
+            if method == 'delaunay':
+                triangles = _delaunay_triangulate_convex_2d(coords_2d)
+            elif method == 'ear clipping':
+                triangles = _ear_clip_2d(coords_2d)
+            else:
+                raise ValueError(
+                    f"{method} is not a recognized triangulation method (must be "
+                    f"one of ''delaunay'',''star'' or ''ear clipping'').")
+            tri_areas = np.array([
+                _spherical_triangle_area(verts[i], verts[j], verts[k])
+                for i, j, k in triangles
+            ])
+            # Near-degenerate triangles (nearly all points on same great-circle
+            # arc) may give small, negative areas and may break the sampling
+            # algorithm, so we neglect them
+            tri_areas = np.clip(tri_areas, 0.0, None)
+            tri_total = tri_areas.sum()
+            # Rescale to match total area we calculated earlier
+            if tri_total > 0:
+                tri_areas *= total_area / tri_total
+
+            for (i, j, k), area in zip(triangles, tri_areas):
+                faces.append(SphericalTriangle(
+                    vertices=np.stack((verts[i], verts[j], verts[k])),
+                    area=area))
+                if data is not None:
+                    new_data.append(data[pole_index] * area / total_area)
+                if broadcast_data is not None:
+                    new_broadcast_data.append(broadcast_data[pole_index])
+    
+    new_mesh = UnitSphereTriangularMesh(faces)
+
+    results = [new_mesh]
+    if data is not None:
+        results.append(np.asarray(new_data))
+    if broadcast_data is not None:
+        results.append(np.asarray(new_broadcast_data))
+
+    return tuple(results) if len(results) > 1 else new_mesh
 
 
 def _read_meshes(elem):

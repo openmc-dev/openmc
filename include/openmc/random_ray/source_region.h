@@ -55,9 +55,13 @@ struct TallyTask {
   int64_t filter_idx;
   int score_idx;
   int score_type;
-  TallyTask(int tally_idx, int64_t filter_idx, int score_idx, int score_type)
+  // Angular quadrature bin index. Defaults to C_NONE for angle-independent,
+  // scoring via the source region's scalar flux.
+  int angle_bin {C_NONE};
+  TallyTask(int tally_idx, int64_t filter_idx, int score_idx, int score_type,
+    int angle_bin = C_NONE)
     : tally_idx(tally_idx), filter_idx(filter_idx), score_idx(score_idx),
-      score_type(score_type)
+      score_type(score_type), angle_bin(angle_bin)
   {}
   TallyTask() = default;
 
@@ -66,7 +70,8 @@ struct TallyTask {
   bool operator==(const TallyTask& other) const
   {
     return tally_idx == other.tally_idx && filter_idx == other.filter_idx &&
-           score_idx == other.score_idx && score_type == other.score_type;
+           score_idx == other.score_idx && score_type == other.score_type &&
+           angle_bin == other.angle_bin;
   }
 
   struct HashFunctor {
@@ -77,6 +82,7 @@ struct TallyTask {
       hash_combine(seed, task.filter_idx);
       hash_combine(seed, task.score_idx);
       hash_combine(seed, task.score_type);
+      hash_combine(seed, task.angle_bin);
       return seed;
     }
   };
@@ -148,6 +154,7 @@ public:
   //----------------------------------------------------------------------------
   // Public Data members
   int negroups_;
+  int nangles_ {1}; //!< Number of angular bins for angular flux binning
   bool is_numerical_fp_artifact_ {false};
   bool is_linear_ {false};
 
@@ -168,6 +175,7 @@ public:
   double* volume_naive_ = nullptr;
   int* position_recorded_ = nullptr;
   int* external_source_present_ = nullptr;
+  int* needs_angular_flux_ = nullptr;
   Position* position_ = nullptr;
   Position* centroid_ = nullptr;
   Position* centroid_iteration_ = nullptr;
@@ -195,6 +203,8 @@ public:
   float* source_ = nullptr;
   float* external_source_ = nullptr;
   double* scalar_flux_final_ = nullptr;
+  // Non-null only when angular flux is tallied in a SR
+  double* angular_flux_new_ = nullptr;
   // Non-null only for the adaptive volume estimator family
   double* scalar_flux_t_ = nullptr;
 
@@ -256,6 +266,9 @@ public:
     return *external_source_present_;
   }
 
+  int& needs_angular_flux() { return *needs_angular_flux_; }
+  const int needs_angular_flux() const { return *needs_angular_flux_; }
+
   Position& position() { return *position_; }
   const Position position() const { return *position_; }
 
@@ -309,6 +322,15 @@ public:
 
   double& scalar_flux_t(int g) { return scalar_flux_t_[g]; }
   const double scalar_flux_t(int g) const { return scalar_flux_t_[g]; }
+
+  double& angular_flux_new(int g, int a)
+  {
+    return angular_flux_new_[g * nangles_ + a];
+  }
+  const double angular_flux_new(int g, int a) const
+  {
+    return angular_flux_new_[g * nangles_ + a];
+  }
 
   float& source(int g) { return source_[g]; }
   const float source(int g) const { return source_[g]; }
@@ -364,7 +386,9 @@ public:
   double volume_naive_ {0.0}; //!< Volume as integrated from this iteration only
   int position_recorded_ {0}; //!< Has the position been recorded yet?
   int external_source_present_ {
-    0};              //!< Is an external source present in this region?
+    0}; //!< Is an external source present in this region?
+  int needs_angular_flux_ {
+    0};              //!< Is angular flux tallying active in this region?
   int is_small_ {0}; //!< Is it "small", receiving < 1.5 hits per iteration?
   int n_negative_batches_ {
     0}; //!< Number of batches in which this region's flux went negative
@@ -402,7 +426,8 @@ class SourceRegion {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegion(int negroups, bool is_linear);
+  SourceRegion(int negroups, bool is_linear, int nangles = 1,
+    bool needs_angular_flux = false);
   SourceRegion(const SourceRegionHandle& handle);
   SourceRegion() = default;
 
@@ -450,6 +475,9 @@ public:
   vector<double> scalar_flux_t_;     //!< Running flux sum used by the adaptive
                                      //!< volume estimator's demotion step
 
+  vector<double>
+    angular_flux_new_; //!< The angular flux from the current iteration
+
   vector<MomentArray> source_gradients_; //!< The linear source gradients
   vector<MomentArray>
     flux_moments_old_; //!< The linear flux moments from the previous iteration
@@ -470,10 +498,11 @@ class SourceRegionContainer {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegionContainer(int negroups, bool is_linear, bool is_adaptive,
-    bool is_strict_adaptive, bool track_extents)
-    : negroups_(negroups), is_linear_(is_linear), is_adaptive_(is_adaptive),
-      is_strict_adaptive_(is_strict_adaptive), track_extents_(track_extents)
+  SourceRegionContainer(int negroups, bool is_linear, int nangles = 1,
+    bool is_adaptive, bool is_strict_adaptive, bool track_extents)
+    : negroups_(negroups), is_linear_(is_linear), nangles_(nangles),
+      is_adaptive_(is_adaptive), is_strict_adaptive_(is_strict_adaptive),
+      track_extents_(track_extents)
   {}
   SourceRegionContainer() = default;
 
@@ -540,6 +569,12 @@ public:
   const int external_source_present(int64_t sr) const
   {
     return external_source_present_[sr];
+  }
+
+  int& needs_angular_flux(int64_t sr) { return needs_angular_flux_[sr]; }
+  const int needs_angular_flux(int64_t sr) const
+  {
+    return needs_angular_flux_[sr];
   }
 
   Position& position(int64_t sr) { return position_[sr]; }
@@ -686,6 +721,20 @@ public:
   double& scalar_flux_t(int64_t se) { return scalar_flux_t_[se]; }
   const double scalar_flux_t(int64_t se) const { return scalar_flux_t_[se]; }
 
+  double& angular_flux_new(int64_t sr, int g, int a)
+  {
+    return angular_flux_new_[angular_flux_offset_[sr] + g * nangles_ + a];
+  }
+  const double angular_flux_new(int64_t sr, int g, int a) const
+  {
+    return angular_flux_new_[angular_flux_offset_[sr] + g * nangles_ + a];
+  }
+  double& angular_flux_new(int64_t sea) { return angular_flux_new_[sea]; }
+  const double angular_flux_new(int64_t sea) const
+  {
+    return angular_flux_new_[sea];
+  }
+
   float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
   const float source(int64_t sr, int g) const { return source_[index(sr, g)]; }
   float& source(int64_t se) { return source_[se]; }
@@ -740,8 +789,11 @@ public:
   void flux_swap();
   int64_t n_source_regions() const { return n_source_regions_; }
   int64_t n_source_elements() const { return n_source_regions_ * negroups_; }
+  int64_t n_source_angular_elements() const { return angular_flux_new_.size(); }
   int& negroups() { return negroups_; }
   const int negroups() const { return negroups_; }
+  int& nangles() { return nangles_; }
+  const int nangles() const { return nangles_; }
   bool& is_linear() { return is_linear_; }
   const bool is_linear() const { return is_linear_; }
   SourceRegionHandle get_source_region_handle(int64_t sr);
@@ -752,6 +804,7 @@ private:
   // Private Data Members
   int64_t n_source_regions_ {0};
   int negroups_ {0};
+  int nangles_ {1};
   bool is_linear_ {false};
   bool is_adaptive_ {false};
   bool is_strict_adaptive_ {false};
@@ -777,6 +830,7 @@ private:
   vector<double> volume_naive_;
   vector<int> position_recorded_;
   vector<int> external_source_present_;
+  vector<int> needs_angular_flux_;
   vector<Position> position_;
   vector<Position> centroid_;
   vector<Position> centroid_iteration_;
@@ -807,6 +861,8 @@ private:
   // solve. Allocated only for the adaptive volume estimator, which makes its
   // demotion decisions from it.
   vector<double> scalar_flux_t_;
+  vector<double> angular_flux_new_;
+  vector<int64_t> angular_flux_offset_;
   vector<float> source_;
   vector<float> external_source_;
 

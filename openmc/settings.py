@@ -14,7 +14,7 @@ from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
-from .source import SourceBase, MeshSource, IndependentSource
+from .source import SourceBase, MeshSource, IndependentSource, CorrelatedSource
 from .utility_funcs import input_path, set_xml_input_path
 from .volume import VolumeCalculation
 from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
@@ -407,6 +407,7 @@ class Settings:
         Path to a weight window file to load during simulation initialization
 
         .. versionadded::0.14.0
+
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
     """
@@ -1576,12 +1577,18 @@ class Settings:
                 path = f"./mesh[@id='{source.space.mesh.id}']"
                 if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())
-            if isinstance(source, MeshSource):
+            if isinstance(source, (MeshSource, CorrelatedSource)):
                 path = f"./mesh[@id='{source.mesh.id}']"
                 if root.find(path) is None:
                     root.append(source.mesh.to_xml_element())
                     if mesh_memo is not None:
                         mesh_memo.add(source.mesh.id)
+            if isinstance(source, CorrelatedSource) and source.angle_mesh is not None:
+                path = f"./mesh[@id='{source.angle_mesh.id}']"
+                if root.find(path) is None:
+                    root.append(source.angle_mesh.to_xml_element())
+                    if mesh_memo is not None:
+                        mesh_memo.add(source.angle_mesh.id)
 
     def _create_volume_calcs_subelement(self, root):
         for calc in self.volume_calculations:
@@ -1979,15 +1986,16 @@ class Settings:
 
         # ensure that mesh elements are created if needed
         for wwg in self.weight_window_generators:
-            if mesh_memo is not None and wwg.mesh.id in mesh_memo:
-                continue
+            for mesh in (wwg.mesh, wwg.angular_biasing_quadrature):
+                if mesh is None or (mesh_memo is not None and mesh.id in mesh_memo):
+                    continue
 
-            # See if a <mesh> element already exists -- if not, add it
-            path = f"./mesh[@id='{wwg.mesh.id}']"
-            if root.find(path) is None:
-                root.append(wwg.mesh.to_xml_element())
-                if mesh_memo is not None:
-                    mesh_memo.add(wwg.mesh.id)
+                # See if a <mesh> element already exists -- if not, add it
+                path = f"./mesh[@id='{mesh.id}']"
+                if root.find(path) is None:
+                    root.append(mesh.to_xml_element())
+                    if mesh_memo is not None:
+                        mesh_memo.add(mesh.id)
 
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:

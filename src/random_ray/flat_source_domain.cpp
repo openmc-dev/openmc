@@ -5,6 +5,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/material.h"
+#include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/output.h"
@@ -13,6 +14,10 @@
 #include "openmc/random_ray/random_ray.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_cell.h"
+#include "openmc/tallies/filter_material.h"
+#include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter_meshangular.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
@@ -58,14 +63,18 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
     }
   }
 
+  // Count the number of angular bins for each SourceRegion if performing
+  // angular flux tallying and store the angle set.
+  initialize_angular_quadrature();
+
   // Initialize source regions.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
   bool is_adaptive = is_adaptive_family(resolved_volume_estimator_);
   bool is_strict_adaptive =
     resolved_volume_estimator_ == RandomRayVolumeEstimator::STRICT_ADAPTIVE;
   // The sampled bounding boxes exist only for the source gradient limiter
-  source_regions_ = SourceRegionContainer(negroups_, is_linear, is_adaptive,
-    is_strict_adaptive, is_linear && source_gradient_limiter_);
+  source_regions_ = SourceRegionContainer(negroups_, is_linear, nangles_,
+    is_adaptive, is_strict_adaptive, is_linear && source_gradient_limiter_);
 
   // Initialize tally volumes
   if (volume_normalized_flux_tallies_) {
@@ -101,6 +110,12 @@ void FlatSourceDomain::batch_reset()
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.scalar_flux_new(se) = 0.0;
+  }
+
+#pragma omp parallel for
+  for (int64_t sea = 0; sea < source_regions_.n_source_angular_elements();
+       sea++) {
+    source_regions_.angular_flux_new(sea) = 0.0;
   }
 }
 
@@ -317,7 +332,7 @@ void FlatSourceDomain::update_all_neutron_sources()
 }
 
 // Normalizes flux and updates simulation-averaged volume estimate
-void FlatSourceDomain::normalize_scalar_flux_and_volumes(
+void FlatSourceDomain::normalize_flux_and_volumes(
   double total_active_distance_per_iteration)
 {
   double normalization_factor = 1.0 / total_active_distance_per_iteration;
@@ -329,6 +344,13 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.scalar_flux_new(se) *= normalization_factor;
+  }
+
+// Normalize angular flux in the same way
+#pragma omp parallel for
+  for (int64_t sea = 0; sea < source_regions_.n_source_angular_elements();
+       sea++) {
+    source_regions_.angular_flux_new(sea) *= normalization_factor;
   }
 
 // Accumulate cell-wise ray length tallies collected this iteration, then
@@ -374,6 +396,19 @@ double FlatSourceDomain::flux_additive_term(
   return source_regions_.source(sr, g);
 }
 
+double FlatSourceDomain::angular_flux_additive_term(
+  int64_t sr, int g, bool batch_volume) const
+{
+  if (source_regions_.material(sr) == MATERIAL_VOID) {
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      return 0.5f * source_regions_.external_source(sr, g) *
+             source_regions_.volume_sq(sr) / source_regions_.nangles();
+    }
+    return 0.0;
+  }
+  return source_regions_.source(sr, g) / source_regions_.nangles();
+}
+
 void FlatSourceDomain::set_flux_to_flux_plus_source(
   int64_t sr, double volume, bool batch_volume, int g)
 {
@@ -381,14 +416,31 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
   int temp = source_regions_.temperature_idx(sr);
   if (material == MATERIAL_VOID) {
     source_regions_.scalar_flux_new(sr, g) /= volume;
+    if (source_regions_.needs_angular_flux(sr)) {
+      for (int a = 0; a < source_regions_.nangles(); a++) {
+        source_regions_.angular_flux_new(sr, g, a) /= volume;
+      }
+    }
   } else {
     double sigma_t =
       sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
       source_regions_.density_mult(sr);
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
+    if (source_regions_.needs_angular_flux(sr)) {
+      for (int a = 0; a < source_regions_.nangles(); a++) {
+        source_regions_.angular_flux_new(sr, g, a) /= (sigma_t * volume);
+      }
+    }
   }
   source_regions_.scalar_flux_new(sr, g) +=
     flux_additive_term(sr, g, batch_volume);
+  // Divide source term evenly among angular bins
+  if (source_regions_.needs_angular_flux(sr)) {
+    double flux_addition = angular_flux_additive_term(sr, g, batch_volume);
+    for (int a = 0; a < source_regions_.nangles(); a++) {
+      source_regions_.angular_flux_new(sr, g, a) += flux_addition;
+    }
+  }
 }
 
 // Applies the "diagonal stabilization" technique developed by Gunow et al.
@@ -454,11 +506,31 @@ void FlatSourceDomain::set_flux_to_old_flux(int64_t sr, int g)
 {
   source_regions_.scalar_flux_new(sr, g) =
     source_regions_.scalar_flux_old(sr, g);
+  if (source_regions_.needs_angular_flux(sr)) {
+    // To minimize memory use, we don't store the previous iteration's
+    // angular fluxes. Recognizing that this case only occurs in the few
+    // percent or less of source regions missed during an iteration, we
+    // approximate the angular flux by dividing the scalar flux estimate
+    // evenly across all angles.
+    double isotropic_flux =
+      source_regions_.scalar_flux_new(sr, g) / source_regions_.nangles();
+    for (int a = 0; a < source_regions_.nangles(); a++) {
+      source_regions_.angular_flux_new(sr, g, a) = isotropic_flux;
+    }
+  }
 }
 
 void FlatSourceDomain::set_flux_to_source(int64_t sr, int g)
 {
   source_regions_.scalar_flux_new(sr, g) = source_regions_.source(sr, g);
+  if (source_regions_.needs_angular_flux(sr)) {
+    // Divide source term evenly across angles
+    float source_term =
+      source_regions_.source(sr, g) / source_regions_.nangles();
+    for (int a = 0; a < source_regions_.nangles(); a++) {
+      source_regions_.angular_flux_new(sr, g, a) = source_term;
+    }
+  }
 }
 
 bool FlatSourceDomain::region_has_strong_source(
@@ -497,6 +569,9 @@ bool FlatSourceDomain::region_has_strong_source(
 
 // Combine transport flux contributions and flat source contributions from the
 // previous iteration to generate this iteration's estimate of scalar flux.
+// Source terms are evenly distributed across angular flux as sources are
+// isotropic; this however assumes that the reference angles' Voronoi cells
+// subtend approximately equal solid angles on the surface of the unit sphere.
 int64_t FlatSourceDomain::add_source_to_scalar_flux()
 {
   int64_t n_hits = 0;
@@ -857,6 +932,197 @@ void FlatSourceDomain::compute_k_eff()
   k_eff_ = k_eff_new;
 }
 
+// Scan all tallies for a MeshAngularFilter and determine where angular flux
+// tallying will occur and on how many angles
+void FlatSourceDomain::initialize_angular_quadrature()
+{
+  angular_mesh_ = nullptr;
+  tally_is_angular_.assign(model::tallies.size(), false);
+  angular_target_cells_.clear();
+  angular_target_materials_.clear();
+  angular_target_spatial_meshes_.clear();
+  tally_angular_flux_everywhere_ = false;
+
+  // If FW-CADIS source biasing is active, flag its tally
+  int sb_tally = C_NONE;
+  for (const auto& wwg : variance_reduction::weight_windows_generators) {
+    if (wwg->sb_tally_idx_ != C_NONE &&
+        wwg->sb_tally_idx_ < static_cast<int32_t>(model::tallies.size())) {
+      sb_tally = wwg->sb_tally_idx_;
+      break;
+    }
+  }
+
+  for (int i_tally = 0; i_tally < model::tallies.size(); i_tally++) {
+    Tally& tally {*model::tallies[i_tally]};
+
+    bool has_angular_filter = false;
+    bool has_spatial_filter = false;
+
+    vector<int32_t> tally_cells;
+    vector<int32_t> tally_materials;
+    vector<int32_t> tally_meshes;
+
+    for (auto i_filt : tally.filters()) {
+      Filter* filt = model::tally_filters[i_filt].get();
+
+      if (auto* angular_filter = dynamic_cast<MeshAngularFilter*>(filt)) {
+        has_angular_filter = true;
+
+        const auto* this_mesh = dynamic_cast<const UnitSpherePointset*>(
+          model::meshes[angular_filter->mesh()].get());
+        if (!this_mesh) {
+          fatal_error("MeshAngularFilter must reference a UnitSpherePointset "
+                      "mesh for tallying in Random Ray.");
+        }
+        // if we've already found an angular tally that uses a different mesh,
+        // throw error
+        if (angular_mesh_ && angular_mesh_ != this_mesh) {
+          fatal_error(
+            "Multiple distinct angular quadratures found across "
+            "MeshAngularFilter tallies. All angularly-resolved tallies in "
+            "a Random Ray simulation must reference the same "
+            "UnitSpherePointset mesh.");
+        }
+        angular_mesh_ = this_mesh;
+        continue;
+      }
+
+      if (auto* cell_filter = dynamic_cast<CellFilter*>(filt)) {
+        has_spatial_filter = true;
+        for (int32_t c : cell_filter->cells()) {
+          tally_cells.push_back(c);
+        }
+      } else if (auto* mat_filter = dynamic_cast<MaterialFilter*>(filt)) {
+        has_spatial_filter = true;
+        for (int32_t m : mat_filter->materials()) {
+          tally_materials.push_back(m);
+        }
+      } else if (auto* mesh_filter = dynamic_cast<MeshFilter*>(filt)) {
+        // Already caught angular-type mesh filters; only spatial remain
+        has_spatial_filter = true;
+        tally_meshes.push_back(mesh_filter->mesh());
+      }
+    }
+
+    if (!has_angular_filter)
+      continue;
+
+    tally_is_angular_[i_tally] = true;
+
+    if (!has_spatial_filter) {
+      tally_angular_flux_everywhere_ = true;
+      continue;
+    }
+
+    if (i_tally == sb_tally) {
+      // If this is the source biasing tally, flag only the cells with a
+      // forward external source present. But we'll need to borrow syntax from
+      // convert_external_sources() to locate these sources. This should only
+      // have to occur once (or twice, if eventually supported for photons).
+      for (int es = 0; es < model::external_sources.size(); es++) {
+        // Extract source information
+        Source* s = model::external_sources[es].get();
+        IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+        const std::unordered_set<int32_t>& domain_ids = is->domain_ids();
+
+        // If there is no domain constraint specified, then this must be a point
+        // source.
+        if (is->domain_ids().size() == 0) {
+
+          // Extract the point source coordinate and find its cell
+          auto sp = dynamic_cast<SpatialPoint*>(is->space());
+          GeometryState gs;
+          gs.r() = sp->r();
+          gs.r_last() = sp->r();
+          gs.u() = {1.0, 0.0, 0.0};
+          bool found = exhaustive_find_cell(gs);
+          if (!found) {
+            fatal_error(fmt::format("Could not find cell containing external "
+                                    "point source at {}",
+              sp->r()));
+          }
+          angular_target_cells_.insert(gs.lowest_coord().cell());
+
+        } else {
+          // If not a point source, then use the volumetric domain constraints
+          // to determine the location of the forward source.
+          if (is->domain_type() == Source::DomainType::MATERIAL) {
+            for (int32_t material_id : domain_ids) {
+              int32_t i_mat = model::material_map[material_id];
+              angular_target_materials_.insert(i_mat);
+            }
+          } else if (is->domain_type() == Source::DomainType::CELL) {
+            for (int32_t cell_id : domain_ids) {
+              int32_t i_cell = model::cell_map[cell_id];
+              Cell& cell = *model::cells[i_cell];
+              if (cell.type_ == Fill::MATERIAL) {
+                angular_target_cells_.insert(i_cell);
+              } else {
+                for (const auto& pair : cell.get_contained_cells(0, nullptr)) {
+                  angular_target_cells_.insert(pair.first);
+                }
+              }
+            }
+          } else if (is->domain_type() == Source::DomainType::UNIVERSE) {
+            for (int32_t universe_id : domain_ids) {
+              int32_t i_universe = model::universe_map[universe_id];
+              Universe& universe = *model::universes[i_universe];
+              for (int32_t i_cell : universe.cells_) {
+                Cell& cell = *model::cells[i_cell];
+                if (cell.type_ == Fill::MATERIAL) {
+                  angular_target_cells_.insert(i_cell);
+                } else {
+                  for (const auto& pair :
+                    cell.get_contained_cells(0, nullptr)) {
+                    angular_target_cells_.insert(pair.first);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // If this is not the source biasing tally, flag all cells, materials,
+      // and meshes in the spatial domain of the tally for angular flux scoring
+      for (int32_t c : tally_cells) {
+        angular_target_cells_.insert(c);
+      }
+      for (int32_t m : tally_materials) {
+        angular_target_materials_.insert(m);
+      }
+      for (int32_t m : tally_meshes) {
+        angular_target_spatial_meshes_.insert(m);
+      }
+    }
+  }
+
+  nangles_ = angular_mesh_ ? angular_mesh_->points_.size() : 1;
+}
+
+// Determines whether a source region with the given cell/material/mesh
+// should have angular flux tallied.
+bool FlatSourceDomain::tally_angular_flux_applies(
+  int cell_idx, int material, int mesh_idx) const
+{
+  if (tally_angular_flux_everywhere_) {
+    return true;
+  }
+  if (angular_target_cells_.count(cell_idx)) {
+    return true;
+  }
+  if (material != MATERIAL_VOID && angular_target_materials_.count(material)) {
+    return true;
+  }
+  if (mesh_idx != C_NONE && angular_target_spatial_meshes_.count(mesh_idx)) {
+    // will flag every source region this mesh applies to, whether or
+    // not the region actually falls in a bin
+    return true;
+  }
+  return false;
+}
+
 // This function is responsible for generating a mapping between random
 // ray flat source regions (cell instances) and tally bins. The mapping
 // takes the form of a "TallyTask" object, which accounts for one single
@@ -902,6 +1168,9 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
   // Tracks if we've generated a mapping yet for all source regions.
   bool all_source_regions_mapped = true;
 
+  // Get flags for tallies that need a loop layer to cover angular bins
+  const vector<bool>& tally_is_angular = tally_is_angular_;
+
 // Attempt to generate mapping for all source regions
 #pragma omp parallel for
   for (int64_t sr = start_sr_id; sr < n_source_regions(); sr++) {
@@ -944,6 +1213,11 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
       // to what happens when scanning for applicable tallies during
       // MC transport.
       for (int i_tally = 0; i_tally < model::tallies.size(); i_tally++) {
+        // skip angle-dependent tallies for now
+        if (tally_is_angular[i_tally]) {
+          continue;
+        }
+
         Tally& tally {*model::tallies[i_tally]};
 
         // Initialize an iterator over valid filter bin combinations.
@@ -975,6 +1249,37 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
       // Reset all the filter matches for the next tally event.
       for (auto& match : p.filter_matches())
         match.bins_present_ = false;
+
+      // Now loop over angle-dependent tallies
+      if (source_regions_.needs_angular_flux(sr)) {
+        for (int a = 0; a < source_regions_.nangles(); a++) {
+          p.u() = angular_quadrature_direction(a);
+
+          for (int i_tally = 0; i_tally < model::tallies.size(); i_tally++) {
+            if (!tally_is_angular[i_tally])
+              continue;
+            Tally& tally {*model::tallies[i_tally]};
+
+            auto filter_iter = FilterBinIter(tally, p);
+            auto end = FilterBinIter(tally, true, &p.filter_matches());
+            if (filter_iter == end)
+              continue;
+
+            for (; filter_iter != end; ++filter_iter) {
+              auto filter_index = filter_iter.index_;
+
+              for (int score = 0; score < tally.scores_.size(); score++) {
+                auto score_bin = tally.scores_[score];
+                TallyTask task(i_tally, filter_index, score, score_bin, a);
+                source_regions_.tally_task(sr, g).push_back(task);
+                source_regions_.volume_task(sr).insert(task);
+              }
+            }
+          }
+          for (auto& match : p.filter_matches())
+            match.bins_present_ = false;
+        }
+      }
     }
   }
   openmc::simulation::time_tallies.stop();
@@ -1118,17 +1423,25 @@ void FlatSourceDomain::random_ray_tally()
 
       // Determine numerical score value
       for (auto& task : source_regions_.tally_task(sr, g)) {
+        // If the current task belongs to an angle-dependent tally, replace
+        // scalar flux with angular flux at the task's angle.
+        double task_flux =
+          (task.angle_bin == C_NONE)
+            ? flux
+            : source_regions_.angular_flux_new(sr, g, task.angle_bin) *
+                source_normalization_factor;
+
         double score = 0.0;
         switch (task.score_type) {
 
         case SCORE_FLUX:
-          score = flux * volume;
+          score = task_flux * volume;
           break;
 
         case SCORE_TOTAL:
           if (material != MATERIAL_VOID) {
             score =
-              flux * volume *
+              task_flux * volume *
               sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
               density_mult;
           }
@@ -1137,7 +1450,7 @@ void FlatSourceDomain::random_ray_tally()
         case SCORE_FISSION:
           if (material != MATERIAL_VOID) {
             score =
-              flux * volume *
+              task_flux * volume *
               sigma_f_[(material * ntemperature_ + temp) * negroups_ + g] *
               density_mult;
           }
@@ -1146,7 +1459,7 @@ void FlatSourceDomain::random_ray_tally()
         case SCORE_NU_FISSION:
           if (material != MATERIAL_VOID) {
             score =
-              flux * volume *
+              task_flux * volume *
               nu_sigma_f_[(material * ntemperature_ + temp) * negroups_ + g] *
               density_mult;
           }
@@ -1159,7 +1472,7 @@ void FlatSourceDomain::random_ray_tally()
         case SCORE_KAPPA_FISSION:
           if (material != MATERIAL_VOID) {
             score =
-              flux * volume *
+              task_flux * volume *
               kappa_fission_[(material * ntemperature_ + temp) * negroups_ +
                              g] *
               density_mult;
@@ -2570,14 +2883,6 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // Additionally, we need to determine the source region's material, initialize
   // the starting scalar flux guess, and apply any known external sources.
 
-  // Call the basic constructor for the source region and store in the parallel
-  // map.
-  bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
-  SourceRegion* sr_ptr =
-    discovered_source_regions_.emplace(sr_key, {negroups_, is_linear});
-  SourceRegionHandle handle {*sr_ptr};
-  handle.key() = sr_key;
-
   // Determine the material
   int gs_i_cell = gs.lowest_coord().cell();
   Cell& cell = *model::cells[gs_i_cell];
@@ -2600,6 +2905,19 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     }
   }
 
+  // Determine whether to size the source region's angular flux array for
+  // tallying
+  bool needs_angular_flux =
+    tally_angular_flux_applies(gs_i_cell, material, mesh_idx);
+
+  // Call the basic constructor for the source region and store in the parallel
+  // map.
+  bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
+  SourceRegion* sr_ptr = discovered_source_regions_.emplace(
+    sr_key, {negroups_, is_linear, nangles_, needs_angular_flux});
+  SourceRegionHandle handle {*sr_ptr};
+
+  handle.key() = sr_key;
   handle.material() = material;
   handle.temperature_idx() = temp;
   handle.density_mult() = cell.density_mult(gs.cell_instance());
@@ -2799,6 +3117,29 @@ bool FlatSourceDomain::is_geometry_3D()
   }
 
   return false;
+}
+
+// If tallying angular flux, this function is used to determine which angular
+// bin the current ray contributes to. Rays are assigned to bins based on the
+// unit-sphere Voronoi diagram generated from the "quadrature" angle set,
+// stored in the referenced angular mesh.
+int FlatSourceDomain::lookup_angular_bin(Direction u) const
+{
+  if (solve_ == RandomRaySolve::ADJOINT) {
+    // Flip direction in adjoint mode, since the ray is actually traveling in
+    // the direction -(Omega), whereas we want to tally the importance of a
+    // particle traveling in the forward direction Omega
+    u = -u;
+  }
+  return angular_mesh_->get_bin(u);
+}
+
+// Returns the representative direction of angular quadrature bin a. Used in
+// convert_source_regions_to_tallies() to link angular filter bins to specific
+// quadrature angles.
+Direction FlatSourceDomain::angular_quadrature_direction(int a) const
+{
+  return angular_mesh_->points_[a];
 }
 
 } // namespace openmc

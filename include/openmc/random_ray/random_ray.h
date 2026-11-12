@@ -117,6 +117,7 @@ public:
     SourceRegionHandle& srh, double distance, bool is_active, Position r);
   void attenuate_flux_linear_source_void(
     SourceRegionHandle& srh, double distance, bool is_active, Position r);
+  void direction_changed() override { angular_bin_ = C_NONE; }
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
   void restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
@@ -125,6 +126,7 @@ public:
   SourceSite sample_prng();
   SourceSite sample_halton();
   SourceSite sample_s2();
+  int angular_bin(); // accessor for current angular quadrature bin index
 
   bool has_left_subdomain();
   void pack_ray_for_buffer(double distance_buffer, double advance_distance);
@@ -157,6 +159,7 @@ private:
 
   int negroups_;
   int ntemperature_;
+  int angular_bin_ {C_NONE};
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
                                        // data needed for ray transport
   double distance_travelled_ {0};

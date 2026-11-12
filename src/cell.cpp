@@ -21,6 +21,7 @@
 #include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
+#include "openmc/particle_data.h"
 #include "openmc/settings.h"
 #include "openmc/xml_interface.h"
 
@@ -534,6 +535,29 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
 //==============================================================================
 
+std::pair<double, int32_t> CSGCell::distance(
+  Position r, Direction u, int32_t on_surface, GeometryState* p) const
+{
+  auto result = region_.distance(r, u, on_surface);
+  if (result.second == Region::SEARCH_FAILED) {
+    auto message = fmt::format(
+      "The search for the boundary of cell {} did not terminate at ({}, {}, "
+      "{}) in direction ({}, {}, {}). Identical surfaces in the cell's region "
+      "can cause this; Geometry.merge_surfaces removes them.",
+      id_, r.x, r.y, r.z, u.x, u.y, u.z);
+    if (p) {
+      p->mark_as_lost(
+        fmt::format("Particle {} was lost. {}", p->id(), message));
+    } else {
+      warning(message);
+    }
+    return {INFTY, std::numeric_limits<int32_t>::max()};
+  }
+  return result;
+}
+
+//==============================================================================
+
 void CSGCell::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "geom_type", "csg", false);
@@ -705,6 +729,13 @@ Region::Region(std::string region_spec, int32_t cell_id)
         expression_.end());
     }
     expression_.shrink_to_fit();
+
+    // In exact arithmetic, a ray crosses each half-space in the expression at
+    // most four times (a torus), and every step of a boundary search is one
+    // crossing, which bounds the number of steps
+    auto n_halfspaces = std::count_if(expression_.begin(), expression_.end(),
+      [](int32_t token) { return token < OP_UNION; });
+    max_search_steps_ = 4 * n_halfspaces + 1;
 
   } else {
     simple_ = true;
@@ -1002,7 +1033,12 @@ std::pair<double, int32_t> Region::distance_complex(
   const bool in_region = contains_complex(r, u, on_surface);
   double total_distance {0.0};
 
-  while (true) {
+  // The number of steps is bounded in exact arithmetic, but roundoff can make
+  // the search alternate forever between identical surfaces: far from the
+  // origin, after crossing one copy, the error in evaluating the other can
+  // place its crossing more than FP_COINCIDENT ahead, by a step too small to
+  // move the point off the surface
+  for (int step = 0; step < max_search_steps_; ++step) {
     auto [distance, i_surf] =
       distance_to_nearest_surface(r, u, on_surface, on_surface != 0);
     if (distance == INFTY) {
@@ -1028,6 +1064,7 @@ std::pair<double, int32_t> Region::distance_complex(
     }
     on_surface = i_surf;
   }
+  return {INFTY, SEARCH_FAILED};
 }
 
 //==============================================================================

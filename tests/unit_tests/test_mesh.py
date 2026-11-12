@@ -1740,6 +1740,51 @@ def test_write_vtk_omitted_trailing_axis(run_in_tmpdir, suffix,
     np.testing.assert_allclose(read_data, expected)
 
 
+def test_umesh_write_vtkhdf_points_precision(run_in_tmpdir):
+    """Unstructured mesh VTKHDF output stores points in double precision.
+
+    The mesh is loaded from a synthetic statepoint group so that the test
+    does not require DAGMC or libMesh.
+    """
+    # Two hexahedra and one tetrahedron far from the origin, where single
+    # precision would round the coordinates
+    cube = np.array([
+        [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+        [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1],
+        [2, 0, 0], [2, 1, 0], [2, 0, 1], [2, 1, 1],
+    ], dtype=float)
+    vertices = 1.0e3 + 1.234567e-4 + 1.0e-3 * cube
+    connectivity = np.array([
+        [0, 1, 2, 3, 4, 5, 6, 7],
+        [1, 8, 9, 2, 5, 10, 11, 6],
+        [0, 1, 3, 4, -1, -1, -1, -1],
+    ])
+    with h5py.File("statepoint_mesh.h5", "w") as f:
+        group = f.create_group("mesh")
+        group["library"] = b"moab"
+        group["filename"] = b"mesh.h5m"
+        group["volumes"] = [1.0e-9, 1.0e-9, 1.0e-9 / 6]
+        group["vertices"] = vertices
+        group["connectivity"] = connectivity
+        group["element_types"] = [1, 1, 0]
+        umesh = openmc.UnstructuredMesh.from_hdf5(group, mesh_id=None, name="")
+
+    data = np.array([1.0, 2.0, 3.0])
+    umesh.write_data_to_vtk("umesh.vtkhdf", {"data": data},
+                            volume_normalization=False)
+    umesh.write_data_to_vtk("umesh_no_data.vtkhdf")
+
+    with h5py.File("umesh.vtkhdf", "r") as f:
+        root = f["VTKHDF"]
+        assert root["Points"].dtype == np.float64
+        np.testing.assert_array_equal(root["Points"][()], vertices)
+        np.testing.assert_array_equal(root["Offsets"][()], [0, 8, 16, 20])
+        np.testing.assert_array_equal(root["Types"][()], [12, 12, 10])
+        np.testing.assert_array_equal(root["CellData"]["data"][()], data)
+
+    assert _read_vtkhdf("umesh.vtkhdf").GetNumberOfCells() == 3
+
+
 def test_rectilinear_mesh_get_indices_at_coords():
     """Test get_indices_at_coords method for RectilinearMesh"""
     # Create a 3x2x2 rectilinear mesh with non-uniform spacing

@@ -3432,12 +3432,6 @@ class UnstructuredMesh(MeshBase):
 
         Supports linear tetrahedra and linear hexahedra elements.
         """
-        def append_dataset(dset, array):
-            """Convenience function to append data to an HDF5 dataset"""
-            origLen = dset.shape[0]
-            dset.resize(origLen + array.shape[0], axis=0)
-            dset[origLen:] = array
-
         datasets = {} if datasets is None else datasets
 
         # This writer supports linear tetrahedra and linear hexahedra elements
@@ -3470,15 +3464,12 @@ class UnstructuredMesh(MeshBase):
             )
 
         connectivity = np.asarray(conn_list, dtype=np.int64)
-        n_cells = len(vtk_types)
 
-        # Offsets are the index of the first point of each cell in the
-        # flattened connectivity array.
-        if cell_sizes:
-            # VTKHDF requires n_cells + 1 offset entries per partition
-            offsets = np.concatenate(([0], np.cumsum(cell_sizes, dtype=np.int64)))
-        else:
-            offsets = np.array([0], dtype=np.int64)
+        # Offsets must be length (numCells + 1) with a leading 0 and
+        # cumulative end-indices thereafter, per VTK's layout
+        cell_sizes_arr = np.asarray(cell_sizes, dtype=np.int64)
+        offsets = np.zeros(cell_sizes_arr.size + 1, dtype=np.int64)
+        np.cumsum(cell_sizes_arr, out=offsets[1:])
 
         for name, data in datasets.items():
             if data.shape != self.dimension:
@@ -3489,6 +3480,7 @@ class UnstructuredMesh(MeshBase):
                 )
 
         with h5py.File(filename, "w") as f:
+
             root = f.create_group("VTKHDF")
             vtk_file_format_version = (2, 1)
             root.attrs["Version"] = vtk_file_format_version
@@ -3499,32 +3491,18 @@ class UnstructuredMesh(MeshBase):
                 dtype=h5py.string_dtype("ascii", len(ascii_type)),
             )
 
-            # create hdf5 file structure
-            root.create_dataset("NumberOfPoints", (0,),
-                                maxshape=(None,), dtype="i8")
-            root.create_dataset("Types", (0,), maxshape=(None,), dtype="uint8")
-            root.create_dataset(
-                "Points", (0, 3), maxshape=(None, 3), dtype="f")
-            root.create_dataset(
-                "NumberOfConnectivityIds", (0,), maxshape=(None,), dtype="i8"
-            )
-            root.create_dataset("NumberOfCells", (0,),
-                                maxshape=(None,), dtype="i8")
-            root.create_dataset("Offsets", (0,), maxshape=(None,), dtype="i8")
-            root.create_dataset("Connectivity", (0,),
-                                maxshape=(None,), dtype="i8")
+            # Create HDF5 file structure compliant with VTKHDF UnstructuredGrid
+            n_points = int(len(self.vertices))
+            n_cells = int(len(cell_sizes))
+            n_conn_ids = int(len(connectivity))
 
-            append_dataset(root["NumberOfPoints"],
-                           np.array([len(self.vertices)]))
-            append_dataset(root["Points"], self.vertices)
-            append_dataset(
-                root["NumberOfConnectivityIds"],
-                np.array([len(connectivity)]),
-            )
-            append_dataset(root["Connectivity"], connectivity)
-            append_dataset(root["NumberOfCells"], np.array([n_cells]))
-            append_dataset(root["Offsets"], offsets)
-            append_dataset(root["Types"], np.asarray(vtk_types, dtype="uint8"))
+            root.create_dataset("NumberOfPoints", data=(n_points,), dtype="i8")
+            root.create_dataset("NumberOfCells", data=(n_cells,), dtype="i8")
+            root.create_dataset("NumberOfConnectivityIds", data=(n_conn_ids,), dtype="i8")
+            root.create_dataset("Points", data=self.vertices.astype(np.float64, copy=False), dtype="f8")
+            root.create_dataset("Types", data=np.asarray(vtk_types, dtype=np.uint8), dtype="uint8")
+            root.create_dataset("Offsets", data=offsets.astype("i8"), dtype="i8")
+            root.create_dataset("Connectivity", data=connectivity.astype("i8"), dtype="i8")
 
             cell_data_group = root.create_group("CellData")
 

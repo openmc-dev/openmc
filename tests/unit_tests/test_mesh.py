@@ -1794,6 +1794,8 @@ def test_umesh_write_vtkhdf_points_precision(run_in_tmpdir):
 
     with h5py.File("umesh.vtkhdf", "r") as f:
         root = f["VTKHDF"]
+        assert root.attrs["Type"] == b"UnstructuredGrid"
+        assert tuple(root.attrs["Version"]) == (2, 1)
         assert root["Points"].dtype == np.float64
         np.testing.assert_array_equal(root["Points"][()], vertices)
         np.testing.assert_array_equal(root["Offsets"][()], [0, 8, 16, 20])

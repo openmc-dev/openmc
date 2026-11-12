@@ -22,7 +22,7 @@ from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
 
 
-# VTKHDF format version used for structured mesh output
+# VTKHDF format version used for structured and unstructured mesh output
 _VTKHDF_VERSION = (2, 1)
 
 
@@ -3490,14 +3490,8 @@ class UnstructuredMesh(MeshBase):
         with h5py.File(filename, "w") as f:
 
             root = f.create_group("VTKHDF")
-            vtk_file_format_version = (2, 1)
-            root.attrs["Version"] = vtk_file_format_version
-            ascii_type = "UnstructuredGrid".encode("ascii")
-            root.attrs.create(
-                "Type",
-                ascii_type,
-                dtype=h5py.string_dtype("ascii", len(ascii_type)),
-            )
+            root.attrs["Version"] = _VTKHDF_VERSION
+            _write_vtkhdf_type(root, "UnstructuredGrid")
 
             # Create HDF5 file structure compliant with VTKHDF UnstructuredGrid
             n_points = int(len(self.vertices))

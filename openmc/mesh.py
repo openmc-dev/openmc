@@ -1038,6 +1038,7 @@ class StructuredMesh(MeshBase):
         connectivity = (corner[:, None] + offsets[None, :]).ravel()
 
         n_cells = corner.size
+        cell_data = list(self._vtk_hdf5_datasets(datasets, volume_normalization))
         with h5py.File(filename, "w") as f:
             root = f.create_group("VTKHDF")
             root.attrs["Version"] = _VTKHDF_VERSION
@@ -1054,12 +1055,10 @@ class StructuredMesh(MeshBase):
                 dtype="i8",
             )
             # 12 is the VTK cell type for a linear hexahedron
-            root.create_dataset("Types", data=np.full(n_cells, 12),
-                                dtype="uint8")
+            root.create_dataset("Types", data=np.full(n_cells, 12), dtype="uint8")
 
             cell_data_group = root.create_group("CellData")
-            for label, dataset in self._vtk_hdf5_datasets(datasets,
-                                                          volume_normalization):
+            for label, dataset in cell_data:
                 cell_data_group.create_dataset(label, data=dataset,
                                                dtype="float64", chunks=True)
 
@@ -1736,6 +1735,7 @@ class RegularMesh(StructuredMesh):
         origin = list(self.lower_left) + [0.0] * (3 - ndim)
         spacing = list(self.width) + [1.0] * (3 - ndim)
 
+        cell_data = list(self._vtk_hdf5_datasets(datasets, volume_normalization))
         with h5py.File(filename, "w") as f:
             root = f.create_group("VTKHDF")
             root.attrs["Version"] = _VTKHDF_VERSION
@@ -1749,8 +1749,7 @@ class RegularMesh(StructuredMesh):
             root.attrs.create("Direction", np.eye(3).ravel())
 
             cell_data_group = root.create_group("CellData")
-            for label, dataset in self._vtk_hdf5_datasets(datasets,
-                                                          volume_normalization):
+            for label, dataset in cell_data:
                 # ImageData element data is stored with the last index varying
                 # fastest, i.e. with shape (nz, ny, nx)
                 cell_data_group.create_dataset(

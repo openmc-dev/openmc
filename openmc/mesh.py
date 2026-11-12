@@ -767,6 +767,10 @@ class StructuredMesh(MeshBase):
             for label, dataset in datasets.items():
                 dataset = self._reshape_vtk_dataset(dataset)
                 self._check_vtk_dataset(label, dataset)
+                # restore any trailing axes of size one that the check allows
+                # to be omitted so that the dataset matches the mesh dimension
+                if dataset.ndim > 1:
+                    dataset = dataset.reshape(self.dimension)
                 # If the array data is 3D, assume is in C ordering and transpose
                 # before flattening to match the ordering expected by the VTK
                 # array based on the way mesh indices are ordered in the Python

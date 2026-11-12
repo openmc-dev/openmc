@@ -1672,6 +1672,43 @@ def test_write_ascii_vtk_unchanged(run_in_tmpdir):
     read_data = np.array([arr.GetTuple1(i) for i in range(ref_data.size)])
     np.testing.assert_almost_equal(read_data, ref_data.T.ravel())
 
+
+@pytest.mark.parametrize("volume_normalization", [False, True])
+@pytest.mark.parametrize("suffix", [".vtk", ".vtkhdf"])
+def test_write_vtk_omitted_trailing_axis(run_in_tmpdir, suffix,
+                                         volume_normalization):
+    """A dataset may omit trailing mesh axes of size one in either format.
+
+    The values must be written in the same element order as a dataset with
+    the full mesh shape.
+    """
+    vtk = pytest.importorskip("vtk")
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0., 0.]
+    mesh.upper_right = [4., 3., 2.]
+    mesh.dimension = [4, 3, 1]
+
+    data = np.arange(12, dtype=float).reshape(4, 3)
+    filename = f"omitted_axis{suffix}"
+    mesh.write_data_to_vtk(filename, {"data": data},
+                           volume_normalization=volume_normalization)
+
+    if suffix == ".vtk":
+        reader = vtk.vtkGenericDataObjectReader()
+    else:
+        reader = vtk.vtkHDFReader()
+    reader.SetFileName(filename)
+    reader.Update()
+    array = reader.GetOutput().GetCellData().GetArray("data")
+    read_data = np.array([array.GetTuple1(i) for i in range(mesh.n_elements)])
+
+    # every element has a volume of 2
+    expected = data.T.ravel()
+    if volume_normalization:
+        expected = expected / 2.0
+    np.testing.assert_allclose(read_data, expected)
+
+
 def test_rectilinear_mesh_get_indices_at_coords():
     """Test get_indices_at_coords method for RectilinearMesh"""
     # Create a 3x2x2 rectilinear mesh with non-uniform spacing

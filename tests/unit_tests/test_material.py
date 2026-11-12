@@ -1,5 +1,6 @@
 from collections import defaultdict
 from pathlib import Path
+import warnings
 
 import pytest
 
@@ -922,3 +923,44 @@ def test_get_photon_contact_dose_rate():
         m_i135.get_photon_contact_dose_rate('absorbed-air', build_up='two')
     with pytest.raises(ValueError):
         m_i135.get_photon_contact_dose_rate('absorbed-air', build_up=-1.0)
+
+
+def test_get_photon_contact_dose_rate_missing_attenuation():
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    m_i135 = openmc.Material()
+    m_i135.add_nuclide('I135', 1.0)
+    m_i135.set_density('atom/b-cm', 1.0)
+    reference = m_i135.get_photon_contact_dose_rate('absorbed-air')
+
+    # Depletion produces trace amounts of nuclides above Z=100, for which no
+    # photon attenuation data exists. They should be skipped rather than
+    # aborting the calculation, and are far too dilute to change the result.
+    m_trace = openmc.Material()
+    m_trace.add_nuclide('I135', 1.0)
+    for nuclide, percent in [('Rf265', 2.6e-36), ('Sg269', 1.0e-36),
+                             ('Hs273', 1.0e-36)]:
+        m_trace.add_nuclide(nuclide, percent)
+    m_trace.set_density('atom/b-cm', 1.0)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        cdr = m_trace.get_photon_contact_dose_rate('absorbed-air')
+    assert not caught
+    assert cdr == pytest.approx(reference, rel=1e-10)
+
+    # A non-trace amount of such nuclides is worth telling the user about
+    m_bulk = openmc.Material()
+    m_bulk.add_nuclide('I135', 0.5)
+    m_bulk.add_nuclide('Rf265', 0.5)
+    m_bulk.set_density('atom/b-cm', 1.0)
+    with pytest.warns(UserWarning, match='Rf265'):
+        m_bulk.get_photon_contact_dose_rate('absorbed-air')
+
+    # If nothing in the material has attenuation data, give a clear error
+    m_none = openmc.Material()
+    m_none.add_nuclide('Rf265', 1.0)
+    m_none.set_density('atom/b-cm', 1.0e-10)
+    with pytest.raises(ValueError, match='No photon attenuation data'):
+        m_none.get_photon_contact_dose_rate('absorbed-air')

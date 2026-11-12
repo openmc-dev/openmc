@@ -13,30 +13,41 @@
 #include <iostream>
 
 //==============================================================================
-// Global variables / constants
-//==============================================================================
-
-// Error codes
-int OPENMC_E_UNASSIGNED {-1};
-int OPENMC_E_ALLOCATE {-2};
-int OPENMC_E_OUT_OF_BOUNDS {-3};
-int OPENMC_E_INVALID_SIZE {-4};
-int OPENMC_E_INVALID_ARGUMENT {-5};
-int OPENMC_E_INVALID_TYPE {-6};
-int OPENMC_E_INVALID_ID {-7};
-int OPENMC_E_GEOMETRY {-8};
-int OPENMC_E_DATA {-9};
-int OPENMC_E_PHYSICS {-10};
-int OPENMC_E_WARNING {1};
-
-// Error message
-char openmc_err_msg[256];
-
-//==============================================================================
 // Functions
 //==============================================================================
 
 namespace openmc {
+
+namespace {
+
+std::string error_message;
+
+} // namespace
+
+void set_errmsg(const char* message)
+{
+  error_message = message;
+}
+
+void set_errmsg(const std::string& message)
+{
+  error_message = message;
+}
+
+void set_errmsg(const std::stringstream& message)
+{
+  error_message = message.str();
+}
+
+const char* get_errmsg()
+{
+  return error_message.c_str();
+}
+
+extern "C" const char* openmc_get_err_msg()
+{
+  return get_errmsg();
+}
 
 #ifdef OPENMC_MPI
 void abort_mpi(int code)

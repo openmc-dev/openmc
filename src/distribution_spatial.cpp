@@ -275,8 +275,6 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   // Get pointer to spatial distribution
   mesh_idx_ = model::mesh_map.at(mesh_id);
 
-  const auto mesh_ptr = model::meshes.at(mesh_idx_).get();
-
   check_element_types();
 
   size_t n_bins = this->n_sources();

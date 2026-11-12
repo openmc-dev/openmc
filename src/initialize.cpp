@@ -42,6 +42,10 @@
 #include "libmesh/libmesh.h"
 #endif
 
+#ifdef OPENMC_XDG_ENABLED
+#include "xdg/config.h"
+#endif
+
 int openmc_init(int argc, char* argv[], const void* intracomm)
 {
   using namespace openmc;
@@ -84,6 +88,14 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 
     settings::libmesh_comm = &(settings::libmesh_init->comm());
   }
+
+#if defined(OPENMC_XDG_ENABLED) && defined(XDG_ENABLE_LIBMESH)
+  // Set the external libMesh initialization and communicator for XDG if
+  // libMesh was initialized externally. If libMesh was initialized internally,
+  // the XDG config will use the internal initialization and communicator.
+  xdg::config::external_libmesh_init = settings::libmesh_init.get();
+  xdg::config::external_libmesh_comm = settings::libmesh_comm;
+#endif
 
 #endif
 
@@ -258,7 +270,7 @@ int parse_command_line(int argc, char* argv[])
         settings::verbosity = std::stoi(argv[i]);
         if (settings::verbosity > 10 || settings::verbosity < 1) {
           auto msg = fmt::format("Invalid verbosity: {}.", settings::verbosity);
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
 
@@ -275,7 +287,6 @@ int parse_command_line(int argc, char* argv[])
         // Set path and flag for type of run
         if (filetype == "statepoint") {
           settings::path_statepoint = argv[i];
-          settings::path_statepoint_c = settings::path_statepoint.c_str();
           settings::restart_run = true;
         } else if (filetype == "particle restart") {
           settings::path_particle_restart = argv[i];
@@ -283,7 +294,7 @@ int parse_command_line(int argc, char* argv[])
         } else {
           auto msg =
             fmt::format("Unrecognized file after restart flag: {}.", filetype);
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
 
@@ -299,7 +310,7 @@ int parse_command_line(int argc, char* argv[])
             if (filetype != "source") {
               std::string msg {
                 "Second file after restart flag must be a source file"};
-              strcpy(openmc_err_msg, msg.c_str());
+              set_errmsg(msg);
               return OPENMC_E_INVALID_ARGUMENT;
             }
 
@@ -325,7 +336,7 @@ int parse_command_line(int argc, char* argv[])
         // Read number of threads
         if (i + 1 >= argc) {
           std::string msg {"Number of threads not specified."};
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
         i += 1;
@@ -335,7 +346,7 @@ int parse_command_line(int argc, char* argv[])
         int n_threads = std::stoi(argv[i]);
         if (n_threads < 1) {
           std::string msg {"Number of threads must be positive."};
-          strcpy(openmc_err_msg, msg.c_str());
+          set_errmsg(msg);
           return OPENMC_E_INVALID_ARGUMENT;
         }
         omp_set_num_threads(n_threads);

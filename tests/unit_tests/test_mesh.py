@@ -14,6 +14,8 @@ from openmc.utility_funcs import change_directory
 from uncertainties.unumpy import uarray, nominal_values, std_devs
 
 
+UMESH_DIR = Path(__file__).resolve().parents[1] / 'regression_tests' / 'unstructured_mesh'
+
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
 def test_raises_error_when_flat(val_left, val_right):
     """Checks that an error is raised when a mesh is flat"""
@@ -388,7 +390,8 @@ def test_mesh_name_roundtrip(run_in_tmpdir):
 
 
 def test_umesh_roundtrip(run_in_tmpdir, request):
-    umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', 'moab')
+    umesh = openmc.UnstructuredMesh(UMESH_DIR / 'test_mesh_tets.exo', 'moab')
+    umesh.interface = 'xdg'
     umesh.output = True
 
     # create a tally using this mesh
@@ -405,6 +408,74 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     xml_mesh = xml_tally.filters[0].mesh
 
     assert umesh.id == xml_mesh.id
+    assert xml_mesh.interface == 'xdg'
+
+
+@pytest.mark.parametrize('filename, library', [
+    ('mesh.h5m', 'moab'), ('mesh.h5', 'moab'), ('mesh.vtk', 'moab'),
+    ('mesh.e', 'libmesh'), ('mesh.exo', 'libmesh'), ('mesh.ex2', 'libmesh'),
+    (Path('mesh.H5M'), 'moab'), (Path('mesh.EXO'), 'libmesh'),
+])
+def test_umesh_library_inference(filename, library):
+    mesh = openmc.UnstructuredMesh(filename)
+    assert mesh.library == library
+
+
+def test_umesh_library_override():
+    mesh = openmc.UnstructuredMesh('mesh.exo', 'moab')
+    mesh.filename = 'mesh.unknown'
+    assert mesh.library == 'moab'
+    assert openmc.UnstructuredMesh('mesh.unknown', 'libmesh').library == 'libmesh'
+    with pytest.raises(ValueError, match='Cannot infer mesh library'):
+        openmc.UnstructuredMesh('mesh.unknown')
+
+
+def test_umesh_interface_validation():
+    umesh = openmc.UnstructuredMesh('mesh.h5m', 'moab')
+
+    with pytest.raises(ValueError, match='interface'):
+        umesh.interface = 'invalid'
+
+    with pytest.raises(ValueError, match='library'):
+        openmc.UnstructuredMesh('mesh.h5m', 'xdg')
+
+
+@pytest.mark.parametrize('interface', ('native', 'xdg'))
+def test_umesh_interface_hdf5(tmp_path, interface):
+    with h5py.File(tmp_path / 'mesh.h5', 'w') as fh:
+        group = fh.create_group('meshes/mesh 1')
+        group['type'] = np.bytes_('unstructured')
+        group['filename'] = np.bytes_('mesh.h5m')
+        group['library'] = np.bytes_('moab')
+        if interface != 'native':
+            group['interface'] = np.bytes_(interface)
+        group['volumes'] = [1.0]
+        group['vertices'] = np.zeros((4, 3))
+        group['connectivity'] = np.array([[0, 1, 2, 3, -1, -1, -1, -1]])
+        group['element_types'] = [10]
+
+        mesh = openmc.MeshBase.from_hdf5(group)
+
+    assert mesh.interface == interface
+
+
+def test_umesh_from_hdf5_without_filename(run_in_tmpdir):
+    """An in-memory unstructured mesh has no source filename."""
+    with h5py.File('mesh.h5', 'w') as f:
+        group = f.create_group('mesh 1')
+        group['type'] = np.bytes_('unstructured')
+        group['library'] = np.bytes_('libmesh')
+        group['volumes'] = [1.0]
+        group['vertices'] = np.zeros((4, 3))
+        group['connectivity'] = np.zeros((1, 8), dtype=int)
+        group['element_types'] = [0]
+
+        with openmc.config.patch('resolve_paths', True):
+            mesh = openmc.MeshBase.from_hdf5(group)
+
+    assert mesh.filename == Path()
+    assert mesh.has_statepoint_data
+    assert mesh.n_elements == 1
 
 
 @pytest.fixture(scope='module')
@@ -453,7 +524,9 @@ def simple_umesh(request):
             return sp.meshes[1]
 
 
-@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
+@pytest.mark.skipif(
+    not openmc.lib.feature_enabled('dagmc'), reason="DAGMC not enabled."
+)
 @pytest.mark.parametrize('export_type', ('.vtk', '.vtu'))
 def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
@@ -492,11 +565,11 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
 
 vtkhdf_tests = [
     (
-        Path("test_mesh_dagmc_tets.vtk"),
+        UMESH_DIR / "test_mesh_dagmc_tets.vtk",
         "moab"
     ),
     (
-        Path("test_mesh_hexes.exo"),
+        UMESH_DIR / "test_mesh_hexes.exo",
         "libmesh"
     )
 ]
@@ -507,9 +580,9 @@ def test_write_vtkhdf(mesh_file, mesh_library, request, run_in_tmpdir):
     necessary to read in the unstructured mesh from a statepoint file to ensure
     it has all the required attributes
     """
-    if mesh_library == 'moab' and not openmc.lib._dagmc_enabled():
+    if mesh_library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip("DAGMC not enabled.")
-    if mesh_library == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if mesh_library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh not enabled.")
 
     model = openmc.Model()
@@ -684,6 +757,103 @@ def test_material_volumes_regular_mesh(sphere_model, n_rays):
     np.testing.assert_almost_equal(volumes[mats[2].id], [1., 1., 1., 1., 0., 0., 0., 0.])
     assert volumes.by_element(4) == [(mats[1].id, 1.)]
     assert volumes.by_element(0) == [(mats[2].id, 1.)]
+
+
+def test_material_volumes_outside_geometry():
+    """Test a regular mesh that extends outside a spherical geometry."""
+    openmc.reset_auto_ids()
+
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+    mat.set_density('g/cm3', 1.0)
+
+    # In the first model, space outside the material sphere is undefined. In
+    # the reference model, a larger void cell fully contains the mesh.
+    inner = openmc.Sphere(r=1.0, boundary_type='vacuum')
+    model = openmc.Model(
+        geometry=openmc.Geometry([openmc.Cell(fill=mat, region=-inner)]),
+        materials=[mat],
+    )
+
+    inner_ref = openmc.Sphere(r=1.0)
+    outer_ref = openmc.Sphere(r=4.0, boundary_type='vacuum')
+    model_ref = openmc.Model(
+        geometry=openmc.Geometry([
+            openmc.Cell(fill=mat, region=-inner_ref),
+            openmc.Cell(region=+inner_ref & -outer_ref),
+        ]),
+        materials=[mat],
+    )
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-2.0, -2.0, -2.0)
+    mesh.upper_right = (2.0, 2.0, 2.0)
+    mesh.dimension = (4, 4, 4)
+
+    kwargs = {
+        'n_samples': (20, 20, 20),
+        'max_materials': 2,
+        'bounding_boxes': True,
+        'output': False,
+    }
+    volumes = mesh.material_volumes(model, **kwargs)
+    volumes_ref = mesh.material_volumes(model_ref, **kwargs)
+
+    assert volumes.has_bounding_boxes
+    assert volumes_ref.has_bounding_boxes
+
+    found_material = False
+    for i, element_volume in enumerate(mesh.volumes.ravel()):
+        by_material = dict(volumes.by_element(i))
+        by_material_ref = dict(volumes_ref.by_element(i))
+
+        assert by_material.keys() == by_material_ref.keys()
+        for material_id in by_material:
+            assert by_material[material_id] == pytest.approx(
+                by_material_ref[material_id], rel=1e-12, abs=1e-12)
+
+        assert None in by_material
+        assert sum(by_material.values()) == pytest.approx(element_volume)
+        found_material |= mat.id in by_material
+
+    assert found_material
+
+
+@pytest.mark.skipif(not openmc.lib.feature_enabled('dagmc'), reason="DAGMC not enabled.")
+def test_material_volumes_outside_dagmc_geometry():
+    """Test a mesh extending outside a root DAGMC universe."""
+    openmc.reset_auto_ids()
+
+    dagmc_path = (Path(__file__).parents[1] /
+                  'regression_tests/dagmc/legacy/dagmc.h5m')
+    dagmc_universe = openmc.DAGMCUniverse(dagmc_path)
+
+    fuel = openmc.Material(name='no-void fuel')
+    fuel.add_nuclide('U235', 0.03)
+    fuel.add_nuclide('U238', 0.97)
+    fuel.add_nuclide('O16', 2.0)
+    water = openmc.Material(name='41')
+    water.add_nuclide('H1', 2.0)
+    water.add_element('O', 1.0)
+
+    model = openmc.Model(
+        geometry=openmc.Geometry(dagmc_universe),
+        materials=[fuel, water],
+    )
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = dagmc_universe.bounding_box.lower_left - 5.0
+    mesh.upper_right = dagmc_universe.bounding_box.upper_right + 5.0
+    mesh.dimension = (3, 3, 3)
+
+    volumes = mesh.material_volumes(
+        model, n_samples=(4, 4, 4), output=False)
+
+    assert any(None in dict(volumes.by_element(i))
+               for i in range(volumes.num_elements))
+    for i, element_volume in enumerate(mesh.volumes.ravel()):
+        assert sum(dict(volumes.by_element(i)).values()) == pytest.approx(
+            element_volume)
 
 
 def test_material_volumes_cylindrical_mesh(sphere_model):

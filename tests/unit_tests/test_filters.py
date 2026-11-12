@@ -301,6 +301,9 @@ def test_energyfunc():
     np.testing.assert_allclose(f.y, new_f.y)
     assert f.interpolation == new_f.interpolation
 
+    with raises(ValueError, match="requires 4 or more"):
+        openmc.EnergyFunctionFilter([0.0, 1.0, 2.0], [1.0, 2.0, 3.0], interpolation='cubic')
+
 
 def test_tabular_from_energyfilter():
     efilter = openmc.EnergyFilter([0.0, 10.0, 20.0, 25.0])

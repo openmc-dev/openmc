@@ -3,6 +3,7 @@
 
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/random_ray/linear_source_domain.h"
+#include "openmc/random_ray/ray_bank.h"
 
 namespace openmc {
 
@@ -24,12 +25,15 @@ public:
   void prepare_local_fixed_sources_adjoint();
   void prepare_adjoint_simulation(bool from_forward);
   void simulate();
-  void output_simulation_results() const;
+  void output_simulation_results();
   void instability_check(
     int64_t n_hits, double k_eff, double& avg_miss_rate) const;
   void print_results_random_ray(uint64_t total_geometric_intersections,
     double avg_miss_rate, int negroups, int64_t n_source_regions,
-    int64_t n_external_source_regions) const;
+    int64_t n_external_source_regions, uint64_t avg_num_comms,
+    double max_load_imbalance) const;
+  void transport_sweep();
+  void transport_sweep_decomp(RayBank& RB);
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -51,6 +55,13 @@ private:
 
   // Number of energy groups
   int negroups_;
+
+  // Average number of ray communications between rank per batch
+  uint64_t avg_num_communication_rounds_ {0};
+
+  // Tracks whether geometry-dependent one-time setup has already run for
+  // this simulation object across forward/adjoint solves.
+  bool geometry_setup_complete_ {false};
 
 }; // class RandomRaySimulation
 

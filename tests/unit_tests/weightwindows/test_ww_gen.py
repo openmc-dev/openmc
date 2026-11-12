@@ -335,7 +335,10 @@ def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
     openmc.lib.finalize()
 
 
-@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled.")
+@pytest.mark.skipif(
+    not openmc.lib.feature_enabled('dagmc'),
+    reason="DAGMC CAD geometry is not enabled."
+)
 def test_ww_generation_with_dagmc(run_in_tmpdir):
     mat1 = openmc.Material(name="1")
     mat1.add_nuclide("H1", 1, percent_type="ao")

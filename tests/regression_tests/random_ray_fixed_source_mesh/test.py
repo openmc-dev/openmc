@@ -49,5 +49,6 @@ def test_random_ray_fixed_source_mesh(shape):
         model.settings.inactive = 15
         model.settings.batches = 30
 
+        model.settings.random_ray['volume_estimator'] = 'hybrid'
         harness = MGXSTestHarness('statepoint.30.h5', model)
         harness.main()

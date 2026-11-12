@@ -143,6 +143,21 @@ def test_from_endf_material(endf_data):
     assert data.atomic_number == 1
     assert data.mass_number == 1
     assert 2 in data.reactions
+    assert data.excitation_energy == 0.0
+    assert data[102].q_mass_difference == pytest.approx(data[102].q_reaction)
+    assert data[102].breakup_flag == 0
+
+
+@pytest.mark.parametrize('filename,mt,excitation,breakup', [
+    ('n-095_Am_242m1.endf', 51, 48600.0, 0),
+    ('n-003_Li_007.endf', 52, 0.0, 33),
+])
+def test_endf_reaction_metadata(endf_data, filename, mt, excitation, breakup):
+    data = openmc.data.IncidentNeutron.from_endf(
+        os.path.join(endf_data, 'neutrons', filename))
+    assert data.excitation_energy == excitation
+    assert data[mt].breakup_flag == breakup
+    assert data[mt].q_mass_difference is not None
 
 
 def test_fission_energy_from_endf_material(endf_data):
@@ -182,7 +197,7 @@ def test_reactions(pu239):
 def test_elastic(pu239):
     elastic = pu239.reactions[2]
     assert elastic.center_of_mass
-    assert elastic.q_value == 0.0
+    assert elastic.q_reaction == 0.0
     assert elastic.mt == 2
     assert '0K' in elastic.xs
     assert '294K' in elastic.xs
@@ -202,7 +217,7 @@ def test_elastic(pu239):
 def test_fission(pu239):
     fission = pu239.reactions[18]
     assert not fission.center_of_mass
-    assert fission.q_value == pytest.approx(198902000.0)
+    assert fission.q_reaction == pytest.approx(198902000.0)
     assert fission.mt == 18
     assert '294K' in fission.xs
     assert len(fission.products) == 8
@@ -524,4 +539,7 @@ def test_high_temperature(endf_data):
     endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
 
     # Ensure that from_njoy works when given a high temperature
-    openmc.data.IncidentNeutron.from_njoy(endf_file, temperatures=[123_456.0])
+    data = openmc.data.IncidentNeutron.from_njoy(endf_file, temperatures=[123_456.0])
+    assert data.excitation_energy == 0.0
+    assert data[102].q_mass_difference == pytest.approx(data[102].q_reaction)
+    assert data[102].breakup_flag == 0

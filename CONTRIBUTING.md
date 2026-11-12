@@ -20,8 +20,16 @@ openmc@anl.gov.
 
 ## How to Report Bugs
 
-OpenMC is hosted on GitHub and all bugs are reported and tracked through the
-[Issues](https://github.com/openmc-dev/openmc/issues) listed on GitHub.
+OpenMC is hosted on GitHub and non-security bugs are reported and tracked
+through the [Issues](https://github.com/openmc-dev/openmc/issues) listed on
+GitHub.
+
+## How to Report Security Vulnerabilities
+
+Please report suspected security vulnerabilities privately by emailing
+[openmc@anl.gov](mailto:openmc@anl.gov). Do not report security vulnerabilities
+through public GitHub issues. Include a description of the vulnerability,
+affected versions, and steps to reproduce it if available.
 
 ## How to Suggest Enhancements
 

@@ -17,6 +17,7 @@
 #include "openmc/distribution_spatial.h"
 #include "openmc/memory.h"
 #include "openmc/particle_type.h"
+#include "openmc/tensor.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -92,6 +93,8 @@ public:
 
   static unique_ptr<Source> create(pugi::xml_node node);
 
+  bool satisfies_spatial_constraints(Position r) const;
+
 protected:
   // Strategy used for rejecting sites when constraints are applied. KILL means
   // that sites are always accepted but if they don't satisfy constraints, they
@@ -104,7 +107,6 @@ protected:
 
   // Methods for constraints
   void read_constraints(pugi::xml_node node);
-  bool satisfies_spatial_constraints(Position r) const;
   bool satisfies_energy_constraints(double E) const;
   bool satisfies_time_constraints(double time) const;
 
@@ -450,6 +452,133 @@ private:
     poloidal_dists_; //!< Distributions for each basis function g_k(alpha)
   array<double, N_POLOIDAL_BASIS>
     poloidal_integrals_; //!< Integrals of g_k(alpha) over [0, pi]
+};
+
+//==============================================================================
+//! Parametric stellarator plasma neutron source
+//!
+//! This source samples neutron positions from a 3-D stellarator plasma using
+//! the flux-surface Fourier representation shared by the VMEC and DESC
+//! equilibrium codes. The flux coordinates are (rho, theta, zeta), where
+//! rho = sqrt(s) is the square root of the normalized toroidal flux
+//! (proportional to the average minor radius), theta is the poloidal angle,
+//! and zeta is the toroidal angle, which coincides with the cylindrical
+//! azimuthal angle phi in both VMEC and DESC. The flux surfaces are
+//!
+//!   R(rho, theta, zeta) = sum_k [ Rc_k(rho) cos(m_k theta - n_k Nfp zeta)
+//!                               + Rs_k(rho) sin(m_k theta - n_k Nfp zeta) ]
+//!   Z(rho, theta, zeta) = sum_k [ Zs_k(rho) sin(m_k theta - n_k Nfp zeta)
+//!                               + Zc_k(rho) cos(m_k theta - n_k Nfp zeta) ]
+//!
+//! where Nfp is the number of field periods. For stellarator-symmetric
+//! equilibria only Rc and Zs are non-zero.
+//!
+//! With phi = zeta the volume element is dV = R |tau| drho dtheta dzeta with
+//! the poloidal-plane Jacobian
+//!
+//!   tau = dR/drho * dZ/dtheta - dR/dtheta * dZ/drho
+//!
+//! so for an emission density S(rho) [n/cm^3-s] that is constant on flux
+//! surfaces the joint sampling density is
+//!
+//!   p(rho, theta, zeta) ~ S(rho) * R * |tau|
+//!
+//! The sampling algorithm:
+//! 1. Sample rho from the marginal p(rho) ~ S(rho) * V'(rho), where
+//!    V'(rho) = int R |tau| dtheta dzeta is the differential volume, evaluated
+//!    by Fourier quadrature. Each radial bin is selected using its analytically
+//!    integrated cubic PDF, then rho is sampled within the bin by rejection.
+//! 2. Sample (theta, zeta) from the conditional p(theta, zeta | rho)
+//!    ~ R |tau| using 32 x 32 angular cells covering one field period. Select
+//!    a cell using a quadratic Bernstein mixture, propose angles uniformly
+//!    within it, and reject against its radius-dependent bound. Then choose
+//!    a field period uniformly.
+//! 3. Map to Cartesian coordinates via
+//!    x = R cos(zeta), y = R sin(zeta), z = Z.
+//! 4. Sample an isotropic direction, then energy and time from user-provided
+//!    distribution(s).
+//!
+//! Fourier coefficients are interpolated linearly in rho between the surfaces
+//! provided on the rho grid. Within each radial bin, R*|tau| is quadratic in
+//! the interpolation parameter and has three angular Bernstein control
+//! functions. Taylor bounds on their Fourier series give precomputed cell
+//! bounds, combined with the Bernstein weights at the sampled radius.
+//==============================================================================
+
+class StellaratorSource : public Source {
+public:
+  // Constructors
+  explicit StellaratorSource(pugi::xml_node node);
+
+  //! Sample from the stellarator source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
+private:
+  //==========================================================================
+  // Private methods
+
+  //! Precompute cubic radial PDFs, bin masses, and angular cell bounds and
+  //! alias tables for the quadratic Bernstein mixture
+  void precompute_sampling_distributions();
+
+  //! Evaluate the (signed) joint density f = R * tau at a point
+  //! \param bin Radial bin index (between rho grid points bin and bin+1)
+  //! \param t Interpolation parameter within the bin, in [0, 1]
+  //! \param theta Poloidal angle [rad]
+  //! \param zeta Toroidal angle [rad]
+  //! \param R_out If non-null, receives the major radius R [cm]
+  //! \param Z_out If non-null, receives the height Z [cm]
+  //! \return Signed density R * tau (positive after global sign fix)
+  double eval_density(int bin, double t, double theta, double zeta,
+    double* R_out = nullptr, double* Z_out = nullptr) const;
+
+  //! Sample energy from the distribution(s)
+  //! \param rho Normalized radial coordinate (for distribution selection)
+  //! \param seed Pseudorandom seed pointer
+  //! \return (Sampled energy [eV], importance weight)
+  std::pair<double, double> sample_energy(double rho, uint64_t* seed) const;
+
+  //==========================================================================
+  // Data members
+
+  // Radial grid and emission profile (input)
+  vector<double> rho_;              //!< Radial grid, rho = sqrt(s) in [0, 1]
+  vector<double> emission_density_; //!< Emission density S(rho) at grid points
+
+  // Fourier mode description (input)
+  vector<int> mode_m_;    //!< Poloidal mode numbers
+  vector<int> mode_n_;    //!< Toroidal mode numbers (per field period)
+  int num_field_periods_; //!< Number of field periods Nfp
+
+  // Fourier coefficient tables, flattened [n_rho x n_modes] row-major, [cm]
+  vector<double> rmnc_; //!< cos coefficients of R
+  vector<double> zmns_; //!< sin coefficients of Z
+  vector<double> rmns_; //!< sin coefficients of R (non-symmetric only)
+  vector<double> zmnc_; //!< cos coefficients of Z (non-symmetric only)
+  bool asym_ {false};   //!< Whether non-stellarator-symmetric terms present
+
+  // Energy distribution(s): either 1 for all rho, or one per rho point
+  vector<unique_ptr<Distribution>> energy_dists_;
+
+  // Time distribution (defaults to a delta distribution at t=0)
+  UPtrDist time_;
+
+  // Angular distribution (isotropic)
+  UPtrAngle angle_;
+
+  // Bound-normalized cubic radial PDFs and the distribution of bin masses.
+  vector<array<double, 4>> radial_pdf_;
+  DiscreteIndex radial_bins_;
+
+  // Angular cell bounds for the three quadratic Bernstein components per bin.
+  tensor::Tensor<double> angular_bounds_;
+  vector<array<DiscreteIndex, 3>> angular_cells_;
+  vector<array<double, 3>> angular_totals_;
+
+  // Global sign of the flux-coordinate Jacobian (+1 or -1)
+  double jacobian_sign_ {1.0};
 };
 
 //==============================================================================

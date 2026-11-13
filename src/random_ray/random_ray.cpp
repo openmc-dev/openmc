@@ -290,8 +290,11 @@ void RandomRay::event_advance_ray()
   if (settings::check_overlaps)
     check_cell_overlap(*this);
 
-  // Find the distance to the nearest boundary
+  // Find the distance to the nearest boundary. A failed search marks the ray
+  // lost, and its remaining length must not be attenuated
   boundary() = distance_to_boundary(*this);
+  if (!alive())
+    return;
   double distance = boundary().distance();
 
 #ifdef OPENMC_MPI

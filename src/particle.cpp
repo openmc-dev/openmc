@@ -896,6 +896,11 @@ void Particle::write_restart() const
   if (settings::run_mode == RunMode::PARTICLE)
     return;
 
+  // Random rays have no source site to restart from (the source bank is not
+  // allocated for them), and particle restart mode does not run them
+  if (settings::solver_type == SolverType::RANDOM_RAY)
+    return;
+
   // Set up file name
   auto filename = fmt::format("{}particle_{}_{}.h5", settings::path_output,
     simulation::current_batch, id());

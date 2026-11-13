@@ -368,6 +368,8 @@ def test_write_vtkhdf_curvilinear_warning(run_in_tmpdir, recwarn, kind):
 @pytest.mark.parametrize("kind", list(MESHES))
 def test_write_vtk_coordinate_scale(run_in_tmpdir, kind, suffix, curvilinear):
     """The coordinate_scale argument only multiplies the coordinates."""
+    # The legacy writer and reading back either format both need VTK
+    pytest.importorskip("vtk")
     mesh = MESHES[kind]()
     data = np.arange(mesh.n_elements, dtype=float).reshape(mesh.dimension)
     vertices = np.array(mesh.vertices)

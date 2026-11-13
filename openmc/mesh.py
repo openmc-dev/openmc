@@ -719,9 +719,7 @@ class StructuredMesh(MeshBase):
             a warning is issued if this option is set.
         coordinate_scale : float, optional
             Factor that the mesh coordinates are multiplied by when written,
-            e.g. 0.01 to write a mesh in meters. The mesh itself and the
-            datasets (including any volume normalization, which uses the
-            element volumes in cm³) are unaffected.
+            e.g. 0.01 to write a mesh in meters.
 
             .. versionadded:: 0.16.1
 
@@ -3346,9 +3344,7 @@ class UnstructuredMesh(MeshBase):
             elements
         coordinate_scale : float, optional
             Factor that the mesh coordinates are multiplied by when written,
-            e.g. 0.01 to write a mesh in meters. The mesh itself and the
-            datasets (including any volume normalization, which uses the
-            element volumes in cm³) are unaffected.
+            e.g. 0.01 to write a mesh in meters.
 
             .. versionadded:: 0.16.1
         """

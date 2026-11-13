@@ -27,11 +27,19 @@ public:
   //! \param[in] mu Scattering cosine with respect to current direction
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[inout] seed Pseudorandom seed pointer
-  //! \return Probability density for the scattering cosine
-  virtual double sample_energy_and_pdf(
-    double E_in, double mu, double& E_out, uint64_t* seed) const = 0;
+  //! \param[in] is_com Is scattering cosine is given in center of mass
+  //! coordinates \param[in] awr Weight of nucleus in neutron masses \return
+  //! Probability density for the scattering cosine
+  virtual double sample_energy_and_pdf(double E_in, double mu, double& E_out,
+    uint64_t* seed, bool is_com, double awr) const = 0;
   virtual ~AngleEnergy() = default;
 };
+
+double get_jac_and_transform(
+  double E_in, double& mu, double& E_out, uint64_t* seed, double awr);
+
+double get_jac_and_transform_impl(
+  double E_com, double& mu, double& E_out, uint64_t* seed, double awr);
 
 } // namespace openmc
 

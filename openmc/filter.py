@@ -26,7 +26,7 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell',
     'delayedgroup', 'energyfunction', 'cellfrom', 'materialfrom', 'legendre',
     'spatiallegendre', 'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
-    'particleproduction', 'cellinstance', 'collision', 'time', 'parentnuclide',
+    'particleproduction', 'point', 'cellinstance', 'collision', 'time', 'parentnuclide',
     'weight', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
 )
 
@@ -784,6 +784,152 @@ class ParticleFilter(Filter):
         filter_id = int(get_text(elem, "id"))
         bins = get_elem_list(elem, "bins", str) or []
         return cls(bins, filter_id=filter_id)
+
+
+class PointFilter(Filter):
+    """Bins tally events by point detector.
+
+    Assigning this filter to a tally estimates the flux at one or more points
+    using a next-event estimator: instead of scoring when a particle passes
+    through a region, a contribution is made at every emission event -- the
+    source, and every scattering or fission collision -- for the fraction of
+    that emission which would reach the detector without colliding on the way.
+    Since every event contributes, a point detector gives an answer where a
+    small volume tally would see too few tracks to be useful.
+
+    Each detector is given as a position together with the radius of an
+    exclusion sphere. The contribution of an emission falls off as
+    :math:`1/R^2` with its distance :math:`R` from the detector, so the
+    estimator has an unbounded variance; within the exclusion sphere it is
+    replaced by its average over the sphere, which is bounded. The radius
+    trades variance against bias, and a value of the order of a mean free path
+    in the surrounding material is a reasonable starting point. Use ``0.0`` to
+    disable the treatment.
+
+    A tally using this filter is restricted in several ways -- among them
+    continuous-energy mode, vacuum outer boundaries, and an independent,
+    non-monodirectional source. The restrictions are listed in
+    :ref:`usersguide_point_detectors` and are checked when the model is loaded.
+
+    Parameters
+    ----------
+    bins : sequence of tuple[tuple[Real, Real, Real], Real]
+        One ``((x, y, z), r0)`` pair per detector, giving its position and the
+        radius of its exclusion sphere, both in [cm]
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : sequence of tuple[tuple[Real, Real, Real], Real]
+        Detector positions and exclusion radii
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins, one per detector
+
+    Examples
+    --------
+    Two detectors on the z-axis, each with a 1 cm exclusion sphere::
+
+        detectors = openmc.PointFilter([
+            ((0.0, 0.0, 250.0), 1.0),
+            ((0.0, 0.0, 500.0), 1.0),
+        ])
+        tally = openmc.Tally()
+        tally.filters = [detectors]
+        tally.scores = ['flux']
+
+    """
+
+    __hash__ = Filter.__hash__
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        elif len(self.bins) != len(other.bins):
+            return False
+        else:
+            return all(b1==b2 for b1,b2 in zip(self.bins,other.bins))
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        cv.check_type('bins', bins, Sequence, tuple)
+        for i, item in enumerate(bins):
+            cv.check_type(f'bins[{i}]', item, tuple)
+            cv.check_length(f'bins[{i}]', item, 2, 2)
+            cv.check_type(f'bins[{i}][0]', item[0], tuple, Real)
+            cv.check_length(f'bins[{i}][0]', item[0], 3, 3)
+            cv.check_type(f'bins[{i}][1]', item[1], Real)
+            cv.check_greater_than(f'bins[{i}][1]', item[1], 0.0, equality=True)
+        self._bins = bins
+
+    @staticmethod
+    def _bins_from_flat(values, filter_id):
+        """Group a flat (x, y, z, r0) sequence into detector tuples."""
+        if len(values) % 4 != 0:
+            raise ValueError(
+                f'PointFilter {filter_id} has {len(values)} bin values, which '
+                'is not a multiple of four. Each detector is given as three '
+                'position coordinates followed by an exclusion radius.'
+            )
+        return [(tuple(float(v) for v in values[i:i + 3]), float(values[i + 3]))
+                for i in range(0, len(values), 4)]
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        bins = cls._bins_from_flat(group['bins'][()], filter_id)
+        return cls(bins, filter_id=filter_id)
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        """Generate a point filter from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        **kwargs
+            Keyword arguments (not used)
+
+        Returns
+        -------
+        openmc.PointFilter
+            Point filter object
+
+        """
+        # The generic Filter.from_xml_element reads bins as integers, which
+        # cannot represent detector coordinates
+        filter_id = int(get_text(elem, 'id'))
+        values = get_elem_list(elem, 'bins', float) or []
+        return cls(cls._bins_from_flat(values, filter_id),
+                   filter_id=filter_id)
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        labels = [f"({p[0]}, {p[1]}, {p[2]}) R0={r}" for (p, r) in self.bins]
+        filter_bins = np.repeat(labels, stride)
+        tile_factor = data_size // len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        return pd.DataFrame({self.short_name.lower(): filter_bins})
+
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing filter data
+
+        """
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+
+        subelement = ET.SubElement(element, 'bins')
+        subelement.text = ' '.join(str(b) for item in self.bins
+                                   for b in list(item[0]) + [item[1]])
+        return element
 
 
 class ParentNuclideFilter(ParticleFilter):

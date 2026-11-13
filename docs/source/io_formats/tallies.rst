@@ -54,7 +54,9 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :estimator:
     The estimator element is used to force the use of either ``analog``,
-    ``collision``, or ``tracklength`` tally estimation.  ``analog`` is generally
+    ``collision``, or ``tracklength`` tally estimation. A fourth estimator,
+    ``next-event``, cannot be requested here; it is selected automatically for
+    any tally carrying a ``point`` filter and cannot be used without one.  ``analog`` is generally
     the least efficient though it can be used with every score type.
     ``tracklength`` is generally the most efficient, but neither ``tracklength``
     nor ``collision`` can be used to score a tally that requires post-collision
@@ -144,7 +146,7 @@ attributes/sub-elements:
     The type of the filter. Accepted options are "cell", "cellfrom",
     "cellborn", "surface", "material", "universe", "energy", "energyout",
     "mu", "polar", "azimuthal", "mesh", "distribcell", "delayedgroup",
-    "energyfunction", "particle", and "particleproduction".
+    "energyfunction", "particle", "particleproduction", and "point".
 
   :bins:
      A description of the bins for each type of filter can be found in
@@ -346,6 +348,37 @@ should be set to:
         <particles>photon neutron</particles>
         <energies>0.0 1.0e5 1.0e6 20.0e6</energies>
       </filter>
+
+:point:
+  This filter scores the flux at one or more points using a next-event (point
+  detector) estimator, described in :ref:`methods_next_event_estimator`. Rather
+  than scoring when a particle passes through a region, a contribution is made
+  at every emission event --- the source, and every scattering or fission
+  collision --- for the fraction of that emission which would reach the
+  detector without colliding on the way.
+
+  The bins are given as a flat list of four values per detector: the
+  :math:`x`, :math:`y` and :math:`z` coordinates of the detector in [cm]
+  followed by the radius :math:`R_0` of its exclusion sphere, also in [cm]. The
+  exclusion sphere bounds the variance of contributions made close to the
+  detector; use ``0.0`` to disable it. For example, two detectors, one at the
+  origin with a 1 cm exclusion sphere and one 20 cm along the x-axis with none:
+
+  .. code-block:: xml
+
+      <filter id="1" type="point">
+        <bins>0.0 0.0 0.0 1.0 20.0 0.0 0.0 0.0</bins>
+      </filter>
+
+  A tally carrying this filter is estimated with the ``next-event`` estimator,
+  which constrains how it may be used. Such a tally cannot be combined with an
+  ``energyout``, ``legendre``, ``surface`` or ``meshsurface`` filter, nor with
+  the ``current``, ``heating``, ``pulse-height``, ``nu-scatter`` or IFP scores.
+  Point detectors also require continuous-energy mode, a geometry whose
+  boundaries are all vacuum, and an independent, non-monodirectional source;
+  photon transport is only permitted if the tally is restricted to neutrons
+  with a ``particle`` filter. Each of these is checked when the tally is read,
+  and rejected with an explanatory message.
 
 ------------------
 ``<mesh>`` Element

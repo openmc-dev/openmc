@@ -87,6 +87,7 @@ Classes
    ParentNuclideFilter
    ParticleFilter
    ParticleProductionFilter
+   PointFilter
    PolarFilter
    ReactionFilter
    RectilinearMesh

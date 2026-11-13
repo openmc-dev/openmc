@@ -381,12 +381,16 @@ def test_write_vtk_scale(run_in_tmpdir, kind, suffix, curvilinear):
         grids.append(_read_vtk(filename))
     unscaled, scaled = grids
 
-    # Every point, including the edge midpoints of curvilinear elements, is
-    # scaled about the origin
-    n_points = unscaled.GetNumberOfPoints()
-    assert scaled.GetNumberOfPoints() == n_points
-    points = [np.array([grid.GetPoint(i) for i in range(n_points)])
-              for grid in grids]
+    # Every point of every element, including the edge midpoints of
+    # curvilinear elements, is scaled about the origin. The points are
+    # compared element by element as the order they are stored in may differ.
+    assert scaled.GetNumberOfPoints() == unscaled.GetNumberOfPoints()
+    assert scaled.GetNumberOfCells() == mesh.n_elements
+    points = []
+    for grid in grids:
+        cells = (grid.GetCell(i).GetPoints() for i in range(mesh.n_elements))
+        points.append(np.array([cell.GetPoint(n) for cell in cells
+                                for n in range(cell.GetNumberOfPoints())]))
     np.testing.assert_allclose(points[1], points[0] * scale, atol=1e-12)
     # The edge midpoints of curvilinear elements lie outside the vertices
     if not curvilinear:

@@ -52,6 +52,111 @@ the formula usually used to calculate the distance to next collision is
 
     \ell = -\frac{\ln \xi}{\Sigma_t}
 
+.. _surface_tracking:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~
+Surface Tracking
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The development of Equation :eq:`sample-distance-2` requires the assumption
+that the medium under consideration is homogeneous. To accomodate heterogeneous
+geometries, a resampling scheme is used. First, the distance to the next
+collision is sampled with Equation :eq:`sample-distance-2`. Then, the distance
+to the nearest surface from the particle position along its current trajectory
+is computed (discussed in the :ref:`methods_geometry` section). If the distance
+to the nearest surface is smaller than the distance to the next collision, the
+sampled distance is not statistically valid. The particle is moved to the
+surface and is considered to be contained by the next geometric region. Cross
+sections are recomputed, and a new distance to the next collision is sampled
+with Equation :eq:`sample-distance-2`. This process repeats until the distance
+to the next collision is smaller than the distance to the nearest surface,
+which is when a collision is accepted. This procedure is known as surface
+tracking.
+
+Surface tracking is quite efficient when used in problems with short mean free
+paths relative to the size of individual regions in the problem geometry.
+Surface tracking also admits the use of the track length estimator (discussed
+in the :ref:`methods_tallies` section). In problems with long mean free paths
+relative to the size of geometry regions, surface tracking will require a large
+number of surface distance calculations per collision. The cost of finding the
+nearest surface is also non-trivial for problems that contain many geometric
+regions at the same cell level (e.g. TRISO-fueled fission reactors).
+
+.. _delta_tracking:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~
+Delta Tracking
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The disadvantages of surface tracking for certain classes of problems motivates
+the development of alternative approaches which do not require distance
+to surface checks. Delta tracking (also known by Woodcock tracking,
+delta scattering, and null scattering) is one approach to
+avoid surface geometry queries [Woodcock]_. In delta tracking, the domain is
+homogenized to a majorant cross section (:math:`\Sigma_{maj}(E)`) which is
+computed as the maximum total cross section over the entire problem
+
+.. math::
+    :label: majorant-xs-1
+
+    \Sigma_{maj}(E) = \max_{\mathbf{r}}\left(\Sigma_{t}(\mathbf{r}, E)\right).
+
+Particles move through this homogenized problem by sampling a distance to the
+next collision with the majorant cross section instead of the total cross section
+
+.. math::
+    :label: sample-distance-maj
+
+    \ell = -\frac{\ln \xi}{\Sigma_{maj}(E)}.
+
+To recover the spatial heterogeneity present in the original simulation, the
+delta tracking method formally defines the majorant cross section to be the
+sum of the total cross section and a spatially-varying fictitious delta
+scattering cross sections :math:`\Sigma_{\delta}(\mathbf{r}, E)`
+
+.. math::
+    :label: majorant-xs-2
+
+    \Sigma_{maj}(E) = \Sigma_{t}(\mathbf{r}, E) + \Sigma_{\delta}(\mathbf{r},
+    E).
+
+At the collision point computed from :eq:`sample-distance-maj` one of
+two reactions could occur. The first is a real collision, which is processed
+as usual. The second is known as a delta scatter event (also referred to
+as a virtual or null collision), which is the reaction type associated with
+:math:`\Sigma_{\delta}(\mathbf{r}, E)`. A rejection sampling test is used to
+determine which collision type occurs; a random number :math:`\xi` on the
+interval :math:`[0,1)` is drawn and used to check
+
+.. math::
+    :label: delta-real-collision
+
+    \xi < \frac{\Sigma_t (\mathbf{r}, E)}{\Sigma_{maj} (E)}.
+
+If the condition above is true, the collision is accepted as real. If the condition
+is false, a delta scatter event has occurred and the particle continues along
+its trajectory with the same energy and direction. Boundary conditions
+are applied by testing the distance to the nearest external boundary and
+comparing this to the distance sampled with Equation :eq:`sample-distance-maj`.
+If the distance to the nearest boundary is less than the sampled distance to
+the next collision, the particle crosses the external boundary.
+
+Delta tracking is advantageous as it only requires point location checks to
+determine the total cross section at each collision point to test
+:eq:`delta-real-collision`. This allows for the use of continuously-varying
+material properties and avoids computationally expensive distance-to-nearest-surface
+calculations. Problems which contain small regions with large total
+cross sections (such as burnable absorbers) will have majorant cross sections
+several orders of magnitude larger than the total cross section over the majority
+of the domain [Leppänen]_. This decreases the number of real collisions, and
+therefore the effectiveness of delta tracking. Material discontinuities are not
+considered in delta tracking, which prohibits the use of track length
+estimators for quantities restricted to material/geometric subdomains (such as
+reaction rates) and forces the use of the higher-variance collision
+estimator (discussed in detail in the :ref:`methods_tallies` section). When compared
+with surface tracking, delta tracking often performs better in problems where
+the particle mean free path is larger than the distance between surfaces.
+
 ----------------------------------------------------
 :math:`(n,\gamma)` and Other Disappearance Reactions
 ----------------------------------------------------
@@ -1631,6 +1736,13 @@ the unresolved range to get the actual cross sections. Lastly, the total cross
 section is calculated as the sum of the elastic, fission, capture, and inelastic
 cross sections.
 
+Unresolved resonance probability tables pose a challenge when computing a majorant
+cross section for :ref:`delta_tracking`. OpenMC implements a conservative approach:
+the maximum total cross section is computed over all bands, which is then
+interpolated to the corresponding energy using either linear or logarithmic
+interpolation. This ensures the majorant bounds the total cross section at the
+cost of increasing the number of delta scatters in the unresolved range.
+
 -----------------------------
 Variance Reduction Techniques
 -----------------------------
@@ -1735,12 +1847,21 @@ types.
 .. [Gelbard] Ely M. Gelbard, "Epithermal Scattering in VIM," FRA-TM-123, Argonne
    National Laboratory (1979).
 
+.. [Leppänen] J. Leppänen. "Performance of Woodcock Delta-Tracking in Lattice
+   Physics Applications using the Serpent Monte Carlo Reactor Physics Burnup
+   Calculation Code", *Annals of Nuclear Energy*, 37:715-722, 2010.
+
 .. [Squires] G. L. Squires, *Introduction to the Theory of Thermal Neutron
    Scattering*, Cambridge University Press (1978).
 
 .. [Williams] M. M. R. Williams, *The Slowing Down and Thermalization of
    Neutrons*, North-Holland Publishing Co., Amsterdam (1966). **Note:** This
    book can be obtained for free from the OECD_.
+
+.. [Woodcock] E.R. Woodcock, T. Murphy, P.J. Hemmings, and T.C. Longworth.
+   "Techniques used in the GEM Code for Monte Carlo Neutronics Calculations
+   in Reactors and other Systems of Complex Geometry", ANL-7050,
+   Argonne National Laboratory (1965).
 
 .. |sab| replace:: S(:math:`\alpha,\beta,T`)
 

@@ -3488,7 +3488,6 @@ class UnstructuredMesh(MeshBase):
 
         Supports linear tetrahedra and linear hexahedra elements.
         """
-        points = np.asarray(self.vertices, dtype=np.float64) * coordinate_scale
         datasets = {} if datasets is None else datasets
 
         # This writer supports linear tetrahedra and linear hexahedra elements
@@ -3550,7 +3549,8 @@ class UnstructuredMesh(MeshBase):
             root.create_dataset("NumberOfPoints", data=(n_points,), dtype="i8")
             root.create_dataset("NumberOfCells", data=(n_cells,), dtype="i8")
             root.create_dataset("NumberOfConnectivityIds", data=(n_conn_ids,), dtype="i8")
-            root.create_dataset("Points", data=points, dtype="f8")
+            points = self.vertices.astype(np.float64, copy=False)
+            root.create_dataset("Points", data=points * coordinate_scale, dtype="f8")
             root.create_dataset("Types", data=np.asarray(vtk_types, dtype=np.uint8), dtype="uint8")
             root.create_dataset("Offsets", data=offsets.astype("i8"), dtype="i8")
             root.create_dataset("Connectivity", data=connectivity.astype("i8"), dtype="i8")

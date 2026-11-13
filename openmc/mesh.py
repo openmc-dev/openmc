@@ -689,7 +689,8 @@ class StructuredMesh(MeshBase):
                           filename: PathLike,
                           datasets: dict | None = None,
                           volume_normalization: bool = True,
-                          curvilinear: bool = False):
+                          curvilinear: bool = False,
+                          scale: float = 1.0):
         """Creates a VTK object of the mesh and writes it to a file.
 
         Supported formats are legacy ASCII ``.vtk`` (requires the ``vtk``
@@ -716,6 +717,13 @@ class StructuredMesh(MeshBase):
             ``SphericalMesh`` and ``CylindricalMesh`` written to the legacy
             ``.vtk`` format; the VTKHDF format always uses linear elements and
             a warning is issued if this option is set.
+        scale : float, optional
+            Factor that the mesh coordinates are multiplied by when written,
+            e.g. 0.01 to write a mesh in meters. The mesh itself and the
+            datasets (including any volume normalization, which uses the
+            element volumes in cm³) are unaffected.
+
+            .. versionadded:: 0.16.1
 
         Raises
         ------
@@ -745,6 +753,8 @@ class StructuredMesh(MeshBase):
            >>> heating = tally.get_reshaped_data(expand_dims=True)
            >>> mesh.write_data_to_vtk({'heating': heating})
         """
+        cv.check_type('scale', scale, Real)
+
         if Path(filename).suffix == ".vtkhdf":
             if curvilinear and not isinstance(self, (RegularMesh, RectilinearMesh)):
                 warnings.warn(
@@ -752,7 +762,7 @@ class StructuredMesh(MeshBase):
                     f"format; mesh {self.id} will be written with linear "
                     "elements.", stacklevel=2
                 )
-            self._write_vtk_hdf5(filename, datasets, volume_normalization)
+            self._write_vtk_hdf5(filename, datasets, volume_normalization, scale)
             return None
 
         # vtk is an optional dependency only needed for the legacy ASCII path
@@ -761,11 +771,11 @@ class StructuredMesh(MeshBase):
 
         # write linear elements using a structured grid
         if not curvilinear or isinstance(self, (RegularMesh, RectilinearMesh)):
-            vtk_grid = self._create_vtk_structured_grid()
+            vtk_grid = self._create_vtk_structured_grid(scale)
             writer = vtk.vtkStructuredGridWriter()
         # write curvilinear elements using an unstructured grid
         else:
-            vtk_grid = self._create_vtk_unstructured_grid()
+            vtk_grid = self._create_vtk_unstructured_grid(scale)
             writer = vtk.vtkUnstructuredGridWriter()
 
         if datasets is not None:
@@ -802,8 +812,13 @@ class StructuredMesh(MeshBase):
 
         return vtk_grid
 
-    def _create_vtk_structured_grid(self):
+    def _create_vtk_structured_grid(self, scale: float = 1.0):
         """Create a structured grid
+
+        Parameters
+        ----------
+        scale : float
+            Factor that the mesh coordinates are multiplied by.
 
         Returns
         -------
@@ -814,16 +829,22 @@ class StructuredMesh(MeshBase):
         from vtk.util import numpy_support as nps
 
         vtkPts = vtk.vtkPoints()
-        vtkPts.SetData(nps.numpy_to_vtk(np.swapaxes(self.vertices, 0, 2).reshape(-1, 3), deep=True))
+        points = np.swapaxes(self.vertices, 0, 2).reshape(-1, 3) * scale
+        vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
         vtk_grid = vtk.vtkStructuredGrid()
         vtk_grid.SetPoints(vtkPts)
         vtk_grid.SetDimensions(*[dim + 1 for dim in self.dimension])
 
         return vtk_grid
 
-    def _create_vtk_unstructured_grid(self):
+    def _create_vtk_unstructured_grid(self, scale: float = 1.0):
         """Create an unstructured grid of curvilinear elements
            representing the mesh
+
+        Parameters
+        ----------
+        scale : float
+            Factor that the mesh coordinates are multiplied by.
 
         Returns
         -------
@@ -833,7 +854,7 @@ class StructuredMesh(MeshBase):
         import vtk
         from vtk.util import numpy_support as nps
 
-        corner_vertices = np.swapaxes(self.vertices, 0, 2).reshape(-1, 3)
+        corner_vertices = np.swapaxes(self.vertices, 0, 2).reshape(-1, 3) * scale
 
         vtkPts = vtk.vtkPoints()
         vtk_grid = vtk.vtkUnstructuredGrid()
@@ -873,7 +894,7 @@ class StructuredMesh(MeshBase):
 
         # get edge midpoints and add them to the
         # list of point IDs
-        midpoint_vertices = self.midpoint_vertices
+        midpoint_vertices = [v * scale for v in self.midpoint_vertices]
         for edge_grid in midpoint_vertices:
             for pnt in np.swapaxes(edge_grid, 0, 2).reshape(-1, 3):
                 point_ids.append(_insert_point(pnt))
@@ -991,7 +1012,8 @@ class StructuredMesh(MeshBase):
             )
 
     def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None,
-                        volume_normalization: bool) -> None:
+                        volume_normalization: bool,
+                        scale: float = 1.0) -> None:
         """Write the mesh and data in the VTKHDF UnstructuredGrid format
 
         VTKHDF defines no StructuredGrid or RectilinearGrid dataset type, so
@@ -1009,11 +1031,13 @@ class StructuredMesh(MeshBase):
         volume_normalization : bool
             Whether or not to normalize the data by the volume of the mesh
             elements.
+        scale : float
+            Factor that the mesh coordinates are multiplied by.
 
         """
         n_i, n_j, n_k = self.dimension
         vertex_shape = (n_i + 1, n_j + 1, n_k + 1)
-        points = np.asarray(self.vertices).reshape(-1, 3)
+        points = np.asarray(self.vertices).reshape(-1, 3) * scale
 
         # Index of the (i, j, k) corner of each element, ordered with i varying
         # fastest to match the cell ordering used elsewhere for VTK output
@@ -1710,7 +1734,8 @@ class RegularMesh(StructuredMesh):
         return tuple(int(i) for i in indices[:ndim])
 
     def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None,
-                        volume_normalization: bool) -> None:
+                        volume_normalization: bool,
+                        scale: float = 1.0) -> None:
         """Write the mesh and data in the VTKHDF ImageData format
 
         A regular mesh is a uniform grid, so it is fully described by an origin
@@ -1728,12 +1753,14 @@ class RegularMesh(StructuredMesh):
         volume_normalization : bool
             Whether or not to normalize the data by the volume of the mesh
             elements.
+        scale : float
+            Factor that the mesh coordinates are multiplied by.
 
         """
         ndim = len(self.dimension)
         shape = list(self.dimension) + [1] * (3 - ndim)
-        origin = list(self.lower_left) + [0.0] * (3 - ndim)
-        spacing = list(self.width) + [1.0] * (3 - ndim)
+        origin = np.array(list(self.lower_left) + [0.0] * (3 - ndim)) * scale
+        spacing = np.array(list(self.width) + [1.0] * (3 - ndim)) * scale
 
         cell_data = list(self._vtk_hdf5_datasets(datasets, volume_normalization))
         with h5py.File(filename, "w") as f:
@@ -1744,8 +1771,8 @@ class RegularMesh(StructuredMesh):
                 "WholeExtent",
                 np.array([0, shape[0], 0, shape[1], 0, shape[2]], dtype="i8"),
             )
-            root.attrs.create("Origin", np.array(origin, dtype="f8"))
-            root.attrs.create("Spacing", np.array(spacing, dtype="f8"))
+            root.attrs.create("Origin", origin, dtype="f8")
+            root.attrs.create("Spacing", spacing, dtype="f8")
             root.attrs.create("Direction", np.eye(3).ravel())
 
             cell_data_group = root.create_group("CellData")
@@ -3289,6 +3316,7 @@ class UnstructuredMesh(MeshBase):
         filename: PathLike | None = None,
         datasets: dict | None = None,
         volume_normalization: bool = True,
+        scale: float = 1.0,
     ):
         """Map data to unstructured VTK mesh elements.
 
@@ -3308,7 +3336,15 @@ class UnstructuredMesh(MeshBase):
         volume_normalization : bool
             Whether or not to normalize the data by the volume of the mesh
             elements
+        scale : float, optional
+            Factor that the mesh coordinates are multiplied by when written,
+            e.g. 0.01 to write a mesh in meters. The mesh itself and the
+            datasets (including any volume normalization, which uses the
+            element volumes in cm³) are unaffected.
+
+            .. versionadded:: 0.16.1
         """
+        cv.check_type('scale', scale, Real)
 
         if Path(filename).suffix == ".vtkhdf":
 
@@ -3316,6 +3352,7 @@ class UnstructuredMesh(MeshBase):
                 filename=filename,
                 datasets=datasets,
                 volume_normalization=volume_normalization,
+                scale=scale,
             )
 
         elif Path(filename).suffix == ".vtk" or Path(filename).suffix == ".vtu":
@@ -3324,6 +3361,7 @@ class UnstructuredMesh(MeshBase):
                 filename=filename,
                 datasets=datasets,
                 volume_normalization=volume_normalization,
+                scale=scale,
             )
 
         else:
@@ -3337,6 +3375,7 @@ class UnstructuredMesh(MeshBase):
         filename: PathLike | None = None,
         datasets: dict | None = None,
         volume_normalization: bool = True,
+        scale: float = 1.0,
     ):
         from vtkmodules.util import numpy_support
         from vtkmodules import vtkCommonCore
@@ -3363,7 +3402,8 @@ class UnstructuredMesh(MeshBase):
         grid = vtkCommonDataModel.vtkUnstructuredGrid()
 
         points = vtkCommonCore.vtkPoints()
-        points.SetData(numpy_support.numpy_to_vtk(self.vertices))
+        points.SetData(
+            numpy_support.numpy_to_vtk(self.vertices * scale, deep=True))
         grid.SetPoints(points)
 
         n_skipped = 0
@@ -3438,11 +3478,13 @@ class UnstructuredMesh(MeshBase):
         filename: PathLike | None = None,
         datasets: dict | None = None,
         volume_normalization: bool = True,
+        scale: float = 1.0,
     ):
         """Write UnstructuredMesh as VTK-HDF5 UnstructuredGrid format.
 
         Supports linear tetrahedra and linear hexahedra elements.
         """
+        points = np.asarray(self.vertices, dtype=np.float64) * scale
         datasets = {} if datasets is None else datasets
 
         # This writer supports linear tetrahedra and linear hexahedra elements
@@ -3504,7 +3546,7 @@ class UnstructuredMesh(MeshBase):
             root.create_dataset("NumberOfPoints", data=(n_points,), dtype="i8")
             root.create_dataset("NumberOfCells", data=(n_cells,), dtype="i8")
             root.create_dataset("NumberOfConnectivityIds", data=(n_conn_ids,), dtype="i8")
-            root.create_dataset("Points", data=self.vertices.astype(np.float64, copy=False), dtype="f8")
+            root.create_dataset("Points", data=points, dtype="f8")
             root.create_dataset("Types", data=np.asarray(vtk_types, dtype=np.uint8), dtype="uint8")
             root.create_dataset("Offsets", data=offsets.astype("i8"), dtype="i8")
             root.create_dataset("Connectivity", data=connectivity.astype("i8"), dtype="i8")

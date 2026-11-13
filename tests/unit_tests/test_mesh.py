@@ -763,6 +763,50 @@ def test_umesh_write_vtk_keeps_caller_data(run_in_tmpdir, suffix):
         np.testing.assert_allclose(written, [4.0, 2.0])
 
 
+@pytest.mark.parametrize("suffix", [".vtk", ".vtu", ".vtkhdf"])
+def test_umesh_write_vtk_scale(run_in_tmpdir, suffix):
+    """The scale argument multiplies the coordinates and nothing else."""
+    vtk = pytest.importorskip("vtk") if suffix != ".vtkhdf" else None
+    cube = np.array([
+        [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+        [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1],
+        [2, 0, 0], [2, 1, 0], [2, 0, 1], [2, 1, 1],
+    ], dtype=float)
+    vertices = 100.0 + 50.0 * cube
+    connectivity = [[0, 1, 2, 3, 4, 5, 6, 7], [1, 8, 9, 2, 5, 10, 11, 6]]
+    umesh = _umesh_from_statepoint_group(
+        vertices, connectivity, element_types=[1, 1], volumes=[2.0, 4.0])
+
+    data = np.array([8.0, 8.0])
+    filename = f"umesh{suffix}"
+    umesh.write_data_to_vtk(filename, {"data": data}, scale=0.01)
+
+    if suffix == ".vtkhdf":
+        with h5py.File(filename, "r") as f:
+            points = f["VTKHDF"]["Points"][()]
+            written = f["VTKHDF"]["CellData"]["data"][()]
+    else:
+        if suffix == ".vtk":
+            reader = vtk.vtkGenericDataObjectReader()
+        else:
+            reader = vtk.vtkXMLGenericDataObjectReader()
+        reader.SetFileName(filename)
+        reader.Update()
+        grid = reader.GetOutput()
+        points = [grid.GetPoint(i) for i in range(grid.GetNumberOfPoints())]
+        array = grid.GetCellData().GetArray("data")
+        written = [array.GetTuple1(n) for n in range(2)]
+
+    np.testing.assert_allclose(points, vertices * 0.01)
+    # the data are still normalized by the element volumes in cm³ and the
+    # mesh is left as it was
+    np.testing.assert_allclose(written, [4.0, 2.0])
+    np.testing.assert_array_equal(umesh.vertices, vertices)
+
+    with pytest.raises(TypeError):
+        umesh.write_data_to_vtk(filename, scale="0.01")
+
+
 def test_mesh_get_homogenized_materials():
     """Test the get_homogenized_materials method"""
     # Simple model with 1 cm of Fe56 next to 1 cm of H1

@@ -824,7 +824,7 @@ def test_material_volumes_outside_dagmc_geometry(dagmc_pincell_path):
     """Test a mesh extending outside a root DAGMC universe."""
     openmc.reset_auto_ids()
 
-    dagmc_universe = openmc.DAGMCUniverse(dagmc_pincell_path)
+    dagmc_universe = openmc.DAGMCUniverse(dagmc_pincell_path.resolve())
 
     fuel = openmc.Material(name='no-void fuel')
     fuel.add_nuclide('U235', 0.03)

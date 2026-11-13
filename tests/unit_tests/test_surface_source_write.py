@@ -228,7 +228,7 @@ def test_surface_source_id(run_in_tmpdir):
 
 
 @pytest.fixture
-def model_dagmc(request, dagmc_pincell_path):
+def model_dagmc(dagmc_pincell_path):
     """Model based on a pincell DAGMC mesh file
 
     """
@@ -256,7 +256,7 @@ def model_dagmc(request, dagmc_pincell_path):
     # =============================================================================
     # Geometry
     # =============================================================================
-    dagmc_univ = openmc.DAGMCUniverse(dagmc_pincell_path)
+    dagmc_univ = openmc.DAGMCUniverse(dagmc_pincell_path.resolve())
     model.geometry = openmc.Geometry(dagmc_univ)
 
     # =============================================================================

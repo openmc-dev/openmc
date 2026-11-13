@@ -129,6 +129,8 @@ def disable_depletion_multiprocessing_under_mpi():
     finally:
         pool.USE_MULTIPROCESSING = original_setting
 
-@pytest.fixture(scope='session')
-def dagmc_pincell_path():
-    return (Path(__file__).parent / "regression_tests/cad_geom/common/pincell/dagmc.h5m").resolve()
+@pytest.fixture()
+def dagmc_pincell_path(request):
+    test_dir = Path(__file__).parent
+    dagmc_file = (test_dir / "regression_tests/cad_geom/common/pincell/dagmc.h5m").resolve()
+    return dagmc_file

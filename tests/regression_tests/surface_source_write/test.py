@@ -888,7 +888,7 @@ def test_surface_source_cell_event_based(
 
 
 @pytest.fixture(scope="module")
-def model_dagmc_1(dagmc_pincell_path):
+def model_dagmc_1():
     """Model based on a pincell DAGMC mesh file
 
     """
@@ -918,7 +918,7 @@ def model_dagmc_1(dagmc_pincell_path):
     # Geometry
     # =============================================================================
 
-    dagmc_univ = openmc.DAGMCUniverse(dagmc_pincell_path)
+    dagmc_univ = openmc.DAGMCUniverse(filename='tmp')
     model.geometry = openmc.Geometry(dagmc_univ)
 
     # =============================================================================
@@ -939,7 +939,7 @@ def model_dagmc_1(dagmc_pincell_path):
 
 
 @pytest.fixture(scope="module")
-def model_dagmc_2(dagmc_pincell_path):
+def model_dagmc_2():
     """Model based on the mesh file 'dagmc.h5m' available from
     tests/regression_tests/dagmc/legacy.
 
@@ -973,7 +973,7 @@ def model_dagmc_2(dagmc_pincell_path):
     # Geometry
     # =============================================================================
 
-    dagmc_univ = openmc.DAGMCUniverse(dagmc_pincell_path)
+    dagmc_univ = openmc.DAGMCUniverse(filename='tmp')
 
     # -----------------------------------------------------------------------------
     # Box 1
@@ -1111,13 +1111,18 @@ def model_dagmc_2(dagmc_pincell_path):
     ],
 )
 def test_surface_source_cell_dagmc(
-    folder, model_name, parameter, single_thread, single_process, request
+    folder, model_name, parameter, single_thread, single_process, request, dagmc_pincell_path
 ):
     """Test on models with DAGMC geometries."""
     assert os.environ["OMP_NUM_THREADS"] == "1"
     assert config["mpi_np"] == "1"
     model = request.getfixturevalue(model_name)
     model.settings.surf_source_write = parameter
+    dagmc_pincell_path = dagmc_pincell_path.resolve()
+    dagmc_pincell_rel_path = dagmc_pincell_path.relative_to(request.path.parent / folder, walk_up=True)
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            univ.filename = dagmc_pincell_rel_path
     harness = SurfaceSourceWriteTestHarness(
         "statepoint.5.h5", model=model, workdir=folder
     )

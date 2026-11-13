@@ -23,6 +23,7 @@ essential aspects of using OpenMC to perform simulations.
     depletion
     decay_sources
     kinetics
+    dnp_drift
     scripts
     processing
     parallel

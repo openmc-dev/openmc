@@ -1206,6 +1206,8 @@ class RegularMesh(StructuredMesh):
         The number of mesh cells in each direction (x, y, z).
     n_dimension : int
         Number of mesh dimensions.
+    n_vertices : int
+        Number of unique vertices.
     axis_labels : tuple of str
         Names of the mesh axes ('x', 'y', 'z'), truncated to the mesh
         dimensionality.
@@ -1250,6 +1252,13 @@ class RegularMesh(StructuredMesh):
             return len(self._dimension)
         else:
             return None
+
+    @property
+    def n_vertices(self):
+        n_vertices = 1
+        for d in self._dimension:
+            n_vertices *= d + 1
+        return n_vertices
 
     @property
     def axis_labels(self):
@@ -1786,6 +1795,8 @@ class RectilinearMesh(StructuredMesh):
         The number of mesh cells in each direction (x, y, z).
     n_dimension : int
         Number of mesh dimensions (always 3 for a RectilinearMesh).
+    n_vertices : int
+        Number of unique vertices.
     axis_labels : tuple of str
         Names of the mesh axes ('x', 'y', 'z').
     x_grid : numpy.ndarray
@@ -1819,6 +1830,13 @@ class RectilinearMesh(StructuredMesh):
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def n_vertices(self):
+        n_vertices = 1
+        for d in self._dimension:
+            n_vertices *= d + 1
+        return n_vertices
 
     @property
     def axis_labels(self):

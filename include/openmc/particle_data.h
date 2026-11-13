@@ -269,6 +269,24 @@ private:
     0, 0, 0}; //!< which way lattice indices will change
 };
 
+struct TransportEvent {
+  int event_type = EVENT_UNDEFINED; //!< Type of transport event (crossing
+                                    //!< surface, collision, time cutoff)
+  bool cross_surface_geometry =
+    false; //!< if a surface of the geometry has been crossed during the event
+  bool cross_surface_temperature_field =
+    false; //!< if a surface of the temperature field has been crossed  during
+           //!< the event
+
+  // resets all information
+  void clear()
+  {
+    event_type = EVENT_UNDEFINED;
+    cross_surface_geometry = false;
+    cross_surface_temperature_field = false;
+  }
+};
+
 /*
  * Contains all geometry state information for a particle.
  */
@@ -416,6 +434,12 @@ public:
   const double& density_mult() const { return density_mult_; }
   double& density_mult_last() { return density_mult_last_; }
 
+  // Temperature field related information
+  int& tf_bin() { return tf_bin_; }
+  const int& tf_bin() const { return tf_bin_; }
+  int& tf_bin_next() { return tf_bin_next_; }
+  const int& tf_bin_next() const { return tf_bin_next_; }
+
 private:
   int64_t id_ {-1}; //!< Unique ID
 
@@ -441,11 +465,14 @@ private:
   int material_ {-1};      //!< index for current material
   int material_last_ {-1}; //!< index for last material
 
-  double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
-  double sqrtkT_last_ {0.0}; //!< last temperature
+  double sqrtkT_ {-1.0};      //!< sqrt(k_Boltzmann * temperature) in eV
+  double sqrtkT_last_ {-1.0}; //!< last temperature
 
   double density_mult_ {1.0};      //!< density multiplier
   double density_mult_last_ {1.0}; //!< last density multiplier
+
+  int tf_bin_ = C_NONE;      //!< Current temperature field bin
+  int tf_bin_next_ = C_NONE; //!< Next temperature field bin
 
 #ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;
@@ -573,6 +600,8 @@ private:
   double ww_factor_ {0.0};
 
   int64_t n_progeny_ {0};
+
+  TransportEvent next_event_ = TransportEvent();
 
 public:
   //----------------------------------------------------------------------------
@@ -793,6 +822,10 @@ public:
       d = 0;
     }
   }
+
+  // Next event in transport
+  TransportEvent& next_event() { return next_event_; }
+  const TransportEvent& next_event() const { return next_event_; }
 };
 
 } // namespace openmc

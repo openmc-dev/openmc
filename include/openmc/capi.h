@@ -368,6 +368,28 @@ int openmc_properties_export(const char* filename);
 // \return Error code
 int openmc_properties_import(const char* filename);
 
+//! Solve a Bateman system dN/dt = A*N over interval dt using CRAM.
+//!
+//! The transmutation matrix A is provided in CSC (Compressed Sparse Column)
+//! format. The result is written to a caller-allocated output buffer.
+//!
+//! All pointer arguments must be non-null. CSC row indices within each
+//! column must be sorted in ascending order.
+//!
+//! \param[in] n         Matrix dimension (number of nuclides)
+//! \param[in] indptr    CSC column pointers [n+1]
+//! \param[in] indices   CSC row indices [nnz]
+//! \param[in] data      CSC nonzero values [nnz]
+//! \param[in] n0        Initial atom densities [n]
+//! \param[in] dt        Time interval in seconds
+//! \param[in] order     CRAM approximation order (16 or 48)
+//! \param[in] substeps  Number of substeps to use within dt
+//! \param[out] result   Final atom densities [n]
+//! \return Error code
+int openmc_cram_solve(int n, const int* indptr, const int* indices,
+  const double* data, const double* n0, double dt, int order, int substeps,
+  double* result);
+
 //! Get whether an optional build feature is enabled.
 //!
 //! Supported feature names are ``dagmc``, ``libmesh``, ``strict_fp``, and

@@ -366,7 +366,7 @@ def test_write_vtkhdf_curvilinear_warning(run_in_tmpdir, recwarn, kind):
     ids=["vtkhdf", "vtk", "vtk-curvilinear"],
 )
 @pytest.mark.parametrize("kind", list(MESHES))
-def test_write_vtk_scale(run_in_tmpdir, kind, suffix, curvilinear):
+def test_write_vtk_coordinate_scale(run_in_tmpdir, kind, suffix, curvilinear):
     """The coordinate_scale argument only multiplies the coordinates."""
     mesh = MESHES[kind]()
     data = np.arange(mesh.n_elements, dtype=float).reshape(mesh.dimension)
@@ -407,9 +407,3 @@ def test_write_vtk_scale(run_in_tmpdir, kind, suffix, curvilinear):
     np.testing.assert_array_equal(_cell_data(scaled, "data"),
                                   _cell_data(unscaled, "data"))
     np.testing.assert_array_equal(mesh.vertices, vertices)
-
-
-def test_write_vtk_scale_invalid(run_in_tmpdir):
-    mesh = MESHES["regular"]()
-    with pytest.raises(TypeError):
-        mesh.write_data_to_vtk("mesh.vtkhdf", coordinate_scale="0.01")

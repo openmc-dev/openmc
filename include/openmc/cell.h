@@ -81,8 +81,15 @@ public:
   bool contains(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
+  //!
+  //! Returns SEARCH_FAILED as the surface (with an infinite distance) if the
+  //! search of a complex region took more steps than a ray can cross the
+  //! region's surfaces.
   std::pair<double, int32_t> distance(
     Position r, Direction u, int32_t on_surface) const;
+
+  //! Surface returned by distance() when the boundary search fails
+  static constexpr int32_t SEARCH_FAILED {std::numeric_limits<int32_t>::min()};
 
   //! Get the BoundingBox for this cell.
   BoundingBox bounding_box(int32_t cell_id) const;
@@ -154,6 +161,9 @@ private:
   // TODO: Should this be a vector of some other type
   vector<int32_t> expression_;
   bool simple_; //!< Does the region contain only intersections?
+
+  //! Most steps a boundary search of a complex region can take
+  int max_search_steps_ {0};
 };
 
 //==============================================================================
@@ -437,10 +447,7 @@ public:
   int n_surfaces() const override { return region_.n_surfaces(); }
 
   std::pair<double, int32_t> distance(Position r, Direction u,
-    int32_t on_surface, GeometryState* p) const override
-  {
-    return region_.distance(r, u, on_surface);
-  }
+    int32_t on_surface, GeometryState* p) const override;
 
   bool contains(Position r, Direction u, int32_t on_surface) const override
   {

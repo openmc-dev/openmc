@@ -117,8 +117,14 @@ void process_advance_particle_events()
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_advance();
-    if (!p.alive())
+    if (!p.alive()) {
+      // A particle killed while advancing (by the time cutoff, or lost) still
+      // revives its pending secondaries, as after crossings and collisions
+      p.event_check_limit_and_revive();
+      if (p.alive())
+        dispatch_xs_event(buffer_idx);
       continue;
+    }
     if (p.collision_distance() > p.boundary().distance()) {
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
     } else {

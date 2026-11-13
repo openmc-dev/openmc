@@ -49,6 +49,8 @@ void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
 
 void read_source_bank(
   hid_t group_id, vector<SourceSite>& sites, bool distribute);
+void write_global_tallies(hid_t file_id);
+void read_global_tallies(hid_t file_id);
 void write_tally_results_nr(hid_t file_id);
 void restart_set_keff();
 void write_unstructured_mesh_results();

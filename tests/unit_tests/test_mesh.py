@@ -765,7 +765,7 @@ def test_umesh_write_vtk_keeps_caller_data(run_in_tmpdir, suffix):
 
 @pytest.mark.parametrize("suffix", [".vtk", ".vtu", ".vtkhdf"])
 def test_umesh_write_vtk_scale(run_in_tmpdir, suffix):
-    """The scale argument multiplies the coordinates and nothing else."""
+    """The coordinate_scale argument only multiplies the coordinates."""
     vtk = pytest.importorskip("vtk") if suffix != ".vtkhdf" else None
     cube = np.array([
         [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
@@ -779,7 +779,7 @@ def test_umesh_write_vtk_scale(run_in_tmpdir, suffix):
 
     data = np.array([8.0, 8.0])
     filename = f"umesh{suffix}"
-    umesh.write_data_to_vtk(filename, {"data": data}, scale=0.01)
+    umesh.write_data_to_vtk(filename, {"data": data}, coordinate_scale=0.01)
 
     if suffix == ".vtkhdf":
         with h5py.File(filename, "r") as f:
@@ -804,7 +804,7 @@ def test_umesh_write_vtk_scale(run_in_tmpdir, suffix):
     np.testing.assert_array_equal(umesh.vertices, vertices)
 
     with pytest.raises(TypeError):
-        umesh.write_data_to_vtk(filename, scale="0.01")
+        umesh.write_data_to_vtk(filename, coordinate_scale="0.01")
 
 
 def test_mesh_get_homogenized_materials():

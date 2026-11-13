@@ -367,14 +367,15 @@ def test_write_vtkhdf_curvilinear_warning(run_in_tmpdir, recwarn, kind):
 )
 @pytest.mark.parametrize("kind", list(MESHES))
 def test_write_vtk_scale(run_in_tmpdir, kind, suffix, curvilinear):
-    """The scale argument multiplies the coordinates and nothing else."""
+    """The coordinate_scale argument only multiplies the coordinates."""
     mesh = MESHES[kind]()
     data = np.arange(mesh.n_elements, dtype=float).reshape(mesh.dimension)
     vertices = np.array(mesh.vertices)
     scale = 0.01
 
     grids = []
-    for name, kwargs in (("unscaled", {}), ("scaled", {"scale": scale})):
+    for name, kwargs in (("unscaled", {}),
+                         ("scaled", {"coordinate_scale": scale})):
         filename = f"{name}_{kind}{suffix}"
         mesh.write_data_to_vtk(filename, {"data": data},
                                curvilinear=curvilinear, **kwargs)
@@ -411,4 +412,4 @@ def test_write_vtk_scale(run_in_tmpdir, kind, suffix, curvilinear):
 def test_write_vtk_scale_invalid(run_in_tmpdir):
     mesh = MESHES["regular"]()
     with pytest.raises(TypeError):
-        mesh.write_data_to_vtk("mesh.vtkhdf", scale="0.01")
+        mesh.write_data_to_vtk("mesh.vtkhdf", coordinate_scale="0.01")

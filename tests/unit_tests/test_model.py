@@ -1,3 +1,4 @@
+import builtins
 from math import pi
 from pathlib import Path
 import os
@@ -260,6 +261,19 @@ def test_init_finalize_lib(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert test_model.is_initialized is False
     # Note we cant actually test that a sys call fails because we should get a
     # seg fault
+
+
+def test_is_initialized_without_lib(monkeypatch):
+    # Loading a missing libopenmc raises OSError from CDLL, not ImportError
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == 'openmc.lib':
+            raise OSError('libopenmc could not be loaded')
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, '__import__', fake_import)
+    assert openmc.Model().is_initialized is False
 
 
 def test_import_properties(run_in_tmpdir, mpi_intracomm):

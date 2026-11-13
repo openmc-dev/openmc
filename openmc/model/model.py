@@ -222,7 +222,7 @@ class Model:
         try:
             import openmc.lib
             return openmc.lib.is_initialized
-        except ImportError:
+        except (ImportError, OSError):
             return False
 
     @property

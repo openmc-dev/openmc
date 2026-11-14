@@ -20,6 +20,7 @@ __all__ = [
     'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
     'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter',
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
+    'LifetimeMomentFilter',
     'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
     'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter',
     'ParentNuclideFilter', 'ParticleFilter', 'ParticleProductionFilter', 'PolarFilter',
@@ -79,6 +80,13 @@ _dll.openmc_legendre_filter_get_order.errcheck = _error_handler
 _dll.openmc_legendre_filter_set_order.argtypes = [c_int32, c_int]
 _dll.openmc_legendre_filter_set_order.restype = c_int
 _dll.openmc_legendre_filter_set_order.errcheck = _error_handler
+_dll.openmc_lifetime_moment_filter_get_order.argtypes = [
+    c_int32, POINTER(c_int)]
+_dll.openmc_lifetime_moment_filter_get_order.restype = c_int
+_dll.openmc_lifetime_moment_filter_get_order.errcheck = _error_handler
+_dll.openmc_lifetime_moment_filter_set_order.argtypes = [c_int32, c_int]
+_dll.openmc_lifetime_moment_filter_set_order.restype = c_int
+_dll.openmc_lifetime_moment_filter_set_order.errcheck = _error_handler
 _dll.openmc_material_filter_get_bins.argtypes = [
     c_int32, POINTER(POINTER(c_int32)), POINTER(c_size_t)]
 _dll.openmc_material_filter_get_bins.restype = c_int
@@ -349,6 +357,25 @@ class LegendreFilter(Filter):
     @order.setter
     def order(self, order):
         _dll.openmc_legendre_filter_set_order(self._index, order)
+
+
+class LifetimeMomentFilter(Filter):
+    filter_type = 'lifetimemoment'
+
+    def __init__(self, order=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if order is not None:
+            self.order = order
+
+    @property
+    def order(self):
+        temp_order = c_int()
+        _dll.openmc_lifetime_moment_filter_get_order(self._index, temp_order)
+        return temp_order.value
+
+    @order.setter
+    def order(self, order):
+        _dll.openmc_lifetime_moment_filter_set_order(self._index, order)
 
 
 class MaterialFilter(Filter):
@@ -722,6 +749,7 @@ _FILTER_TYPE_MAP = {
     'energyout': EnergyoutFilter,
     'energyfunction': EnergyFunctionFilter,
     'legendre': LegendreFilter,
+    'lifetimemoment': LifetimeMomentFilter,
     'material': MaterialFilter,
     'materialfrom': MaterialFromFilter,
     'mesh': MeshFilter,

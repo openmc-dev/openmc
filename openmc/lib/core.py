@@ -799,7 +799,7 @@ def quiet_dll(output=True):
         sys.stdout.flush()
         # Save the initial file descriptor states
         initial_stdout = sys.stdout
-        initial_stdout_fno = os.dup(sys.stdout.fileno())
+        initial_stdout_fno = os.dup(1)
         # Get a garbage descriptor so we can throw away output
         devnull = os.open(os.devnull, os.O_WRONLY)
 

@@ -20,6 +20,12 @@ namespace openmc {
 // Forward declare the Surface class for use in Particle::cross_vacuum_bc, etc.
 class Surface;
 
+enum class TransportEvent {
+  NONE, //!< No collision or surface crossing handler needed.
+  COLLISION,
+  SURFACE_CROSSING
+};
+
 /*
  * The Particle class encompasses data and methods for transporting particles
  * through their lifecycle. Its base class defines particle data layout in
@@ -70,12 +76,15 @@ public:
 
   // Coarse-grained particle events
   void event_calculate_xs();
-  void event_advance();
+  TransportEvent event_advance();
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary(const SourceSite& site);
   void event_check_limit_and_revive();
   void event_death();
+
+  //! Apply the current cell/field temperature
+  void update_temperature();
 
   //! pulse-height recording
   void pht_collision_energy();

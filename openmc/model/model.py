@@ -397,9 +397,10 @@ class Model:
             Model created from XML files
 
         """
+        meshes = {}
         materials = openmc.Materials.from_xml(materials)
-        geometry = openmc.Geometry.from_xml(geometry, materials)
-        settings = openmc.Settings.from_xml(settings)
+        geometry = openmc.Geometry.from_xml(geometry, materials, meshes)
+        settings = openmc.Settings.from_xml(settings, meshes)
         tallies = openmc.Tallies.from_xml(
             tallies) if Path(tallies).exists() else None
         plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
@@ -433,7 +434,7 @@ class Model:
             model.materials = openmc.Materials.from_xml_element(
                 root.find('materials'))
             model.geometry = openmc.Geometry.from_xml_element(
-                root.find('geometry'), model.materials)
+                root.find('geometry'), model.materials, meshes)
 
             if root.find('tallies') is not None:
                 model.tallies = openmc.Tallies.from_xml_element(

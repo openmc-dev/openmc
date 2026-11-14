@@ -13,7 +13,7 @@
     </material>
   </materials>
   <geometry>
-    <dagmc_universe id="1" filename="../../dagmc/legacy/dagmc.h5m"/>
+    <dagmc_universe id="1" filename="../../cad_geom/common/pincell/dagmc.h5m"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

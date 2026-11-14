@@ -109,12 +109,17 @@ class Summary:
             self._read_materials()
 
             # Read native geometry only
-            if "dagmc" not in self._f['geometry'].attrs.keys():
-                self._read_surfaces()
-                cell_fills = self._read_cells()
-                self._read_universes()
-                self._read_lattices()
-                self._finalize_geometry(cell_fills)
+            if "dagmc" in self._f['geometry'].attrs.keys():
+                return
+
+            if "xdg" in self._f['geometry'].attrs.keys():
+                return
+
+            self._read_surfaces()
+            cell_fills = self._read_cells()
+            self._read_universes()
+            self._read_lattices()
+            self._finalize_geometry(cell_fills)
 
     def _read_materials(self):
         for group in self._f['materials'].values():
@@ -199,6 +204,8 @@ class Summary:
             geom_type = group.get('geom_type')
             if geom_type and geom_type[()].decode() == 'dagmc':
                 universe = openmc.DAGMCUniverse.from_hdf5(group)
+            elif geom_type and geom_type[()].decode() == 'xdg':
+                universe = openmc.XDGUniverse.from_hdf5(group)
             else:
                 universe = openmc.Universe.from_hdf5(group, self._fast_cells)
             self._fast_universes[universe.id] = universe

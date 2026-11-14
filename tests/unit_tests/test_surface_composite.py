@@ -640,8 +640,8 @@ def test_vessel():
     assert np.all(np.isinf(ll))
     assert np.all(np.isinf(ur))
     ll, ur = (-s).bounding_box
-    assert np.all(np.isinf(ll))
-    assert np.all(np.isinf(ur))
+    assert ll == pytest.approx((2., 1., -6.))
+    assert ur == pytest.approx((4., 3., 6.))
 
     # __contains__ on associated half-spaces
     assert (3., 2., 0.) in -s

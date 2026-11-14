@@ -1005,6 +1005,135 @@ class ZPlane(PlaneMixin, Surface):
         return point[2] - self.z0
 
 
+def _symmetric_eigen(m):
+    """Eigenvalues and eigenvectors of a symmetric 3x3 matrix by cyclic Jacobi
+    rotations. The C++ code uses the same algorithm (openmc::symmetric_eigen in
+    src/math_functions.cpp), so that both give the same bounding boxes. Exact zeros in the matrix stay
+    exact, so a quadric aligned with the axes is recognized as such.
+
+    Returns
+    -------
+    list of float
+        Eigenvalues
+    list of list of float
+        Eigenvectors, v[i][k] being component i of eigenvector k
+
+    """
+    a = [list(row) for row in m]
+    v = [[1. if i == k else 0. for k in range(3)] for i in range(3)]
+    for _ in range(50):
+        off = a[0][1]*a[0][1] + a[0][2]*a[0][2] + a[1][2]*a[1][2]
+        diag = a[0][0]*a[0][0] + a[1][1]*a[1][1] + a[2][2]*a[2][2]
+        if off == 0. or off <= 1e-36*diag:
+            break
+        for p, q in ((0, 1), (0, 2), (1, 2)):
+            if a[p][q] == 0.:
+                continue
+            theta = (a[q][q] - a[p][p]) / (2.*a[p][q])
+            t = math.copysign(1., theta) / (abs(theta) + math.sqrt(theta*theta + 1.))
+            c = 1. / math.sqrt(t*t + 1.)
+            s = t*c
+            for r in range(3):
+                arp, arq = a[r][p], a[r][q]
+                a[r][p] = c*arp - s*arq
+                a[r][q] = s*arp + c*arq
+            for r in range(3):
+                apr, aqr = a[p][r], a[q][r]
+                a[p][r] = c*apr - s*aqr
+                a[q][r] = s*apr + c*aqr
+            for r in range(3):
+                vrp, vrq = v[r][p], v[r][q]
+                v[r][p] = c*vrp - s*vrq
+                v[r][q] = s*vrp + c*vrq
+    return [a[k][k] for k in range(3)], v
+
+
+def _quadric_bounding_box(coeffs, side):
+    r"""Axis-aligned bounding box of a half-space of the quadric
+    :math:`Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`.
+
+    The half-space is bounded in a direction only if the quadratic form is
+    semidefinite with the sign of the half-space: :math:`(x - c)^T M (x - c)
+    \le \rho` with :math:`M` positive semidefinite, as for the inside of a
+    cylinder along any axis or of an ellipsoid. Along coordinate :math:`i` it
+    then extends to :math:`c_i \pm \sqrt{\rho M^+_{ii}}`, unless the null
+    space of :math:`M` has a component along that coordinate, in which case
+    it is unbounded. Every other quadric gives an infinite box. The C++
+    SurfaceQuadric::bounding_box follows the same steps.
+
+    Parameters
+    ----------
+    coeffs : sequence of float
+        The coefficients A, B, C, D, E, F, G, H, J, K
+    side : {'+', '-'}
+        Indicates the negative or positive half-space
+
+    Returns
+    -------
+    openmc.BoundingBox
+
+    """
+    sign = -1. if side == '+' else 1.
+    a, b, c, d, e, f, g, h, j, k = (sign*x for x in coeffs)
+    lam, vec = _symmetric_eigen([[a, 0.5*d, 0.5*f],
+                                 [0.5*d, b, 0.5*e],
+                                 [0.5*f, 0.5*e, c]])
+    scale = max(abs(x) for x in lam)
+    if scale == 0. or min(lam) < -1e-12*scale:
+        return BoundingBox.infinite()
+    null = [lam[n] <= 1e-12*scale for n in range(3)]
+
+    # The linear term must lie in the range of M, otherwise the half-space is
+    # unbounded along the null space (a paraboloid)
+    lin = (g, h, j)
+    lin_norm = math.sqrt(g*g + h*h + j*j)
+    # Sums are accumulated with explicit left-to-right loops rather than sum(),
+    # which uses compensated summation on Python >= 3.12, so that the result
+    # matches the C++ implementation bit for bit
+    proj = []
+    for n in range(3):
+        p = 0.
+        for i in range(3):
+            p += lin[i]*vec[i][n]
+        if null[n] and abs(p) > 1e-12*lin_norm:
+            return BoundingBox.infinite()
+        proj.append(p)
+
+    # Centre and size: (x - center)^T M (x - center) <= rho
+    center = []
+    for i in range(3):
+        total = 0.
+        for n in range(3):
+            if not null[n]:
+                total += proj[n]/lam[n]*vec[i][n]
+        center.append(-0.5*total)
+    rho = 0.
+    for n in range(3):
+        if not null[n]:
+            rho += proj[n]*proj[n]/lam[n]
+    rho = -k + 0.25*rho
+    if rho < 0.:
+        return BoundingBox.infinite()
+
+    lower, upper = [], []
+    for i in range(3):
+        in_null = 0.
+        m_plus = 0.
+        for n in range(3):
+            if null[n]:
+                in_null += vec[i][n]*vec[i][n]
+            else:
+                m_plus += vec[i][n]*vec[i][n]/lam[n]
+        if in_null > 1e-24:
+            lower.append(-np.inf)
+            upper.append(np.inf)
+        else:
+            w = math.sqrt(rho*m_plus)
+            lower.append(center[i] - w)
+            upper.append(center[i] + w)
+    return BoundingBox(np.array(lower), np.array(upper))
+
+
 class QuadricMixin:
     """A Mixin class implementing common functionality for quadric surfaces"""
 
@@ -1268,15 +1397,9 @@ class Cylinder(QuadricMixin, Surface):
     dz = SurfaceCoefficient('dz')
 
     def bounding_box(self, side):
-        if side == '-':
-            r = self.r
-            ll = [xi - r if np.isclose(dxi, 0., rtol=0., atol=self._atol)
-                  else -np.inf for xi, dxi in zip(self._origin, self._axis)]
-            ur = [xi + r if np.isclose(dxi, 0., rtol=0., atol=self._atol)
-                  else np.inf for xi, dxi in zip(self._origin, self._axis)]
-            return BoundingBox(np.array(ll), np.array(ur))
-        elif side == '+':
-            return BoundingBox.infinite()
+        # The box of the quadric the cylinder is written as, so that it is the
+        # same as the one the C++ code computes
+        return _quadric_bounding_box(self._get_base_coeffs(), side)
 
     def _get_base_coeffs(self):
         # Get x, y, z coordinates of two points
@@ -2279,6 +2402,9 @@ class Quadric(QuadricMixin, Surface):
 
     def _get_base_coeffs(self):
         return tuple(getattr(self, c) for c in self._coeff_keys)
+
+    def bounding_box(self, side):
+        return _quadric_bounding_box(self._get_base_coeffs(), side)
 
 
 class TorusMixin:

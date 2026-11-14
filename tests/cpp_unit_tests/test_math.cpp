@@ -1,3 +1,4 @@
+#include <array>
 #include <cmath>
 #include <random>
 
@@ -389,4 +390,47 @@ TEST_CASE("Test isclose")
   // The looser of the two tolerances wins.
   REQUIRE(isclose(1.0, 1.0 + 1e-13, 0.0, 1e-12));
   REQUIRE(isclose(1.0e6, 1.0e6 + 1e-4, 1e-9, 0.0));
+}
+
+TEST_CASE("Test symmetric_eigen")
+{
+  using namespace openmc;
+
+  // A general symmetric matrix: A v_k = lambda_k v_k, orthonormal v
+  const double ref[3][3] = {
+    {4.0, 1.0, -2.0}, {1.0, 3.0, 0.5}, {-2.0, 0.5, 1.0}};
+  double a[3][3];
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      a[i][j] = ref[i][j];
+  std::array<double, 3> lambda;
+  double v[3][3];
+  symmetric_eigen(a, lambda, v);
+  for (int k = 0; k < 3; ++k) {
+    for (int i = 0; i < 3; ++i) {
+      double av = 0.0;
+      for (int j = 0; j < 3; ++j)
+        av += ref[i][j] * v[j][k];
+      REQUIRE_THAT(av, Catch::Matchers::WithinAbs(lambda[k] * v[i][k], 1e-12));
+    }
+    for (int l = 0; l < 3; ++l) {
+      double dot = 0.0;
+      for (int i = 0; i < 3; ++i)
+        dot += v[i][k] * v[i][l];
+      REQUIRE_THAT(dot, Catch::Matchers::WithinAbs(k == l ? 1.0 : 0.0, 1e-12));
+    }
+  }
+  // The trace is preserved
+  REQUIRE_THAT(
+    lambda[0] + lambda[1] + lambda[2], Catch::Matchers::WithinRel(8.0, 1e-12));
+
+  // An axis-aligned matrix is left exactly as it is
+  double d[3][3] = {{2.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, -1.0}};
+  symmetric_eigen(d, lambda, v);
+  REQUIRE(lambda[0] == 2.0);
+  REQUIRE(lambda[1] == 0.0);
+  REQUIRE(lambda[2] == -1.0);
+  for (int i = 0; i < 3; ++i)
+    for (int k = 0; k < 3; ++k)
+      REQUIRE(v[i][k] == (i == k ? 1.0 : 0.0));
 }

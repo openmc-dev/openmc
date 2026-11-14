@@ -2,6 +2,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/material.h"
+#include "openmc/math.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -49,7 +50,7 @@ void thick_target_bremsstrahlung(
     mat = &model::materials[p.material()]->ttb_->electron;
   }
 
-  double e = std::log(E);
+  double e = openmc::log(E);
   auto n_e = data::ttb_e_grid.size();
 
   // Find the lower bounding index of the incident electron energy
@@ -71,7 +72,7 @@ void thick_target_bremsstrahlung(
 
   // Get the photon number yield for the given energy using linear
   // interpolation on a log-log scale
-  double y = std::exp(y_l + (y_r - y_l) * f);
+  double y = openmc::exp(y_l + (y_r - y_l) * f);
 
   // Sample number of secondary bremsstrahlung photons
   int n = y + prn(p.current_seed());
@@ -92,8 +93,9 @@ void thick_target_bremsstrahlung(
     double p_l = mat->pdf(i_e, i_e - 1);
     double p_r = mat->pdf(i_e, i_e);
     double c_l = mat->cdf(i_e, i_e - 1);
-    double a = std::log(p_r / p_l) / (e_r - e_l) + 1.0;
-    c_max = c_l + std::exp(e_l) * p_l / a * (std::exp(a * (e - e_l)) - 1.0);
+    double a = openmc::log(p_r / p_l) / (e_r - e_l) + 1.0;
+    c_max =
+      c_l + openmc::exp(e_l) * p_l / a * (openmc::exp(a * (e - e_l)) - 1.0);
   } else {
     i_e = j;
 
@@ -114,9 +116,10 @@ void thick_target_bremsstrahlung(
     double p_l = mat->pdf(i_e, i_w);
     double p_r = mat->pdf(i_e, i_w + 1);
     double c_l = mat->cdf(i_e, i_w);
-    double a = std::log(p_r / p_l) / (w_r - w_l) + 1.0;
-    double w = std::exp(w_l) *
-               std::pow(a * (c - c_l) / (std::exp(w_l) * p_l) + 1.0, 1.0 / a);
+    double a = openmc::log(p_r / p_l) / (w_r - w_l) + 1.0;
+    double w =
+      openmc::exp(w_l) *
+      openmc::pow(a * (c - c_l) / (openmc::exp(w_l) * p_l) + 1.0, 1.0 / a);
 
     if (w > settings::energy_cutoff[photon]) {
       // If the energy of the secondary photon is larger than the remaining

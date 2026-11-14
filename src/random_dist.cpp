@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "openmc/constants.h"
+#include "openmc/math.h"
 #include "openmc/random_lcg.h"
 
 namespace openmc {
@@ -25,10 +26,10 @@ double maxwell_spectrum(double T, uint64_t* seed)
   double r3 = prn(seed);
 
   // determine cosine of pi/2*r
-  double c = std::cos(PI / 2. * r3);
+  double c = openmc::cos(PI / 2. * r3);
 
   // Determine outgoing energy
-  return -T * (std::log(r1) + std::log(r2) * c * c);
+  return -T * (openmc::log(r1) + openmc::log(r2) * c * c);
 }
 
 double watt_spectrum(double a, double b, uint64_t* seed)
@@ -47,7 +48,7 @@ double normal_variate(double mean, double standard_deviation, uint64_t* seed)
     y = uniform_distribution(-1., 1., seed);
     r2 = x * x + y * y;
   } while (r2 > 1 || r2 == 0);
-  double z = std::sqrt(-2.0 * std::log(r2) / r2);
+  double z = std::sqrt(-2.0 * openmc::log(r2) / r2);
   return mean + standard_deviation * z * x;
 }
 

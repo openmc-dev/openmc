@@ -9,6 +9,7 @@
 #include <fmt/core.h>
 
 #include "openmc/error.h"
+#include "openmc/math.h"
 #include "openmc/math_functions.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
@@ -649,8 +650,8 @@ int Mgxs::get_angle_index(const Direction& u) const
     return 0;
   } else {
     // convert direction to polar and azimuthal angles
-    double my_pol = std::acos(u.z);
-    double my_azi = std::atan2(u.y, u.x);
+    double my_pol = openmc::acos(u.z);
+    double my_azi = openmc::atan2(u.y, u.x);
 
     // Find the location, assuming equal-bin angles
     double delta_angle = PI / n_pol;

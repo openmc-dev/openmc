@@ -87,6 +87,100 @@ jobs:
       - name: Test
         run: ctest --test-dir build-dependencies --output-on-failure
 
+  macos:
+    needs: filter-changes
+    if: ${{ needs.filter-changes.outputs.source_changed == 'true' }}
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        omp: ['OFF', 'ON']
+    name: "macOS arm64 (omp=${{ matrix.omp }})"
+
+    env:
+      # Homebrew prefix on Apple silicon; overrides the Linux default above
+      HDF5_ROOT: /opt/homebrew/opt/hdf5
+
+    steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.31'
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Full history and tags are needed for git describe based versioning
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Environment Variables
+        run: |
+          echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
+          echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
+          echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
+
+      - name: Install build dependencies
+        run: brew install hdf5 libpng libomp
+
+      # Same NJOY version as tools/ci/gha-install-njoy.sh, without the static
+      # link that macOS does not support
+      - name: Install NJOY
+        run: |
+          git clone -b 2016.78 https://github.com/njoy/NJOY2016 $HOME/NJOY2016
+          cmake -S $HOME/NJOY2016 -B $HOME/NJOY2016/build \
+            -DCMAKE_Fortran_COMPILER=gfortran-15
+          cmake --build $HOME/NJOY2016/build --parallel 3
+
+      # Apple clang supports OpenMP when pointed at Homebrew's libomp
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DOPENMC_BUILD_TESTS=ON \
+            -DOPENMC_USE_OPENMP=${{ matrix.omp }} \
+            -DOPENMC_ENABLE_STRICT_FP=on \
+            -DOPENMC_FORCE_FETCHCONTENT=ON \
+            -DOpenMP_ROOT=$(brew --prefix libomp)
+
+      - name: Build
+        run: |
+          cmake --build build --parallel 3
+          sudo cmake --install build
+
+      - name: Install Python API
+        run: |
+          pip install --upgrade pip pytest numpy
+          pip install 'ncrystal>=4.1.0' mcpl
+          pip install -e .[test,vtk,ci]
+
+      - name: display-config
+        run: openmc -v
+
+      - name: cache-xs
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/nndc_hdf5
+            ~/endf-b-vii.1
+          key: ${{ runner.os }}-build-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
+
+      - name: Download cross sections
+        run: tools/ci/download-xs.sh
+
+      - name: Test
+        run: |
+          ctest --test-dir build --output-on-failure
+          # Regression tests are not run on macOS yet: their reference results
+          # are generated on Linux and differ on macOS because of differences in
+          # the system math library; see
+          # https://github.com/openmc-dev/openmc/issues/3820
+          pytest -v tests/test_matplotlib_import.py tests/unit_tests
+
   main:
     needs: filter-changes
     if: ${{ needs.filter-changes.outputs.source_changed == 'true' }}

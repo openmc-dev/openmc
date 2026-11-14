@@ -274,20 +274,25 @@ void get_temperatures(
   // could limit the declarations of temperature from the temperature field to
   // impacted nuclides only.
   if (settings::temperature_field_on) {
+    vector<double> field_temps;
+    std::unordered_set<double> field_seen;
     for (auto t : simulation::temperature_field.values()) {
-      // Nuclide temperatures
-      for (size_t i = 0; i < nuc_temps.size(); i++) {
-        if (!contains(nuc_temps[i], t)) {
-          nuc_temps[i].push_back(t);
-        }
-      }
-      // Thermal scattering temperatures
-      for (size_t i = 0; i < thermal_temps.size(); i++) {
-        if (!contains(thermal_temps[i], t)) {
-          thermal_temps[i].push_back(t);
-        }
+      if (field_seen.insert(t).second) {
+        field_temps.push_back(t);
       }
     }
+    auto add_temperatures = [&field_temps](vector<vector<double>>& lists) {
+      for (auto& temps : lists) {
+        std::unordered_set<double> seen(temps.begin(), temps.end());
+        for (auto t : field_temps) {
+          if (seen.insert(t).second) {
+            temps.push_back(t);
+          }
+        }
+      }
+    };
+    add_temperatures(nuc_temps);
+    add_temperatures(thermal_temps);
   }
 }
 

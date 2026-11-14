@@ -36,11 +36,16 @@ void load_state_point();
 //
 // The source_bank variable is used as work space if MPI is used,
 // so it cannot be given as a const span.
+//
+// If group_indices is true, the energies of the sites are multigroup energy
+// group indices, which the file records with an "energy_mode" attribute equal
+// to "multi-group" so that a FileSource reads them as group indices. MCPL
+// files do not record it.
 void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index);
+  const vector<int64_t>& bank_index, bool group_indices = false);
 
 void write_source_point(std::string, span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index, bool use_mcpl);
+  const vector<int64_t>& bank_index, bool use_mcpl, bool group_indices = false);
 
 // This appends a source bank specification to an HDF5 file
 // that's already open. It is used internally by write_source_point.

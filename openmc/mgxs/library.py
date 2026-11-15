@@ -1594,7 +1594,7 @@ class Library:
             geometry.root_universe = root
             materials = openmc.Materials()
 
-            for i in range(len(self.domains[0].indices)):
+            for i, _ in enumerate(self.domains[0].indices):
                 xsdata = mgxs_file.xsdatas[i]
 
                 # Build the macroscopic and assign it to the cell of

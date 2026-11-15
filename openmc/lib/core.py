@@ -817,4 +817,7 @@ def quiet_dll(output=True):
             # Now we just clean up after ourselves and reset the streams
             sys.stdout = initial_stdout
             sys.stdout.flush()
-            os.dup2(initial_stdout_fno, 1)
+            try:
+                os.dup2(initial_stdout_fno, 1)
+            finally:
+                os.close(initial_stdout_fno)

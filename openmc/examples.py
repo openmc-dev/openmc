@@ -1179,23 +1179,18 @@ def random_ray_three_region_cube() -> openmc.Model:
     ###########################################################################
     # Create materials for the problem
 
-    # Instantiate some Macroscopic Data
-    source_data = openmc.Macroscopic('source')
-    void_data = openmc.Macroscopic('void')
-    absorber_data = openmc.Macroscopic('absorber')
-
-    # Instantiate some Materials and register the appropriate Macroscopic objects
+    # Instantiate some Materials and register the appropriate macroscopic data
     source_mat = openmc.Material(name='source')
     source_mat.set_density('macro', 1.0)
-    source_mat.add_macroscopic(source_data)
+    source_mat.add_macroscopic('source')
 
     void_mat = openmc.Material(name='void')
     void_mat.set_density('macro', 1.0)
-    void_mat.add_macroscopic(void_data)
+    void_mat.add_macroscopic('void')
 
     absorber_mat = openmc.Material(name='absorber')
     absorber_mat.set_density('macro', 1.0)
-    absorber_mat.add_macroscopic(absorber_data)
+    absorber_mat.add_macroscopic('absorber')
 
     # Instantiate a Materials collection and export to XML
     materials_file = openmc.Materials([source_mat, void_mat, absorber_mat])
@@ -1414,23 +1409,18 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     ###########################################################################
     # Create materials for the problem
 
-    # Instantiate some Macroscopic Data
-    source_data = openmc.Macroscopic('source')
-    cavity_data = openmc.Macroscopic('cavity')
-    absorber_data = openmc.Macroscopic('absorber')
-
-    # Instantiate some Materials and register the appropriate Macroscopic objects
+    # Instantiate some Materials and register the appropriate macroscopic data
     source_mat = openmc.Material(name='source')
     source_mat.set_density('macro', 1.0)
-    source_mat.add_macroscopic(source_data)
+    source_mat.add_macroscopic('source')
 
     cavity_mat = openmc.Material(name='cavity')
     cavity_mat.set_density('macro', 1.0)
-    cavity_mat.add_macroscopic(cavity_data)
+    cavity_mat.add_macroscopic('cavity')
 
     absorber_mat = openmc.Material(name='absorber')
     absorber_mat.set_density('macro', 1.0)
-    absorber_mat.add_macroscopic(absorber_data)
+    absorber_mat.add_macroscopic('absorber')
 
     # Instantiate a Materials collection
     materials_file = openmc.Materials([source_mat, cavity_mat, absorber_mat])

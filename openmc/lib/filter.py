@@ -295,8 +295,6 @@ class EnergyFunctionFilter(Filter):
             Independent variable for the interpolation
         y : numpy.ndarray
             Dependent variable for the interpolation
-        interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log', 'quadratic', 'cubic'}
-            Interpolation scheme
         """
         energy_array = np.asarray(energy)
         y_array = np.asarray(y)

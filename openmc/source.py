@@ -775,9 +775,6 @@ class CompiledSource(SourceBase):
         ----------
         elem : lxml.etree._Element
             XML element
-        meshes : dict
-            Dictionary with mesh IDs as keys and openmc.MeshBase instances as
-            values
 
         Returns
         -------
@@ -883,9 +880,6 @@ class FileSource(SourceBase):
         ----------
         elem : lxml.etree._Element
             XML element
-        meshes : dict
-            Dictionary with mesh IDs as keys and openmc.MeshBase instances as
-            values
 
         Returns
         -------

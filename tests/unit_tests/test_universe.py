@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import h5py
@@ -113,7 +114,12 @@ def test_plot(run_in_tmpdir, sphere_model):
     plt.close('all')
 
 
-def test_mg_plot(run_in_tmpdir):
+@pytest.fixture
+def mg_plot_model(run_in_tmpdir, monkeypatch):
+    # Isolate both global path sources and restore them on teardown.
+    monkeypatch.delenv('OPENMC_MG_CROSS_SECTIONS', raising=False)
+    monkeypatch.delitem(openmc.config, 'mg_cross_sections', raising=False)
+
     # Create a simple universe with macroscopic data
     h2o_data = openmc.Macroscopic('LWTR')
     water = openmc.Material(name='Water')
@@ -137,17 +143,71 @@ def test_mg_plot(run_in_tmpdir):
     mgxs_path = Path.cwd() / 'mgxs.h5'
     mg_library.export_to_hdf5(mgxs_path)
 
+    model = openmc.Model(openmc.Geometry(univ), materials=[water])
+    try:
+        yield model, mgxs_path
+    finally:
+        import matplotlib.pyplot as plt
+        plt.close('all')
+
+
+def test_mg_plot(mg_plot_model):
+    model, mgxs_path = mg_plot_model
+    univ = model.geometry.root_universe
+
     # Set MG cross sections in config and plot
     with openmc.config.patch('mg_cross_sections', mgxs_path):
-        univ.plot(width=(200, 200), basis='yz', color_by='cell')
-        univ.plot(width=(200, 200), basis='yz', color_by='material')
+        for color_by in ('cell', 'material'):
+            axes = univ.plot(width=(200, 200), basis='yz', color_by=color_by,
+                             pixels=(20, 20))
+            assert len(axes.images) == 1
+            assert openmc.config['mg_cross_sections'] == mgxs_path
+            assert os.environ['OPENMC_MG_CROSS_SECTIONS'] == str(mgxs_path)
+            assert model.materials.cross_sections is None
 
-    with pytest.raises(RuntimeError):
-        univ.plot(width=(200, 200), basis='yz', color_by='cell')
 
-    # Close plots to avoid warning
-    import matplotlib.pyplot as plt
-    plt.close('all')
+@pytest.mark.parametrize('global_path', [False, True], ids=['model', 'both'])
+def test_mg_model_plot(mg_plot_model, global_path):
+    model, mgxs_path = mg_plot_model
+    model.materials.cross_sections = mgxs_path
+    assert model.settings.energy_mode is None
+
+    # A different macroscopic name makes loading the global library fail.
+    other_path = Path.cwd() / 'other-mgxs.h5'
+    library = openmc.MGXSLibrary.from_hdf5(mgxs_path)
+    library.xsdatas[0].name = 'OTHER'
+    library.export_to_hdf5(other_path)
+
+    def check_plot():
+        axes = model.plot(color_by='material', outline='only',
+                          width=(25, 25), pixels=(20, 20))
+        assert len(axes.collections) == 1
+        assert model.settings.energy_mode == 'multi-group'
+        assert model.materials.cross_sections == mgxs_path
+
+    if global_path:
+        with openmc.config.patch('mg_cross_sections', other_path):
+            check_plot()
+            assert openmc.config['mg_cross_sections'] == other_path
+            assert os.environ['OPENMC_MG_CROSS_SECTIONS'] == str(other_path)
+    else:
+        check_plot()
+
+    assert 'mg_cross_sections' not in openmc.config
+    assert 'OPENMC_MG_CROSS_SECTIONS' not in os.environ
+
+
+def test_mg_plot_missing_cross_sections(mg_plot_model, monkeypatch):
+    model, _ = mg_plot_model
+
+    def unexpected_slice_data(**kwargs):
+        pytest.fail('Missing cross sections reached C API initialization')
+
+    monkeypatch.setattr(model, 'slice_data', unexpected_slice_data)
+    with pytest.raises(RuntimeError) as exc_info:
+        model.plot(pixels=(20, 20))
+    assert 'model.materials.cross_sections' in str(exc_info.value)
+    assert "openmc.config['mg_cross_sections']" in str(exc_info.value)
 
 
 def test_get_nuclides(uo2):

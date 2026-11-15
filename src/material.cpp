@@ -139,7 +139,7 @@ Material::Material(pugi::xml_node node)
   if (settings::run_CE && num_macros > 0) {
     fatal_error("Macroscopic can not be used in continuous-energy mode.");
   } else if (num_macros > 1) {
-    fatal_error("Only one macroscopic object permitted per material, " +
+    fatal_error("Only one macroscopic data set permitted per material, " +
                 std::to_string(id_));
   } else if (num_macros == 1) {
     pugi::xml_node node_nuc = *node_macros.begin();

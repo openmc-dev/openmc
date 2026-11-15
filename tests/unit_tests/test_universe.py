@@ -115,10 +115,9 @@ def test_plot(run_in_tmpdir, sphere_model):
 
 def test_mg_plot(run_in_tmpdir):
     # Create a simple universe with macroscopic data
-    h2o_data = openmc.Macroscopic('LWTR')
     water = openmc.Material(name='Water')
     water.set_density('macro', 1.0)
-    water.add_macroscopic(h2o_data)
+    water.add_macroscopic('LWTR')
     sph = openmc.Sphere(r=10, boundary_type="vacuum")
     cell = openmc.Cell(region=-sph, fill=water)
     univ = openmc.Universe(cells=[cell])
@@ -228,7 +227,7 @@ def test_clone():
 
     u3 = u1.clone(clone_regions=False)
     assert next(iter(u3.cells.values())).region ==\
-         next(iter(u1.cells.values())).region
+        next(iter(u1.cells.values())).region
 
     # Change attributes, make sure clone stays intact
     u1.volume = 2.

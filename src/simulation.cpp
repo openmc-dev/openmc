@@ -349,6 +349,8 @@ int64_t work_per_rank;
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
+TemperatureField temperature_field;
+
 vector<double> k_generation;
 vector<int64_t> work_index;
 
@@ -949,14 +951,20 @@ void transport_history_based_single_particle(Particle& p)
 {
   while (p.alive()) {
     p.event_calculate_xs();
+    TransportEvent event = TransportEvent::NONE;
     if (p.alive()) {
-      p.event_advance();
+      event = p.event_advance();
     }
     if (p.alive()) {
-      if (p.collision_distance() > p.boundary().distance()) {
-        p.event_cross_surface();
-      } else if (p.alive()) {
+      switch (event) {
+      case TransportEvent::COLLISION:
         p.event_collide();
+        break;
+      case TransportEvent::SURFACE_CROSSING:
+        p.event_cross_surface();
+        break;
+      case TransportEvent::NONE:
+        break;
       }
     }
     p.event_check_limit_and_revive();

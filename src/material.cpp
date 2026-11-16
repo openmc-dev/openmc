@@ -1020,7 +1020,7 @@ void Material::set_densities(
   if (n != nuclide_.size()) {
     nuclide_.resize(n);
     atom_density_ = tensor::zeros<double>({n});
-    if (settings::photon_transport)
+    if (settings::run_CE && settings::photon_transport)
       element_.resize(n);
   }
 
@@ -1038,7 +1038,7 @@ void Material::set_densities(
     atom_density_(i) = density[i];
     sum_density += density[i];
 
-    if (settings::photon_transport) {
+    if (settings::run_CE && settings::photon_transport) {
       auto element_name = to_element(nuc);
       element_[i] = data::element_map.at(element_name);
     }
@@ -1048,7 +1048,7 @@ void Material::set_densities(
   this->set_density(sum_density, "atom/b-cm");
 
   // Generate material bremsstrahlung data for electrons and positrons
-  if (settings::photon_transport &&
+  if (settings::run_CE && settings::photon_transport &&
       settings::electron_treatment == ElectronTreatment::TTB) {
     this->init_bremsstrahlung();
   }
@@ -1172,7 +1172,7 @@ void Material::add_nuclide(const std::string& name, double density)
   nuclide_.push_back(i_nuc);
 
   // Append new element if photon transport is on
-  if (settings::photon_transport) {
+  if (settings::run_CE && settings::photon_transport) {
     int i_elem = data::element_map[to_element(name)];
     element_.push_back(i_elem);
   }

@@ -1,6 +1,7 @@
 set(TEST_NAMES
   test_atomic_mass
   test_distribution
+  test_field
   test_file_utils
   test_tally
   test_interpolate
@@ -10,6 +11,7 @@ set(TEST_NAMES
   test_photon
   test_ray
   test_region
+  test_scattdata
   test_surface
   test_tensor
   test_geometry

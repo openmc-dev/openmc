@@ -63,7 +63,7 @@ TEST_CASE("Test alias sampling method for pugixml constructor")
   // Initialize discrete distribution and seed
   openmc::Discrete dist(energy);
   uint64_t seed = openmc::init_seed(0, 0);
-  auto sample = dist.sample(&seed).first;
+  dist.sample(&seed);
 
   // Assertions
   REQUIRE(dist.x().size() == 3);

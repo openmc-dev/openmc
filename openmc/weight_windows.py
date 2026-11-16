@@ -140,9 +140,7 @@ class WeightWindows(IDManagerMixin):
                              "upper_bound_ratio must be present.")
 
         if upper_bound_ratio:
-            self.upper_ww_bounds = [
-                lb * upper_bound_ratio for lb in self.lower_ww_bounds
-            ]
+            self.upper_ww_bounds = self.lower_ww_bounds * upper_bound_ratio
 
         if upper_ww_bounds is not None:
             self.upper_ww_bounds = upper_ww_bounds
@@ -1074,18 +1072,20 @@ class WeightWindowsList(list):
         import openmc.lib
         cv.check_type('path', path, PathLike)
 
-        # Create a temporary model with the weight windows
-        model = openmc.Model()
-        sph = openmc.Sphere(boundary_type='vacuum')
-        cell = openmc.Cell(region=-sph)
-        model.geometry = openmc.Geometry([cell])
-        model.settings.weight_windows = self
-        model.settings.particles = 100
-        model.settings.batches = 1
-
         # Get absolute path before moving to temporary directory
         path = Path(path).resolve()
+        original_dir = Path.cwd()
 
-        # Load the model with openmc.lib and then export it to an HDF5 file
-        with openmc.lib.TemporarySession(model, **init_kwargs):
+        # Populate the C++ model directly and use its existing HDF5 writer.
+        with openmc.lib.TemporarySession(**init_kwargs):
+            lib_meshes = {}
+            for ww in self:
+                mesh = ww.mesh
+                if mesh.id not in lib_meshes:
+                    lib_meshes[mesh.id] = openmc.lib.Mesh.from_python(
+                        mesh, base_dir=original_dir)
+
+                openmc.lib.WeightWindows.from_python(
+                    ww, mesh=lib_meshes[mesh.id])
+
             openmc.lib.export_weight_windows(path)

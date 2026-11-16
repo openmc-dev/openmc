@@ -90,8 +90,13 @@ U238 (separately), we'd set::
 
   tally.nuclides = ['U235', 'U238']
 
-You can also list 'all' as a nuclide which will give you a separate reaction
-rate for every nuclide in the model.
+To get a separate reaction rate for every nuclide in a material, ask the
+material for its nuclides::
+
+  tally.nuclides = material.get_nuclides()
+
+Note that these are nuclide names; an element symbol such as 'Al' is not a valid
+entry, even for photon tallies, whose data is tabulated per element.
 
 The following tables show all valid scores:
 

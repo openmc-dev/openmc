@@ -7,6 +7,7 @@ from math import sqrt, log
 from numbers import Integral, Real
 import operator
 from pathlib import Path
+import warnings
 import lxml.etree as ET
 
 import h5py
@@ -596,14 +597,23 @@ class Tally(IDManagerMixin):
 
             n = self.num_realizations
             nonzero = np.abs(self.mean) > 0
-            self._std_dev = np.zeros_like(self.mean)
-            self._std_dev[nonzero] = np.sqrt((self.sum_sq[nonzero]/n -
-                                              self.mean[nonzero]**2)/(n - 1))
+            std_dev = np.zeros_like(self.mean)
+            if n > 1:
+                # Rounding can push the variance below zero when realizations
+                # are nearly identical, so clamp at zero
+                variance = (self.sum_sq[nonzero]/n - self.mean[nonzero]**2)/(n - 1)
+                std_dev[nonzero] = np.sqrt(np.maximum(variance, 0.0))
+            elif nonzero.any():
+                warnings.warn(
+                    'Standard deviation is undefined for a tally with a single '
+                    'realization; reporting it as NaN.')
+                std_dev[nonzero] = np.nan
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = lil_array(self._std_dev.reshape(1, -1))
+                std_dev = lil_array(std_dev.reshape(1, -1))
 
+            self._std_dev = std_dev
             self.with_batch_statistics = True
 
         if self.sparse:

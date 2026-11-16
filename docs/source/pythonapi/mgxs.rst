@@ -20,6 +20,7 @@ Functions
     :template: myfunction.rst
 
     openmc.mgxs.convert_flux_groups
+    openmc.mgxs.build_fine_group_structure
 
 Classes
 +++++++

@@ -1,6 +1,7 @@
 #ifndef OPENMC_RANDOM_RAY_PARALLEL_HASH_MAP_H
 #define OPENMC_RANDOM_RAY_PARALLEL_HASH_MAP_H
 
+#include "openmc/error.h"
 #include "openmc/openmp_interface.h"
 
 #include <memory>
@@ -142,7 +143,11 @@ public:
   ValueType& operator[](const KeyType& key)
   {
     Bucket& bucket = get_bucket(key);
-    return *bucket.map_[key].get();
+    auto it = bucket.map_.find(key);
+    if (it == bucket.map_.end()) {
+      fatal_error("ParallelMap::operator[]: key not present in map.");
+    }
+    return *it->second;
   }
 
   ValueType* emplace(KeyType key, const ValueType& value)
@@ -172,6 +177,23 @@ public:
     return iterator(&buckets_, buckets_.size(),
       typename std::unordered_map<KeyType, std::unique_ptr<ValueType>,
         HashFunctor>::iterator());
+  }
+
+  // Return summed length of all buckets.
+  uint64_t size()
+  {
+    uint64_t total_size = 0;
+    for (const auto& bucket : buckets_) {
+      total_size += bucket.map_.size();
+    }
+    return total_size;
+  }
+
+  // Erase element by key.
+  void erase(const KeyType& key)
+  {
+    Bucket& bucket = get_bucket(key);
+    bucket.map_.erase(key);
   }
 
 private:

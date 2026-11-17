@@ -203,9 +203,51 @@ where :math:`\gamma_i` is the atomic fraction of the :math:`i`-th element.
 Therefore, the energy deposited by charged particles should be attributed to
 a given element according to its fractional charge density.
 
+Heating in Eigenvalue Calculations
+----------------------------------
+
+In a :math:`k`-eigenvalue calculation, the number of neutrons emitted per
+fission is divided by :math:`k_{eff}` (see :ref:`fission`). Each fission
+therefore produces :math:`1/k_{eff}` times as many neutrons as it physically
+would, and the energy that these neutrons deposit through non-fission reactions
+is scaled by :math:`1/k_{eff}` relative to the energy released by fission. To
+balance energy release and deposition [Griesheimer21]_, OpenMC multiplies the
+non-fission part of the heating number by :math:`k_{eff}` when it scores
+``heating`` or ``heating-local`` in an eigenvalue calculation. For ``heating``,
+the heating number used is
+
+.. math::
+
+    k_{eff}\left[M301_{i}(E) - F_{i}(E)\right] + F_{i}(E), \qquad
+    F_{i}(E) = \left[E_{i, fr} + E_{i, \beta}\right]\sigma_{i, f}(E).
+
+For ``heating-local``, :math:`M901_{i}` takes the place of :math:`M301_{i}` and
+:math:`F_{i}` also includes :math:`E_{i, \gamma, p}` and
+:math:`E_{i, \gamma, d}`. Here :math:`k_{eff}` is the same estimate that is used
+to sample fission neutrons. In coupled neutron-photon transport, photons
+produced by non-fission neutron reactions are created with their weight
+multiplied by :math:`k_{eff}`, so the energy they deposit is scaled in the same
+way.
+
+As a result, in a region without fissionable material, the neutron heating
+rate scored by a ``heating`` tally in an eigenvalue calculation is
+
+.. math::
+
+    H(E) = k_{eff}\,\phi(E)\sum_i\rho_i M301_{i}(E),
+
+which is :math:`k_{eff}` times the heating rate obtained from the neutron flux
+and the MT=301 heating numbers, for example with a ``flux`` tally and an
+:class:`openmc.EnergyFunctionFilter`. The two agree in a fixed-source
+calculation, where no such scaling is applied, and when :math:`k_{eff} = 1`.
+
 ----------
 References
 ----------
+
+.. [Griesheimer21] D. P. Griesheimer, S. J. Douglass, and M. H. Stedry,
+   "Self-Consistent Energy Normalization for Quasistatic Reactor Calculations,"
+   *J. Nucl. Eng.*, **2**, 215--224 (2021). https://doi.org/10.3390/jne2020020
 
 .. [Mack97] Abdou, M.A., Maynard, C.W., and Wright, R.Q. MACK: computer
    program to calculate neutron energy release parameters (fluence-to-kerma

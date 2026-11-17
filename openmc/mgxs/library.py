@@ -1253,7 +1253,8 @@ class Library:
             production = xsdata.scatter_matrix[i][:, :, 0]
             if not all(np.all(np.isfinite(x))
                        for x in (total, absorption, production)):
-                raise ValueError('Photon MGXS data contains non-finite values.')
+                raise ValueError(
+                    'Photon MGXS data contains non-finite values.')
 
             scatter = total - absorption
             production_sum = np.sum(production, axis=1)
@@ -1354,7 +1355,8 @@ class Library:
                             elif representation == 'angle':
                                 xsdata._absorption[i] = \
                                     np.subtract(xsdata._total[i], np.sum(
-                                        xsdata._scatter_matrix[i][:, :, :, :, 0],
+                                        xsdata._scatter_matrix[i][:,
+                                                                  :, :, :, 0],
                                         axis=3))
                     elif xsdata.scatter_format == 'histogram':
                         for i in range(len(xsdata.temperatures)):
@@ -1366,7 +1368,8 @@ class Library:
                             elif representation == 'angle':
                                 xsdata._absorption[i] = \
                                     np.subtract(xsdata._total[i], np.sum(np.sum(
-                                        xsdata._scatter_matrix[i][:, :, :, :, :],
+                                        xsdata._scatter_matrix[i][:,
+                                                                  :, :, :, :],
                                         axis=4), axis=3))
             # if only scatter matrices have been tallied, multiplicity cannot
             # be accounted for
@@ -1379,9 +1382,11 @@ class Library:
                 if 'scatter matrix' in self.mgxs_types:
                     scatt_mgxs = self.get_mgxs(domain, 'scatter matrix')
                 elif 'consistent scatter matrix' in self.mgxs_types:
-                    scatt_mgxs = self.get_mgxs(domain, 'consistent scatter matrix')
+                    scatt_mgxs = self.get_mgxs(
+                        domain, 'consistent scatter matrix')
                 else:
-                    raise ValueError(f'No scatter matrix found for {xsdata_name}.')
+                    raise ValueError(
+                        f'No scatter matrix found for {xsdata_name}.')
 
                 xsdata.set_scatter_matrix_mgxs(scatt_mgxs, temperature=temperature,
                                                xs_type=xs_type,
@@ -1471,7 +1476,7 @@ class Library:
                     else:
                         xsdata_name = xsdata_names[i]
 
-                    # Create XSdata and Macroscopic for this domain
+                    # Create XSdata for this domain
                     xsdata = self.get_xsdata(domain, xsdata_name,
                                              subdomain=subdomain)
                     mgxs_file.add_xsdata(xsdata)
@@ -1589,23 +1594,22 @@ class Library:
             geometry.root_universe = root
             materials = openmc.Materials()
 
-            for i, subdomain in enumerate(self.domains[0].indices):
+            for i, _ in enumerate(self.domains[0].indices):
                 xsdata = mgxs_file.xsdatas[i]
 
                 # Build the macroscopic and assign it to the cell of
                 # interest
-                macroscopic = openmc.Macroscopic(name=xsdata.name)
 
                 # Create Material and add to collection
                 material = openmc.Material(name=xsdata.name)
-                material.add_macroscopic(macroscopic)
+                material.add_macroscopic(xsdata.name)
                 materials.append(material)
 
                 # Set the materials for each of the universes
                 cells[i].fill = materials[i]
 
         else:
-            # Create a copy of the Geometry for these Macroscopics
+            # Create a copy of the Geometry for these materials
             geometry = copy.deepcopy(self.geometry)
             materials = openmc.Materials()
 
@@ -1615,12 +1619,9 @@ class Library:
             # Create the xsdata object and add it to the mgxs_file
             for i, domain in enumerate(self.domains):
                 xsdata = mgxs_file.xsdatas[i]
-
-                macroscopic = openmc.Macroscopic(name=xsdata.name)
-
                 # Create Material and add to collection
                 material = openmc.Material(name=xsdata.name)
-                material.add_macroscopic(macroscopic)
+                material.add_macroscopic(xsdata.name)
                 materials.append(material)
 
                 # Differentiate Geometry with new Material
@@ -1634,8 +1635,8 @@ class Library:
                     for cell in all_cells:
                         if not isinstance(cell.fill, openmc.Material):
                             warn('If the library domain includes a lattice or universe cell '
-                            'in conjunction with a consituent cell of that lattice/universe, '
-                            'the multi-group simulation will fail')
+                                 'in conjunction with a consituent cell of that lattice/universe, '
+                                 'the multi-group simulation will fail')
                         if cell.id == domain.id:
                             cell.fill = material
 
@@ -1665,7 +1666,8 @@ class Library:
         if require_complete:
             missing = supported_types - set(self.mgxs_types)
             if missing:
-                errors.append(f'missing required MGXS types: {sorted(missing)}')
+                errors.append(
+                    f'missing required MGXS types: {sorted(missing)}')
 
         if errors:
             raise ValueError(
@@ -1709,7 +1711,7 @@ class Library:
         # otherwise total must be provided
         if self.correction == 'P0':
             if ('transport' not in self.mgxs_types and
-                'nu-transport' not in self.mgxs_types):
+                    'nu-transport' not in self.mgxs_types):
                 error_flag = True
                 warn('If the "correction" parameter is "P0", then a '
                      '"transport" or "nu-transport" MGXS type is required.')
@@ -1739,7 +1741,7 @@ class Library:
         if 'nu-scatter matrix' not in self.mgxs_types and \
             'consistent nu-scatter matrix' not in self.mgxs_types and \
             'scatter matrix' not in self.mgxs_types and \
-            'consistent scatter matrix' not in self.mgxs_types:
+                'consistent scatter matrix' not in self.mgxs_types:
             error_flag = True
             warn('A "nu-scatter matrix", "consistent nu-scatter matrix", '
                  '"scatter matrix", or "consistent scatter matrix" MGXS '

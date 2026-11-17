@@ -64,13 +64,10 @@ def build_mgxs_library(convert):
 class MGXSTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Instantiate some Macroscopic Data
-        uo2_data = openmc.Macroscopic('UO2')
-
         # Instantiate some Materials and register the appropriate objects
         mat = openmc.Material(material_id=1, name='UO2 fuel')
         mat.set_density('macro', 1.1)
-        mat.add_macroscopic(uo2_data)
+        mat.add_macroscopic('UO2')
 
         # Instantiate a Materials collection and export to XML
         materials_file = openmc.Materials([mat])

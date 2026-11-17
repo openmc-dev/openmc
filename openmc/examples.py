@@ -4,7 +4,8 @@ import numpy as np
 
 import openmc
 
-PINCELL_PITCH = 1.26 # cm
+PINCELL_PITCH = 1.26  # cm
+
 
 def pwr_pin_cell() -> openmc.Model:
     """Create a PWR pin-cell model.
@@ -591,7 +592,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5') -> openmc.Model
     macros = []
     mats = []
     for i in range(len(mat_names)):
-        macros.append(openmc.Macroscopic('mat_' + str(i + 1)))
+        macros.append('mat_' + str(i + 1))
         mats.append(openmc.Material(name=mat_names[i]))
         mats[-1].set_density('macro', 1.0)
         mats[-1].add_macroscopic(macros[-1])
@@ -656,7 +657,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5') -> openmc.Model
     return model
 
 
-def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
+def _generate_c5g7_materials(second_temp=False) -> openmc.Materials:
     """Generate materials utilizing multi-group cross sections based on the
     the C5G7 Benchmark.
 
@@ -691,11 +692,16 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
                         1.1126e-01, 2.8278e-01])
     uo2_scatter_matrix = np.array(
         [[[0.1275370, 0.0423780, 0.0000094, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
-          [0.0000000, 0.3244560, 0.0016314, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
-          [0.0000000, 0.0000000, 0.4509400, 0.0026792, 0.0000000, 0.0000000, 0.0000000],
-          [0.0000000, 0.0000000, 0.0000000, 0.4525650, 0.0055664, 0.0000000, 0.0000000],
-          [0.0000000, 0.0000000, 0.0000000, 0.0001253, 0.2714010, 0.0102550, 0.0000000],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0012968, 0.2658020, 0.0168090],
+          [0.0000000, 0.3244560, 0.0016314, 0.0000000,
+              0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.4509400, 0.0026792,
+              0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.4525650,
+              0.0055664, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0001253,
+              0.2714010, 0.0102550, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000,
+              0.0012968, 0.2658020, 0.0168090],
           [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0085458, 0.2730800]]])
     uo2_scatter_matrix = np.rollaxis(uo2_scatter_matrix, 0, 3)
     uo2_fission = np.array([7.21206e-03, 8.19301e-04, 6.45320e-03, 1.85648e-02, 1.78084e-02,
@@ -712,11 +718,16 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
                         1.5001e-02, 3.7239e-02])
     h2o_scatter_matrix = np.array(
         [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0.0000000],
-          [0.0000000, 0.2823340, 0.1299400, 0.0006234, 0.0000480, 0.0000074, 0.0000010],
-          [0.0000000, 0.0000000, 0.3452560, 0.2245700, 0.0169990, 0.0026443, 0.0005034],
-          [0.0000000, 0.0000000, 0.0000000, 0.0910284, 0.4155100, 0.0637320, 0.0121390],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000714, 0.1391380, 0.5118200, 0.0612290],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0022157, 0.6999130, 0.5373200],
+          [0.0000000, 0.2823340, 0.1299400, 0.0006234,
+              0.0000480, 0.0000074, 0.0000010],
+          [0.0000000, 0.0000000, 0.3452560, 0.2245700,
+              0.0169990, 0.0026443, 0.0005034],
+          [0.0000000, 0.0000000, 0.0000000, 0.0910284,
+              0.4155100, 0.0637320, 0.0121390],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000714,
+              0.1391380, 0.5118200, 0.0612290],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000,
+              0.0022157, 0.6999130, 0.5373200],
           [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
     h2o_scatter_matrix = np.rollaxis(h2o_scatter_matrix, 0, 3)
 
@@ -770,7 +781,8 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
         uo2_xsdata.add_temperature(394.0)
         uo2_xsdata.set_total(0.5 * uo2_total, temperature=394.0)
         uo2_xsdata.set_absorption(0.5 * uo2_abs, temperature=394.0)
-        uo2_xsdata.set_scatter_matrix(0.5 * uo2_scatter_matrix, temperature=394.0)
+        uo2_xsdata.set_scatter_matrix(
+            0.5 * uo2_scatter_matrix, temperature=394.0)
         uo2_xsdata.set_fission(0.5 * uo2_fission, temperature=394.0)
         uo2_xsdata.set_nu_fission(0.5 * uo2_nu_fission, temperature=394.0)
         uo2_xsdata.set_chi(uo2_chi, temperature=394.0)
@@ -778,7 +790,8 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
         h2o_xsdata.add_temperature(394.0)
         h2o_xsdata.set_total(0.5 * h2o_total, temperature=394.0)
         h2o_xsdata.set_absorption(0.5 * h2o_abs, temperature=394.0)
-        h2o_xsdata.set_scatter_matrix(0.5 * h2o_scatter_matrix, temperature=394.0)
+        h2o_xsdata.set_scatter_matrix(
+            0.5 * h2o_scatter_matrix, temperature=394.0)
 
     mg_cross_sections = openmc.MGXSLibrary(groups)
     mg_cross_sections.add_xsdatas([uo2_xsdata, h2o_xsdata])
@@ -872,7 +885,7 @@ def _generate_subdivided_pin_cell(uo2, water) -> openmc.Universe:
     return pincell
 
 
-def random_ray_pin_cell(second_temp = False) -> openmc.Model:
+def random_ray_pin_cell(second_temp=False) -> openmc.Model:
     """Create a PWR pin cell example using C5G7 cross section data.
     cross section data.
 
@@ -908,7 +921,8 @@ def random_ray_pin_cell(second_temp = False) -> openmc.Model:
     ########################################
     # Define cell containing lattice and other stuff
     pitch = PINCELL_PITCH
-    box = openmc.model.RectangularPrism(pitch, pitch, boundary_type='reflective')
+    box = openmc.model.RectangularPrism(
+        pitch, pitch, boundary_type='reflective')
 
     pincell = openmc.Cell(fill=pincell, region=-box, name='pincell')
 
@@ -957,7 +971,7 @@ def random_ray_pin_cell(second_temp = False) -> openmc.Model:
     return model
 
 
-def random_ray_lattice(second_temp = False) -> openmc.Model:
+def random_ray_lattice(second_temp=False) -> openmc.Model:
     """Create a 2x2 PWR pin cell asymmetrical lattice example.
 
     This model is a 2x2 reflective lattice of fuel pins with one of the lattice
@@ -1024,7 +1038,8 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
 
     ########################################
     # Define cell containing lattice and other stuff
-    box = openmc.model.RectangularPrism(pitch*2, pitch*2, boundary_type='reflective')
+    box = openmc.model.RectangularPrism(
+        pitch*2, pitch*2, boundary_type='reflective')
 
     assembly = openmc.Cell(fill=lattice2x2, region=-box, name='assembly')
 
@@ -1164,23 +1179,18 @@ def random_ray_three_region_cube() -> openmc.Model:
     ###########################################################################
     # Create materials for the problem
 
-    # Instantiate some Macroscopic Data
-    source_data = openmc.Macroscopic('source')
-    void_data = openmc.Macroscopic('void')
-    absorber_data = openmc.Macroscopic('absorber')
-
-    # Instantiate some Materials and register the appropriate Macroscopic objects
+    # Instantiate some Materials and register the appropriate macroscopic data
     source_mat = openmc.Material(name='source')
     source_mat.set_density('macro', 1.0)
-    source_mat.add_macroscopic(source_data)
+    source_mat.add_macroscopic('source')
 
     void_mat = openmc.Material(name='void')
     void_mat.set_density('macro', 1.0)
-    void_mat.add_macroscopic(void_data)
+    void_mat.add_macroscopic('void')
 
     absorber_mat = openmc.Material(name='absorber')
     absorber_mat.set_density('macro', 1.0)
-    absorber_mat.add_macroscopic(absorber_data)
+    absorber_mat.add_macroscopic('absorber')
 
     # Instantiate a Materials collection and export to XML
     materials_file = openmc.Materials([source_mat, void_mat, absorber_mat])
@@ -1313,6 +1323,7 @@ def random_ray_three_region_cube() -> openmc.Model:
 
     return model
 
+
 def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     """Create a three region cube model with two external tally regions.
 
@@ -1398,23 +1409,18 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     ###########################################################################
     # Create materials for the problem
 
-    # Instantiate some Macroscopic Data
-    source_data = openmc.Macroscopic('source')
-    cavity_data = openmc.Macroscopic('cavity')
-    absorber_data = openmc.Macroscopic('absorber')
-
-    # Instantiate some Materials and register the appropriate Macroscopic objects
+    # Instantiate some Materials and register the appropriate macroscopic data
     source_mat = openmc.Material(name='source')
     source_mat.set_density('macro', 1.0)
-    source_mat.add_macroscopic(source_data)
+    source_mat.add_macroscopic('source')
 
     cavity_mat = openmc.Material(name='cavity')
     cavity_mat.set_density('macro', 1.0)
-    cavity_mat.add_macroscopic(cavity_data)
+    cavity_mat.add_macroscopic('cavity')
 
     absorber_mat = openmc.Material(name='absorber')
     absorber_mat.set_density('macro', 1.0)
-    absorber_mat.add_macroscopic(absorber_data)
+    absorber_mat.add_macroscopic('absorber')
 
     # Instantiate a Materials collection
     materials_file = openmc.Materials([source_mat, cavity_mat, absorber_mat])
@@ -1724,7 +1730,8 @@ def sphere_with_shielded_pocket() -> openmc.Model:
 
     source = openmc.IndependentSource()
     source.space = openmc.stats.Box(
-        [cavity_center_x - cavity_half_width, -cavity_half_width, -cavity_half_width],
+        [cavity_center_x - cavity_half_width, -
+            cavity_half_width, -cavity_half_width],
         [cavity_center_x + cavity_half_width, cavity_half_width, cavity_half_width])
     source.constraints = {'domains': [cavity_cell]}
     source.angle = openmc.stats.Isotropic()

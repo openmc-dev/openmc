@@ -64,18 +64,14 @@ mg_cross_sections_file.export_to_hdf5()
 ###############################################################################
 # Create materials for the problem
 
-# Instantiate some Macroscopic Data
-uo2_data = openmc.Macroscopic('UO2')
-h2o_data = openmc.Macroscopic('LWTR')
-
-# Instantiate some Materials and register the appropriate Macroscopic objects
+# Instantiate some Materials and register the appropriate macroscopic data
 uo2 = openmc.Material(name='UO2 fuel')
 uo2.set_density('macro', 1.0)
-uo2.add_macroscopic(uo2_data)
+uo2.add_macroscopic('UO2')
 
 water = openmc.Material(name='Water')
 water.set_density('macro', 1.0)
-water.add_macroscopic(h2o_data)
+water.add_macroscopic('LWTR')
 
 # Instantiate a Materials collection and export to XML
 materials_file = openmc.Materials([uo2, water])

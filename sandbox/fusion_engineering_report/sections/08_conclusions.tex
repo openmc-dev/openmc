@@ -1,0 +1,22 @@
+\section{Conclusions and scientific status}
+The runtime framework makes controlled changes to the loaded native neutron data sampled by OpenMC. Its most important response correction is avoiding stale MT205 production arrays when partial cross sections change. Evaluation-verified partial reaction scores, per-batch summation and exact rollback establish a physically consistent basis for the reported sensitivity studies.
+
+The saved benchmarks identify Li-7 breakup production and Li-6 MT105 as recurring leading pathways, with Be, F and Pb transport data important in the corresponding materials. The same layered inventory under two beam orientations changes Be-9 elastic conditional $S_T$ from about 0.091 to 0.389, and changes absolute elementary-effect magnitudes and constituent production rates. Geometry/irradiation and response choice must therefore accompany any statement of nuclear-data importance.
+
+Sparse PCEs predict held-out total responses well at the declared ranges, but do not validate the full uncertainty model. Three screening runs remain unconverged, the selected PCE spaces differ, shape coefficients have smaller individual physical amplitudes than XS coefficients, and order-two hyperbolic bases exclude interactions by construction. These limits preclude a universal uncertainty ranking or a claim that weak energy effects and physical interactions are absent.
+
+The ordered investigation sequence is Li-7 breakup/MT56, Li-6 production, geometry-relevant Be scattering/multiplication, FLiBe-specific F scattering/MT22, PbLi-specific Pb scattering/multiplication, then differential angular and unresolved/unsupported emission data. This is an evidence-led review list, not a prescribed experimental budget. Existing differential measurements, evaluated covariances and integral benchmarks must be reviewed before declaring data gaps or choosing new measurements.
+
+The full-360-degree Li$_2$O tokamak is an explicit next application with completed CSG/debug-transport/VTK demonstrations. Its segmented verified Li+Be yield is $1.1774\pm0.0082$ tritons/source at 2 GW source normalisation, but its nuclear-data sensitivity ordering has not been calculated. Enriched breeder, structure, oxygen and distributed source make extrapolation of the simple-model rankings unjustified. The next defensible study is a geometry-qualified, converged sensitivity analysis of that model, followed by covariance-informed uncertainty assessment and targeted experimental comparison.
+
+\begin{table}[tbp]\centering\small
+\caption{Classification of conclusions and outstanding work.}
+\begin{tabularx}{\linewidth}{p{0.26\linewidth}X}
+\toprule Status & Findings\\\midrule
+Numerically supported within declared studies & Corrected production responses; native mutation/readback/restoration; high held-out total-response $R^2$; strong selected channel effects; orientation-dependent shared-channel sensitivity.\\
+Conditional or suggestive & Full-space importance ordering in unconverged studies; transport mechanism attribution from constituent totals; relative measurement priorities; weak family contributions.\\
+Not established & Evaluated covariance uncertainty; complete all-constituent production for PbLi/tokamak; exact energy-space direct/indirect decomposition; absent physical interactions; geometry-independent ranking.\\
+Demonstrated tokamak capabilities & Native CSG/XML/loading, three fidelity debug runs, scoped production/heating/flux scores, finite geometry tests, sampled VTK readback.\\
+Not yet evaluated for tokamak & Morris/PCE/Sobol indices, energy-resolved sensitivity, high-statistics magnet shielding, engineering qualification and fuel-cycle self-sufficiency.\\
+\bottomrule
+\end{tabularx}\end{table}

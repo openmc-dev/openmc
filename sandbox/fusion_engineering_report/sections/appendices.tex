@@ -1,0 +1,71 @@
+\section{Source-code traceability}
+\label{app:source}
+Line numbers refer to the inspected working-tree snapshot; the distributed data manifest identifies copied artifacts. They can change after later edits. The report preparation script reads saved outputs and does not run transport.
+
+\begin{longtable}{p{0.45\linewidth}p{0.48\linewidth}}
+\caption{Audited implementation anchors.}\\
+\toprule Source anchor & Scientific relevance\\\midrule\endfirsthead
+\toprule Source anchor & Scientific relevance\\\midrule\endhead
+\path{src/nuclide.cpp}:555, \texttt{Nuclide::rebuild\_derived\_xs} & Clears/rebuilds transport-derived arrays; does not reconstruct the cached MT205 reaction array.\\
+\path{src/nuclide.cpp}:1496 & C wrapper for derived-XS rebuild.\\
+\path{src/tallies/tally_scoring.cpp}:1071--1099 & Generic nuclide-resolved reaction scorer calls \texttt{get\_nuclide\_xs}, with density and flux weighting.\\
+\path{openmc/data/neutron.py}:402--409,634--641 & Export/redundant handling preserves production MTs including 205 as stored redundant reactions.\\
+\path{src/secondary_data.cpp}:598,615,668,697 & Reaction info, owned backups, restoration and XS validation C interfaces.\\
+\path{src/secondary_data.cpp}:714,738,758,792 & Angular setter, native energy/angular sampling and snapshot creation.\\
+\path{openmc/lib/secondary.py}:93,137,178,279 & Product/emission/angular inspection and native angle mutation wrappers.\\
+\path{openmc/lib/perturbation.py}:68,203--313 & Native histogram/linear areas; prevalidated combined context, deep backups, apply/rebuild, reverse restoration.\\
+\path{sandbox/analysis_codes/production.py} & Verified mapping, original evaluation evidence, baseline reconstruction, per-batch weighted response and controlled checks.\\
+\path{sandbox/analysis_codes/discovery.py}, \path{thresholds.py} & Representation eligibility and threshold filtering; unsupported targets retained in audit.\\
+\path{sandbox/analysis_codes/perturbations.py} & Strict centred, shared-budget nodal shape modes and native readback.\\
+\path{sandbox/analysis_codes/morris.py} & Six-level trajectories, unit-coordinate effects, paired/noise statistics and bootstrap diagnostics.\\
+\path{sandbox/analysis_codes/family_workflow.py}:62--129 & Independent high-history training/validation LHS designs and execution.\\
+\path{sandbox/analysis_codes/pce.py}, \path{sobol.py} & Probability-orthonormal Legendre basis; weighted ridge/pruning; exact support-based variance decomposition.\\
+\path{sandbox/analysis_codes/openturns_pce.py}, \path{validation.py} & Optional prewhitened LARS adapter; independent validation/noise diagnostics.\\
+\path{tokomak_analysis/} & Separate parametric CSG application, verified channel tallies, native-query export and tests.\\
+\bottomrule
+\end{longtable}
+
+\section{Complete selected-input Sobol results}
+\label{app:indices}
+Every retained parameter is listed below. The shorthand P1/P2 is an angular perturbation mode, E1/E2 an outgoing-energy mode; product/distribution identities remain in the supplied original CSV files. ``Resolved'' is the saved coefficient-noise diagnostic, conditional on basis and inputs; it is not a full uncertainty interval. A printed zero is a fitted coefficient result, not proof of physical irrelevance. Nonretained parameters have not been assigned zero indices.
+\input{tables/li_analysis_sobol.tex}
+\input{tables/flibe_analysis_sobol.tex}
+\input{tables/lipb_analysis_sobol.tex}
+\input{tables/be_li_layers_sobol.tex}
+\input{tables/be_li_layers_x_beam_sobol.tex}
+
+\section{Saved-data reproducibility and manuscript use}
+The project contains \texttt{main.tex}, section sources, \texttt{references.bib}, figures, generated tables and a compact evidence snapshot. Upload the contents of the project ZIP to Overleaf, choose \textbf{pdfLaTeX} and \textbf{main.tex}, and compile. BibTeX is used, not Biber; standard TeX Live packages suffice. Author names, affiliations and acknowledgements should be completed by the research team. This is a technical manuscript draft, not an assertion of journal acceptance or experimental validation.
+
+Build locally with:
+\begin{lstlisting}
+cd fusion_engineering_report
+pdflatex -interaction=nonstopmode -halt-on-error main.tex
+bibtex main
+pdflatex -interaction=nonstopmode -halt-on-error main.tex
+pdflatex -interaction=nonstopmode -halt-on-error main.tex
+\end{lstlisting}
+
+To regenerate comparative figures/tables from the repository's saved results without transport:
+\begin{lstlisting}
+cd /sandbox/openmc
+/opt/openmc-venv/bin/python fusion_engineering_report/prepare_report.py
+\end{lstlisting}
+The packaged snapshot supports checking the quoted tables and archived observations outside the repository; regenerating from the current repository requires the original result directories. No nuclear-data libraries or binary OpenMC executable are included in the manuscript ZIP.
+
+The framework's transport reproduction commands, subject to explicit configured budgets and installed matching library, are:
+\begin{lstlisting}
+python -m sandbox.analysis_codes Li_analysis --dry-run
+python -m sandbox.analysis_codes Li_analysis --resume
+python -m sandbox.analysis_codes FLiBe_analysis --resume
+python -m sandbox.analysis_codes LiPb_analysis --resume
+python -m sandbox.analysis_codes Be_Li_layers --resume
+python -m sandbox.analysis_codes Be_Li_layers_x_beam --resume
+# Refit saved data only, without new transport:
+python -m sandbox.analysis_codes FLiBe_analysis --reanalyse
+# Native-CSG tokamak demonstration:
+python -m sandbox.tokomak_analysis.main --fidelity 2 \
+ --particles 2000 --batches 10 --run --debug \
+ --output sandbox/tokomak_analysis/results/reproduction
+\end{lstlisting}
+Saved checkpoints must be checked for matching configuration fingerprints before resumption. Editing model/prior/response definitions requires a new result set; old cached-MT205 values cannot be relabelled as corrected production. Current scripts or libraries may evolve, so preserve the manifest, code snapshot and actual per-run provenance when reproducing historical results.

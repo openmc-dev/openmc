@@ -1,0 +1,10 @@
+# Requires the compiled OpenMC fork and its Python package; do not replace it
+# with an unrelated pip OpenMC distribution.
+numpy
+scipy
+pandas
+matplotlib
+h5py
+vtk>=9.2
+pytest
+psutil

@@ -44,6 +44,8 @@ public:
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+
   int n_bodies_;      //!< Number of particles distributed
   double mass_ratio_; //!< Total mass of particles [neutron mass]
   double A_;          //!< Atomic weight ratio

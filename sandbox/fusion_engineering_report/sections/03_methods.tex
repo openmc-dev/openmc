@@ -1,0 +1,131 @@
+\section{Perturbation probability model and statistical methods}
+\label{sec:methods}
+\subsection{Independent sensitivity priors and native-grid constraints}
+Each retained scalar coefficient is mapped from a unit coordinate $u_i\sim U(0,1)$ to
+\begin{equation}
+\delta_i=a(2u_i-1),\qquad a=0.20,\qquad \Var(\delta_i)=a^2/3.\label{eq:prior}
+\end{equation}
+These independent priors are hypothetical controlled sensitivity ranges, not evaluated covariance uncertainty. A symmetric prior need not produce a symmetric output distribution, equal numbers of increases/decreases in output, or zero mean response shift. Nonlinearity, normalisation and transport change the push-forward distribution.
+
+For an XS whole-reaction parameter, the analysed operation is
+\begin{equation}
+\sigma'_r(E)=\sigma_{r,0}(E)(1+\delta_r).\label{eq:xs}
+\end{equation}
+Threshold zeros and native energy grids are preserved. The toolkit also has positive exponential parameterisations, but Eq.~\eqref{eq:xs} defines the reported whole-reaction studies. A native threshold above the 14 MeV source maximum removes \emph{that reaction's perturbation parameters}, including associated energy/angular modes; it does not delete the reaction from transport or from the production score. This rule is specific to the bounded source/non-fission studies, not a universal cutoff for arbitrary multiplying or broad-spectrum systems.
+
+For tabulated PDFs, multiplying every ordinate by 1.2 and renormalising would make no shape change. Instead the shared strict-bound generator constructs nodal energy modes from $z=E_{\rm out}/\max(E_{\rm out,max},1\,\mathrm{eV})$, with $f_1=z$, $f_2=z^2$, and angular modes from $z=\mu=\cos\theta$,
+\begin{equation}
+P_1(\mu)=\mu,\qquad P_2(\mu)=(3\mu^2-1)/2.
+\end{equation}
+Let $\mathcal I_h$ be integration using the original table's interpolation, and $p_0$ its continuous portion. Strict mode centres and bounds each nodal basis:
+\begin{equation}
+\bar f_k=\frac{\mathcal I_h[p_0 f_k]}{\mathcal I_h[p_0]},\quad
+ g_k=\frac{f_k-\bar f_k}{\max_j|f_k(x_j)-\bar f_k|},\quad
+\widetilde p_j=p_{0,j}\left(1+\frac12\sum_{k=1}^{2}\delta_k g_{k,j}\right).\label{eq:shape}
+\end{equation}
+A zero basis is handled numerically without dividing by zero. A final normalisation enforces the unchanged continuous mass $M_c=1-\sum_{j=1}^{n_d}P_j$:
+\begin{equation}
+p'_j=\widetilde p_j\frac{M_c}{\mathcal I_h[\widetilde p]},\qquad
+\sum_{j=1}^{n_d}P_j+\mathcal I_h[p']=1.\label{eq:pdfnorm}
+\end{equation}
+Discrete probabilities and support remain fixed. Provided the baseline and candidate satisfy tolerance, strict mode verifies the final pointwise ratio against $1\pm a$. The CDF is rebuilt from native segment areas, not independently guessed. Positivity follows from $|g_k|\le1$ and the budget bound, with additional finite-value checks.
+
+\textbf{Unequal individual amplitudes matter.} The factor $1/2$ in Eq.~\eqref{eq:shape} remains even if one mode is not selected. One scalar shape coefficient varied alone can change the unnormalised local PDF by at most $\pm10\%$, whereas a scalar XS coefficient changes its XS by $\pm20\%$. Two shape modes jointly share the $\pm20\%$ budget. Consequently the reported family fractions are valid for this declared input model, but do not establish an intrinsic XS-versus-angle-versus-energy hierarchy independent of prior choice. A first-order variance contribution scales approximately with the square of the amplitude. Equalising coefficient bounds is not the same as equalising physical data perturbations or evaluated uncertainties.
+
+\subsection{Interpolation, discrete mass and native sampling}
+For adjacent native points $(x_j,p_j)$, segment areas are
+\begin{equation}
+A_j=\begin{cases}
+(x_{j+1}-x_j)p_j,&\text{histogram},\\
+\frac12(x_{j+1}-x_j)(p_j+p_{j+1}),&\text{linear--linear}.
+\end{cases}\label{eq:areas}
+\end{equation}
+The supported mutating adapter does not silently approximate other interpolation rules. CDF increments are $A_j$; discrete-line CDF entries use cumulative probability masses. A histogram must be plotted as a step, not as a linearly interpolated PDF. Angular PDFs are defined in $\mu$ on $[-1,1]$, with reference frame preserved. If expressed as density in degrees,
+\begin{equation}
+p_{\theta_{\deg}}(\theta_{\deg})=p_\mu(\cos\theta)\sin\theta\,\pi/180.
+\end{equation}
+Relabelling an axis without that Jacobian would not give a density per degree. This report uses native $p(\mu)$.
+
+An uncorrelated law factorises its native energy and angle components. A correlated law instead has structure such as
+\begin{equation}
+p(E_{\rm out},\mu\mid E_{\rm in})=p(E_{\rm out}\mid E_{\rm in})p(\mu\mid E_{\rm in},E_{\rm out}),
+\end{equation}
+which must not be replaced by an invented independent angular PDF. The independent-tabular studies exclude these unsupported mutations and retain their reasons in discovery inventories. Native sampler tests and saved readback plots support the implemented path, but unsupported channels require separate future development.
+
+\subsection{Morris elementary-effects screening}
+Morris screening \citep{morris} explores the full eligible parameter set efficiently before selecting the expensive surrogate dimension. With $d$ parameters, $r$ trajectories and $L=6$ grid levels,
+\begin{equation}
+\Delta=\frac{L}{2(L-1)}=0.6,\qquad N_{\rm Morris}=r(d+1).\label{eq:morriscost}
+\end{equation}
+Each random trajectory changes each coordinate once, with valid positive or negative grid steps. The elementary effect in the \emph{unit-coordinate} convention is
+\begin{equation}
+EE_{i,t}=\frac{R(\bm u_{t,k+1})-R(\bm u_{t,k})}{u_{i,t,k+1}-u_{i,t,k}}.\label{eq:ee}
+\end{equation}
+The physical coefficient step is $2a\Delta=0.24$, not 0.6 and not a one-sided 20\% step. The derivative with respect to $\delta$ differs by a factor $2a=0.4$. Across trajectories,
+\begin{equation}
+\mu_i=\frac1r\sum_tEE_{i,t},\quad
+\mu_i^*=\frac1r\sum_t|EE_{i,t}|,\quad
+s_i=\left[\frac1{r-1}\sum_t(EE_{i,t}-\mu_i)^2\right]^{1/2}.\label{eq:morrisstats}
+\end{equation}
+$\mu$ is signed, $\mu^*$ avoids cancellation, and $s_i$ reflects nonlinear/interaction variation \emph{plus Monte Carlo noise}. It is not a pure interaction measure.
+
+For independent endpoint estimates the EE variance is $(s_A^2+s_B^2)/\Delta^2$. For same-seed endpoints,
+\begin{equation}
+\widehat{\Var}(EE)=\frac{s_A^2+s_B^2-2\widehat{\Cov}(\widehat R_A,\widehat R_B)}{\Delta^2}.\label{eq:eenoise}
+\end{equation}
+The workflow uses paired batch differences where configured, rather than assuming common seeds always reduce variance. Whole-trajectory bootstrap resampling retains dependence among adjacent effects. The saved convergence diagnostics compare split-half rank correlation, top-ten overlap, relative confidence widths and statistical resolution of leading effects. A resolved effect or a good PCE does not by itself establish Morris convergence; a small unresolved effect cannot be declared zero.
+
+Selection is performed within XS, energy and angle families, with reserved diagnostic inputs. Thus the retained set is not simply the global top five, nor a proof that excluded parameters are negligible. The complete retained parameter identities and all screened Morris statistics are supplied with the manuscript.
+
+\subsection{Independent training design and Legendre PCE}
+After screening, the workflow runs a \emph{new} high-history Latin-hypercube design over the selected coordinates. Training and held-out validation use distinct seeds. Morris trajectory observations are \textbf{not automatically pooled} into these training data: they are low-history, path-structured and vary coordinates that may be excluded from the reduced surrogate. They could only be reused after defining a compatible model and noise treatment, which is not the reported procedure.
+
+For $\xi_i=2u_i-1\sim U(-1,1)$, the probability-orthonormal polynomial is
+\begin{equation}
+\Psi_{\bm\alpha}(\bm\xi)=\prod_{i=1}^{d_a}\sqrt{2\alpha_i+1}\,P_{\alpha_i}(\xi_i),\qquad
+\E[\Psi_{\bm\alpha}\Psi_{\bm\beta}]=\delta_{\bm\alpha\bm\beta}.
+\end{equation}
+The expansion is \citep{sudret,blatman}
+\begin{equation}
+\widehat R(\bm\xi)=\sum_{\bm\alpha\in\mathcal A}c_{\bm\alpha}\Psi_{\bm\alpha}(\bm\xi).\label{eq:pce}
+\end{equation}
+Total-degree bases have $\binom{d_a+p}{p}$ candidate terms. The implemented hyperbolic set obeys
+\begin{equation}
+\mathcal A=\left\{\bm\alpha:\left(\sum_i\alpha_i^q\right)^{1/q}\le p,\quad
+|\operatorname{supp}\bm\alpha|\le2\right\},\qquad q=0.75.\label{eq:basis}
+\end{equation}
+Candidate orders are two and three. At $p=2$, a pair term $(1,1)$ has hyperbolic degree $2^{1/0.75}\approx2.520>2$: \textbf{all interaction terms are excluded}. At $p=3$, pure pair terms can enter, but three-way interactions remain prohibited. This is an important interpretation limit of the saved models.
+
+The NumPy backend uses inverse-error weighted ridge fitting followed by weak-coefficient pruning/refitting, while retaining univariate main effects. Its threshold is relative to the largest fitted nonconstant coefficient; it is not the LARS algorithm. With design matrix $A_{k\alpha}=\Psi_\alpha(\bm\xi_k)$ and weights $W_{kk}=1/\max(s_k,s_{\rm floor})$, the ridge stage solves
+\begin{equation}
+\widehat{\bm c}=\arg\min_{\bm c}\{\|W(A\bm c-\bm y)\|_2^2+\lambda\bm c^\top D\bm c\},\quad D=\operatorname{diag}(0,1,\ldots,1),\quad\lambda=10^{-6}.\label{eq:wls}
+\end{equation}
+Writing the resulting linear estimator as $B\bm y$, its conditional observation-noise covariance is $B\operatorname{diag}(s_k^2)B^\top$. This excludes model discrepancy, basis-selection uncertainty and evaluated nuclear-data covariance. Four-fold training-only cross-validation chooses the polynomial order; the final independent validation set is not used for that selection.
+
+The optional OpenTURNS backend \citep{openturns} provides weighted LARS/corrected-leave-one-out selection adapted to the same orthonormal basis and coefficient diagnostics. The installed adapter prewhitens observations and basis explicitly; its weight coordinate is not a physical uncertain input. The reported studies use the \textbf{NumPy backend}. No OpenTURNS accuracy advantage or nuclear-physics correction is inferred from its availability. A backend comparison must reuse identical data and held-out tests and cannot fix stale scoring, missing channels or an unsuitable prior.
+
+\subsection{Validation, response distributions and Sobol decomposition}
+For $n_v$ held-out observations,
+\begin{equation}
+R^2=1-\frac{\sum_k(\widehat R_k-R_k)^2}{\sum_k(R_k-\overline R)^2},\qquad
+\mathrm{RMSE}=\sqrt{n_v^{-1}\sum_k(\widehat R_k-R_k)^2}.\label{eq:val}
+\end{equation}
+The saved ``normalised RMSE'' divides by $|\overline R|$, not the input-induced standard deviation. Both scales are considered here. Residuals must also be compared with transport standard errors. A high $R^2$ can coexist with residuals larger than Monte Carlo noise and can fail to resolve a weak individual Sobol component.
+
+For an orthonormal PCE,
+\begin{equation}
+\E[\widehat R]=c_{\bm0},\qquad V=\Var(\widehat R)=\sum_{\bm\alpha\ne\bm0}c_{\bm\alpha}^2.\label{eq:pcevar}
+\end{equation}
+The variance attribution under independent inputs \citep{sobol,sudret} is
+\begin{equation}
+S_i=\frac{\sum_{\operatorname{supp}\bm\alpha=\{i\}}c_{\bm\alpha}^2}{V},\qquad
+S_{T_i}=\frac{\sum_{\alpha_i>0}c_{\bm\alpha}^2}{V}.\label{eq:sobol}
+\end{equation}
+For a family/group $G$, its closed and total indices are
+\begin{equation}
+S_G=\frac{\sum_{\varnothing\ne\operatorname{supp}\bm\alpha\subseteq G}c_{\bm\alpha}^2}{V},\quad
+S_{T_G}=\frac{\sum_{\operatorname{supp}\bm\alpha\cap G\ne\varnothing}c_{\bm\alpha}^2}{V}.\label{eq:groups}
+\end{equation}
+Summing individual total indices would double-count interactions and is not how the implementation groups coefficients. The saved resolution flags use component signal relative to propagated coefficient noise. They are not comprehensive confidence intervals on the indices. In particular, $S_T-S=0$ for an additive basis by construction and cannot exclude an unmodelled physical interaction.
+
+The surrogate is sampled at 100,000 independent input vectors for response histograms and quantiles. Those cheap evaluations do not create additional transport information or reduce model bias. Direct validation observations are overlaid as finite samples with transport noise, not as an exact reference PDF. All distributions and indices are conditional on the retained inputs and assumed independent priors, with other inputs fixed at baseline.

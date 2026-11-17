@@ -43,8 +43,13 @@ public:
 
   // Accessors
   AngleDistribution& angle() { return angle_; }
+  const AngleDistribution& angle() const { return angle_; }
+  EnergyDistribution* energy() { return energy_.get(); }
+  const EnergyDistribution* energy() const { return energy_.get(); }
 
 private:
+  friend class SecondaryDataReader;
+
   AngleDistribution angle_;               //!< Angle distribution
   unique_ptr<EnergyDistribution> energy_; //!< Energy distribution
 };

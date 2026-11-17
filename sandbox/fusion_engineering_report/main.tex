@@ -1,0 +1,56 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=23mm]{geometry}
+\usepackage{mathpazo,amsmath,amssymb,bm}
+\usepackage{graphicx,booktabs,longtable,array,tabularx,multirow}
+\usepackage{caption,subcaption,float,placeins}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{xcolor,hyperref,url,microtype}
+\usepackage{listings}
+\hypersetup{colorlinks=true,linkcolor=blue!45!black,citecolor=green!35!black,urlcolor=blue!60!black,pdftitle={Geometry-dependent nuclear-data sensitivity of tritium production with runtime OpenMC perturbations}}
+\graphicspath{{figures/}}
+\setlength{\parskip}{0.35em}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{2em}
+\captionsetup{font=small,labelfont=bf}
+\lstset{basicstyle=\ttfamily\small,breaklines=true,frame=single,backgroundcolor=\color{black!3},columns=fullflexible}
+\newcommand{\LiSix}{\ensuremath{{}^{6}\mathrm{Li}}}
+\newcommand{\LiSeven}{\ensuremath{{}^{7}\mathrm{Li}}}
+\newcommand{\BeNine}{\ensuremath{{}^{9}\mathrm{Be}}}
+\newcommand{\F}{\ensuremath{{}^{19}\mathrm{F}}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\figone}[4]{\begin{figure}[tbp]\centering\includegraphics[width=#2\linewidth]{#1}\caption{#3}\label{#4}\end{figure}}
+\title{Geometry-dependent nuclear-data sensitivity of tritium production:\\runtime OpenMC perturbations, Morris screening, polynomial chaos and a DEMO-inspired Li$_2$O tokamak}
+\author{Research manuscript draft\\\small Author names and affiliations to be completed before submission}
+\date{6 November 2026\\\small Evidence snapshot of the modified OpenMC repository; not a peer-reviewed publication}
+\begin{document}
+\maketitle
+\begin{abstract}
+A runtime nuclear-data perturbation workflow is documented and assessed for fusion tritium-production studies. Native OpenMC reaction cross sections and supported independent secondary-energy and angular tables are modified through C++/C/Python interfaces, with native sampling, validation, derived-cross-section rebuilding and exact rollback. A critical scoring correction replaces cached MT205 production arrays with evaluation-verified reaction-specific production tallies. Five saved benchmark studies---a lithium sphere, FLiBe sphere, PbLi sphere and a layered Li/Be cube in two irradiation orientations---are examined using global Morris screening followed by independently validated sparse Legendre polynomial chaos expansions (PCEs) and coefficient-based Sobol indices. Between 163 and 706 parameters were screened; 24--30 inputs were retained. Held-out total-response $R^2$ values range from 0.97925 to 0.99818. The same layered material inventory exhibits a change in the Be-9 elastic total-order index from 0.0913 for a layer-parallel beam to 0.3891 for a layer-normal beam, demonstrating the relevance of transport geometry and irradiation conditions. Li-7 breakup production, particularly the evaluated MT56 branch, Li-6 MT105, and geometry-specific Be, F and Pb scattering/multiplication channels emerge as priorities for further nuclear-data investigation. These are conditional rankings under hypothetical independent perturbations, not covariance-based measurement priorities: three Morris studies remain unconverged, PDF modes have smaller individual bounds than cross sections, and several selected PCE bases exclude interactions by construction. Finally, a full-360-degree native-CSG DEMO-inspired tokamak with a Li$_2$O/Be blanket is described. Its higher-statistics segmented demonstration gives verified Li+Be production of $1.1774\pm0.0082$ tritons per source neutron. Tokamak sensitivity rankings have not yet been calculated. All numerical claims are traceable to saved artifacts, and the portable manuscript contains equations, figures, complete selected-input tables and reproduction instructions.
+\end{abstract}
+\textbf{Keywords:} fusion neutronics; tritium breeding; nuclear data; OpenMC; Morris; polynomial chaos; Sobol indices; geometry dependence; Li$_2$O blanket.
+\clearpage
+\tableofcontents
+\clearpage
+\input{sections/01_physics}
+\input{sections/02_runtime}
+\input{sections/03_methods}
+\input{sections/04_models}
+\input{sections/05_results}
+\FloatBarrier
+\input{sections/06_priorities}
+\FloatBarrier
+\input{sections/07_tokamak}
+\FloatBarrier
+\input{sections/08_conclusions}
+\FloatBarrier
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+\clearpage
+\appendix
+\input{sections/appendices}
+\end{document}

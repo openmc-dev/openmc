@@ -44,6 +44,8 @@ public:
   }
 
 private:
+  friend class SecondaryDataReader;
+
   // Data members
   std::string name_;          //!< Name of nuclide
   double half_life_ {0.0};    //!< Half-life in [s]
@@ -81,6 +83,8 @@ public:
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+
   const Distribution* photon_energy_;
 };
 

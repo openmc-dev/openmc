@@ -1,5 +1,7 @@
 set(TEST_NAMES
   test_distribution
+  test_emission_spectrum
+  test_secondary_data
   test_file_utils
   test_tally
   test_interpolate

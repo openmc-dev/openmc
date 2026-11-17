@@ -1,0 +1,199 @@
+{
+  "major_radius": 910.0,
+  "minor_radius": 290.0,
+  "elongation": 1.65,
+  "triangularity": 0.33,
+  "contour_points": 32,
+  "plasma_wall_gap": 22.5,
+  "tf_coils": 16,
+  "tf_minor_radius": 590.0,
+  "tf_elongation": 1.45,
+  "tf_triangularity": 0.15,
+  "tf_radial_build": 75.0,
+  "tf_half_width": 35.0,
+  "tf_case": 6.0,
+  "tf_insulation": 2.0,
+  "pf_coils": [
+    {
+      "radius": 430,
+      "z": 1030,
+      "width": 100.0,
+      "height": 65.0
+    },
+    {
+      "radius": 1050,
+      "z": 1120,
+      "width": 100.0,
+      "height": 65.0
+    },
+    {
+      "radius": 1750,
+      "z": 450,
+      "width": 100.0,
+      "height": 65.0
+    },
+    {
+      "radius": 1750,
+      "z": -450,
+      "width": 100.0,
+      "height": 65.0
+    },
+    {
+      "radius": 1050,
+      "z": -1120,
+      "width": 100.0,
+      "height": 65.0
+    },
+    {
+      "radius": 430,
+      "z": -1030,
+      "width": 100.0,
+      "height": 65.0
+    }
+  ],
+  "cs_inner_radius": 65.0,
+  "cs_outer_radius": 165.0,
+  "cs_height": 1080.0,
+  "cs_modules": 6,
+  "cs_gap": 2.0,
+  "support_spine_radius": 60.0,
+  "support_radii": [
+    172.0,
+    195.0
+  ],
+  "support_height": 1300.0,
+  "column_shield_radii": [
+    205.0,
+    225.0
+  ],
+  "column_shield_height": 1200.0,
+  "pf_case": 6.0,
+  "divertor_inner_target": [
+    [
+      -180.0,
+      18.5
+    ],
+    [
+      -130.0,
+      -66.5
+    ]
+  ],
+  "divertor_outer_target": [
+    [
+      50.0,
+      28.5
+    ],
+    [
+      -55.0,
+      -66.5
+    ]
+  ],
+  "divertor_armour": 0.8,
+  "divertor_copper": 1.6,
+  "divertor_water": 1.0,
+  "divertor_support": 3.6,
+  "cassette_radial_offsets": [
+    -170.0,
+    -10.0
+  ],
+  "cassette_vertical_offsets": [
+    -101.5,
+    -73.5
+  ],
+  "cassette_coolant_radial_offsets": [
+    -150.0,
+    -30.0
+  ],
+  "cassette_coolant_vertical_offsets": [
+    -91.5,
+    -83.5
+  ],
+  "cassette_liner": 2.0,
+  "cs_case": 5.0,
+  "cs_insulation": 2.0,
+  "blanket_inboard": 75.5,
+  "blanket_outboard": 98.2,
+  "blanket_bottom": -400.0,
+  "toroidal_modules_per_sector": 3,
+  "poloidal_modules": 16,
+  "toroidal_gap": 1.0,
+  "poloidal_gap_cm": 1.0,
+  "module_sidewall": 0.5,
+  "poloidal_sidewall_cm": 0.5,
+  "armour": 0.2,
+  "fw_front_steel": 0.8,
+  "fw_cooling": 1.0,
+  "fw_rear_steel": 0.2,
+  "fw_helium_fraction": 0.6,
+  "breeder_cycles": 3,
+  "breeder_fraction": 0.48,
+  "multiplier_fraction": 0.45,
+  "cooling_fraction": 0.07,
+  "backplate": 3.0,
+  "manifold": 12.0,
+  "manifold_helium_fraction": 0.5,
+  "bed_structure_fraction": 0.03,
+  "cooling_helium_fraction": 0.6,
+  "grouped_channels": 6,
+  "ribs_per_module": 3,
+  "enrichment": [
+    0.6,
+    0.6,
+    0.6
+  ],
+  "li2o_solid_density": 2.013,
+  "breeder_packing": 0.64,
+  "multiplier_packing": 0.64,
+  "multiplier": "Be",
+  "helium_pressure_mpa": 8.0,
+  "purge_pressure_mpa": 0.2,
+  "breeder_temperature": 900.0,
+  "structure_temperature": 600.0,
+  "coolant_temperature": 673.15,
+  "transport_magnet_temperature": 293.6,
+  "operating_magnet_temperature": 4.5,
+  "vessel_gap": 10.0,
+  "vessel_inner_wall": 3.6,
+  "vessel_interwall": 50.4,
+  "vessel_outer_wall": 6.0,
+  "vessel_steel_fraction": 0.6,
+  "thermal_gap": 10.0,
+  "thermal_shield": 5.0,
+  "world_radius": 2400.0,
+  "fidelity": 1,
+  "fusion_power_mw": 2000.0,
+  "source_energy_ev": 14100000.0,
+  "source_energy_sigma_ev": 0.0,
+  "radial_profile_power": 0.0,
+  "poloidal_asymmetry": 0.0,
+  "source_bank_size": 100000,
+  "particles": 100,
+  "batches": 4,
+  "seed": 20261106,
+  "threads": 2,
+  "coupled_photons": true,
+  "mesh_dimension": [
+    32,
+    32,
+    24
+  ],
+  "vtk_dimension": [
+    96,
+    96,
+    80
+  ],
+  "vtk_origin": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "vtk_extent": [
+    1900.0,
+    1900.0,
+    1250.0
+  ],
+  "enable_mesh": false,
+  "enable_heating": true,
+  "enable_exposure": true,
+  "temperature_tolerance": 1000.0
+}

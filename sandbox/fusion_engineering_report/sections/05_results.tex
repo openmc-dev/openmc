@@ -1,0 +1,74 @@
+\section{Sensitivity and uncertainty results}
+\label{sec:results}
+\subsection{Morris screening: robust signals and remaining uncertainty}
+Figure~\ref{fig:morris} compares leading elementary effects, while the complete searchable CSV tables contain all 163--706 screened parameters per model. Effects retain their unit-coordinate scaling, so raw magnitudes should not be compared across very different response levels without considering the scale of $R_T$.
+
+\figone{morris_comparison.pdf}{1.0}{Ten largest total-response Morris effects per benchmark, with trajectory-bootstrap 95\% intervals. The restricted figure is a comparative view, not the full parameter inventory; complete statistics and resolution flags are supplied in \texttt{data/}.}{fig:morris}
+\figone{morris_convergence.pdf}{1.0}{Saved ranking-stability diagnostics as trajectories accumulate. Dashed lines mark rank/overlap thresholds, but the full stopping criterion also checks effect resolution and interval widths. A satisfactory curve in one panel does not imply complete convergence.}{fig:morrisconv}
+
+Li-7 MT56 and Li-6 MT105 lead the Li/FLiBe screening, PbLi is led by Li-6 MT105, and both layered models show a strong Li-7 MT56 signal. At 20 trajectories the final split-half rank correlations are 0.9778 (Li), 0.9208 (FLiBe), 0.9600 (PbLi), 0.9282 (parallel layers) and 0.8926 (perpendicular layers). The saved stopping criterion passes only Li and parallel layers. The three failures must remain explicit even though their leading signals and total-response PCE fits are useful. The present evidence does not establish a converged complete ordering of all weak parameters.
+
+\subsection{PCE validation and probability distributions}
+\begin{table}[tbp]\centering\small
+\caption{Selected sparse-PCE fits for the total response. $d_a$ is the retained dimension; $p$ the selected order; $M$ the candidate hyperbolic basis size. The terms may have zero fitted coefficients after sparse pruning.}
+\input{tables/validation.tex}\label{tab:validation}
+\end{table}
+The selected orders are three for Li/PbLi and two for FLiBe/both cubes. Held-out RMSE relative to the validation response standard deviation is approximately 4.24\%, 7.30\%, 4.36\%, 5.79\% and 14.33\%, respectively. These are more informative for sensitivity than error normalised only to a large nonzero mean. All total responses pass the saved acceptance rule, which permits a sufficiently high $R^2$ or noise-consistent residuals, with resolved surrogate variance.
+
+The average squared noise-standardised residual is about 1.43 (Li), 1.21 (FLiBe), 9.69 (PbLi), 3.09 (parallel layers) and 9.40 (perpendicular layers). Thus high $R^2$ does not mean residual discrepancies are explained by transport noise, especially for PbLi and perpendicular layers. Model-form/truncation error remains and may matter to small sensitivity components. Component-resolution flags propagate observation noise only; they do not cover all sparse-model selection uncertainty.
+
+\figone{layer_validation.pdf}{1.0}{Independent validation of the two layered studies, with one transport standard error on the native OpenMC horizontal axis and the ideal line. The perpendicular case has appreciably larger relative surrogate error.}{fig:layerval}
+
+\begin{table}[tbp]\centering\scriptsize
+\caption{Baseline and conditional PCE response distributions, in verified tritons/source neutron. Baseline errors are one batch standard error; PCE spread is input-induced variation, not a standard error. The 5--95\% range is not an evaluated nuclear-data confidence interval.}
+\resizebox{\linewidth}{!}{\input{tables/distributions.tex}}\label{tab:distribution}
+\end{table}
+\figone{response_comparison.pdf}{1.0}{Baseline response and conditional input-induced coefficient of variation. Different geometry/material/response definitions prevent interpreting this as a ranking of breeder technologies.}{fig:responsecomparison}
+
+The conditional coefficients of variation are about 2.38\% for Li, 4.74\% for FLiBe, 7.90\% for PbLi, 4.26\% for parallel layers and 4.84\% for perpendicular layers. They arise from the declared independent ranges and down-selected modes. They cannot be substituted for evaluated covariance uncertainties or directly compared with experimental error bars.
+
+\subsection{Lithium benchmark: production competition and MT56}
+\begin{table}[tbp]\centering\caption{Leading conditional Sobol indices: Li sphere. Full selected-input table in Appendix~\ref{app:indices}.}\input{tables/li_analysis_top.tex}\end{table}
+Li-6 MT105 has $S_T=0.4251$ and Li-7 MT56 $S_T=0.4084$. The fact that Morris places MT56 narrowly first while the conditional PCE puts MT105 first is not contradictory: Morris measures finite-path response changes in the full screened space, whereas PCE variance attribution is squared and conditional on selected inputs. Near-tied rankings should not be overinterpreted.
+
+Li-7 elastic XS contributes 0.0695 and its second angular mode 0.04395. Elastic scattering is consequential but not automatically dominant. MT56 directly contributes tritons, is open at 14 MeV (native threshold 5.29564 MeV), and can compete with scattering/slowing pathways. The controlled test in Section~\ref{sec:mt205} shows elastic-induced Li-6 enhancement and Li-7 reduction. Li-7 neutron-induced breakup can produce a triton while leaving a secondary neutron, unlike the neutron-absorbing Li-6 MT105 channel; event counts and triton yields therefore need not be bounded by one per source. The model's artificial Li density and thick geometry favour particular histories; this is not a universal ranking for natural lithium.
+
+\begin{figure}[tbp]\centering
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{li7_mt56_xs.png}\caption{Li-7 MT56 cross section.}\end{subfigure}\hfill
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{li6_mt105_xs.png}\caption{Li-6 MT105 cross section.}\end{subfigure}
+\caption{Saved native-readback baseline and perturbed cross sections for leading lithium channels. These are whole-reaction perturbation examples, not energy-resolved sensitivity profiles or measured covariance bands.}\label{fig:xs}
+\end{figure}
+\begin{figure}[tbp]\centering
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{li7_mt2_angle.png}\caption{Li-7 elastic angular mode.}\end{subfigure}\hfill
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{li7_mt16_energy.png}\caption{Li-7 $(n,2n)$ outgoing-energy mode.}\end{subfigure}
+\caption{Supported native angular/energy perturbation examples. The metadata record readback, reference frame, selected incident energy, interpolation and normalisation. The outgoing-energy mode is statistically unresolved in this study; its inclusion illustrates the available representation, not a claim of strong influence.}\label{fig:pdfs}
+\end{figure}
+For the displayed energy law, native baseline continuous-PDF normalisation is 0.999999934 and both perturbed readbacks integrate to unity within numerical precision. Such checks establish valid mutation, not experimental validation of the distribution.
+
+\subsection{FLiBe: fluorine transport joins lithium production}
+\begin{table}[tbp]\centering\caption{Leading conditional Sobol indices: FLiBe sphere.}\input{tables/flibe_analysis_top.tex}\end{table}
+Li-7 MT56 leads at 0.39294, followed by F-19 elastic at 0.20376, Li-6 MT105 at 0.18869 and F-19 MT22 at 0.12720. The Be-9 elastic index is 0.05096. Fluorine is therefore a transport-relevant constituent even when attention initially focuses on lithium. MT22 denotes neutron-plus-alpha emission and changes neutron energy and competition; it is not itself synonymous with a unit-triton channel. F-19 MT105 is a separately verified production contribution.
+
+The baseline response separates into Li-6 0.046413, Li-7 0.141612, Be-9 0.003206 and F-19 0.008807 tritons/source. Its conditional PCE mean is 0.200048, with a 5--95\% interval 0.184463--0.215696. The Morris screening remains unconverged. The selected order-two hyperbolic basis is additive: equality of $S_i$ and $S_{T_i}$ in this result is a basis constraint, not a measurement of absent cross-family interactions.
+
+\figone{flibe_analysis_tritium_distribution.png}{0.85}{Saved conditional FLiBe production distribution from PCE sampling. The independent transport observations are finite noisy validation data, not an exact reference density.}{fig:flibedist}
+
+\subsection{PbLi: production, lead scattering and multiplication}
+\begin{table}[tbp]\centering\caption{Leading conditional Sobol indices: PbLi sphere, lithium-production response only.}\input{tables/lipb_analysis_top.tex}\end{table}
+Li-6 MT105 contributes $S_T=0.64080$. Pb-208 elastic and $(n,2n)$ contribute 0.11459 and 0.10659, followed by Li-7 MT56 at 0.05195. Lead isotope content affects scattering, multiplication and the emergent spectrum; the response itself counts only the verified lithium channels. These results motivate lead nuclear-data investigation for PbLi blankets, without implying a lead-production yield map has been established.
+
+The baseline is 0.053483 tritons/source, and the conditional 5--95\% interval is 0.046774--0.060604. Although the total $R^2$ is 0.99808, residuals substantially exceed quoted transport noise, and Morris remains unconverged. The order-three basis permits pair terms; the Li-6 XS first/total separation is only about 0.00130 in this reduced model. Strong interactions outside that subspace, higher-order interactions and biases from excluded data are not ruled out.
+
+\subsection{Layered cube: geometry/irradiation changes sensitivity ordering}
+\label{sec:geometryresult}
+\begin{figure}[tbp]\centering\includegraphics[width=\linewidth]{geometry_and_families.pdf}
+\caption{Left: closed grouped family fractions under the declared priors and selected bases. Right: selected shared channels in the same layered cube under two beam orientations. The uncertainty model is reduced-space and the active sets are not identical; these are not universal nuclide importance factors.}\label{fig:geometrysobol}
+\end{figure}
+The parallel case is dominated by Li-7 MT56 ($S_T=0.79025$), Be-9 elastic (0.09125), Li-6 MT105 (0.02682) and Li-7 elastic (0.02204). The perpendicular case changes these to MT56 0.44806, Be elastic 0.38913 and Li-6 MT105 0.11178. Be elastic thus rises by a factor of about 4.26 in its \emph{conditional fraction}. The raw total-response Morris Be-elastic $\mu^*$ also rises from 0.009288 to 0.015886, while MT56 falls from 0.028783 to 0.017893. This supports a change beyond merely renormalising Sobol fractions.
+
+At baseline the parallel source produces 0.216739 tritons/source; the perpendicular source gives 0.161106, a decrease of approximately 25.7\%. Li-7 production falls from 0.197670 to 0.118752, whereas Li-6 rises from 0.015604 to 0.027914 and Be-9 from 0.003464 to 0.014440. These scores are consistent with a redistribution of high-energy and slowed-down paths when the beam crosses interfaces. Their explanation is a transport hypothesis supported by constituent totals, not a completed energy-resolved reaction-history attribution.
+
+The two cases retain 30 and 28 uncertain inputs, respectively, because family selection and support differ. A rigorously matched quantitative test should impose the union of the same uncertain inputs, identical priors and additional convergence checks in both orientations. Nevertheless, their shared inventory with changed irradiation and strongly different shared-channel effects demonstrates why nuclide content alone is insufficient. More generally, Eq.~\eqref{eq:adjoint} predicts changes with blanket thickness, penetrations, layer placement and region of interest even at fixed composition.
+
+\subsection{Family contributions and limitations of weak-mode conclusions}
+Cross-section closed-family fractions are 0.9496 (Li), 0.9905 (FLiBe), 0.9945 (PbLi), 0.9969 (parallel layers) and 0.9882 (perpendicular layers). Angular fractions are approximately 0.04995, 0.00932, 0.00542, 0.00302 and 0.01137. Energy fractions are all below $5\times10^{-4}$ in these selected models, and are marked unresolved except in the perpendicular case. This is evidence about \emph{supported independent tabular modes, their smaller per-mode amplitudes, the selected inputs and total-response observables}. It cannot justify disregarding correlated emission physics, other angular modes, spatial/energy-resolved responses or evaluated covariance.

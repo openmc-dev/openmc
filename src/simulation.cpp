@@ -261,6 +261,11 @@ int openmc_next_batch(int* status)
     return OPENMC_E_ALLOCATE;
   }
 
+  // Restore the mutation guard even if batch processing throws.
+  struct BatchGuard {
+    BatchGuard() { simulation::in_batch = true; }
+    ~BatchGuard() { simulation::in_batch = false; }
+  } batch_guard;
   initialize_batch();
 
   // =======================================================================
@@ -353,6 +358,7 @@ vector<double> k_generation;
 vector<int64_t> work_index;
 
 int64_t simulation_tracks_completed {0};
+bool in_batch {false};
 
 } // namespace simulation
 

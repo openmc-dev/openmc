@@ -9,6 +9,75 @@
 extern "C" {
 #endif
 
+//! Value tags in an owned secondary-data snapshot (schema version 1).
+enum openmc_secondary_value_type {
+  OPENMC_SECONDARY_NULL = 0,
+  OPENMC_SECONDARY_OBJECT = 1,
+  OPENMC_SECONDARY_LIST = 2,
+  OPENMC_SECONDARY_STRING = 3,
+  OPENMC_SECONDARY_BOOL = 4,
+  OPENMC_SECONDARY_INT = 5,
+  OPENMC_SECONDARY_DOUBLE = 6,
+  OPENMC_SECONDARY_INT_ARRAY = 7,
+  OPENMC_SECONDARY_DOUBLE_ARRAY = 8
+};
+
+//! Read-only view into a snapshot, never into live transport data.
+//! name is a null-terminated object key (empty for list elements).
+//! data contains size elements: size_t child indices for containers, UTF-8
+//! bytes for strings, int64_t for integer/bool values, double for real values.
+//! Scalars have size 1; null has size 0. Views expire when snapshot is freed.
+typedef struct {
+  int type;
+  size_t size;
+  const char* name;
+  const void* data;
+} openmc_secondary_node;
+
+//! Sample an independent native angular law in its product reference frame.
+//! Calls require loaded data and serialized access outside transport batches.
+//! The caller owns the seed and output buffer; transport RNGs are untouched.
+//! Correlated laws are rejected. energy is the incident energy in eV.
+int openmc_secondary_sample_angle(int index, int mt, int product,
+  int distribution, double energy, uint64_t* seed, size_t n, double* mu);
+
+//! Inspect native reaction metadata, including reactions without products.
+int openmc_nuclear_data_reaction_info(
+  int index, int mt, double* q_value, bool* redundant, bool* center_of_mass);
+
+//! Exact native rollback snapshots. kind: 0=XS (all temperatures + derived
+//! arrays), 1=ContinuousTabular energy, 2=independent tabular angle.
+//! Restore consumes the handle; free discards it. Handles expire at finalize.
+int openmc_nuclear_data_backup(
+  int index, int mt, int product, int distribution, int kind, uint64_t* handle);
+int openmc_nuclear_data_restore(uint64_t handle);
+//! Check reaction/derived total and absorption consistency before transport.
+int openmc_nuclear_data_validate_xs(int index);
+void openmc_nuclear_data_backup_free(uint64_t handle);
+
+//! Sample a native uncorrelated energy law, without affecting transport RNGs.
+int openmc_secondary_sample_energy(int index, int mt, int product,
+  int distribution, double energy, uint64_t* seed, size_t n, double* outgoing);
+
+//! Replace independent tabular angular PDFs on unchanged native grids.
+//! PDF/CDF are normalized/rebuilt atomically. Interpolation is preserved.
+int openmc_secondary_set_angle(int index, int mt, int product, int distribution,
+  const double* incident, int n_incident, const int* offsets,
+  const int* interpolation, const double* mu, const double* pdf, int n_points);
+
+//! Snapshot loaded reaction products. Root node 0 is a list of products.
+//! mt/product/distribution = -1 selects all at that level. Selecting a product
+//! requires an MT; selecting a distribution also requires a product.
+//! include_data=false omits distribution payloads, retaining discovery
+//! metadata. Reads require loaded data and serialized library calls, outside a
+//! batch. Caller owns *snapshot and must release it; failure leaves *snapshot
+//! null.
+int openmc_secondary_snapshot_create(int index, int mt, int product,
+  int distribution, bool include_data, void** snapshot);
+int openmc_secondary_snapshot_node(
+  const void* snapshot, size_t node, openmc_secondary_node* result);
+void openmc_secondary_snapshot_free(void* snapshot);
+
 //! Run a stochastic volume calculation
 //
 //! \return Status (negative if an error occurred)
@@ -148,6 +217,36 @@ int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
 int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
 int openmc_new_filter(const char* type, int32_t* index);
 int openmc_next_batch(int* status);
+int openmc_nuclide_get_emission_spectrum_info(
+  int index, int mt, int product, int distribution, int* n_incident);
+int openmc_nuclide_get_emission_spectrum_incident_energy(int index, int mt,
+  int product, int distribution, double* energy, int n_incident);
+int openmc_nuclide_get_emission_spectrum_table_size(int index, int mt,
+  int product, int distribution, int incident_index, int* n_outgoing,
+  int* n_discrete, int* interpolation);
+int openmc_nuclide_get_emission_spectrum_table(int index, int mt, int product,
+  int distribution, int incident_index, double* energy, double* pdf,
+  double* cdf, int n_outgoing);
+// Replace all outgoing tables atomically. offsets has n_incident + 1 entries;
+// interpolation and n_discrete have n_incident entries. energy and pdf are
+// flattened arrays of n_outgoing values. The incident grid must match exactly.
+int openmc_nuclide_set_emission_spectrum(int index, int mt, int product,
+  int distribution, const double* incident_energy, int n_incident,
+  const int* offsets, const int* interpolation, const int* n_discrete,
+  const double* energy, const double* pdf, int n_outgoing);
+int openmc_nuclide_get_xs(
+  int index, int mt, int temperature, double* xs, int n_values);
+int openmc_nuclide_get_xs_size(int index, int mt, int temperature, int* n);
+int openmc_nuclide_get_energy_grid(
+  int index, int temperature, double* energy, int n);
+int openmc_nuclide_get_energy_grid_size(int index, int temperature, int* n);
+int openmc_nuclide_get_reaction_threshold_energy(
+  int index, int mt, int temperature, double* threshold);
+int openmc_nuclide_get_mt_numbers(int index, int* mts, int* n_mts);
+int openmc_nuclide_set_reaction_xs_with_threshold(int index, int mt,
+  int temperature, const double* energy, const double* values, int n,
+  double threshold_energy);
+int openmc_nuclide_rebuild_derived_xs(int index);
 int openmc_nuclide_name(int index, const char** name);
 int openmc_plot_geometry();
 // Deprecated; use openmc_slice_data.

@@ -1,0 +1,154 @@
+{
+  "files": {
+    "Li6": {
+      "path": "/nuclear_data/endfb-viii.0-hdf5/neutron/Li6.h5",
+      "sha256": "8399d640c224ed4d348a688e85017e5545040df1e38dbf45ab31d28c8827218b"
+    },
+    "Li7": {
+      "path": "/nuclear_data/endfb-viii.0-hdf5/neutron/Li7.h5",
+      "sha256": "a2a5a7a5901628c711d6e4085429bd46855bd8239f1ec9889b007f25d0e0f015"
+    },
+    "Be9": {
+      "path": "/nuclear_data/endfb-viii.0-hdf5/neutron/Be9.h5",
+      "sha256": "2ccad4289825e558489fd0c7ddf7c796e2c2e0785ace6589c7ba5c3351eda9b0"
+    },
+    "F19": {
+      "path": "/nuclear_data/endfb-viii.0-hdf5/neutron/F19.h5",
+      "sha256": "07f3ed44a951e453058e65e79a688ce96f4a20b189d3827c0b618a96e3b5a0ac"
+    }
+  },
+  "sources": {
+    "Li6": {
+      "path": "/sandbox/openmc/FLiBe_analysis/results/provenance/n-003_Li_006.endf",
+      "sha256": "b2bbcfcb1ba10ec16120813d304aa6d622b61b0602a361df49cad759dad65641"
+    },
+    "Li7": {
+      "path": "/sandbox/openmc/FLiBe_analysis/results/provenance/n-003_Li_007.endf",
+      "sha256": "fbc9df82be7509fdf3de3c77510ae6671a2f045221e9a457edc9c1a068f7d208"
+    },
+    "Be9": {
+      "path": "/sandbox/openmc/FLiBe_analysis/results/provenance/n-004_Be_009.endf",
+      "sha256": "2878ae42a4f47347396418ed99fa892e2f173155945c0891e02bf477844a6ed6"
+    },
+    "F19": {
+      "path": "/sandbox/openmc/FLiBe_analysis/results/provenance/n-009_F_019.endf",
+      "sha256": "9b5f0b72a66aa65bf65a4f26fd2d0d345f5c30651ebbe798c0f2cba185576a8a"
+    }
+  },
+  "channels": {
+    "Li6": [
+      105
+    ],
+    "Li7": [
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82
+    ],
+    "Be9": [
+      700,
+      701
+    ],
+    "F19": [
+      105
+    ]
+  },
+  "checks": [
+    {
+      "nuclide": "Li6",
+      "mts": [
+        105
+      ],
+      "yield_per_reaction": 1,
+      "max_absolute_error_barn": 0.0,
+      "max_relative_error": 0.0
+    },
+    {
+      "nuclide": "Li7",
+      "mts": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "yield_per_reaction": 1,
+      "max_absolute_error_barn": 4.829999994404588e-08,
+      "max_relative_error": 2.2721439948719848e-07
+    },
+    {
+      "nuclide": "Be9",
+      "mts": [
+        700,
+        701
+      ],
+      "yield_per_reaction": 1,
+      "max_absolute_error_barn": 5.000000000837668e-09,
+      "max_relative_error": 2.2811290862835563e-07
+    },
+    {
+      "nuclide": "F19",
+      "mts": [
+        105
+      ],
+      "yield_per_reaction": 1,
+      "max_absolute_error_barn": 0.0,
+      "max_relative_error": 0.0
+    }
+  ],
+  "scope": "Configured production QoI: sum of the listed channels for Li6, Li7, Be9, F19",
+  "evidence": "VIII.0 MF3 MT105/LR33 and Be MF6 H3 yields; no F MF6 tritons; full-grid native MT205 comparison"
+}

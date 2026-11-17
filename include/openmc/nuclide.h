@@ -86,6 +86,7 @@ public:
 
   void set_xs(int MT, int T_index, const std::vector<double>& values);
   void rebuild_derived_xs();
+  void validate_derived_xs() const;
   std::vector<double> get_xs(int MT, int T_index) const;
   std::vector<double> get_energy_grid(int T_index) const;
   //! Return a ParticleType object representing this nuclide

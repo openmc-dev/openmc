@@ -1,0 +1,68 @@
+\section{Runtime modifications to OpenMC and response verification}
+\label{sec:runtime}
+\subsection{Native data path and scope of the changes}
+The relevant software stack is the existing modified branch \texttt{xs-change}, based on Git revision \texttt{fd99f66a20fd4841f66ce73eafac653d9ef8d2f2}, with uncommitted changes. Saved provenance identifies OpenMC \texttt{0.1.dev16025+gfd99f66a2.d20260924}. A revision alone does not uniquely identify this dirty working tree; per-study hashes and manifests are important. These changes belong to this research fork and are not asserted to be standard upstream OpenMC interfaces.
+
+The data path is evaluated data $\to$ processed HDF5 $\to$ native C++ reaction/distribution objects $\to$ C interface $\to$ owned Python snapshots/candidates $\to$ validated native mutation $\to$ standard OpenMC sampling. The configured library is ENDF/B-VIII.0 \citep{endfb}. No evaluated file is rewritten in the sampling loop. Inspection uses the loaded objects, so a plotted supported angular or outgoing-energy distribution can be read back from the same representation sampled by transport.
+
+\begin{table}[tbp]\centering\small
+\caption{Key research-fork facilities, established from source inspection. Public Python names are exact; some lower-level legacy XS functions use a native nuclide index.}
+\begin{tabularx}{\linewidth}{p{0.22\linewidth}X}
+\toprule Facility & Implementation and purpose\\\midrule
+XS inspection & \texttt{get\_nuclide\_xs}, \texttt{nuclide\_energy\_grid}, threshold/MT metadata getters in \texttt{openmc.lib}; native pointwise reaction arrays.\\
+XS replacement/rebuild & \texttt{new\_nuclide\_xs\_with\_threshold}, \texttt{nuclide\_rebuild\_derived\_xs}; threshold-preserving replacement and derived-array consistency.\\
+Secondary inspection & \texttt{get\_reaction\_products}, \texttt{get\_emission\_distribution}, \texttt{get\_angular\_distribution}; representation, frame, grid, PDF/CDF and interpolation metadata.\\
+Native secondary changes & \texttt{set\_emission\_spectrum}, \texttt{set\_angular\_distribution}; supported existing independent tabular laws on preserved grids.\\
+Native sampling checks & \texttt{sample\_emission\_energy}, \texttt{sample\_angular\_distribution}; call native samplers, not Python replacements.\\
+Combined rollback & \texttt{nuclear\_data\_perturbation(xs=..., energy=..., angle=...)}; candidate validation, native deep copies, mutation, rebuild, rollback.\\
+\bottomrule
+\end{tabularx}\end{table}
+
+The native implementation resides principally in \texttt{src/nuclide.cpp}, \texttt{src/secondary\_data.cpp}, the angle/energy distribution classes and C API declarations. Python bindings and orchestration reside in \texttt{openmc/lib/core.py}, \texttt{secondary.py} and \texttt{perturbation.py}. The shared \texttt{analysis\_codes/} package holds discovery, candidate generation, runner, screening, PCE and Sobol logic; model/config directories remain separate. Source anchors are listed in Appendix~\ref{app:source}.
+
+The high-level transactional workflow is more restrictive than inspection. It admits independent uncorrelated continuous-tabular outgoing-energy tables and tabular angular laws. Isotropic, analytic, discrete-only and correlated representations can be inspectable without being safely mutable by this adapter. CorrelatedAngleEnergy, Kalbach--Mann and N-body phase space are not silently converted to independent PDFs. Fission, unresolved-resonance, multipole or other unsupported XS states are rejected by the native backup/validation machinery as applicable. Their absence from parameter rankings is not evidence of zero physical importance. Preserving PDF support and kinematic bounds also does not make independently perturbed shapes a new self-consistent evaluated reaction model: recoil/charged-particle energy balance and joint-law covariance require additional physics review.
+
+\subsection{Validation, rebuilding and rollback}
+Candidates are finite and nonnegative, preserve thresholds, grids, frame and reaction identity, retain discrete masses, and satisfy native PDF/CDF consistency. The context first acquires owned native backups, then applies changes while transport is not processing a batch. For perturbed nuclides, \texttt{Nuclide::rebuild\_derived\_xs()} clears and reconstructs the derived transport array from nonredundant reactions. The inspected implementation updates total, disappearance/absorption, fission, neutron-fission and photon-production contributions. A native consistency check follows. This is not a guarantee that every independently stored redundant MT is regenerated.
+
+Snapshots are deep copies; writable pointers into native arrays are not exposed. Exit, including exceptions, restores the acquired native state in reverse order. This is rollback atomicity with serial access, not a database-style concurrent transaction. The runner verifies baseline and candidate readback and records failed evaluations instead of reusing contaminated state. Repeated evaluations use a live library session where supported, resetting simulation/tally state and seed between trials; worker processes keep separate OpenMC state. No independent transport kernel or alternative secondary sampler is introduced.
+
+\subsection{Cached MT205 and the corrected production response}
+\label{sec:mt205}
+MT205 denotes $(n,Xt)$ production. In the processed library it is a redundant production cross section stored as reaction data. Physically one expects
+\begin{equation}
+\sigma_{205}(E)=\sum_r y_{t,r}(E)\sigma_r(E).\label{eq:mt205}
+\end{equation}
+However, the modified transport rebuild does not reconstruct the cached MT205 reaction array after changing its contributing partial reactions. The generic tally scorer interpolates the stored MT205 array if that score is requested. Consequently, with a modified partial cross section, a cached-MT205 score responds through the changed flux but misses the direct production-cross-section change. Schematically,
+\begin{equation}
+R_{205}^{\rm stale}(\bm x)=\int N\sigma_{205,0}\phi_{\bm x}\,\dd E\dd V,
+\quad
+R_T^{\rm correct}(\bm x)=\int N\sum_r y_{t,r}\sigma_{r,\bm x}\phi_{\bm x}\,\dd E\dd V.
+\end{equation}
+The baseline equality of the two responses does not validate their perturbed equality. An earlier cached-MT205 study therefore cannot be used as a complete production-sensitivity result; the corrected datasets analysed here use reaction-specific scores.
+
+The response adapter verifies original evaluation metadata, processed-file hashes and baseline cross-section reconstruction. For the verified files its mapping is
+\begin{align}
+R_{T,6}&=R_{\LiSix,105},&
+R_{T,7}&=\sum_{m=52}^{82}R_{\LiSeven,m},\\
+R_{T,\mathrm{Be}}&=R_{\BeNine,700}+R_{\BeNine,701},&
+R_{T,\mathrm{F}}&=R_{\F,105}.\label{eq:mapping}
+\end{align}
+Each included channel has verified unit triton yield. Li-7 MT51 is nonproducing; MT52--82 have the evaluation's LR=33 breakup flag. Li-7 MT33 is absent. Be-9 MT105 is a redundant parent of the scored MT700/701 channels and must not be counted twice. The PbLi response is explicitly lithium production: Pb nuclei remain in transport and perturbation discovery, but unverified Pb production channels are not assumed zero or invented. The tokamak response has its own Li+Be scope.
+
+MT56 is an evaluated Li-7 inelastic branch with breakup metadata, not simply harmless elastic redistribution. Its saved metadata give $Q_M=-2.4667$ MeV and $Q_I=-4.6300$ MeV. The latter is a branch energy-loss parameter, not the laboratory threshold itself; native threshold-grid metadata are used for screening. Its importance is therefore physically compatible with a direct tritium contribution. Experimental proposals should address total breakup yields and differential spectra, not assume that a specific evaluated bin is a universally separable physical level.
+
+\subsection{Correlated score uncertainty and controlled checks}
+For batch $b$ with $H$ histories, a tracklength production estimator is
+\begin{equation}
+\widehat R_{T,b}=\frac{1}{H}\sum_{h\in b}\sum_{\ell\in h} w_\ell\ell\sum_{nr}N_n y_{t,nr}(E_\ell)\sigma_{nr}(E_\ell).
+\end{equation}
+Channel scores must be summed in each batch before error estimation:
+\begin{equation}
+\overline R_T=\frac{1}{B}\sum_b\widehat R_{T,b},\quad
+s_{\overline R_T}^2=\frac{\sum_b(\widehat R_{T,b}-\overline R_T)^2}{B(B-1)}.
+\label{eq:batch}
+\end{equation}
+Adding channel variances alone omits $2\sum_{r<s}\Cov(\overline R_r,\overline R_s)$. The implementation retains this covariance and uses common-seed paired batches for controlled perturbation diagnostics where appropriate.
+
+Saved lithium verification gives baseline 1.172084, +20\% Li-6 MT105 response 1.199946, and +20\% Li-7 MT56 response 1.201743 tritons/source. Increasing Li-7 elastic by 20\% gives 1.157033: its Li-6 contribution rises by 0.018991 while its Li-7 contribution falls by 0.034042. The total decrease is thus consistent with competing transport pathways. Exact restoration returns the same saved baseline under controlled seeds. These are diagnostic means, not new uncertainty intervals; the production verification CSV does not itself provide confidence intervals for all paired differences. In FLiBe the analogous elastic perturbation increases the total slightly, further illustrating model dependence. These verification baselines use separate histories and should not be confused with the independent high-fidelity baseline values in the results table.

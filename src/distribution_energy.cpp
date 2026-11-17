@@ -1,6 +1,7 @@
 #include "openmc/distribution_energy.h"
 
 #include <algorithm> // for max, min, copy, move
+#include <cmath>     // for isfinite
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
 
@@ -147,6 +148,130 @@ ContinuousTabular::ContinuousTabular(hid_t group)
   } // incoming energies
 }
 
+void ContinuousTabular::set_spectrum(const vector<double>& energy,
+  const vector<int>& interpolation, const vector<int>& n_discrete,
+  const vector<vector<double>>& e_out, const vector<vector<double>>& p)
+{
+  const auto n = energy_.size();
+  if (energy != energy_ || n < 2 || distribution_.size() != n ||
+      interpolation.size() != n || n_discrete.size() != n ||
+      e_out.size() != n || p.size() != n) {
+    throw std::invalid_argument("Incident-energy grid and table count must "
+                                "exactly match the native spectrum.");
+  }
+  vector<CTTable> tables;
+  tables.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    const auto& original = distribution_[i];
+    if (n_discrete[i] == original.n_discrete &&
+        interpolation[i] == static_cast<int>(original.interpolation) &&
+        e_out[i] ==
+          vector<double>(original.e_out.begin(), original.e_out.end()) &&
+        p[i] == vector<double>(original.p.begin(), original.p.end())) {
+      // Unmodified tables retain their loaded CDF exactly in partial edits.
+      tables.push_back(original);
+      continue;
+    }
+    tables.push_back(make_table(static_cast<Interpolation>(interpolation[i]),
+      n_discrete[i], e_out[i], p[i],
+      n_discrete[i] == distribution_[i].n_discrete &&
+        interpolation[i] == static_cast<int>(distribution_[i].interpolation) &&
+        e_out[i] == vector<double>(distribution_[i].e_out.begin(),
+                      distribution_[i].e_out.end())));
+  }
+
+  // Unit-base interpolation needs continuous endpoints in both adjacent tables.
+  // Histogram incident interpolation only samples one table and needs no
+  // mapping.
+  const bool histogram =
+    n_region_ == 1 && interpolation_[0] == Interpolation::histogram;
+  if (!histogram) {
+    for (size_t i = 1; i < n; ++i) {
+      bool discrete = tables[i].n_discrete == tables[i].e_out.size();
+      bool previous_discrete =
+        tables[i - 1].n_discrete == tables[i - 1].e_out.size();
+      if (discrete != previous_discrete) {
+        throw std::invalid_argument("Unit-base interpolation cannot mix "
+                                    "discrete-only and continuous tables.");
+      }
+    }
+  }
+  distribution_.swap(tables);
+}
+
+ContinuousTabular::CTTable ContinuousTabular::make_table(
+  Interpolation interpolation, int n_discrete, const vector<double>& e_out,
+  const vector<double>& p, bool native_grid)
+{
+  if (e_out.size() != p.size() || e_out.empty()) {
+    throw std::invalid_argument("Outgoing-energy and probability arrays must "
+                                "be nonempty and equal in length.");
+  }
+  if (n_discrete < 0 || n_discrete > e_out.size()) {
+    throw std::invalid_argument("Invalid number of discrete lines.");
+  }
+  if (n_discrete < e_out.size() && e_out.size() - n_discrete < 2) {
+    throw std::invalid_argument(
+      "A continuous outgoing-energy distribution needs at least two points.");
+  }
+  if (interpolation != Interpolation::histogram &&
+      interpolation != Interpolation::lin_lin) {
+    throw std::invalid_argument(
+      "Only histogram and linear-linear interpolation are supported.");
+  }
+
+  double norm = 0.0;
+  for (int k = 0; k < e_out.size(); ++k) {
+    if (!std::isfinite(e_out[k]) || e_out[k] < 0.0 || !std::isfinite(p[k]) ||
+        p[k] < 0.0) {
+      throw std::invalid_argument(
+        "Outgoing energies and probabilities must be finite and nonnegative.");
+    }
+    if (k < n_discrete) {
+      norm += p[k];
+    } else if (k > n_discrete) {
+      double width = e_out[k] - e_out[k - 1];
+      if (width < 0.0 || (width == 0.0 && !native_grid)) {
+        throw std::invalid_argument(
+          "Continuous outgoing energies must be strictly increasing.");
+      }
+      norm += interpolation == Interpolation::histogram
+                ? p[k - 1] * width
+                : 0.5 * (p[k - 1] + p[k]) * width;
+    }
+  }
+  if (!(norm > 0.0) || !std::isfinite(norm)) {
+    throw std::invalid_argument(
+      "Outgoing-energy distribution has zero or invalid normalization.");
+  }
+
+  CTTable table;
+  table.interpolation = interpolation;
+  table.n_discrete = n_discrete;
+  table.e_out = tensor::Tensor<double>(e_out.data(), e_out.size());
+  table.p = tensor::Tensor<double>(p.data(), p.size());
+  table.c = tensor::zeros<double>({p.size()});
+
+  double c = 0.0;
+  for (int k = 0; k < p.size(); ++k) {
+    table.p[k] /= norm;
+    if (!std::isfinite(table.p[k])) {
+      throw std::invalid_argument("Normalized probability is not finite.");
+    }
+    if (k < n_discrete) {
+      c += table.p[k];
+    } else if (k > n_discrete) {
+      double width = table.e_out[k] - table.e_out[k - 1];
+      c += interpolation == Interpolation::histogram
+             ? table.p[k - 1] * width
+             : 0.5 * (table.p[k - 1] + table.p[k]) * width;
+    }
+    table.c[k] = std::min(c, 1.0);
+  }
+  table.c[table.c.size() - 1] = 1.0;
+  return table;
+}
+
 double ContinuousTabular::sample(double E, uint64_t* seed) const
 {
   // Read number of interpolation regions and incoming energies
@@ -189,15 +314,19 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
   int k = 0;
   int end = n_energy_out - 2;
 
-  // Discrete portion
+  // A discrete line is sampled directly, irrespective of the interpolation
+  // assigned to the continuous part. In particular, do not access k + 1 for
+  // a discrete-only table.
   for (int j = 0; j < n_discrete; ++j) {
-    k = j;
-    c_k = distribution_[l].c[k];
-    if (r1 < c_k) {
-      end = j;
-      break;
+    if (r1 < distribution_[l].c[j]) {
+      return distribution_[l].e_out[j];
     }
   }
+  if (n_discrete == n_energy_out) {
+    return distribution_[l].e_out[n_energy_out - 1];
+  }
+  k = n_discrete;
+  c_k = distribution_[l].c[k];
 
   // Continuous portion
   double c_k1;

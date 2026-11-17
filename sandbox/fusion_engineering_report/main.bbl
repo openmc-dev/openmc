@@ -1,0 +1,129 @@
+\begin{thebibliography}{15}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Leichtle et~al.(2007)Leichtle, Fischer, Kodeli, Perel, Angelone,
+  Batistoni, et~al.]{hcpbsensitivity}
+D.~Leichtle, U.~Fischer, I.~Kodeli, R.L. Perel, M.~Angelone, P.~Batistoni,
+  et~al.
+\newblock Sensitivity and uncertainty analyses of the tritium production in the
+  hcpb breeder blanket mock-up experiment.
+\newblock \emph{Fusion Engineering and Design}, 2007.
+\newblock \doi{10.1016/j.fusengdes.2007.08.007}.
+
+\bibitem[Romano et~al.(2015)Romano, Horelik, Herman, Nelson, Forget, and
+  Smith]{openmc}
+Paul~K. Romano, Nicholas~E. Horelik, Bryan~R. Herman, Adam~G. Nelson, Benoit
+  Forget, and Kord Smith.
+\newblock Openmc: A state-of-the-art monte carlo code for research and
+  development.
+\newblock \emph{Annals of Nuclear Energy}, 82:\penalty0 90--97, 2015.
+\newblock \doi{10.1016/j.anucene.2014.07.048}.
+
+\bibitem[Brown et~al.(2018)Brown, Chadwick, Capote, Kahler, Trkov, Herman,
+  et~al.]{endfb}
+D.A. Brown, M.B. Chadwick, R.~Capote, A.C. Kahler, A.~Trkov, M.W. Herman,
+  et~al.
+\newblock Endf/b-viii.0: The 8 th major release of the nuclear reaction data
+  library with cielo-project cross sections, new standards and thermal
+  scattering data.
+\newblock \emph{Nuclear Data Sheets}, 148:\penalty0 1--142, 2018.
+\newblock \doi{10.1016/j.nds.2018.02.001}.
+
+\bibitem[Morris(1991)]{morris}
+Max~D. Morris.
+\newblock Factorial sampling plans for preliminary computational experiments.
+\newblock \emph{Technometrics}, 33:\penalty0 161--174, 1991.
+\newblock \doi{10.1080/00401706.1991.10484804}.
+
+\bibitem[Sudret(2008)]{sudret}
+Bruno Sudret.
+\newblock Global sensitivity analysis using polynomial chaos expansions.
+\newblock \emph{Reliability Engineering \&amp; System Safety}, 93:\penalty0
+  964--979, 2008.
+\newblock \doi{10.1016/j.ress.2007.04.002}.
+
+\bibitem[Blatman and Sudret(2011)]{blatman}
+Géraud Blatman and Bruno Sudret.
+\newblock Adaptive sparse polynomial chaos expansion based on least angle
+  regression.
+\newblock \emph{Journal of Computational Physics}, 230:\penalty0 2345--2367,
+  2011.
+\newblock \doi{10.1016/j.jcp.2010.12.021}.
+
+\bibitem[{OpenTURNS developers}(2026)]{openturns}
+{OpenTURNS developers}.
+\newblock {FunctionalChaosAlgorithm and functional chaos expansion
+  documentation}, 2026.
+\newblock URL
+  \url{https://openturns.github.io/openturns/latest/user_manual/response_surface/functional_chaos_expansion.html}.
+\newblock Official documentation; accessed 6 November 2026. The repository
+  adapter is described separately.
+
+\bibitem[Sobol'(2001)]{sobol}
+I.~M. Sobol'.
+\newblock Global sensitivity indices for nonlinear mathematical models and
+  their monte carlo estimates.
+\newblock \emph{Mathematics and Computers in Simulation}, 55:\penalty0
+  271--280, 2001.
+\newblock \doi{10.1016/S0378-4754(00)00270-6}.
+
+\bibitem[{IAEA Nuclear Data Section and National Nuclear Data
+  Center}(2026)]{exfor}
+{IAEA Nuclear Data Section and National Nuclear Data Center}.
+\newblock {EXFOR: Experimental Nuclear Reaction Data}, 2026.
+\newblock URL \url{https://www-nds.iaea.org/exfor/}.
+\newblock Database portal; accessed 6 November 2026. No completeness claim for
+  any specific measurement channel is made.
+
+\bibitem[{International Atomic Energy Agency}(2026)]{fendl}
+{International Atomic Energy Agency}.
+\newblock {Fusion Evaluated Nuclear Data Library (FENDL)}, 2026.
+\newblock URL \url{https://nucleus.iaea.org/Pages/fendl.aspx}.
+\newblock Official programme description; accessed 6 November 2026. This study
+  uses ENDF/B-VIII.0, not an interchangeable FENDL calculation.
+
+\bibitem[Kembleton et~al.(2022)Kembleton, Morris, Siccinio, and
+  Maviglia]{demodesign}
+R.~Kembleton, J.~Morris, M.~Siccinio, and F.~Maviglia.
+\newblock Eu-demo design space exploration and design drivers.
+\newblock \emph{Fusion Engineering and Design}, 178:\penalty0 113080, 2022.
+\newblock \doi{10.1016/j.fusengdes.2022.113080}.
+
+\bibitem[Corato et~al.(2022)Corato, Vorpahl, Sedlak, Anvar, Bennet, Biancolini,
+  et~al.]{magnets}
+V.~Corato, C.~Vorpahl, K.~Sedlak, V.A. Anvar, J.~Bennet, M.E. Biancolini,
+  et~al.
+\newblock The demo magnet system – status and future challenges.
+\newblock \emph{Fusion Engineering and Design}, 174:\penalty0 112971, 2022.
+\newblock \doi{10.1016/j.fusengdes.2021.112971}.
+
+\bibitem[Hernández et~al.(2017)Hernández, Pereslavtsev, Kang, Norajitra,
+  Kiss, Nádasi, et~al.]{hcpb}
+F.~Hernández, P.~Pereslavtsev, Q.~Kang, P.~Norajitra, B.~Kiss, G.~Nádasi,
+  et~al.
+\newblock A new hcpb breeding blanket for the eu demo: Evolution, rationale and
+  preliminary performances.
+\newblock \emph{Fusion Engineering and Design}, 124:\penalty0 882--886, 2017.
+\newblock \doi{10.1016/j.fusengdes.2017.02.008}.
+
+\bibitem[Palermo et~al.(2022)Palermo, Hernández, Pereslavtsev, Rapisarda, and
+  Zhou]{shielding}
+Iole Palermo, Francisco~A. Hernández, Pavel Pereslavtsev, David Rapisarda, and
+  Guangming Zhou.
+\newblock Shielding design optimization of the helium-cooled pebble bed
+  breeding blanket for the eu demo fusion reactor.
+\newblock \emph{Energies}, 15:\penalty0 5734, 2022.
+\newblock \doi{10.3390/en15155734}.
+
+\bibitem[Bachmann et~al.(2022)Bachmann, Ciupinski, Gliss, Franke, Härtl,
+  Marek, et~al.]{vessel}
+C.~Bachmann, L.~Ciupinski, C.~Gliss, T.~Franke, T.~Härtl, P.~Marek, et~al.
+\newblock Containment structures and port configurations.
+\newblock \emph{Fusion Engineering and Design}, 174:\penalty0 112966, 2022.
+\newblock \doi{10.1016/j.fusengdes.2021.112966}.
+
+\end{thebibliography}

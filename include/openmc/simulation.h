@@ -52,6 +52,10 @@ extern vector<int64_t> work_index;
 extern int64_t
   simulation_tracks_completed; //!< Number of tracks completed on this rank
 
+//! True while a batch is being transported or finalized.
+//! Runtime nuclear-data edits are only permitted while this is false.
+extern bool in_batch;
+
 } // namespace simulation
 
 //==============================================================================

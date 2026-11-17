@@ -73,6 +73,8 @@ def _coord_levels():
 from .error import *
 from .core import *
 from .nuclide import *
+from .secondary import *
+from .perturbation import *
 from .material import *
 from .cell import *
 from .mesh import *

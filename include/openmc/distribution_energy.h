@@ -40,6 +40,8 @@ public:
   double sample(double E, uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+
   int primary_flag_; //!< Indicator of whether the photon is a primary or
                      //!< non-primary photon.
   double energy_;    //!< Photon energy or binding energy
@@ -61,6 +63,8 @@ public:
   double sample(double E, uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+
   double threshold_;  //!< Energy threshold in lab, (A + 1)/A * |Q|
   double mass_ratio_; //!< (A/(A+1))^2
 };
@@ -73,6 +77,15 @@ private:
 
 class ContinuousTabular : public EnergyDistribution {
 public:
+  //! Outgoing-energy distribution at one incident energy.
+  struct CTTable {
+    Interpolation interpolation;
+    int n_discrete;
+    tensor::Tensor<double> e_out;
+    tensor::Tensor<double> p;
+    tensor::Tensor<double> c;
+  };
+
   explicit ContinuousTabular(hid_t group);
 
   //! Sample energy distribution
@@ -81,15 +94,21 @@ public:
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const override;
 
+  const vector<double>& energy() const { return energy_; }
+  const vector<CTTable>& distribution() const { return distribution_; }
+  //! Validate and replace all tables atomically, preserving the incident grid.
+  //! Discrete-only and continuous tables cannot be mixed when incident-energy
+  //! interpolation uses unit-base interpolation.
+  void set_spectrum(const vector<double>& energy,
+    const vector<int>& interpolation, const vector<int>& n_discrete,
+    const vector<vector<double>>& e_out, const vector<vector<double>>& p);
+
 private:
-  //! Outgoing energy for a single incoming energy
-  struct CTTable {
-    Interpolation interpolation;  //!< Interpolation law
-    int n_discrete;               //!< Number of of discrete energies
-    tensor::Tensor<double> e_out; //!< Outgoing energies in [eV]
-    tensor::Tensor<double> p;     //!< Probability density
-    tensor::Tensor<double> c;     //!< Cumulative distribution
-  };
+  friend class SecondaryDataReader;
+
+  static CTTable make_table(Interpolation interpolation, int n_discrete,
+    const vector<double>& e_out, const vector<double>& p,
+    bool native_grid = false);
 
   int n_region_;                        //!< Number of inteprolation regions
   vector<int> breakpoints_;             //!< Breakpoints between regions
@@ -113,6 +132,8 @@ public:
   double sample(double E, uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_;          //!< Restriction energy
 };
@@ -133,6 +154,8 @@ public:
   double sample(double E, uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_;          //!< Restriction energy
 };
@@ -153,6 +176,8 @@ public:
   double sample(double E, uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+
   Tabulated1D a_; //!< Energy-dependent 'a' parameter
   Tabulated1D b_; //!< Energy-dependent 'b' parameter
   double u_;      //!< Restriction energy

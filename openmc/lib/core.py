@@ -144,6 +144,31 @@ _dll.openmc_nuclide_set_reaction_xs_with_threshold.argtypes = [
     c_double                   # threshold_energy
 ]
 _dll.openmc_nuclide_set_reaction_xs_with_threshold.restype = c_int
+_dll.openmc_nuclide_get_emission_spectrum_info.argtypes = [
+    c_int, c_int, c_int, c_int, POINTER(c_int)]
+_dll.openmc_nuclide_get_emission_spectrum_info.restype = c_int
+_dll.openmc_nuclide_get_emission_spectrum_incident_energy.argtypes = [
+    c_int, c_int, c_int, c_int, POINTER(c_double), c_int]
+_dll.openmc_nuclide_get_emission_spectrum_incident_energy.restype = c_int
+_dll.openmc_nuclide_get_emission_spectrum_table_size.argtypes = [
+    c_int, c_int, c_int, c_int, c_int, POINTER(c_int), POINTER(c_int),
+    POINTER(c_int)]
+_dll.openmc_nuclide_get_emission_spectrum_table_size.restype = c_int
+_dll.openmc_nuclide_get_emission_spectrum_table.argtypes = [
+    c_int, c_int, c_int, c_int, c_int, POINTER(c_double), POINTER(c_double),
+    POINTER(c_double), c_int]
+_dll.openmc_nuclide_get_emission_spectrum_table.restype = c_int
+_dll.openmc_nuclide_set_emission_spectrum.argtypes = [
+    c_int, c_int, c_int, c_int, _array_1d_dble, c_int,
+    _array_1d_int, _array_1d_int, _array_1d_int,
+    _array_1d_dble, _array_1d_dble, c_int]
+_dll.openmc_nuclide_set_emission_spectrum.restype = c_int
+for _name in (
+    'get_emission_spectrum_info', 'get_emission_spectrum_incident_energy',
+    'get_emission_spectrum_table_size', 'get_emission_spectrum_table',
+    'set_emission_spectrum',
+):
+    getattr(_dll, 'openmc_nuclide_' + _name).errcheck = _error_handler
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
 
@@ -973,12 +998,10 @@ def new_nuclide_xs_with_threshold(
     if not isinstance(energy, np.ndarray) or not isinstance(xs_perturbed, np.ndarray):
         raise TypeError("energy and xs_perturbed must be numpy arrays")
 
-    if energy.dtype != np.float64:
-        energy = np.asarray(energy, dtype=np.float64)
-
-    if xs_perturbed.dtype != np.float64:
-        xs_perturbed = np.asarray(xs_perturbed, dtype=np.float64)
-
+    if energy.ndim != 1 or xs_perturbed.ndim != 1:
+        raise ValueError("energy and xs_perturbed must be one-dimensional")
+    energy = np.ascontiguousarray(energy, dtype=np.float64)
+    xs_perturbed = np.ascontiguousarray(xs_perturbed, dtype=np.float64)
     if energy.size != xs_perturbed.size:
         raise ValueError("energy and xs_perturbed must have the same length")
 
@@ -998,6 +1021,161 @@ def new_nuclide_xs_with_threshold(
             f"OpenMC core error in new_nuclide_xs_with_threshold "
             f"(index={index}, mt={mt}, T_index={temperature}): {err}"
         )
+
+
+def get_emission_spectrum(index, mt, product=0, distribution=0):
+    """Get a native continuous-tabular secondary-particle energy spectrum.
+
+    Parameters
+    ----------
+    index : int
+        Index of the loaded nuclide (``openmc.lib.nuclides[name]._index``).
+    mt : int
+        Reaction MT number.
+    product : int, optional
+        Zero-based reaction product index.
+    distribution : int, optional
+        Zero-based distribution index within the product.
+
+    Returns
+    -------
+    dict
+        Incident energies in eV and outgoing probability tables.
+
+    Notes
+    -----
+    The returned dictionary is an independent, editable Python representation.
+    It contains the incident-energy grid and one outgoing-energy table per
+    incident energy. Each table has ``energy``, ``pdf``, ``cdf``,
+    ``n_discrete``, and ``interpolation`` (1=histogram, 2=linear-linear).
+
+    Only the native ``UncorrelatedAngleEnergy`` / ``ContinuousTabular``
+    representation is supported in this first runtime-editing implementation.
+    """
+    n_incident = c_int()
+    _dll.openmc_nuclide_get_emission_spectrum_info(
+        index, mt, product, distribution, byref(n_incident))
+
+    incident_energy = np.empty(n_incident.value, dtype=np.float64)
+    _dll.openmc_nuclide_get_emission_spectrum_incident_energy(
+        index, mt, product, distribution,
+        incident_energy.ctypes.data_as(POINTER(c_double)), n_incident.value)
+
+    tables = []
+    for i in range(n_incident.value):
+        n_outgoing = c_int()
+        n_discrete = c_int()
+        interpolation = c_int()
+        _dll.openmc_nuclide_get_emission_spectrum_table_size(
+            index, mt, product, distribution, i, byref(n_outgoing),
+            byref(n_discrete), byref(interpolation))
+        energy = np.empty(n_outgoing.value, dtype=np.float64)
+        pdf = np.empty(n_outgoing.value, dtype=np.float64)
+        cdf = np.empty(n_outgoing.value, dtype=np.float64)
+        _dll.openmc_nuclide_get_emission_spectrum_table(
+            index, mt, product, distribution, i,
+            energy.ctypes.data_as(POINTER(c_double)),
+            pdf.ctypes.data_as(POINTER(c_double)),
+            cdf.ctypes.data_as(POINTER(c_double)), n_outgoing.value)
+        tables.append({'energy': energy, 'pdf': pdf, 'cdf': cdf,
+                       'n_discrete': n_discrete.value,
+                       'interpolation': interpolation.value})
+
+    return {'type': 'continuous-tabular', 'incident_energy': incident_energy,
+            'tables': tables}
+
+
+def set_emission_spectrum(index, mt, spectrum, product=0, distribution=0):
+    """Replace all continuous-tabular emission tables atomically in memory.
+
+    Parameters
+    ----------
+    index : int
+        Index of the loaded nuclide (``openmc.lib.nuclides[name]._index``).
+    mt : int
+        Reaction MT number.
+    spectrum : dict
+        Representation returned by :func:`get_emission_spectrum`. The incident
+        grid must match the native grid exactly, with one table per incident
+        energy. Outgoing energies must be finite and nonnegative. Each table
+        contains ``energy``, ``pdf``, ``n_discrete``, and ``interpolation``.
+        The first ``n_discrete`` PDF entries are line probabilities; the rest
+        are densities in 1/eV. Any supplied ``cdf`` is ignored.
+    product : int, optional
+        Zero-based reaction product index.
+    distribution : int, optional
+        Zero-based distribution index within the product.
+
+    Notes
+    -----
+    Call after :func:`simulation_init` and between :func:`next_batch` calls.
+    Library calls must be serialized; under MPI, call on every rank with the
+    same replacement. No nuclear-data files are changed.
+
+    PDFs are normalized and CDFs reconstructed in C++. All tables are validated
+    before any native table is changed. Histogram (1) and linear-linear (2)
+    outgoing interpolation are supported. A continuous part needs at least
+    two strictly increasing energies. Discrete-only tables are supported, but
+    cannot be mixed with continuous tables across unit-base incident-energy
+    interpolation. Other native energy distribution types are not supported.
+
+    Raises
+    ------
+    TypeError, ValueError
+        The Python representation is malformed.
+    openmc.exceptions.AllocationError
+        The simulation is not initialized.
+    openmc.exceptions.InvalidArgumentError
+        A batch is in progress.
+    openmc.exceptions.DataError
+        The native grid, distribution type, or outgoing tables are invalid.
+    """
+    if (not isinstance(spectrum, dict)
+            or spectrum.get('type') != 'continuous-tabular'):
+        raise TypeError("spectrum must be a continuous-tabular dictionary")
+    incident_energy = np.asarray(spectrum.get('incident_energy'),
+                                 dtype=np.float64)
+    tables = spectrum.get('tables')
+    if (incident_energy.ndim != 1 or not incident_energy.size
+            or not isinstance(tables, list)):
+        raise ValueError("invalid continuous-tabular spectrum representation")
+    if len(tables) != len(incident_energy):
+        raise ValueError("number of tables must equal number of incident energies")
+
+    energies, probabilities, discrete, interpolations = [], [], [], []
+    offsets = [0]
+    for table in tables:
+        if not isinstance(table, dict):
+            raise TypeError("each outgoing-energy table must be a dictionary")
+        energy = np.asarray(table.get('energy'), dtype=np.float64)
+        pdf = np.asarray(table.get('pdf'), dtype=np.float64)
+        n_discrete = table.get('n_discrete')
+        interpolation = table.get('interpolation')
+        if (energy.ndim != 1 or pdf.ndim != 1
+                or len(energy) != len(pdf) or not len(energy)):
+            raise ValueError("outgoing energy and PDF must be nonempty equal-length arrays")
+        if (not isinstance(n_discrete, (int, np.integer))
+                or not 0 <= n_discrete <= len(energy)):
+            raise ValueError("invalid number of discrete lines")
+        if (not isinstance(interpolation, (int, np.integer))
+                or interpolation not in (1, 2)):
+            raise ValueError("interpolation must be 1 (histogram) or 2 (linear-linear)")
+        energies.append(energy)
+        probabilities.append(pdf)
+        discrete.append(n_discrete)
+        interpolations.append(interpolation)
+        offsets.append(offsets[-1] + len(energy))
+
+    if max(offsets[-1], len(tables)) > np.iinfo(np.int32).max:
+        raise ValueError("spectrum exceeds C API array size limits")
+    _dll.openmc_nuclide_set_emission_spectrum(
+        index, mt, product, distribution,
+        np.ascontiguousarray(incident_energy), len(tables),
+        np.asarray(offsets, dtype=np.int32),
+        np.asarray(interpolations, dtype=np.int32),
+        np.asarray(discrete, dtype=np.int32),
+        np.concatenate(energies), np.concatenate(probabilities), offsets[-1])
+
 
 def new_nuclide_xs_with_threshold_old(
     index,

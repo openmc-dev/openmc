@@ -21,6 +21,7 @@
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/random_ray/random_ray_simulation.h"
+#include "openmc/secondary_data.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
@@ -47,6 +48,7 @@ void free_memory()
   free_memory_thermal();
   free_memory_chain();
   library_clear();
+  clear_nuclear_data_backups();
   nuclides_clear();
   free_memory_source();
   free_memory_mesh();

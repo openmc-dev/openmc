@@ -51,6 +51,8 @@ public:
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+
   //! Outgoing energy/angle at a single incoming energy
   struct KMTable {
     int n_discrete;               //!< Number of discrete lines

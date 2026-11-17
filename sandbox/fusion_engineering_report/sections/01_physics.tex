@@ -1,0 +1,42 @@
+\section{Scientific motivation and transport formulation}
+\label{sec:physics}
+A breeding blanket must convert fusion neutrons into recoverable tritium while extracting heat and protecting structures and magnets. Nuclear-data priorities therefore depend on the response of interest and on the neutron histories established by the blanket. A high cross section or a high nuclide atom fraction alone does not determine response sensitivity. Earlier HCPB mock-up work combined detailed experimental geometry, reaction-rate measurements and sensitivity/uncertainty calculations \citep{hcpbsensitivity}. The present work uses deliberately simple sensitivity priors to identify channels warranting more detailed evaluation, differential measurements or integral validation. It does not replace evaluated covariance processing or experimental benchmarking.
+
+OpenMC provides continuous-energy Monte Carlo transport and constructive solid geometry (CSG) \citep{openmc}. The existing repository has been extended to perturb loaded nuclear data directly, without reprocessing an evaluation or regenerating HDF5 libraries for each trial. This report audits and synthesises the available saved calculations; no new Morris campaign or tokamak sensitivity campaign was executed for manuscript preparation. Literature context is distinct from the original, repository-specific numerical results.
+
+\subsection{Neutron transport and production response}
+For steady fixed-source transport, let $\psi(\bm r,E,\bm\Omega)$ denote angular flux per unit source strength. A compact continuous-energy equation is
+\begin{align}
+\mathcal L(\bm x;\mathcal G)\psi &= q,\label{eq:transport}\\
+\mathcal L\psi &= \bm\Omega\cdot\nabla\psi+\Sigma_t(\bm r,E)\psi
+-\int_0^\infty\!\int_{4\pi}\mathcal K(\bm r;E',\bm\Omega'\!\to E,\bm\Omega)\psi(\bm r,E',\bm\Omega')\,\dd\Omega'\dd E'.
+\end{align}
+Here $\mathcal G$ includes material boundaries, gaps and boundary conditions; $\bm x$ is the declared nuclear-data parameter vector. The kernel includes reaction selection, secondary multiplicity and conditional energy-angle laws. Non-fission multiplication, such as $(n,2n)$, is included where present. Scalar flux is $\phi(\bm r,E)=\int_{4\pi}\psi\,\dd\Omega$.
+
+For a specified set of verified triton-producing channels $\mathcal C$, the spatial-bin response is
+\begin{equation}
+R_{T,j}(\bm x)=\int_{V_j}\!\sum_n N_n(\bm r)\sum_{r\in\mathcal C_n}
+\int_0^\infty y_{t,nr}(E)\sigma_{nr}(E;\bm x)\phi(\bm r,E;\bm x)\,\dd E\dd V.\label{eq:rate}
+\end{equation}
+$N_n$ is atom density, $\sigma$ microscopic cross section and $y_t$ tritons per reaction. OpenMC handles the barn-to-area conversion and target density in its nuclide-resolved tracklength scorer. In a source-normalised calculation, $R_{T,j}$ is tritons/source neutron. A score for a reaction is a triton yield only when its production multiplicity has been established. Sum $R_T=\sum_jR_{T,j}$; divide by $V_j$ for a bin-average production density per source neutron. Multiplication by an independently specified neutron source rate gives production per second. These units are not interchangeable.
+
+For one DT neutron per fusion, an idealised neutronic breeding ratio is $\mathrm{TBR}=R_T$. An externally irradiated small sphere's production per source neutron should not be interpreted as a plant fuel-cycle breeding performance. Plant self-sufficiency also requires fuel processing, inventories, losses, availability and realistic penetrations.
+
+\subsection{Why sensitivity depends on geometry}
+At fixed source and geometry, differentiating Eq.~\eqref{eq:transport} gives
+\begin{equation}
+\mathcal L\frac{\partial\psi}{\partial x_i}=-\frac{\partial\mathcal L}{\partial x_i}\psi,
+\qquad R_T=\langle r_T,\psi\rangle.
+\end{equation}
+With adjoint importance $\mathcal L^\dagger\psi^\dagger=r_T$, the formal first derivative is
+\begin{equation}
+\frac{\partial R_T}{\partial x_i}=\left\langle\frac{\partial r_T}{\partial x_i},\psi\right\rangle
+-\left\langle\psi^\dagger,\frac{\partial\mathcal L}{\partial x_i}\psi\right\rangle.\label{eq:adjoint}
+\end{equation}
+The first term is a direct response-cross-section contribution; the second contains transport, spectrum, multiplication and leakage changes. Both forward flux and adjoint importance depend on geometry, source and materials. This equation is explanatory: the saved workflow uses finite perturbations and Monte Carlo, not an implemented adjoint solver.
+
+For one perturbed production channel, the exact finite-change identity at fixed atom density is
+\begin{equation}
+\Delta R=\int N\left[\Delta\sigma\,\phi_0+\sigma_0\Delta\phi+\Delta\sigma\Delta\phi\right]\dd E\dd V.\label{eq:decomp}
+\end{equation}
+Thus an increase in elastic scattering can increase residence time and Li-6 capture, but also reduce flux above a Li-7 breakup threshold. The sign and net magnitude are not fixed by the elastic reaction's abundance. The existing constituent tallies support mechanism hypotheses, but the benchmark archives do not provide a complete energy-space decomposition of Eq.~\eqref{eq:decomp}; an exact direct/indirect numerical separation is not claimed.

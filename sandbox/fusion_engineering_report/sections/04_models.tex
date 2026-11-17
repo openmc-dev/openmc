@@ -1,0 +1,47 @@
+\section{Benchmark models, archived settings and computational effort}
+\label{sec:models}
+Five current benchmark result directories contain the corrected production studies. These are the available completed analyses; older prototype Li$_2$O/UQ directories referred to in development history are not present in this checkout and are not represented as additional validated datasets. The separate Li$_2$O tokamak demonstration is discussed last in Section~\ref{sec:tokamak}.
+
+The authoritative evidence is the saved configuration, source XML, model metadata, response mapping and checkpoint outputs, rather than an assumption that every current \texttt{config.py} exactly describes every historical run. Copies and SHA-256 hashes of the report's input artifacts are supplied. All benchmark sources are monoenergetic 14 MeV external pencil beams, with vacuum outer boundaries, natural lithium and the indicated material temperatures. They are diagnostic models, not complete power-plant blankets.
+
+\begin{table}[tbp]\centering\small
+\caption{Actual saved benchmark definitions. Geometrical sizes are target dimensions; a 1 cm surrounding vacuum region contains the external source. The Li-only density is a configured artificial value.}
+\begin{tabularx}{\linewidth}{p{0.16\linewidth}p{0.17\linewidth}X p{0.17\linewidth}}
+\toprule Model & Target & Materials and density [g/cm$^3$] & Beam\\\midrule
+Li sphere & Radius 40 cm & Natural Li; 1.94; 900 K. Not realistic lithium-metal density. & From $z=-40.01$ cm, $+z$\\
+FLiBe sphere & Radius 20 cm & Li$_2$BeF$_4$, Li:Be:F=2:1:4 atom ratio; 1.94; 900 K & From $z=-20.01$ cm, $+z$\\
+PbLi sphere & Radius 40 cm & Li 15.7 atom\%, natural Pb 84.3 atom\%; 9.4; 900 K & From $z=-40.01$ cm, $+z$\\
+Layers, parallel & Cube 20 cm per side & Alternating 1 cm Li (0.534) and Be (1.85) layers along $x$; 293.6 K & $(0.5,0,-10.01)$ cm, $+z$\\
+Layers, perpendicular & Same cube and layers & Same atom inventories and material definitions as parallel case & $(-10.01,0,0)$ cm, $+x$\\
+\bottomrule
+\end{tabularx}\end{table}
+
+\subsection{Li-only sphere}
+This model isolates Li-6/Li-7 competition, production and scattering in a relatively optically thick, artificially dense lithium medium. It is useful as a numerical sensitivity benchmark but its 1.94 g/cm$^3$ density must be corrected before interpreting it as a physical lithium-metal experiment. Its high Li-7 production and substantial return into Li-6-producing energies need not transfer to a thinner or realistic-density breeder region. No comparison with a density-0.534 run at otherwise identical conditions has been made here.
+
+\subsection{FLiBe and PbLi spheres}
+FLiBe introduces Be multiplication/scattering and fluorine spectral/production pathways. The verified response includes Li, Be and F, not just lithium. PbLi introduces natural lead isotope scattering and $(n,2n)$ transport effects, while the specified response remains lithium-produced tritium. The different radii, compositions, densities and response scopes prevent assigning the difference between these sphere results solely to chemistry or solely to geometry. PbLi's atom fractions are the actual implemented 15.7/84.3 values; they should not be silently replaced by a nominal 17/83 composition.
+
+\subsection{Layered Li/Be cube and a controlled irradiation change}
+Both layered cases contain ten lithium slabs and ten beryllium slabs. The geometry and inventory are unchanged; the source direction and entrance position change. In the parallel case the initial beam travels through a central lithium slab. In the perpendicular case it encounters alternating media, entering lithium at the upstream face. Beam normalisation remains one source neutron. The comparison therefore probes the coupling of geometry and irradiation, not a pure material-content change and not an independently isolated shape variation at identical source conditions. Subsequent scatter and return paths can move neutrons between layers in both cases.
+
+\figone{layers_geometry.png}{0.80}{Layered cube diagnostic from the saved model. Alternating Li/Be material regions are explicit native CSG. The perpendicular study retains these same layers and changes the beam direction.}{fig:layersgeom}
+
+\subsection{Screening/training statistics and cost}
+All saved studies use 20 Morris trajectories on six levels, then 512 independent training and 96 independent validation points plus a high-history baseline. The screening histories per evaluation are 100,000 for Li and 10,000 for the other cases. High-history evaluations use 1,000,000 histories for Li/PbLi and 100,000 for FLiBe and the two cubes, with ten batches each. ``Low/high fidelity'' here denotes histories/statistical fidelity of the same model, not a separate approximate transport solver.
+
+\begin{table}[tbp]\centering\small
+\caption{Saved executed cost and screening outcome. Counts include small baseline/diagnostic overhead above $20(d+1)$. Histories are cumulative source histories, not collision counts.}
+\resizebox{\linewidth}{!}{\begin{tabular}{lrrrrl}
+\toprule Study & Screened $d$ & Removed modes & Morris histories & High histories & Stopped converged?\\\midrule
+Li & 163 & 57 & 328,400,000 & 609,000,000 & yes\\
+FLiBe & 246 & 59 & 49,440,000 & 60,900,000 & no\\
+PbLi & 706 & 70 & 141,440,000 & 609,000,000 & no\\
+Layers parallel & 171 & 59 & 34,440,000 & 60,900,000 & yes\\
+Layers perpendicular & 171 & 59 & 34,440,000 & 60,900,000 & no\\
+\bottomrule
+\end{tabular}}\end{table}
+
+Threshold filtering removes 19, 21, 32, 21 and 21 reaction targets, respectively, with all associated eligible modes. It is distinct from exclusions due to unsupported representations. These counts refer to parameters and native thresholds, not to a decision that all remaining data are equally influential or that all nuclear-data types have adapters. Every removed-reaction list is included in the portable data snapshot.
+
+The recorded Morris wall times are approximately 707, 531, 3609, 261 and 317 s, and high-phase wall times 5533, 811, 12,976, 793 and 284 s in the above order. Worker counts differ, notably eight high-phase workers for the perpendicular cube versus one for the parallel cube; wall times are not a clean transport-throughput comparison. Resumable deterministic checkpoints retain seeds, parameter vectors, errors and restoration status. No new high-history transport was needed to prepare this report.

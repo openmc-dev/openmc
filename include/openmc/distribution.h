@@ -100,6 +100,9 @@ public:
   double integral() const { return integral_; }
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
                         //!< mapped to alias method table
   vector<size_t> alias_; //!< Alias table
@@ -144,6 +147,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   vector<double> x_;      //!< Possible outcomes
   vector<double> weight_; //!< Importance weights (empty if unbiased)
   DiscreteIndex di_; //!< Discrete probability distribution of outcome indices
@@ -173,6 +179,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   double a_; //!< Lower bound of distribution
   double b_; //!< Upper bound of distribution
 };
@@ -204,6 +213,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   //! Store processed values in object to allow for faster sampling
   double offset_; //!< a^(n+1)
   double span_;   //!< b^(n+1) - a^(n+1)
@@ -233,6 +245,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   double theta_; //!< Factor in exponential [eV]
 };
 
@@ -260,6 +275,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   double a_; //!< Factor in exponential [eV]
   double b_; //!< Factor in square root [1/eV]
 };
@@ -296,6 +314,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   double mean_value_;  //!< Mean of distribution
   double std_dev_;     //!< Standard deviation
   double lower_;       //!< Lower truncation bound (default: -INFTY)
@@ -336,6 +357,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   vector<double> x_;     //!< tabulated independent variable
   vector<double> p_;     //!< tabulated probability density
   vector<double> c_;     //!< cumulative distribution at tabulated values
@@ -373,6 +397,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   vector<double> x_; //! Possible outcomes
 };
 
@@ -401,6 +428,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   vector<UPtrDist> distribution_; //!< Sub-distributions
   vector<double> weight_; //!< Importance weights for component selection
   DiscreteIndex di_;      //!< Discrete probability distribution of indices
@@ -461,6 +491,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   //! Initialize decay spectrum sampling data
   //! \param nuclide_indices  Indices of decay photon emitters in
   //!   data::chain_nuclides

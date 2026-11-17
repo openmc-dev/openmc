@@ -70,6 +70,8 @@ public:
   double operator()(double x) const override;
 
 private:
+  friend class SecondaryDataReader;
+
   vector<double> coef_; //!< Polynomial coefficients
 };
 
@@ -95,6 +97,8 @@ public:
   const vector<double>& y() const { return y_; }
 
 private:
+  friend class SecondaryDataReader;
+
   std::size_t n_regions_ {0}; //!< number of interpolation regions
   vector<int> nbt_;           //!< values separating interpolation regions
   vector<Interpolation> int_; //!< interpolation schemes
@@ -117,6 +121,8 @@ public:
   const vector<double>& factors() const { return factors_; }
 
 private:
+  friend class SecondaryDataReader;
+
   vector<double> bragg_edges_; //!< Bragg edges in [eV]
   vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
 };
@@ -132,6 +138,8 @@ public:
   double operator()(double E) const override;
 
 private:
+  friend class SecondaryDataReader;
+
   double bound_xs_; //!< Characteristic bound xs in [b]
   double
     debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]
@@ -154,6 +162,8 @@ public:
   const unique_ptr<Function1D>& functions(int i) const { return functions_[i]; }
 
 private:
+  friend class SecondaryDataReader;
+
   vector<unique_ptr<Function1D>> functions_; //!< individual functions
 };
 

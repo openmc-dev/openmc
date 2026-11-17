@@ -37,6 +37,9 @@ public:
   bool empty() const { return energy_.empty(); }
 
 private:
+  friend class SecondaryDataReader;
+  friend class SecondaryDataWriter;
+
   vector<double> energy_;
   vector<unique_ptr<Tabular>> distribution_;
 };

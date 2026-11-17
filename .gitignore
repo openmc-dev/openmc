@@ -12,6 +12,7 @@
 .settings/
 dist/
 openmc.egg-info/
+.venv/
 
 # Inputs generated from Python API
 examples/**/*.xml
@@ -64,6 +65,10 @@ scripts/jeff-3.2
 scripts/jeff-3.2-hdf5
 scripts/*.tar.*
 scripts/G4EMLOW*/
+cross_sections.xml
+/nuclear_data/
+*.ace
+*.endf
 
 # Images
 *.png
@@ -77,6 +82,30 @@ scripts/G4EMLOW*/
 
 # IPython notebook checkpoints
 .ipynb_checkpoints
+
+# Fork-specific analysis outputs and local report builds
+/sandbox/.repo-metadata/
+/sandbox/generated_local/
+/sandbox/**/results/
+/sandbox/**/results_*/
+/sandbox/**/checkpoints/
+/sandbox/**/__pycache__/
+/sandbox/**/.pytest_cache/
+/sandbox/fusion_engineering_report/build/
+/sandbox/fusion_engineering_report/data/
+/sandbox/fusion_engineering_report/figures/
+/sandbox/fusion_engineering_report/tables/
+/sandbox/fusion_engineering_report/*.pdf
+/sandbox/fusion_engineering_report/*.zip
+/sandbox/fusion_engineering_report/*.aux
+/sandbox/fusion_engineering_report/*.blg
+/sandbox/fusion_engineering_report/*.toc
+/sandbox/examples/*_output/
+/sandbox/examples/angular-distribution-plots/
+/sandbox/examples/angular-validation/
+/sandbox/examples/emission-demo/
+/sandbox/examples/examples/
+/sandbox/examples/li6-spectra/
 
 # Cython files
 *.c

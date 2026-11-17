@@ -10,6 +10,8 @@
 #include "openmc/photon.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
+#include "openmc/secondary_data.h"
+#include "openmc/secondary_uncorrelated.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
@@ -505,7 +507,7 @@ std::vector<double> Nuclide::get_xs(int MT, int T_index) const
   }
 
   const auto& rx = *reactions_[i_rx];
-  if (T_index >= rx.xs_.size()) {
+  if (T_index < 0 || T_index >= rx.xs_.size()) {
     throw std::runtime_error("Temperature index out of range");
   }
 
@@ -517,6 +519,38 @@ std::vector<double> Nuclide::get_xs(int MT, int T_index) const
 
 //======================================================
 //== Rebuild derived xs_ from reactions_ data =
+
+void Nuclide::validate_derived_xs() const
+{
+  for (int t = 0; t < grid_.size(); ++t) {
+    vector<double> total(grid_[t].energy.size(), 0.0);
+    vector<double> absorption(total.size(), 0.0);
+    for (const auto& rx : reactions_) {
+      if (rx->redundant_)
+        continue;
+      const auto& xs = rx->xs_.at(t);
+      if (xs.threshold < 0 || xs.threshold + xs.value.size() != total.size())
+        throw std::invalid_argument("Invalid reaction threshold/array length.");
+      for (int j = 0; j < xs.value.size(); ++j) {
+        double value = xs.value[j];
+        if (!std::isfinite(value) || value < 0.0)
+          throw std::invalid_argument("Nonfinite or negative reaction XS.");
+        total[j + xs.threshold] += value;
+        if (is_disappearance(rx->mt_) || is_fission(rx->mt_))
+          absorption[j + xs.threshold] += value;
+      }
+    }
+    for (int j = 0; j < total.size(); ++j) {
+      double actual = xs_[t](j, XS_TOTAL);
+      double absorb = xs_[t](j, XS_ABSORPTION);
+      if (!std::isfinite(actual) || !std::isfinite(absorb) ||
+          std::abs(total[j] - actual) > 1.e-12 * std::max(1.0, total[j]) ||
+          std::abs(absorption[j] - absorb) > 1.e-12 * std::max(1.0, total[j]))
+        throw std::invalid_argument(
+          "Derived XS do not match nonredundant reactions; rebuild required.");
+    }
+  }
+}
 
 void Nuclide::rebuild_derived_xs()
 {
@@ -532,15 +566,33 @@ void Nuclide::rebuild_derived_xs()
     for (const auto& rx_ptr : reactions_) {
       const auto& rx = *rx_ptr;
 
-      // Skip redundant reactions
-      if (rx.redundant_) {
-        continue;
-      }
-
       const int j = rx.xs_[t].threshold;
       const int n = static_cast<int>(rx.xs_[t].value.size());
 
       const auto& vals = rx.xs_[t].value;
+
+      // -----------------------------
+      // PHOTON
+      // -----------------------------
+      for (const auto& p : rx.products_) {
+        if (p.particle_.is_photon()) {
+          for (int k = 0; k < n; ++k) {
+            double E = grid_[t].energy[j + k];
+            double factor = 1.0;
+            if (settings::delayed_photon_scaling && is_fission(rx.mt_) &&
+                prompt_photons_ && delayed_photons_) {
+              double prompt = (*prompt_photons_)(E);
+              factor = (prompt + (*delayed_photons_)(E)) / prompt;
+            }
+            xs_t(j + k, XS_PHOTON_PROD) += factor * vals[k] * (*p.yield_)(E);
+          }
+        }
+      }
+
+      // Skip redundant reactions
+      if (rx.redundant_) {
+        continue;
+      }
 
       // -----------------------------
       // TOTAL CROSS SECTION
@@ -565,18 +617,6 @@ void Nuclide::rebuild_derived_xs()
         for (int k = 0; k < n; ++k) {
           xs_t(j + k, XS_FISSION) += vals[k];
           xs_t(j + k, XS_ABSORPTION) += vals[k];
-        }
-      }
-
-      // -----------------------------
-      // PHOTON
-      // -----------------------------
-      for (const auto& p : rx.products_) {
-        if (p.particle_.is_photon()) {
-          for (int k = 0; k < n; ++k) {
-            double E = grid_[t].energy[j + k];
-            xs_t(j + k, XS_PHOTON_PROD) += vals[k] * (*p.yield_)(E);
-          }
         }
       }
     }
@@ -1331,6 +1371,41 @@ bool multipole_in_range(const Nuclide& nuc, double E)
   return E >= nuc.multipole_->E_min_ && E <= nuc.multipole_->E_max_;
 }
 
+namespace {
+
+// All runtime nuclear-data mutations use the same lifecycle restrictions.
+int check_nuclear_data_mutation()
+{
+  if (!simulation::initialized) {
+    set_errmsg("Simulation must be initialized before modifying nuclear data.");
+    return OPENMC_E_ALLOCATE;
+  }
+  if (simulation::in_batch) {
+    set_errmsg("Nuclear data can only be modified between batches.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  return 0;
+}
+
+ContinuousTabular& continuous_spectrum(
+  int i_nuclide, int mt, int product, int distribution)
+{
+  auto& native = secondary_distribution(i_nuclide, mt, product, distribution);
+  auto* uncorrelated = dynamic_cast<UncorrelatedAngleEnergy*>(&native);
+  if (!uncorrelated || !uncorrelated->energy()) {
+    throw std::runtime_error(
+      "Requested distribution is not an uncorrelated energy distribution.");
+  }
+  auto* continuous = dynamic_cast<ContinuousTabular*>(uncorrelated->energy());
+  if (!continuous) {
+    throw std::runtime_error(
+      "Requested energy distribution is not continuous tabular.");
+  }
+  return *continuous;
+}
+
+} // namespace
+
 extern "C" int openmc_nuclide_get_xs(
   int i_nuclide, int MT, int T_index, double* xs_out, int n_values)
 {
@@ -1372,14 +1447,14 @@ extern "C" int openmc_nuclide_get_xs_size(
 
   try {
     auto& nuc = *data::nuclides[index];
-    size_t i_rx = nuc.reaction_index_[MT];
+    size_t i_rx = nuc.reaction_index_.at(MT);
     if (i_rx == C_NONE) {
       set_errmsg("No reaction with MT = " + std::to_string(MT));
       return OPENMC_E_DATA;
     }
 
     const auto& rx = *nuc.reactions_[i_rx];
-    if (T_index >= rx.xs_.size()) {
+    if (T_index < 0 || T_index >= rx.xs_.size()) {
       set_errmsg("Temperature index out of range");
       return OPENMC_E_DATA;
     }
@@ -1420,6 +1495,9 @@ extern "C" int openmc_nuclide_get_energy_grid(
 
 extern "C" int openmc_nuclide_rebuild_derived_xs(int index)
 {
+  if (int err = check_nuclear_data_mutation())
+    return err;
+
   if (index < 0 || index >= data::nuclides.size()) {
     set_errmsg("Index in nuclides vector out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1529,6 +1607,9 @@ extern "C" int openmc_nuclide_set_reaction_xs_with_threshold(int index, int mt,
   int T_index, const double* energy, const double* values, int n,
   double threshold_energy)
 {
+  if (int err = check_nuclear_data_mutation())
+    return err;
+
   using namespace openmc;
 
   if (index < 0 || index >= static_cast<int>(data::nuclides.size()))
@@ -1566,6 +1647,12 @@ extern "C" int openmc_nuclide_set_reaction_xs_with_threshold(int index, int mt,
         return OPENMC_E_INVALID_ARGUMENT;
     }
 
+    if (!std::isfinite(threshold_energy))
+      return OPENMC_E_INVALID_ARGUMENT;
+    for (int i = 0; i < n; ++i)
+      if (!std::isfinite(values[i]) || values[i] < 0.0)
+        return OPENMC_E_INVALID_ARGUMENT;
+
     // --- Compute threshold index ---
     int thr_idx = -1;
     for (int i = 0; i < n; ++i) {
@@ -1584,7 +1671,7 @@ extern "C" int openmc_nuclide_set_reaction_xs_with_threshold(int index, int mt,
     }
 
     // --- Trim XS ---
-    std::vector<double> new_values;
+    vector<double> new_values;
     new_values.reserve(n - thr_idx);
 
     for (int i = thr_idx; i < n; ++i)
@@ -1599,6 +1686,147 @@ extern "C" int openmc_nuclide_set_reaction_xs_with_threshold(int index, int mt,
   }
 
   return 0;
+}
+
+extern "C" int openmc_nuclide_get_emission_spectrum_info(
+  int index, int mt, int product, int distribution, int* n_incident)
+{
+  if (!n_incident) {
+    set_errmsg("Null incident-energy count pointer.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  try {
+    *n_incident =
+      continuous_spectrum(index, mt, product, distribution).energy().size();
+    return 0;
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
+  }
+}
+
+extern "C" int openmc_nuclide_get_emission_spectrum_incident_energy(int index,
+  int mt, int product, int distribution, double* energy, int n_incident)
+{
+  if (!energy) {
+    set_errmsg("Null incident-energy output pointer.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  try {
+    const auto& values =
+      continuous_spectrum(index, mt, product, distribution).energy();
+    if (values.size() != n_incident) {
+      set_errmsg("Incident-energy output size does not match native grid.");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+    std::copy(values.begin(), values.end(), energy);
+    return 0;
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
+  }
+}
+
+extern "C" int openmc_nuclide_get_emission_spectrum_table_size(int index,
+  int mt, int product, int distribution, int incident_index, int* n_outgoing,
+  int* n_discrete, int* interpolation)
+{
+  if (!n_outgoing || !n_discrete || !interpolation) {
+    set_errmsg("Null outgoing table metadata pointer.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  try {
+    const auto& tables =
+      continuous_spectrum(index, mt, product, distribution).distribution();
+    if (incident_index < 0 || incident_index >= tables.size()) {
+      set_errmsg("Incident-energy table index is out of range.");
+      return OPENMC_E_OUT_OF_BOUNDS;
+    }
+    const auto& table = tables[incident_index];
+    *n_outgoing = table.e_out.size();
+    *n_discrete = table.n_discrete;
+    *interpolation = static_cast<int>(table.interpolation);
+    return 0;
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
+  }
+}
+
+extern "C" int openmc_nuclide_get_emission_spectrum_table(int index, int mt,
+  int product, int distribution, int incident_index, double* energy,
+  double* pdf, double* cdf, int n_outgoing)
+{
+  if (!energy || !pdf || !cdf) {
+    set_errmsg("Null outgoing table output pointer.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  try {
+    const auto& tables =
+      continuous_spectrum(index, mt, product, distribution).distribution();
+    if (incident_index < 0 || incident_index >= tables.size()) {
+      set_errmsg("Incident-energy table index is out of range.");
+      return OPENMC_E_OUT_OF_BOUNDS;
+    }
+    const auto& table = tables[incident_index];
+    if (table.e_out.size() != n_outgoing) {
+      set_errmsg("Outgoing table size does not match native table.");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+    std::copy(table.e_out.begin(), table.e_out.end(), energy);
+    std::copy(table.p.begin(), table.p.end(), pdf);
+    std::copy(table.c.begin(), table.c.end(), cdf);
+    return 0;
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
+  }
+}
+
+extern "C" int openmc_nuclide_set_emission_spectrum(int index, int mt,
+  int product, int distribution, const double* incident_energy, int n_incident,
+  const int* offsets, const int* interpolation, const int* n_discrete,
+  const double* energy, const double* pdf, int n_outgoing)
+{
+  if (int err = check_nuclear_data_mutation())
+    return err;
+  if (!incident_energy || !offsets || !interpolation || !n_discrete ||
+      !energy || !pdf || n_incident <= 0 || n_outgoing <= 0) {
+    set_errmsg("Invalid emission spectrum arrays or sizes.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  try {
+    auto& spectrum = continuous_spectrum(index, mt, product, distribution);
+    if (n_incident != spectrum.energy().size() ||
+        n_incident != spectrum.distribution().size() ||
+        !std::equal(spectrum.energy().begin(), spectrum.energy().end(),
+          incident_energy)) {
+      throw std::invalid_argument(
+        "Incident-energy grid must exactly match the native grid.");
+    }
+    if (offsets[0] != 0 || offsets[n_incident] != n_outgoing) {
+      throw std::invalid_argument("Invalid outgoing table offsets.");
+    }
+    vector<vector<double>> energies, probabilities;
+    for (int i = 0; i < n_incident; ++i) {
+      if (offsets[i] < 0 || offsets[i + 1] <= offsets[i] ||
+          offsets[i + 1] > n_outgoing) {
+        throw std::invalid_argument("Invalid outgoing table offsets.");
+      }
+      energies.emplace_back(energy + offsets[i], energy + offsets[i + 1]);
+      probabilities.emplace_back(pdf + offsets[i], pdf + offsets[i + 1]);
+    }
+    spectrum.set_spectrum(
+      vector<double>(incident_energy, incident_energy + n_incident),
+      vector<int>(interpolation, interpolation + n_incident),
+      vector<int>(n_discrete, n_discrete + n_incident), energies,
+      probabilities);
+    return 0;
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
+  }
 }
 
 } // namespace openmc

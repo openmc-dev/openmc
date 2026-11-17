@@ -1,0 +1,37 @@
+\section{Priorities for nuclear-data investigation and measurement}
+\label{sec:priorities}
+\subsection{What can legitimately be prioritised}
+A large sensitivity index identifies a pathway under a specific response, geometry and input model. It does not show that the underlying evaluated datum is inaccurate or that a new measurement is more valuable than improving another datum. For a small perturbation about baseline,
+\begin{equation}
+\Var(R)\approx\bm g^\top C_\delta\bm g,\qquad g_i=\partial R/\partial\delta_i.
+\label{eq:covariancepriority}
+\end{equation}
+The present independent uniform prior has diagonal variance $a^2/3$ before mode budgeting. A realistic measurement priority also requires evaluated covariance, existing experimental coverage, achievable precision, parameter correlations and experimental cost. If only independent variance $C_{ii}$ is reduced by a factor $\eta$, the linearised variance reduction is $(1-\eta)g_i^2C_{ii}$; correlation changes make that expression incomplete. This illustrates why equal-range sensitivity and value of information are different quantities. No covariance-based optimisation is claimed here.
+
+The ordered list below is therefore a \textbf{provisional investigation sequence}, chosen from recurrence, maximum observed impact and model-specific physics. It is not a universal ordering or a claim of demonstrated deficiencies. Before commissioning new measurements, compare evaluated files and covariances with experimental coverage in EXFOR \citep{exfor} and fusion-oriented evaluation/benchmark work such as FENDL \citep{fendl}. A different intended blanket may reorder the list.
+
+\begin{table}[tbp]\centering\small
+\caption{Evidence-led investigation sequence under the reported hypothetical priors. Numerical fractions are conditional $S_T$, not evaluated uncertainty shares.}
+\begin{tabularx}{\linewidth}{c p{0.23\linewidth}X}
+\toprule Order & Nuclear-data target & Evidence and recommended focus\\\midrule
+1 & Li-7 breakup production, especially evaluated MT56 and the MT52--82 set & MT56 $S_T=0.408$ in Li, 0.393 in FLiBe and 0.448--0.790 in layers; only 0.052 in PbLi. Verify branch sums, unit yields, evaluation partitioning and total/differential breakup data before interpreting a bin-specific priority.\\
+2 & Li-6 $(n,t)$, MT105 & $S_T=0.425$ in Li and 0.641 in PbLi, with direct production impact in every breeder. Audit covariance/standards consistency and energy-dependent yield/cross-section evidence across the actual transported spectrum.\\
+3 & Be-9 elastic, MT2; associated production/multiplication channels & Elastic $S_T$ changes from 0.091 to 0.389 with layer orientation; inspect differential scattering, $(n,2n)$ and triton channels without redundant-parent double counting.\\
+4 & F-19 elastic MT2 and MT22 in FLiBe; production MT105 & FLiBe elastic and MT22 indices 0.204 and 0.127. Prioritise spectral redistribution and reaction competition in a salt-specific integral experiment, not only lithium measurements.\\
+5 & Pb-208 elastic MT2 and $(n,2n)$ MT16, then other Pb isotopes & PbLi indices 0.115 and 0.107. Investigate isotope-resolved scattering/multiplication and emergent spectra for PbLi applications. Not relevant in a Pb-free blanket.\\
+6 & Differential angular data: Li-7 elastic, Be-9 elastic and F-19 elastic & Li elastic angular P2 $S_T\simeq0.044$; Be/F angular effects emerge in their geometries. Study frames, angle-energy correlation and response-dependent angular observables.\\
+7 & Supported outgoing-energy shapes and unsupported correlated laws & Small selected independent-mode contributions do not establish unimportance of full emission data. Resolve noise, compare equal physical budgets and validate conditional energy-angle kernels before assigning measurement priority.\\
+\bottomrule
+\end{tabularx}\end{table}
+
+\subsection{Suggested differential and integral experimental programme}
+For Li-7, an energy scan should cover the open breakup region sampled by the application, with particular attention to the MT56 native threshold near 5.30 MeV and the 14 MeV source region. These are physically motivated \emph{candidate} energies, not a measured energy-sensitivity profile. Inclusive triton yield, outgoing-neutron spectra and angular distributions can test whether an apparent branch-specific effect is robust under different evaluation decompositions. Measuring an inclusive physical channel is often more transferable than treating a discretised evaluated state as independently uncertain.
+
+For Li-6, measure or reassess production cross sections against the relevant established standards and covariances before concluding that additional differential data are needed. Slowed-down neutrons can dominate Li-6 production even with a 14 MeV source, so a source-energy-only measurement would not automatically resolve the application uncertainty. The current whole-reaction study cannot identify the optimal incident-energy measurement interval.
+
+For Be/F/Pb, elastic angular distributions, inelastic energy transfer and multiplication affect the forward and adjoint fields. An integral programme could compare matched Li/Be slabs with beam parallel and perpendicular to layers, keeping material inventories fixed, and measure constituent production together with leakage and neutron spectra. Spatially resolved tritium-production measurements and leakage spectra would help distinguish compensation between direct production and transport. The present results motivate such a design; they do not substitute for measured integral validation.
+
+\subsection{Geometry-specific rather than universal nuclear-data priorities}
+The recurrence of Li-7 MT56 across several simple fast-beam models is a credible reason to investigate that evaluation and response mapping, particularly given the corrected direct-production score. It is not sufficient to announce MT56 as the dominant uncertainty of a DEMO blanket. The tokamak has enriched Li-6, oxygen, steel, tungsten, distributed isotropic emission, longer return paths and magnet/vessel structures; its importance weighting will differ. Be-9 dominance in some HCPB integral literature \citep{hcpbsensitivity} and Li-7 dominance in these particular benchmarks need not conflict: geometry, material fractions, source, response and uncertainty model all matter.
+
+A defensible next campaign would repeat full-space screening to convergence, test the excluded parameter set, match parameter priors across geometry comparisons, permit needed interaction terms, and then replace the hypothetical priors with evaluated covariance information. These are recommendations, not additional methods or results silently added to the present study.

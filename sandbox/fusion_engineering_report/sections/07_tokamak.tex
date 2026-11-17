@@ -1,0 +1,84 @@
+\section{Final application model: DEMO-inspired \texorpdfstring{Li$_2$O}{Li2O} tokamak}
+\label{sec:tokamak}
+\subsection{Engineering reference and deliberate departures}
+The new \texttt{tokomak\_analysis/} directory contains a full-360-degree native OpenMC CSG model, separate from the preceding small benchmarks. Published EU-DEMO design-space and magnet studies motivate the machine scale \citep{demodesign,magnets}; HCPB and shielding work motivate breeder/multiplier/cooling concepts \citep{hcpb,shielding}; double-wall vessel structure is informed by containment studies \citep{vessel}. These sources describe evolving designs, not one geometrically complete common reference. The implemented dimensions combine documented values with explicitly assumed details.
+
+\begin{table}[tbp]\centering\small
+\caption{Tokamak baseline. Assumed detailed builds are not presented as published DEMO dimensions.}
+\begin{tabularx}{\linewidth}{p{0.29\linewidth}p{0.24\linewidth}X}
+\toprule Parameter & Implemented value & Status\\\midrule
+Plasma major/minor radius & 9.10/2.90 m & Reference-inspired machine scale\\
+Elongation / triangularity & 1.65 / 0.33 & Design-space shaping; faceted approximation\\
+Fusion power / source & 2 GW / 14.1 MeV & Reference-scale power; isotropic plasma-volume source\\
+TF / PF / CS modules & 16 / 6 / 6 & TF count reference-inspired; detailed placements/builds assumed\\
+IB / OB blanket build & 75.5 / 98.2 cm & Reference radial-build motivation\\
+Plasma--first-wall gap & 22.5 cm & Reference radial-build motivation\\
+Tungsten armour & 0.2 cm & Representative concept value\\
+FW steel/coolant/rear & 0.8 / 1.0 / 0.2 cm & Assumed split of 2 cm envelope\\
+Breeder / multiplier & Li$_2$O / Be & Li$_2$O deliberately replaces reference HCPB ceramics\\
+Li-6 enrichment / packing & 60 atom\% / 0.64 & Configurable; enrichment reference-inspired, packing assumed\\
+Blanket modules & $16\times3\times16=768$ nominal & Assumed toroidal and IB/OB vertical-stack segmentation\\
+Vessel inner/filler/outer & 3.6 / 50.4 / 6.0 cm & Simplified double-wall/filler split\\
+\bottomrule
+\end{tabularx}\end{table}
+
+The reference HCPB ceramic blend is not Li$_2$O. The substitution changes lithium inventory, oxygen content, density, thermal properties and irradiation/purge behaviour. Li$_2$O solid density is 2.013 g/cm$^3$ and default pebble packing 0.64, with interstitial purge helium. Different breeder cycles can have different Li-6 enrichment. Be beds, cooling plates, EUROFER-like structures, manifolds, SS316L vessel, W armour, Cu/CuCrZr and homogenised Nb$_3$Sn winding packs are distinct regions/materials. This neutronics calculation does not establish Li$_2$O engineering qualification.
+
+\subsection{Native CSG geometry and hierarchy}
+The toroidal axis is $Z$; OpenMC lengths are cm. A faceted Miller-like plasma contour is generated from
+\begin{equation}
+R(\alpha)=R_0+a\cos[\alpha+\delta\sin\alpha],\qquad
+Z(\alpha)=\kappa a\sin\alpha,\quad 0\le\alpha<2\pi,
+\end{equation}
+then revolved using installed native polygon/RZ helpers and analytic planes, cylinders and cones. An arbitrary elliptical-torus primitive is not assumed. Offset contours form the chamber/blanket/vessel builds. Repeated rotated universes supply the full toroidal assembly, with distinct D-shaped TF winding, insulation and case regions, individually placed PF coils, central supports/shielding and cased CS modules. The chamber has a lower opening connected to the divertor vacuum; there is no magnetic-equilibrium or true X-point calculation.
+
+Blanket modules have toroidal gaps and sidewalls and separate inboard/outboard vertical stacks. Three breeding/multiplier/cooling cycles lie behind the first wall and ahead of backplate/manifold structures. Level 1 homogenises active interiors while retaining major layers/gaps; level 2 resolves radial beds; level 3 adds grouped helium slots, ribs and breeder-unit subdivisions. Explicit pebbles, pipe bends and complete manufacturing detail are not included. A lower divertor has two inclined W/CuCrZr/water/steel targets and a cooled supporting cassette, distinct from the blanket.
+
+\figone{tokamak_xz.png}{0.90}{Native-cell-query poloidal slice of the DEMO-inspired tokamak. The source plasma, blanket, double-wall vessel, D-shaped TF envelopes, central column, PF coils and lower divertor are distinct CSG regions. Colours identify component/material regions; this is not an independently drawn transport geometry.}{fig:tokamakxz}
+\begin{figure}[tbp]\centering
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{tokamak_blanket.png}\caption{Outboard blanket detail.}\end{subfigure}\hfill
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{tokamak_divertor.png}\caption{Lower divertor detail.}\end{subfigure}
+\caption{Native-query engineering detail: repeated breeder/multiplier/cooling layers with structures and manifolds, and separately layered divertor targets. Thin features are limited by slice pixel size.}\label{fig:tokamakdetails}
+\end{figure}
+
+\subsection{Source normalisation, scores and material approximations}
+The baseline source is isotropic, uniform in physical plasma volume. Native cylindrical proposals are weighted proportional to $R$ and reject outside the plasma cell; this correctly includes the cylindrical volume Jacobian. Native \texttt{TokamakSource} supports an optional radial profile, while an optional asymmetric source bank uses plasma-volume rejection solely for source generation. Nuclear secondary sampling remains native.
+
+Assuming 17.6 MeV per DT fusion,
+\begin{equation}
+\dot N_n=\frac{P_f}{17.6\,\mathrm{MeV}}=7.092624\times10^{20}\ \mathrm{s}^{-1}\quad(P_f=2\,\mathrm{GW}),
+\end{equation}
+with unit conversion understood. At 14.1 MeV/neutron this is 1602.27 MW source-neutron power. A per-source heating score $h$ in eV/source corresponds to $P_h=\dot N_n h(1.602176634\times10^{-19})$ W. It is not obtained by multiplying by 2 GW directly.
+
+The tokamak verified-production response includes Li-6 MT105, Li-7 MT52--82 and Be-9 MT700/701, with the same evaluation-pinning and baseline-reconstruction safeguards. Oxygen/structural triton-producing side channels have not been exhaustively mapped; this is explicitly a scoped Li+Be TBR. Per-module, poloidal-stack and inboard/outboard contributions are summed in each batch and checked against the global response. Flux spectra, mesh flux, boundary leakage, shield-interface current, $(n,2n)$ event rate, component heating and magnet/vessel exposure are saved. A single $(n,2n)$ score is not a full neutron balance.
+
+Neutron-only calculations use \texttt{heating-local}; an additional small coupled neutron--photon demonstration uses collision-estimator \texttt{heating}. Temperatures and material compositions are approximations: neutron transport in magnet materials uses available evaluated temperatures near room temperature rather than a true 4.5 K data library; hot-water thermal scattering is not fully represented; representative winding/steel compositions are not certified engineering specifications. A Zr96 probability-table warning at 600 K in the supplied library is retained, not suppressed by changing data.
+
+\subsection{Executed transport results and validation evidence}
+\begin{table}[tbp]\centering\small
+\caption{Executed native geometry-debug transport demonstrations. Production errors are one batch standard error. Different blanket fidelity changes transport, so agreement is not assumed.}
+\begin{tabular}{lrrrr}
+\toprule Fidelity/case & Histories & Unique cells & Li-only TBR & Verified Li+Be TBR\\\midrule
+Global, level 1 & 10,000 & 220 & $1.22594\pm0.01758$ & $1.23261\pm0.01755$\\
+Segmented, level 2 & 20,000 & 348 & $1.16626\pm0.00826$ & $1.17736\pm0.00823$\\
+Detailed, level 3 & 5,000 & 524 & $1.13566\pm0.01822$ & $1.14700\pm0.01818$\\
+Coupled smoke, level 1 & 400 & 220 & $1.20388\pm0.04269$ & $1.21087\pm0.04240$\\
+\bottomrule
+\end{tabular}\end{table}
+The level-2 inboard and outboard contributions are $0.41333\pm0.00644$ and $0.76403\pm0.01012$ tritons/source. Their standard errors cannot be added in quadrature without their covariance. Its Li-6/Li-7/Be-9 means are 1.13007, 0.03619 and 0.01110. Enrichment and the reactor-scale spectrum produce a very different constituent balance from the natural-lithium fast-beam benchmarks, reinforcing the need for a separate tokamak sensitivity calculation rather than importing their rankings.
+
+Construction takes roughly 1.0--1.1 s. Level-2 geometry has 13,216 physical leaf-cell instances, 2,049 surfaces and 17 used materials; detailed geometry has 21,664 leaf instances and 2,529 surfaces. The respective measured debug-run rates are approximately 753, 686 and 441 source histories/s for levels 1--3, including setup/verification/output overhead, with peak process memory roughly 0.85--0.95 GiB. These are not pure collision-kernel or large-machine scaling benchmarks.
+
+A 20-test suite passed, covering composition, geometry construction, signed boundaries, XML, native surfaces, periodicity, source confinement, overlap/coverage sampling, module counts, native debug transport/conservation, VTK readback and CLI validation. All three final fidelities completed debug transport with no reported overlap/lost-particle failure. Nevertheless, 36 cells in the 20k run had fewer than ten overlap checks, so this is finite test evidence, not an exhaustive proof of nonoverlap. Exact interfaces and universe-local surface sharing resolved boundary problems found during development; difficult components were not deleted to obtain a clean run.
+
+A shared 100,000-point native-query inventory comparison estimates Li differences relative to level 2 of $+0.188\%\pm1.954\%$ for level 1 and $-0.115\%\pm0.487\%$ for level 3 (paired standard errors). Estimates are consistent with similar inventories but do not prove exact inventory equivalence or sub-percent tolerance. Global homogenisation and lower truncation can have a real effect. Level-1 TBR differs visibly from level 2, and these demonstrations do not establish blanket-fidelity convergence.
+
+\figone{tokamak_breeding.png}{0.94}{Level-2 poloidal-stack Li+Be production, with batch standard errors. Individual module totals are saved and checked against the global score.}{fig:tokamakbreeding}
+\figone{tokamak_spectrum.png}{0.88}{Saved blanket neutron spectrum. Values are native energy-bin integrated volume-integrated flux, not a probability density or automatically per-eV flux. A precise energy-resolved sensitivity kernel has not been inferred from this plot.}{fig:tokamakspectrum}
+
+\subsection{Three-dimensional export and outstanding research questions}
+VTK export samples the authoritative CSG through native cell queries and maps physical instance paths to component, material, module, sector and inboard/outboard IDs. It provides a VTM multiblock assembly with VTU children, VTI images and VTP surfaces, without replacing the transport geometry. The full-reactor grid is 96$\times$96$\times$80, with voxels about 39.6$\times$39.6$\times$31.3 cm. Thin armour may disappear. A separate first-wall zoom uses 0.1$\times$0.75$\times$0.5 cm voxels. Both pass VTK readback. ParaView GUI inspection was unavailable; the supplied cutaway is rendered by Matplotlib from the same VTK surfaces because headless OpenGL failed.
+
+\figone{tokamak_cutaway.png}{0.98}{Sampled three-dimensional CSG assembly cutaway. Coarse-voxel gaps/stepping in thin components are visualisation artefacts; this is not a boundary-conforming engineering mesh.}{fig:tokamak3d}
+
+No tokamak Morris/PCE/Sobol campaign is available. No sensitive tokamak nuclide ordering, measured covariance uncertainty, converged deep-shielding result or self-sufficiency claim can therefore be reported. Zero magnet tallies at these histories are unresolved, not proof of sufficient shielding. Penetrations, realistic coolant routing, magnetic/structural self-consistency, neutron-data temperature treatment and Li$_2$O thermomechanics remain substantial limitations. This model supplies the next geometry on which the validated response/mutation machinery can be investigated; its TBR above unity is not a plant design conclusion.

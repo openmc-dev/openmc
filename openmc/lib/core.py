@@ -63,6 +63,7 @@ _dll.openmc_init.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
+_dll.openmc_get_current_batch.restype = c_int
 _dll.openmc_initialize_mesh_egrid.argtypes = [
     c_int, _array_1d_int, c_double
 ]
@@ -214,7 +215,7 @@ def current_batch():
         Current batch of the simulation
 
     """
-    return c_int.in_dll(_dll, 'current_batch').value
+    return _dll.openmc_get_current_batch()
 
 
 def export_properties(filename=None, output=True):
@@ -815,19 +816,6 @@ class TemporarySession:
                 self._tmp_dir.cleanup()
 
 
-class _DLLGlobal:
-    """Data descriptor that exposes global variables from libopenmc."""
-    def __init__(self, ctype, name):
-        self.ctype = ctype
-        self.name = name
-
-    def __get__(self, instance, owner):
-        return self.ctype.in_dll(_dll, self.name).value
-
-    def __set__(self, instance, value):
-        self.ctype.in_dll(_dll, self.name).value = value
-
-
 class _FortranObject:
     def __repr__(self):
         return f"<{type(self).__name__}(index={self._index})>"
@@ -867,7 +855,7 @@ def quiet_dll(output=True):
         sys.stdout.flush()
         # Save the initial file descriptor states
         initial_stdout = sys.stdout
-        initial_stdout_fno = os.dup(sys.stdout.fileno())
+        initial_stdout_fno = os.dup(1)
         # Get a garbage descriptor so we can throw away output
         devnull = os.open(os.devnull, os.O_WRONLY)
 
@@ -885,7 +873,10 @@ def quiet_dll(output=True):
             # Now we just clean up after ourselves and reset the streams
             sys.stdout = initial_stdout
             sys.stdout.flush()
-            os.dup2(initial_stdout_fno, 1)
+            try:
+                os.dup2(initial_stdout_fno, 1)
+            finally:
+                os.close(initial_stdout_fno)
 
 # --- Nuclide functions -----------------------------------------------------
 
@@ -1237,3 +1228,5 @@ def new_nuclide_xs_with_threshold_old(
             f"OpenMC core error in new_nuclide_xs_with_threshold "
             f"(index={index}, mt={mt}, T_index={temperature}): {err}"
         )
+
+

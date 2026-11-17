@@ -4,7 +4,7 @@ import openmc
 # Get the flux from the statepoint
 with openmc.StatePoint('statepoint.10.h5') as sp:
     flux = sp.tallies[1].mean
-    flux.shape = (50, 50)
+    flux = flux.reshape(50, 50)
 
 # Plot the flux
 fig, ax = plt.subplots()

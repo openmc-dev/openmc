@@ -87,7 +87,7 @@ public:
   // [angle][incoming group][outgoing group]
   tensor::Tensor<double> chi_prompt;
   // chi_delayed has the following dimensions:
-  // [angle][incoming group][outgoing group][delayed group]
+  // [angle][delayed group][incoming group][outgoing group]
   tensor::Tensor<double> chi_delayed;
   // scatter has the following dimensions: [angle]
   vector<std::shared_ptr<ScattData>> scatter;

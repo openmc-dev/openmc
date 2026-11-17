@@ -29,6 +29,7 @@ void ScattData::base_init(int order, const tensor::Tensor<int>& in_gmin,
   energy.resize(groups);
   mult.resize(groups);
   dist.resize(groups);
+  weight_mult_.assign(groups, 1.);
 
   for (int gin = 0; gin < groups; gin++) {
     // Store the inputted data
@@ -46,6 +47,16 @@ void ScattData::base_init(int order, const tensor::Tensor<int>& in_gmin,
     double norm = std::accumulate(energy[gin].begin(), energy[gin].end(), 0.);
 
     if (norm != 0.) {
+      // The outgoing group is sampled from neutron production, B_gh / B_g.
+      // Use the row multiplier B_g / C_g, not the sampled channel multiplicity,
+      // so the expected production remains C_g * (B_gh / B_g) * (B_g / C_g).
+      double scatter_norm = 0.;
+      for (int go = 0; go < energy[gin].size(); go++) {
+        if (energy[gin][go] != 0.) {
+          scatter_norm += energy[gin][go] / mult[gin][go];
+        }
+      }
+      weight_mult_[gin] = norm / scatter_norm;
       for (auto& n : energy[gin])
         n /= norm;
     }
@@ -197,8 +208,7 @@ double ScattData::get_xs(
     if (gout != nullptr) {
       val *= energy[gin][i_gout] / mult[gin][i_gout];
     } else {
-      val /= std::inner_product(
-        mult[gin].begin(), mult[gin].end(), energy[gin].begin(), 0.0);
+      val /= weight_mult_[gin];
     }
     break;
   case MgxsType::NU_SCATTER_FMU:
@@ -365,7 +375,7 @@ void ScattDataLegendre::sample(
   }
 
   // Update the weight to reflect neutron multiplicity
-  wgt *= mult[gin][i_gout];
+  wgt *= weight_mult_[gin];
 }
 
 //==============================================================================
@@ -550,14 +560,10 @@ void ScattDataHistogram::sample(
   // Randomly select mu within the imu bin
   mu = prn(seed) * dmu + this->mu[imu];
 
-  if (mu < -1.) {
-    mu = -1.;
-  } else if (mu > 1.) {
-    mu = 1.;
-  }
+  mu = std::clamp(mu, -1., 1.);
 
   // Update the weight to reflect neutron multiplicity
-  wgt *= mult[gin][i_gout];
+  wgt *= weight_mult_[gin];
 }
 
 //==============================================================================
@@ -767,14 +773,10 @@ void ScattDataTabular::sample(
       (std::sqrt(std::max(0., p0 * p0 + 2. * frac * (xi - c_k))) - p0) / frac;
   }
 
-  if (mu < -1.) {
-    mu = -1.;
-  } else if (mu > 1.) {
-    mu = 1.;
-  }
+  mu = std::clamp(mu, -1., 1.);
 
   // Update the weight to reflect neutron multiplicity
-  wgt *= mult[gin][i_gout];
+  wgt *= weight_mult_[gin];
 }
 
 //==============================================================================

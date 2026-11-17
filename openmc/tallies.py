@@ -7,6 +7,7 @@ from math import sqrt, log
 from numbers import Integral, Real
 import operator
 from pathlib import Path
+import warnings
 import lxml.etree as ET
 
 import h5py
@@ -22,6 +23,7 @@ from openmc.filter import (
     EnergyFunctionFilter,
     DelayedGroupFilter,
     FilterMeta,
+    RealFilter,
     MeshFilter,
     MeshBornFilter,
 )
@@ -596,14 +598,23 @@ class Tally(IDManagerMixin):
 
             n = self.num_realizations
             nonzero = np.abs(self.mean) > 0
-            self._std_dev = np.zeros_like(self.mean)
-            self._std_dev[nonzero] = np.sqrt((self.sum_sq[nonzero]/n -
-                                              self.mean[nonzero]**2)/(n - 1))
+            std_dev = np.zeros_like(self.mean)
+            if n > 1:
+                # Rounding can push the variance below zero when realizations
+                # are nearly identical, so clamp at zero
+                variance = (self.sum_sq[nonzero]/n - self.mean[nonzero]**2)/(n - 1)
+                std_dev[nonzero] = np.sqrt(np.maximum(variance, 0.0))
+            elif nonzero.any():
+                warnings.warn(
+                    'Standard deviation is undefined for a tally with a single '
+                    'realization; reporting it as NaN.')
+                std_dev[nonzero] = np.nan
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = lil_array(self._std_dev.reshape(1, -1))
+                std_dev = lil_array(std_dev.reshape(1, -1))
 
+            self._std_dev = std_dev
             self.with_batch_statistics = True
 
         if self.sparse:
@@ -3371,11 +3382,17 @@ class Tally(IDManagerMixin):
                 # Remove and/or reorder filter bins to user specifications
                 bin_indices = [f.get_bin_index(b)
                                for b in filter_bins[i]]
-                bin_indices = np.unique(bin_indices)
 
                 # Set bins for sliced filter
                 new_filter = copy.copy(f)
-                new_filter.bins = [f.bins[i] for i in bin_indices]
+                bins = [f.bins[i] for i in bin_indices]
+                if isinstance(new_filter, RealFilter):
+                    # RealFilter validates that bins are monotonically
+                    # increasing when users define a filter. A derived tally
+                    # slice may intentionally request a different order.
+                    new_filter._bins = np.asarray(bins)
+                else:
+                    new_filter.bins = bins
 
                 # Set number of bins manually for mesh/distribcell filters
                 if filter_type is DistribcellFilter:
@@ -3383,7 +3400,7 @@ class Tally(IDManagerMixin):
 
                 # Replace existing filter with new one
                 for j, test_filter in enumerate(new_tally.filters):
-                    if isinstance(test_filter, filter_type):
+                    if type(test_filter) is filter_type:
                         new_tally.filters[j] = new_filter
 
         # If original tally was sparse, sparsify the sliced tally

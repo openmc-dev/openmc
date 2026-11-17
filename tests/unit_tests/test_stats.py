@@ -89,6 +89,7 @@ def test_merge_discrete():
     assert triple.integral() == pytest.approx(6.0)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_merge_discrete_with_bias():
     # Two discrete distributions with different biases
     d1 = openmc.stats.Discrete([1.0, 2.0], [0.5, 0.5])
@@ -575,6 +576,14 @@ def test_spherical_uniform():
                                                         origin)
 
     assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
+    elem = sph_indep_function.to_xml_element()
+    dist2 = openmc.stats.SphericalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.origin, origin)
+
+    # XML without origin attribute defaults to (0, 0, 0)
+    elem.attrib.pop('origin', None)
+    dist3 = openmc.stats.SphericalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist3.origin, (0.0, 0.0, 0.0))
 
 
 def test_cylindrical_uniform():

@@ -5,10 +5,10 @@ C/C++ API
 =========
 
 The libopenmc shared library that is built when installing OpenMC exports a
-number of C interoperable functions and global variables that can be used for
-in-memory coupling. While it is possible to directly use the C/C++ API as
-documented here for coupling, most advanced users will find it easier to work
-with the Python bindings in the :py:mod:`openmc.lib` module.
+number of C interoperable functions that can be used for in-memory coupling.
+While it is possible to directly use the C/C++ API as documented here for
+coupling, most advanced users will find it easier to work with the Python
+bindings in the :py:mod:`openmc.lib` module.
 
 .. warning:: The C/C++ API is still experimental and may undergo substantial
              changes in future releases.
@@ -328,6 +328,8 @@ Functions
    :param int n: Number of temperatures
    :return: Return status (negative if an error occurs)
    :rtype: int
+
+.. doxygenfunction:: openmc_main
 
 .. c:function:: int openmc_material_add_nuclide(int32_t index, const char name[], double density)
 
@@ -865,6 +867,24 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
+.. doxygenfunction:: openmc_setting_get_bool
+
+.. doxygenfunction:: openmc_setting_get_double
+
+.. doxygenfunction:: openmc_setting_get_int32
+
+.. doxygenfunction:: openmc_setting_get_int64
+
+.. doxygenfunction:: openmc_setting_get_string
+
+.. doxygenfunction:: openmc_setting_set_bool
+
+.. doxygenfunction:: openmc_setting_set_double
+
+.. doxygenfunction:: openmc_setting_set_int32
+
+.. doxygenfunction:: openmc_setting_set_int64
+
 .. c:function:: int openmc_simulation_finalize()
 
    Finalize a simulation.
@@ -1007,3 +1027,9 @@ Functions
    :type scores: const int*
    :return: Return status (negative if an error occurred)
    :rtype: int
+
+.. doxygenfunction:: openmc_temperature_field_set_temperature
+
+.. doxygenfunction:: openmc_temperature_field_get_mesh
+
+.. doxygenfunction:: openmc_temperature_field_get_temperature

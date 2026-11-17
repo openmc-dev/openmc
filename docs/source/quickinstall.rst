@@ -35,13 +35,6 @@ you wish) with OpenMC installed.
     conda create --name openmc-env openmc
     conda activate openmc-env
 
-If you are installing on macOS with an Apple silicon ARM-based processor, you
-will also need to specify the `--platform` option:
-
-.. code-block:: sh
-
-    conda create --name openmc-env --platform osx-64 openmc
-
 You are now in a conda environment called `openmc-env` that has OpenMC
 installed.
 
@@ -143,7 +136,7 @@ download and install OpenMC by entering the following commands in a terminal:
 
 .. code-block:: sh
 
-    git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
+    git clone https://github.com/openmc-dev/openmc.git
     cd openmc
     mkdir build && cd build
     cmake ..

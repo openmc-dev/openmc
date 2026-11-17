@@ -395,7 +395,7 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         """
         id = int(group.name.split('/')[-1].lstrip('universe '))
-        fname = group['filename'][()].decode()
+        fname = group['filename'][()].decode() if 'filename' in group else ''
         name = group['name'][()].decode() if 'name' in group else None
         length_multiplier = float(group.attrs.get('length_multiplier', 1.0))
 

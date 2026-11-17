@@ -15,6 +15,8 @@ from tests import cdtemp
 # MeshSpatial Tests
 ###################
 TETS_PER_VOXEL = 12
+UMESH_TETS = (Path(__file__).resolve().parents[1] / 'regression_tests' /
+              'unstructured_mesh' / 'test_mesh_tets.exo')
 
 # This test uses a geometry file with cells that match a regular mesh. Each cell
 # in the geometry corresponds to 12 tetrahedra in the unstructured mesh file.
@@ -57,16 +59,18 @@ def model():
 
 ### Setup test cases ###
 param_values = (['libmesh', 'moab'], # mesh libraries
+                ['native', 'xdg'], # mesh interfaces
                 ['uniform', 'manual']) # Element weighting schemes
 
 test_cases = []
-for i, (lib, schemes) in enumerate(product(*param_values)):
+for i, (lib, interface, schemes) in enumerate(product(*param_values)):
     test_cases.append({'library' : lib,
+                       'interface' : interface,
                        'source_strengths' : schemes})
 
 def ids(params):
     """Test naming function for clarity"""
-    return f"{params['library']}-{params['source_strengths']}"
+    return f"{params['library']}-{params['interface']}-{params['source_strengths']}"
 
 @pytest.mark.parametrize("test_cases", test_cases, ids=ids)
 def test_unstructured_mesh_sampling(model, request, test_cases):
@@ -77,9 +81,13 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
     if test_cases['library'] == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh is not enabled in this build.")
 
+    if test_cases['interface'] == 'xdg' and not openmc.lib.feature_enabled('xdg'):
+        pytest.skip("XDG mesh interface not enabled in this build.")
+
     # setup mesh source ###
-    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
+    mesh_filename = UMESH_TETS
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_cases['library'])
+    uscd_mesh.interface = test_cases['interface']
 
     # subtract one to account for root cell produced by RegularMesh.build_cells
     n_cells = len(model.geometry.get_all_cells()) - 1
@@ -147,7 +155,7 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
 
 def test_strengths_size_failure(request, model):
     # setup mesh source ###
-    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
+    mesh_filename = UMESH_TETS
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, 'libmesh')
 
     # intentionally incorrectly sized to trigger an error
@@ -185,7 +193,7 @@ def test_roundtrip(run_in_tmpdir, model, request):
     ):
         pytest.skip("Unstructured mesh is not enabled in this build.")
 
-    mesh_filename = Path(request.fspath).parent / 'test_mesh_tets.e'
+    mesh_filename = UMESH_TETS
     ucd_mesh = openmc.UnstructuredMesh(mesh_filename, library='libmesh')
 
     if not openmc.lib.feature_enabled('libmesh'):
@@ -321,25 +329,30 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
     assert mesh_source.strength == 1.0
 
 
-@pytest.mark.parametrize("library", ('moab', 'libmesh'))
-def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
+@pytest.mark.parametrize("library, interface", product(('moab', 'libmesh'), ('native', 'xdg')))
+def test_umesh_source_independent(run_in_tmpdir, request, void_model, library, interface):
     import openmc.lib
-    # skip the test if the library is not enabled
-    if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
+    if interface == 'xdg' and not openmc.lib.feature_enabled('xdg'):
+        pytest.skip("XDG mesh interface not enabled in this build.")
+    if interface == 'native' and library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
-
-    if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
+    if interface == 'native' and library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip("LibMesh is not enabled in this build.")
 
     model = void_model
 
-    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
+    mesh_filename = UMESH_TETS
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, library)
+    uscd_mesh.interface = interface
     ind_source = openmc.IndependentSource()
     n_elements = 12_000
     model.settings.source = openmc.MeshSource(uscd_mesh, n_elements*[ind_source])
     model.export_to_model_xml()
     with openmc.lib.run_in_memory():
+        if interface == 'xdg':
+            ll, ur = openmc.lib.meshes[uscd_mesh.id].bounding_box
+            np.testing.assert_array_equal(ll, (-10, -10, -10))
+            np.testing.assert_array_equal(ur, (10, 10, 10))
         openmc.lib.simulation_init()
         sites = openmc.lib.sample_external_source(10)
         openmc.lib.statepoint_write('statepoint.h5')

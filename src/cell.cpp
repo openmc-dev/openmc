@@ -1200,10 +1200,8 @@ vector<int32_t> Region::surfaces() const
 void read_cells(pugi::xml_node node)
 {
   // Count the number of cells.
-  int n_cells = 0;
-  for (pugi::xml_node cell_node : node.children("cell")) {
-    n_cells++;
-  }
+  auto cell_nodes = node.children("cell");
+  int n_cells = std::distance(cell_nodes.begin(), cell_nodes.end());
 
   // Loop over XML cell elements and populate the array.
   model::cells.reserve(n_cells);
@@ -1338,7 +1336,7 @@ extern "C" int openmc_cell_set_temperature(
   int32_t index, double T, const int32_t* instance, bool set_contained)
 {
   if (index < 0 || index >= model::cells.size()) {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
@@ -1356,7 +1354,7 @@ extern "C" int openmc_cell_set_density(
   int32_t index, double density, const int32_t* instance, bool set_contained)
 {
   if (index < 0 || index >= model::cells.size()) {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
@@ -1374,7 +1372,7 @@ extern "C" int openmc_cell_get_temperature(
   int32_t index, const int32_t* instance, double* T)
 {
   if (index < 0 || index >= model::cells.size()) {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
@@ -1392,7 +1390,7 @@ extern "C" int openmc_cell_get_density(
   int32_t index, const int32_t* instance, double* density)
 {
   if (index < 0 || index >= model::cells.size()) {
-    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
@@ -1629,7 +1627,6 @@ vector<ParentCell> Cell::exhaustive_find_parent_cells(int32_t instance) const
   int32_t univ_idx = this->universe_;
 
   while (true) {
-    const auto& univ = model::universes[univ_idx];
     prev_univ_idx = univ_idx;
 
     // search for a cell that is filled w/ this universe

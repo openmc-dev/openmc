@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="source">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="source"/>
+    </material>
+    <material id="2" name="void">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="void"/>
+    </material>
+    <material id="3" name="absorber">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="absorber"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="6" material="1" region="-13 7 -10 8 -11 9 -12" universe="7"/>
+    <cell id="7" material="2" region="13 -14 7 -10 8 -11 9 -12" universe="7"/>
+    <cell id="8" material="3" region="14 7 -10 8 -11 9 -12" universe="7"/>
+    <surface id="7" type="x-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="8" type="y-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="9" type="z-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="10" type="x-plane" boundary="vacuum" coeffs="30.0"/>
+    <surface id="11" type="y-plane" boundary="vacuum" coeffs="30.0"/>
+    <surface id="12" type="z-plane" boundary="vacuum" coeffs="30.0"/>
+    <surface id="13" type="sphere" coeffs="0.0 0.0 0.0 5.0"/>
+    <surface id="14" type="sphere" coeffs="0.0 0.0 0.0 12.5"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>90</particles>
+    <batches>60</batches>
+    <inactive>30</inactive>
+    <source type="independent" strength="3.14" particle="neutron">
+      <energy type="discrete">
+        <parameters>100.0 1.0</parameters>
+      </energy>
+      <constraints>
+        <domain_type>material</domain_type>
+        <domain_ids>1</domain_ids>
+      </constraints>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <random_ray>
+      <distance_active>500.0</distance_active>
+      <distance_inactive>100.0</distance_inactive>
+      <ray_source>
+        <source type="independent" strength="1.0" particle="neutron">
+          <space type="box">
+            <parameters>0.0 0.0 0.0 30.0 30.0 30.0</parameters>
+          </space>
+        </source>
+      </ray_source>
+      <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
+      <source_shape>linear</source_shape>
+      <source_gradient_limiter>true</source_gradient_limiter>
+      <volume_estimator>naive</volume_estimator>
+      <source_region_meshes>
+        <mesh id="1">
+          <domain id="7" type="universe"/>
+        </mesh>
+      </source_region_meshes>
+    </random_ray>
+    <mesh id="1">
+      <dimension>12 12 12</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <upper_right>30.0 30.0 30.0</upper_right>
+    </mesh>
+  </settings>
+  <tallies>
+    <filter id="3" type="material">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="material">
+      <bins>2</bins>
+    </filter>
+    <filter id="1" type="material">
+      <bins>3</bins>
+    </filter>
+    <tally id="3" name="Source Tally">
+      <filters>3</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="2" name="Void Tally">
+      <filters>2</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="1" name="Absorber Tally">
+      <filters>1</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+  </tallies>
+</model>

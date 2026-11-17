@@ -20,6 +20,8 @@ Incident Neutron Data
              - **metastable** (*int*) -- Metastable state (0=ground, 1=first
                excited, etc.)
              - **atomic_weight_ratio** (*double*) -- Mass in units of neutron masses
+             - **excitation_energy** (*double*) -- Optional target excitation
+               energy in [eV] (ENDF MF=1/MT=451 ELIS)
              - **n_reaction** (*int*) -- Number of reactions
 
 :Datasets:
@@ -40,7 +42,13 @@ temperature-dependent data set.  For example, the data set corresponding to
 
 :Attributes: - **mt** (*int*) -- ENDF MT reaction number
              - **label** (*char[]*) -- Name of the reaction
-             - **Q_value** (*double*) -- Q value in eV
+             - **q_reaction** (*double*) -- Reaction Q value in [eV] (ENDF QI).
+               Readers also accept the legacy name **Q_value** when
+               **q_reaction** is absent.
+             - **q_mass_difference** (*double*) -- Optional evaluated
+               mass-difference Q value in [eV] (ENDF MF=3 QM).
+             - **breakup_flag** (*int*) -- Optional flag describing additional
+               breakup products (ENDF MF=3 LR). Zero indicates no breakup.
              - **center_of_mass** (*int*) -- Whether the reference frame for
                scattering is center-of-mass (1) or laboratory (0)
              - **n_product** (*int*) -- Number of reaction products

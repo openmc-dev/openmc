@@ -44,15 +44,18 @@ namespace openmc {
 // Particle implementation
 //==============================================================================
 
+double Particle::speed(double E) const
+{
+  // Determine mass in eV/c^2
+  double mass = this->mass();
+  // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
+  return C_LIGHT * std::sqrt(E * (E + 2 * mass)) / (E + mass);
+}
+
 double Particle::speed() const
 {
   if (settings::run_CE) {
-    // Determine mass in eV/c^2
-    double mass = this->mass();
-
-    // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
-    return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
-           (this->E() + mass);
+    return speed(this->E());
   } else {
     auto mat = this->material();
     if (mat == MATERIAL_VOID)
@@ -73,6 +76,8 @@ double Particle::mass() const
   case PDG_ELECTRON:
   case PDG_POSITRON:
     return MASS_ELECTRON_EV;
+  case PDG_PHOTON:
+    return 0.0;
   default:
     return this->type().mass() * AMU_EV;
   }
@@ -195,6 +200,9 @@ void Particle::from_source(const SourceSite* src)
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
+
+  if (settings::temperature_field_on)
+    temperature_field_bin() = FIELD_BIN_UNKNOWN;
 }
 
 void Particle::event_calculate_xs()
@@ -242,6 +250,10 @@ void Particle::event_calculate_xs()
   if (settings::check_overlaps)
     check_cell_overlap(*this);
 
+  // Resolve the field temperature before checking the cross-section cache.
+  if (settings::temperature_field_on)
+    update_temperature();
+
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
@@ -269,9 +281,9 @@ void Particle::event_calculate_xs()
   }
 }
 
-void Particle::event_advance()
+TransportEvent Particle::event_advance()
 {
-  // Find the distance to the nearest boundary
+  // Find the distance to the nearest geometry boundary
   boundary() = distance_to_boundary(*this);
 
   // Sample a distance to collision
@@ -284,6 +296,28 @@ void Particle::event_advance()
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
 
+  // If a temperature field is active, treat its nearest mesh surface as a
+  // transport boundary.
+  TransportEvent event = TransportEvent::SURFACE_CROSSING;
+  bool temperature_field_crossing = false;
+  int next_temperature_field_bin = C_NONE;
+  if (settings::temperature_field_on) {
+    const auto crossing = simulation::temperature_field.next_mesh_crossing(
+      temperature_field_bin(), r(), u());
+    if (crossing.distance < boundary().distance() - FP_COINCIDENT) {
+      boundary().distance() = crossing.distance;
+      event = TransportEvent::NONE;
+      temperature_field_crossing = true;
+      next_temperature_field_bin = crossing.next_bin;
+    } else if (crossing.distance < INFTY &&
+               std::abs(crossing.distance - boundary().distance()) <=
+                 FP_COINCIDENT) {
+      temperature_field_crossing = true;
+      next_temperature_field_bin = crossing.next_bin;
+    }
+  }
+
+  // Calculate the distance corresponding to the time cutoff
   double speed = this->speed();
   double time_cutoff = settings::time_cutoff[type().transport_index()];
   double distance_cutoff =
@@ -292,6 +326,14 @@ void Particle::event_advance()
   // Select smaller of the three distances
   double distance =
     std::min({boundary().distance(), collision_distance(), distance_cutoff});
+
+  if (distance == distance_cutoff) {
+    event = TransportEvent::NONE;
+    temperature_field_crossing = false;
+  } else if (collision_distance() <= boundary().distance()) {
+    event = TransportEvent::COLLISION;
+    temperature_field_crossing = false;
+  }
 
   // Advance particle in space and time
   this->move_distance(distance);
@@ -327,10 +369,40 @@ void Particle::event_advance()
   // Clear surface component if distance is long enough
   if (distance > TINY_BIT)
     surface() = SURFACE_NONE;
+
+  if (temperature_field_crossing) {
+    sqrtkT_last() = sqrtkT();
+    temperature_field_bin() = next_temperature_field_bin;
+#ifdef OPENMC_DAGMC_ENABLED
+    // A mesh-only stop truncates the ray; geometry crossings manage history.
+    if (event == TransportEvent::NONE)
+      history().reset();
+#endif
+  }
+
+  return event;
+}
+
+void Particle::update_temperature()
+{
+  // If temperature field enabled but the bin is not set, determine the bin
+  // based on the particle's current position
+  auto& bin = temperature_field_bin();
+  if (settings::temperature_field_on && bin == FIELD_BIN_UNKNOWN) {
+    bin = simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+  }
+
+  // Set the particle's sqrt(kT) based on the field or the cell's temperature
+  if (settings::temperature_field_on && bin != C_NONE) {
+    sqrtkT() = simulation::temperature_field.get_sqrtkT(bin);
+  } else {
+    sqrtkT() = model::cells[lowest_coord().cell()]->sqrtkT(cell_instance());
+  }
 }
 
 void Particle::event_cross_surface()
 {
+  sqrtkT_last() = sqrtkT();
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
     cell_last(j) = coord(j).cell();
@@ -484,8 +556,12 @@ void Particle::event_collide()
   history().reset();
 #endif
 
-  if (near_surface && alive())
+  if (near_surface && alive()) {
+    sqrtkT_last() = sqrtkT();
     reconcile_cell_after_collision(*this);
+    if (settings::temperature_field_on && alive())
+      temperature_field_bin() = FIELD_BIN_UNKNOWN;
+  }
 }
 
 void Particle::event_revive_from_secondary(const SourceSite& site)
@@ -660,12 +736,6 @@ void Particle::cross_surface(const Surface& surf)
     write_message(1, "    Crossing surface {}", surf.id_);
   }
 
-// if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef OPENMC_DAGMC_ENABLED
-  if (surf.geom_type() == GeometryType::CSG)
-    history().reset();
-#endif
-
   // Handle any applicable boundary conditions.
   if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
       settings::run_mode != RunMode::VOLUME) {
@@ -732,6 +802,8 @@ void Particle::cross_surface(const Surface& surf)
                    " it could not be located in any cell and it did not leak.");
       return;
     }
+    if (settings::temperature_field_on)
+      temperature_field_bin() = FIELD_BIN_UNKNOWN;
   }
 }
 
@@ -792,6 +864,8 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 
   // Set the new particle direction
   u() = new_u;
+  if (settings::temperature_field_on)
+    temperature_field_bin() = FIELD_BIN_UNKNOWN;
 
   // Reassign particle's cell and surface
   coord(0).cell() = cell_last(0);
@@ -843,6 +917,8 @@ void Particle::cross_periodic_bc(
   // Adjust the particle's location and direction.
   r() = new_r;
   u() = new_u;
+  if (settings::temperature_field_on)
+    temperature_field_bin() = FIELD_BIN_UNKNOWN;
 
   // Reassign particle's surface
   surface() = new_surface;
@@ -1069,7 +1145,7 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   site.particle = p.type();
   site.parent_id = p.id();
   site.progeny_id = p.n_progeny();
-  int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+  simulation::surf_source_bank.thread_safe_append(site);
 }
 
 } // namespace openmc

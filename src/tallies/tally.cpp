@@ -193,20 +193,30 @@ Tally::Tally(pugi::xml_node node)
     fatal_error(fmt::format("No scores specified on tally {}.", id_));
   }
 
-  // Set IFP if needed
-  if (!settings::ifp_on) {
-    // Determine if this tally has an IFP score
-    bool has_ifp_score = false;
-    for (int score : scores_) {
-      if (score == SCORE_IFP_TIME_NUM || score == SCORE_IFP_BETA_NUM ||
-          score == SCORE_IFP_DENOM) {
-        has_ifp_score = true;
-        break;
-      }
+  // Determine which kinds of IFP data this tally requires. The two flags are
+  // independent, so a score simply turns on the data it needs.
+  bool wants_lifetime = false;
+  bool wants_delayed_group = false;
+  for (int score : scores_) {
+    switch (score) {
+    case SCORE_IFP_TIME_NUM:
+      wants_lifetime = true;
+      break;
+    case SCORE_IFP_BETA_NUM:
+    case SCORE_IFP_DENOM:
+      wants_delayed_group = true;
+      break;
     }
+  }
 
-    // Check for errors
-    if (has_ifp_score) {
+  if (wants_lifetime || wants_delayed_group) {
+    // Validate once, when the first IFP tally is encountered
+    if (!settings::ifp_on()) {
+      if (settings::run_mode == RunMode::FIXED_SOURCE) {
+        fatal_error(
+          "Iterated Fission Probability can only be used in an eigenvalue "
+          "calculation.");
+      }
       if (settings::run_mode == RunMode::EIGENVALUE) {
         if (settings::ifp_n_generation < 0) {
           settings::ifp_n_generation = DEFAULT_IFP_N_GENERATION;
@@ -219,35 +229,13 @@ Tally::Tally(pugi::xml_node node)
           fatal_error("'ifp_n_generation' must be lower than or equal to the "
                       "number of inactive cycles.");
         }
-        settings::ifp_on = true;
-      } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
-        fatal_error(
-          "Iterated Fission Probability can only be used in an eigenvalue "
-          "calculation.");
       }
     }
-  }
 
-  // Set IFP parameters if needed
-  if (settings::ifp_on) {
-    for (int score : scores_) {
-      switch (score) {
-      case SCORE_IFP_TIME_NUM:
-        if (settings::ifp_parameter == IFPParameter::None) {
-          settings::ifp_parameter = IFPParameter::GenerationTime;
-        } else if (settings::ifp_parameter == IFPParameter::BetaEffective) {
-          settings::ifp_parameter = IFPParameter::Both;
-        }
-        break;
-      case SCORE_IFP_BETA_NUM:
-      case SCORE_IFP_DENOM:
-        if (settings::ifp_parameter == IFPParameter::None) {
-          settings::ifp_parameter = IFPParameter::BetaEffective;
-        } else if (settings::ifp_parameter == IFPParameter::GenerationTime) {
-          settings::ifp_parameter = IFPParameter::Both;
-        }
-        break;
-      }
+    // Only enable in eigenvalue mode; fixed source has already errored above
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      settings::ifp_lifetime_on |= wants_lifetime;
+      settings::ifp_delayed_group_on |= wants_delayed_group;
     }
   }
 
@@ -755,8 +743,10 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       auto search = data::nuclide_map.find(nuc);
       if (search == data::nuclide_map.end()) {
         int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
-        if (err < 0)
-          throw std::runtime_error {openmc_err_msg};
+        if (err < 0) {
+          throw std::runtime_error {fmt::format(
+            "Could not add nuclide '{}' to a tally: {}", nuc, get_errmsg())};
+        }
       }
       nuclides_.push_back(data::nuclide_map.at(nuc));
     }
@@ -1012,16 +1002,15 @@ void read_tallies_xml(pugi::xml_node root)
 
   // Check for user filters and allocate
   for (auto node_filt : root.children("filter")) {
-    auto f = Filter::create(node_filt);
+    Filter::create(node_filt);
   }
 
   // ==========================================================================
   // READ TALLY DATA
 
   // Check for user tallies
-  int n = 0;
-  for (auto node : root.children("tally"))
-    ++n;
+  auto tally_nodes = root.children("tally");
+  int n = std::distance(tally_nodes.begin(), tally_nodes.end());
   if (n == 0 && mpi::master) {
     warning("No tallies present in tallies.xml file.");
   }
@@ -1098,7 +1087,7 @@ void accumulate_tallies()
 {
 #ifdef OPENMC_MPI
   // Combine tally results onto master process
-  if (mpi::n_procs > 1 && settings::solver_type == SolverType::MONTE_CARLO) {
+  if (mpi::n_procs > 1) {
     reduce_tally_results();
   }
 #endif
@@ -1510,7 +1499,6 @@ extern "C" int openmc_tally_set_nuclides(
       if (search == data::nuclide_map.end()) {
         int err = openmc_load_nuclide(word.c_str(), nullptr, 0);
         if (err < 0) {
-          set_errmsg(openmc_err_msg);
           return OPENMC_E_DATA;
         }
       }
@@ -1617,6 +1605,11 @@ extern "C" int openmc_global_tallies(double** ptr)
 {
   *ptr = simulation::global_tallies.data();
   return 0;
+}
+
+extern "C" int32_t openmc_get_n_realizations()
+{
+  return simulation::n_realizations;
 }
 
 extern "C" size_t tallies_size()

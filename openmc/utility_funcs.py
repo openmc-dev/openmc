@@ -69,6 +69,14 @@ def input_path(filename: PathLike) -> Path:
         Path object
 
     """
+    # An empty filename represents the absence of a path (e.g., a mesh or
+    # DAGMC universe read back from a summary/statepoint file that was never
+    # written with a source file) and should not be resolved to the current
+    # working directory.
+    filename = os.fspath(filename)
+    if not filename:
+        return Path(filename)
+
     if openmc.config['resolve_paths']:
         path = Path(filename)
         xml_dir = _XML_INPUT_PATH.get()

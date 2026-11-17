@@ -23,5 +23,6 @@ def test_random_ray_fixed_source(normalize):
         model = random_ray_three_region_cube()
         model.settings.random_ray['volume_normalized_flux_tallies'] = normalize
 
+        model.settings.random_ray['volume_estimator'] = 'hybrid'
         harness = MGXSTestHarness('statepoint.10.h5', model)
         harness.main()

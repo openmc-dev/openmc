@@ -1,8 +1,17 @@
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/tally.h"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
 using namespace openmc;
+
+TEST_CASE("Invalid tally nuclide names remain catchable")
+{
+  Tally* tally = Tally::create();
+  REQUIRE_THROWS_WITH(tally->set_nuclides({"not-a-nuclide"}),
+    "Could not add nuclide 'not-a-nuclide' to a tally: "
+    "Nuclide 'not-a-nuclide' is not present in library.");
+}
 
 TEST_CASE("Test add/set_filter")
 {

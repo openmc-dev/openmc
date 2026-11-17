@@ -23,6 +23,23 @@ from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
 
 
+# VTKHDF format version used for structured and unstructured mesh output
+_VTKHDF_VERSION = (2, 1)
+
+
+def _write_vtkhdf_type(group, name: str):
+    """Write the VTKHDF dataset type as a fixed length ASCII string
+
+    A variable length string is read back as ``str`` rather than ``bytes``,
+    which does not match what VTK readers expect.
+
+    """
+    ascii_name = name.encode("ascii")
+    group.attrs.create(
+        "Type", ascii_name, dtype=h5py.string_dtype("ascii", len(ascii_name))
+    )
+
+
 class MeshMaterialVolumes(Mapping):
     """Results from a material volume in mesh calculation.
 
@@ -306,7 +323,7 @@ class MeshBase(IDManagerMixin, ABC):
             return CylindricalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'spherical':
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
-        elif mesh_type == 'unstructured':
+        elif mesh_type in ('unstructured', 'xdg'):
             return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'angular_pointset':
             return UnitSpherePointset.from_hdf5(group, mesh_id, mesh_name)
@@ -460,7 +477,10 @@ class MeshBase(IDManagerMixin, ABC):
         This method works by raytracing repeatedly through the mesh to count the
         estimated volume of each material in all mesh elements. Three sets of
         rays are used: one set parallel to the x-axis, one parallel to the
-        y-axis, and one parallel to the z-axis.
+        y-axis, and one parallel to the z-axis. Regions of the mesh that are
+        outside the model geometry are treated as void, equivalent to a cell
+        with no material. Universe fills within the model must still define all
+        enclosed space.
 
         .. versionadded:: 0.15.1
 
@@ -679,12 +699,16 @@ class StructuredMesh(MeshBase):
                           datasets: dict | None = None,
                           volume_normalization: bool = True,
                           curvilinear: bool = False):
-        """Creates a VTK object of the mesh
+        """Creates a VTK object of the mesh and writes it to a file.
+
+        Supported formats are legacy ASCII ``.vtk`` (requires the ``vtk``
+        package) and ``.vtkhdf`` (requires only ``h5py``).
 
         Parameters
         ----------
-        filename : str
-            Name of the VTK file to write.
+        filename : str or PathLike
+            Name of the VTK file to write. Use a ``.vtkhdf`` extension for
+            the VTKHDF format or ``.vtk`` for the legacy ASCII format.
         datasets : dict
             Dictionary whose keys are the data labels and values are the data
             sets. 1D datasets are expected to be extracted directly from
@@ -698,7 +722,9 @@ class StructuredMesh(MeshBase):
             elements.
         curvilinear : bool
             Whether or not to write curvilinear elements. Only applies to
-            ``SphericalMesh`` and ``CylindricalMesh``.
+            ``SphericalMesh`` and ``CylindricalMesh`` written to the legacy
+            ``.vtk`` format; the VTKHDF format always uses linear elements and
+            a warning is issued if this option is set.
 
         Raises
         ------
@@ -707,8 +733,9 @@ class StructuredMesh(MeshBase):
 
         Returns
         -------
-        vtk.StructuredGrid or vtk.UnstructuredGrid
-            a VTK grid object representing the mesh
+        vtk.StructuredGrid or vtk.UnstructuredGrid or None
+            A VTK grid object representing the mesh for the legacy ASCII
+            format, or None for the VTKHDF format.
 
         Examples
         --------
@@ -727,6 +754,17 @@ class StructuredMesh(MeshBase):
            >>> heating = tally.get_reshaped_data(expand_dims=True)
            >>> mesh.write_data_to_vtk({'heating': heating})
         """
+        if Path(filename).suffix == ".vtkhdf":
+            if curvilinear and not isinstance(self, (RegularMesh, RectilinearMesh)):
+                warnings.warn(
+                    "Curvilinear elements are not supported for the VTKHDF "
+                    f"format; mesh {self.id} will be written with linear "
+                    "elements.", stacklevel=2
+                )
+            self._write_vtk_hdf5(filename, datasets, volume_normalization)
+            return None
+
+        # vtk is an optional dependency only needed for the legacy ASCII path
         import vtk
         from vtk.util import numpy_support as nps
 
@@ -746,6 +784,10 @@ class StructuredMesh(MeshBase):
             for label, dataset in datasets.items():
                 dataset = self._reshape_vtk_dataset(dataset)
                 self._check_vtk_dataset(label, dataset)
+                # restore any trailing axes of size one that the check allows
+                # to be omitted so that the dataset matches the mesh dimension
+                if dataset.ndim > 1:
+                    dataset = dataset.reshape(self.dimension)
                 # If the array data is 3D, assume is in C ordering and transpose
                 # before flattening to match the ordering expected by the VTK
                 # array based on the way mesh indices are ordered in the Python
@@ -934,22 +976,137 @@ class StructuredMesh(MeshBase):
         """
         cv.check_type('data label', label, str)
 
+        # If this is a multidimensional dataset, validate its shape first so
+        # that the user receives the more specific error message.
+        if dataset.ndim > 1:
+            if dataset.shape == self.dimension:
+                return
+
+            if dataset.ndim < len(self.dimension):
+                padded_shape = tuple(dataset.shape) + (1,) * (len(self.dimension) - dataset.ndim)
+                if padded_shape == tuple(self.dimension):
+                    return
+
+            raise ValueError(
+                f'Cannot apply multidimensional dataset "{label}" with '
+                f"shape {dataset.shape} to mesh {self.id} "
+                f"with dimensions {self.dimension}"
+            )
+
         if dataset.size != self.n_elements:
             raise ValueError(
                 f"The size of the dataset '{label}' ({dataset.size}) should be"
                 f" equal to the number of mesh cells ({self.n_elements})"
             )
 
-        # accept a flat array as-is, assuming it is in the correct order
-        if dataset.ndim == 1:
+    def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None,
+                        volume_normalization: bool) -> None:
+        """Write the mesh and data in the VTKHDF UnstructuredGrid format
+
+        VTKHDF defines no StructuredGrid or RectilinearGrid dataset type, so
+        meshes with non-uniform or curvilinear elements are written as an
+        unstructured grid of linear hexahedra. :class:`RegularMesh` overrides
+        this with the more compact ImageData format.
+
+        Parameters
+        ----------
+        filename : str or PathLike
+            Name of the VTKHDF file to write.
+        datasets : dict or None
+            Dictionary whose keys are the data labels and values are the data
+            sets.
+        volume_normalization : bool
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
+
+        """
+        n_i, n_j, n_k = self.dimension
+        vertex_shape = (n_i + 1, n_j + 1, n_k + 1)
+        points = np.asarray(self.vertices).reshape(-1, 3)
+
+        # Index of the (i, j, k) corner of each element, ordered with i varying
+        # fastest to match the cell ordering used elsewhere for VTK output
+        i, j, k = np.meshgrid(np.arange(n_i), np.arange(n_j), np.arange(n_k),
+                              indexing='ij')
+        corner = np.ravel_multi_index((i, j, k), vertex_shape)
+        corner = corner.transpose(2, 1, 0).ravel()
+
+        # Offset from the (i, j, k) corner to each vertex of a VTK hexahedron
+        stride_i = (n_j + 1) * (n_k + 1)
+        stride_j = n_k + 1
+        offsets = np.array([
+            0,
+            stride_i,
+            stride_i + stride_j,
+            stride_j,
+            1,
+            stride_i + 1,
+            stride_i + stride_j + 1,
+            stride_j + 1,
+        ])
+        connectivity = (corner[:, None] + offsets[None, :]).ravel()
+
+        n_cells = corner.size
+        cell_data = list(self._vtk_hdf5_datasets(datasets, volume_normalization))
+        with h5py.File(filename, "w") as f:
+            root = f.create_group("VTKHDF")
+            root.attrs["Version"] = _VTKHDF_VERSION
+            _write_vtkhdf_type(root, "UnstructuredGrid")
+            root.create_dataset("NumberOfPoints", data=[len(points)], dtype="i8")
+            root.create_dataset("Points", data=points, dtype="f8")
+            root.create_dataset("NumberOfCells", data=[n_cells], dtype="i8")
+            root.create_dataset("NumberOfConnectivityIds",
+                                data=[connectivity.size], dtype="i8")
+            root.create_dataset("Connectivity", data=connectivity, dtype="i8")
+            root.create_dataset(
+                "Offsets",
+                data=np.arange(0, connectivity.size + 1, _N_HEX_VERTICES),
+                dtype="i8",
+            )
+            # 12 is the VTK cell type for a linear hexahedron
+            root.create_dataset("Types", data=np.full(n_cells, 12), dtype="uint8")
+
+            cell_data_group = root.create_group("CellData")
+            for label, dataset in cell_data:
+                cell_data_group.create_dataset(label, data=dataset,
+                                               dtype="float64", chunks=True)
+
+    def _vtk_hdf5_datasets(self, datasets: dict | None,
+                           volume_normalization: bool):
+        """Validate and flatten datasets for VTKHDF output
+
+        Yields
+        ------
+        tuple of (str, numpy.ndarray)
+            Data label and the corresponding flat array of element values,
+            ordered with the first mesh index varying fastest.
+
+        """
+        if not datasets:
             return
 
-        if dataset.shape != self.dimension:
-            raise ValueError(
-                f'Cannot apply multidimensional dataset "{label}" with '
-                f"shape {dataset.shape} to mesh {self.id} "
-                f"with dimensions {self.dimension}"
-            )
+        for label, dataset in datasets.items():
+            dataset = self._reshape_vtk_dataset(dataset)
+            self._check_vtk_dataset(label, dataset)
+            # restore any trailing axes of size one so that the dataset
+            # aligns with the volumes instead of broadcasting against them
+            if dataset.ndim > 1:
+                dataset = dataset.reshape(self.dimension)
+
+            if volume_normalization:
+                # a flat dataset is already ordered with the first index
+                # varying fastest, so the volumes have to match that ordering
+                if dataset.ndim > 1:
+                    dataset = dataset / self.volumes
+                else:
+                    dataset = dataset / self.volumes.T.ravel()
+
+            if dataset.ndim > 1:
+                dataset = dataset.T.ravel()
+            else:
+                dataset = dataset.ravel()
+
+            yield label, dataset
 
     @classmethod
     def from_domain(
@@ -1152,7 +1309,7 @@ class RegularMesh(StructuredMesh):
             if self._lower_left is not None and self._dimension is not None:
                 us = self._upper_right
                 ls = self._lower_left
-                dims =  self._dimension
+                dims = self._dimension
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @width.setter
@@ -1560,6 +1717,56 @@ class RegularMesh(StructuredMesh):
         # Calculate indices for each coordinate
         indices = np.floor((coords_array - lower_left) / spacing).astype(int)
         return tuple(int(i) for i in indices[:ndim])
+
+    def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None,
+                        volume_normalization: bool) -> None:
+        """Write the mesh and data in the VTKHDF ImageData format
+
+        A regular mesh is a uniform grid, so it is fully described by an origin
+        and a spacing and no point coordinates need to be stored. Meshes with
+        fewer than three dimensions are padded to three, as required by the
+        VTKHDF ImageData specification.
+
+        Parameters
+        ----------
+        filename : str or PathLike
+            Name of the VTKHDF file to write.
+        datasets : dict or None
+            Dictionary whose keys are the data labels and values are the data
+            sets.
+        volume_normalization : bool
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
+
+        """
+        ndim = len(self.dimension)
+        shape = list(self.dimension) + [1] * (3 - ndim)
+        origin = list(self.lower_left) + [0.0] * (3 - ndim)
+        spacing = list(self.width) + [1.0] * (3 - ndim)
+
+        cell_data = list(self._vtk_hdf5_datasets(datasets, volume_normalization))
+        with h5py.File(filename, "w") as f:
+            root = f.create_group("VTKHDF")
+            root.attrs["Version"] = _VTKHDF_VERSION
+            _write_vtkhdf_type(root, "ImageData")
+            root.attrs.create(
+                "WholeExtent",
+                np.array([0, shape[0], 0, shape[1], 0, shape[2]], dtype="i8"),
+            )
+            root.attrs.create("Origin", np.array(origin, dtype="f8"))
+            root.attrs.create("Spacing", np.array(spacing, dtype="f8"))
+            root.attrs.create("Direction", np.eye(3).ravel())
+
+            cell_data_group = root.create_group("CellData")
+            for label, dataset in cell_data:
+                # ImageData element data is stored with the last index varying
+                # fastest, i.e. with shape (nz, ny, nx)
+                cell_data_group.create_dataset(
+                    label,
+                    data=dataset.reshape(shape[2], shape[1], shape[0]),
+                    dtype="float64",
+                    chunks=True,
+                )
 
 
 def Mesh(*args, **kwargs):
@@ -2653,7 +2860,6 @@ class SphericalMesh(StructuredMesh):
         """
         return super().centroids
 
-
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
         """Converts an array with r, theta, phi values in the last dimension (shape (..., 3))
@@ -2769,10 +2975,15 @@ class UnstructuredMesh(MeshBase):
     ----------
     filename : path-like
         Location of the unstructured mesh file. Supported files for 'moab'
-        library are .h5 and .vtk. Supported files for 'libmesh' library are
-        exodus mesh files .exo.
-    library : {'moab', 'libmesh'}
-        Mesh library used for the unstructured mesh tally
+        library include .h5m, .h5, .vtk, and Exodus files. Supported files for
+        'libmesh' include Exodus files (.e, .exo, and .ex2).
+    library : {'moab', 'libmesh'}, optional
+        Mesh library used for the unstructured mesh tally. If omitted, inferred
+        from the filename extension (case-insensitive): .h5m, .h5, and .vtk
+        select 'moab'; .e, .exo, and .ex2 select 'libmesh'. Other extensions
+        require an explicit library. An explicit value overrides inference,
+        including for Exodus files that can be read by either backend. Inference
+        occurs only at construction, independently of the mesh interface.
     mesh_id : int
         Unique identifier for the mesh
     name : str
@@ -2797,6 +3008,13 @@ class UnstructuredMesh(MeshBase):
         Multiplicative factor to apply to mesh coordinates
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
+    interface : {'native', 'xdg'}
+        Interface type for the unstructured mesh. The value 'native' indicates
+        that the C++ implementation interfaces directly with the indicated mesh
+        library. The value 'xdg' indicates that the C++ implementation
+        interfaces with the mesh library through the XDG interface, enabling
+        consistent behavior across different mesh libraries. The default value
+        is 'native'.
     options : str
         Special options that control spatial search data structures used. This
         is currently only used to set `parameters
@@ -2836,16 +3054,28 @@ class UnstructuredMesh(MeshBase):
     _VTK_TET = 10
     _VTK_HEX = 12
 
-    def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
+    def __init__(self, filename: PathLike, library: str | None = None,
+                 mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
                  options: str | None = None):
         super().__init__(mesh_id, name)
         self.filename = filename
+        if library is None:
+            extension = Path(self.filename).suffix.lower()
+            if extension in {'.h5m', '.h5', '.vtk'}:
+                library = 'moab'
+            elif extension in {'.e', '.exo', '.ex2'}:
+                library = 'libmesh'
+            else:
+                raise ValueError(
+                    f"Cannot infer mesh library from filename {str(filename)!r}; "
+                    "specify library='moab' or library='libmesh'.")
         self._volumes = None
         self._n_elements = None
         self._conectivity = None
         self._vertices = None
         self.library = library
+        self.interface = 'native'
         self._output = False
         self.length_multiplier = length_multiplier
         self.options = options
@@ -2868,6 +3098,15 @@ class UnstructuredMesh(MeshBase):
     def library(self, lib: str):
         cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
         self._library = lib
+
+    @property
+    def interface(self):
+        return self._interface
+
+    @interface.setter
+    def interface(self, interface: str):
+        cv.check_value('Unstructured mesh interface', interface, ('native', 'xdg'))
+        self._interface = interface
 
     @property
     def options(self) -> str | None:
@@ -2990,6 +3229,7 @@ class UnstructuredMesh(MeshBase):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
         string += '{: <16}=\t{}\n'.format('\tMesh Library', self.library)
+        string += '{: <16}=\t{}\n'.format('\tInterface', self.interface)
         if self.length_multiplier != 1.0:
             string += '{: <16}=\t{}\n'.format('\tLength multiplier',
                                               self.length_multiplier)
@@ -3174,14 +3414,18 @@ class UnstructuredMesh(MeshBase):
                     )
 
             if volume_normalization:
+                # normalize copies so that the caller's arrays are unchanged
+                normalized = {}
                 for name, data in datasets.items():
                     if np.issubdtype(data.dtype, np.integer):
                         warnings.warn(
                             f'Integer data set "{name}" will '
                             "not be volume-normalized."
                         )
-                        continue
-                    data /= self.volumes
+                        normalized[name] = data
+                    else:
+                        normalized[name] = data / self.volumes
+                datasets = normalized
 
             # add data to the mesh
             for name, data in datasets.items():
@@ -3204,6 +3448,12 @@ class UnstructuredMesh(MeshBase):
         datasets: dict | None = None,
         volume_normalization: bool = True,
     ):
+        """Write UnstructuredMesh as VTK-HDF5 UnstructuredGrid format.
+
+        Supports linear tetrahedra and linear hexahedra elements.
+        """
+        datasets = {} if datasets is None else datasets
+
         # This writer supports linear tetrahedra and linear hexahedra elements
         conn_list = []           # flattened connectivity ids
         cell_sizes = []          # number of points per cell
@@ -3252,14 +3502,8 @@ class UnstructuredMesh(MeshBase):
         with h5py.File(filename, "w") as f:
 
             root = f.create_group("VTKHDF")
-            vtk_file_format_version = (2, 1)
-            root.attrs["Version"] = vtk_file_format_version
-            ascii_type = "UnstructuredGrid".encode("ascii")
-            root.attrs.create(
-                "Type",
-                ascii_type,
-                dtype=h5py.string_dtype("ascii", len(ascii_type)),
-            )
+            root.attrs["Version"] = _VTKHDF_VERSION
+            _write_vtkhdf_type(root, "UnstructuredGrid")
 
             # Create HDF5 file structure compliant with VTKHDF UnstructuredGrid
             n_points = int(len(self.vertices))
@@ -3277,28 +3521,33 @@ class UnstructuredMesh(MeshBase):
             cell_data_group = root.create_group("CellData")
 
             for name, data in datasets.items():
+                data = np.asarray(data, dtype="float64")
                 if volume_normalization:
-                    data /= self.volumes
+                    # divide out of place so that the caller's array is
+                    # unchanged
+                    data = data / self.volumes
                 cell_data_group.create_dataset(
                     name, data=data, dtype="float64", chunks=True
                 )
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
-        filename = group["filename"][()].decode()
+        filename = group["filename"][()].decode() if "filename" in group else ""
         library = group["library"][()].decode()
-        if "options" in group.attrs:
-            options = group.attrs['options'].decode()
-        else:
-            options = None
 
-        mesh = cls(
-            filename=filename,
-            library=library,
-            mesh_id=mesh_id,
-            name=name,
-            options=options,
-        )
+        kwargs = {'filename': filename,
+                  'library': library,
+                  'mesh_id': mesh_id,
+                  'name': name}
+
+        if "options" in group.attrs:
+            kwargs['options'] = group.attrs['options'].decode()
+
+        mesh = cls(**kwargs)
+
+        if "interface" in group:
+            mesh.interface = group["interface"][()].decode()
+
         mesh._has_statepoint_data = True
         vol_data = group["volumes"][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -3334,6 +3583,9 @@ class UnstructuredMesh(MeshBase):
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
 
+        if self.interface != 'native':
+            element.set("interface", self.interface)
+
         if self._length_multiplier != 1.0:
             element.set("length_multiplier", str(self.length_multiplier))
 
@@ -3358,8 +3610,11 @@ class UnstructuredMesh(MeshBase):
         library = get_text(elem, 'library')
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
         options = get_text(elem, "options")
-
-        return cls(filename, library, mesh_id, '', length_multiplier, options)
+        out = cls(filename, library, mesh_id, '', length_multiplier, options)
+        interface = get_text(elem, "interface")
+        if interface is not None:
+            out.interface = interface
+        return out
 
 class AngularMesh(MeshBase):
     """Base class for angular meshes of the unit sphere.
@@ -3861,47 +4116,231 @@ class UnitSphereTriangularMesh(AngularMesh):
 
         return cls(triangles, mesh_id=mesh_id)
     
-def triangularize_unit_sphere_mesh(mesh, data = None):
+def _spherical_triangle_area(a, b, c):
+    num = np.dot(a, np.cross(b, c))
+    denom = 1 + np.dot(a, b) + np.dot(b, c) + np.dot(c, a)
+    return 2 * np.arctan2(num, denom)
+
+def _signed_area_2d(pts):
+    # shoelace formula for polygon area, positive for CCW vertex orientation
+    x = pts[:, 0]
+    y = pts[:, 1]
+    return 0.5 * np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y)
+
+def _delaunay_triangulate_convex_2d(points_2d):
+    """Perform a Delaunay triangulation of the vertices of a polygon (in 
+    CCW order) via edge flipping.
+
+    Begin by calculating the fan triangulation from vertex 0, then 
+    flip any edge that violates the condition that no other vertex 
+    may be inside the circumcircle of a given triangle. Returns a list of 
+    index triples into points_2d.
+    """
+    n = len(points_2d)
+    if n == 3:
+        return [(0, 1, 2)]
+
+    triangles = [[0, i, i + 1] for i in range(1, n - 1)]
+
+    def shared_edge(t1, t2):
+        shared = [v for v in t1 if v in t2]
+        return tuple(shared) if len(shared) == 2 else None
+
+    max_sweeps = n * n
+    for _ in range(max_sweeps):
+        changed = False
+        for ai in range(len(triangles)):
+            for bi in range(ai + 1, len(triangles)):
+                t_a, t_b = triangles[ai], triangles[bi]
+                edge = shared_edge(t_a, t_b)
+                if edge is None:
+                    continue
+                u, v = edge
+                opp_a = [p for p in t_a if p not in edge][0]
+                opp_b = [p for p in t_b if p not in edge][0]
+
+                pu, pv = points_2d[u], points_2d[v]
+                po_a, po_b = points_2d[opp_a], points_2d[opp_b]
+
+                # Orient (pu, pv, po_a) CCW before the in-circle test
+                if _signed_area_2d(np.array([pu, pv, po_a])) < 0:
+                    pu, pv = pv, pu
+                    u, v = v, u
+
+                # Test whether point po_b lies inside the circumcircle of
+                # triangle pu-pv-po_a
+                ax, ay = pu[0] - po_b[0], pu[1] - po_b[1]
+                bx, by = pv[0] - po_b[0], pv[1] - po_b[1]
+                cx, cy = po_a[0] - po_b[0], po_a[1] - po_b[1]
+                det = (
+                    (ax * ax + ay * ay) * (bx * cy - cx * by)
+                    - (bx * bx + by * by) * (ax * cy - cx * ay)
+                    + (cx * cx + cy * cy) * (ax * by - bx * ay)
+                )
+                if det <= 1e-12:
+                    continue
+
+                # flip the shared edge u-v for opp_a-opp_b
+                new_t1 = [opp_a, opp_b, u]
+                new_t2 = [opp_a, opp_b, v]
+                if _signed_area_2d(
+                        np.array([points_2d[i] for i in new_t1])) < 0:
+                    new_t1 = new_t1[::-1]
+                if _signed_area_2d(
+                        np.array([points_2d[i] for i in new_t2])) < 0:
+                    new_t2 = new_t2[::-1]
+                triangles[ai] = new_t1
+                triangles[bi] = new_t2
+                changed = True
+
+        if not changed:
+            break
+
+    return [tuple(t) for t in triangles]
+
+
+def _ear_clip_2d(points_2d):
+    """Perform an ear-clipping triangulation of a simple polygon given its
+    vertices in CCW order. Returns a list of index triples into points_2d.
+
+    Falls back to fan triangulation from vertex 0 for any vertices left over if 
+    no ear can be found, in case of a degeneracy (e.g. points nearly collinear 
+    on a great-circle arc).
+    """
+    n = len(points_2d)
+    indices = list(range(n))
+    triangles = []
+
+    while len(indices) > 3:
+        m = len(indices)
+        ear_found = False
+        for ii in range(m):
+            i_prev = indices[(ii - 1) % m]
+            i_curr = indices[ii]
+            i_next = indices[(ii + 1) % m]
+            a, b, c = points_2d[i_prev], points_2d[i_curr], points_2d[i_next]
+
+            cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+            if not cross > 0:
+                continue
+
+            # Make sure there are no other polygon vertices inside the
+            # candidate triangle
+            occupied = False
+            for k in indices:
+                if k in (i_prev, i_curr, i_next):
+                    continue
+
+                def _sign(p1, p2, p3):
+                    return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+            
+                d1 = _sign(points_2d[k], a, b)
+                d2 = _sign(points_2d[k], b, c)
+                d3 = _sign(points_2d[k], c, a)
+                has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
+                has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
+                
+                # determine if point p lies inside (or on the boundary of)
+                # triangle abc, assuming a, b, c are given in CCW order
+                if not (has_neg and has_pos):
+                    occupied = True
+                    break
+            if occupied:
+                continue
+
+            triangles.append((i_prev, i_curr, i_next))
+            indices.pop(ii)
+            ear_found = True
+            break
+
+        if not ear_found:
+            # fall back to fan triangulation of remaining polygon
+            for ii in range(1, len(indices) - 1):
+                triangles.append((indices[0], indices[ii], indices[ii + 1]))
+            indices = []
+            break
+
+    if len(indices) == 3:
+        triangles.append(tuple(indices))
+
+    return triangles
+
+def triangulate_unit_sphere_mesh(mesh, data=None, broadcast_data=None, method='delaunay'):
     """Convert a UnitSpherePointset to a UnitSphereTriangularMesh.
 
-    This function takes a UnitSpherePointset, as well as an optional 
-    dataset defined on said mesh, and converts it to a triangular mesh of the 
-    unit sphere by performing a star triangularization of the Voronoi cells 
-    generated by the UnitSpherePointset. If a dataset is provided, new data 
-    values are computed based on each new mesh cell's area fraction of the 
-    original Voronoi cell. Hence, the data must be provided in an array with 
-    the same number of elements as there are points in the UnitSpherePointset, 
-    and organized such that when the array is flattened in row-major (C-style) 
-    order, the sequential order of the data values corresponds to their 
-    respective points in the UnitSpherePointset.
+    This function takes a UnitSpherePointset, as well as optional dataset(s)
+    defined on said mesh, and converts it to a triangular mesh of the unit 
+    sphere by performing a Delaunay, ear-clipping, or star triangulation of 
+    the Voronoi cells generated by the UnitSpherePointset. 
+
+    By default, a Delaunay triangulation of the vertices of each region in 
+    the spherical Voronoi diagram is performed. The ear-clipping and star 
+    triangulation algorithms may be selected instead for faster execution, but 
+    do not offer the same optimization of triangle shape for sampling. Star 
+    triangulation additionally produces m triangles from a Voronoi cell with m 
+    vertices, while Delaunay and ear-clipping algorithms yield (m-2) triangles.
+    
+    Two different methods are also provided for redistributing scalar data onto 
+    the triangulated mesh:
+
+    - Data provided in the `data` field is treated as extensive 
+      (e.g. a probability mass or reaction rate): new values are computed 
+      based on each new mesh cell's area fraction of the original Voronoi 
+      cell, so that summing the new values over all triangles belonging to a 
+      given original point reproduces that point's original value.
+    - `broadcast_data` is treated as intensive: each triangle within a 
+      subdivided Voronoi cell inherits the parent point's value, unchanged.
+
+    Both `data` and `broadcast_data` must have as their leading axis the 
+    dimension which indexes along the pointset (i.e., being of size N); any 
+    trailing axes are carried through unchanged.
 
     Parameters
     ----------
     mesh : UnitSpherePointset
         Pointset mesh of N points
-    data : iterable of float
-        Array of scalar data represented on the pointset. Must also contain N 
-        entries.
+    data : numpy.ndarray, optional
+        Extensive per-point data of shape (N, ...) to redistribute
+        proportionally to area.
+    broadcast_data : numpy.ndarray, optional
+        Intensive per-point data of shape (N, ...) to copy unchanged onto
+        every new triangle belonging to its parent point.
+    method : {'delaunay', 'ear clipping', 'star'}
+        Method by which to perform the triangulation of the Voronoi region
+        about each point.
 
     Returns
     -------
     new_mesh : UnitSphereTriangularMesh
         Angular mesh of M SphericalTriangle cells
-    new_data : (M,) ndarray of float
-        New array of data points associated with each triangle in the 
-        subdivided mesh
+    new_data : (M, ...) ndarray of float
+        Only returned if `data` was provided.
+    new_broadcast_data : (M, ...) ndarray of float
+        Only returned if `broadcast_data` was provided.
     """
-    cv.check_type("mesh for triangularization", mesh, UnitSpherePointset)
-    cv.check_type("data for triangularization", data, Iterable, Real, none_ok=True)
+    cv.check_type("mesh for triangulation", mesh, UnitSpherePointset)
+    n_points = len(mesh.points)
+
     if data is not None:
-        data = np.asarray(data).flatten()
-        if len(data) != len(mesh.points):
+        data = np.asarray(data)
+        if data.shape[0] != n_points:
             raise ValueError(
-                f"Number of entries in data array does not match number of points "
-                f"in UnitSpherePointset for triangularization "
-                f"(expected {len(mesh.points)})"
+                f"First dimension of data array ({data.shape[0]}) does not "
+                f"match number of points in UnitSpherePointset for "
+                f"triangulation (expected {n_points})"
             )
         new_data = []
+
+    if broadcast_data is not None:
+        broadcast_data = np.asarray(broadcast_data)
+        if broadcast_data.shape[0] != n_points:
+            raise ValueError(
+                f"First dimension of broadcast_data array "
+                f"({broadcast_data.shape[0]}) does not match number of "
+                f"points in UnitSpherePointset for triangulation "
+                f"(expected {n_points})"
+            )
+        new_broadcast_data = []
 
     sv = SphericalVoronoi(mesh.points)
     sv.sort_vertices_of_regions()
@@ -3912,42 +4351,116 @@ def triangularize_unit_sphere_mesh(mesh, data = None):
 
         pole = mesh.points[pole_index]
         verts = sv.vertices[region]
+        _, unique_idx = np.unique(np.round(verts, decimals=10), axis=0,
+                                   return_index=True)
+        verts = verts[np.sort(unique_idx)]
 
         n = len(verts)
-        areas = np.empty(n)
 
-        # Compute area of each spherical triangle
+        ref = verts[0] - np.dot(pole, verts[0]) * pole
+        ref_norm = np.linalg.norm(ref)
+        if ref_norm < 1e-10:
+            # verts[0] happens to be (nearly) parallel to pole; fall back
+            # to a different, guaranteed non-parallel reference vector
+            fallback = (np.array([1.0, 0.0, 0.0]) if abs(pole[0]) < 0.9
+                        else np.array([0.0, 1.0, 0.0]))
+            ref = fallback - np.dot(pole, fallback) * pole
+            ref_norm = np.linalg.norm(ref)
+        ref /= ref_norm
+        # Second basis vector in the plane normal to the pole, used for 
+        # Delaunay and ear-clipping triangulation
+        perp = np.cross(pole, ref)
+
+        angles = np.empty(n)
+        coords_2d = np.empty((n, 2)) # vertex coordinates for Delaunay
+                                     # and ear-clipping
         for i in range(n):
-            v1 = verts[i]
-            v2 = verts[(i + 1) % n]
+            v = verts[i] - np.dot(pole, verts[i]) * pole
+            v_norm = np.linalg.norm(v)
+            if v_norm > 1e-10:
+                v = v / v_norm
+            cos_a = np.clip(np.dot(ref, v), -1.0, 1.0)
+            sin_a = np.dot(pole, np.cross(ref, v))
+            angles[i] = np.arctan2(sin_a, cos_a)
+            coords_2d[i] = (np.dot(ref, v), np.dot(perp, v))
 
-            num = np.dot(pole, np.cross(v1, v2))
-            denom = 1 + np.dot(pole, v1) + np.dot(v1, v2) + np.dot(v2, pole)
-            areas[i] = 2 * np.arctan2(num, denom)
+        order = np.argsort(angles)			  
+        verts = verts[order]
+        coords_2d = coords_2d[order]
+
+        # Get areas corresponding to a star (centroid-fan) triangulation of 
+        # the region and use them to determine correct vertex winding
+        def _fan_areas(verts):
+            areas = np.empty(n)
+            for i in range(n):
+                v1 = verts[i]
+                v2 = verts[(i + 1) % n]
+                areas[i] = _spherical_triangle_area(pole, v1, v2)
+                                                                                
+            return areas
+
+        areas = _fan_areas(verts)
+
+        # The sort above gives a consistent winding linking all triangles 
+        # but not the overall rotational sense of the winding. Check sign and 
+        # flip if needed.
+        if areas.sum() < 0:
+            verts = verts[::-1]
+            coords_2d = coords_2d[::-1]
+            areas = _fan_areas(verts)
 
         total_area = areas.sum()
 
-        for i in range(n):
-            v1 = verts[i]
-            v2 = verts[(i + 1) % n]
+        if method == 'star':
+            for i in range(n):
+                v1 = verts[i]
+                v2 = verts[(i + 1) % n]
+                faces.append(SphericalTriangle(
+                    vertices=np.stack((pole, v1, v2)), area=areas[i]))
+                if data is not None:
+                    new_data.append(data[pole_index] * areas[i] / total_area)
+                if broadcast_data is not None:
+                    new_broadcast_data.append(broadcast_data[pole_index])
+        else:
+            if method == 'delaunay':
+                triangles = _delaunay_triangulate_convex_2d(coords_2d)
+            elif method == 'ear clipping':
+                triangles = _ear_clip_2d(coords_2d)
+            else:
+                raise ValueError(
+                    f"{method} is not a recognized triangulation method (must be "
+                    f"one of ''delaunay'',''star'' or ''ear clipping'').")
+            tri_areas = np.array([
+                _spherical_triangle_area(verts[i], verts[j], verts[k])
+                for i, j, k in triangles
+            ])
+            # Near-degenerate triangles (nearly all points on same great-circle
+            # arc) may give small, negative areas and may break the sampling
+            # algorithm, so we neglect them
+            tri_areas = np.clip(tri_areas, 0.0, None)
+            tri_total = tri_areas.sum()
+            # Rescale to match total area we calculated earlier
+            if tri_total > 0:
+                tri_areas *= total_area / tri_total
 
-            triangle = np.stack((pole, v1, v2))
-
-            faces.append(
-                SphericalTriangle(
-                    vertices=triangle,
-                    area=areas[i]
-                )
-            )
-            if data is not None:
-                new_data.append(data[pole_index] * areas[i] / total_area)
+            for (i, j, k), area in zip(triangles, tri_areas):
+                faces.append(SphericalTriangle(
+                    vertices=np.stack((verts[i], verts[j], verts[k])),
+                    area=area))
+                if data is not None:
+                    new_data.append(data[pole_index] * area / total_area)
+                if broadcast_data is not None:
+                    new_broadcast_data.append(broadcast_data[pole_index])
     
     new_mesh = UnitSphereTriangularMesh(faces)
 
+    results = [new_mesh]
     if data is not None:
-        return new_mesh, np.asarray(new_data)
-    else:
-        return new_mesh
+        results.append(np.asarray(new_data))
+    if broadcast_data is not None:
+        results.append(np.asarray(new_broadcast_data))
+
+    return tuple(results) if len(results) > 1 else new_mesh
 
 
 def _read_meshes(elem):

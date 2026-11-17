@@ -60,7 +60,6 @@ vector<Position> get_node_position_array(
   }
   vector<Position> positions;
   positions.reserve(coords.size() / 3);
-  auto it = coords.begin();
   for (size_t i = 0; i < coords.size(); i += 3) {
     positions.push_back({coords[i], coords[i + 1], coords[i + 2]});
   }

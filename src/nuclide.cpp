@@ -60,6 +60,9 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   read_attribute(group, "Z", Z_);
   read_attribute(group, "A", A_);
   read_attribute(group, "metastable", metastable_);
+  if (attribute_exists(group, "excitation_energy")) {
+    read_attribute(group, "excitation_energy", excitation_energy_);
+  }
   read_attribute(group, "atomic_weight_ratio", awr_);
 
   if (settings::run_mode == RunMode::VOLUME) {
@@ -690,7 +693,7 @@ void Nuclide::calculate_xs(
         i_temp = 0;
         break;
       }
-      if (kT > kTs_.back()) {
+      if (kT >= kTs_.back()) {
         i_temp = kTs_.size() - 1;
         break;
       }

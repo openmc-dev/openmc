@@ -103,7 +103,7 @@ open.
 
 ### Build Dependencies
 - **C++17 compiler**: GCC, Clang, or Intel
-- **CMake** (3.16+): Required for configuring and building the C++ library
+- **CMake** (3.22+): Required for configuring and building the C++ library
 - **HDF5**: Required for cross section data and output file formats
 - **libpng**: Used for generating visualization when OpenMC is run in plotting mode
 
@@ -213,6 +213,7 @@ Regression tests compare OpenMC output against reference data. **Prefer using ex
 - **PyAPITestHarness**: Standard harness for Python API tests. Compares `inputs_true.dat` (XML hash) and `results_true.dat` (statepoint k-eff and tally values). Requires `model.xml` generation.
 - **HashedPyAPITestHarness**: Like PyAPITestHarness but hashes the results for compact comparison
 - **TolerantPyAPITestHarness**: For tests with floating-point non-associativity (e.g., random ray solver with single precision). Uses relative tolerance comparisons.
+- **VTKTestHarness**: Like TolerantPyAPITestHarness but keeps one voxel plot and also compares the flux and source arrays of the random ray VTK files
 - **WeightWindowPyAPITestHarness**: Compares weight window bounds from `weight_windows.h5`
 - **CollisionTrackTestHarness**: Compares collision track data from `collision_track.h5` against `collision_track_true.h5`
 - **TestHarness**: Base harness for XML-based tests (no Python model building)

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import h5py
 import lxml.etree as ET
 import numpy as np
 import openmc
@@ -144,6 +145,12 @@ def test_mg_plot(run_in_tmpdir):
     with pytest.raises(RuntimeError):
         univ.plot(width=(200, 200), basis='yz', color_by='cell')
 
+    # Plot using the model's cross sections without global configuration.
+    model = openmc.Model(openmc.Geometry(univ), materials=[water])
+    model.materials.cross_sections = mgxs_path
+    axes = model.plot(color_by='material', outline='only', pixels=(20, 20))
+    assert len(axes.collections) == 1
+
     # Close plots to avoid warning
     import matplotlib.pyplot as plt
     plt.close('all')
@@ -186,6 +193,24 @@ def test_get_all_universes():
 
     univs = set(u4.get_all_universes().values())
     assert not (univs ^ {u1, u2, u3})
+
+
+def test_dagmc_universe_from_hdf5_without_filename(run_in_tmpdir):
+    """A DAGMC universe built from an in-memory MOAB instance has no filename."""
+    with h5py.File('summary.h5', 'w') as f:
+        group = f.create_group('universe 1')
+        group['geom_type'] = np.bytes_('dagmc')
+        group.attrs['auto_geom_ids'] = 0
+        group.attrs['auto_mat_ids'] = 1
+        group.attrs['length_multiplier'] = 1.0
+
+        with openmc.config.patch('resolve_paths', True):
+            univ = openmc.DAGMCUniverse.from_hdf5(group)
+
+    assert univ.id == 1
+    assert univ.filename == Path()
+    assert not univ.auto_geom_ids
+    assert univ.auto_mat_ids
 
 
 def test_clone():

@@ -33,6 +33,24 @@ struct MPITypeMap {
   static const MPI_Datatype mpi_type;
 };
 
+//! Broadcast a contiguous array without narrowing the element count.
+//
+//! \param buffer Input buffer on the root process, output on other processes
+//! \param count Number of elements in the buffer
+//! \param datatype MPI datatype of each element
+//! \param type_size Size of each element in bytes
+//! \param root Rank of the root process
+//! \param comm Communicator over which to perform the broadcast
+void broadcast_buffer(void* buffer, std::size_t count, MPI_Datatype datatype,
+  std::size_t type_size, int root, MPI_Comm comm);
+
+template<typename T>
+void broadcast(T* buffer, std::size_t count, int root, MPI_Comm comm)
+{
+  broadcast_buffer(
+    buffer, count, MPITypeMap<T>::mpi_type, sizeof(T), root, comm);
+}
+
 //! Reduce an array without narrowing the element count.
 //
 //! \param sendbuf Input buffer, or MPI_IN_PLACE on the root process

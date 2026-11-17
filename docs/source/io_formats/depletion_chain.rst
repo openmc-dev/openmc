@@ -8,6 +8,53 @@ A depletion chain file has a ``<depletion_chain>`` root element with one or more
 ``<nuclide>`` child elements. The decay, reaction, and fission product data for
 each nuclide appears as child elements of ``<nuclide>``.
 
+.. _io_chain_source_metadata:
+
+-----------------------------
+``<source_metadata>`` Element
+-----------------------------
+
+An optional ``<source_metadata>`` child of ``<depletion_chain>`` records the
+ENDF evaluations supplied when constructing the chain. It contains one
+``<source>`` element for each distinct library, version, and release in each
+component. These source records are separate from the particle-emission
+``<source>`` elements inside a ``<nuclide>``.
+
+Each metadata ``<source>`` has the following required attributes:
+
+  :component:
+    ``neutron``, ``decay``, or ``fission_yield``.
+
+  :library:
+    ENDF library name, such as ``ENDF/B``.
+
+  :version:
+    Nonnegative integer version from the ENDF evaluation header.
+
+  :release:
+    Nonnegative integer release from the ENDF evaluation header.
+
+For example, a chain constructed from three ENDF/B-VII.1 sublibraries can
+contain:
+
+.. code-block:: xml
+
+    <source_metadata>
+      <source component="neutron" library="ENDF/B" version="7" release="1"/>
+      <source component="decay" library="ENDF/B" version="7" release="1"/>
+      <source component="fission_yield" library="ENDF/B" version="7" release="1"/>
+    </source_metadata>
+
+A component may have several records when its inputs come from different
+libraries or releases. Missing metadata means the source was not recorded;
+it does not imply a particular library. Existing chain files without this
+element remain supported.
+
+This is construction provenance, not a selection of transport cross sections
+or a record of subsequent processing and manual edits. Chain reduction
+preserves these original construction records, including sources for nuclides
+that may have been removed.
+
 ---------------------
 ``<nuclide>`` Element
 ---------------------

@@ -108,9 +108,23 @@ TEST_CASE("Test region simplification")
 
   SECTION("Original bug case from issue #3685")
   {
-    // Input: "-1 2 (-3 4) | (-5 6)" was being incorrectly interpreted
+    // Input: "-1 2 (-3 4) | (-5 6)" was being incorrectly interpreted.
+    // Nested intersections are merged and redundant parentheses are dropped.
     auto region = openmc::Region("(-1 2 (-3 4) | (-5 6))", 0);
-    REQUIRE(region.str() == " ( ( -1 2 ( -3 4 ) ) | ( -5 6 ) )");
+    REQUIRE(region.str() == " ( -1 2 -3 4 ) | ( -5 6 )");
+  }
+
+  SECTION("Complement of a mixed expression")
+  {
+    // The complement applies to the grouped expression (1 2) | 3
+    auto region = openmc::Region("~(1 2 | 3)", 0);
+    REQUIRE(region.str() == " ( -1 | -2 ) -3");
+  }
+
+  SECTION("Complement of a parenthesized subexpression")
+  {
+    auto region = openmc::Region("4 ~(1 | 2 3)", 0);
+    REQUIRE(region.str() == " 4 -1 ( -2 | -3 )");
   }
 
   SECTION("Simple union - no extra parentheses needed")

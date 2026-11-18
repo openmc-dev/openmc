@@ -61,9 +61,9 @@ void free_memory()
   if (mpi::master) {
     free_memory_cmfd();
   }
-  if (settings::event_based) {
-    free_event_queues();
-  }
+  // Settings are reset before this function is called. Always clear event
+  // particles so that model-dependent caches are recreated on the next run.
+  free_event_queues();
 }
 
 } // namespace openmc
@@ -151,6 +151,7 @@ int openmc_finalize()
   settings::survival_biasing = false;
   settings::survival_normalization = false;
   settings::temperature_default = 293.6;
+  settings::temperature_field_on = false;
   settings::temperature_method = TemperatureMethod::NEAREST;
   settings::temperature_multipole = false;
   settings::temperature_range = {0.0, 0.0};
@@ -184,6 +185,8 @@ int openmc_finalize()
 
   simulation::entropy_mesh = nullptr;
   simulation::ufs_mesh = nullptr;
+
+  simulation::temperature_field = TemperatureField();
 
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};

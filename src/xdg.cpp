@@ -114,25 +114,8 @@ void XDGMesh::initialize()
     xdg_->mesh_manager()->parse_metadata();
   }
 
-  // TODO: replace with direct method in XDG when available
-  n_surface_bins_ = 0;
-  for (auto vol : xdg_->mesh_manager()->volumes()) {
-    int n_elem = xdg_->mesh_manager()->num_volume_elements(vol);
-    // The implicit complement has no elements or element type.
-    if (n_elem == 0)
-      continue;
-    xdg::VolumeElementType elem_type =
-      xdg_->mesh_manager()->get_volume_element_type(vol);
-    if (elem_type == xdg::VolumeElementType::TET) {
-      n_surface_bins_ += 4 * n_elem;
-    } else if (elem_type == xdg::VolumeElementType::HEX) {
-      n_surface_bins_ += 6 * n_elem;
-    } else {
-      fatal_error(fmt::format("Unsupported volume element type {} for "
-                              "surface bin counting in XDGMesh.",
-        static_cast<int>(elem_type)));
-    }
-  }
+  // Cache the number of volume element surfaces.
+  n_surface_bins_ = xdg_->mesh_manager()->num_volume_element_faces();
 
   auto global_bbox = xdg_->mesh_manager()->global_bounding_box();
   double length_multiplier =

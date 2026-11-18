@@ -112,7 +112,7 @@ class PolarAzimuthal(UnitSphere):
     @reference_vwu.setter
     def reference_vwu(self, vwu):
         cv.check_type('reference v direction', vwu, Iterable, Real)
-        vwu = np.asarray(vwu)
+        vwu = np.asarray(vwu, dtype=float)
         uvw = self.reference_uvw
         cv.check_greater_than('reference v direction must not be parallel to reference u direction', np.linalg.norm(np.cross(vwu,uvw)), 1e-6*np.linalg.norm(vwu))
         vwu -= vwu.dot(uvw)*uvw
@@ -582,7 +582,11 @@ class SphericalIndependent(Spatial):
         r = Univariate.from_xml_element(elem.find('r'))
         cos_theta = Univariate.from_xml_element(elem.find('cos_theta'))
         phi = Univariate.from_xml_element(elem.find('phi'))
-        origin = get_elem_list(elem, "origin", float)
+        if 'origin' in elem.attrib or elem.find('origin') is not None:
+            origin = get_elem_list(elem, 'origin', float) or []
+            cv.check_length('origin coordinates', origin, 3, 3)
+        else:
+            origin = (0.0, 0.0, 0.0)
         return cls(r, cos_theta, phi, origin=origin)
 
 

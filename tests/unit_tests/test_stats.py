@@ -576,6 +576,14 @@ def test_spherical_uniform():
                                                         origin)
 
     assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
+    elem = sph_indep_function.to_xml_element()
+    dist2 = openmc.stats.SphericalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.origin, origin)
+
+    # XML without origin attribute defaults to (0, 0, 0)
+    elem.attrib.pop('origin', None)
+    dist3 = openmc.stats.SphericalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist3.origin, (0.0, 0.0, 0.0))
 
 
 def test_cylindrical_uniform():

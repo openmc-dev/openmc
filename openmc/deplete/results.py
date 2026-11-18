@@ -372,7 +372,21 @@ class Results(list):
         rates : numpy.ndarray
             Array of reaction rates
 
+        Raises
+        ------
+        ValueError
+            If reaction rate data is unavailable in the results.
+
         """
+        # Check if reaction rate data is not available
+        if self and self[0].rates.size == 0:
+            raise ValueError(
+                'Reaction rate data is not available in these depletion '
+                'results. Rerun the depletion simulation with '
+                'integrator.integrate(write_rates=True) to save reaction '
+                'rates.'
+            )
+
         times = np.empty_like(self, dtype=float)
         rates = np.empty_like(self, dtype=float)
 

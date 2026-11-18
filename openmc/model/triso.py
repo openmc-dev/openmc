@@ -633,6 +633,270 @@ class _Cylinder(_Container):
             q[j] = (q[j] - c[j])*ul[1]/r + c[j]
         q[k] = np.clip(q[k], ll[0], ul[0])
 
+class _Cone(_Container):
+    """Conical container in which to pack spheres.
+
+    Parameters
+    ----------
+    length : float
+        Length of the conical container.
+    radius_major_ : float
+        Radius of the conical container at the positive end of the axis along
+        which the cone is aligned.
+    radius_minor_ : float
+        Radius of the conical container at the negative end of the axis along
+        which the cone is aligned.
+    axis : string
+        Axis along which the length of the cone is aligned.
+    sphere_radius : float
+        Radius of spheres to be packed in container.
+    center : Iterable of float
+        Cartesian coordinates of the center of the container. Default is
+        (0., 0., 0.)
+
+    Attributes
+    ----------
+    length : float
+        Length of the conical container.
+    radius_major_ : float
+        Radius of the conical container at the positive end of the axis along
+        which the cone is aligned.
+    radius_minor_ : float
+        Radius of the conical container at the negative end of the axis along
+        which the cone is aligned.
+    axis : string
+        Axis along which the length of the cylinder is aligned.
+    sphere_radius : float
+        Radius of spheres to be packed in container.
+    center : list of float
+        Cartesian coordinates of the center of the container. Default is
+        (0., 0., 0.)
+    shift : list of int
+        Rolled indices of the x-, y-, and z- coordinates of a sphere so the
+        configuration is aligned with the correct axis. No shift corresponds to
+        a cone along the z-axis.
+    cell_length : list of float
+        Length in x-, y-, and z- directions of each cell in mesh overlaid on
+        domain.
+    limits : list of float
+        Minimum and maximum distance in the direction parallel to the axis
+        where sphere center can be placed and maximum radial distance as a
+        function of position relative to the center of the conical container.
+    volume : float
+        Volume of the container.
+
+    """
+
+    def __init__(self, length, radius_major, radius_minor, axis, 
+                 sphere_radius, center=(0., 0., 0.)):
+        super().__init__(sphere_radius, center)
+        self._shift = None
+        self.length = length
+        self.radius_major = radius_major
+        self.radius_minor = radius_minor
+        self.axis = axis
+
+    @property
+    def length(self):
+        return self._length
+
+    @length.setter
+    def length(self, length):
+        self._length = float(length)
+        self._limits = None
+        self._cell_length = None
+
+    @property
+    def radius_major(self):
+        return self._radius_major
+
+    @radius_major.setter
+    def radius_major(self, radius_major):
+        self._radius_major = float(radius_major)
+        self._limits = None
+        self._cell_length = None
+
+    @property
+    def radius_minor(self):
+        return self._radius_minor
+
+    @radius_minor.setter
+    def radius_minor(self, radius_minor):
+        self._radius_minor = float(radius_minor)
+        self._limits = None
+        self._cell_length = None
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @axis.setter
+    def axis(self, axis):
+        self._axis = axis
+        self._shift = None
+
+    @property
+    def shift(self):
+        if self._shift is None:
+            if self.axis == 'x':
+                self._shift = [1, 2, 0]
+            elif self.axis == 'y':
+                self._shift = [2, 0, 1]
+            else:
+                self._shift = [0, 1, 2]
+        return self._shift
+
+    @property
+    def limits(self):
+        if self._limits is None:
+            z0 = self.center[self.shift[2]]
+            z = self.length/2
+            r = self.sphere_radius
+            r_major = self.radius_major
+            r_minor = self.radius_minor
+            m = (2*z)/(r_major-r_minor)
+            # r limit depends on z-coord of packed sphere.
+            # the equation is broken into [factor, constant]
+            # so it can be stored without symbols
+            self._limits = [[z0 - z + r], 
+                            [z0 + z - r, 
+                             [1/m,
+                              -(r/m)*(m**2 + 1)**0.5 - (z0-z)/m + r_minor]]]
+        return self._limits
+
+    @limits.setter
+    def limits(self, limits):
+        self._limits = limits
+
+    @property
+    def cell_length(self):
+        if self._cell_length is None:
+            h = 4*self.sphere_radius
+            #r_avg = 0.5*(self.radius_major + self.radius_minor)
+            i, j, k = self.shift
+            self._cell_length = [None]*3
+            self._cell_length[i] = 2*self.radius_major/int(2*self.radius_major/h)
+            self._cell_length[j] = 2*self.radius_major/int(2*self.radius_major/h)
+            self._cell_length[k] = self.length/int(self.length/h)
+        return self._cell_length
+
+    @property
+    def volume(self):
+        return (self.length*pi/3)*(self.radius_major**2 + 
+                                   self.radius_major*self.radius_minor + 
+                                   self.radius_minor**2)
+
+    @classmethod
+    def from_region(self, region, sphere_radius):
+        check_type('region', region, openmc.Region)
+
+        # Assume the simplest case where the conical volume is the
+        # intersection of the half-spaces of a cone and two planes
+        if not isinstance(region, openmc.Intersection):
+            raise ValueError
+
+        if any(not isinstance(node, openmc.Halfspace) for node in region):
+            raise ValueError
+
+        if len(region) != 3:
+            raise ValueError
+
+        # Identify the axis that the cone lies along
+        axis = region[0].surface.type[0]
+
+        # Make sure the region is composed of a cone and two planes on the
+        # same axis
+        count = Counter(node.surface.type for node in region)
+        if count[axis + '-cone'] != 1 or count[axis + '-plane'] != 2:
+            raise ValueError
+
+        # Sort the half-spaces by surface type
+        cone, p1, p2 = sorted(region, key=lambda x: x.surface.type)
+
+        # Calculate the parameters for a cone along the x-axis
+        if axis == 'x':
+            if p1.surface.x0 > p2.surface.x0:
+                p1, p2 = p2, p1
+            length = p2.surface.x0 - p1.surface.x0
+            center = (p1.surface.x0 + length/2, cone.surface.y0, cone.surface.z0)
+            radius_major = (cone.surface.r2*
+                            (p2.surface.x0 - cone.surface.x0)**2)**0.5
+            radius_minor = (cone.surface.r2*
+                            (p1.surface.x0 - cone.surface.x0)**2)**0.5
+
+        # Calculate the parameters for a cone along the y-axis
+        elif axis == 'y':
+            if p1.surface.y0 > p2.surface.y0:
+                p1, p2 = p2, p1
+            length = p2.surface.y0 - p1.surface.y0
+            center = (cone.surface.x0, p1.surface.y0 + length/2, cone.surface.z0)
+            radius_major = (cone.surface.r2*
+                            (p2.surface.y0 - cone.surface.y0)**2)**0.5
+            radius_minor = (cone.surface.r2*
+                            (p1.surface.y0 - cone.surface.y0)**2)**0.5
+
+        # Calculate the parameters for a cone along the z-axis
+        else:
+            if p1.surface.z0 > p2.surface.z0:
+                p1, p2 = p2, p1
+            length = p2.surface.z0 - p1.surface.z0
+            center = (cone.surface.x0, cone.surface.y0, p1.surface.z0 + length/2)
+            radius_major = (cone.surface.r2*
+                            (p2.surface.z0 - cone.surface.z0)**2)**0.5
+            radius_minor = (cone.surface.r2*
+                            (p1.surface.z0 - cone.surface.z0)**2)**0.5
+
+        # Make sure the half-spaces are on the correct side of the surfaces
+        if cone.side != '-' or p1.side != '+' or p2.side != '-':
+            raise ValueError
+
+        # The region is the volume of a truncated cone, so create container
+        return _Cone(length, radius_major, radius_minor, axis, 
+                     sphere_radius, center)
+
+    def random_point(self):
+        ll, ul = self.limits
+        i, j, k = self.shift
+        p = [None]*3
+        p[k] = uniform(ll[0], ul[0])
+        rl = p[k]*ul[1][0] + ul[1][1]
+        r = sqrt(uniform(0, rl**2))
+        t = uniform(0, 2*pi)
+        p[i] = r*cos(t) + self.center[i]
+        p[j] = r*sin(t) + self.center[j]
+        return p
+
+    def repel_spheres(self, p, q, d, d_new):
+        # Moving each sphere distance 's' away from the other along the line
+        # joining the sphere centers will ensure their final distance is
+        # equal to the outer diameter
+        s = (d_new - d)/2
+
+        v = (p - q)/d
+        p += s*v
+        q -= s*v
+
+        # Enforce the rigid boundary by moving each sphere along the plane
+        # surface normal if they overlap, then checking and moving the
+        # sphere center to the new r limit if it overlaps with the side
+        # of the cone.
+        ll, ul = self.limits
+        c = self.center
+        i, j, k = self.shift
+        
+        p[k] = np.clip(p[k], ll[0], ul[0])
+        r = sqrt((p[i] - c[i])**2 + (p[j] - c[j])**2)
+        rl = p[k]*ul[1][0] + ul[1][1]
+        if r > rl:
+            p[i] = (p[i] - c[i])*rl/r + c[i]
+            p[j] = (p[j] - c[j])*rl/r + c[j]
+
+        q[k] = np.clip(q[k], ll[0], ul[0]) 
+        r = sqrt((q[i] - c[i])**2 + (q[j] - c[j])**2)
+        rl = q[k]*ul[1][0] + ul[1][1]
+        if r > rl:
+            q[i] = (q[i] - c[i])*rl/r + c[i]
+            q[j] = (q[j] - c[j])*rl/r + c[j]
 
 class _SphericalShell(_Container):
     """Spherical shell container in which to pack spheres.
@@ -1294,7 +1558,7 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
     if not domain:
         raise ValueError('Could not map region {} to a container: supported '
                          'container shapes are rectangular prism, cylinder, '
-                         'sphere, and spherical shell.'.format(region))
+                         'cone, sphere, and spherical shell.'.format(region))
 
     # Determine the packing fraction/number of spheres
     volume = _volume_sphere(radius)
@@ -1329,8 +1593,14 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
     # Recalculate the limits for the initial random sequential packing using
     # the desired final sphere radius to ensure spheres are fully contained
     # within the domain during the close random pack
-    domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
-                     [x + initial_radius - radius for x in domain.limits[1]]]
+    try:
+        domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
+                        [x + initial_radius - radius for x in domain.limits[1]]]
+    except TypeError:
+        ll, ul = domain.limits
+        domain.limits = [[ll[0] - initial_radius + radius],
+                        [ul[0] + initial_radius - radius,
+                         [ul[1][0], ul[1][1] + initial_radius - radius]]]
 
     # Generate non-overlapping spheres for an initial inner radius using
     # random sequential packing algorithm

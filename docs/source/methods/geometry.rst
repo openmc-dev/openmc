@@ -178,6 +178,153 @@ universes that are to fill each position in the lattice. A good example of the
 use of lattices and universes can be seen in the OpenMC model for the `Monte
 Carlo Performance benchmark`_.
 
+Random Sphere Packing
+---------------------
+
+Some models will have regions consisting of a randomly arranged packing of
+monosized spheres.  This is particularly common in models simulating TRISO fuels.
+OpenMC has two methods of random sphere packing: Random Sequential Packing (RSP)
+and Close Random Packing (CRP).
+
+In RSP, sphere center coordinates are randomly generated one at a time 
+within the container's boundaries.  New spheres which overlap with previously 
+generated spheres are rejected.  This random coordinate selection continues
+until the target number of random sphere centers is generated.
+
+In OpenMC, the CRP method implemented uses the Jodrey-Tory algorithm [Jodrey-Tory]_.
+In Jodrey-Tory, each sphere is assigned two diameters: the inner diameter,
+:math:`d_{inner}`, and the outer diameter, :math:`d_{outer}`,
+which approach each other during the simulation.  The inner diameter is defined
+as the minimum center-to-center distance, or rod, between all spheres in the
+container.  The outer diameter is an arbitrary value that is larger than the 
+target sphere diameter.  It is usually defined such that packing the container
+with a target number of spheres of diameter :math:`d_{outer}` would yield a
+packing fraction, :math:`pf`, of 1.0.
+
+The Jodrey-Tory algorithm prioritizes fixing the worst overlaps in each iteration.
+Spheres are considered overlapping if the rod between them is less than :math:`d_{outer}`.
+However, a sphere is only moved once each iteration, i.e., if sphere A is
+overlapping with spheres B and C, but rod AC is shorter than rod AB, then
+the overlap between A and C is addressed, but not A and B. Overlaps are eliminated
+moving the spheres apart along the line joining their centers until they are
+:math:`d_{outer}` apart.  At the end of an iteration, :math:`d_{outer}` is
+reduced according to:
+
+.. math::
+    :label: jt-dout
+
+    d_{out}^{i+1} = d_{out}^{i} - \frac{1}{2}^{j} * d_{out0} * \frac{k}{n}
+
+where k is the contraction rate, n is the number of spheres, and
+
+.. math::
+    :label: jt-dout-j
+
+    j = floor(-log_{10}(pf_{out} - pf_{in}))
+
+Iterations continue until the :math:`d_{outer}` and :math:`d_{inner}` converge
+or the target :math:`pf` is reached, which is determined by the current value
+of :math:`d_{inner}`.
+
+The OpenMC implementations of both RSP and CRP use a mesh over the domain
+to speed up the nearest neighbor search by only searching for a sphere's
+neighbors within that mesh cell.
+
+RSP performs better than CRP for lower :math:`pf`, but it becomes 
+prohibitively slow as it approaches its packing limit (~0.38). CRP can 
+achieve higher :math:`pf` of up to ~0.64 and scales better with increasing
+:math:`pf`.  If the desired :math:`pf` is below the threshold for which RSP 
+will be faster than CRP, only RSP is used. If a higher :math:`pf` is required,
+RSP is used to pack the target number of spheres using a smaller than desired 
+final radius. This initial configuration of spheres is then used as a starting 
+point for CRP using Jodrey-Tory.
+
+After each sphere is moved, its position must be checked to confirm that it is
+still within the boundaries of the container.  In OpenMC, this check is performed
+by calculating the limits of the container, which is the minimum and maximum
+values the sphere center coordinate can have in each direction.  In general,
+limits can be defined as a surface that is parallel to the container's surface,
+and is located a perpendicular distance inside the container equal to the
+radius of the packed spheres.
+
+For example, if the container is a cube centered at (0, 0, 0) and defined with
+six planes at :math:`x0, -x0, y0, -y0, z0`, and :math:`-z0`, then the limits are defined by a
+cube centered on the origin with sides at :math:`(x0-r_{s}), -(x0-r_{s}), 
+y0-r_{s}, -(y0-r_{s}), z0-r_{s}`, and :math:`-(z0-r_{s})`, where :math:`r_{s}`
+is the radius of the packed spheres.
+
+For most shapes this is straightforward, as the value of the limit is constant
+for a given direction.  This is not true for the limit in r of a conical container,
+however.  OpenMC allows for the packing of a truncated conical container in which
+the top and bottom surfaces are capped by planes (similar to a cylinder).  In
+the case of such a container, the limit in r is dependent upon the sphere's
+current z-coordinate relative to the top and bottom surfaces of the container.
+
+.. _fig-cone-container:
+
+.. figure:: ../_images/jt-truncated-cone.svg
+   :align: center
+   :figclass: align-center
+   :width: 400px
+
+Consider a conical container with dimensions labeled with the above convention.
+In this convention, :math:`r_{major}` refers to the base at the
+postive-most end of the cone, and :math:`r_{minor}` refers to the base at the
+negative-most end of the cone.  This does not refer to their magnitudes relative
+to each other.
+
+The limit in r can be defined as a linear function of z using the equation for
+the perpendicular distance between two parallel lines.  With two parallel lines
+defined by:
+
+.. math::
+    :label: parallel-sys-eqn
+
+    ar_{cone} + bz_{s} + c_{cone} = 0
+
+    ar_{lim} + bz_{s} + c_{lim} = 0
+
+The parallel distance between them, :math:`d = r_{s}` is:
+
+.. math::
+    :label: perpendicular-distance
+
+    r_{s} = \frac{| c_{lim} - c_{cone} |}{\sqrt{a^2 + b^2}}
+
+The equation for :math:`r_{cone}` can be found using :math:`(r_minor, z0-z)` and
+:math:`(r_major, z0+z)` as two points along the line, giving:
+
+.. math::
+    :label: rcone-line
+
+    z_{s} - (z_{0} - z) = (r_{cone} - r_{minor})\frac{2z}{r_{major} - r_{minor}}
+
+    \frac{2z}{r_{major} - r_{minor}}r_{cone} - z_{s} - \frac{2z}{r_{major} - r_{minor}}r_{minor} + (z_{0} - z) = 0
+
+    mr_{cone} - z_{s} - mr_{minor} + (z_{0} - z) = 0
+
+With :math:`m = \frac{2z}{r_{major} - r_{minor}}`, the constant :math:`c_{lim}`
+is found to be:
+
+.. math::
+    :label: rlim-clim
+
+    r_{s} = \frac{|c_{lim} - c_{cone}|}{\sqrt{m^2 + 1^2}}
+
+    c_{lim} = r_{s}\sqrt{m^2 + 1} \pm ((z_{0} - z) - r_{minor})
+
+Which can be used to define the radial limit as a function of the sphere's current
+z-position relative to the bases of the cone.  The :math:`\pm` symbol is resolved
+by choosing the sign that results in adding :math:`r_{minor}`, which gives an
+:math:`r_{lim}` line the appropriate distance inside the conical container.
+
+.. math::
+    :label: rlim-eqn
+
+    r_{lim}(z_{s}) = \frac{1}{m}z_{s} - \frac{r_{s}}{m}\sqrt{m^2 + 1} + r_{minor} - \frac{(z_{0} - z)}{m}
+
+
+
 ------------------------------------------
 Computing the Distance to Nearest Boundary
 ------------------------------------------
@@ -1068,3 +1215,5 @@ surface is known as in :ref:`reflection`.
 .. _MCNP: https://mcnp.lanl.gov
 .. _Serpent: https://serpent.vtt.fi
 .. _Monte Carlo Performance benchmark: https://github.com/mit-crpg/benchmarks/tree/master/mc-performance/openmc
+.. [Jodrey-Tory] W. S. Jodrey and E. M. Tory, "Computer simulation of close random
+       packing of equal spheres", Phys. Rev. A 32 (1985) 2347-2351.

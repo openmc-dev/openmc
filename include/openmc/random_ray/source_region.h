@@ -204,7 +204,7 @@ public:
   float* external_source_ = nullptr;
   double* scalar_flux_final_ = nullptr;
   // Non-null only when angular flux is tallied in a SR
-  double* angular_flux_new_;
+  double* angular_flux_new_ = nullptr;
   // Non-null only for the adaptive volume estimator family
   double* scalar_flux_t_ = nullptr;
 
@@ -498,11 +498,11 @@ class SourceRegionContainer {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegionContainer(int negroups, bool is_linear, int nangles = 1,
-    bool is_adaptive, bool is_strict_adaptive, bool track_extents)
-    : negroups_(negroups), is_linear_(is_linear), nangles_(nangles),
-      is_adaptive_(is_adaptive), is_strict_adaptive_(is_strict_adaptive),
-      track_extents_(track_extents)
+  SourceRegionContainer(int negroups, bool is_linear, bool is_adaptive,
+    bool is_strict_adaptive, bool track_extents, int nangles = 1)
+    : negroups_(negroups), is_linear_(is_linear), is_adaptive_(is_adaptive),
+      is_strict_adaptive_(is_strict_adaptive), track_extents_(track_extents),
+      nangles_(nangles)
   {}
   SourceRegionContainer() = default;
 
@@ -511,8 +511,8 @@ public:
   //! container from scratch after load balancing.
   SourceRegionContainer empty_like() const
   {
-    return SourceRegionContainer(
-      negroups_, is_linear_, is_adaptive_, is_strict_adaptive_, track_extents_);
+    return SourceRegionContainer(negroups_, is_linear_, is_adaptive_,
+      is_strict_adaptive_, track_extents_, nangles_);
   }
 
   //----------------------------------------------------------------------------

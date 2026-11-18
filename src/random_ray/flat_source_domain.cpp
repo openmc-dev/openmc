@@ -74,7 +74,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
     resolved_volume_estimator_ == RandomRayVolumeEstimator::STRICT_ADAPTIVE;
   // The sampled bounding boxes exist only for the source gradient limiter
   source_regions_ = SourceRegionContainer(negroups_, is_linear, nangles_,
-    is_adaptive, is_strict_adaptive, is_linear && source_gradient_limiter_, );
+    is_adaptive, is_strict_adaptive, is_linear && source_gradient_limiter_);
 
   // Initialize tally volumes
   if (volume_normalized_flux_tallies_) {

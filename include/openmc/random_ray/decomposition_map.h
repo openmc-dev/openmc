@@ -43,13 +43,16 @@ public:
   bool any_discovered_source_regions(
     ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
       discovered_source_regions);
-#ifdef OPENMC_MPI
-  // Post the sends for one source region. If `pending` is given, the requests
-  // are appended to it and the caller is responsible for waiting on them;
-  // otherwise this call blocks until the sends complete locally.
-  void send_sr_data(int receiver, SourceRegion& sr_send,
-    vector<MPI_Request>* pending = nullptr);
-#endif
+  // Transfer of source regions between ranks as fixed-size packed records.
+  // for_each_transfer_field() lists the fields once; size, pack and unpack
+  // all follow it.
+  template<typename SR, typename F>
+  void for_each_transfer_field(SR& sr, F&& f) const;
+  size_t sr_record_bytes() const;
+  void pack_sr_data(const SourceRegion& sr, char* buf) const;
+  void unpack_sr_data(const char* buf, SourceRegion& sr) const;
+  // Send / receive one source region (one blocking message)
+  void send_sr_data(int receiver, const SourceRegion& sr_send);
   void receive_sr_data(int sender, SourceRegion& sr_recv);
 
   // Methods for balancing the load between ranks
@@ -125,6 +128,8 @@ private:
   double max_domain_length_;
   bool is_linear_;
   bool is_adaptive_;
+  mutable size_t sr_record_bytes_ {
+    0}; //!< Bytes per source region record (cache)
 
 }; // class DecompositionMap
 

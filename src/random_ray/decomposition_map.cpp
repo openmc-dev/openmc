@@ -11,6 +11,8 @@
 #include "openmc/simulation.h"
 #include "openmc/timer.h"
 #include "openmc/vector.h"
+#include <algorithm>
+#include <cstring>
 #include <numeric>
 
 #ifdef OPENMC_MPI
@@ -531,155 +533,134 @@ void DecompositionMap::exchange_sr_info(
   }
 }
 
-void DecompositionMap::send_sr_data(
-  int receiver, SourceRegion& sr_send, vector<MPI_Request>* pending)
+//==============================================================================
+// Source region transfer between ranks
+//
+// A source region is moved as one fixed-size record of raw bytes (the scalar
+// fields, then the group-wise arrays in a fixed order). The record layout and
+// size depend only on run-wide settings (energy groups, linear source, source
+// gradient limiter, adaptive volume estimator, fixed source mode), so sender
+// and receiver agree on it without any metadata. When adding a per-region
+// field, add it to ScalarSourceRegionFields (carried automatically) or to
+// for_each_transfer_field() (and allocate it in the SourceRegion
+// constructors).
+//==============================================================================
+
+namespace {
+
+// Largest MPI message posted at once (MPI counts are int); larger buffers are
+// split into several messages
+constexpr size_t MAX_MESSAGE_BYTES {size_t {1} << 30};
+
+// Post nonblocking sends (or receives) for `bytes` bytes of `buf` in chunks of
+// at most MAX_MESSAGE_BYTES, all with the same tag. The two sides chunk
+// identically, and MPI's non-overtaking order matches the chunks.
+void post_chunked(bool send, char* buf, size_t bytes, int peer, int tag,
+  vector<MPI_Request>& requests)
 {
+  for (size_t off = 0; off < bytes; off += MAX_MESSAGE_BYTES) {
+    int n = static_cast<int>(std::min(MAX_MESSAGE_BYTES, bytes - off));
+    requests.emplace_back();
+    if (send) {
+      MPI_Isend(
+        buf + off, n, MPI_BYTE, peer, tag, mpi::intracomm, &requests.back());
+    } else {
+      MPI_Irecv(
+        buf + off, n, MPI_BYTE, peer, tag, mpi::intracomm, &requests.back());
+    }
+  }
+}
 
-  int num_scalar_messages = 1;
-  //! NOTE: update if new vector fields are added to SourceExchangeVectors
-  //! struct
-  int num_vector_messages = 4;
+} // namespace
+
+// Hand one group-wise array of a source region to a transfer visitor, after
+// checking that it has the expected number of entries (a field that is
+// transferred but not allocated by the SourceRegion constructors would
+// otherwise be read or written out of bounds)
+template<typename V, typename F>
+void transfer_array(F& f, V& v, size_t n, const char* name)
+{
+  if (v.size() != n) {
+    fatal_error(fmt::format("Source region field {} has {} entries instead of "
+                            "the {} expected for its transfer between ranks.",
+      name, v.size(), n));
+  }
+  f(v.data(), n * sizeof(v[0]));
+}
+
+template<typename SR, typename F>
+void DecompositionMap::for_each_transfer_field(SR& sr, F&& f) const
+{
+  // The one list of what moves with a source region between ranks, in record
+  // order. Scalars ride along in ScalarSourceRegionFields.
+  size_t ng = negroups_;
+  f(&sr.scalars_, sizeof(ScalarSourceRegionFields));
+  transfer_array(f, sr.scalar_flux_old_, ng, "scalar_flux_old_");
+  transfer_array(f, sr.scalar_flux_new_, ng, "scalar_flux_new_");
+  transfer_array(f, sr.source_, ng, "source_");
+  if (settings::run_mode == RunMode::FIXED_SOURCE)
+    transfer_array(f, sr.external_source_, ng, "external_source_");
+  transfer_array(f, sr.scalar_flux_final_, ng, "scalar_flux_final_");
   if (is_linear_) {
-    num_vector_messages += 4;
+    transfer_array(f, sr.source_gradients_, ng, "source_gradients_");
+    transfer_array(f, sr.flux_moments_old_, ng, "flux_moments_old_");
+    transfer_array(f, sr.flux_moments_new_, ng, "flux_moments_new_");
+    transfer_array(f, sr.flux_moments_t_, ng, "flux_moments_t_");
   }
-  // The sampled bounding box lives outside ScalarSourceRegionFields, so it
-  // needs a message of its own when the source gradient limiter is enabled
-  bool send_extent = is_linear_ && FlatSourceDomain::source_gradient_limiter_;
-  if (send_extent) {
-    num_vector_messages += 1;
+  if (is_linear_ && FlatSourceDomain::source_gradient_limiter_)
+    f(&sr.extent_, sizeof(BoundingBox));
+  if (is_adaptive_)
+    transfer_array(f, sr.scalar_flux_t_, ng, "scalar_flux_t_");
+}
+
+size_t DecompositionMap::sr_record_bytes() const
+{
+  // Run-wide constant: measured once on a freshly constructed region
+  if (sr_record_bytes_ == 0) {
+    SourceRegion sr(negroups_, is_linear_);
+    size_t bytes = 0;
+    for_each_transfer_field(sr, [&](void*, size_t n) { bytes += n; });
+    sr_record_bytes_ = bytes;
   }
-  // The adaptive estimator's running flux sum is energy-dependent, so unlike
-  // the rest of its state it does not ride along in ScalarSourceRegionFields
-  if (is_adaptive_) {
-    num_vector_messages += 1;
+  return sr_record_bytes_;
+}
+
+void DecompositionMap::pack_sr_data(const SourceRegion& sr, char* buf) const
+{
+  char* p = buf;
+  for_each_transfer_field(sr, [&](const void* src, size_t n) {
+    std::memcpy(p, src, n);
+    p += n;
+  });
+  if (static_cast<size_t>(p - buf) != sr_record_bytes()) {
+    fatal_error("Packed source region size does not match sr_record_bytes().");
   }
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    num_vector_messages += 1;
-  }
-  int num_requests = num_scalar_messages + num_vector_messages;
+}
 
-  vector<MPI_Request> requests(num_requests);
-  int req_idx = 0;
+void DecompositionMap::unpack_sr_data(const char* buf, SourceRegion& sr) const
+{
+  // sr must have been constructed as SourceRegion(negroups_, is_linear_)
+  const char* p = buf;
+  for_each_transfer_field(sr, [&](void* dst, size_t n) {
+    std::memcpy(dst, p, n);
+    p += n;
+  });
+}
 
-  // Send scalar data to receiver
-  MPI_Isend(&sr_send.scalars_, sizeof(ScalarSourceRegionFields), MPI_BYTE,
-    receiver, 1, mpi::intracomm, &requests[req_idx]);
-  req_idx++;
-
-  // Send vector data to receiver
-  // Tags hardcoded to avoid confusion if new fields are not added sequentially
-  MPI_Isend(sr_send.scalar_flux_old_.data(), negroups_, MPI_DOUBLE, receiver, 2,
-    mpi::intracomm, &requests[req_idx]);
-  req_idx++;
-
-  MPI_Isend(sr_send.scalar_flux_new_.data(), negroups_, MPI_DOUBLE, receiver, 3,
-    mpi::intracomm, &requests[req_idx]);
-  req_idx++;
-
-  MPI_Isend(sr_send.source_.data(), negroups_, MPI_FLOAT, receiver, 4,
-    mpi::intracomm, &requests[req_idx]);
-  req_idx++;
-
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    MPI_Isend(sr_send.external_source_.data(), negroups_, MPI_FLOAT, receiver,
-      5, mpi::intracomm, &requests[req_idx]);
-    req_idx++;
-  }
-
-  MPI_Isend(sr_send.scalar_flux_final_.data(), negroups_, MPI_DOUBLE, receiver,
-    6, mpi::intracomm, &requests[req_idx]);
-  req_idx++;
-
-  if (is_linear_) {
-    MPI_Isend(sr_send.source_gradients_.data(), 3 * negroups_, MPI_DOUBLE,
-      receiver, 7, mpi::intracomm, &requests[req_idx]);
-    req_idx++;
-
-    MPI_Isend(sr_send.flux_moments_old_.data(), 3 * negroups_, MPI_DOUBLE,
-      receiver, 8, mpi::intracomm, &requests[req_idx]);
-    req_idx++;
-
-    MPI_Isend(sr_send.flux_moments_new_.data(), 3 * negroups_, MPI_DOUBLE,
-      receiver, 9, mpi::intracomm, &requests[req_idx]);
-    req_idx++;
-
-    MPI_Isend(sr_send.flux_moments_t_.data(), 3 * negroups_, MPI_DOUBLE,
-      receiver, 10, mpi::intracomm, &requests[req_idx]);
-    req_idx++;
-  }
-
-  if (send_extent) {
-    MPI_Isend(&sr_send.extent_, sizeof(BoundingBox), MPI_BYTE, receiver, 11,
-      mpi::intracomm, &requests[req_idx]);
-    req_idx++;
-  }
-
-  if (is_adaptive_) {
-    MPI_Isend(sr_send.scalar_flux_t_.data(), negroups_, MPI_DOUBLE, receiver,
-      12, mpi::intracomm, &requests[req_idx]);
-    req_idx++;
-  }
-
-  if (req_idx != num_requests) {
-    fatal_error(fmt::format(
-      "Number of MPI requests does not match number of messages sent."
-      "Check if num_vector_messages corresponds to number of transferred "
-      "vectors."));
-  }
-
-  // Hand the requests to the caller if it wants to overlap sends and receives,
-  // otherwise wait for them here
-  if (pending) {
-    pending->insert(pending->end(), requests.begin(), requests.end());
-    return;
-  }
-
-  MPI_Waitall(num_requests, requests.data(), MPI_STATUSES_IGNORE);
+void DecompositionMap::send_sr_data(int receiver, const SourceRegion& sr_send)
+{
+  vector<char> buf(sr_record_bytes());
+  pack_sr_data(sr_send, buf.data());
+  MPI_Send(buf.data(), static_cast<int>(buf.size()), MPI_BYTE, receiver, 1,
+    mpi::intracomm);
 }
 
 void DecompositionMap::receive_sr_data(int sender, SourceRegion& sr_recv)
 {
-
-  // Receive scalar data from sender
-  MPI_Recv(&sr_recv.scalars_, sizeof(ScalarSourceRegionFields), MPI_BYTE,
-    sender, 1, mpi::intracomm, MPI_STATUS_IGNORE);
-
-  // Receive vector data from sender
-  MPI_Recv(sr_recv.scalar_flux_old_.data(), negroups_, MPI_DOUBLE, sender, 2,
+  vector<char> buf(sr_record_bytes());
+  MPI_Recv(buf.data(), static_cast<int>(buf.size()), MPI_BYTE, sender, 1,
     mpi::intracomm, MPI_STATUS_IGNORE);
-  MPI_Recv(sr_recv.scalar_flux_new_.data(), negroups_, MPI_DOUBLE, sender, 3,
-    mpi::intracomm, MPI_STATUS_IGNORE);
-  MPI_Recv(sr_recv.source_.data(), negroups_, MPI_FLOAT, sender, 4,
-    mpi::intracomm, MPI_STATUS_IGNORE);
-
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    MPI_Recv(sr_recv.external_source_.data(), negroups_, MPI_FLOAT, sender, 5,
-      mpi::intracomm, MPI_STATUS_IGNORE);
-  }
-
-  MPI_Recv(sr_recv.scalar_flux_final_.data(), negroups_, MPI_DOUBLE, sender, 6,
-    mpi::intracomm, MPI_STATUS_IGNORE);
-
-  if (is_linear_) {
-    MPI_Recv(sr_recv.source_gradients_.data(), 3 * negroups_, MPI_DOUBLE,
-      sender, 7, mpi::intracomm, MPI_STATUS_IGNORE);
-    MPI_Recv(sr_recv.flux_moments_old_.data(), 3 * negroups_, MPI_DOUBLE,
-      sender, 8, mpi::intracomm, MPI_STATUS_IGNORE);
-    MPI_Recv(sr_recv.flux_moments_new_.data(), 3 * negroups_, MPI_DOUBLE,
-      sender, 9, mpi::intracomm, MPI_STATUS_IGNORE);
-    MPI_Recv(sr_recv.flux_moments_t_.data(), 3 * negroups_, MPI_DOUBLE, sender,
-      10, mpi::intracomm, MPI_STATUS_IGNORE);
-  }
-
-  if (is_linear_ && FlatSourceDomain::source_gradient_limiter_) {
-    MPI_Recv(&sr_recv.extent_, sizeof(BoundingBox), MPI_BYTE, sender, 11,
-      mpi::intracomm, MPI_STATUS_IGNORE);
-  }
-
-  if (is_adaptive_) {
-    MPI_Recv(sr_recv.scalar_flux_t_.data(), negroups_, MPI_DOUBLE, sender, 12,
-      mpi::intracomm, MPI_STATUS_IGNORE);
-  }
+  unpack_sr_data(buf.data(), sr_recv);
 }
 
 int DecompositionMap::find_owner(SourceRegionKey sr_key, Position r,
@@ -1146,61 +1127,68 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
   // Clear source_region_map_
   domain->source_region_map_.clear();
 
-  // Send source region data to new owner. The sends are posted without waiting
-  // on them so that the receives below can be posted while they are still in
-  // flight: every rank reaches its send loop before any rank reaches its
-  // receive loop, so blocking here would deadlock as soon as a message exceeds
-  // the MPI implementation's eager threshold.
-  //
-  // The staging vector keeps the outgoing SourceRegion objects (and therefore
-  // the buffers the MPI_Isend calls point at) alive until the final Waitall.
-  vector<MPI_Request> pending_sends;
-  vector<SourceRegion> outgoing;
-  int64_t n_outgoing = 0;
-  for (const auto& pair : sr_send_list) {
-    n_outgoing += pair.second.size();
+  // Move the source region data to the new owners: one packed buffer per
+  // pair of ranks (fixed-size records, see sr_record_bytes()) instead of one
+  // message per field and region. Every rank already knows how many regions it
+  // receives from each sender (num_sr_receiving, from the broadcasts above), so
+  // all receives are posted first, then all sends, then one Waitall: no
+  // ordering between ranks is needed and nothing depends on message sizes. The
+  // number of messages is about the number of neighbouring subdomains, not ~10
+  // per region, which keeps MPI resource use small (posting tens of thousands
+  // of small messages made Open MPI's memory grow without bound).
+  if (num_sr_receiving[mpi::rank] > 0) {
+    fatal_error("Rank sends source regions to itself. Rank should not "
+                "receive source regions from itself.");
   }
-  outgoing.reserve(n_outgoing);
+  const size_t record = sr_record_bytes();
+  vector<MPI_Request> requests;
 
+  // Post receives
+  vector<vector<char>> recv_buffers(mpi::n_procs);
+  for (int sender = 0; sender < mpi::n_procs; sender++) {
+    if (num_sr_receiving[sender] == 0)
+      continue;
+    recv_buffers[sender].resize(num_sr_receiving[sender] * record);
+    post_chunked(false, recv_buffers[sender].data(),
+      recv_buffers[sender].size(), sender, 1, requests);
+  }
+
+  // Pack and post sends
+  vector<vector<char>> send_buffers;
+  send_buffers.reserve(sr_send_list.size());
   for (auto& pair : sr_send_list) {
     int receiver = pair.first;             // destination rank
     vector<int>& sr_indices = pair.second; // vector of source region indices
-
-    // Iterate through all source regions for this key
+    send_buffers.emplace_back(sr_indices.size() * record);
+    char* p = send_buffers.back().data();
     for (int sr_idx : sr_indices) {
-      SourceRegionHandle srh =
-        domain->source_regions_.get_source_region_handle(sr_idx);
-      outgoing.emplace_back(srh);
-      send_sr_data(receiver, outgoing.back(), &pending_sends);
+      SourceRegion sr(domain->source_regions_.get_source_region_handle(sr_idx));
+      pack_sr_data(sr, p);
+      p += record;
     }
+    post_chunked(true, send_buffers.back().data(), send_buffers.back().size(),
+      receiver, 1, requests);
   }
+
+  if (!requests.empty()) {
+    MPI_Waitall(
+      static_cast<int>(requests.size()), requests.data(), MPI_STATUSES_IGNORE);
+  }
+  send_buffers.clear();
 
   // Record starting source region ID for tally reinitialization later
   int64_t start_sr_id = source_regions_new.n_source_regions();
 
-  // Receive source regions
+  // Unpack, in order of sending rank (as the region order before)
   for (int sender = 0; sender < mpi::n_procs; sender++) {
-
-    if (sender == mpi::rank) {
-      if (num_sr_receiving[sender] > 0) {
-        fatal_error("Rank sends source regions to itself. Rank should not "
-                    "receive source regions from itself.");
-      }
-      continue; // skip self
-    }
-
-    int num_sr = num_sr_receiving[sender];
-    for (int i = 0; i < num_sr; ++i) {
+    const char* p = recv_buffers[sender].data();
+    for (int i = 0; i < num_sr_receiving[sender]; ++i) {
       SourceRegion sr_recv(negroups_, is_linear_);
-      receive_sr_data(sender, sr_recv);
+      unpack_sr_data(p, sr_recv);
+      p += record;
       source_regions_new.push_back(sr_recv);
     }
-  }
-
-  // All incoming data has arrived; now drain the outgoing sends
-  if (!pending_sends.empty()) {
-    MPI_Waitall(static_cast<int>(pending_sends.size()), pending_sends.data(),
-      MPI_STATUSES_IGNORE);
+    vector<char>().swap(recv_buffers[sender]);
   }
 
   // Update source regions in domain to new container

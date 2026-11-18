@@ -546,8 +546,6 @@ void DecompositionMap::exchange_sr_info(
 // constructors).
 //==============================================================================
 
-namespace {
-
 // Largest MPI message posted at once (MPI counts are int); larger buffers are
 // split into several messages
 constexpr size_t MAX_MESSAGE_BYTES {size_t {1} << 30};
@@ -570,8 +568,6 @@ void post_chunked(bool send, char* buf, size_t bytes, int peer, int tag,
     }
   }
 }
-
-} // namespace
 
 // Hand one group-wise array of a source region to a transfer visitor, after
 // checking that it has the expected number of entries (a field that is

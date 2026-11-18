@@ -95,7 +95,8 @@ SourceRegion::SourceRegion(
 }
 
 SourceRegion::SourceRegion(const SourceRegionHandle& handle)
-  : SourceRegion(handle.negroups_, handle.is_linear_)
+  : SourceRegion(handle.negroups_, handle.is_linear_, handle.nangles_,
+      handle.needs_angular_flux_)
 {
   scalars_.material_ = handle.material();
   scalars_.is_small_ = handle.is_small();

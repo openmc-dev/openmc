@@ -84,27 +84,14 @@ void prepare_distribcell(
   const std::vector<int32_t>* user_distribcells = nullptr);
 
 //==============================================================================
-//! Recursively search through the geometry and count universe instances.
+//! Count the number of instances of every universe in the geometry.
 //!
-//! This function will update Universe.n_instances_ for each
-//! universe in the geometry.
+//! This function will update Universe.n_instances_ for each universe in the
+//! geometry. The universes are visited once each, in an order where every
+//! universe comes after the universes containing it.
 //==============================================================================
 
 void count_universe_instances();
-
-//==============================================================================
-//! Recursively search through universes and count universe instances.
-//! \param search_univ The index of the universe to begin searching from.
-//! \param target_univ_id The ID of the universe to be counted.
-//! \param univ_count_memo Memoized counts that make this function faster for
-//!   large systems.  The first call to this function for each target_univ_id
-//!   should start with an empty memo.
-//! \return The number of instances of target_univ_id in the geometry tree under
-//!   search_univ.
-//==============================================================================
-
-int count_universe_instances(int32_t search_univ, int32_t target_univ_id,
-  std::unordered_map<int32_t, int32_t>& univ_count_memo);
 
 //==============================================================================
 //! Build a character array representing the path to a distribcell instance.

@@ -13,6 +13,7 @@
 
 #include "openmc/bounding_box.h"
 #include "openmc/constants.h"
+#include "openmc/distribcell_offsets.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
@@ -410,7 +411,7 @@ public:
   //! also present at the end of the vector, making it of length 12.
   vector<double> rotation_;
 
-  vector<int32_t> offset_; //!< Distribcell offset table
+  DistribcellOffsets offset_; //!< Distribcell offsets
 
   // Right now, either CSG or DAGMC cells are used.
   virtual GeometryType geom_type() const = 0;

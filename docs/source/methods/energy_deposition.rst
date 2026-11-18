@@ -239,7 +239,10 @@ rate scored by a ``heating`` tally in an eigenvalue calculation is
 which is :math:`k_{eff}` times the heating rate obtained from the neutron flux
 and the MT=301 heating numbers, for example with a ``flux`` tally and an
 :class:`openmc.EnergyFunctionFilter`. The two agree in a fixed-source
-calculation, where no such scaling is applied, and when :math:`k_{eff} = 1`.
+calculation, where no such scaling is applied. Because the estimate of
+:math:`k_{eff}` is updated after every generation, the scores of each
+generation use the estimate in effect during that generation, not the final
+:math:`k_{eff}`.
 
 ----------
 References

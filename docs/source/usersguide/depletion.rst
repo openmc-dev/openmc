@@ -270,6 +270,21 @@ transport-depletion calculation and follow the same steps from there.
    the depletion chain with at least one reaction, that reaction will not be
    simulated.
 
+When the microscopic cross section data includes both 'fission' and
+'nu-fission' cross sections and no explicit ``keff`` value is provided,
+:class:`~openmc.deplete.IndependentOperator` automatically estimates the
+infinite multiplication factor at each depletion step::
+
+    op = openmc.deplete.IndependentOperator(materials, fluxes, micros)
+
+The estimate is computed as the ratio of the neutron production rate to the
+neutron loss rate based on the one-group reaction rates and is reported as the
+eigenvalue in the depletion results, which can be retrieved with
+:meth:`~openmc.deplete.Results.get_keff`. Consistent with the definition of
+the multiplication factor used elsewhere in OpenMC, neutrons produced in
+(n,xn) reactions are not counted as production; instead, each (n,xn) reaction
+reduces the loss term by :math:`x - 1`.
+
 .. _micros:
 
 Loading and Generating Microscopic Cross Sections

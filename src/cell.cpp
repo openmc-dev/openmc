@@ -999,6 +999,7 @@ std::pair<double, int32_t> Region::distance_to_nearest_surface(Position r,
 std::pair<double, int32_t> Region::distance_complex(
   Position r, Direction u, int32_t on_surface) const
 {
+  const Position r_initial {r};
   const bool in_region = contains_complex(r, u, on_surface);
   double total_distance {0.0};
 
@@ -1009,12 +1010,23 @@ std::pair<double, int32_t> Region::distance_complex(
       return {INFTY, std::numeric_limits<int32_t>::max()};
     }
 
-    // Move to the candidate surface and determine which side of it the ray is
-    // entering. The surface normal is used instead of evaluating the surface
-    // equation because accumulated roundoff may place the point slightly to
-    // the wrong side of a curved surface.
-    r += distance * u;
+    // Move to the candidate surface. The position is recomputed from the
+    // starting point with the same arithmetic as GeometryState::move_distance
+    // rather than accumulated step by step. When the true boundary is found,
+    // region membership has therefore been evaluated at the position where the
+    // particle will actually be transported. Positions at virtual crossings
+    // are used only within this search.
+    const double previous_distance = total_distance;
     total_distance += distance;
+    if (total_distance == previous_distance) {
+      // The step was lost to roundoff, so the position would not move. Take
+      // the smallest representable step so that the search always advances.
+      total_distance = std::nextafter(total_distance, INFTY);
+    }
+    r = r_initial + total_distance * u;
+
+    // Determine which side of the surface the ray is entering. Use the surface
+    // normal, because roundoff may place the point on the wrong side.
     i_surf = std::abs(i_surf);
     const auto& surf {*model::surfaces[i_surf - 1]};
     if (u.dot(surf.normal(r)) <= 0.0) {

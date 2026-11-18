@@ -89,10 +89,6 @@ constexpr int MAX_N_HANDLES {5};
 // rebalancing pass is a local in DecompositionMap::balance_load.)
 constexpr int ITER_LOAD_BALANCE {5};
 
-// Largest MPI message, in bytes, posted when source regions are moved between
-// random ray MPI ranks. MPI counts are int, so larger buffers are split.
-constexpr size_t MAX_MPI_MESSAGE_BYTES {std::numeric_limits<int>::max()};
-
 // Maximum number of times a random ray may be handed to another MPI rank
 // before it is terminated. Bounds a ray ping-ponging across a subdomain
 // boundary, which would otherwise hang every rank in the job.

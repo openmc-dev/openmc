@@ -260,6 +260,51 @@ def test_get_reshaped_data(run_in_tmpdir):
     assert data1.shape == (2, 19*3*2, 1, 1)
     assert data2.shape == (2, 19, 3, 2, 1, 1)
 
+def test_mesh_filter_identity():
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-1., -1., -1.)
+    mesh.upper_right = (1., 1., 1.)
+    mesh.dimension = (2, 3, 4)
+    original = openmc.MeshFilter(mesh)
+    same = openmc.MeshFilter(mesh)
+    shifted = openmc.MeshFilter(mesh)
+    shifted.translation = (3., 0., 0.)
+    rotated = openmc.MeshFilter(mesh)
+    rotated.rotation = (0., 0., 90.)
+    other_mesh = openmc.RegularMesh()
+    other_mesh.dimension = mesh.dimension
+    other_mesh.lower_left = (10., 10., 10.)
+    other_mesh.upper_right = (12., 12., 12.)
+    other = openmc.MeshFilter(other_mesh)
+
+    assert original == same
+    assert hash(original) == hash(same)
+    assert original.is_subset(same)
+    for different in (shifted, rotated, other):
+        assert original != different
+        assert not original.is_subset(different)
+        assert not different.is_subset(original)
+
+
+def test_transformed_mesh_filters_export():
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-1., -1., -1.)
+    mesh.upper_right = (1., 1., 1.)
+    mesh.dimension = (2, 3, 4)
+    filters = [openmc.MeshFilter(mesh) for _ in range(3)]
+    filters[1].translation = (3., 0., 0.)
+    filters[2].rotation = (0., 0., 90.)
+    tallies = openmc.Tallies([
+        openmc.Tally(filters=[f], scores=['flux']) for f in filters])
+
+    elem = tallies.to_xml_element()
+
+    assert len(elem.findall('filter')) == 3
+    assert len({t.find('filters').text for t in elem.findall('tally')}) == 3
+    tallies.merge_tallies()
+    assert len(tallies) == 3
+
+
 def test_mesh_filter_rotation_roundtrip(run_in_tmpdir):
     """Test that MeshFilter rotation works as expected"""
 

@@ -219,6 +219,124 @@ def test_zernike_radial():
         assert getattr(new_f, attr) == getattr(f, attr)
 
 
+def test_legendre_functional_expansion():
+    f = openmc.LegendreFilter(3)
+    # Coefficients for f(mu) = 1.0*P0 + 0.5*P1 + 0.0*P2 + 0.1*P3
+    coefs = [1.0, 0.5, 0.0, 0.1]
+    func = f.functional_expansion(coefs)
+
+    # P0(0) = 1, P1(0) = 0, P2(0) = -0.5, P3(0) = 0
+    # Normalized: a_n = (2n+1)/(b-a) * coefs[n], domain [-1,1] => (b-a)=2
+    # f(0) should equal the sum of normalized coefs * P_n(0)
+    assert isinstance(func, np.polynomial.Legendre)
+    assert func.domain[0] == approx(-1.0)
+    assert func.domain[1] == approx(1.0)
+
+    # Verify evaluation at endpoints
+    val_neg1 = func(-1.0)
+    val_pos1 = func(1.0)
+    # P_n(-1) = (-1)^n, P_n(1) = 1 for all n
+    # f(1) = sum( (2n+1)/2 * c_n * 1 )
+    expected_pos1 = sum((2*n + 1)/2 * c for n, c in enumerate(coefs))
+    assert val_pos1 == approx(expected_pos1)
+
+
+def test_spatial_legendre_functional_expansion():
+    f = openmc.SpatialLegendreFilter(2, 'x', -5.0, 5.0)
+    coefs = [2.0, 0.3, 0.1]
+    func = f.functional_expansion(coefs)
+
+    assert isinstance(func, np.polynomial.Legendre)
+    assert func.domain[0] == approx(-5.0)
+    assert func.domain[1] == approx(5.0)
+
+    # Evaluate at center of domain (maps to mu=0)
+    # P0(0)=1, P1(0)=0, P2(0)=-0.5
+    # Normalized: (2n+1)/(max-min) * c_n = (2n+1)/10 * c_n
+    # f(0) = 1/10*2.0*1 + 3/10*0.3*0 + 5/10*0.1*(-0.5)
+    expected = 1/10 * 2.0 * 1 + 3/10 * 0.3 * 0 + 5/10 * 0.1 * (-0.5)
+    assert func(0.0) == approx(expected)
+
+    # Evaluate at right endpoint (maps to mu=1)
+    # P_n(1) = 1 for all n
+    expected_right = sum((2*n + 1)/10 * c for n, c in enumerate(coefs))
+    assert func(5.0) == approx(expected_right)
+
+
+def test_zernike_radial_functional_expansion():
+    f = openmc.ZernikeRadialFilter(4, x=0., y=0., r=0.5)
+    coefs = [1.0, -0.5, 0.2]
+    func = f.functional_expansion(coefs)
+
+    assert isinstance(func, openmc.ZernikeRadial)
+    assert func.order == 4
+    assert func.radius == 0.5
+
+
+def test_legendre_functional_expansion_roundtrip():
+    # Verify that a known polynomial is reconstructed exactly.
+    # f(mu) = 3*mu^2 - 1 = P0(-1/3) + P2(4/3)  (unnormalized)
+    # Legendre FET coefficients a_n are defined such that
+    # f(mu) = sum_n (2n+1)/(b-a) * a_n * P_n(mu), with (b-a) = 2
+    # So a_0 = integral(f * P0, -1, 1) = integral(3mu^2 - 1, -1, 1) = 0
+    # and a_2 = integral(f * P2, -1, 1) = integral((3mu^2-1)(3mu^2-1)/2, -1,1)
+    # We just verify at many evaluation points instead.
+    order = 5
+    f = openmc.LegendreFilter(order)
+
+    # Compute exact Legendre coefficients via projection:
+    # a_n = integral( f(mu) * P_n(mu), -1, 1 )
+    from numpy.polynomial.legendre import leggauss
+    x, w = leggauss(order + 5)
+    target_func = lambda mu: 3*mu**2 - 1
+    coefs = []
+    for n in range(order + 1):
+        # P_n values via numpy
+        Pn = np.polynomial.Legendre.basis(n)(x)
+        coefs.append(np.sum(w * target_func(x) * Pn))
+
+    func = f.functional_expansion(coefs)
+
+    # Evaluate at many points and compare
+    mu_test = np.linspace(-1, 1, 50)
+    expected = target_func(mu_test)
+    result = func(mu_test)
+    assert np.allclose(result, expected, atol=1e-12)
+
+
+def test_spatial_legendre_functional_expansion_roundtrip():
+    # Reconstruct phi(x) = x on [-3, 3] from FET coefficients.
+    # FET coefficients: a_n = integral(phi(x) * P_n(mu(x)) dx, a, b)
+    # where mu(x) = x/3 for domain [-3, 3].
+    # Substituting x = 3*mu, dx = 3*dmu:
+    # a_n = 9 * integral(mu * P_n(mu), -1, 1)
+    order = 4
+    f = openmc.SpatialLegendreFilter(order, 'x', -3.0, 3.0)
+
+    from numpy.polynomial.legendre import leggauss
+    pts, wts = leggauss(order + 5)
+    half_width = (f.maximum - f.minimum) / 2
+    coefs = []
+    for n in range(order + 1):
+        Pn = np.polynomial.Legendre.basis(n)(pts)
+        phi_at_mu = half_width * pts  # phi(x(mu)) where x = half_width * mu
+        coefs.append(np.sum(wts * phi_at_mu * Pn * half_width))
+
+    func = f.functional_expansion(coefs)
+
+    x_test = np.linspace(-3, 3, 50)
+    result = func(x_test)
+    expected = x_test
+    assert np.allclose(result, expected, atol=1e-12)
+
+
+def test_spherical_harmonics_functional_expansion():
+    f = openmc.SphericalHarmonicsFilter(2)
+    coefs = [1.0] * f.num_bins
+    with raises(NotImplementedError):
+        f.functional_expansion(coefs)
+
+
 def test_first_moment(run_in_tmpdir, box_model):
     plain_tally = openmc.Tally()
     plain_tally.scores = ['flux', 'scatter']

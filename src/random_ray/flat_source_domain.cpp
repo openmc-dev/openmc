@@ -1948,13 +1948,27 @@ void FlatSourceDomain::apply_external_source_to_source_region(
   auto discrete = dynamic_cast<Discrete*>(is->energy());
   double strength_factor = is->strength();
   const auto& discrete_energies = discrete->x();
-  const auto& discrete_probs = discrete->prob();
+
+  // Discrete::prob() does not return the probabilities of the energy lines.
+  // Once the distribution is set up for sampling it holds the acceptance
+  // probabilities of the alias table, and the rest of each line's probability
+  // is carried by the lines that alias to it. Using it directly distorts the
+  // spectrum of any source with more than one line (strong lines are capped,
+  // weak lines raised), so rebuild the line probabilities from the table.
+  const auto& accept = discrete->prob();
+  const auto& alias = discrete->alias();
+  const size_t n_lines = accept.size();
+  vector<double> line_prob(n_lines, 0.0);
+  for (size_t i = 0; i < n_lines; i++) {
+    line_prob[i] += accept[i] / n_lines;
+    line_prob[alias[i]] += (1.0 - accept[i]) / n_lines;
+  }
 
   srh.external_source_present() = 1;
 
   for (int i = 0; i < discrete_energies.size(); i++) {
     int g = data::mg.get_group_index(discrete_energies[i]);
-    srh.external_source(g) += discrete_probs[i] * strength_factor;
+    srh.external_source(g) += line_prob[i] * strength_factor;
   }
 }
 

@@ -546,18 +546,14 @@ void DecompositionMap::exchange_sr_info(
 // constructors).
 //==============================================================================
 
-// Largest MPI message posted at once (MPI counts are int); larger buffers are
-// split into several messages
-constexpr size_t MAX_MESSAGE_BYTES {size_t {1} << 30};
-
 // Post nonblocking sends (or receives) for `bytes` bytes of `buf` in chunks of
-// at most MAX_MESSAGE_BYTES, all with the same tag. The two sides chunk
+// at most MAX_MPI_MESSAGE_BYTES, all with the same tag. The two sides chunk
 // identically, and MPI's non-overtaking order matches the chunks.
 void post_chunked(bool send, char* buf, size_t bytes, int peer, int tag,
   vector<MPI_Request>& requests)
 {
-  for (size_t off = 0; off < bytes; off += MAX_MESSAGE_BYTES) {
-    int n = static_cast<int>(std::min(MAX_MESSAGE_BYTES, bytes - off));
+  for (size_t off = 0; off < bytes; off += MAX_MPI_MESSAGE_BYTES) {
+    int n = static_cast<int>(std::min(MAX_MPI_MESSAGE_BYTES, bytes - off));
     requests.emplace_back();
     if (send) {
       MPI_Isend(

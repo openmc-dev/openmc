@@ -1,5 +1,6 @@
 set(TEST_NAMES
   test_atomic_mass
+  test_combine_estimates
   test_distribution
   test_field
   test_file_utils

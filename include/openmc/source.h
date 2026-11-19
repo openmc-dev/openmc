@@ -17,6 +17,7 @@
 #include "openmc/distribution_spatial.h"
 #include "openmc/memory.h"
 #include "openmc/particle_type.h"
+#include "openmc/tensor.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -432,15 +433,20 @@ private:
 //!    by Fourier quadrature. Each radial bin is selected using its analytically
 //!    integrated cubic PDF, then rho is sampled within the bin by rejection.
 //! 2. Sample (theta, zeta) from the conditional p(theta, zeta | rho)
-//!    ~ R |tau| by rejection against a precomputed per-radial-bin majorant.
-//! 3. Sample energy and time from user-provided distribution(s).
-//! 4. Sample an isotropic direction and map to Cartesian coordinates via
+//!    ~ R |tau| using 32 x 32 angular cells covering one field period. Select
+//!    a cell using a quadratic Bernstein mixture, propose angles uniformly
+//!    within it, and reject against its radius-dependent bound. Then choose
+//!    a field period uniformly.
+//! 3. Map to Cartesian coordinates via
 //!    x = R cos(zeta), y = R sin(zeta), z = Z.
+//! 4. Sample an isotropic direction, then energy and time from user-provided
+//!    distribution(s).
 //!
 //! Fourier coefficients are interpolated linearly in rho between the surfaces
-//! provided on the rho grid; within a radial bin the density R*tau is then
-//! exactly quadratic in the interpolation parameter, which allows a rigorous
-//! per-bin rejection majorant to be constructed from three evaluations.
+//! provided on the rho grid. Within each radial bin, R*|tau| is quadratic in
+//! the interpolation parameter and has three angular Bernstein control
+//! functions. Taylor bounds on their Fourier series give precomputed cell
+//! bounds, combined with the Bernstein weights at the sampled radius.
 //==============================================================================
 
 class StellaratorSource : public Source {
@@ -457,7 +463,8 @@ private:
   //==========================================================================
   // Private methods
 
-  //! Precompute the radial CDF and per-bin rejection majorants
+  //! Precompute cubic radial PDFs, bin masses, and angular cell bounds and
+  //! alias tables for the quadratic Bernstein mixture
   void precompute_sampling_distributions();
 
   //! Evaluate the (signed) joint density f = R * tau at a point
@@ -509,8 +516,10 @@ private:
   vector<array<double, 4>> radial_pdf_;
   DiscreteIndex radial_bins_;
 
-  // Per-radial-bin majorant of R*tau for rejection sampling (n_rho - 1)
-  vector<double> envelope_;
+  // Angular cell bounds for the three quadratic Bernstein components per bin.
+  tensor::Tensor<double> angular_bounds_;
+  vector<array<DiscreteIndex, 3>> angular_cells_;
+  vector<array<double, 3>> angular_totals_;
 
   // Global sign of the flux-coordinate Jacobian (+1 or -1)
   double jacobian_sign_ {1.0};

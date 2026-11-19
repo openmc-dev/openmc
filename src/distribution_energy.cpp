@@ -1,6 +1,6 @@
 #include "openmc/distribution_energy.h"
 
-#include <algorithm> // for max, min, copy, move
+#include <algorithm> // for max, min, copy, move, upper_bound
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
 
@@ -174,29 +174,31 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
   int n_energy_out = distribution_[l].e_out.size();
   int n_discrete = distribution_[l].n_discrete;
   double r1 = prn(seed);
-  double c_k = distribution_[l].c[0];
+  const auto& cdf = distribution_[l].c;
+  double c_k = cdf[0];
   int k = 0;
   int end = n_energy_out - 2;
 
   // Discrete portion
-  for (int j = 0; j < n_discrete; ++j) {
-    k = j;
-    c_k = distribution_[l].c[k];
-    if (r1 < c_k) {
-      end = j;
-      break;
+  if (n_discrete > 0) {
+    // Select the first discrete line whose CDF value exceeds r1
+    k =
+      std::upper_bound(cdf.begin(), cdf.begin() + n_discrete, r1) - cdf.begin();
+    if (k < n_discrete) {
+      end = k;
+    } else {
+      k = n_discrete - 1;
     }
+    c_k = cdf[k];
   }
 
   // Continuous portion
-  double c_k1;
-  for (int j = n_discrete; j < end; ++j) {
-    k = j;
-    c_k1 = distribution_[l].c[k + 1];
-    if (r1 < c_k1)
-      break;
-    k = j + 1;
-    c_k = c_k1;
+  if (n_discrete < end) {
+    // Select the bin whose upper CDF value is the first to exceed r1
+    k = std::upper_bound(
+          cdf.begin() + n_discrete + 1, cdf.begin() + end + 1, r1) -
+        cdf.begin() - 1;
+    c_k = cdf[k];
   }
 
   double E_l_k = distribution_[l].e_out[k];

@@ -27,6 +27,8 @@ extern vector<unique_ptr<Universe>> universes;
 
 class Universe {
 public:
+  virtual ~Universe() = default;
+
   int32_t id_;            //!< Unique ID
   vector<int32_t> cells_; //!< Cells within this universe
   int32_t n_instances_;   //!< Number of instances of this universe

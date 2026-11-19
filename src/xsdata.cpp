@@ -134,8 +134,7 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
           fatal_error(fmt::format("Photon group {} produces photons but has "
                                   "no scattering to carry them.",
             g + 1));
-        std::fill(scatter[a]->mult[g].begin(), scatter[a]->mult[g].end(),
-          production / removal);
+        scatter[a]->set_multiplicity(g, production / removal);
       }
     }
   }

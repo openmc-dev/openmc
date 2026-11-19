@@ -127,14 +127,23 @@ def _assert_matches(name, mean, std_dev, reference):
     """Compare tally means to exact values within 5 standard deviations.
 
     Bins where the exact value is zero (upscatter) can never receive a
-    score, so they must be exactly zero.
+    score, so they must be exactly zero. Every other bin must be scored with
+    a nonzero spread, so the deviation below is always finite.
 
     """
+    if not (np.all(np.isfinite(mean)) and np.all(np.isfinite(std_dev))):
+        raise AssertionError(
+            f"Multigroup photon '{name}' has non-finite results: {mean} "
+            f"+/- {std_dev}")
     zero = reference == 0.0
     if np.any(mean[zero] != 0.0):
         raise AssertionError(
             f"Multigroup photon '{name}' scored bins that must be empty: "
             f"{mean}")
+    if np.any(std_dev[~zero] == 0.0):
+        raise AssertionError(
+            f"Multigroup photon '{name}' has no spread in bins that must be "
+            f"scored: {mean} +/- {std_dev}")
     deviation = np.abs(mean[~zero] - reference[~zero]) / std_dev[~zero]
     if np.any(deviation > 5.0):
         raise AssertionError(
@@ -229,6 +238,24 @@ def test_mg_photon_survival_biasing(tmp_path):
             openmc_exec=config['exe'], event_based=config['event'])
         _check_exact_solution(statepoint)
 
+def test_mg_photon_nuclide_scatter(tmp_path):
+    """A derived multiplicity must also reach the library's own data, which
+    nuclide tallies use, not only the material data built from it"""
+    with change_directory(tmp_path):
+        model = _make_model('derived')
+        tally = openmc.Tally(name='nuclide scatter')
+        tally.filters = [openmc.EnergyFilter(GROUP_EDGES)]
+        tally.nuclides = ['photon', 'total']
+        tally.scores = ['scatter']
+        model.tallies.append(tally)
+        statepoint = model.run(
+            openmc_exec=config['exe'], event_based=config['event'])
+        with openmc.StatePoint(statepoint) as sp:
+            tally = sp.get_tally(name='nuclide scatter')
+            library = tally.get_values(nuclides=['photon']).ravel()
+            material = tally.get_values(nuclides=['total']).ravel()
+        assert np.allclose(library, material), \
+            f'Nuclide scatter {library} differs from material {material}'
 
 @pytest.mark.parametrize(
     ('invalid_input', 'error'),

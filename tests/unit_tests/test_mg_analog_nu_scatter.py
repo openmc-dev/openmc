@@ -29,14 +29,14 @@ ABSORPTION = np.array([0.05, 0.10, 0.50])
 TOTAL = ABSORPTION + SCATTER.sum(axis=1)
 
 
-def _model(survival_biasing):
+def _model(survival_biasing, multiplicity=MULTIPLICITY):
     groups = openmc.mgxs.EnergyGroups(GROUP_EDGES)
     xsdata = openmc.XSdata('mat', groups)
     xsdata.order = 0
-    xsdata.set_total(TOTAL)
+    xsdata.set_total(ABSORPTION + (NU_SCATTER / multiplicity).sum(axis=1))
     xsdata.set_absorption(ABSORPTION)
     xsdata.set_scatter_matrix(NU_SCATTER[..., np.newaxis])
-    xsdata.set_multiplicity_matrix(MULTIPLICITY)
+    xsdata.set_multiplicity_matrix(multiplicity)
     library = openmc.MGXSLibrary(groups)
     library.add_xsdata(xsdata)
     library.export_to_hdf5('mgxs.h5')
@@ -102,3 +102,36 @@ def test_analog_nu_scatter_multiplicity(run_in_tmpdir, survival_biasing):
         deviation = np.abs(mean - reference)[possible] / std_dev[possible]
         assert np.all(deviation < 5.0), \
             f'{score}: {mean} vs. {reference} ({deviation} std. dev.)'
+        
+def test_analog_nu_scatter_outgoing_group_multiplicity(run_in_tmpdir):
+    """Analog nu-scatter when the multiplicity depends on the outgoing group.
+
+    The outgoing group is sampled from the nu-scatter matrix and scatter()
+    multiplies the weight by the nu-scatter / scatter ratio of the incoming
+    group, so the analog score must use that ratio and not the multiplicity of
+    the sampled transfer. Only nu-scatter is checked: with this sampling the
+    analog scatter matrix reproduces its row sums but not each transfer.
+
+    """
+    multiplicity = np.array([
+        [1.0, 2.0, 1.5],
+        [1.0, 1.0, 1.25],
+        [1.0, 1.0, 1.0],
+    ])
+    model = _model(False, multiplicity)
+    model.run(apply_tally_results=True)
+    tally = model.tallies[0]
+
+    total = ABSORPTION + (NU_SCATTER / multiplicity).sum(axis=1)
+    track_length = np.linalg.solve(
+        np.diag(total) - NU_SCATTER.T, [1.0, 0.0, 0.0])
+    reference = track_length[:, np.newaxis] * NU_SCATTER
+
+    i = tally.get_score_index('nu-scatter')
+    mean = tally.get_reshaped_data(value='mean')[::-1, ::-1, 0, i]
+    std_dev = tally.get_reshaped_data(value='std_dev')[::-1, ::-1, 0, i]
+    possible = reference > 0.0
+    assert np.all(mean[~possible] == 0.0)
+    deviation = np.abs(mean - reference)[possible] / std_dev[possible]
+    assert np.all(deviation < 5.0), \
+        f'nu-scatter: {mean} vs. {reference} ({deviation} std. dev.)'

@@ -183,6 +183,11 @@ void ScattData::sample_energy(int gin, int& gout, int& i_gout, uint64_t* seed)
 }
 
 //==============================================================================
+void ScattData::set_multiplicity(int gin, double value)
+{
+  std::fill(mult[gin].begin(), mult[gin].end(), value);
+  weight_mult_[gin] = value;
+}
 
 double ScattData::get_xs(
   MgxsType xstype, int gin, const int* gout, const double* mu)

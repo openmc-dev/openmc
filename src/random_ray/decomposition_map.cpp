@@ -551,22 +551,31 @@ void DecompositionMap::exchange_sr_info(
 // transfer_sr_fields() (and allocate it in the SourceRegion constructors).
 //==============================================================================
 
-// Post nonblocking sends (or receives) for `bytes` bytes of `buf` in chunks of
-// at most MAX_MPI_MESSAGE_BYTES, all with the same tag. The two sides chunk
-// identically, and MPI's non-overtaking order matches the chunks.
-void post_chunked(bool send, char* buf, size_t bytes, int peer, int tag,
-  vector<MPI_Request>& requests)
+// Start receiving `bytes` bytes from rank `sender` into `buf`, as messages of
+// at most MAX_MPI_MESSAGE_BYTES. The sender splits its buffer the same way
+// (start_chunked_send), and MPI delivers the pieces in the order they were
+// sent.
+void start_chunked_receive(
+  char* buf, size_t bytes, int sender, vector<MPI_Request>& requests)
 {
   for (size_t off = 0; off < bytes; off += MAX_MPI_MESSAGE_BYTES) {
     int n = static_cast<int>(std::min(MAX_MPI_MESSAGE_BYTES, bytes - off));
     requests.emplace_back();
-    if (send) {
-      MPI_Isend(
-        buf + off, n, MPI_BYTE, peer, tag, mpi::intracomm, &requests.back());
-    } else {
-      MPI_Irecv(
-        buf + off, n, MPI_BYTE, peer, tag, mpi::intracomm, &requests.back());
-    }
+    MPI_Irecv(
+      buf + off, n, MPI_BYTE, sender, 1, mpi::intracomm, &requests.back());
+  }
+}
+
+// Start sending `bytes` bytes of `buf` to rank `receiver`, as messages of at
+// most MAX_MPI_MESSAGE_BYTES
+void start_chunked_send(
+  char* buf, size_t bytes, int receiver, vector<MPI_Request>& requests)
+{
+  for (size_t off = 0; off < bytes; off += MAX_MPI_MESSAGE_BYTES) {
+    int n = static_cast<int>(std::min(MAX_MPI_MESSAGE_BYTES, bytes - off));
+    requests.emplace_back();
+    MPI_Isend(
+      buf + off, n, MPI_BYTE, receiver, 1, mpi::intracomm, &requests.back());
   }
 }
 
@@ -1132,8 +1141,8 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
     if (num_sr_receiving[sender] == 0)
       continue;
     recv_buffers[sender].resize(num_sr_receiving[sender] * record);
-    post_chunked(false, recv_buffers[sender].data(),
-      recv_buffers[sender].size(), sender, 1, requests);
+    start_chunked_receive(recv_buffers[sender].data(),
+      recv_buffers[sender].size(), sender, requests);
   }
 
   // Pack and post sends
@@ -1149,8 +1158,8 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
       transfer_sr_fields(sr, p, SRTransfer::PACK);
       p += record;
     }
-    post_chunked(true, send_buffers.back().data(), send_buffers.back().size(),
-      receiver, 1, requests);
+    start_chunked_send(send_buffers.back().data(), send_buffers.back().size(),
+      receiver, requests);
   }
 
   if (!requests.empty()) {

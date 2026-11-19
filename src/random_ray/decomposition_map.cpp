@@ -2,6 +2,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/constants.h"
+#include "openmc/math.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/output.h"
@@ -165,8 +166,8 @@ void DecompositionMap::calculate_grid_points(int grid_points_total)
   int excluded_dimension = -1;
   vector<int> grid_points_per_dimension(3);
   for (int i = 0; i < 3; i++) {
-    double grid_points_estimate =
-      ((domain_length[i] / cbrt(volume)) * cbrt(grid_points_total));
+    double grid_points_estimate = ((domain_length[i] / openmc::cbrt(volume)) *
+                                   openmc::cbrt(grid_points_total));
 
     if (grid_points_estimate > 1) {
       grid_points_per_dimension[i] = round(grid_points_estimate);
@@ -213,7 +214,7 @@ void DecompositionMap::calculate_grid_points(int grid_points_total)
     adjustment = sqrt(grid_points_total / new_total);
   } else {
     // When all dimensions are used, use cubic root
-    adjustment = cbrt(grid_points_total / new_total);
+    adjustment = openmc::cbrt(grid_points_total / new_total);
   }
 
   // Multiply adjustment factor
@@ -854,7 +855,8 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain)
   double max_adaptation_factor = 2;
   double avg_rank_distance =
     max_domain_length_ /
-    cbrt(mpi::n_procs); // rough estimate of average distance between ranks
+    openmc::cbrt(
+      mpi::n_procs); // rough estimate of average distance between ranks
   double weight_scale =
     avg_rank_distance * avg_rank_distance * optimization_history_factor_;
   double beta = 0.6; // momentum damping

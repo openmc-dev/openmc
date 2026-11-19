@@ -5,6 +5,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/material.h"
+#include "openmc/math.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/output.h"
@@ -834,7 +835,7 @@ void FlatSourceDomain::compute_k_eff()
       // Normalize to total weight of bank sites. p_i for better performance
       float p_i = p[sr] * inverse_sum;
       // Sum values to obtain Shannon entropy.
-      H -= p_i * std::log2(p_i);
+      H -= p_i * openmc::log2(p_i);
     }
   }
 

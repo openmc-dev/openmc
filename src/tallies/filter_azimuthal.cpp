@@ -6,6 +6,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/math.h"
 #include "openmc/search.h"
 #include "openmc/xml_interface.h"
 
@@ -56,7 +57,7 @@ void AzimuthalFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   Direction u = (estimator == TallyEstimator::TRACKLENGTH) ? p.u() : p.u_last();
-  double phi = std::atan2(u.y, u.x);
+  double phi = openmc::atan2(u.y, u.x);
 
   if (phi >= bins_.front() && phi <= bins_.back()) {
     auto bin = lower_bound_index(bins_.begin(), bins_.end(), phi);

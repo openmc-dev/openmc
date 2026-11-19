@@ -4,6 +4,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
@@ -41,7 +42,7 @@ double NBodyPhaseSpace::sample_energy(double E_in, uint64_t* seed) const
     r1 = prn(seed);
     r2 = prn(seed);
     r3 = prn(seed);
-    y = -std::log(r1 * r2 * r3);
+    y = -openmc::log(r1 * r2 * r3);
     break;
   case 5:
     r1 = prn(seed);
@@ -50,8 +51,8 @@ double NBodyPhaseSpace::sample_energy(double E_in, uint64_t* seed) const
     r4 = prn(seed);
     r5 = prn(seed);
     r6 = prn(seed);
-    y = -std::log(r1 * r2 * r3 * r4) -
-        std::log(r5) * std::pow(std::cos(PI / 2.0 * r6), 2);
+    y = -openmc::log(r1 * r2 * r3 * r4) -
+        openmc::log(r5) * openmc::pow(openmc::cos(PI / 2.0 * r6), 2);
     break;
   default:
     fatal_error("N-body phase space with >5 bodies.");

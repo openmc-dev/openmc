@@ -1,6 +1,7 @@
 #include "openmc/distribution_spatial.h"
 
 #include "openmc/error.h"
+#include "openmc/math.h"
 #include "openmc/mesh.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
@@ -183,8 +184,8 @@ std::pair<Position, double> CylindricalIndependent::sample(uint64_t* seed) const
   auto [r, r_wgt] = r_->sample(seed);
   auto [phi, phi_wgt] = phi_->sample(seed);
   auto [z, z_wgt] = z_->sample(seed);
-  Position xi =
-    r * (cos(phi) * r_dir_ + sin(phi) * phi_dir_) + z * z_dir_ + origin_;
+  Position xi = r * (openmc::cos(phi) * r_dir_ + openmc::sin(phi) * phi_dir_) +
+                z * z_dir_ + origin_;
   return {xi, r_wgt * phi_wgt * z_wgt};
 }
 
@@ -247,9 +248,11 @@ std::pair<Position, double> SphericalIndependent::sample(uint64_t* seed) const
   auto [r, r_wgt] = r_->sample(seed);
   auto [cos_theta, cos_theta_wgt] = cos_theta_->sample(seed);
   auto [phi, phi_wgt] = phi_->sample(seed);
-  // sin(theta) by sin**2 + cos**2 = 1
-  double x = r * std::sqrt(1 - cos_theta * cos_theta) * cos(phi) + origin_.x;
-  double y = r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y;
+  // openmc::sin(theta) by sin**2 + cos**2 = 1
+  double x =
+    r * std::sqrt(1 - cos_theta * cos_theta) * openmc::cos(phi) + origin_.x;
+  double y =
+    r * std::sqrt(1 - cos_theta * cos_theta) * openmc::sin(phi) + origin_.y;
   double z = r * cos_theta + origin_.z;
   Position xi {x, y, z};
   return {xi, r_wgt * cos_theta_wgt * phi_wgt};

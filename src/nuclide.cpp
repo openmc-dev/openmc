@@ -6,6 +6,7 @@
 #include "openmc/endf.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math.h"
 #include "openmc/message_passing.h"
 #include "openmc/photon.h"
 #include "openmc/random_lcg.h"
@@ -504,7 +505,7 @@ void Nuclide::init_grid()
   int M = settings::n_log_bins;
 
   // Determine equal-logarithmic energy spacing
-  double spacing = std::log(E_max / E_min) / M;
+  double spacing = openmc::log(E_max / E_min) / M;
 
   // Create equally log-spaced energy grid
   auto umesh = tensor::linspace(0.0, M * spacing, M + 1);
@@ -517,7 +518,7 @@ void Nuclide::init_grid()
     // equal-logarithmic grid
     int j = 0;
     for (int k = 0; k <= M; ++k) {
-      while (std::log(grid.energy[j + 1] / E_min) <= umesh(k)) {
+      while (openmc::log(grid.energy[j + 1] / E_min) <= umesh(k)) {
         // Ensure that for isotopes where maxval(grid.energy) << E_max that
         // there are no out-of-bounds issues.
         if (j + 2 == grid.energy.size())
@@ -913,15 +914,15 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
               f * urr.xs_values_(i_energy + 1, i_up).n_gamma;
   } else if (urr.interp_ == Interpolation::log_log) {
     // Determine interpolation factor on the table
-    f = std::log(p.E() / urr.energy_[i_energy]) /
-        std::log(urr.energy_[i_energy + 1] / urr.energy_[i_energy]);
+    f = openmc::log(p.E() / urr.energy_[i_energy]) /
+        openmc::log(urr.energy_[i_energy + 1] / urr.energy_[i_energy]);
 
     // Calculate the elastic cross section/factor
     if ((urr.xs_values_(i_energy, i_low).elastic > 0.) &&
         (urr.xs_values_(i_energy + 1, i_up).elastic > 0.)) {
-      elastic =
-        std::exp((1. - f) * std::log(urr.xs_values_(i_energy, i_low).elastic) +
-                 f * std::log(urr.xs_values_(i_energy + 1, i_up).elastic));
+      elastic = openmc::exp(
+        (1. - f) * openmc::log(urr.xs_values_(i_energy, i_low).elastic) +
+        f * openmc::log(urr.xs_values_(i_energy + 1, i_up).elastic));
     } else {
       elastic = 0.;
     }
@@ -929,9 +930,9 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
     // Calculate the fission cross section/factor
     if ((urr.xs_values_(i_energy, i_low).fission > 0.) &&
         (urr.xs_values_(i_energy + 1, i_up).fission > 0.)) {
-      fission =
-        std::exp((1. - f) * std::log(urr.xs_values_(i_energy, i_low).fission) +
-                 f * std::log(urr.xs_values_(i_energy + 1, i_up).fission));
+      fission = openmc::exp(
+        (1. - f) * openmc::log(urr.xs_values_(i_energy, i_low).fission) +
+        f * openmc::log(urr.xs_values_(i_energy + 1, i_up).fission));
     } else {
       fission = 0.;
     }
@@ -939,9 +940,9 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
     // Calculate the capture cross section/factor
     if ((urr.xs_values_(i_energy, i_low).n_gamma > 0.) &&
         (urr.xs_values_(i_energy + 1, i_up).n_gamma > 0.)) {
-      capture =
-        std::exp((1. - f) * std::log(urr.xs_values_(i_energy, i_low).n_gamma) +
-                 f * std::log(urr.xs_values_(i_energy + 1, i_up).n_gamma));
+      capture = openmc::exp(
+        (1. - f) * openmc::log(urr.xs_values_(i_energy, i_low).n_gamma) +
+        f * openmc::log(urr.xs_values_(i_energy + 1, i_up).n_gamma));
     } else {
       capture = 0.;
     }

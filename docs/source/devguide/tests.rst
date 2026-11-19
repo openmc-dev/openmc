@@ -40,6 +40,10 @@ Prerequisites
 - OpenMC should be compiled with ``-DOPENMC_ENABLE_STRICT_FP=on`` to ensure
   reproducible floating-point results across platforms and optimization levels.
   Without this flag, regression tests may not match reference values.
+- Transcendental functions from the system math library differ between
+  platforms and between glibc versions, and a handful of tests are sensitive
+  to the last bit. Building with ``-DOPENMC_USE_COREMATH=on`` removes that
+  dependence (see :ref:`devguide_portable_math`).
 
 Running Tests
 -------------
@@ -75,6 +79,12 @@ that, consider the following:
   builtins or contracting multiply-add into FMA instructions) that can produce
   bit-level differences across platforms and optimization levels. Any
   ``CMAKE_BUILD_TYPE`` can be used.
+- A few tests (for example ``cmfd_feed_2g``, ``triso`` and ``filter_mesh``)
+  are sensitive to the last bit of the system math library's ``exp``, ``log``
+  and trigonometric functions and fail on macOS or with a glibc version other
+  than the one used to generate the references. Building with
+  ``-DOPENMC_USE_COREMATH=on`` removes that dependence for the transcendental
+  functions in transport (see :ref:`devguide_portable_math`).
 - Because tallies involve the sum of many floating point numbers, the
   non-associativity of floating point numbers can result in different answers
   especially when the number of threads is high (different order of operations).

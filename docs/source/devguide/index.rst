@@ -18,6 +18,7 @@ other related topics.
     styleguide
     policies
     tests
+    portable-math
     user-input
     docbuild
     docker

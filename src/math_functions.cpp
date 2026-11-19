@@ -5,6 +5,7 @@
 #include "openmc/external/Faddeeva.hh"
 
 #include "openmc/constants.h"
+#include "openmc/math.h"
 #include "openmc/random_lcg.h"
 
 namespace openmc {
@@ -36,7 +37,7 @@ double normal_percentile(double p)
   if (p < p_low) {
     // Rational approximation for lower region.
 
-    q = std::sqrt(-2.0 * std::log(p));
+    q = std::sqrt(-2.0 * openmc::log(p));
     z = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
         ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0);
 
@@ -51,15 +52,15 @@ double normal_percentile(double p)
   } else {
     // Rational approximation for upper region
 
-    q = std::sqrt(-2.0 * std::log(1.0 - p));
+    q = std::sqrt(-2.0 * openmc::log(1.0 - p));
     z = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
         ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0);
   }
 
   // Refinement based on Newton's method
 
-  z = z - (0.5 * std::erfc(-z / std::sqrt(2.0)) - p) * std::sqrt(2.0 * PI) *
-            std::exp(0.5 * z * z);
+  z = z - (0.5 * openmc::erfc(-z / std::sqrt(2.0)) - p) * std::sqrt(2.0 * PI) *
+            openmc::exp(0.5 * z * z);
 
   return z;
 }
@@ -72,13 +73,13 @@ double t_percentile(double p, int df)
     // For one degree of freedom, the t-distribution becomes a Cauchy
     // distribution whose cdf we can invert directly
 
-    t = std::tan(PI * (p - 0.5));
+    t = openmc::tan(PI * (p - 0.5));
   } else if (df == 2) {
     // For two degrees of freedom, the cdf is given by 1/2 + x/(2*sqrt(x^2 +
     // 2)). This can be directly inverted to yield the solution below
 
     t = 2.0 * std::sqrt(2.0) * (p - 0.5) /
-        std::sqrt(1. - 4. * std::pow(p - 0.5, 2.));
+        std::sqrt(1. - 4. * openmc::pow(p - 0.5, 2.));
   } else {
     // This approximation is from E. Olusegun George and Meenakshi Sivaram, "A
     // modification of the Fisher-Cornish approximation for the student t
@@ -101,7 +102,7 @@ double standard_normal_cdf(double z)
 {
   // Use the complementary error function to compute the standard normal CDF
   // Phi(z) = 0.5 * (1 + erf(z / sqrt(2))) = 0.5 * erfc(-z / sqrt(2))
-  return 0.5 * std::erfc(-z / std::sqrt(2.0));
+  return 0.5 * openmc::erfc(-z / std::sqrt(2.0));
 }
 
 void calc_pn_c(int n, double x, double pnx[])
@@ -145,7 +146,7 @@ void calc_rn(int n, Direction u, double rn[])
   if (u.x == 0.) {
     phi = 0.;
   } else {
-    phi = std::atan2(u.y, u.x);
+    phi = openmc::atan2(u.y, u.x);
   }
 
   // Store the shorthand of 1-w * w
@@ -162,494 +163,514 @@ void calc_rn(int n, Direction u, double rn[])
     switch (l) {
     case 1:
       // l = 1, m = -1
-      rn[i] = -(std::sqrt(w2m1) * std::sin(phi));
+      rn[i] = -(std::sqrt(w2m1) * openmc::sin(phi));
       // l = 1, m = 0
       rn[i + 1] = w;
       // l = 1, m = 1
-      rn[i + 2] = -(std::sqrt(w2m1) * std::cos(phi));
+      rn[i + 2] = -(std::sqrt(w2m1) * openmc::cos(phi));
       break;
     case 2:
       // l = 2, m = -2
-      rn[i] = 0.288675134594813 * (-3. * w * w + 3.) * std::sin(2. * phi);
+      rn[i] = 0.288675134594813 * (-3. * w * w + 3.) * openmc::sin(2. * phi);
       // l = 2, m = -1
-      rn[i + 1] = -(1.73205080756888 * w * std::sqrt(w2m1) * std::sin(phi));
+      rn[i + 1] = -(1.73205080756888 * w * std::sqrt(w2m1) * openmc::sin(phi));
       // l = 2, m = 0
       rn[i + 2] = 1.5 * w * w - 0.5;
       // l = 2, m = 1
-      rn[i + 3] = -(1.73205080756888 * w * std::sqrt(w2m1) * std::cos(phi));
+      rn[i + 3] = -(1.73205080756888 * w * std::sqrt(w2m1) * openmc::cos(phi));
       // l = 2, m = 2
-      rn[i + 4] = 0.288675134594813 * (-3. * w * w + 3.) * std::cos(2. * phi);
+      rn[i + 4] =
+        0.288675134594813 * (-3. * w * w + 3.) * openmc::cos(2. * phi);
       break;
     case 3:
       // l = 3, m = -3
-      rn[i] = -(0.790569415042095 * std::pow(w2m1, 1.5) * std::sin(3. * phi));
+      rn[i] =
+        -(0.790569415042095 * openmc::pow(w2m1, 1.5) * openmc::sin(3. * phi));
       // l = 3, m = -2
-      rn[i + 1] = 1.93649167310371 * w * (w2m1)*std::sin(2. * phi);
+      rn[i + 1] = 1.93649167310371 * w * (w2m1)*openmc::sin(2. * phi);
       // l = 3, m = -1
       rn[i + 2] = -(0.408248290463863 * std::sqrt(w2m1) *
-                    ((7.5) * w * w - 3. / 2.) * std::sin(phi));
+                    ((7.5) * w * w - 3. / 2.) * openmc::sin(phi));
       // l = 3, m = 0
-      rn[i + 3] = 2.5 * std::pow(w, 3) - 1.5 * w;
+      rn[i + 3] = 2.5 * openmc::pow(w, 3) - 1.5 * w;
       // l = 3, m = 1
       rn[i + 4] = -(0.408248290463863 * std::sqrt(w2m1) *
-                    ((7.5) * w * w - 3. / 2.) * std::cos(phi));
+                    ((7.5) * w * w - 3. / 2.) * openmc::cos(phi));
       // l = 3, m = 2
-      rn[i + 5] = 1.93649167310371 * w * (w2m1)*std::cos(2. * phi);
+      rn[i + 5] = 1.93649167310371 * w * (w2m1)*openmc::cos(2. * phi);
       // l = 3, m = 3
       rn[i + 6] =
-        -(0.790569415042095 * std::pow(w2m1, 1.5) * std::cos(3. * phi));
+        -(0.790569415042095 * openmc::pow(w2m1, 1.5) * openmc::cos(3. * phi));
       break;
     case 4:
       // l = 4, m = -4
-      rn[i] = 0.739509972887452 * (w2m1 * w2m1) * std::sin(4.0 * phi);
+      rn[i] = 0.739509972887452 * (w2m1 * w2m1) * openmc::sin(4.0 * phi);
       // l = 4, m = -3
-      rn[i + 1] =
-        -(2.09165006633519 * w * std::pow(w2m1, 1.5) * std::sin(3. * phi));
+      rn[i + 1] = -(
+        2.09165006633519 * w * openmc::pow(w2m1, 1.5) * openmc::sin(3. * phi));
       // l = 4, m = -2
-      rn[i + 2] =
-        0.074535599249993 * (w2m1) * (52.5 * w * w - 7.5) * std::sin(2. * phi);
+      rn[i + 2] = 0.074535599249993 * (w2m1) * (52.5 * w * w - 7.5) *
+                  openmc::sin(2. * phi);
       // l = 4, m = -1
       rn[i + 3] = -(0.316227766016838 * std::sqrt(w2m1) *
-                    (17.5 * std::pow(w, 3) - 7.5 * w) * std::sin(phi));
+                    (17.5 * openmc::pow(w, 3) - 7.5 * w) * openmc::sin(phi));
       // l = 4, m = 0
-      rn[i + 4] = 4.375 * std::pow(w, 4) - 3.75 * w * w + 0.375;
+      rn[i + 4] = 4.375 * openmc::pow(w, 4) - 3.75 * w * w + 0.375;
       // l = 4, m = 1
       rn[i + 5] = -(0.316227766016838 * std::sqrt(w2m1) *
-                    (17.5 * std::pow(w, 3) - 7.5 * w) * std::cos(phi));
+                    (17.5 * openmc::pow(w, 3) - 7.5 * w) * openmc::cos(phi));
       // l = 4, m = 2
-      rn[i + 6] =
-        0.074535599249993 * (w2m1) * (52.5 * w * w - 7.5) * std::cos(2. * phi);
+      rn[i + 6] = 0.074535599249993 * (w2m1) * (52.5 * w * w - 7.5) *
+                  openmc::cos(2. * phi);
       // l = 4, m = 3
-      rn[i + 7] =
-        -(2.09165006633519 * w * std::pow(w2m1, 1.5) * std::cos(3. * phi));
+      rn[i + 7] = -(
+        2.09165006633519 * w * openmc::pow(w2m1, 1.5) * openmc::cos(3. * phi));
       // l = 4, m = 4
-      rn[i + 8] = 0.739509972887452 * w2m1 * w2m1 * std::cos(4.0 * phi);
+      rn[i + 8] = 0.739509972887452 * w2m1 * w2m1 * openmc::cos(4.0 * phi);
       break;
     case 5:
       // l = 5, m = -5
-      rn[i] = -(0.701560760020114 * std::pow(w2m1, 2.5) * std::sin(5.0 * phi));
+      rn[i] =
+        -(0.701560760020114 * openmc::pow(w2m1, 2.5) * openmc::sin(5.0 * phi));
       // l = 5, m = -4
-      rn[i + 1] = 2.21852991866236 * w * w2m1 * w2m1 * std::sin(4.0 * phi);
+      rn[i + 1] = 2.21852991866236 * w * w2m1 * w2m1 * openmc::sin(4.0 * phi);
       // l = 5, m = -3
-      rn[i + 2] = -(0.00996023841111995 * std::pow(w2m1, 1.5) *
-                    ((945.0 / 2.) * w * w - 52.5) * std::sin(3. * phi));
+      rn[i + 2] = -(0.00996023841111995 * openmc::pow(w2m1, 1.5) *
+                    ((945.0 / 2.) * w * w - 52.5) * openmc::sin(3. * phi));
       // l = 5, m = -2
       rn[i + 3] = 0.0487950036474267 * (w2m1) *
-                  ((315.0 / 2.) * std::pow(w, 3) - 52.5 * w) *
-                  std::sin(2. * phi);
+                  ((315.0 / 2.) * openmc::pow(w, 3) - 52.5 * w) *
+                  openmc::sin(2. * phi);
       // l = 5, m = -1
       rn[i + 4] =
         -(0.258198889747161 * std::sqrt(w2m1) *
-          (39.375 * std::pow(w, 4) - 105.0 / 4.0 * w * w + 15.0 / 8.0) *
-          std::sin(phi));
+          (39.375 * openmc::pow(w, 4) - 105.0 / 4.0 * w * w + 15.0 / 8.0) *
+          openmc::sin(phi));
       // l = 5, m = 0
-      rn[i + 5] = 7.875 * std::pow(w, 5) - 8.75 * std::pow(w, 3) + 1.875 * w;
+      rn[i + 5] =
+        7.875 * openmc::pow(w, 5) - 8.75 * openmc::pow(w, 3) + 1.875 * w;
       // l = 5, m = 1
       rn[i + 6] =
         -(0.258198889747161 * std::sqrt(w2m1) *
-          (39.375 * std::pow(w, 4) - 105.0 / 4.0 * w * w + 15.0 / 8.0) *
-          std::cos(phi));
+          (39.375 * openmc::pow(w, 4) - 105.0 / 4.0 * w * w + 15.0 / 8.0) *
+          openmc::cos(phi));
       // l = 5, m = 2
       rn[i + 7] = 0.0487950036474267 * (w2m1) *
-                  ((315.0 / 2.) * std::pow(w, 3) - 52.5 * w) *
-                  std::cos(2. * phi);
+                  ((315.0 / 2.) * openmc::pow(w, 3) - 52.5 * w) *
+                  openmc::cos(2. * phi);
       // l = 5, m = 3
-      rn[i + 8] = -(0.00996023841111995 * std::pow(w2m1, 1.5) *
-                    ((945.0 / 2.) * w * w - 52.5) * std::cos(3. * phi));
+      rn[i + 8] = -(0.00996023841111995 * openmc::pow(w2m1, 1.5) *
+                    ((945.0 / 2.) * w * w - 52.5) * openmc::cos(3. * phi));
       // l = 5, m = 4
-      rn[i + 9] = 2.21852991866236 * w * w2m1 * w2m1 * std::cos(4.0 * phi);
+      rn[i + 9] = 2.21852991866236 * w * w2m1 * w2m1 * openmc::cos(4.0 * phi);
       // l = 5, m = 5
       rn[i + 10] =
-        -(0.701560760020114 * std::pow(w2m1, 2.5) * std::cos(5.0 * phi));
+        -(0.701560760020114 * openmc::pow(w2m1, 2.5) * openmc::cos(5.0 * phi));
       break;
     case 6:
       // l = 6, m = -6
-      rn[i] = 0.671693289381396 * std::pow(w2m1, 3) * std::sin(6.0 * phi);
+      rn[i] = 0.671693289381396 * openmc::pow(w2m1, 3) * openmc::sin(6.0 * phi);
       // l = 6, m = -5
-      rn[i + 1] =
-        -(2.32681380862329 * w * std::pow(w2m1, 2.5) * std::sin(5.0 * phi));
+      rn[i + 1] = -(
+        2.32681380862329 * w * openmc::pow(w2m1, 2.5) * openmc::sin(5.0 * phi));
       // l = 6, m = -4
       rn[i + 2] = 0.00104990131391452 * w2m1 * w2m1 *
-                  ((10395.0 / 2.) * w * w - 945.0 / 2.) * std::sin(4.0 * phi);
+                  ((10395.0 / 2.) * w * w - 945.0 / 2.) *
+                  openmc::sin(4.0 * phi);
       // l = 6, m = -3
-      rn[i + 3] = -(0.00575054632785295 * std::pow(w2m1, 1.5) *
-                    ((3465.0 / 2.) * std::pow(w, 3) - 945.0 / 2. * w) *
-                    std::sin(3. * phi));
+      rn[i + 3] = -(0.00575054632785295 * openmc::pow(w2m1, 1.5) *
+                    ((3465.0 / 2.) * openmc::pow(w, 3) - 945.0 / 2. * w) *
+                    openmc::sin(3. * phi));
       // l = 6, m = -2
-      rn[i + 4] =
-        0.0345032779671177 * (w2m1) *
-        ((3465.0 / 8.0) * std::pow(w, 4) - 945.0 / 4.0 * w * w + 105.0 / 8.0) *
-        std::sin(2. * phi);
+      rn[i + 4] = 0.0345032779671177 * (w2m1) *
+                  ((3465.0 / 8.0) * openmc::pow(w, 4) - 945.0 / 4.0 * w * w +
+                    105.0 / 8.0) *
+                  openmc::sin(2. * phi);
       // l = 6, m = -1
       rn[i + 5] = -(0.218217890235992 * std::sqrt(w2m1) *
-                    ((693.0 / 8.0) * std::pow(w, 5) -
-                      315.0 / 4.0 * std::pow(w, 3) + (105.0 / 8.0) * w) *
-                    std::sin(phi));
+                    ((693.0 / 8.0) * openmc::pow(w, 5) -
+                      315.0 / 4.0 * openmc::pow(w, 3) + (105.0 / 8.0) * w) *
+                    openmc::sin(phi));
       // l = 6, m = 0
-      rn[i + 6] = 14.4375 * std::pow(w, 6) - 19.6875 * std::pow(w, 4) +
+      rn[i + 6] = 14.4375 * openmc::pow(w, 6) - 19.6875 * openmc::pow(w, 4) +
                   6.5625 * w * w - 0.3125;
       // l = 6, m = 1
       rn[i + 7] = -(0.218217890235992 * std::sqrt(w2m1) *
-                    ((693.0 / 8.0) * std::pow(w, 5) -
-                      315.0 / 4.0 * std::pow(w, 3) + (105.0 / 8.0) * w) *
-                    std::cos(phi));
+                    ((693.0 / 8.0) * openmc::pow(w, 5) -
+                      315.0 / 4.0 * openmc::pow(w, 3) + (105.0 / 8.0) * w) *
+                    openmc::cos(phi));
       // l = 6, m = 2
-      rn[i + 8] =
-        0.0345032779671177 * w2m1 *
-        ((3465.0 / 8.0) * std::pow(w, 4) - 945.0 / 4.0 * w * w + 105.0 / 8.0) *
-        std::cos(2. * phi);
+      rn[i + 8] = 0.0345032779671177 * w2m1 *
+                  ((3465.0 / 8.0) * openmc::pow(w, 4) - 945.0 / 4.0 * w * w +
+                    105.0 / 8.0) *
+                  openmc::cos(2. * phi);
       // l = 6, m = 3
-      rn[i + 9] = -(0.00575054632785295 * std::pow(w2m1, 1.5) *
-                    ((3465.0 / 2.) * std::pow(w, 3) - 945.0 / 2. * w) *
-                    std::cos(3. * phi));
+      rn[i + 9] = -(0.00575054632785295 * openmc::pow(w2m1, 1.5) *
+                    ((3465.0 / 2.) * openmc::pow(w, 3) - 945.0 / 2. * w) *
+                    openmc::cos(3. * phi));
       // l = 6, m = 4
       rn[i + 10] = 0.00104990131391452 * w2m1 * w2m1 *
-                   ((10395.0 / 2.) * w * w - 945.0 / 2.) * std::cos(4.0 * phi);
+                   ((10395.0 / 2.) * w * w - 945.0 / 2.) *
+                   openmc::cos(4.0 * phi);
       // l = 6, m = 5
-      rn[i + 11] =
-        -(2.32681380862329 * w * std::pow(w2m1, 2.5) * std::cos(5.0 * phi));
+      rn[i + 11] = -(
+        2.32681380862329 * w * openmc::pow(w2m1, 2.5) * openmc::cos(5.0 * phi));
       // l = 6, m = 6
-      rn[i + 12] = 0.671693289381396 * std::pow(w2m1, 3) * std::cos(6.0 * phi);
+      rn[i + 12] =
+        0.671693289381396 * openmc::pow(w2m1, 3) * openmc::cos(6.0 * phi);
       break;
     case 7:
       // l = 7, m = -7
-      rn[i] = -(0.647259849287749 * std::pow(w2m1, 3.5) * std::sin(7.0 * phi));
+      rn[i] =
+        -(0.647259849287749 * openmc::pow(w2m1, 3.5) * openmc::sin(7.0 * phi));
       // l = 7, m = -6
       rn[i + 1] =
-        2.42182459624969 * w * std::pow(w2m1, 3) * std::sin(6.0 * phi);
+        2.42182459624969 * w * openmc::pow(w2m1, 3) * openmc::sin(6.0 * phi);
       // l = 7, m = -5
       rn[i + 2] =
-        -(9.13821798555235e-5 * std::pow(w2m1, 2.5) *
-          ((135135.0 / 2.) * w * w - 10395.0 / 2.) * std::sin(5.0 * phi));
+        -(9.13821798555235e-5 * openmc::pow(w2m1, 2.5) *
+          ((135135.0 / 2.) * w * w - 10395.0 / 2.) * openmc::sin(5.0 * phi));
       // l = 7, m = -4
       rn[i + 3] = 0.000548293079133141 * w2m1 * w2m1 *
-                  ((45045.0 / 2.) * std::pow(w, 3) - 10395.0 / 2. * w) *
-                  std::sin(4.0 * phi);
+                  ((45045.0 / 2.) * openmc::pow(w, 3) - 10395.0 / 2. * w) *
+                  openmc::sin(4.0 * phi);
       // l = 7, m = -3
-      rn[i + 4] = -(0.00363696483726654 * std::pow(w2m1, 1.5) *
-                    ((45045.0 / 8.0) * std::pow(w, 4) - 10395.0 / 4.0 * w * w +
-                      945.0 / 8.0) *
-                    std::sin(3. * phi));
+      rn[i + 4] = -(0.00363696483726654 * openmc::pow(w2m1, 1.5) *
+                    ((45045.0 / 8.0) * openmc::pow(w, 4) -
+                      10395.0 / 4.0 * w * w + 945.0 / 8.0) *
+                    openmc::sin(3. * phi));
       // l = 7, m = -2
       rn[i + 5] = 0.025717224993682 * (w2m1) *
-                  ((9009.0 / 8.0) * std::pow(w, 5) -
-                    3465.0 / 4.0 * std::pow(w, 3) + (945.0 / 8.0) * w) *
-                  std::sin(2. * phi);
+                  ((9009.0 / 8.0) * openmc::pow(w, 5) -
+                    3465.0 / 4.0 * openmc::pow(w, 3) + (945.0 / 8.0) * w) *
+                  openmc::sin(2. * phi);
       // l = 7, m = -1
-      rn[i + 6] =
-        -(0.188982236504614 * std::sqrt(w2m1) *
-          ((3003.0 / 16.0) * std::pow(w, 6) - 3465.0 / 16.0 * std::pow(w, 4) +
-            (945.0 / 16.0) * w * w - 35.0 / 16.0) *
-          std::sin(phi));
+      rn[i + 6] = -(0.188982236504614 * std::sqrt(w2m1) *
+                    ((3003.0 / 16.0) * openmc::pow(w, 6) -
+                      3465.0 / 16.0 * openmc::pow(w, 4) +
+                      (945.0 / 16.0) * w * w - 35.0 / 16.0) *
+                    openmc::sin(phi));
       // l = 7, m = 0
-      rn[i + 7] = 26.8125 * std::pow(w, 7) - 43.3125 * std::pow(w, 5) +
-                  19.6875 * std::pow(w, 3) - 2.1875 * w;
+      rn[i + 7] = 26.8125 * openmc::pow(w, 7) - 43.3125 * openmc::pow(w, 5) +
+                  19.6875 * openmc::pow(w, 3) - 2.1875 * w;
       // l = 7, m = 1
-      rn[i + 8] =
-        -(0.188982236504614 * std::sqrt(w2m1) *
-          ((3003.0 / 16.0) * std::pow(w, 6) - 3465.0 / 16.0 * std::pow(w, 4) +
-            (945.0 / 16.0) * w * w - 35.0 / 16.0) *
-          std::cos(phi));
+      rn[i + 8] = -(0.188982236504614 * std::sqrt(w2m1) *
+                    ((3003.0 / 16.0) * openmc::pow(w, 6) -
+                      3465.0 / 16.0 * openmc::pow(w, 4) +
+                      (945.0 / 16.0) * w * w - 35.0 / 16.0) *
+                    openmc::cos(phi));
       // l = 7, m = 2
       rn[i + 9] = 0.025717224993682 * (w2m1) *
-                  ((9009.0 / 8.0) * std::pow(w, 5) -
-                    3465.0 / 4.0 * std::pow(w, 3) + (945.0 / 8.0) * w) *
-                  std::cos(2. * phi);
+                  ((9009.0 / 8.0) * openmc::pow(w, 5) -
+                    3465.0 / 4.0 * openmc::pow(w, 3) + (945.0 / 8.0) * w) *
+                  openmc::cos(2. * phi);
       // l = 7, m = 3
-      rn[i + 10] = -(0.00363696483726654 * std::pow(w2m1, 1.5) *
-                     ((45045.0 / 8.0) * std::pow(w, 4) - 10395.0 / 4.0 * w * w +
-                       945.0 / 8.0) *
-                     std::cos(3. * phi));
+      rn[i + 10] = -(0.00363696483726654 * openmc::pow(w2m1, 1.5) *
+                     ((45045.0 / 8.0) * openmc::pow(w, 4) -
+                       10395.0 / 4.0 * w * w + 945.0 / 8.0) *
+                     openmc::cos(3. * phi));
       // l = 7, m = 4
       rn[i + 11] = 0.000548293079133141 * w2m1 * w2m1 *
-                   ((45045.0 / 2.) * std::pow(w, 3) - 10395.0 / 2. * w) *
-                   std::cos(4.0 * phi);
+                   ((45045.0 / 2.) * openmc::pow(w, 3) - 10395.0 / 2. * w) *
+                   openmc::cos(4.0 * phi);
       // l = 7, m = 5
       rn[i + 12] =
-        -(9.13821798555235e-5 * std::pow(w2m1, 2.5) *
-          ((135135.0 / 2.) * w * w - 10395.0 / 2.) * std::cos(5.0 * phi));
+        -(9.13821798555235e-5 * openmc::pow(w2m1, 2.5) *
+          ((135135.0 / 2.) * w * w - 10395.0 / 2.) * openmc::cos(5.0 * phi));
       // l = 7, m = 6
       rn[i + 13] =
-        2.42182459624969 * w * std::pow(w2m1, 3) * std::cos(6.0 * phi);
+        2.42182459624969 * w * openmc::pow(w2m1, 3) * openmc::cos(6.0 * phi);
       // l = 7, m = 7
       rn[i + 14] =
-        -(0.647259849287749 * std::pow(w2m1, 3.5) * std::cos(7.0 * phi));
+        -(0.647259849287749 * openmc::pow(w2m1, 3.5) * openmc::cos(7.0 * phi));
       break;
     case 8:
       // l = 8, m = -8
-      rn[i] = 0.626706654240044 * std::pow(w2m1, 4) * std::sin(8.0 * phi);
+      rn[i] = 0.626706654240044 * openmc::pow(w2m1, 4) * openmc::sin(8.0 * phi);
       // l = 8, m = -7
-      rn[i + 1] =
-        -(2.50682661696018 * w * std::pow(w2m1, 3.5) * std::sin(7.0 * phi));
+      rn[i + 1] = -(
+        2.50682661696018 * w * openmc::pow(w2m1, 3.5) * openmc::sin(7.0 * phi));
       // l = 8, m = -6
-      rn[i + 2] = 6.77369783729086e-6 * std::pow(w2m1, 3) *
+      rn[i + 2] = 6.77369783729086e-6 * openmc::pow(w2m1, 3) *
                   ((2027025.0 / 2.) * w * w - 135135.0 / 2.) *
-                  std::sin(6.0 * phi);
+                  openmc::sin(6.0 * phi);
       // l = 8, m = -5
-      rn[i + 3] = -(4.38985792528482e-5 * std::pow(w2m1, 2.5) *
-                    ((675675.0 / 2.) * std::pow(w, 3) - 135135.0 / 2. * w) *
-                    std::sin(5.0 * phi));
+      rn[i + 3] = -(4.38985792528482e-5 * openmc::pow(w2m1, 2.5) *
+                    ((675675.0 / 2.) * openmc::pow(w, 3) - 135135.0 / 2. * w) *
+                    openmc::sin(5.0 * phi));
       // l = 8, m = -4
       rn[i + 4] = 0.000316557156832328 * w2m1 * w2m1 *
-                  ((675675.0 / 8.0) * std::pow(w, 4) - 135135.0 / 4.0 * w * w +
-                    10395.0 / 8.0) *
-                  std::sin(4.0 * phi);
+                  ((675675.0 / 8.0) * openmc::pow(w, 4) -
+                    135135.0 / 4.0 * w * w + 10395.0 / 8.0) *
+                  openmc::sin(4.0 * phi);
       // l = 8, m = -3
-      rn[i + 5] = -(0.00245204119306875 * std::pow(w2m1, 1.5) *
-                    ((135135.0 / 8.0) * std::pow(w, 5) -
-                      45045.0 / 4.0 * std::pow(w, 3) + (10395.0 / 8.0) * w) *
-                    std::sin(3. * phi));
+      rn[i + 5] = -(0.00245204119306875 * openmc::pow(w2m1, 1.5) *
+                    ((135135.0 / 8.0) * openmc::pow(w, 5) -
+                      45045.0 / 4.0 * openmc::pow(w, 3) + (10395.0 / 8.0) * w) *
+                    openmc::sin(3. * phi));
       // l = 8, m = -2
-      rn[i + 6] =
-        0.0199204768222399 * (w2m1) *
-        ((45045.0 / 16.0) * std::pow(w, 6) - 45045.0 / 16.0 * std::pow(w, 4) +
-          (10395.0 / 16.0) * w * w - 315.0 / 16.0) *
-        std::sin(2. * phi);
+      rn[i + 6] = 0.0199204768222399 * (w2m1) *
+                  ((45045.0 / 16.0) * openmc::pow(w, 6) -
+                    45045.0 / 16.0 * openmc::pow(w, 4) +
+                    (10395.0 / 16.0) * w * w - 315.0 / 16.0) *
+                  openmc::sin(2. * phi);
       // l = 8, m = -1
-      rn[i + 7] =
-        -(0.166666666666667 * std::sqrt(w2m1) *
-          ((6435.0 / 16.0) * std::pow(w, 7) - 9009.0 / 16.0 * std::pow(w, 5) +
-            (3465.0 / 16.0) * std::pow(w, 3) - 315.0 / 16.0 * w) *
-          std::sin(phi));
+      rn[i + 7] = -(0.166666666666667 * std::sqrt(w2m1) *
+                    ((6435.0 / 16.0) * openmc::pow(w, 7) -
+                      9009.0 / 16.0 * openmc::pow(w, 5) +
+                      (3465.0 / 16.0) * openmc::pow(w, 3) - 315.0 / 16.0 * w) *
+                    openmc::sin(phi));
       // l = 8, m = 0
-      rn[i + 8] = 50.2734375 * std::pow(w, 8) - 93.84375 * std::pow(w, 6) +
-                  54.140625 * std::pow(w, 4) - 9.84375 * w * w + 0.2734375;
+      rn[i + 8] = 50.2734375 * openmc::pow(w, 8) -
+                  93.84375 * openmc::pow(w, 6) + 54.140625 * openmc::pow(w, 4) -
+                  9.84375 * w * w + 0.2734375;
       // l = 8, m = 1
-      rn[i + 9] =
-        -(0.166666666666667 * std::sqrt(w2m1) *
-          ((6435.0 / 16.0) * std::pow(w, 7) - 9009.0 / 16.0 * std::pow(w, 5) +
-            (3465.0 / 16.0) * std::pow(w, 3) - 315.0 / 16.0 * w) *
-          std::cos(phi));
+      rn[i + 9] = -(0.166666666666667 * std::sqrt(w2m1) *
+                    ((6435.0 / 16.0) * openmc::pow(w, 7) -
+                      9009.0 / 16.0 * openmc::pow(w, 5) +
+                      (3465.0 / 16.0) * openmc::pow(w, 3) - 315.0 / 16.0 * w) *
+                    openmc::cos(phi));
       // l = 8, m = 2
-      rn[i + 10] =
-        0.0199204768222399 * (w2m1) *
-        ((45045.0 / 16.0) * std::pow(w, 6) - 45045.0 / 16.0 * std::pow(w, 4) +
-          (10395.0 / 16.0) * w * w - 315.0 / 16.0) *
-        std::cos(2. * phi);
+      rn[i + 10] = 0.0199204768222399 * (w2m1) *
+                   ((45045.0 / 16.0) * openmc::pow(w, 6) -
+                     45045.0 / 16.0 * openmc::pow(w, 4) +
+                     (10395.0 / 16.0) * w * w - 315.0 / 16.0) *
+                   openmc::cos(2. * phi);
       // l = 8, m = 3
-      rn[i + 11] = -(0.00245204119306875 * std::pow(w2m1, 1.5) *
-                     ((135135.0 / 8.0) * std::pow(w, 5) -
-                       45045.0 / 4.0 * std::pow(w, 3) + (10395.0 / 8.0) * w) *
-                     std::cos(3. * phi));
+      rn[i + 11] =
+        -(0.00245204119306875 * openmc::pow(w2m1, 1.5) *
+          ((135135.0 / 8.0) * openmc::pow(w, 5) -
+            45045.0 / 4.0 * openmc::pow(w, 3) + (10395.0 / 8.0) * w) *
+          openmc::cos(3. * phi));
       // l = 8, m = 4
       rn[i + 12] = 0.000316557156832328 * w2m1 * w2m1 *
-                   ((675675.0 / 8.0) * std::pow(w, 4) - 135135.0 / 4.0 * w * w +
-                     10395.0 / 8.0) *
-                   std::cos(4.0 * phi);
+                   ((675675.0 / 8.0) * openmc::pow(w, 4) -
+                     135135.0 / 4.0 * w * w + 10395.0 / 8.0) *
+                   openmc::cos(4.0 * phi);
       // l = 8, m = 5
-      rn[i + 13] = -(4.38985792528482e-5 * std::pow(w2m1, 2.5) *
-                     ((675675.0 / 2.) * std::pow(w, 3) - 135135.0 / 2. * w) *
-                     std::cos(5.0 * phi));
+      rn[i + 13] = -(4.38985792528482e-5 * openmc::pow(w2m1, 2.5) *
+                     ((675675.0 / 2.) * openmc::pow(w, 3) - 135135.0 / 2. * w) *
+                     openmc::cos(5.0 * phi));
       // l = 8, m = 6
-      rn[i + 14] = 6.77369783729086e-6 * std::pow(w2m1, 3) *
+      rn[i + 14] = 6.77369783729086e-6 * openmc::pow(w2m1, 3) *
                    ((2027025.0 / 2.) * w * w - 135135.0 / 2.) *
-                   std::cos(6.0 * phi);
+                   openmc::cos(6.0 * phi);
       // l = 8, m = 7
-      rn[i + 15] =
-        -(2.50682661696018 * w * std::pow(w2m1, 3.5) * std::cos(7.0 * phi));
+      rn[i + 15] = -(
+        2.50682661696018 * w * openmc::pow(w2m1, 3.5) * openmc::cos(7.0 * phi));
       // l = 8, m = 8
-      rn[i + 16] = 0.626706654240044 * std::pow(w2m1, 4) * std::cos(8.0 * phi);
+      rn[i + 16] =
+        0.626706654240044 * openmc::pow(w2m1, 4) * openmc::cos(8.0 * phi);
       break;
     case 9:
       // l = 9, m = -9
-      rn[i] = -(0.609049392175524 * std::pow(w2m1, 4.5) * std::sin(9.0 * phi));
+      rn[i] =
+        -(0.609049392175524 * openmc::pow(w2m1, 4.5) * openmc::sin(9.0 * phi));
       // l = 9, m = -8
       rn[i + 1] =
-        2.58397773170915 * w * std::pow(w2m1, 4) * std::sin(8.0 * phi);
+        2.58397773170915 * w * openmc::pow(w2m1, 4) * openmc::sin(8.0 * phi);
       // l = 9, m = -7
-      rn[i + 2] =
-        -(4.37240315267812e-7 * std::pow(w2m1, 3.5) *
-          ((34459425.0 / 2.) * w * w - 2027025.0 / 2.) * std::sin(7.0 * phi));
+      rn[i + 2] = -(4.37240315267812e-7 * openmc::pow(w2m1, 3.5) *
+                    ((34459425.0 / 2.) * w * w - 2027025.0 / 2.) *
+                    openmc::sin(7.0 * phi));
       // l = 9, m = -6
-      rn[i + 3] = 3.02928976464514e-6 * std::pow(w2m1, 3) *
-                  ((11486475.0 / 2.) * std::pow(w, 3) - 2027025.0 / 2. * w) *
-                  std::sin(6.0 * phi);
+      rn[i + 3] = 3.02928976464514e-6 * openmc::pow(w2m1, 3) *
+                  ((11486475.0 / 2.) * openmc::pow(w, 3) - 2027025.0 / 2. * w) *
+                  openmc::sin(6.0 * phi);
       // l = 9, m = -5
-      rn[i + 4] = -(2.34647776186144e-5 * std::pow(w2m1, 2.5) *
-                    ((11486475.0 / 8.0) * std::pow(w, 4) -
+      rn[i + 4] = -(2.34647776186144e-5 * openmc::pow(w2m1, 2.5) *
+                    ((11486475.0 / 8.0) * openmc::pow(w, 4) -
                       2027025.0 / 4.0 * w * w + 135135.0 / 8.0) *
-                    std::sin(5.0 * phi));
+                    openmc::sin(5.0 * phi));
       // l = 9, m = -4
       rn[i + 5] = 0.000196320414650061 * w2m1 * w2m1 *
-                  ((2297295.0 / 8.0) * std::pow(w, 5) -
-                    675675.0 / 4.0 * std::pow(w, 3) + (135135.0 / 8.0) * w) *
-                  std::sin(4.0 * phi);
+                  ((2297295.0 / 8.0) * openmc::pow(w, 5) -
+                    675675.0 / 4.0 * openmc::pow(w, 3) + (135135.0 / 8.0) * w) *
+                  openmc::sin(4.0 * phi);
       // l = 9, m = -3
-      rn[i + 6] = -(
-        0.00173385495536766 * std::pow(w2m1, 1.5) *
-        ((765765.0 / 16.0) * std::pow(w, 6) - 675675.0 / 16.0 * std::pow(w, 4) +
-          (135135.0 / 16.0) * w * w - 3465.0 / 16.0) *
-        std::sin(3. * phi));
+      rn[i + 6] = -(0.00173385495536766 * openmc::pow(w2m1, 1.5) *
+                    ((765765.0 / 16.0) * openmc::pow(w, 6) -
+                      675675.0 / 16.0 * openmc::pow(w, 4) +
+                      (135135.0 / 16.0) * w * w - 3465.0 / 16.0) *
+                    openmc::sin(3. * phi));
       // l = 9, m = -2
-      rn[i + 7] =
-        0.0158910431540932 * (w2m1) *
-        ((109395.0 / 16.0) * std::pow(w, 7) - 135135.0 / 16.0 * std::pow(w, 5) +
-          (45045.0 / 16.0) * std::pow(w, 3) - 3465.0 / 16.0 * w) *
-        std::sin(2. * phi);
+      rn[i + 7] = 0.0158910431540932 * (w2m1) *
+                  ((109395.0 / 16.0) * openmc::pow(w, 7) -
+                    135135.0 / 16.0 * openmc::pow(w, 5) +
+                    (45045.0 / 16.0) * openmc::pow(w, 3) - 3465.0 / 16.0 * w) *
+                  openmc::sin(2. * phi);
       // l = 9, m = -1
-      rn[i + 8] = -(
-        0.149071198499986 * std::sqrt(w2m1) *
-        ((109395.0 / 128.0) * std::pow(w, 8) - 45045.0 / 32.0 * std::pow(w, 6) +
-          (45045.0 / 64.0) * std::pow(w, 4) - 3465.0 / 32.0 * w * w +
-          315.0 / 128.0) *
-        std::sin(phi));
+      rn[i + 8] = -(0.149071198499986 * std::sqrt(w2m1) *
+                    ((109395.0 / 128.0) * openmc::pow(w, 8) -
+                      45045.0 / 32.0 * openmc::pow(w, 6) +
+                      (45045.0 / 64.0) * openmc::pow(w, 4) -
+                      3465.0 / 32.0 * w * w + 315.0 / 128.0) *
+                    openmc::sin(phi));
       // l = 9, m = 0
-      rn[i + 9] = 94.9609375 * std::pow(w, 9) - 201.09375 * std::pow(w, 7) +
-                  140.765625 * std::pow(w, 5) - 36.09375 * std::pow(w, 3) +
-                  2.4609375 * w;
+      rn[i + 9] = 94.9609375 * openmc::pow(w, 9) -
+                  201.09375 * openmc::pow(w, 7) +
+                  140.765625 * openmc::pow(w, 5) -
+                  36.09375 * openmc::pow(w, 3) + 2.4609375 * w;
       // l = 9, m = 1
-      rn[i + 10] = -(
-        0.149071198499986 * std::sqrt(w2m1) *
-        ((109395.0 / 128.0) * std::pow(w, 8) - 45045.0 / 32.0 * std::pow(w, 6) +
-          (45045.0 / 64.0) * std::pow(w, 4) - 3465.0 / 32.0 * w * w +
-          315.0 / 128.0) *
-        std::cos(phi));
+      rn[i + 10] = -(0.149071198499986 * std::sqrt(w2m1) *
+                     ((109395.0 / 128.0) * openmc::pow(w, 8) -
+                       45045.0 / 32.0 * openmc::pow(w, 6) +
+                       (45045.0 / 64.0) * openmc::pow(w, 4) -
+                       3465.0 / 32.0 * w * w + 315.0 / 128.0) *
+                     openmc::cos(phi));
       // l = 9, m = 2
-      rn[i + 11] =
-        0.0158910431540932 * (w2m1) *
-        ((109395.0 / 16.0) * std::pow(w, 7) - 135135.0 / 16.0 * std::pow(w, 5) +
-          (45045.0 / 16.0) * std::pow(w, 3) - 3465.0 / 16.0 * w) *
-        std::cos(2. * phi);
+      rn[i + 11] = 0.0158910431540932 * (w2m1) *
+                   ((109395.0 / 16.0) * openmc::pow(w, 7) -
+                     135135.0 / 16.0 * openmc::pow(w, 5) +
+                     (45045.0 / 16.0) * openmc::pow(w, 3) - 3465.0 / 16.0 * w) *
+                   openmc::cos(2. * phi);
       // l = 9, m = 3
-      rn[i + 12] = -(
-        0.00173385495536766 * std::pow(w2m1, 1.5) *
-        ((765765.0 / 16.0) * std::pow(w, 6) - 675675.0 / 16.0 * std::pow(w, 4) +
-          (135135.0 / 16.0) * w * w - 3465.0 / 16.0) *
-        std::cos(3. * phi));
+      rn[i + 12] = -(0.00173385495536766 * openmc::pow(w2m1, 1.5) *
+                     ((765765.0 / 16.0) * openmc::pow(w, 6) -
+                       675675.0 / 16.0 * openmc::pow(w, 4) +
+                       (135135.0 / 16.0) * w * w - 3465.0 / 16.0) *
+                     openmc::cos(3. * phi));
       // l = 9, m = 4
-      rn[i + 13] = 0.000196320414650061 * w2m1 * w2m1 *
-                   ((2297295.0 / 8.0) * std::pow(w, 5) -
-                     675675.0 / 4.0 * std::pow(w, 3) + (135135.0 / 8.0) * w) *
-                   std::cos(4.0 * phi);
+      rn[i + 13] =
+        0.000196320414650061 * w2m1 * w2m1 *
+        ((2297295.0 / 8.0) * openmc::pow(w, 5) -
+          675675.0 / 4.0 * openmc::pow(w, 3) + (135135.0 / 8.0) * w) *
+        openmc::cos(4.0 * phi);
       // l = 9, m = 5
-      rn[i + 14] = -(2.34647776186144e-5 * std::pow(w2m1, 2.5) *
-                     ((11486475.0 / 8.0) * std::pow(w, 4) -
+      rn[i + 14] = -(2.34647776186144e-5 * openmc::pow(w2m1, 2.5) *
+                     ((11486475.0 / 8.0) * openmc::pow(w, 4) -
                        2027025.0 / 4.0 * w * w + 135135.0 / 8.0) *
-                     std::cos(5.0 * phi));
+                     openmc::cos(5.0 * phi));
       // l = 9, m = 6
-      rn[i + 15] = 3.02928976464514e-6 * std::pow(w2m1, 3) *
-                   ((11486475.0 / 2.) * std::pow(w, 3) - 2027025.0 / 2. * w) *
-                   std::cos(6.0 * phi);
+      rn[i + 15] =
+        3.02928976464514e-6 * openmc::pow(w2m1, 3) *
+        ((11486475.0 / 2.) * openmc::pow(w, 3) - 2027025.0 / 2. * w) *
+        openmc::cos(6.0 * phi);
       // l = 9, m = 7
-      rn[i + 16] =
-        -(4.37240315267812e-7 * std::pow(w2m1, 3.5) *
-          ((34459425.0 / 2.) * w * w - 2027025.0 / 2.) * std::cos(7.0 * phi));
+      rn[i + 16] = -(4.37240315267812e-7 * openmc::pow(w2m1, 3.5) *
+                     ((34459425.0 / 2.) * w * w - 2027025.0 / 2.) *
+                     openmc::cos(7.0 * phi));
       // l = 9, m = 8
       rn[i + 17] =
-        2.58397773170915 * w * std::pow(w2m1, 4) * std::cos(8.0 * phi);
+        2.58397773170915 * w * openmc::pow(w2m1, 4) * openmc::cos(8.0 * phi);
       // l = 9, m = 9
       rn[i + 18] =
-        -(0.609049392175524 * std::pow(w2m1, 4.5) * std::cos(9.0 * phi));
+        -(0.609049392175524 * openmc::pow(w2m1, 4.5) * openmc::cos(9.0 * phi));
       break;
     case 10:
       // l = 10, m = -10
-      rn[i] = 0.593627917136573 * std::pow(w2m1, 5) * std::sin(10.0 * phi);
+      rn[i] =
+        0.593627917136573 * openmc::pow(w2m1, 5) * openmc::sin(10.0 * phi);
       // l = 10, m = -9
-      rn[i + 1] =
-        -(2.65478475211798 * w * std::pow(w2m1, 4.5) * std::sin(9.0 * phi));
+      rn[i + 1] = -(
+        2.65478475211798 * w * openmc::pow(w2m1, 4.5) * openmc::sin(9.0 * phi));
       // l = 10, m = -8
-      rn[i + 2] = 2.49953651452314e-8 * std::pow(w2m1, 4) *
+      rn[i + 2] = 2.49953651452314e-8 * openmc::pow(w2m1, 4) *
                   ((654729075.0 / 2.) * w * w - 34459425.0 / 2.) *
-                  std::sin(8.0 * phi);
+                  openmc::sin(8.0 * phi);
       // l = 10, m = -7
       rn[i + 3] =
-        -(1.83677671621093e-7 * std::pow(w2m1, 3.5) *
-          ((218243025.0 / 2.) * std::pow(w, 3) - 34459425.0 / 2. * w) *
-          std::sin(7.0 * phi));
+        -(1.83677671621093e-7 * openmc::pow(w2m1, 3.5) *
+          ((218243025.0 / 2.) * openmc::pow(w, 3) - 34459425.0 / 2. * w) *
+          openmc::sin(7.0 * phi));
       // l = 10, m = -6
-      rn[i + 4] = 1.51464488232257e-6 * std::pow(w2m1, 3) *
-                  ((218243025.0 / 8.0) * std::pow(w, 4) -
+      rn[i + 4] = 1.51464488232257e-6 * openmc::pow(w2m1, 3) *
+                  ((218243025.0 / 8.0) * openmc::pow(w, 4) -
                     34459425.0 / 4.0 * w * w + 2027025.0 / 8.0) *
-                  std::sin(6.0 * phi);
+                  openmc::sin(6.0 * phi);
       // l = 10, m = -5
       rn[i + 5] =
-        -(1.35473956745817e-5 * std::pow(w2m1, 2.5) *
-          ((43648605.0 / 8.0) * std::pow(w, 5) -
-            11486475.0 / 4.0 * std::pow(w, 3) + (2027025.0 / 8.0) * w) *
-          std::sin(5.0 * phi));
+        -(1.35473956745817e-5 * openmc::pow(w2m1, 2.5) *
+          ((43648605.0 / 8.0) * openmc::pow(w, 5) -
+            11486475.0 / 4.0 * openmc::pow(w, 3) + (2027025.0 / 8.0) * w) *
+          openmc::sin(5.0 * phi));
       // l = 10, m = -4
       rn[i + 6] = 0.000128521880085575 * w2m1 * w2m1 *
-                  ((14549535.0 / 16.0) * std::pow(w, 6) -
-                    11486475.0 / 16.0 * std::pow(w, 4) +
+                  ((14549535.0 / 16.0) * openmc::pow(w, 6) -
+                    11486475.0 / 16.0 * openmc::pow(w, 4) +
                     (2027025.0 / 16.0) * w * w - 45045.0 / 16.0) *
-                  std::sin(4.0 * phi);
+                  openmc::sin(4.0 * phi);
       // l = 10, m = -3
-      rn[i + 7] = -(0.00127230170115096 * std::pow(w2m1, 1.5) *
-                    ((2078505.0 / 16.0) * std::pow(w, 7) -
-                      2297295.0 / 16.0 * std::pow(w, 5) +
-                      (675675.0 / 16.0) * std::pow(w, 3) - 45045.0 / 16.0 * w) *
-                    std::sin(3. * phi));
+      rn[i + 7] =
+        -(0.00127230170115096 * openmc::pow(w2m1, 1.5) *
+          ((2078505.0 / 16.0) * openmc::pow(w, 7) -
+            2297295.0 / 16.0 * openmc::pow(w, 5) +
+            (675675.0 / 16.0) * openmc::pow(w, 3) - 45045.0 / 16.0 * w) *
+          openmc::sin(3. * phi));
       // l = 10, m = -2
       rn[i + 8] = 0.012974982402692 * (w2m1) *
-                  ((2078505.0 / 128.0) * std::pow(w, 8) -
-                    765765.0 / 32.0 * std::pow(w, 6) +
-                    (675675.0 / 64.0) * std::pow(w, 4) -
+                  ((2078505.0 / 128.0) * openmc::pow(w, 8) -
+                    765765.0 / 32.0 * openmc::pow(w, 6) +
+                    (675675.0 / 64.0) * openmc::pow(w, 4) -
                     45045.0 / 32.0 * w * w + 3465.0 / 128.0) *
-                  std::sin(2. * phi);
+                  openmc::sin(2. * phi);
       // l = 10, m = -1
-      rn[i + 9] = -(0.134839972492648 * std::sqrt(w2m1) *
-                    ((230945.0 / 128.0) * std::pow(w, 9) -
-                      109395.0 / 32.0 * std::pow(w, 7) +
-                      (135135.0 / 64.0) * std::pow(w, 5) -
-                      15015.0 / 32.0 * std::pow(w, 3) + (3465.0 / 128.0) * w) *
-                    std::sin(phi));
+      rn[i + 9] =
+        -(0.134839972492648 * std::sqrt(w2m1) *
+          ((230945.0 / 128.0) * openmc::pow(w, 9) -
+            109395.0 / 32.0 * openmc::pow(w, 7) +
+            (135135.0 / 64.0) * openmc::pow(w, 5) -
+            15015.0 / 32.0 * openmc::pow(w, 3) + (3465.0 / 128.0) * w) *
+          openmc::sin(phi));
       // l = 10, m = 0
-      rn[i + 10] = 180.42578125 * std::pow(w, 10) -
-                   427.32421875 * std::pow(w, 8) +
-                   351.9140625 * std::pow(w, 6) - 117.3046875 * std::pow(w, 4) +
-                   13.53515625 * w * w - 0.24609375;
+      rn[i + 10] =
+        180.42578125 * openmc::pow(w, 10) - 427.32421875 * openmc::pow(w, 8) +
+        351.9140625 * openmc::pow(w, 6) - 117.3046875 * openmc::pow(w, 4) +
+        13.53515625 * w * w - 0.24609375;
       // l = 10, m = 1
-      rn[i + 11] = -(0.134839972492648 * std::sqrt(w2m1) *
-                     ((230945.0 / 128.0) * std::pow(w, 9) -
-                       109395.0 / 32.0 * std::pow(w, 7) +
-                       (135135.0 / 64.0) * std::pow(w, 5) -
-                       15015.0 / 32.0 * std::pow(w, 3) + (3465.0 / 128.0) * w) *
-                     std::cos(phi));
+      rn[i + 11] =
+        -(0.134839972492648 * std::sqrt(w2m1) *
+          ((230945.0 / 128.0) * openmc::pow(w, 9) -
+            109395.0 / 32.0 * openmc::pow(w, 7) +
+            (135135.0 / 64.0) * openmc::pow(w, 5) -
+            15015.0 / 32.0 * openmc::pow(w, 3) + (3465.0 / 128.0) * w) *
+          openmc::cos(phi));
       // l = 10, m = 2
       rn[i + 12] = 0.012974982402692 * (w2m1) *
-                   ((2078505.0 / 128.0) * std::pow(w, 8) -
-                     765765.0 / 32.0 * std::pow(w, 6) +
-                     (675675.0 / 64.0) * std::pow(w, 4) -
+                   ((2078505.0 / 128.0) * openmc::pow(w, 8) -
+                     765765.0 / 32.0 * openmc::pow(w, 6) +
+                     (675675.0 / 64.0) * openmc::pow(w, 4) -
                      45045.0 / 32.0 * w * w + 3465.0 / 128.0) *
-                   std::cos(2. * phi);
+                   openmc::cos(2. * phi);
       // l = 10, m = 3
       rn[i + 13] =
-        -(0.00127230170115096 * std::pow(w2m1, 1.5) *
-          ((2078505.0 / 16.0) * std::pow(w, 7) -
-            2297295.0 / 16.0 * std::pow(w, 5) +
-            (675675.0 / 16.0) * std::pow(w, 3) - 45045.0 / 16.0 * w) *
-          std::cos(3. * phi));
+        -(0.00127230170115096 * openmc::pow(w2m1, 1.5) *
+          ((2078505.0 / 16.0) * openmc::pow(w, 7) -
+            2297295.0 / 16.0 * openmc::pow(w, 5) +
+            (675675.0 / 16.0) * openmc::pow(w, 3) - 45045.0 / 16.0 * w) *
+          openmc::cos(3. * phi));
       // l = 10, m = 4
       rn[i + 14] = 0.000128521880085575 * w2m1 * w2m1 *
-                   ((14549535.0 / 16.0) * std::pow(w, 6) -
-                     11486475.0 / 16.0 * std::pow(w, 4) +
+                   ((14549535.0 / 16.0) * openmc::pow(w, 6) -
+                     11486475.0 / 16.0 * openmc::pow(w, 4) +
                      (2027025.0 / 16.0) * w * w - 45045.0 / 16.0) *
-                   std::cos(4.0 * phi);
+                   openmc::cos(4.0 * phi);
       // l = 10, m = 5
       rn[i + 15] =
-        -(1.35473956745817e-5 * std::pow(w2m1, 2.5) *
-          ((43648605.0 / 8.0) * std::pow(w, 5) -
-            11486475.0 / 4.0 * std::pow(w, 3) + (2027025.0 / 8.0) * w) *
-          std::cos(5.0 * phi));
+        -(1.35473956745817e-5 * openmc::pow(w2m1, 2.5) *
+          ((43648605.0 / 8.0) * openmc::pow(w, 5) -
+            11486475.0 / 4.0 * openmc::pow(w, 3) + (2027025.0 / 8.0) * w) *
+          openmc::cos(5.0 * phi));
       // l = 10, m = 6
-      rn[i + 16] = 1.51464488232257e-6 * std::pow(w2m1, 3) *
-                   ((218243025.0 / 8.0) * std::pow(w, 4) -
+      rn[i + 16] = 1.51464488232257e-6 * openmc::pow(w2m1, 3) *
+                   ((218243025.0 / 8.0) * openmc::pow(w, 4) -
                      34459425.0 / 4.0 * w * w + 2027025.0 / 8.0) *
-                   std::cos(6.0 * phi);
+                   openmc::cos(6.0 * phi);
       // l = 10, m = 7
       rn[i + 17] =
-        -(1.83677671621093e-7 * std::pow(w2m1, 3.5) *
-          ((218243025.0 / 2.) * std::pow(w, 3) - 34459425.0 / 2. * w) *
-          std::cos(7.0 * phi));
+        -(1.83677671621093e-7 * openmc::pow(w2m1, 3.5) *
+          ((218243025.0 / 2.) * openmc::pow(w, 3) - 34459425.0 / 2. * w) *
+          openmc::cos(7.0 * phi));
       // l = 10, m = 8
-      rn[i + 18] = 2.49953651452314e-8 * std::pow(w2m1, 4) *
+      rn[i + 18] = 2.49953651452314e-8 * openmc::pow(w2m1, 4) *
                    ((654729075.0 / 2.) * w * w - 34459425.0 / 2.) *
-                   std::cos(8.0 * phi);
+                   openmc::cos(8.0 * phi);
       // l = 10, m = 9
-      rn[i + 19] =
-        -(2.65478475211798 * w * std::pow(w2m1, 4.5) * std::cos(9.0 * phi));
+      rn[i + 19] = -(
+        2.65478475211798 * w * openmc::pow(w2m1, 4.5) * openmc::cos(9.0 * phi));
       // l = 10, m = 10
-      rn[i + 20] = 0.593627917136573 * std::pow(w2m1, 5) * std::cos(10.0 * phi);
+      rn[i + 20] =
+        0.593627917136573 * openmc::pow(w2m1, 5) * openmc::cos(10.0 * phi);
     }
   }
 }
@@ -664,8 +685,8 @@ void calc_zn(int n, double rho, double phi, double zn[])
   // sin(nx) = 2 cos(x) sin((n-1)x) - sin((n-2)x)
   // cos(nx) = 2 cos(x) cos((n-1)x) - cos((n-2)x)
 
-  double sin_phi = std::sin(phi);
-  double cos_phi = std::cos(phi);
+  double sin_phi = openmc::sin(phi);
+  double cos_phi = openmc::cos(phi);
 
   vector<double> sin_phi_vec(n + 1); // Sin[n * phi]
   vector<double> cos_phi_vec(n + 1); // Cos[n * phi]
@@ -690,7 +711,7 @@ void calc_zn(int n, double rho, double phi, double zn[])
 
   // Fill the main diagonal first (Eq 3.9 in Chong)
   for (int p = 0; p <= n; p++) {
-    zn_mat[p][p] = std::pow(rho, p);
+    zn_mat[p][p] = openmc::pow(rho, p);
   }
 
   // Fill the 2nd diagonal (Eq 3.10 in Chong)
@@ -781,8 +802,8 @@ Direction rotate_angle(
   }
 
   // Precompute factors to save flops
-  double sinphi = std::sin(phi_);
-  double cosphi = std::cos(phi_);
+  double sinphi = openmc::sin(phi_);
+  double cosphi = openmc::cos(phi_);
   double a = std::sqrt(std::fmax(0., 1. - mu * mu));
   double b = std::sqrt(std::fmax(0., 1. - u.z * u.z));
 
@@ -933,7 +954,7 @@ double exprel(double x)
   if (std::abs(x) < 1e-16)
     return 1.0;
   else {
-    return std::expm1(x) / x;
+    return openmc::expm1(x) / x;
   }
 }
 
@@ -942,7 +963,7 @@ double log1prel(double x)
   if (std::abs(x) < 1e-16)
     return 1.0;
   else {
-    return std::log1p(x) / x;
+    return openmc::log1p(x) / x;
   }
 }
 

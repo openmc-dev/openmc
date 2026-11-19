@@ -8,6 +8,7 @@
 #include "openmc/tensor.h"
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/math.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
@@ -232,11 +233,12 @@ void KalbachMann::sample(
 
   // Sampled correlated angle from Kalbach-Mann parameters
   if (prn(seed) > km_r) {
-    double T = uniform_distribution(-1., 1., seed) * std::sinh(km_a);
-    mu = std::log(T + std::sqrt(T * T + 1.0)) / km_a;
+    double T = uniform_distribution(-1., 1., seed) * openmc::sinh(km_a);
+    mu = openmc::log(T + std::sqrt(T * T + 1.0)) / km_a;
   } else {
     double r1 = prn(seed);
-    mu = std::log(r1 * std::exp(km_a) + (1.0 - r1) * std::exp(-km_a)) / km_a;
+    mu = openmc::log(r1 * openmc::exp(km_a) + (1.0 - r1) * openmc::exp(-km_a)) /
+         km_a;
   }
 }
 double KalbachMann::sample_energy_and_pdf(
@@ -246,8 +248,8 @@ double KalbachMann::sample_energy_and_pdf(
   sample_params(E_in, E_out, km_a, km_r, seed);
 
   // https://docs.openmc.org/en/latest/methods/neutron_physics.html#equation-KM-pdf-angle
-  return km_a / (2 * std::sinh(km_a)) *
-         (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu));
+  return km_a / (2 * openmc::sinh(km_a)) *
+         (openmc::cosh(km_a * mu) + km_r * openmc::sinh(km_a * mu));
 }
 
 } // namespace openmc

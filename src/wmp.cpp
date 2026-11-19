@@ -4,6 +4,7 @@
 #include "openmc/cross_sections.h"
 #include "openmc/error.h" // for writing messages
 #include "openmc/hdf5_interface.h"
+#include "openmc/math.h"
 #include "openmc/math_functions.h"
 #include "openmc/nuclide.h"
 
@@ -209,7 +210,8 @@ std::tuple<double, double, double> WindowedMultipole::evaluate_deriv(
       sig_f += (data_(i_pole, MP_RF) * w_val).real();
     }
   }
-  double norm = -0.5 * sqrt_awr_ / std::sqrt(K_BOLTZMANN) * std::pow(T, -1.5);
+  double norm =
+    -0.5 * sqrt_awr_ / std::sqrt(K_BOLTZMANN) * openmc::pow(T, -1.5);
   sig_s *= norm;
   sig_a *= norm;
   sig_f *= norm;
@@ -288,8 +290,8 @@ void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
     erf_beta = 1.;
     exp_m_beta2 = 0.;
   } else {
-    erf_beta = std::erf(beta);
-    exp_m_beta2 = std::exp(-beta * beta);
+    erf_beta = openmc::erf(beta);
+    exp_m_beta2 = openmc::exp(-beta * beta);
   }
 
   // Assume that, for sure, we'll use a second order (1/E, 1/V, const)

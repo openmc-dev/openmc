@@ -13,6 +13,7 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/math.h"
 #include "openmc/math_functions.h"
 #include "openmc/nuclide.h"
 #include "openmc/search.h"
@@ -241,7 +242,7 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
   for (int i = 0; i < energy_bins_.size() - 1; ++i) {
     double e_min = std::max(energy_bins_[i + 1], 1e-5);
     double e_max = energy_bins_[i];
-    double alpha = 1.0 / (C_LIGHT * std::log(e_max / e_min));
+    double alpha = 1.0 / (C_LIGHT * openmc::log(e_max / e_min));
     double k_max = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_max);
     double k_min = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_min);
     double inv_v =

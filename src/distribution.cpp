@@ -12,6 +12,7 @@
 #include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/math.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
@@ -290,8 +291,8 @@ PowerLaw::PowerLaw(pugi::xml_node node)
   const double b = params.at(1);
   const double n = params.at(2);
 
-  offset_ = std::pow(a, n + 1);
-  span_ = std::pow(b, n + 1) - offset_;
+  offset_ = openmc::pow(a, n + 1);
+  span_ = openmc::pow(b, n + 1) - offset_;
   ninv_ = 1 / (n + 1);
 
   read_bias_from_xml(node);
@@ -306,13 +307,13 @@ double PowerLaw::evaluate(double x) const
   } else {
     int pwr = n() + 1;
     double norm = pwr / span_;
-    return norm * std::pow(std::fabs(x), n());
+    return norm * openmc::pow(std::fabs(x), n());
   }
 }
 
 double PowerLaw::sample_unbiased(uint64_t* seed) const
 {
-  return std::pow(offset_ + prn(seed) * span_, ninv_);
+  return openmc::pow(offset_ + prn(seed) * span_, ninv_);
 }
 
 //==============================================================================
@@ -333,8 +334,8 @@ double Maxwell::sample_unbiased(uint64_t* seed) const
 
 double Maxwell::evaluate(double x) const
 {
-  double c = (2.0 / SQRT_PI) * std::pow(theta_, -1.5);
-  return c * std::sqrt(x) * std::exp(-x / theta_);
+  double c = (2.0 / SQRT_PI) * openmc::pow(theta_, -1.5);
+  return c * std::sqrt(x) * openmc::exp(-x / theta_);
 }
 
 //==============================================================================
@@ -361,9 +362,9 @@ double Watt::sample_unbiased(uint64_t* seed) const
 
 double Watt::evaluate(double x) const
 {
-  double c =
-    2.0 / (std::sqrt(PI * b_) * std::pow(a_, 1.5) * std::exp(a_ * b_ / 4.0));
-  return c * std::exp(-x / a_) * std::sinh(std::sqrt(b_ * x));
+  double c = 2.0 / (std::sqrt(PI * b_) * openmc::pow(a_, 1.5) *
+                     openmc::exp(a_ * b_ / 4.0));
+  return c * openmc::exp(-x / a_) * openmc::sinh(std::sqrt(b_ * x));
 }
 
 //==============================================================================
@@ -450,8 +451,8 @@ double Normal::evaluate(double x) const
 
   // Standard normal PDF value
   double pdf = (1.0 / (std::sqrt(2.0 * PI) * std_dev_)) *
-               std::exp(-std::pow((x - mean_value_), 2.0) /
-                        (2.0 * std::pow(std_dev_, 2.0)));
+               openmc::exp(-openmc::pow((x - mean_value_), 2.0) /
+                           (2.0 * openmc::pow(std_dev_, 2.0)));
 
   // Apply normalization for truncation
   return pdf * norm_factor_;
@@ -521,15 +522,15 @@ void Tabular::init(
       } else if (interp_ == Interpolation::lin_lin) {
         c_[i] = c_[i - 1] + 0.5 * (p_[i - 1] + p_[i]) * (x_[i] - x_[i - 1]);
       } else if (interp_ == Interpolation::log_lin) {
-        double m = std::log(p_[i] / p_[i - 1]) / (x_[i] - x_[i - 1]);
+        double m = openmc::log(p_[i] / p_[i - 1]) / (x_[i] - x_[i - 1]);
         c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]) *
                               exprel(m * (x_[i] - x_[i - 1]));
       } else if (interp_ == Interpolation::log_log) {
-        double m = std::log((x_[i] * p_[i]) / (x_[i - 1] * p_[i - 1])) /
-                   std::log(x_[i] / x_[i - 1]);
+        double m = openmc::log((x_[i] * p_[i]) / (x_[i - 1] * p_[i - 1])) /
+                   openmc::log(x_[i] / x_[i - 1]);
         c_[i] = c_[i - 1] + x_[i - 1] * p_[i - 1] *
-                              std::log(x_[i] / x_[i - 1]) *
-                              exprel(m * std::log(x_[i] / x_[i - 1]));
+                              openmc::log(x_[i] / x_[i - 1]) *
+                              exprel(m * openmc::log(x_[i] / x_[i - 1]));
       } else {
         UNREACHABLE();
       }
@@ -585,7 +586,7 @@ double Tabular::sample_unbiased(uint64_t* seed) const
     double x_i1 = x_[i + 1];
     double p_i1 = p_[i + 1];
 
-    double m = std::log(p_i1 / p_i) / (x_i1 - x_i);
+    double m = openmc::log(p_i1 / p_i) / (x_i1 - x_i);
     double f = (c - c_i) / p_i;
     return x_i + f * log1prel(m * f);
   } else if (interp_ == Interpolation::log_log) {
@@ -593,9 +594,10 @@ double Tabular::sample_unbiased(uint64_t* seed) const
     double x_i1 = x_[i + 1];
     double p_i1 = p_[i + 1];
 
-    double m = std::log((x_i1 * p_i1) / (x_i * p_i)) / std::log(x_i1 / x_i);
+    double m =
+      openmc::log((x_i1 * p_i1) / (x_i * p_i)) / openmc::log(x_i1 / x_i);
     double f = (c - c_i) / (p_i * x_i);
-    return x_i * std::exp(f * log1prel(m * f));
+    return x_i * openmc::exp(f * log1prel(m * f));
   } else {
     UNREACHABLE();
   }

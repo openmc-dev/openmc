@@ -6,6 +6,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/math.h"
 #include "openmc/random_ray/random_ray.h"
 #include "openmc/surface.h"
 
@@ -208,7 +209,7 @@ RotationalPeriodicBC::RotationalPeriodicBC(
   // (n1×n2)·a = |n1||n2|sin(θ) and n1·n2 = |n1||n2|cos(θ), where a is the axis
   // of rotation.
   auto c = norm1.cross(norm2);
-  angle_ = std::atan2(c.dot(ax), norm1.dot(norm2));
+  angle_ = openmc::atan2(c.dot(ax), norm1.dot(norm2));
 
   // If the normals point in the same general direction, the surface sense
   // should change when crossing the boundary
@@ -234,8 +235,8 @@ void RotationalPeriodicBC::handle_particle(
   // Rotate the particle's position and direction.
   Position r = p.r();
   Direction u = p.u();
-  double cos_theta = std::cos(angle_);
-  double sin_theta = std::sin(angle_);
+  double cos_theta = openmc::cos(angle_);
+  double sin_theta = openmc::sin(angle_);
 
   Position new_r;
   new_r[zero_axis_idx_] = r[zero_axis_idx_];

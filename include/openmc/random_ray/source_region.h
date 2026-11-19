@@ -343,9 +343,9 @@ public:
 }; // class SourceRegionHandle
 
 //! Every per-region scalar lives here so that it is carried automatically by
-//! the raw-byte MPI transfer in DecompositionMap::send_sr_data(). When adding
-//! a per-region field, either put it in this struct, or handle it explicitly
-//! in ALL FOUR of: send_sr_data(), receive_sr_data(),
+//! the raw-byte MPI transfer of DecompositionMap::transfer_sr_fields(). When
+//! adding a per-region field, either put it in this struct, or handle it
+//! explicitly in ALL OF: DecompositionMap::transfer_sr_fields(),
 //! SourceRegion(const SourceRegionHandle&), and
 //! SourceRegionContainer::push_back(). Anything missed is silently reset to
 //! its default every time load balancing rebuilds a rank's container.

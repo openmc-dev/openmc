@@ -16,6 +16,10 @@ namespace mpi {
 extern DecompositionMap decomp_map;
 } // namespace mpi
 
+// What DecompositionMap::transfer_sr_fields() does with each field of a source
+// region: only count its bytes, copy it into a buffer, or copy it back out
+enum class SRTransfer { SIZE, PACK, UNPACK };
+
 class DecompositionMap {
 public:
   //----------------------------------------------------------------------------
@@ -43,13 +47,13 @@ public:
   bool any_discovered_source_regions(
     ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
       discovered_source_regions);
-#ifdef OPENMC_MPI
-  // Post the sends for one source region. If `pending` is given, the requests
-  // are appended to it and the caller is responsible for waiting on them;
-  // otherwise this call blocks until the sends complete locally.
-  void send_sr_data(int receiver, SourceRegion& sr_send,
-    vector<MPI_Request>* pending = nullptr);
-#endif
+  // Transfer of source regions between ranks as fixed-size packed records.
+  // transfer_sr_fields() lists the fields once and, depending on the mode,
+  // packs them into buf, unpacks them from buf, or only measures the record;
+  // it returns the record size in bytes.
+  size_t transfer_sr_fields(SourceRegion& sr, char* buf, SRTransfer mode) const;
+  // Send / receive one source region (one blocking message)
+  void send_sr_data(int receiver, SourceRegion& sr_send);
   void receive_sr_data(int sender, SourceRegion& sr_recv);
 
   // Methods for balancing the load between ranks
@@ -125,6 +129,7 @@ private:
   double max_domain_length_;
   bool is_linear_;
   bool is_adaptive_;
+  size_t sr_record_bytes_ {0}; //!< Bytes per transferred source region
 
 }; // class DecompositionMap
 

@@ -241,6 +241,26 @@ def make_model(case):
     "case", ['regular', 'radial', 'xdg-moab', 'xdg-libmesh',
              'xdg-libmesh-unnormalized'])
 def test_random_ray_source_region_meshes(case, capfd):
+    """Source region meshes that cover only part of their cells, with tallies
+    and weight windows on them. What each part of the model guards:
+
+    - Meshes over part of a box, in two parts, or short of it by a sliver:
+      what is outside of a mesh is attenuated, as one more bin, in its place
+      along the ray.
+    - The point source outside of the meshes: it is not dropped.
+    - The void box with a mesh nowhere near it: its flux is tallied, and the
+      mesh is warned about, once.
+    - radial: cylindrical and spherical meshes that do not span all angles
+      find tracks that start outside of them.
+    - xdg-*: subdivision through XDG, with mesh tallies through XDG and
+      through the native interface, and weight windows through the native
+      one.
+    - Volumes that differ and flipped node order: weight windows and Exodus
+      output are divided by volume once, and volumes are positive.
+    - The cases differ in whether flux tallies are normalized by volume, and
+      xdg-libmesh generates FW-CADIS weight windows, which writes the forward
+      Exodus file.
+    """
     if not all(openmc.lib.feature_enabled(f) for f in FEATURES.get(case, [])):
         pytest.skip(f"{case} is not enabled.")
     # A ray handed to another rank restarts on a bin boundary. On a radial

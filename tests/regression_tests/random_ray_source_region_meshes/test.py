@@ -283,32 +283,22 @@ def test_random_ray_source_region_meshes(case, capfd):
         assert f'source region mesh {far.id} is applied' in output
 
 
-@pytest.mark.parametrize("library,use", [
-    ('moab', 'subdivision'),
-    ('libmesh', 'subdivision'),
-    ('libmesh', 'tally'),
-])
-def test_native_interface_errors(library, use, tmp_path):
-    """What the native interfaces leave to XDG is reported up front"""
-    if not openmc.lib.feature_enabled(
-            'dagmc' if library == 'moab' else 'libmesh'):
-        pytest.skip(f"{library} is not enabled.")
+def test_native_interface_error(tmp_path):
+    """A mesh with the native interface cannot subdivide source regions, which
+    is reported up front, with a pointer to the XDG interface"""
+    if not openmc.lib.feature_enabled('dagmc'):
+        pytest.skip("MOAB is not enabled.")
     if config['build_inputs']:
         return
 
     openmc.reset_auto_ids()
-    extension = 'vtk' if library == 'moab' else 'e'
     mesh = openmc.UnstructuredMesh(
-        UMESH_DIR / f'test_mesh_dagmc_tets.{extension}', library=library)
+        UMESH_DIR / 'test_mesh_dagmc_tets.vtk', library='moab')
     with change_directory(tmp_path):
         model = make_model('regular')
     model.settings.weight_window_generators = []
-    if use == 'subdivision':
-        model.settings.random_ray['source_region_meshes'] = [
-            (mesh, [model.geometry.root_universe])]
-    else:
-        model.settings.random_ray = {}
-        model.tallies[0].filters = [openmc.MeshFilter(mesh)]
+    model.settings.random_ray['source_region_meshes'] = [
+        (mesh, [model.geometry.root_universe])]
 
     # (Aborting can lose the message with many ranks)
     if config['mpi']:

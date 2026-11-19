@@ -277,6 +277,7 @@ def test_mesh_filter_identity():
     other_mesh.upper_right = (12., 12., 12.)
     other = openmc.MeshFilter(other_mesh)
 
+    # ensure that the original filter is the same as itself
     assert original == same
     assert hash(original) == hash(same)
     assert original.is_subset(same)
@@ -285,12 +286,18 @@ def test_mesh_filter_identity():
         assert not original.is_subset(different)
         assert not different.is_subset(original)
 
+        # ensure that the different filters are considered equal to themselves
+        assert different == different
+        assert hash(different) == hash(different)
+        assert different.is_subset(different)
+
 
 def test_transformed_mesh_filters_export():
     mesh = openmc.RegularMesh()
     mesh.lower_left = (-1., -1., -1.)
     mesh.upper_right = (1., 1., 1.)
     mesh.dimension = (2, 3, 4)
+    # generate three filters, one original, one translated, and one rotated
     filters = [openmc.MeshFilter(mesh) for _ in range(3)]
     filters[1].translation = (3., 0., 0.)
     filters[2].rotation = (0., 0., 90.)
@@ -299,8 +306,11 @@ def test_transformed_mesh_filters_export():
 
     elem = tallies.to_xml_element()
 
+    # ensure that each mesh filter is represented in the XML
     assert len(elem.findall('filter')) == 3
     assert len({t.find('filters').text for t in elem.findall('tally')}) == 3
+    # ensure that merging tallies does not remove any tallies due to the
+    # filter transformations
     tallies.merge_tallies()
     assert len(tallies) == 3
 

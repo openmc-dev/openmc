@@ -48,6 +48,15 @@ public:
   tensor::Tensor<int> gmax;       // maximum outgoing group
   tensor::Tensor<double> scattxs; // Isotropic Sigma_{s,g_{in}}
 
+  //! \brief Sets a multiplicity that is the same for every outgoing group.
+  //!
+  //! Keeps the per-event weight multiplier used by sample() and get_xs()
+  //! consistent with the new multiplicity.
+  //!
+  //! @param gin Incoming energy group.
+  //! @param value Multiplicity (nu-scatter / scatter) of group gin.
+  void set_multiplicity(int gin, double value);
+  
   //! \brief Calculates the value of normalized f(mu).
   //!
   //! The value of f(mu) is normalized as in the integral of f(mu)dmu across

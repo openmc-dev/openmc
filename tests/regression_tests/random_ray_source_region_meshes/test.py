@@ -91,13 +91,8 @@ def write_tets(case):
     return 'tets.vtk', 'flipped_tets.vtk'
 
 
-def make_model(case):
-    """A random ray model of a row of boxes along x, with a mesh over part of
-    each, which rays leave and enter. The only source is a point outside of the
-    meshes, with linear sources and weight windows on one of the meshes. A
-    tally on a mesh counts only what that mesh subdivides, as
-    otherwise the bin of a source region would depend on where a ray found it
-    first."""
+def make_materials():
+    """Write a one-group library and return its material and the materials"""
     groups = openmc.mgxs.EnergyGroups([1e-5, 20.0e6])
     xsdata = openmc.XSdata('mat', groups)
     xsdata.order = 0
@@ -112,6 +107,17 @@ def make_model(case):
     mat.add_macroscopic(openmc.Macroscopic('mat'))
     materials = openmc.Materials([mat])
     materials.cross_sections = 'mgxs.h5'
+    return mat, materials
+
+
+def make_model(case):
+    """A random ray model of a row of boxes along x, with a mesh over part of
+    each, which rays leave and enter. The only source is a point outside of the
+    meshes, with linear sources and weight windows on one of the meshes. A
+    tally on a mesh counts only what that mesh subdivides, as
+    otherwise the bin of a source region would depend on where a ray found it
+    first."""
+    mat, materials = make_materials()
 
     x_walls = ([-W, W, W + 1.0] if case.startswith('xdg')
                else [-W, W, 3.0 * W, 5.0 * W])
@@ -291,3 +297,68 @@ def test_native_interface_errors(library, use, tmp_path):
         mpi_args, message = None, 'XDG interface'
     with pytest.raises(RuntimeError, match=message):
         model.run(cwd=tmp_path, openmc_exec=config['exe'], mpi_args=mpi_args)
+
+
+def make_hand_off_model():
+    """A lattice whose plane lies just before the surface of its cell, with a
+    mesh plane between the two. A ray through the first tile heads for that
+    surface, as the lattice plane is closer by less than the tolerance of the
+    distance to a boundary, and so runs past the lattice plane, where the mesh
+    trace gives it a piece. With two ranks, the subdomains meet at x = 0 until
+    they are rebalanced after the first batch, so that piece, at x = 0.5, is on
+    the other rank's side."""
+    mat, materials = make_materials()
+    gap = 1.0e-6
+    tile = openmc.Universe(cells=[openmc.Cell(fill=mat)])
+    lattice = openmc.RectLattice()
+    lattice.lower_left = (-2.0, -0.5, -0.5)
+    lattice.pitch = (2.5 - gap, 1.0, 1.0)
+    lattice.universes = [[[tile, tile]]]
+    planes = [openmc.XPlane(-2.0, boundary_type='reflective'),
+              openmc.XPlane(0.5),
+              openmc.XPlane(2.0, boundary_type='reflective')]
+    sides = -openmc.model.RectangularPrism(
+        1.0, 1.0, axis='x', boundary_type='reflective')
+    cells = [openmc.Cell(fill=lattice, region=+planes[0] & -planes[1] & sides),
+             openmc.Cell(fill=mat, region=+planes[1] & -planes[2] & sides)]
+    geometry = openmc.Geometry(cells)
+
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = [-2.0, 0.5 - gap / 2.0, 2.0]
+    mesh.y_grid = [-0.5, 0.5]
+    mesh.z_grid = [-0.5, 0.5]
+
+    settings = openmc.Settings()
+    settings.energy_mode = 'multi-group'
+    settings.run_mode = 'fixed source'
+    settings.batches = 1
+    settings.inactive = 0
+    settings.particles = 30
+    # (One lost ray stops the run)
+    settings.max_lost_particles = 1
+    settings.random_ray['distance_active'] = 20.0
+    settings.random_ray['distance_inactive'] = 4.0
+    settings.random_ray['ray_source'] = openmc.IndependentSource(
+        space=openmc.stats.Box((-2.0, -0.5, -0.5), (2.0, 0.5, 0.5)))
+    settings.random_ray['source_region_meshes'] = [
+        (mesh, [geometry.root_universe])]
+    settings.source = openmc.IndependentSource(
+        energy=openmc.stats.Discrete([1.0e6], [1.0]),
+        constraints={'domains': [mat]})
+
+    return openmc.Model(geometry, materials, settings)
+
+
+def test_hand_off_past_lattice_plane(tmp_path):
+    """A ray is not handed to another rank for a piece of its segment past a
+    lattice plane, from where it would be lost"""
+    if not config['mpi']:
+        pytest.skip("Domain decomposition needs MPI.")
+    if config['build_inputs']:
+        return
+
+    openmc.reset_auto_ids()
+    with change_directory(tmp_path):
+        model = make_hand_off_model()
+    model.run(cwd=tmp_path, openmc_exec=config['exe'],
+              mpi_args=[config['mpiexec'], '-n', config['mpi_np']])

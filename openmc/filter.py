@@ -866,7 +866,7 @@ class MeshFilter(Filter):
         self._rotation = None
 
     def _same_mesh(self, other):
-        return (type(self) is type(other)
+        return (type(self.mesh) is type(other.mesh)
                 and self.mesh.id == other.mesh.id
                 and np.array_equal(self.translation, other.translation)
                 and np.array_equal(self.rotation, other.rotation))

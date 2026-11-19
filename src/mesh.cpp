@@ -1480,11 +1480,17 @@ void Mesh::bins_crossed_with_outside(Position r0, Position r1,
     "Mesh {} does not report what is outside of it along a track.", id_));
 }
 
+//! Split the track from r0 to r1 into the mesh bins it crosses and the
+//! stretches outside of the mesh (bin C_NONE), in order along the track, with
+//! lengths as fractions of the track's length. This is bins_crossed with one
+//! addition: raytrace_mesh, which walks the track from one mesh surface to the
+//! next, calls the aggregator's outside() for each stretch it travels outside
+//! of the mesh (a no-op for its other callers). Here outside() records that
+//! stretch as C_NONE, merged with the one before when they are consecutive, and
+//! track() records each bin crossed inside the mesh, as in bins_crossed.
 void StructuredMesh::bins_crossed_with_outside(Position r0, Position r1,
   const Direction& u, vector<int>& bins, vector<double>& lengths) const
 {
-  // As for bins_crossed, but with each stretch outside of the mesh as C_NONE,
-  // where the trace finds it
   struct TrackAggregator {
     TrackAggregator(
       const StructuredMesh* _mesh, vector<int>& _bins, vector<double>& _lengths)

@@ -570,12 +570,14 @@ void post_chunked(bool send, char* buf, size_t bytes, int peer, int tag,
 // transferred but not allocated by the SourceRegion constructors would
 // otherwise be read or written out of bounds)
 template<typename V, typename F>
-void transfer_array(F& f, V& v, size_t n, const char* name)
+void transfer_array(F& f, V& v, size_t n)
 {
   if (v.size() != n) {
-    fatal_error(fmt::format("Source region field {} has {} entries instead of "
-                            "the {} expected for its transfer between ranks.",
-      name, v.size(), n));
+    fatal_error(fmt::format(
+      "A transferred source region array has {} entries instead of {}. Check "
+      "that the SourceRegion constructors allocate every field listed in "
+      "DecompositionMap::for_each_transfer_field().",
+      v.size(), n));
   }
   f(v.data(), n * sizeof(v[0]));
 }
@@ -587,22 +589,22 @@ void DecompositionMap::for_each_transfer_field(SR& sr, F&& f) const
   // order. Scalars ride along in ScalarSourceRegionFields.
   size_t ng = negroups_;
   f(&sr.scalars_, sizeof(ScalarSourceRegionFields));
-  transfer_array(f, sr.scalar_flux_old_, ng, "scalar_flux_old_");
-  transfer_array(f, sr.scalar_flux_new_, ng, "scalar_flux_new_");
-  transfer_array(f, sr.source_, ng, "source_");
+  transfer_array(f, sr.scalar_flux_old_, ng);
+  transfer_array(f, sr.scalar_flux_new_, ng);
+  transfer_array(f, sr.source_, ng);
   if (settings::run_mode == RunMode::FIXED_SOURCE)
-    transfer_array(f, sr.external_source_, ng, "external_source_");
-  transfer_array(f, sr.scalar_flux_final_, ng, "scalar_flux_final_");
+    transfer_array(f, sr.external_source_, ng);
+  transfer_array(f, sr.scalar_flux_final_, ng);
   if (is_linear_) {
-    transfer_array(f, sr.source_gradients_, ng, "source_gradients_");
-    transfer_array(f, sr.flux_moments_old_, ng, "flux_moments_old_");
-    transfer_array(f, sr.flux_moments_new_, ng, "flux_moments_new_");
-    transfer_array(f, sr.flux_moments_t_, ng, "flux_moments_t_");
+    transfer_array(f, sr.source_gradients_, ng);
+    transfer_array(f, sr.flux_moments_old_, ng);
+    transfer_array(f, sr.flux_moments_new_, ng);
+    transfer_array(f, sr.flux_moments_t_, ng);
   }
   if (is_linear_ && FlatSourceDomain::source_gradient_limiter_)
     f(&sr.extent_, sizeof(BoundingBox));
   if (is_adaptive_)
-    transfer_array(f, sr.scalar_flux_t_, ng, "scalar_flux_t_");
+    transfer_array(f, sr.scalar_flux_t_, ng);
 }
 
 size_t DecompositionMap::sr_record_bytes() const

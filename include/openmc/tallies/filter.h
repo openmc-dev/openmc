@@ -29,6 +29,7 @@ enum class FilterType {
   ENERGY,
   ENERGY_OUT,
   LEGENDRE,
+  LIFETIME_MOMENT,
   MATERIAL,
   MATERIALFROM,
   MESH,

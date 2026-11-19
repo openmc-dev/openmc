@@ -16,6 +16,10 @@ namespace mpi {
 extern DecompositionMap decomp_map;
 } // namespace mpi
 
+// What DecompositionMap::transfer_sr_fields() does with each field of a source
+// region: only count its bytes, copy it into a buffer, or copy it back out
+enum class SRTransfer { SIZE, PACK, UNPACK };
+
 class DecompositionMap {
 public:
   //----------------------------------------------------------------------------
@@ -44,15 +48,13 @@ public:
     ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
       discovered_source_regions);
   // Transfer of source regions between ranks as fixed-size packed records.
-  // for_each_transfer_field() lists the fields once; size, pack and unpack
-  // all follow it.
-  template<typename SR, typename F>
-  void for_each_transfer_field(SR& sr, F&& f) const;
+  // transfer_sr_fields() lists the fields once and, depending on the mode,
+  // packs them into buf, unpacks them from buf, or only measures the record;
+  // it returns the record size in bytes.
+  size_t transfer_sr_fields(SourceRegion& sr, char* buf, SRTransfer mode) const;
   size_t sr_record_bytes() const;
-  void pack_sr_data(const SourceRegion& sr, char* buf) const;
-  void unpack_sr_data(const char* buf, SourceRegion& sr) const;
   // Send / receive one source region (one blocking message)
-  void send_sr_data(int receiver, const SourceRegion& sr_send);
+  void send_sr_data(int receiver, SourceRegion& sr_send);
   void receive_sr_data(int sender, SourceRegion& sr_recv);
 
   // Methods for balancing the load between ranks

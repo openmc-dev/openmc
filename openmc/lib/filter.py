@@ -449,7 +449,7 @@ class MeshFilter(Filter):
         rot_size = rot_size.value
 
         if rot_size == 9:
-            return rotation_data[:rot_size].shape(3, 3)
+            return rotation_data[:rot_size].reshape(3, 3)
         elif rot_size in (0, 12):
             # If size is 0, rotation_data[9:] will be zeros. This indicates no
             # rotation and is the most straightforward way to always return

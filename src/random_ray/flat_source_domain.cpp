@@ -17,6 +17,7 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
 #include "openmc/weight_windows.h"
+#include "openmc/xdg.h"
 
 #include <cstdio>
 #include <numeric>
@@ -867,28 +868,18 @@ void FlatSourceDomain::compute_k_eff()
 // to a specific energy group within a specific source region), and the
 // inner dimension corresponds to the tallying task itself. Mechanically,
 // the mapping between FSRs and spatial filters is done by considering
-// the location of a single known ray midpoint that passed through the
-// FSR. I.e., during transport, the first ray to pass through a given FSR
-// will write down its midpoint for use with this function. This is a cheap
-// and easy way of mapping FSRs to spatial tally filters, but comes with
-// the downside of adding the restriction that spatial tally filters must
-// share boundaries with the physical geometry of the simulation (so as
-// not to subdivide any FSR). It is acceptable for a spatial tally region
-// to contain multiple FSRs, but not the other way around.
+// the location of a single known point in the FSR. I.e., during transport,
+// the ray segment that discovers a given FSR writes down a point on it for
+// use with this function. This is a cheap and easy way of mapping FSRs to
+// spatial tally filters, but comes with the downside of adding the
+// restriction that spatial tally filters must share boundaries with the
+// physical geometry of the simulation (so as not to subdivide any FSR). It is
+// acceptable for a spatial tally region to contain multiple FSRs, but not the
+// other way around.
 
 // TODO: In future work, it would be preferable to offer a more general
 // (but perhaps slightly more expensive) option for handling arbitrary
 // spatial tallies that would be allowed to subdivide FSRs.
-
-// Besides generating the mapping structure, this function also keeps track
-// of whether or not all flat source regions have been hit yet. This is
-// required, as there is no guarantee that all flat source regions will
-// be hit every iteration, such that in the first few iterations some FSRs
-// may not have a known position within them yet to facilitate mapping to
-// spatial tally filters. However, after several iterations, if all FSRs
-// have been hit and have had a tally map generated, then this status will
-// be passed back to the caller to alert them that this function doesn't
-// need to be called for the remainder of the simulation.
 
 // It takes as an argument the starting index in the source region array,
 // and it will operate from that index until the end of the array. This
@@ -899,30 +890,20 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
 {
   openmc::simulation::time_tallies.start();
 
-  // Tracks if we've generated a mapping yet for all source regions.
-  bool all_source_regions_mapped = true;
-
-// Attempt to generate mapping for all source regions
+// Generate the mapping for all source regions (every one has a position
+// from when it was created)
 #pragma omp parallel for
   for (int64_t sr = start_sr_id; sr < n_source_regions(); sr++) {
 
-    // If this source region has not been hit by a ray yet, then
-    // we aren't going to be able to map it, so skip it.
-    if (!source_regions_.position_recorded(sr)) {
-      all_source_regions_mapped = false;
-      continue;
-    }
-
-    // A particle located at the recorded midpoint of a ray
-    // crossing through this source region is used to estabilish
-    // the spatial location of the source region
+    // A particle located at the point checked to lie in this source region
+    // when it was created is used to establish the spatial location of the
+    // source region
     Particle p;
     p.r() = source_regions_.position(sr);
     p.r_last() = source_regions_.position(sr);
     p.u() = {1.0, 0.0, 0.0};
-    // The return value is not checked because the position was recorded by a
-    // ray that actually traversed this source region, so the search cannot
-    // fail.
+    // The return value is not checked because the position was checked to lie
+    // in this source region when it was created, so the search cannot fail.
     exhaustive_find_cell(p);
 
     // Loop over energy groups (so as to support energy filters)
@@ -978,8 +959,6 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
     }
   }
   openmc::simulation::time_tallies.stop();
-
-  mapped_all_tallies_ = all_source_regions_mapped;
 }
 
 // Set the volume accumulators to zero for all tallies
@@ -2444,6 +2423,26 @@ void FlatSourceDomain::apply_meshes()
     if (mesh_domain_map_.find(mesh_id) == mesh_domain_map_.end())
       continue;
 
+    // Rays are followed through unstructured meshes by XDG
+    bool through_xdg = false;
+#ifdef OPENMC_XDG_ENABLED
+    through_xdg = dynamic_cast<XDGMesh*>(mesh) != nullptr;
+#endif
+    if (dynamic_cast<UnstructuredMesh*>(mesh) && !through_xdg) {
+      fatal_error(fmt::format(
+        "Source region mesh {} is an unstructured mesh with the native "
+        "interface, which random ray subdivision does not support. Use the XDG "
+        "interface (set the interface attribute of the openmc.UnstructuredMesh "
+        "to 'xdg', which needs OpenMC built with XDG).",
+        mesh_id));
+    }
+
+    // Ray tracing through the mesh and locating source regions within it
+    // require the mesh's point-location acceleration structures, which XDG
+    // meshes only build on request (normally triggered by a mesh filter or
+    // weight windows referencing the mesh).
+    mesh->prepare_for_point_location();
+
     // Loop over domains associated with the mesh
     for (auto& domain : mesh_domain_map_[mesh_id]) {
       Source::DomainType domain_type = domain.first;
@@ -2517,8 +2516,8 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // bounding the current source region.
   //
   // To filter out this case, before we create the new source region, we double
-  // check that the actual starting point of this segment (r) is still in the
-  // same geometry source region that we started in. If an artifact is detected,
+  // check that a point on this segment (r) is still in the same geometry source
+  // region that we started in. If an artifact is detected,
   // we discard the segment (and attenuation through it) as it is not really a
   // valid source region and will have only an infinitessimally small cell
   // combined with the mesh bin. Thankfully, this is a fairly rare condition,
@@ -2577,6 +2576,10 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     discovered_source_regions_.emplace(sr_key, {negroups_, is_linear});
   SourceRegionHandle handle {*sr_ptr};
   handle.key() = sr_key;
+
+  // Tallies locate the source region by this point, which was just checked to
+  // lie in it
+  handle.position() = r + TINY_BIT * u;
 
   // Determine the material
   int gs_i_cell = gs.lowest_coord().cell();
@@ -2713,6 +2716,39 @@ int FlatSourceDomain::lookup_mesh_idx(int64_t sr) const
     mesh_idx = mesh_it->second;
   }
   return mesh_idx;
+}
+
+void FlatSourceDomain::warn_about_missed_meshes() const
+{
+  if (mesh_domain_map_.empty())
+    return;
+
+  vector<int> found(model::meshes.size(), 0);
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    const SourceRegionKey key = source_regions_.key(sr);
+    const int mesh_idx = lookup_mesh_idx(key.base_source_region_id);
+    if (mesh_idx != C_NONE && key.mesh_bin != C_NONE) {
+      found[mesh_idx] = 1;
+    }
+  }
+#ifdef OPENMC_MPI
+  MPI_Allreduce(MPI_IN_PLACE, found.data(), static_cast<int>(found.size()),
+    MPI_INT, MPI_MAX, mpi::intracomm);
+#endif
+  if (!mpi::master)
+    return;
+  for (int i = 0; i < model::meshes.size(); i++) {
+    const int32_t mesh_id = model::meshes[i]->id();
+    if (!found[i] && mesh_domain_map_.count(mesh_id)) {
+      const bool unstructured =
+        dynamic_cast<UnstructuredMesh*>(model::meshes[i].get());
+      warning(fmt::format(
+        "Rays found no part of the cells that source region mesh {} is applied "
+        "to inside of the mesh, so it subdivides nothing. Check its "
+        "position{}, and the domains it is applied to.",
+        mesh_id, unstructured ? " and its length multiplier" : ""));
+    }
+  }
 }
 
 // Determines the source region key that corresponds to a particular location in

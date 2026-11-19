@@ -1,6 +1,7 @@
 #include "openmc/xdg.h"
 
 #include <algorithm> // for remove_if
+#include <cmath>     // for abs
 #include <memory>    // for shared_ptr
 #include <string>    // for string
 #include <utility>   // for pair
@@ -112,6 +113,12 @@ void XDGMesh::initialize()
     xdg_->mesh_manager()->load_file(filename_);
     xdg_->mesh_manager()->init();
     xdg_->mesh_manager()->parse_metadata();
+
+    // A file with only surfaces, such as a DAGMC geometry, loads without error
+    if (xdg_->mesh_manager()->num_volume_elements() == 0) {
+      fatal_error(fmt::format(
+        "Mesh file \"{}\" for mesh {} has no volume elements", filename_, id_));
+    }
   }
 
   // Cache the number of volume element surfaces.
@@ -132,7 +139,13 @@ void XDGMesh::initialize()
 
 void XDGMesh::prepare_for_point_location()
 {
+  // A mesh can be used by several mesh filters, weight windows and random ray
+  // subdivision, which each prepare it; preparing XDG again would register
+  // its volumes and build its trees again
+  if (prepared_)
+    return;
   xdg_->prepare_raytracer();
+  prepared_ = true;
 }
 
 Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const
@@ -169,6 +182,90 @@ void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
     bins.push_back(mesh_id_to_bin(track_segment.first));
     lengths.push_back(track_segment.second * inv_length);
   }
+}
+
+//! Split the track from r0 to r1 into the mesh elements it crosses and the
+//! stretches outside of the mesh (bin C_NONE), in order along the track, with
+//! lengths as fractions of the track's length. The track is walked from its
+//! start, repeating two steps until its end is reached:
+//!  - If the current point is in no element, fire a ray against the mesh's
+//!    implicit complement to find where the track next enters the mesh. The
+//!    stretch up to there is outside of the mesh, as is the rest of the track
+//!    if it never enters.
+//!  - From the element there, walk the elements along the track until it
+//!    leaves the mesh or ends, recording each element crossed.
+//! The element that the last walk ended in is not taken again at the next
+//! lookup, so a point on its exit face, or a walk that got nowhere, does not
+//! repeat forever.
+void XDGMesh::bins_crossed_with_outside(Position r0, Position r1,
+  const Direction& u, vector<int>& bins, vector<double>& lengths) const
+{
+  xdg::Position r {r0.x, r0.y, r0.z};
+  xdg::Position r_end {r1.x, r1.y, r1.z};
+  if (length_multiplier_ > 0.0) {
+    r /= length_multiplier_;
+    r_end /= length_multiplier_;
+  }
+  xdg::Direction direction = r_end - r;
+  const double total = direction.length();
+  if (total == 0.0)
+    return;
+  direction /= total;
+
+  const auto add = [&](int bin, double length) {
+    bins.push_back(bin);
+    lengths.push_back(length / total);
+  };
+
+  // This is the loop of xdg::XDG::segments, which walks the elements from where
+  // the track enters the mesh each time, but does not say how far it skipped to
+  // get there. It can go once XDG does.
+  const auto& manager = xdg_->mesh_manager();
+  const xdg::MeshID complement = manager->implicit_complement();
+  std::vector<xdg::MeshID> hit_faces;
+  double distance = total;
+  xdg::MeshID last = xdg::ID_NONE;
+  do {
+    // A lookup on the face that the last walk left through can give that
+    // element again, as can one where a walk did not get anywhere
+    xdg::MeshID element = xdg_->find_element(r);
+    if (element == last)
+      element = xdg::ID_NONE;
+
+    if (element == xdg::ID_NONE) {
+      const auto hit = xdg_->ray_fire(complement, r + direction * xdg::TINY_BIT,
+        direction, xdg::INFTY, xdg::HitOrientation::EXITING, &hit_faces);
+      const double to_mesh = hit.first + xdg::TINY_BIT;
+      if (hit.second == xdg::ID_NONE || to_mesh >= distance) {
+        add(C_NONE, distance);
+        return;
+      }
+      add(C_NONE, to_mesh);
+      r += direction * to_mesh;
+      distance -= to_mesh;
+      element = manager->get_boundary_face_element(hit_faces.back());
+      hit_faces.clear();
+      if (element == xdg::ID_NONE) {
+        warning(fmt::format(
+          "A track enters mesh {} through a face with no element.", id_));
+        add(C_NONE, distance);
+        return;
+      }
+    }
+
+    const auto walk = manager->walk_elements(element, r, direction, distance);
+    double walked = 0.0;
+    for (const auto& [id, length] : walk) {
+      if (length > 0.0) {
+        add(mesh_id_to_bin(id), length);
+        walked += length;
+      }
+    }
+    last = walked > 0.0 ? walk.back().first : element;
+    r += direction * walked;
+    distance -= walked;
+    // (After a walk to the end of the track, what is left is roundoff)
+  } while (distance > xdg::TINY_BIT);
 }
 
 int XDGMesh::get_bin(Position r) const
@@ -259,7 +356,9 @@ std::vector<int> XDGMesh::connectivity(int id) const
 
 double XDGMesh::volume(int bin) const
 {
-  double vol = xdg_->mesh_manager()->element_volume(bin_to_mesh_id(bin));
+  // Positive whatever the element's node order
+  double vol =
+    std::abs(xdg_->mesh_manager()->element_volume(bin_to_mesh_id(bin)));
   if (length_multiplier_ > 0.0) {
     vol *= length_multiplier_ * length_multiplier_ * length_multiplier_;
   }

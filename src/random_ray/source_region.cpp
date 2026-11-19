@@ -22,7 +22,6 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     volume_t_(&sr.scalars_.volume_t_), volume_sq_(&sr.scalars_.volume_sq_),
     volume_sq_t_(&sr.scalars_.volume_sq_t_),
     volume_naive_(&sr.scalars_.volume_naive_),
-    position_recorded_(&sr.scalars_.position_recorded_),
     external_source_present_(&sr.scalars_.external_source_present_),
     position_(&sr.scalars_.position_), centroid_(&sr.scalars_.centroid_),
     centroid_iteration_(&sr.scalars_.centroid_iteration_),
@@ -95,7 +94,6 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
   scalars_.volume_sq_ = handle.volume_sq();
   scalars_.volume_sq_t_ = handle.volume_sq_t();
   scalars_.volume_naive_ = handle.volume_naive();
-  scalars_.position_recorded_ = handle.position_recorded();
   scalars_.position_ = handle.position();
   scalars_.centroid_ = handle.centroid();
   scalars_.centroid_iteration_ = handle.centroid_iteration();
@@ -218,7 +216,6 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   volume_sq_.push_back(sr.scalars_.volume_sq_);
   volume_sq_t_.push_back(sr.scalars_.volume_sq_t_);
   volume_naive_.push_back(sr.scalars_.volume_naive_);
-  position_recorded_.push_back(sr.scalars_.position_recorded_);
   external_source_present_.push_back(sr.scalars_.external_source_present_);
   position_.push_back(sr.scalars_.position_);
   volume_task_.push_back(sr.volume_task_);
@@ -285,7 +282,6 @@ void SourceRegionContainer::assign(
   volume_sq_.clear();
   volume_sq_t_.clear();
   volume_naive_.clear();
-  position_recorded_.clear();
   external_source_present_.clear();
   position_.clear();
   mesh_.clear();
@@ -352,7 +348,6 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.volume_sq_ = &volume_sq(sr);
   handle.volume_sq_t_ = &volume_sq_t(sr);
   handle.volume_naive_ = &volume_naive(sr);
-  handle.position_recorded_ = &position_recorded(sr);
   handle.external_source_present_ = &external_source_present(sr);
   handle.position_ = &position(sr);
   handle.volume_task_ = &volume_task(sr);

@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="mat">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="mat"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="1 -2 5 -6 7 -8" universe="1"/>
+    <cell id="2" material="1" region="2 -3 5 -6 7 -8" universe="1"/>
+    <cell id="3" material="void" region="3 -4 5 -6 7 -8" universe="1"/>
+    <surface id="1" type="x-plane" boundary="reflective" coeffs="-2.25"/>
+    <surface id="2" type="x-plane" coeffs="2.25"/>
+    <surface id="3" type="x-plane" coeffs="3.25"/>
+    <surface id="4" type="x-plane" boundary="reflective" coeffs="4.25"/>
+    <surface id="5" name="minimum y" type="y-plane" boundary="reflective" coeffs="-2.25"/>
+    <surface id="6" name="maximum y" type="y-plane" boundary="reflective" coeffs="2.25"/>
+    <surface id="7" name="minimum z" type="z-plane" boundary="reflective" coeffs="-2.25"/>
+    <surface id="8" name="maximum z" type="z-plane" boundary="reflective" coeffs="2.25"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>100</particles>
+    <batches>15</batches>
+    <inactive>5</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>-2.0 2.0 2.0</parameters>
+      </space>
+      <energy type="discrete">
+        <parameters>1000000.0 1.0</parameters>
+      </energy>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <weight_window_generators>
+      <weight_windows_generator>
+        <mesh>3</mesh>
+        <particle_type>neutron</particle_type>
+        <max_realizations>5</max_realizations>
+        <update_interval>1</update_interval>
+        <on_the_fly>true</on_the_fly>
+        <method>magic</method>
+      </weight_windows_generator>
+    </weight_window_generators>
+    <mesh id="3" type="unstructured" library="libmesh">
+      <filename>flipped_tets.e</filename>
+    </mesh>
+    <random_ray>
+      <distance_active>30.0</distance_active>
+      <distance_inactive>3.0</distance_inactive>
+      <ray_source>
+        <source type="independent" strength="1.0" particle="neutron">
+          <space type="box">
+            <parameters>-2.25 -2.25 -2.25 4.25 2.25 2.25</parameters>
+          </space>
+        </source>
+      </ray_source>
+      <source_shape>linear</source_shape>
+      <volume_normalized_flux_tallies>false</volume_normalized_flux_tallies>
+      <source_region_meshes>
+        <mesh id="2">
+          <domain id="1" type="cell"/>
+        </mesh>
+        <mesh id="4">
+          <domain id="2" type="cell"/>
+        </mesh>
+        <mesh id="1">
+          <domain id="3" type="cell"/>
+        </mesh>
+      </source_region_meshes>
+    </random_ray>
+    <mesh id="2" type="unstructured" library="libmesh" interface="xdg">
+      <filename>../../unstructured_mesh/test_mesh_dagmc_tets.e</filename>
+    </mesh>
+    <mesh id="4" type="unstructured" library="libmesh" interface="xdg" length_multiplier="8.0">
+      <filename>../../unstructured_mesh/test_mesh_dagmc_tets.e</filename>
+    </mesh>
+    <mesh id="1">
+      <dimension>2 2 2</dimension>
+      <lower_left>100.0 100.0 100.0</lower_left>
+      <upper_right>101.0 101.0 101.0</upper_right>
+    </mesh>
+  </settings>
+  <tallies>
+    <mesh id="5" type="unstructured" library="libmesh" interface="xdg">
+      <filename>flipped_tets.e</filename>
+    </mesh>
+    <mesh id="6" type="unstructured" library="libmesh" length_multiplier="8.0">
+      <filename>flipped_tets.e</filename>
+    </mesh>
+    <filter id="6" type="cell">
+      <bins>1 2 3</bins>
+    </filter>
+    <filter id="1" type="mesh">
+      <bins>2</bins>
+    </filter>
+    <filter id="2" type="mesh">
+      <bins>3</bins>
+    </filter>
+    <filter id="3" type="mesh">
+      <bins>5</bins>
+    </filter>
+    <filter id="4" type="cell">
+      <bins>2</bins>
+    </filter>
+    <filter id="5" type="mesh">
+      <bins>6</bins>
+    </filter>
+    <tally id="1">
+      <filters>6</filters>
+      <scores>flux total</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="2">
+      <filters>1</filters>
+      <scores>flux total</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="3">
+      <filters>2</filters>
+      <scores>flux total</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="4">
+      <filters>3</filters>
+      <scores>flux total</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="5">
+      <filters>4 5</filters>
+      <scores>flux total</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+  </tallies>
+</model>

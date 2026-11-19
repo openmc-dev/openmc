@@ -7,6 +7,7 @@
 #include "openmc/error.h"
 #include "openmc/mesh.h"
 #include "openmc/position.h"
+#include "openmc/settings.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -57,7 +58,11 @@ void MeshFilter::get_all_bins(
     u = u.rotate(rotation_);
   }
 
-  if (estimator != TallyEstimator::TRACKLENGTH) {
+  // The random ray solver maps each source region onto its mesh bin by placing
+  // a zero-length track at a point inside the region, so the match is a point
+  // lookup regardless of the estimator or the mesh type
+  if (estimator != TallyEstimator::TRACKLENGTH ||
+      settings::solver_type == SolverType::RANDOM_RAY) {
     auto bin = model::meshes[mesh_]->get_bin(r);
     if (bin >= 0) {
       match.bins_.push_back(bin);

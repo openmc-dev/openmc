@@ -1120,14 +1120,14 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
   domain->source_region_map_.clear();
 
   // Move the source region data to the new owners: one packed buffer per
-  // pair of ranks (fixed-size records, see sr_record_bytes()) instead of one
-  // message per field and region. Every rank already knows how many regions it
-  // receives from each sender (num_sr_receiving, from the broadcasts above), so
-  // all receives are posted first, then all sends, then one Waitall: no
-  // ordering between ranks is needed and nothing depends on message sizes. The
-  // number of messages is about the number of neighbouring subdomains, not ~10
-  // per region, which keeps MPI resource use small (posting tens of thousands
-  // of small messages made Open MPI's memory grow without bound).
+  // pair of ranks (fixed-size records, see sr_record_bytes()), sent in
+  // messages of at most MAX_MPI_MESSAGE_BYTES, instead of one message per
+  // field and region. Every rank already knows how many regions it receives
+  // from each sender (num_sr_receiving, from the broadcasts above), so all
+  // receives are posted first, then all sends, then one Waitall: no ordering
+  // between ranks is needed. The messages are few and large, which keeps MPI
+  // resource use small (posting tens of thousands of small messages made Open
+  // MPI's memory grow without bound).
   if (num_sr_receiving[mpi::rank] > 0) {
     fatal_error("Rank sends source regions to itself. Rank should not "
                 "receive source regions from itself.");

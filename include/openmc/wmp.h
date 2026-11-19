@@ -68,6 +68,22 @@ public:
   //!         fission cross sections in [b/K]
   std::tuple<double, double, double> evaluate_deriv(
     double E, double sqrtkT) const;
+    
+  //! function that returns derivative std::pair<int, std::vector<double>>
+  //! separate functions for poles and coefficients?
+  //! separate functions for curvefit coefficients?
+  //! this would make a total of 6!
+  std::pair<int, std::vector<double>> evaluate_pole_deriv_total(double E, double sqrtkT);
+
+  std::pair<int, std::vector<double>> evaluate_pole_deriv_scatter(double E, double sqrtkT);
+
+  std::pair<int, std::vector<double>> evaluate_pole_deriv_fission(double E, double sqrtkT);
+
+  std::pair<int, std::vector<double>> evaluate_fit_deriv_total(double E, double sqrtkT);
+
+  std::pair<int, std::vector<double>> evaluate_fit_deriv_scatter(double E, double sqrtkT);
+
+  std::pair<int, std::vector<double>> evaluate_fit_deriv_fission(double E, double sqrtkT);
 
   // Data members
   std::string name_;               //!< Name of nuclide

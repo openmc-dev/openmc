@@ -617,8 +617,8 @@ class MeshSource(SourceBase):
 
         # A source can be shared by several mesh elements. Scale each source
         # once so that all element strengths keep the same proportions.
-        unique_sources = set(self.sources)
-        for s in unique_sources:
+        unique_sources = {id(s): s for s in self.sources}
+        for s in unique_sources.values():
             s.strength *= strength / current_strength
 
     def normalize_source_strengths(self):

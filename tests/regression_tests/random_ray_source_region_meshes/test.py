@@ -263,12 +263,6 @@ def test_random_ray_source_region_meshes(case, capfd):
     """
     if not all(openmc.lib.feature_enabled(f) for f in FEATURES.get(case, [])):
         pytest.skip(f"{case} is not enabled.")
-    # A ray handed to another rank restarts on a bin boundary. On a radial
-    # surface of these meshes, going inward at a grazing angle, it misses its
-    # way out again, as find_r_crossing takes it to still be on the surface.
-    if config['mpi'] and case == 'radial':
-        pytest.skip("Radial crossings of restarted rays")
-
     with change_directory(case):
         openmc.reset_auto_ids()
         model = make_model(case)

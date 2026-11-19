@@ -106,6 +106,72 @@ bool Particle::create_secondary(
   }
   bank.time = time();
   bank_second_E() += bank.E;
+  
+  // sensitivity of neutron (or photon response in coupled run) to neutron data
+  if (type.transport_index() == 0) {        
+    
+    if (this->type().is_neutron()) {                             
+      // contribution of collision that birth this neutron to collision 
+      // sensitivity done later when score_col_sens() is called.
+      // then we'll update the cumulative_sensitivities() for secondaries
+      // score_collision_sensitivity(*this);        
+
+      // analog secondary neutron inherit transport/collision operator of parent neutron.    
+      ParticleData::thread_penalty_bank.push_back(this->cumulative_sensitivities());
+      bank.penalty_id = ParticleData::thread_penalty_bank.size() - 1; 
+      this->add_produced_neutron_id(bank.penalty_id);
+    }
+  }
+  
+  // sensitivity of photon response to neutron data
+  if (type.transport_index() == 1 || type.transport_index() == 2 || type.transport_index() == 3) {        
+    
+    if (this->type().is_neutron()) {      
+            
+      // implicit secondary photon inherit transport/collision operator of parent neutron.    
+      ParticleData::thread_penalty_bank.push_back(this->cumulative_sensitivities());
+      bank.penalty_id = ParticleData::thread_penalty_bank.size() - 1;      
+            
+      // contribution of birthed photon to production sensitivity
+      score_pprod_sensitivity(*this);
+      ParticleData::thread_direct_bank.push_back(this->pprod_sens());
+      bank.direct_id = ParticleData::thread_direct_bank.size() - 1;      
+      
+    } else {      
+          
+      if (this->last_penalty_id() != -1) {
+          
+        // secondary photon/electron/positron inherit transport operator which secondary 
+        // photon inherit from parent neutron.
+        bank.penalty_id = this->last_penalty_id();
+        bank.direct_id = this->last_direct_id();          
+      }
+    }
+  }
+  
+  // sensitivity of photon response to photon data
+  // if (!this->type().is_neutron()) { 
+  //   if (type.transport_index() == 1 || type.transport_index() == 2 || type.transport_index() == 3) {        
+  //     
+  //     if (this->type().is_photon()) {      
+  //             
+  //       // analog secondary photon/electron/positron inherit transport/collision operator of parent photon.    
+  //       ParticleData::thread_penalty_bank.push_back(this->reaction_sens());
+  //       bank.penalty_id = ParticleData::thread_penalty_bank.size() - 1;  
+  //       this->add_produced_photon_id(bank.penalty_id);      
+  //       
+  //     } else {      
+  //           
+  //       if (this->last_penalty_id() != -1) {
+  //           
+  //         // secondary photon/electron/positron inherit transport operator which secondary 
+  //         // photon/electron/positron inherit from parent electron/positron.
+  //         bank.penalty_id = this->last_penalty_id();          
+  //       }
+  //     }
+  //   }
+  // }
+  
   return true;
 }
 
@@ -140,6 +206,7 @@ void Particle::from_source(const SourceSite* src)
   zero_flux_derivs();
   
   initialize_cumulative_sensitivities();  
+  initialize_reaction_sens();  
   lifetime() = 0.0;
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
@@ -177,10 +244,50 @@ void Particle::from_source(const SourceSite* src)
     surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
   }
   
-  if (type().pdg_number() == PDG_NEUTRON) {
-    initialize_cum_sens();
-    initialize_pprod_sens();
+  if (type().pdg_number() == PDG_NEUTRON && settings::photon_transport) {    
+    initialize_pprod_sens();    
   }
+  
+  // sensitivity of photon response to neutron data
+  if (type().pdg_number() == PDG_PHOTON || 
+    type().pdg_number() == PDG_ELECTRON || type().pdg_number() == PDG_POSITRON) {
+    initialize_inherit_sens();
+    initialize_direct_sens(); 
+    
+    // retrieve sensitivity information of birthed photon/electron/positron
+    if (src->penalty_id >= 0) {    
+      this->inherit_sens() = ParticleData::thread_penalty_bank[src->penalty_id];
+      this->set_last_penalty_id(src->penalty_id);
+    }
+    if (src->direct_id >= 0) {    
+      this->direct_sens() = ParticleData::thread_direct_bank[src->direct_id];
+      this->set_last_direct_id(src->direct_id);
+    }   
+  }
+  
+  // analog production of secondary particles
+  // sensitivity of neutron (or photon response in coupled run) to neutron data
+  if (type().pdg_number() == PDG_NEUTRON) {
+    // cumulative sensitivities already initialized
+    
+    // retrieve sensitivity information of birthed secondary neutron
+    if (src->penalty_id >= 0) {    
+      this->cumulative_sensitivities() = ParticleData::thread_penalty_bank[src->penalty_id];
+      this->set_last_penalty_id(src->penalty_id);
+    }      
+  }
+  
+  // sensitivity of photon/electron/positron response to photon data
+  // if (type().pdg_number() == PDG_PHOTON || 
+  //   type().pdg_number() == PDG_ELECTRON || type().pdg_number() == PDG_POSITRON) {
+  //   // reaction_sens already initialized
+  //   
+  //   // retrieve sensitivity information of analog secondary photon/electron/positron
+  //   if (src->penalty_id >= 0) {    
+  //     this->reaction_sens() = ParticleData::thread_penalty_bank[src->penalty_id];
+  //     this->set_last_penalty_id(src->penalty_id);
+  //   }      
+  // }
   
 }
 
@@ -402,11 +509,12 @@ void Particle::event_collide()
   if (settings::collision_track) {
     collision_track_record(*this);
   }
-
+  
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
   if (!model::active_collision_tallies.empty())
+    // if (!type().is_neutron()) score_collision_sensitivity(*this); // Case B for photon heating sensitivity to photon data
     score_collision_tally(*this);
   if (!model::active_analog_tallies.empty()) {
     if (settings::run_CE) {
@@ -458,8 +566,8 @@ void Particle::event_collide()
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) {
     score_collision_derivative(*this);
-    score_collision_sensitivity(*this);  // Score cumulative sensitivity for sensitivity tallies.
-    // score_pprod_sensitivity(*this);
+    //if (type().is_neutron()) // Case A (default)
+    score_collision_sensitivity(*this);  // Score cumulative sensitivity for sensitivity tallies.      
   }
   
 #ifdef OPENMC_DAGMC_ENABLED

@@ -2456,6 +2456,14 @@ void score_tracklength_tally_general(
           }
         }
 
+        // Add a check to see if tally is a sensitivity tally, if so use special function
+        // check if sens_ != C_NONE
+        if (tally.sens_ != C_NONE) {          
+          score_collision_sensitivity_tally(p, i_tally, i*tally.scores_.size(), filter_index,
+            filter_weight, i_nuclide, atom_density, flux);
+          continue;
+        }
+        
         // TODO: consider replacing this "if" with pointers or templates
         if (settings::run_CE) {
           score_general_ce_nonanalog(p, i_tally, i * tally.scores_.size(),
@@ -2537,13 +2545,8 @@ void score_collision_tally(Particle& p)
   double flux = 0.0;
   if (p.type().is_neutron() || p.type().is_photon()) {
     flux = p.wgt_last() / p.macro_xs().total;
-  }
-    
-  if (p.type().is_neutron()) {
-    double value = p.wgt_last() / p.macro_xs().total;
-    p.set_neutron_flux_last(value);
-  }
-
+  }    
+  
   // Set 'none value for log union grid index
   int i_log_union = C_NONE;
 
@@ -2593,10 +2596,9 @@ void score_collision_tally(Particle& p)
 
         // Add a check to see if tally is a sensitivity tally, if so use special function
         // check if sens_ != C_NONE
-        if (tally.sens_ != C_NONE) {
-          double neutron_flux = p.neutron_flux_last();
+        if (tally.sens_ != C_NONE) {          
           score_collision_sensitivity_tally(p, i_tally, i*tally.scores_.size(), filter_index,
-            filter_weight, i_nuclide, atom_density, flux, neutron_flux);
+            filter_weight, i_nuclide, atom_density, flux);
           continue;
         }
         
@@ -2625,7 +2627,7 @@ void score_collision_tally(Particle& p)
 }
 
 void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index, int filter_index,
-  double filter_weight, int i_nuclide, double atom_density, double flux, double neutron_flux)
+  double filter_weight, int i_nuclide, double atom_density, double flux)
 {
   SensitivityTally& tally = dynamic_cast<SensitivityTally&>(*model::tallies[i_tally]);
   
@@ -3335,10 +3337,9 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
 
     case SCORE_EVENTS:
       // Simply count the number of scoring events
-      #pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
-      continue;
-
+      score = 1.0;
+      break;
+      
 
     case ELASTIC:
       if (tally.estimator_ == TallyEstimator::ANALOG) {
@@ -3385,6 +3386,10 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
         if (p.event_mt() != score_bin) continue;
         score = p.wgt_last() * flux;
       } else {
+        
+        if (!simulation::need_depletion_rx)
+          goto default_case;
+        
         int m;
         switch (score_bin) {
         case N_GAMMA: m = 0; break;
@@ -3460,6 +3465,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
       
 
     default:
+    default_case:
 
       // The default block is really only meant for redundant neutron reactions
       // (e.g. 444, 901)
@@ -3522,9 +3528,10 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
     if (score == 0.0) return;
     
     const auto& sens {model::tally_sens[tally.sens_]};
-    const auto cumulative_sensitivities = p.cumulative_sensitivities(tally.sens_);
-    const auto cum_sens = p.cum_sens(tally.sens_);
-    const auto pprod_sens = p.pprod_sens(tally.sens_);
+    const auto cumulative_sensitivities = p.cumulative_sensitivities(tally.sens_);        
+    const auto reaction_sens = p.reaction_sens(tally.sens_);        
+    const auto inherit_sens = p.inherit_sens(tally.sens_);
+    const auto direct_sens = p.direct_sens(tally.sens_);
     
     if (settings::run_mode == RunMode::EIGENVALUE) {
       
@@ -3606,49 +3613,38 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
     } else {      
       
       #pragma omp atomic
-      tally.denominator_ += score*filter_weight;
+      tally.denominator_ += score*filter_weight;      
       
-      // for neutron (or photon) only transport or for neutron (or photon) responses wrt to neutron (or photon) data respectively          
-      // if ((p.type().is_neutron() && !settings::photon_transport) || (p.type().is_photon() && !settings::neutron_transport)) {
-      // for (int idx = 0; idx < cumulative_sensitivities.size(); idx++){
-      //   #pragma omp atomic
-      //   tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += cumulative_sensitivities[idx]*score*filter_weight; 
-      // }
-      // }
-      
-      // for n-p coupled transport & sensitivity of photon response to neutron data       
-      // if (settings::neutron_transport && settings::photon_transport) {
-      for (int idx = 0; idx < cumulative_sensitivities.size(); idx++){
-        #pragma omp atomic        
-        tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += cum_sens[idx]*score*filter_weight; 
-        // tally.results_(idx, score_index, SensitivityTallyResult::VALUE) +=
-        //   cum_sens[idx]*neutron_flux*p.neutron_xs(sens.sens_nuclide).photon_prod*score*filter_weight;          
+      // sensitivity of neutron response to neutron data (fixed source neutron, not coupled n-p)
+      if (p.type().is_neutron()) {
+        for (int idx = 0; idx < cumulative_sensitivities.size(); idx++){
+          #pragma omp atomic
+          tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += cumulative_sensitivities[idx]*score*filter_weight; 
+        }      
+        // direct effect for reaction rate, heating              
       }
-      //}
       
-      // for (int idx = 0; idx < cumulative_sensitivities.size(); idx++){
-      //   #pragma omp atomic        
-      //   tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += pprod_sens[idx]*score*filter_weight;               
-      // }
-
-      // if (sens.sens_nuclide == p.pprod_nuclide()){
-      //   switch (sens.variable) {
-      //   
-      //   case SensitivityVariable::CROSS_SECTION:
-      //   {           
-      //     // Get the energy of the parent particle.
-      //     auto E = p.E_pprod();
-      //     // Bin the energy.
-      //     if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
-      //       // auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
-      //       #pragma omp atomic
-      //       tally.previous_results_(bin, score_index, SensitivityTallyResult::VALUE) += pprod_sens[idx]*score*filter_weight;
-      //     }
-      //     // }
-      //   }
-      //     break;
-      // }
+      // sensitivity of photon/electron/positron response to photon data in fixed source photon or coupled n-p
+      // if (p.type().is_photon()) {
+      //   // if (!p.type().is_neutron()) {
+      //   for (int idx = 0; idx < reaction_sens.size(); idx++){
+      //     #pragma omp atomic
+      //     tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += reaction_sens[idx]*score*filter_weight; 
+      //   }       
+      // }      
       
+      // for n-p coupled transport & sensitivity of photon/electron/positron response to neutron data       
+      if (!p.type().is_neutron() && settings::photon_transport) {      
+        for (int idx = 0; idx < cumulative_sensitivities.size(); idx++){
+          #pragma omp atomic                                        
+          tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += inherit_sens[idx]*score*filter_weight;                    
+        }                
+                
+        for (int idx = 0; idx < direct_sens.size(); idx++){
+          #pragma omp atomic                                        
+          tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += direct_sens[idx]*score*filter_weight;                    
+        } 
+      }            
     }            
   }
 }

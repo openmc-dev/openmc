@@ -78,6 +78,8 @@ void initialize_history_partial(Particle& p);
 
 void initialize_history_in_part(Particle& p);
 
+void initialize_history_secondary(Particle& p);
+
 //! Finalize a batch
 //!
 //! Handles synchronization and accumulation of tallies, calculation of Shannon

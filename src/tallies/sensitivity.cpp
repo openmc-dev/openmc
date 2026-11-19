@@ -179,6 +179,9 @@ SensitivityTally::SensitivityTally(pugi::xml_node node)
       // Set estimator to collision estimator
       estimator_ = TallyEstimator::COLLISION;
 
+    } else if (est == "tracklength") {
+      estimator_ = TallyEstimator::TRACKLENGTH;
+    
     } else {
       throw std::runtime_error{fmt::format(
         "Invalid estimator '{}' on tally {}", est, id_)};
@@ -283,24 +286,36 @@ void SensitivityTally::accumulate()
 
     // Accumulate each result
     // TODO: ignore the first realization
+    // Un-comment for eigenvalue problem
+    // for (int i = 0; i < results_.shape()[0]; ++i) {
+    //   for (int j = 0; j < results_.shape()[1]; ++j) {
+    //     double val = previous_results_(i, j, SensitivityTallyResult::VALUE) / denominator_;       
+    //     results_(i, j, SensitivityTallyResult::SUM) += val;
+    //     results_(i, j, SensitivityTallyResult::SUM_SQ) += val*val;
+    //   }
+    // }
+    // 
+    // denominator_ = 0.0; //<! zero out denom
+    // 
+    // // Move current value to previous value and zero out each result
+    // for (int i = 0; i < results_.shape()[0]; ++i) {
+    //   for (int j = 0; j < results_.shape()[1]; ++j) {
+    //     double val = results_(i, j, SensitivityTallyResult::VALUE);
+    //     results_(i, j, SensitivityTallyResult::VALUE) = 0.0;
+    //     previous_results_(i, j, SensitivityTallyResult::VALUE) = val;
+    //   }
+    // }
+    
+    // for fixed-source 
     for (int i = 0; i < results_.shape()[0]; ++i) {
       for (int j = 0; j < results_.shape()[1]; ++j) {
-        double val = previous_results_(i, j, SensitivityTallyResult::VALUE) / denominator_;       
+        double val = results_(i, j, SensitivityTallyResult::VALUE) / denominator_;       
         results_(i, j, SensitivityTallyResult::SUM) += val;
         results_(i, j, SensitivityTallyResult::SUM_SQ) += val*val;
-      }
-    }
-
-    denominator_ = 0.0; //<! zero out denom
-
-    // Move current value to previous value and zero out each result
-    for (int i = 0; i < results_.shape()[0]; ++i) {
-      for (int j = 0; j < results_.shape()[1]; ++j) {
-        double val = results_(i, j, SensitivityTallyResult::VALUE);
         results_(i, j, SensitivityTallyResult::VALUE) = 0.0;
-        previous_results_(i, j, SensitivityTallyResult::VALUE) = val;
       }
-    }
+    }      
+    denominator_ = 0.0; 
   }
 }
 
@@ -492,6 +507,34 @@ double get_nuclide_xs_sens(const Particle& p, int i_nuclide, int score_bin)
   return 0.0;
 }
 
+double get_photon_yield(int i_nuclide, const Particle& p, int score_bin) 
+{
+  // 
+  const auto& micro {p.neutron_xs(i_nuclide)};  
+  double pyld = 0.0;  
+
+  const auto& nuc {*data::nuclides[i_nuclide]};
+  auto m = nuc.reaction_index_[score_bin];
+  if (m == C_NONE)
+    return 0.0;   
+    
+  // Evaluate neutron cross section
+  const auto& rx {*nuc.reactions_[m]};
+  double xs = rx.xs(micro);
+      
+  // if cross section is zero for this reaction, skip it
+  if (xs == 0.0)
+    return 0.0;
+  
+  // Loop through each reaction product type
+  for (int j = 0; j < rx.products_.size(); ++j) {
+    if (rx.products_[j].particle_.is_photon()) {
+      pyld += (*rx.products_[j].yield_)(p.E());
+    }
+  }
+  return pyld;
+}
+
 void
 score_track_sensitivity(Particle& p, double distance)
 {
@@ -501,8 +544,8 @@ score_track_sensitivity(Particle& p, double distance)
 
   for (auto idx = 0; idx < model::tally_sens.size(); idx++) {
     const auto& sens = model::tally_sens[idx];
-    auto& cumulative_sensitivities = p.cumulative_sensitivities(idx);
-    auto& cum_sens = p.cum_sens(idx);
+    auto& cumulative_sensitivities = p.cumulative_sensitivities(idx);    
+    auto& reaction_sens = p.reaction_sens(idx);    
     
     double atom_density = 0.;
     if (sens.sens_nuclide >= 0) {
@@ -591,37 +634,17 @@ score_track_sensitivity(Particle& p, double distance)
       
       case N_2N:    
       case N_3N:    
-      case N_4N:
-      //case N_GAMMA: 
-      //case N_P:     
-      //case N_A:                
-        int m;
-        switch (sens.sens_reaction) {        
-        // case N_GAMMA: m = 0; break;
-        // case N_P:     m = 1; break;
-        // case N_A:     m = 2; break;
-        case N_2N:    m = 3; break;
-        case N_3N:    m = 4; break;
-        case N_4N:    m = 5; break;
-        }
+      case N_4N:        
         if (sens.sens_nuclide >= 0 && p.type().is_neutron()) {
-          macro_xs = p.neutron_xs(sens.sens_nuclide).reaction[m] * atom_density;
+          macro_xs = get_nuclide_xs_sens(p, sens.sens_nuclide, sens.sens_reaction) * atom_density;
         }
         break;      
       
       case COHERENT:
       case INCOHERENT:
       case PHOTOELECTRIC:
-      case PAIR_PROD:        
-        
-        if (sens.sens_element >= 0) {
-          auto j = model::materials[p.material()]->element_[sens.sens_element];
-          if (j == C_NONE) continue;
-          atom_density = model::materials[p.material()]->atom_density_(j);
-        }      
-        
+      case PAIR_PROD:                  
         if (!p.type().is_photon()) continue;
-      
         if (sens.sens_element >= 0) {
           const auto& micro = p.photon_xs(sens.sens_element);
           double xs = (sens.sens_reaction == COHERENT)        ? micro.coherent
@@ -639,10 +662,12 @@ score_track_sensitivity(Particle& p, double distance)
       }  
       // Bin the contribution.
       if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
-        auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
-        cumulative_sensitivities[bin] -= distance * macro_xs;
-        if (p.type().is_neutron()) {
-          cum_sens[bin] -= distance * macro_xs;
+        auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);        
+        if (p.type().is_neutron()) {  
+          cumulative_sensitivities[bin] -= distance * macro_xs;
+        }
+        if (p.type().is_photon()) {  
+          reaction_sens[bin] -= distance * macro_xs;
         }
       }                
     }
@@ -699,16 +724,15 @@ void score_collision_sensitivity(Particle& p)
   if (p.material() == MATERIAL_VOID) return;
 
   // only scattering events effect the collision sensitivity
-  if (p.event() != TallyEvent::SCATTER) return;
+  if (p.event() != TallyEvent::SCATTER && p.type().is_neutron()) return;
 
   const Material& material {*model::materials[p.material()]};
   
   for (auto idx = 0; idx < model::tally_sens.size(); idx++) {
     const auto& sens = model::tally_sens[idx];
-    auto& cumulative_sensitivities = p.cumulative_sensitivities(idx);
-    auto& cum_sens = p.cum_sens(idx);
-    
-    // if (p.type() == ParticleType::neutron) {
+    auto& cumulative_sensitivities = p.cumulative_sensitivities(idx);    
+    auto& reaction_sens = p.reaction_sens(idx);
+        
     if (p.event_nuclide() != sens.sens_nuclide) continue;
     // Find the index in this material for the sens_nuclide.
     int i;
@@ -720,23 +744,21 @@ void score_collision_sensitivity(Particle& p)
         "Could not find nuclide {} in material {} for tally sensitivity {}",
         data::nuclides[sens.sens_nuclide]->name_, material.id_, sens.id));
     }
-    // } else if (p.type() == ParticleType::photon 
-    //   || p.type() == ParticleType::electron || ParticleType() == ParticleType::positron) {
-    //   if (p.event_nuclide() != sens.sens_nuclide) continue;
-    //   int i_element = material.element_[p.event_nuclide()];
-    //   if (i_element != sens.sens_element) continue;
-    //   // Find the index in this material for the sens_element.
-    //   // int i;
-    //   // for (i = 0; i < material.element_.size(); ++i)
-    //   //   if (material.element_[i] == sens.sens_element) break;
-    //   // // Make sure we found the element.
-    //   // if (material.element_[i] != sens.sens_element) {
-    //   //   fatal_error(fmt::format(
-    //   //     "Could not find element {} in material {} for tally sensitivity {}",
-    //   //     data::elements[sens.sens_element]->name_, material.id_, sens.id));
-    //   // }
-    // }
-
+    if (p.type().is_photon()) {      
+      int i_element = material.element_[p.event_nuclide()];
+      if (i_element != sens.sens_element) continue;
+      // Find the index in this material for the sens_element.
+      int i;
+      for (i = 0; i < material.element_.size(); ++i)
+        if (material.element_[i] == sens.sens_element) break;
+      // Make sure we found the element.
+      if (material.element_[i] != sens.sens_element) {
+        fatal_error(fmt::format(
+          "Could not find element {} in material {} for tally sensitivity {}",
+          data::elements[sens.sens_element]->name_, material.id_, sens.id));
+      }
+    }        
+        
     switch (sens.variable) {
 
     case SensitivityVariable::CROSS_SECTION:
@@ -749,14 +771,15 @@ void score_collision_sensitivity(Particle& p)
       double score;
       switch (sens.sens_reaction) {
       case SCORE_TOTAL:
-        score = 0.0;
+        score = 1.0;
         break;
       case SCORE_SCATTER:
         score = 1.0;
         break;
       case ELASTIC:
+        if (!p.type().is_neutron()) continue;
         if (p.event_mt() != ELASTIC) continue; 
-        score = 1.0;                           
+        score = 1.0;        
         break;
       case SCORE_ABSORPTION: 
         score = 0.0;
@@ -772,12 +795,12 @@ void score_collision_sensitivity(Particle& p)
       case N_A:
       case N_D:
       case N_3HE:
+        if (!p.type().is_neutron()) continue;
         score = 0.0;
         break;
-      case N_LEVEL:
-        if (p.event_mt() >= N_N1 && p.event_mt() <= N_NC) {          
-          score = 1.0;
-        }        
+      case N_LEVEL:         
+        if ((p.event_mt() < 51 || p.event_mt() > 91) && p.event_mt() != REACTION_NONE) continue;
+        score = 1.0;        
         break;
       case N_2N:
       case N_2NA: 
@@ -785,33 +808,37 @@ void score_collision_sensitivity(Particle& p)
       case N_3NA:
       case N_4N:
       case N_2NP:
+        if (!p.type().is_neutron()) continue;
         if (p.event_mt() != sens.sens_reaction) continue; 
-        score = 1.0;                                      
+        score = 1.0;            
         break;
       case COHERENT:
       case INCOHERENT:
+      case PAIR_PROD:
         if (!p.type().is_photon()) continue; 
         if (p.event_mt() != sens.sens_reaction) continue;                
         score = 1.0;
         break;
       case PHOTOELECTRIC:
-      case PAIR_PROD:
-        if (!p.type().is_photon()) continue;
-        if (p.event_mt() != sens.sens_reaction) continue;        
-        score = 0.0;
+        if (!p.type().is_photon()) continue;  
+        if ((p.event_mt() < 534 || p.event_mt() > 572) && p.event_mt() !=REACTION_NONE) continue;
+        score = 1.0;        
         break;
       default:          
+        if (!p.type().is_neutron()) continue;
         if (p.event_mt() != sens.sens_reaction) continue; 
-        score = 1.0;                                      
+        score = 1.0; 
         break;
       }
   
       // Bin the contribution.
       if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
-        auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
-        cumulative_sensitivities[bin] += score; 
-        if (p.type().is_neutron()) {
-          cum_sens[bin] += score; 
+        auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);        
+        if (p.type().is_neutron()) {   
+          cumulative_sensitivities[bin] += score;
+        }
+        if (p.type().is_photon()) {  
+          reaction_sens[bin] += score;
         }
       }
     }
@@ -862,44 +889,38 @@ void score_collision_sensitivity(Particle& p)
       break;
     }
   }
-}
-
-double get_photon_yield(int i_nuclide, const Particle& p, int score_bin) 
-{
-  // 
-  const auto& micro {p.neutron_xs(i_nuclide)};  
-  double pyld = 0.0;
-  // double pprod_xs = 0.0;
-
-  // Loop through each reaction type
-  const auto& nuc {*data::nuclides[i_nuclide]};
-  auto m = nuc.reaction_index_[score_bin];
-  if (m == C_NONE)
-    return 0.0;
-  // for (int i = 0; i < nuc.reactions_.size(); ++i) {
-    
-    // if (m == i) break;    
-    
-  // Evaluate neutron cross section
-  const auto& rx {*nuc.reactions_[m]};
-  double xs = rx.xs(micro);
-      
-  // if cross section is zero for this reaction, skip it
-  if (xs == 0.0)
-    return 0.0;
-  // double yield = (*rx.products_[0].yield_)(E_in);    
-  for (int j = 0; j < rx.products_.size(); ++j) {
-    if (rx.products_[j].particle_.is_photon()) {
-
-      // pprod_xs = xs * (*rx.products_[j].yield_)(p.E());
-      pyld =  (*rx.products_[j].yield_)(p.E());
-
-      // if (m == i) break;
+  
+   // update secondary neutron inherited parent neutron transport operator 
+  // to include update from score_collision_sensitivity
+  // sensitivity of neutron response (or photon response) to neutron data
+  if (p.type().is_neutron() && !p.produced_neutron_ids().empty()) {    
+    for (int pid : p.produced_neutron_ids()) {
+      auto& matrix = ParticleData::thread_penalty_bank[pid];      
+      for (int idx = 0; idx < model::tally_sens.size(); ++idx) {      
+        auto& cumulative_sensitivities = p.cumulative_sensitivities(idx);       
+        for (size_t i = 0; i < cumulative_sensitivities.size(); ++i) {  
+          matrix[idx][i] = cumulative_sensitivities[i];          
+        }
+      } 
     }
+    p.clear_produced_neutron_ids();
   }
-  // if (m == i) break;   
-  // }
-  return pyld;
+  
+  // sensitivity of photon response to photon data
+  // update analog secondary photon inherited parent photon transport operator 
+  // to include update from score_collision_sensitivity
+  if (!p.type().is_neutron() && !p.produced_photon_ids().empty()) {    
+    for (int pid : p.produced_photon_ids()) {
+      auto& matrix = ParticleData::thread_penalty_bank[pid];      
+      for (int idx = 0; idx < model::tally_sens.size(); ++idx) {      
+        auto& reaction_sens = p.reaction_sens(idx);       
+        for (size_t i = 0; i < reaction_sens.size(); ++i) {  
+          matrix[idx][i] = reaction_sens[i];          
+        }
+      } 
+    }
+    p.clear_produced_photon_ids();
+  }   
 }
 
 void score_pprod_sensitivity(Particle& p) 
@@ -907,21 +928,14 @@ void score_pprod_sensitivity(Particle& p)
   // Void material cannot be perturbed, it will not affect sensitivities.
   if (p.material() == MATERIAL_VOID) return;
 
-  if (p.type().is_photon()) return;
+  if (!p.type().is_neutron()) return;
   
-  // Only scattering events produce secondary photons
-  if (p.event() != TallyEvent::SCATTER) return;
-  
-  const Material& material {*model::materials[p.material()]};
-  // double neutron_flux = p.neutron_flux_last();
-  
-  // p.E_pprod() = p.E_last();
-  // p.pprod_nuclide() = p.event_nuclide();
+  const Material& material {*model::materials[p.material()]}; 
 
   for (auto idx = 0; idx < model::tally_sens.size(); idx++) {
-    const auto& sens = model::tally_sens[idx];
-    // auto& cumulative_sensitivities = p.cumulative_sensitivities(idx);
-    auto& pprod_sens = p.pprod_sens(idx);
+    const auto& sens = model::tally_sens[idx];    
+    auto& pprod_sens = p.pprod_sens(idx);   
+    std::fill(pprod_sens.begin(), pprod_sens.end(), 0.0);
     
     if (p.event_nuclide() != sens.sens_nuclide) continue;
     // Find the index in this material for the sens_nuclide.
@@ -933,8 +947,8 @@ void score_pprod_sensitivity(Particle& p)
       fatal_error(fmt::format(
         "Could not find nuclide {} in material {} for tally sensitivity {}",
         data::nuclides[sens.sens_nuclide]->name_, material.id_, sens.id));
-    }
-
+    }    
+        
     switch (sens.variable) {
 
     case SensitivityVariable::CROSS_SECTION:
@@ -945,15 +959,25 @@ void score_pprod_sensitivity(Particle& p)
       // get photon production for each reaction type
       
       double score;
-      // double pyld;
-      // double pprod_xs;
-      switch (sens.sens_reaction) {  
-      case ELASTIC:
-        if (p.event_mt() != ELASTIC) continue; 
-        // score = 0.0;                           
-        score = get_photon_yield(sens.sens_nuclide, p, sens.sens_reaction); 
-        break;
+      double pyld;          
+      double rxn_xs;      
+      double tmp1;
       
+      switch (sens.sens_reaction) {  
+      case SCORE_TOTAL:
+        score = 1.0;
+        break;
+        
+      case ELASTIC:
+        // if (p.event_mt() != ELASTIC) continue;         
+        pyld = get_photon_yield(sens.sens_nuclide, p, sens.sens_reaction);                          
+        if (p.neutron_xs(sens.sens_nuclide).elastic == CACHE_INVALID)
+          data::nuclides[sens.sens_nuclide]->calculate_elastic_xs(p);                 
+        rxn_xs = p.neutron_xs(sens.sens_nuclide).elastic;  
+        tmp1 = pyld/p.neutron_xs(sens.sens_nuclide).photon_prod;        
+        score = rxn_xs*tmp1;        
+        break; 
+        
       case N_T:
       case N_XT:
       case N_GAMMA:
@@ -962,33 +986,34 @@ void score_pprod_sensitivity(Particle& p)
       case N_D:
       case N_3HE:
       case N_2N:
+      case N_3N:    
+      case N_4N:
       case N_NA:
-      case N_NP:
-        if (p.event_mt() != sens.sens_reaction) continue; 
-        score = get_photon_yield(sens.sens_nuclide, p, sens.sens_reaction);
-        // score = 1.0;
-        break;
-      
+      case N_NP: 
+        // if (p.event_mt() != sens.sens_reaction) continue;         
+        pyld = get_photon_yield(sens.sens_nuclide, p, sens.sens_reaction);                                  
+        rxn_xs = get_nuclide_xs_sens(p, sens.sens_nuclide, sens.sens_reaction);          
+        tmp1 = pyld/p.neutron_xs(sens.sens_nuclide).photon_prod;        
+        score = rxn_xs*tmp1;       
+        break;      
+        
       default:
-        if (p.event_mt() != sens.sens_reaction) continue; 
-        score = get_photon_yield(sens.sens_nuclide, p, sens.sens_reaction); 
-        // score = pyld;        
-        // score = 1.0;
+        // if (p.event_mt() != sens.sens_reaction) continue; 
+        pyld = get_photon_yield(sens.sens_nuclide, p, sens.sens_reaction); 
+        rxn_xs = get_nuclide_xs_sens(p, sens.sens_nuclide, sens.sens_reaction);  
+        tmp1 = pyld/p.neutron_xs(sens.sens_nuclide).photon_prod;
+        score = rxn_xs*tmp1;        
         break;
       }
-      // std::cout << "The event MT is: " << p.event_mt() << std::endl;
-      // std::cout << "The photon yield is: " << score << std::endl;
+      
       // Bin the energy.
       if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
-        auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
-        // cumulative_sensitivities[bin] += score;
-        // pprod_sens[bin] += score*neutron_flux;
-        pprod_sens[bin] += score;
+        auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);        
+        pprod_sens[bin] = score;        
       }
     }
       break;
     }
   }
 }
-
 }// namespace openmc

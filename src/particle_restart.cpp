@@ -136,14 +136,15 @@ void run_particle_restart()
   if (!model::active_tallies.empty()) {
     p.resize_flux_derivs(model::tally_derivs.size());   
     p.zero_flux_derivs();
-    
-    // This is probably wrong because flux_derivs_ is a vector and
-    // cumulative_sensitivities_ is a vector of vectors...
-    // these need to resized to be of size energy_bins or multipole_bins    
-    p.resize_init_cumulative_sensitivities(model::tally_sens.size());
+            
+    p.resize_init_cumulative_sensitivities(model::tally_sens.size());    
+    p.resize_init_pprod_sens(model::tally_sens.size()); 
+    p.resize_init_reaction_sens(model::tally_sens.size());    
     for (int idx=0; idx< model::tally_sens.size();idx++){
-      p.resize_init_cumulative_sensitivities_vec(idx, model::tally_sens[idx].n_bins_);
-    }
+      p.resize_init_cumulative_sensitivities_vec(idx, model::tally_sens[idx].n_bins_);      
+      p.resize_init_pprod_sens_vec(idx, model::tally_sens[idx].n_bins_);
+      p.resize_init_reaction_sens_vec(idx, model::tally_sens[idx].n_bins_);
+    }    
   }
 
   // Allocate space for tally filter matches

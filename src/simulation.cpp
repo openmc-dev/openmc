@@ -651,6 +651,7 @@ void initialize_history(Particle& p, int64_t index_source)
   
   initialize_history_partial(p);
   initialize_history_in_part(p);
+  initialize_history_secondary(p);
 }
 
 void initialize_history_partial(Particle& p)
@@ -665,9 +666,15 @@ void initialize_history_partial(Particle& p)
     p.zero_flux_derivs();
        
     p.resize_init_cumulative_sensitivities(model::tally_sens.size());
+    p.resize_init_reaction_sens(model::tally_sens.size());
     for (int idx=0; idx< model::tally_sens.size();idx++){
       p.resize_init_cumulative_sensitivities_vec(idx, model::tally_sens[idx].n_bins_);
+      p.resize_init_reaction_sens_vec(idx, model::tally_sens[idx].n_bins_);
     }
+    
+    // 
+    ParticleData::thread_penalty_bank.clear();
+    ParticleData::thread_direct_bank.clear();
   }
 
   // Allocate space for tally filter matches
@@ -680,20 +687,40 @@ void initialize_history_in_part(Particle& p)
   if (p.type().is_photon()) return;
   
   // for n-p coupled simulation
-  // and sensitivity of photon responses (heating, dose) to neutron cross-sections
+  // and sensitivity of photon responses to neutron cross-sections
   // initialized variable to store derivatives of neutron transport operator 
   // needed for photon transport sensitivity to neutron data
   if (!model::active_tallies.empty())
-  {
-       
-    p.resize_init_cum_sens(model::tally_sens.size());
-    for (int idx=0; idx< model::tally_sens.size();idx++){
-      p.resize_init_cum_sens_vec(idx, model::tally_sens[idx].n_bins_);
-    }
-    
+  {    
     p.resize_init_pprod_sens(model::tally_sens.size());
     for (int idx=0; idx< model::tally_sens.size();idx++){
       p.resize_init_pprod_sens_vec(idx, model::tally_sens[idx].n_bins_);
+    }
+  }
+
+  // Allocate space for tally filter matches
+  // p.resize_alloc_filter_matches(model::tally_filters.size());  
+}
+
+void initialize_history_secondary(Particle& p)
+{
+  
+  if (p.type().is_photon()) return;
+  
+  // for n-p coupled simulation, used only by photons
+  // assign once at birth, static during transport
+  // secondary photon inherit the track-length operator of parent neutron 
+  // assign direct sensitivity at birth when photon is born from n-collision
+  if (!model::active_tallies.empty())
+  {    
+    p.resize_init_inherit_sens(model::tally_sens.size());
+    for (int idx=0; idx< model::tally_sens.size();idx++){
+      p.resize_init_inherit_sens_vec(idx, model::tally_sens[idx].n_bins_);
+    }
+    
+    p.resize_init_direct_sens(model::tally_sens.size());
+    for (int idx=0; idx< model::tally_sens.size();idx++){
+      p.resize_init_direct_sens_vec(idx, model::tally_sens[idx].n_bins_);
     }
   }
 

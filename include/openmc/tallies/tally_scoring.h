@@ -117,7 +117,7 @@ void score_surface_tally(
 
 //! Function to handle the special case when the tally is a sensitivity tally.
 void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index, int filter_index,
-  double filter_weight, int i_nuclide, double atom_density, double flux, double neutron_flux);
+  double filter_weight, int i_nuclide, double atom_density, double flux);
   
 //! Score the pulse-height tally
 //! This is triggered at the end of every particle history

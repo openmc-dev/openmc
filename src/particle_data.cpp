@@ -105,6 +105,12 @@ ParticleData::ParticleData()
     // Every particle starts with no accumulated cumulative sensitivity
     cumulative_sensitivities_.resize(model::tally_sens.size());
     initialize_cumulative_sensitivities();
+    
+    pprod_sens_.resize(model::tally_sens.size());
+    initialize_pprod_sens(); 
+
+    reaction_sens_.resize(model::tally_sens.size());
+    initialize_reaction_sens();
   }
 
   // Allocate space for tally filter matches

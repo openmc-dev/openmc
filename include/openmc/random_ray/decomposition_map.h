@@ -52,7 +52,6 @@ public:
   // packs them into buf, unpacks them from buf, or only measures the record;
   // it returns the record size in bytes.
   size_t transfer_sr_fields(SourceRegion& sr, char* buf, SRTransfer mode) const;
-  size_t sr_record_bytes() const;
   // Send / receive one source region (one blocking message)
   void send_sr_data(int receiver, SourceRegion& sr_send);
   void receive_sr_data(int sender, SourceRegion& sr_recv);
@@ -130,8 +129,7 @@ private:
   double max_domain_length_;
   bool is_linear_;
   bool is_adaptive_;
-  mutable size_t sr_record_bytes_ {
-    0}; //!< Bytes per source region record (cache)
+  size_t sr_record_bytes_ {0}; //!< Bytes per transferred source region
 
 }; // class DecompositionMap
 

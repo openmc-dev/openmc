@@ -60,6 +60,12 @@ void DecompositionMap::initialize()
   is_adaptive_ =
     is_adaptive_family(FlatSourceDomain::resolved_volume_estimator_);
 
+  // Size in bytes of the record that carries one source region between ranks.
+  // It depends only on the settings above and on the run mode, so it is
+  // measured once per solve on a freshly constructed region.
+  SourceRegion sr(negroups_, is_linear_);
+  sr_record_bytes_ = transfer_sr_fields(sr, nullptr, SRTransfer::SIZE);
+
   // Count the number of source regions in the model
   n_base_sr_ = 0;
   for (const auto& c : model::cells) {
@@ -624,19 +630,9 @@ size_t DecompositionMap::transfer_sr_fields(
   return offset;
 }
 
-size_t DecompositionMap::sr_record_bytes() const
-{
-  // Run-wide constant: measured once on a freshly constructed region
-  if (sr_record_bytes_ == 0) {
-    SourceRegion sr(negroups_, is_linear_);
-    sr_record_bytes_ = transfer_sr_fields(sr, nullptr, SRTransfer::SIZE);
-  }
-  return sr_record_bytes_;
-}
-
 void DecompositionMap::send_sr_data(int receiver, SourceRegion& sr_send)
 {
-  vector<char> buf(sr_record_bytes());
+  vector<char> buf(sr_record_bytes_);
   transfer_sr_fields(sr_send, buf.data(), SRTransfer::PACK);
   MPI_Send(buf.data(), static_cast<int>(buf.size()), MPI_BYTE, receiver, 1,
     mpi::intracomm);
@@ -644,7 +640,7 @@ void DecompositionMap::send_sr_data(int receiver, SourceRegion& sr_send)
 
 void DecompositionMap::receive_sr_data(int sender, SourceRegion& sr_recv)
 {
-  vector<char> buf(sr_record_bytes());
+  vector<char> buf(sr_record_bytes_);
   MPI_Recv(buf.data(), static_cast<int>(buf.size()), MPI_BYTE, sender, 1,
     mpi::intracomm, MPI_STATUS_IGNORE);
   transfer_sr_fields(sr_recv, buf.data(), SRTransfer::UNPACK);
@@ -1115,7 +1111,7 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
   domain->source_region_map_.clear();
 
   // Move the source region data to the new owners: one packed buffer per
-  // pair of ranks (fixed-size records, see sr_record_bytes()), sent in
+  // pair of ranks (fixed-size records, see transfer_sr_fields()), sent in
   // messages of at most MAX_MPI_MESSAGE_BYTES, instead of one message per
   // field and region. Every rank already knows how many regions it receives
   // from each sender (num_sr_receiving, from the broadcasts above), so all
@@ -1127,7 +1123,7 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
     fatal_error("Rank sends source regions to itself. Rank should not "
                 "receive source regions from itself.");
   }
-  const size_t record = sr_record_bytes();
+  const size_t record = sr_record_bytes_;
   vector<MPI_Request> requests;
 
   // Post receives

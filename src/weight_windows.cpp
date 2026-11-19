@@ -8,6 +8,7 @@
 
 #include "openmc/tensor.h"
 
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
@@ -289,9 +290,13 @@ std::pair<bool, WeightWindow> WeightWindows::get_weight_window(
   if (E < energy_bounds_.front() || E > energy_bounds_.back())
     return {false, {}};
 
-  // Get mesh index for particle's position
+  // Get mesh index for particle's position. The position is nudged along the
+  // direction of travel so that a particle sitting exactly on a mesh boundary
+  // (e.g., at a surface checkpoint where a geometry surface coincides with a
+  // mesh plane) is assigned to the element it is entering rather than always
+  // to the element on the lower-coordinate side.
   const auto& mesh = this->mesh();
-  int mesh_bin = mesh->get_bin(p.r());
+  int mesh_bin = mesh->get_bin(p.r() + TINY_BIT * p.u());
 
   // particle is outside the weight window mesh
   if (mesh_bin < 0)

@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 #include <cmath>  // for M_PI
 #include <memory> // for unique_ptr
 

@@ -159,7 +159,7 @@ void score_fission_delayed_dg(int i_tally, int d_bin, double score,
   dg_match.bins_[i_bin] = d_bin;
 
   // Determine the filter scoring index
-  auto filter_index = 0;
+  int64_t filter_index = 0;
   double filter_weight = 1.;
   for (auto i = 0; i < tally.filters().size(); ++i) {
     auto i_filt = tally.filters(i);
@@ -450,7 +450,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
         (score_bin == SCORE_PROMPT_NU_FISSION && g == 0)) {
 
       // Find the filter scoring index for this filter combination
-      int filter_index = 0;
+      int64_t filter_index = 0;
       double filter_weight = 1.0;
       for (auto j = 0; j < tally.filters().size(); ++j) {
         auto i_filt = tally.filters(j);
@@ -498,7 +498,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
       } else {
 
         // Find the filter index and weight for this filter combination
-        int filter_index = 0;
+        int64_t filter_index = 0;
         double filter_weight = 1.;
         for (auto j = 0; j < tally.filters().size(); ++j) {
           auto i_filt = tally.filters(j);
@@ -540,10 +540,6 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
 
   auto i_temp = micro.index_temp;
   if (i_temp >= 0) { // Can be false due to multipole
-    // Get index on energy grid and interpolation factor
-    auto i_grid = micro.index_grid;
-    auto f = micro.interp_factor;
-
     // Calculate interpolated cross section
     double xs = rx.xs(micro);
 
@@ -579,8 +575,8 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
 //! collision estimator.
 
 void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
-  int filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -614,7 +610,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         continue;
 
       // Score inverse velocity in units of s/cm.
-      score = flux / p.speed();
+      score = flux / p.speed(E);
       break;
 
     case SCORE_SCATTER:
@@ -887,7 +883,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         const auto& nuc {*data::nuclides[i_nuclide]};
         if (nuc.fissionable_) {
           const auto& rxn {*nuc.fission_rx_[0]};
-          score = rxn.q_value_ * p.neutron_xs(i_nuclide).fission *
+          score = rxn.q_reaction_ * p.neutron_xs(i_nuclide).fission *
                   atom_density * flux;
         }
       } else if (p.material() != MATERIAL_VOID) {
@@ -898,7 +894,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
           const auto& nuc {*data::nuclides[j_nuclide]};
           if (nuc.fissionable_) {
             const auto& rxn {*nuc.fission_rx_[0]};
-            score += rxn.q_value_ * p.neutron_xs(j_nuclide).fission *
+            score += rxn.q_reaction_ * p.neutron_xs(j_nuclide).fission *
                      atom_density * flux;
           }
         }
@@ -942,11 +938,11 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_IFP_TIME_NUM:
-      if (settings::ifp_on) {
+      if (settings::ifp_on()) {
         if (p.type().is_neutron() && p.fission()) {
-          if (is_generation_time_or_both()) {
+          if (settings::ifp_lifetime_on) {
             const auto& lifetimes =
-              simulation::ifp_source_lifetime_bank[p.current_work() - 1];
+              simulation::ifp_source_lifetime_bank[p.current_work()];
             if (lifetimes.size() == settings::ifp_n_generation) {
               score = lifetimes[0] * p.wgt_last();
             }
@@ -956,11 +952,11 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_IFP_BETA_NUM:
-      if (settings::ifp_on) {
+      if (settings::ifp_on()) {
         if (p.type().is_neutron() && p.fission()) {
-          if (is_beta_effective_or_both()) {
+          if (settings::ifp_delayed_group_on) {
             const auto& delayed_groups =
-              simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
+              simulation::ifp_source_delayed_group_bank[p.current_work()];
             if (delayed_groups.size() == settings::ifp_n_generation) {
               if (delayed_groups[0] > 0) {
                 score = p.wgt_last();
@@ -969,8 +965,13 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
                   const DelayedGroupFilter& filt {
                     *dynamic_cast<DelayedGroupFilter*>(
                       model::tally_filters[i_dg_filt].get())};
-                  score_fission_delayed_dg(i_tally, delayed_groups[0] - 1,
-                    score, score_index, p.filter_matches());
+                  for (int d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
+                    if (filt.groups()[d_bin] == delayed_groups[0]) {
+                      score_fission_delayed_dg(
+                        i_tally, d_bin, score, score_index, p.filter_matches());
+                      break;
+                    }
+                  }
                   continue;
                 }
               }
@@ -981,17 +982,16 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_IFP_DENOM:
-      if (settings::ifp_on) {
+      if (settings::ifp_on()) {
         if (p.type().is_neutron() && p.fission()) {
           int ifp_data_size;
-          if (is_beta_effective_or_both()) {
+          if (settings::ifp_delayed_group_on) {
             ifp_data_size = static_cast<int>(
-              simulation::ifp_source_delayed_group_bank[p.current_work() - 1]
+              simulation::ifp_source_delayed_group_bank[p.current_work()]
                 .size());
           } else {
             ifp_data_size = static_cast<int>(
-              simulation::ifp_source_lifetime_bank[p.current_work() - 1]
-                .size());
+              simulation::ifp_source_lifetime_bank[p.current_work()].size());
           }
           if (ifp_data_size == settings::ifp_n_generation) {
             score = p.wgt_last();
@@ -1114,16 +1114,19 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 //! is not used for analog tallies.
 
 void score_general_ce_analog(Particle& p, int i_tally, int start_index,
-  int filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   Tally& tally {*model::tallies[i_tally]};
 
   // Get the pre-collision energy of the particle.
   auto E = p.E_last();
 
-  // Determine how much weight was absorbed due to survival biasing
-  double wgt_absorb = settings::survival_biasing
+  // Survival biasing only applies to neutron transport. In particular, do not
+  // access the neutron cross section cache while scoring a photon collision.
+  const bool neutron_survival_biasing =
+    settings::survival_biasing && p.type().is_neutron();
+  double wgt_absorb = neutron_survival_biasing
                         ? p.wgt_last() *
                             p.neutron_xs(p.event_nuclide()).absorption /
                             p.neutron_xs(p.event_nuclide()).total
@@ -1159,7 +1162,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       // All events score to an inverse velocity bin. We actually use a
       // collision estimator in place of an analog one since there is no way
       // to count 'events' exactly for the inverse velocity
-      score = flux * p.wgt_last() / (p.macro_xs().total * p.speed());
+      score = flux * p.wgt_last() / (p.macro_xs().total * p.speed(E));
       break;
 
     case SCORE_SCATTER:
@@ -1203,7 +1206,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       if (!p.type().is_neutron() && !p.type().is_photon())
         continue;
 
-      if (settings::survival_biasing) {
+      if (neutron_survival_biasing) {
         // No absorption events actually occur if survival biasing is on --
         // just use weight absorbed in survival biasing
         score = wgt_absorb * flux;
@@ -1220,7 +1223,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
     case SCORE_FISSION:
       if (p.macro_xs().fission == 0)
         continue;
-      if (settings::survival_biasing) {
+      if (neutron_survival_biasing) {
         // No fission events occur if survival biasing is on -- use collision
         // estimator instead
         if (p.neutron_xs(p.event_nuclide()).total > 0) {
@@ -1244,7 +1247,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
     case SCORE_NU_FISSION:
       if (p.macro_xs().fission == 0)
         continue;
-      if (settings::survival_biasing || p.fission()) {
+      if (neutron_survival_biasing || p.fission()) {
         if (tally.energyout_filter_ != C_NONE) {
           // Fission has multiple outgoing neutrons so this helper function
           // is used to handle scoring the multiple filter bins.
@@ -1252,7 +1255,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
           continue;
         }
       }
-      if (settings::survival_biasing) {
+      if (neutron_survival_biasing) {
         // No fission events occur if survival biasing is on -- use collision
         // estimator instead
         if (p.neutron_xs(p.event_nuclide()).total > 0) {
@@ -1277,7 +1280,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
     case SCORE_PROMPT_NU_FISSION:
       if (p.macro_xs().fission == 0)
         continue;
-      if (settings::survival_biasing || p.fission()) {
+      if (neutron_survival_biasing || p.fission()) {
         if (tally.energyout_filter_ != C_NONE) {
           // Fission has multiple outgoing neutrons so this helper function
           // is used to handle scoring the multiple filter bins.
@@ -1285,7 +1288,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
           continue;
         }
       }
-      if (settings::survival_biasing) {
+      if (neutron_survival_biasing) {
         // No fission events occur if survival biasing is on -- need to
         // calculate fraction of absorptions that would have resulted in
         // prompt-nu-fission
@@ -1316,7 +1319,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
     case SCORE_DELAYED_NU_FISSION:
       if (p.macro_xs().fission == 0)
         continue;
-      if (settings::survival_biasing || p.fission()) {
+      if (neutron_survival_biasing || p.fission()) {
         if (tally.energyout_filter_ != C_NONE) {
           // Fission has multiple outgoing neutrons so this helper function
           // is used to handle scoring the multiple filter bins.
@@ -1324,7 +1327,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
           continue;
         }
       }
-      if (settings::survival_biasing) {
+      if (neutron_survival_biasing) {
         // No fission events occur if survival biasing is on -- need to
         // calculate fraction of absorptions that would have resulted in
         // delayed-nu-fission
@@ -1393,7 +1396,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
     case SCORE_DECAY_RATE:
       if (p.macro_xs().fission == 0)
         continue;
-      if (settings::survival_biasing) {
+      if (neutron_survival_biasing) {
         // No fission events occur if survival biasing is on -- need to
         // calculate fraction of absorptions that would have resulted in
         // delayed-nu-fission
@@ -1485,14 +1488,14 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       score = 0.;
       // Kappa-fission values are determined from the Q-value listed for the
       // fission cross section.
-      if (settings::survival_biasing) {
+      if (neutron_survival_biasing) {
         // No fission events occur if survival biasing is on -- need to
         // calculate fraction of absorptions that would have resulted in
         // fission scaled by the Q-value
         const auto& nuc {*data::nuclides[p.event_nuclide()]};
         if (p.neutron_xs(p.event_nuclide()).total > 0 && nuc.fissionable_) {
           const auto& rxn {*nuc.fission_rx_[0]};
-          score = p.wgt_last() * rxn.q_value_ *
+          score = p.wgt_last() * rxn.q_reaction_ *
                   p.neutron_xs(p.event_nuclide()).fission /
                   p.neutron_xs(p.event_nuclide()).total * flux;
         }
@@ -1507,7 +1510,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
         if (p.neutron_xs(p.event_nuclide()).absorption > 0 &&
             nuc.fissionable_) {
           const auto& rxn {*nuc.fission_rx_[0]};
-          score = p.wgt_last() * rxn.q_value_ *
+          score = p.wgt_last() * rxn.q_reaction_ *
                   p.neutron_xs(p.event_nuclide()).fission /
                   p.neutron_xs(p.event_nuclide()).absorption * flux;
         }
@@ -1617,8 +1620,8 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
 //! argument is really just used for filter weights.
 
 void score_general_mg(Particle& p, int i_tally, int start_index,
-  int filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   auto& tally {*model::tallies[i_tally]};
 
@@ -3771,6 +3774,9 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   int orig_cell = p.coord(0).cell();
   double orig_E_last = p.E_last();
 
+  // Set particle in top level
+  p.n_coord() = 1;
+
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
@@ -3781,7 +3787,6 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
     for (auto cell_id : cells) {
       // Temporarily change cell of particle
-      p.n_coord() = 1;
       p.coord(0).cell() = cell_id;
 
       // Determine index of cell in model::pulse_height_cells
@@ -3797,20 +3802,20 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       // we skip the assume_separate break below.
       auto filter_iter = FilterBinIter(tally, p);
       auto end = FilterBinIter(tally, true, &p.filter_matches());
-      if (filter_iter == end)
-        continue;
+      if (filter_iter != end) {
 
-      // Loop over filter bins.
-      for (; filter_iter != end; ++filter_iter) {
-        auto filter_index = filter_iter.index_;
-        auto filter_weight = filter_iter.weight_;
+        // Loop over filter bins.
+        for (; filter_iter != end; ++filter_iter) {
+          auto filter_index = filter_iter.index_;
+          auto filter_weight = filter_iter.weight_;
 
-        // Loop over scores.
-        for (auto score_index = 0; score_index < tally.scores_.size();
-             ++score_index) {
+          // Loop over scores.
+          for (auto score_index = 0; score_index < tally.scores_.size();
+               ++score_index) {
 #pragma omp atomic
-          tally.results_(filter_index, score_index, TallyResult::VALUE) +=
-            filter_weight;
+            tally.results_(filter_index, score_index, TallyResult::VALUE) +=
+              filter_weight;
+          }
         }
       }
 
@@ -3818,10 +3823,10 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       for (auto& match : p.filter_matches())
         match.bins_present_ = false;
     }
-    // Restore cell/energy
-    p.n_coord() = orig_n_coord;
-    p.coord(0).cell() = orig_cell;
-    p.E_last() = orig_E_last;
   }
+  // Restore cell/energy
+  p.n_coord() = orig_n_coord;
+  p.coord(0).cell() = orig_cell;
+  p.E_last() = orig_E_last;
 }
 } // namespace openmc

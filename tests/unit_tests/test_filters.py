@@ -73,6 +73,28 @@ def test_collision():
     assert np.all(new_f.bins == f.bins)
 
 
+def test_filter_equality():
+    # Equality should require exact agreement between numerical bins.
+    energy = openmc.EnergyFilter([0.0, 1.0])
+    assert energy == openmc.EnergyFilter([0.0, 1.0])
+    assert energy != openmc.EnergyFilter([0.0, 1.0 + 1.0e-8])
+
+    # The base implementation should also support nonnumeric and mixed bins.
+    particle = openmc.ParticleFilter('photon')
+    assert particle == openmc.ParticleFilter('photon')
+    assert openmc.ReactionFilter(2) == openmc.ReactionFilter('(n,elastic)')
+
+    production = openmc.ParticleProductionFilter(
+        'photon', [0.0, 1.0])
+    assert production == openmc.ParticleProductionFilter(
+        'photon', [0.0, 1.0])
+    assert production != openmc.ParticleProductionFilter(
+        'neutron', [0.0, 1.0])
+    assert production != openmc.ParticleProductionFilter('photon')
+    production_no_energy = openmc.ParticleProductionFilter('photon')
+    assert production_no_energy == openmc.ParticleProductionFilter('photon')
+
+
 def test_legendre():
     n = 5
     f = openmc.LegendreFilter(n)
@@ -278,6 +300,9 @@ def test_energyfunc():
     np.testing.assert_allclose(f.energy, new_f.energy)
     np.testing.assert_allclose(f.y, new_f.y)
     assert f.interpolation == new_f.interpolation
+
+    with raises(ValueError, match="requires 4 or more"):
+        openmc.EnergyFunctionFilter([0.0, 1.0, 2.0], [1.0, 2.0, 3.0], interpolation='cubic')
 
 
 def test_tabular_from_energyfilter():

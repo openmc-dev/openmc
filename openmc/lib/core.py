@@ -33,7 +33,11 @@ class _SourceSite(Structure):
                 ('particle', c_int32),
                 ('parent_nuclide', c_int),
                 ('parent_id', c_int64),
-                ('progeny_id', c_int64)]
+                ('progeny_id', c_int64),
+                ('wgt_born', c_double),
+                ('wgt_ww_born', c_double),
+                ('n_split', c_int64),
+                ('n_collision', c_int)]
 
 # Define input type for numpy arrays that will be passed into C++ functions
 # Must be an int or double array, with single dimension that is contiguous
@@ -60,6 +64,7 @@ _dll.openmc_init.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
+_dll.openmc_get_current_batch.restype = c_int
 _dll.openmc_initialize_mesh_egrid.argtypes = [
     c_int, _array_1d_int, c_double
 ]
@@ -156,7 +161,7 @@ def current_batch():
         Current batch of the simulation
 
     """
-    return c_int.in_dll(_dll, 'current_batch').value
+    return _dll.openmc_get_current_batch()
 
 
 def export_properties(filename=None, output=True):
@@ -484,6 +489,8 @@ def run(output=True):
 def run_random_ray(output=True):
     """Run a random ray simulation
 
+    .. versionadded:: 0.16.0
+
     Parameters
     ----------
     output : bool, optional
@@ -755,19 +762,6 @@ class TemporarySession:
                 self._tmp_dir.cleanup()
 
 
-class _DLLGlobal:
-    """Data descriptor that exposes global variables from libopenmc."""
-    def __init__(self, ctype, name):
-        self.ctype = ctype
-        self.name = name
-
-    def __get__(self, instance, owner):
-        return self.ctype.in_dll(_dll, self.name).value
-
-    def __set__(self, instance, value):
-        self.ctype.in_dll(_dll, self.name).value = value
-
-
 class _FortranObject:
     def __repr__(self):
         return f"<{type(self).__name__}(index={self._index})>"
@@ -807,7 +801,7 @@ def quiet_dll(output=True):
         sys.stdout.flush()
         # Save the initial file descriptor states
         initial_stdout = sys.stdout
-        initial_stdout_fno = os.dup(sys.stdout.fileno())
+        initial_stdout_fno = os.dup(1)
         # Get a garbage descriptor so we can throw away output
         devnull = os.open(os.devnull, os.O_WRONLY)
 
@@ -825,4 +819,7 @@ def quiet_dll(output=True):
             # Now we just clean up after ourselves and reset the streams
             sys.stdout = initial_stdout
             sys.stdout.flush()
-            os.dup2(initial_stdout_fno, 1)
+            try:
+                os.dup2(initial_stdout_fno, 1)
+            finally:
+                os.close(initial_stdout_fno)

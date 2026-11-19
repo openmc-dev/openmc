@@ -1,17 +1,46 @@
 #include "openmc/atomic_mass.h"
 
-namespace openmc {
+#include <cstdlib>
 
-// Atomic masses in [u] from AME2020 and CODATA 2018
-std::unordered_map<int32_t, double> ATOMIC_MASS = {
-  {11, MASS_ELECTRON},
-  {22, 0.0},
-  {2112, MASS_NEUTRON},
-  {2212, MASS_PROTON},
-  {1000010020, MASS_DEUTRON},
-  {1000020030, MASS_HELION},
-  {1000020040, MASS_ALPHA},
+#include "openmc/particle_type.h"
+
+namespace openmc {
+namespace {
+
+constexpr int32_t nuclear_pdg_code(int Z, int A)
+{
+  if (Z == 0 && A == 1)
+    return PDG_NEUTRON;
+  if (Z <= 0 || A <= 0 || Z > A)
+    return 0;
+  return 1000000000 + Z * 10000 + A * 10;
+}
+
+int32_t normalized_particle_pdg(int32_t pdg)
+{
+  pdg = std::abs(pdg);
+  if (pdg == PDG_PROTON)
+    return 1000010010;
+  if (pdg < 1000000000)
+    return pdg;
+
+  // The mass table contains ground states only.
+  pdg -= pdg % 10;
+  int Z = (pdg / 10000) % 1000;
+  int A = (pdg / 10) % 1000;
+  return Z > 0 && A > 0 && Z <= A ? pdg : 0;
+}
+
+} // namespace
+
+// Neutral ground-state atomic masses in [u] from AME2020. Entries use the
+// 10-digit nuclear PDG code 100ZZZAAAI with I = 0.
+const std::unordered_map<int32_t, double> ATOMIC_MASS = {
+  {1000010010, 1.007825031898},
+  {1000010020, 2.014101777844},
   {1000010030, 3.01604928132},
+  {1000020030, 3.01602932197},
+  {1000020040, 4.00260325413},
   {1000030030, 3.030775},
   {1000010040, 4.026431867},
   {1000030040, 4.027185561},
@@ -3565,5 +3594,58 @@ std::unordered_map<int32_t, double> ATOMIC_MASS = {
   {1001182940, 294.213979},
   {1001182950, 295.216178},
 };
+
+double atomic_mass_from_pdg(int32_t pdg)
+{
+  int32_t particle = normalized_particle_pdg(pdg);
+  if (particle < 1000000000)
+    return 0.0;
+
+  auto it = ATOMIC_MASS.find(particle);
+  return it == ATOMIC_MASS.end() ? 0.0 : it->second;
+}
+
+double atomic_mass(int Z, int A)
+{
+  return atomic_mass_from_pdg(nuclear_pdg_code(Z, A));
+}
+
+double nuclear_mass_from_pdg(int32_t pdg)
+{
+  int32_t particle = normalized_particle_pdg(pdg);
+  switch (particle) {
+  case PDG_PHOTON:
+    return 0.0;
+  case PDG_ELECTRON:
+    return MASS_ELECTRON;
+  case PDG_NEUTRON:
+    return MASS_NEUTRON;
+  case 1000010010:
+    return MASS_PROTON;
+  case PDG_DEUTERON:
+    return MASS_DEUTRON;
+  case PDG_TRITON:
+    return MASS_TRITON;
+  case 1000020030:
+    return MASS_HELION;
+  case PDG_ALPHA:
+    return MASS_ALPHA;
+  }
+
+  if (particle < 1000000000)
+    return 0.0;
+
+  auto it = ATOMIC_MASS.find(particle);
+  if (it == ATOMIC_MASS.end())
+    return 0.0;
+
+  int Z = (particle / 10000) % 1000;
+  return it->second - Z * MASS_ELECTRON;
+}
+
+double nuclear_mass(int Z, int A)
+{
+  return nuclear_mass_from_pdg(nuclear_pdg_code(Z, A));
+}
 
 } // namespace openmc

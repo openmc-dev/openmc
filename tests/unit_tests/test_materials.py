@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 import openmc
 from openmc.deplete import Chain
 
@@ -78,3 +80,50 @@ def test_export_duplicate_materials_to_xml(run_in_tmpdir):
 
     materials_in = openmc.Materials.from_xml("materials.xml")
     assert len(materials_in) == 2
+
+
+def test_materials_deplete_length_mismatch():
+    mats = openmc.Materials([openmc.Material()])
+
+    with pytest.raises(ValueError, match="multigroup_fluxes length"):
+        mats.deplete(
+            multigroup_fluxes=[],
+            energy_group_structures=["VITAMIN-J-42"],
+            timesteps=[1.0],
+            source_rates=1.0,
+        )
+
+    with pytest.raises(ValueError, match="energy_group_structures length"):
+        mats.deplete(
+            multigroup_fluxes=[[1.0]],
+            energy_group_structures=[],
+            timesteps=[1.0],
+            source_rates=1.0,
+        )
+
+
+def test_materials_deplete_missing_volume(monkeypatch):
+    mat = openmc.Material()
+    mat.add_nuclide("Ni58", 1.0)
+    mat.set_density("g/cm3", 7.87)
+
+    mats = openmc.Materials([mat])
+
+    class DummySession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(openmc.lib, "TemporarySession", DummySession)
+
+    chain = Path(__file__).parents[1] / "chain_ni.xml"
+    with pytest.raises(ValueError, match="has no volume"):
+        mats.deplete(
+            multigroup_fluxes=[[1.0]],
+            energy_group_structures=["VITAMIN-J-42"],
+            timesteps=[1.0],
+            source_rates=1.0,
+            chain_file=chain,
+        )

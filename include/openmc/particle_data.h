@@ -56,6 +56,12 @@ struct SourceSite {
   int64_t progeny_id;
   int64_t penalty_id {-1};
   int64_t direct_id {-1};
+  int64_t parent_id {0};
+  int64_t progeny_id {0};
+  double wgt_born {1.0};
+  double wgt_ww_born {-1.0};
+  int64_t n_split {0};
+  int n_collision {0};
 };
 
 struct CollisionTrackSite {
@@ -298,6 +304,7 @@ public:
       cell = C_NONE;
     }
     n_coord_last_ = 1;
+    temperature_field_bin_ = C_NONE;
   }
 
   //! moves the particle by the specified distance to its next location
@@ -416,6 +423,10 @@ public:
   const double& density_mult() const { return density_mult_; }
   double& density_mult_last() { return density_mult_last_; }
 
+  // Current temperature field mesh bin
+  int& temperature_field_bin() { return temperature_field_bin_; }
+  const int& temperature_field_bin() const { return temperature_field_bin_; }
+
 private:
   int64_t id_ {-1}; //!< Unique ID
 
@@ -441,11 +452,13 @@ private:
   int material_ {-1};      //!< index for current material
   int material_last_ {-1}; //!< index for last material
 
-  double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
-  double sqrtkT_last_ {0.0}; //!< last temperature
+  double sqrtkT_ {-1.0};      //!< sqrt(k_Boltzmann * temperature) in eV
+  double sqrtkT_last_ {-1.0}; //!< last temperature
 
   double density_mult_ {1.0};      //!< density multiplier
   double density_mult_last_ {1.0}; //!< last density multiplier
+
+  int temperature_field_bin_ {C_NONE}; //!< Current temperature field mesh bin
 
 #ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;
@@ -543,14 +556,14 @@ private:
   uint64_t seeds_[N_STREAMS];
   int stream_;
 
-  vector<SourceSite> secondary_bank_;
+  vector<SourceSite> local_secondary_bank_;
 
   // Keep track of how many secondary particles were created in the collision
   // and what the starting index is in the secondary bank for this particle
   int n_secondaries_ {0};
   int secondary_bank_index_ {0};
 
-  int64_t current_work_;
+  int64_t current_work_ {0};
 
   vector<double> flux_derivs_;
   
@@ -584,7 +597,9 @@ private:
 
   int n_event_ {0};
 
-  int n_split_ {0};
+  int64_t n_tracks_ {0}; //!< number of tracks in this particle history
+
+  int64_t n_split_ {0};
   double ww_factor_ {0.0};
 
   int64_t n_progeny_ {0};
@@ -598,10 +613,8 @@ public:
   // Methods and accessors
 
   // Cross section caches
-  NuclideMicroXS& neutron_xs(int i)
-  {
-    return neutron_xs_[i];
-  } // Microscopic neutron cross sections
+  // Microscopic neutron cross sections
+  NuclideMicroXS& neutron_xs(int i) { return neutron_xs_[i]; }
   const NuclideMicroXS& neutron_xs(int i) const { return neutron_xs_[i]; }
 
   // Microscopic photon cross sections
@@ -716,12 +729,14 @@ public:
   int& stream() { return stream_; }
 
   // secondary particle bank
-  SourceSite& secondary_bank(int i) { return secondary_bank_[i]; }
-  const SourceSite& secondary_bank(int i) const { return secondary_bank_[i]; }
-  decltype(secondary_bank_)& secondary_bank() { return secondary_bank_; }
-  decltype(secondary_bank_) const& secondary_bank() const
+  SourceSite& local_secondary_bank(int i) { return local_secondary_bank_[i]; }
+  const SourceSite& local_secondary_bank(int i) const
   {
-    return secondary_bank_;
+    return local_secondary_bank_[i];
+  }
+  decltype(local_secondary_bank_)& local_secondary_bank()
+  {
+    return local_secondary_bank_;
   }
 
   // Number of secondaries created in a collision
@@ -803,12 +818,15 @@ public:
   int& n_event() { return n_event_; }
 
   // Number of times variance reduction has caused a particle split
-  int n_split() const { return n_split_; }
-  int& n_split() { return n_split_; }
+  int64_t n_split() const { return n_split_; }
+  int64_t& n_split() { return n_split_; }
 
   // Particle-specific factor for on-the-fly weight window adjustment
   double ww_factor() const { return ww_factor_; }
   double& ww_factor() { return ww_factor_; }
+
+  // Number of tracks in this particle history
+  int64_t& n_tracks() { return n_tracks_; }
 
   // Number of progeny produced by this particle
   int64_t& n_progeny() { return n_progeny_; }

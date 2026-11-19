@@ -117,8 +117,7 @@ tensor::Tensor<double> count_bank_sites(
 
 #ifdef OPENMC_MPI
   // collect values from all processors
-  MPI_Reduce(
-    cnt.data(), counts.data(), total, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+  mpi::reduce(cnt.data(), counts.data(), total, MPI_SUM, 0, mpi::intracomm);
 
   // Check if there were sites outside the mesh for any processor
   MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);

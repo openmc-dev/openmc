@@ -17,6 +17,7 @@
 #include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell_instance.h"
@@ -265,6 +266,33 @@ void get_temperatures(
         }
       }
     }
+  }
+
+  // Add temperatures from a temperature field.
+  // We assume that we do not know how geometric cells are impacted by the
+  // temperature field in advance. If we had access to this information, we
+  // could limit the declarations of temperature from the temperature field to
+  // impacted nuclides only.
+  if (settings::temperature_field_on) {
+    vector<double> field_temps;
+    std::unordered_set<double> field_seen;
+    for (auto t : simulation::temperature_field.values()) {
+      if (field_seen.insert(t).second) {
+        field_temps.push_back(t);
+      }
+    }
+    auto add_temperatures = [&field_temps](vector<vector<double>>& lists) {
+      for (auto& temps : lists) {
+        std::unordered_set<double> seen(temps.begin(), temps.end());
+        for (auto t : field_temps) {
+          if (seen.insert(t).second) {
+            temps.push_back(t);
+          }
+        }
+      }
+    };
+    add_temperatures(nuc_temps);
+    add_temperatures(thermal_temps);
   }
 }
 

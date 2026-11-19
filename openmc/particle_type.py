@@ -46,6 +46,10 @@ class ParticleType:
     to uniquely identify particle types. This includes elementary particles
     (neutrons, photons, etc.) and nuclear codes for isotopes.
 
+    .. versionchanged:: 0.16.0
+        Changed from an ``IntEnum`` to a class backed by PDG Monte Carlo
+        particle numbers.
+
     Parameters
     ----------
     value : str, int, or ParticleType

@@ -16,6 +16,7 @@ Functions
    current_batch
    export_properties
    export_weight_windows
+   feature_enabled
    finalize
    find_cell
    find_material
@@ -42,6 +43,9 @@ Functions
    run_in_memory
    run_random_ray
    sample_external_source
+   slice_data
+   slice_data_overlap_count
+   slice_data_overlap_info
    simulation_finalize
    simulation_init
    source_bank
@@ -95,6 +99,7 @@ Classes
    SurfaceFilter
    Tally
    SensitivityTally
+   TemperatureField
    TemporarySession
    UniverseFilter
    UnstructuredMesh
@@ -147,6 +152,13 @@ Data
    Mapping of tally ID to :class:`openmc.lib.Tally` instances.
 
    :type: dict
+
+.. data:: temperature_field
+
+   Temperatures in [K] of each element of the temperature field mesh, if one
+   was specified. Empty when no temperature field is in use.
+
+   :type: :class:`openmc.lib.TemperatureField`
 
 .. data:: weight_windows
 

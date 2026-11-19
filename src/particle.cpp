@@ -45,15 +45,18 @@ namespace openmc {
 // Particle implementation
 //==============================================================================
 
+double Particle::speed(double E) const
+{
+  // Determine mass in eV/c^2
+  double mass = this->mass();
+  // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
+  return C_LIGHT * std::sqrt(E * (E + 2 * mass)) / (E + mass);
+}
+
 double Particle::speed() const
 {
   if (settings::run_CE) {
-    // Determine mass in eV/c^2
-    double mass = this->mass();
-
-    // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
-    return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
-           (this->E() + mass);
+    return speed(this->E());
   } else {
     auto mat = this->material();
     if (mat == MATERIAL_VOID)
@@ -74,6 +77,8 @@ double Particle::mass() const
   case PDG_ELECTRON:
   case PDG_POSITRON:
     return MASS_ELECTRON_EV;
+  case PDG_PHOTON:
+    return 0.0;
   default:
     return this->type().mass() * AMU_EV;
   }
@@ -95,7 +100,7 @@ bool Particle::create_secondary(
   // Increment number of secondaries created (for ParticleProductionFilter)
   n_secondaries()++;
 
-  auto& bank = secondary_bank().emplace_back();
+  SourceSite bank;
   bank.particle = type;
   bank.wgt = wgt;
   bank.r = r();
@@ -172,12 +177,21 @@ bool Particle::create_secondary(
   //   }
   // }
   
+  bank.parent_id = current_work();
+  if (settings::use_shared_secondary_bank) {
+    bank.progeny_id = n_progeny()++;
+  }
+  bank.wgt_born = wgt_born();
+  bank.wgt_ww_born = wgt_ww_born();
+  bank.n_split = n_split();
+
+  local_secondary_bank().emplace_back(bank);
   return true;
 }
 
 void Particle::split(double wgt)
 {
-  auto& bank = secondary_bank().emplace_back();
+  SourceSite bank;
   bank.particle = type();
   bank.wgt = wgt;
   bank.r = r();
@@ -192,6 +206,17 @@ void Particle::split(double wgt)
     int surf_id = model::surfaces[surface_index()]->id_;
     bank.surf_id = (surface() > 0) ? surf_id : -surf_id;
   }
+
+  bank.wgt_born = wgt_born();
+  bank.wgt_ww_born = wgt_ww_born();
+  bank.n_split = n_split();
+  bank.n_collision = n_collision();
+  bank.parent_id = current_work();
+  if (settings::use_shared_secondary_bank) {
+    bank.progeny_id = n_progeny()++;
+  }
+
+  local_secondary_bank().emplace_back(bank);
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -201,7 +226,7 @@ void Particle::from_source(const SourceSite* src)
   surface() = SURFACE_NONE;
   cell_born() = C_NONE;
   material() = C_NONE;
-  n_collision() = 0;
+  n_collision() = src->n_collision;
   fission() = false;
   zero_flux_derivs();
   
@@ -240,8 +265,11 @@ void Particle::from_source(const SourceSite* src)
 
   // Convert signed surface ID to signed index
   if (src->surf_id != SURFACE_NONE) {
-    int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
-    surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
+    auto it = model::surface_map.find(std::abs(src->surf_id));
+    if (it != model::surface_map.end()) {
+      int index_plus_one = it->second + 1;
+      surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
+    }
   }
   
   if (type().pdg_number() == PDG_NEUTRON && settings::photon_transport) {    
@@ -289,6 +317,13 @@ void Particle::from_source(const SourceSite* src)
   //   }      
   // }
   
+
+  wgt_born() = src->wgt_born;
+  wgt_ww_born() = src->wgt_ww_born;
+  n_split() = src->n_split;
+
+  if (settings::temperature_field_on)
+    temperature_field_bin() = FIELD_BIN_UNKNOWN;
 }
 
 void Particle::event_calculate_xs()
@@ -336,6 +371,10 @@ void Particle::event_calculate_xs()
   if (settings::check_overlaps)
     check_cell_overlap(*this);
 
+  // Resolve the field temperature before checking the cross-section cache.
+  if (settings::temperature_field_on)
+    update_temperature();
+
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
@@ -363,9 +402,9 @@ void Particle::event_calculate_xs()
   }
 }
 
-void Particle::event_advance()
+TransportEvent Particle::event_advance()
 {
-  // Find the distance to the nearest boundary
+  // Find the distance to the nearest geometry boundary
   boundary() = distance_to_boundary(*this);
 
   // Sample a distance to collision
@@ -378,6 +417,28 @@ void Particle::event_advance()
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
 
+  // If a temperature field is active, treat its nearest mesh surface as a
+  // transport boundary.
+  TransportEvent event = TransportEvent::SURFACE_CROSSING;
+  bool temperature_field_crossing = false;
+  int next_temperature_field_bin = C_NONE;
+  if (settings::temperature_field_on) {
+    const auto crossing = simulation::temperature_field.next_mesh_crossing(
+      temperature_field_bin(), r(), u());
+    if (crossing.distance < boundary().distance() - FP_COINCIDENT) {
+      boundary().distance() = crossing.distance;
+      event = TransportEvent::NONE;
+      temperature_field_crossing = true;
+      next_temperature_field_bin = crossing.next_bin;
+    } else if (crossing.distance < INFTY &&
+               std::abs(crossing.distance - boundary().distance()) <=
+                 FP_COINCIDENT) {
+      temperature_field_crossing = true;
+      next_temperature_field_bin = crossing.next_bin;
+    }
+  }
+
+  // Calculate the distance corresponding to the time cutoff
   double speed = this->speed();
   double time_cutoff = settings::time_cutoff[type().transport_index()];
   double distance_cutoff =
@@ -386,6 +447,14 @@ void Particle::event_advance()
   // Select smaller of the three distances
   double distance =
     std::min({boundary().distance(), collision_distance(), distance_cutoff});
+
+  if (distance == distance_cutoff) {
+    event = TransportEvent::NONE;
+    temperature_field_crossing = false;
+  } else if (collision_distance() <= boundary().distance()) {
+    event = TransportEvent::COLLISION;
+    temperature_field_crossing = false;
+  }
 
   // Advance particle in space and time
   this->move_distance(distance);
@@ -418,10 +487,44 @@ void Particle::event_advance()
   if (distance == distance_cutoff) {
     wgt() = 0.0;
   }
+
+  // Clear surface component if distance is long enough
+  if (distance > TINY_BIT)
+    surface() = SURFACE_NONE;
+
+  if (temperature_field_crossing) {
+    sqrtkT_last() = sqrtkT();
+    temperature_field_bin() = next_temperature_field_bin;
+#ifdef OPENMC_DAGMC_ENABLED
+    // A mesh-only stop truncates the ray; geometry crossings manage history.
+    if (event == TransportEvent::NONE)
+      history().reset();
+#endif
+  }
+
+  return event;
+}
+
+void Particle::update_temperature()
+{
+  // If temperature field enabled but the bin is not set, determine the bin
+  // based on the particle's current position
+  auto& bin = temperature_field_bin();
+  if (settings::temperature_field_on && bin == FIELD_BIN_UNKNOWN) {
+    bin = simulation::temperature_field.get_bin(r() + TINY_BIT * u());
+  }
+
+  // Set the particle's sqrt(kT) based on the field or the cell's temperature
+  if (settings::temperature_field_on && bin != C_NONE) {
+    sqrtkT() = simulation::temperature_field.get_sqrtkT(bin);
+  } else {
+    sqrtkT() = model::cells[lowest_coord().cell()]->sqrtkT(cell_instance());
+  }
 }
 
 void Particle::event_cross_surface()
 {
+  sqrtkT_last() = sqrtkT();
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
     cell_last(j) = coord(j).cell();
@@ -437,13 +540,14 @@ void Particle::event_cross_surface()
       boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
 
+    int i_lattice = coord(boundary().coord_level() - 1).lattice();
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
 
     // Score cell to cell partial currents
     if (!model::active_surface_tallies.empty()) {
-      auto& lat {*model::lattices[lowest_coord().lattice()]};
+      auto& lat {*model::lattices[i_lattice]};
       bool is_valid;
       Direction normal =
         lat.get_normal(boundary().lattice_translation(), is_valid);
@@ -496,7 +600,11 @@ void Particle::event_collide()
   if (!model::active_meshsurf_tallies.empty())
     score_meshsurface_tally(*this, model::active_meshsurf_tallies);
 
-  // Clear surface component
+  // Preserve whether the particle is still associated with a recently crossed
+  // surface so that a direction change during a near-surface collision can be
+  // reconciled afterward. The surface marker is no longer needed during the
+  // collision itself.
+  const bool near_surface = surface() != SURFACE_NONE;
   surface() = SURFACE_NONE;
 
   if (settings::run_CE) {
@@ -573,12 +681,69 @@ void Particle::event_collide()
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
+
+  if (near_surface && alive()) {
+    sqrtkT_last() = sqrtkT();
+    reconcile_cell_after_collision(*this);
+    if (settings::temperature_field_on && alive())
+      temperature_field_bin() = FIELD_BIN_UNKNOWN;
+  }
 }
 
-void Particle::event_revive_from_secondary()
+void Particle::event_revive_from_secondary(const SourceSite& site)
+{
+  // Write final position for the previous track (skip if this is a freshly
+  // constructed particle with no prior track, e.g., Phase 2 of shared
+  // secondary transport)
+  if (write_track() && n_event() > 0) {
+    write_particle_track(*this);
+  }
+
+  from_source(&site);
+
+  n_event() = 0;
+  if (!settings::use_shared_secondary_bank) {
+    n_tracks()++;
+  }
+  bank_second_E() = 0.0;
+
+  // Subtract secondary particle energy from interim pulse-height results.
+  // In shared secondary mode, this subtraction was already done on the parent
+  // particle during create_secondary(), so skip it here.
+  if (!settings::use_shared_secondary_bank &&
+      !model::active_pulse_height_tallies.empty() && this->type().is_photon()) {
+    // Since the birth cell of the particle has not been set we
+    // have to determine it before the energy of the secondary particle can be
+    // removed from the pulse-height of this cell.
+    if (lowest_coord().cell() == C_NONE) {
+      bool verbose = settings::verbosity >= 10 || trace();
+      if (!exhaustive_find_cell(*this, verbose)) {
+        mark_as_lost("Could not find the cell containing particle " +
+                     std::to_string(id()));
+        return;
+      }
+      // Set birth cell attribute
+      if (cell_born() == C_NONE)
+        cell_born() = lowest_coord().cell();
+
+      // Initialize last cells from current cell
+      for (int j = 0; j < n_coord(); ++j) {
+        cell_last(j) = coord(j).cell();
+      }
+      n_coord_last() = n_coord();
+    }
+    pht_secondary_particles();
+  }
+
+  // Enter new particle in particle track file
+  if (write_track())
+    add_particle_track(*this);
+}
+
+void Particle::event_check_limit_and_revive()
 {
   // If particle has too many events, display warning and kill it
-  ++n_event();
+  n_event()++;
   if (n_event() == settings::max_particle_events) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
@@ -592,31 +757,32 @@ void Particle::event_revive_from_secondary()
       write_particle_track(*this);
     }
 
-    // If no secondary particles, break out of event loop
-    if (secondary_bank().empty())
-      return;
+  from_source(&site);
 
-    from_source(&secondary_bank().back());
-    secondary_bank().pop_back();
-    n_event() = 0;
-    bank_second_E() = 0.0;
+  n_event() = 0;
+  if (!settings::use_shared_secondary_bank) {
+    n_tracks()++;
+  }
+  bank_second_E() = 0.0;
 
-    // Subtract secondary particle energy from interim pulse-height results
-    if (!model::active_pulse_height_tallies.empty() &&
-        this->type().is_photon()) {
-      // Since the birth cell of the particle has not been set we
-      // have to determine it before the energy of the secondary particle can be
-      // removed from the pulse-height of this cell.
-      if (lowest_coord().cell() == C_NONE) {
-        bool verbose = settings::verbosity >= 10 || trace();
-        if (!exhaustive_find_cell(*this, verbose)) {
-          mark_as_lost("Could not find the cell containing particle " +
-                       std::to_string(id()));
-          return;
-        }
-        // Set birth cell attribute
-        if (cell_born() == C_NONE)
-          cell_born() = lowest_coord().cell();
+  // Subtract secondary particle energy from interim pulse-height results.
+  // In shared secondary mode, this subtraction was already done on the parent
+  // particle during create_secondary(), so skip it here.
+  if (!settings::use_shared_secondary_bank &&
+      !model::active_pulse_height_tallies.empty() && this->type().is_photon()) {
+    // Since the birth cell of the particle has not been set we
+    // have to determine it before the energy of the secondary particle can be
+    // removed from the pulse-height of this cell.
+    if (lowest_coord().cell() == C_NONE) {
+      bool verbose = settings::verbosity >= 10 || trace();
+      if (!exhaustive_find_cell(*this, verbose)) {
+        mark_as_lost("Could not find the cell containing particle " +
+                     std::to_string(id()));
+        return;
+      }
+      // Set birth cell attribute
+      if (cell_born() == C_NONE)
+        cell_born() = lowest_coord().cell();
 
         // Initialize last cells from current cell
         for (int j = 0; j < n_coord(); ++j) {
@@ -630,6 +796,12 @@ void Particle::event_revive_from_secondary()
     // Enter new particle in particle track file
     if (write_track())
       add_particle_track(*this);
+  // In non-shared-secondary mode, revive from local secondary bank
+  if (!alive() && !settings::use_shared_secondary_bank &&
+      !local_secondary_bank().empty()) {
+    SourceSite& site = local_secondary_bank().back();
+    event_revive_from_secondary(site);
+    local_secondary_bank().pop_back();
   }
 }
 
@@ -641,18 +813,34 @@ void Particle::event_death()
 
   // Finish particle track output.
   if (write_track()) {
+    write_particle_track(*this);
     finalize_particle_track(*this);
   }
 
-// Contribute tally reduction variables to global accumulator
+  // Contribute tally reduction variables to global accumulator
+  const auto k_absorption = keff_tally_absorption();
+  const auto k_collision = keff_tally_collision();
+  const auto k_tracklength = keff_tally_tracklength();
+  const auto leakage = keff_tally_leakage();
+
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (k_absorption != 0.0) {
 #pragma omp atomic
-  global_tally_absorption += keff_tally_absorption();
+      global_tally_absorption += k_absorption;
+    }
+    if (k_collision != 0.0) {
 #pragma omp atomic
-  global_tally_collision += keff_tally_collision();
+      global_tally_collision += k_collision;
+    }
+    if (k_tracklength != 0.0) {
 #pragma omp atomic
-  global_tally_tracklength += keff_tally_tracklength();
+      global_tally_tracklength += k_tracklength;
+    }
+  }
+  if (leakage != 0.0) {
 #pragma omp atomic
-  global_tally_leakage += keff_tally_leakage();
+    global_tally_leakage += leakage;
+  }
 
   // Reset particle tallies once accumulated
   keff_tally_absorption() = 0.0;
@@ -664,11 +852,17 @@ void Particle::event_death()
     score_pulse_height_tally(*this, model::active_pulse_height_tallies);
   }
 
+  // Accumulate track count for this particle history
+  if (!settings::use_shared_secondary_bank) {
+#pragma omp atomic
+    simulation::simulation_tracks_completed += n_tracks();
+  }
+
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    int64_t offset = id() - 1 - simulation::work_index[mpi::rank];
-    simulation::progeny_per_particle[offset] = n_progeny();
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      settings::use_shared_secondary_bank) {
+    simulation::progeny_per_particle[current_work()] = n_progeny();
   }
 }
 
@@ -713,12 +907,6 @@ void Particle::cross_surface(const Surface& surf)
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf.id_);
   }
-
-// if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef OPENMC_DAGMC_ENABLED
-  if (surf.geom_type() == GeometryType::CSG)
-    history().reset();
-#endif
 
   // Handle any applicable boundary conditions.
   if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
@@ -786,6 +974,8 @@ void Particle::cross_surface(const Surface& surf)
                    " it could not be located in any cell and it did not leak.");
       return;
     }
+    if (settings::temperature_field_on)
+      temperature_field_bin() = FIELD_BIN_UNKNOWN;
   }
 }
 
@@ -846,6 +1036,8 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 
   // Set the new particle direction
   u() = new_u;
+  if (settings::temperature_field_on)
+    temperature_field_bin() = FIELD_BIN_UNKNOWN;
 
   // Reassign particle's cell and surface
   coord(0).cell() = cell_last(0);
@@ -897,6 +1089,8 @@ void Particle::cross_periodic_bc(
   // Adjust the particle's location and direction.
   r() = new_r;
   u() = new_u;
+  if (settings::temperature_field_on)
+    temperature_field_bin() = FIELD_BIN_UNKNOWN;
 
   // Reassign particle's surface
   surface() = new_surface;
@@ -989,28 +1183,27 @@ void Particle::write_restart() const
     write_dataset(file_id, "id", id());
     write_dataset(file_id, "type", type().pdg_number());
 
+    // Get source site data for the particle that got lost
     int64_t i = current_work();
+    SourceSite site;
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      // take source data from primary bank for eigenvalue simulation
-      write_dataset(file_id, "weight", simulation::source_bank[i - 1].wgt);
-      write_dataset(file_id, "energy", simulation::source_bank[i - 1].E);
-      write_dataset(file_id, "xyz", simulation::source_bank[i - 1].r);
-      write_dataset(file_id, "uvw", simulation::source_bank[i - 1].u);
-      write_dataset(file_id, "time", simulation::source_bank[i - 1].time);
+      site = simulation::source_bank[i];
+    } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
+               settings::use_shared_secondary_bank &&
+               i < simulation::shared_secondary_bank_read.size()) {
+      site = simulation::shared_secondary_bank_read[i];
     } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
-      // re-sample using rng random number seed used to generate source particle
-      int64_t id = (simulation::total_gen + overall_generation() - 1) *
-                     settings::n_particles +
-                   simulation::work_index[mpi::rank] + i;
+      // Re-sample using the same seed used to generate the source particle.
+      // current_work() is 0-indexed, compute_particle_id expects 1-indexed.
+      int64_t id = compute_transport_seed(compute_particle_id(i + 1));
       uint64_t seed = init_seed(id, STREAM_SOURCE);
-      // re-sample source site
-      auto site = sample_external_source(&seed);
-      write_dataset(file_id, "weight", site.wgt);
-      write_dataset(file_id, "energy", site.E);
-      write_dataset(file_id, "xyz", site.r);
-      write_dataset(file_id, "uvw", site.u);
-      write_dataset(file_id, "time", site.time);
+      site = sample_external_source(&seed);
     }
+    write_dataset(file_id, "weight", site.wgt);
+    write_dataset(file_id, "energy", site.E);
+    write_dataset(file_id, "xyz", site.r);
+    write_dataset(file_id, "uvw", site.u);
+    write_dataset(file_id, "time", site.time);
 
     // Close file
     file_close(file_id);
@@ -1124,7 +1317,7 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   site.particle = p.type();
   site.parent_id = p.id();
   site.progeny_id = p.n_progeny();
-  int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+  simulation::surf_source_bank.thread_safe_append(site);
 }
 
 } // namespace openmc

@@ -1,5 +1,7 @@
 import os
 import hashlib
+from pathlib import Path
+
 import pytest
 import openmc
 import openmc.lib
@@ -16,7 +18,7 @@ _environment_warnings = []
 
 def _check_build_environment():
     """Check STRICT_FP and cross section data, collecting any warnings."""
-    if not openmc.lib._strict_fp_enabled():
+    if not openmc.lib.feature_enabled('strict_fp'):
         _environment_warnings.append(
             "OpenMC was NOT built with -DOPENMC_ENABLE_STRICT_FP=on. "
             "Regression test results may not match reference values due to "
@@ -97,6 +99,13 @@ def run_in_tmpdir(tmpdir):
 @pytest.fixture(scope="module")
 def endf_data():
     return os.environ['OPENMC_ENDF_DATA']
+
+@pytest.fixture(scope='session')
+def ww_files():
+    """Canonical neutron and photon weight-window test data paths."""
+    root = Path(__file__).parent / 'regression_tests' / 'weightwindows'
+    return (root / 'ww_n.txt', root / 'ww_p.txt')
+
 
 @pytest.fixture(scope='session', autouse=True)
 def resolve_paths():

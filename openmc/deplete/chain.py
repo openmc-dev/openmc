@@ -319,16 +319,16 @@ class Chain:
 
         String arguments in ``decay_files``, ``fpy_files``, and
         ``neutron_files`` will be treated as file names to be read.
-        Alternatively, :class:`openmc.data.endf.Evaluation` instances
-        can be included in these arguments.
+        Alternatively, :class:`openmc.data.endf.Evaluation` or
+        ``endf.Material`` instances can be included in these arguments.
 
         Parameters
         ----------
-        decay_files : list of str or openmc.data.endf.Evaluation
+        decay_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF decay sub-library files
-        fpy_files : list of str or openmc.data.endf.Evaluation
+        fpy_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF neutron-induced fission product yield sub-library files
-        neutron_files : list of str or openmc.data.endf.Evaluation
+        neutron_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF neutron reaction sub-library files
         reactions : iterable of str, optional
             Transmutation reactions to include in the depletion chain, e.g.,
@@ -363,7 +363,7 @@ class Chain:
             print('Processing neutron sub-library files...')
         reactions = {}
         for f in neutron_files:
-            evaluation = openmc.data.endf.Evaluation(f)
+            evaluation = openmc.data.endf.as_evaluation(f)
             name = evaluation.gnds_name
             reactions[name] = {}
             for mf, mt, nc, mod in evaluation.reaction_list:
@@ -562,9 +562,6 @@ class Chain:
 
             nuc = Nuclide.from_xml(nuclide_elem, root, this_q)
             chain.add_nuclide(nuc)
-
-        # Store path of XML file (used for handling cache invalidation)
-        chain._xml_path = str(Path(filename).resolve())
 
         return chain
 
@@ -1408,12 +1405,18 @@ def _get_chain(
     elif not isinstance(chain_file, PathLike):
         raise TypeError("chain_file must be path-like, a Chain, or None")
 
-    # Determine the key for the cache, which consists of the absolute path, the
-    # file modification time, the file size, and the fission Q values.
-    chain_path = Path(chain_file).resolve()
+    # Determine the key for the cache, which consists of the file identity,
+    # modification time, file size, and fission Q values.
+    chain_path = Path(chain_file).absolute()
     stat_result = chain_path.stat()
     fq_tuple = tuple(sorted(fission_q.items())) if fission_q else ()
-    key = (chain_path, stat_result.st_mtime, stat_result.st_size, fq_tuple)
+    key = (
+        stat_result.st_dev,
+        stat_result.st_ino,
+        stat_result.st_mtime_ns,
+        stat_result.st_size,
+        fq_tuple,
+    )
 
     # Check the global cache. If not cached, load the chain from XML and store
     global _CHAIN_CACHE
@@ -1423,10 +1426,8 @@ def _get_chain(
 
 
 def _invalidate_chain_cache(chain):
-    """Invalidate the cache for a specific Chain (when it is modifed)."""
+    """Invalidate the cache for a specific Chain (when it is modified)."""
     chain._decay_matrix = None
-    if hasattr(chain, '_xml_path'):
-        # Remove all entries with the same path as self._xml_path
-        for key in list(_CHAIN_CACHE.keys()):
-            if str(key[0]) == chain._xml_path:
-                del _CHAIN_CACHE[key]
+    for key, cached_chain in list(_CHAIN_CACHE.items()):
+        if cached_chain is chain:
+            del _CHAIN_CACHE[key]

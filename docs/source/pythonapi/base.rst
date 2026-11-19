@@ -21,11 +21,14 @@ Simulation Settings
    :nosignatures:
    :template: myclass.rst
 
+   openmc.ParticleType
    openmc.SourceBase
    openmc.IndependentSource
    openmc.FileSource
    openmc.CompiledSource
    openmc.MeshSource
+   openmc.TokamakSource
+   openmc.StellaratorSource
    openmc.SourceParticle
    openmc.VolumeCalculation
    openmc.Settings
@@ -172,6 +175,17 @@ Meshes
    openmc.CylindricalMesh
    openmc.SphericalMesh
    openmc.UnstructuredMesh
+
+Fields
+------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclassinherit.rst
+
+   openmc.ScalarField
+   openmc.TemperatureField
 
 Geometry Plotting
 -----------------

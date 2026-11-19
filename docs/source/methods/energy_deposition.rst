@@ -170,11 +170,13 @@ Charged Particles
 
 OpenMC tracks photons interaction by interaction so the energy deposited in each
 collision is easily attributed back to the nuclide and reaction for which the
-photon interacted with. Charged particles (electrons and photons) aren't tracked
-in the same way. For charged particles, OpenMC assumes that all their energy
-(less the energy of bremsstrahlung radiation) is deposited in the material in
-which they were born. In this way it is harder to trace how much energy should
-be attributed in each nuclide.
+photon interacted with. Charged particles (electrons and positrons) aren't
+tracked in the same way. For charged particles, OpenMC assumes that all their
+energy (less the energy of bremsstrahlung radiation) is deposited in the
+material in which they were born. Charged particles created by photon
+interactions are therefore accounted for in the parent photon collision for
+heating tallies. In this way it is harder to trace how much energy should be
+attributed in each nuclide.
 
 According to the CSDA approximation (see :ref:`ttb`) the energy deposited by a
 charged particle with kinetic energy :math:`T` in the :math:`i`-th element can

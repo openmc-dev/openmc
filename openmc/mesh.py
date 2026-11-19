@@ -3,7 +3,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence, Mapping
 from functools import wraps
-from math import pi, sqrt, atan2
+import math
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Protocol
@@ -11,17 +11,32 @@ from typing import Protocol
 import h5py
 import lxml.etree as ET
 import numpy as np
-from pathlib import Path
 
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
-from openmc.utility_funcs import change_directory
 from .bounding_box import BoundingBox
 from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
+
+
+# VTKHDF format version used for structured and unstructured mesh output
+_VTKHDF_VERSION = (2, 1)
+
+
+def _write_vtkhdf_type(group, name: str):
+    """Write the VTKHDF dataset type as a fixed length ASCII string
+
+    A variable length string is read back as ``str`` rather than ``bytes``,
+    which does not match what VTK readers expect.
+
+    """
+    ascii_name = name.encode("ascii")
+    group.attrs.create(
+        "Type", ascii_name, dtype=h5py.string_dtype("ascii", len(ascii_name))
+    )
 
 
 class MeshMaterialVolumes(Mapping):
@@ -261,6 +276,12 @@ class MeshBase(IDManagerMixin, ABC):
     def n_elements(self):
         pass
 
+    @property
+    @abstractmethod
+    def axis_labels(self):
+        """tuple of str : Names of the mesh axes, one per dimension."""
+        pass
+
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
@@ -268,10 +289,11 @@ class MeshBase(IDManagerMixin, ABC):
         return string
 
     def _volume_dim_check(self):
-        if self.n_dimension != 3 or \
-           any([d == 0 for d in self.dimension]):
-            raise RuntimeError(f'Mesh {self.id} is not 3D. '
-                               'Volumes cannot be provided.')
+        if any(d == 0 for d in self.dimension):
+            raise RuntimeError(
+                f'Mesh {self.id} has a zero-size dimension. '
+                'Volumes cannot be provided.'
+            )
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group):
@@ -290,7 +312,7 @@ class MeshBase(IDManagerMixin, ABC):
         """
         mesh_type = 'regular' if 'type' not in group.keys() else group['type'][()].decode()
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-        mesh_name = '' if not 'name' in group else group['name'][()].decode()
+        mesh_name = '' if 'name' not in group else group['name'][()].decode()
 
         if mesh_type == 'regular':
             return RegularMesh.from_hdf5(group, mesh_id, mesh_name)
@@ -300,7 +322,7 @@ class MeshBase(IDManagerMixin, ABC):
             return CylindricalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'spherical':
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
-        elif mesh_type == 'unstructured':
+        elif mesh_type in ('unstructured', 'xdg'):
             return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
@@ -446,7 +468,10 @@ class MeshBase(IDManagerMixin, ABC):
         This method works by raytracing repeatedly through the mesh to count the
         estimated volume of each material in all mesh elements. Three sets of
         rays are used: one set parallel to the x-axis, one parallel to the
-        y-axis, and one parallel to the z-axis.
+        y-axis, and one parallel to the z-axis. Regions of the mesh that are
+        outside the model geometry are treated as void, equivalent to a cell
+        with no material. Universe fills within the model must still define all
+        enclosed space.
 
         .. versionadded:: 0.15.1
 
@@ -539,7 +564,8 @@ class StructuredMesh(MeshBase):
 
     @property
     @abstractmethod
-    def _axis_labels(self):
+    def axis_labels(self):
+        """tuple of str : Names of the mesh axes, one per dimension."""
         pass
 
     @property
@@ -664,12 +690,16 @@ class StructuredMesh(MeshBase):
                           datasets: dict | None = None,
                           volume_normalization: bool = True,
                           curvilinear: bool = False):
-        """Creates a VTK object of the mesh
+        """Creates a VTK object of the mesh and writes it to a file.
+
+        Supported formats are legacy ASCII ``.vtk`` (requires the ``vtk``
+        package) and ``.vtkhdf`` (requires only ``h5py``).
 
         Parameters
         ----------
-        filename : str
-            Name of the VTK file to write.
+        filename : str or PathLike
+            Name of the VTK file to write. Use a ``.vtkhdf`` extension for
+            the VTKHDF format or ``.vtk`` for the legacy ASCII format.
         datasets : dict
             Dictionary whose keys are the data labels and values are the data
             sets. 1D datasets are expected to be extracted directly from
@@ -683,7 +713,9 @@ class StructuredMesh(MeshBase):
             elements.
         curvilinear : bool
             Whether or not to write curvilinear elements. Only applies to
-            ``SphericalMesh`` and ``CylindricalMesh``.
+            ``SphericalMesh`` and ``CylindricalMesh`` written to the legacy
+            ``.vtk`` format; the VTKHDF format always uses linear elements and
+            a warning is issued if this option is set.
 
         Raises
         ------
@@ -692,8 +724,9 @@ class StructuredMesh(MeshBase):
 
         Returns
         -------
-        vtk.StructuredGrid or vtk.UnstructuredGrid
-            a VTK grid object representing the mesh
+        vtk.StructuredGrid or vtk.UnstructuredGrid or None
+            A VTK grid object representing the mesh for the legacy ASCII
+            format, or None for the VTKHDF format.
 
         Examples
         --------
@@ -712,6 +745,17 @@ class StructuredMesh(MeshBase):
            >>> heating = tally.get_reshaped_data(expand_dims=True)
            >>> mesh.write_data_to_vtk({'heating': heating})
         """
+        if Path(filename).suffix == ".vtkhdf":
+            if curvilinear and not isinstance(self, (RegularMesh, RectilinearMesh)):
+                warnings.warn(
+                    "Curvilinear elements are not supported for the VTKHDF "
+                    f"format; mesh {self.id} will be written with linear "
+                    "elements.", stacklevel=2
+                )
+            self._write_vtk_hdf5(filename, datasets, volume_normalization)
+            return None
+
+        # vtk is an optional dependency only needed for the legacy ASCII path
         import vtk
         from vtk.util import numpy_support as nps
 
@@ -731,6 +775,10 @@ class StructuredMesh(MeshBase):
             for label, dataset in datasets.items():
                 dataset = self._reshape_vtk_dataset(dataset)
                 self._check_vtk_dataset(label, dataset)
+                # restore any trailing axes of size one that the check allows
+                # to be omitted so that the dataset matches the mesh dimension
+                if dataset.ndim > 1:
+                    dataset = dataset.reshape(self.dimension)
                 # If the array data is 3D, assume is in C ordering and transpose
                 # before flattening to match the ordering expected by the VTK
                 # array based on the way mesh indices are ordered in the Python
@@ -919,22 +967,137 @@ class StructuredMesh(MeshBase):
         """
         cv.check_type('data label', label, str)
 
+        # If this is a multidimensional dataset, validate its shape first so
+        # that the user receives the more specific error message.
+        if dataset.ndim > 1:
+            if dataset.shape == self.dimension:
+                return
+
+            if dataset.ndim < len(self.dimension):
+                padded_shape = tuple(dataset.shape) + (1,) * (len(self.dimension) - dataset.ndim)
+                if padded_shape == tuple(self.dimension):
+                    return
+
+            raise ValueError(
+                f'Cannot apply multidimensional dataset "{label}" with '
+                f"shape {dataset.shape} to mesh {self.id} "
+                f"with dimensions {self.dimension}"
+            )
+
         if dataset.size != self.n_elements:
             raise ValueError(
                 f"The size of the dataset '{label}' ({dataset.size}) should be"
                 f" equal to the number of mesh cells ({self.n_elements})"
             )
 
-        # accept a flat array as-is, assuming it is in the correct order
-        if dataset.ndim == 1:
+    def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None,
+                        volume_normalization: bool) -> None:
+        """Write the mesh and data in the VTKHDF UnstructuredGrid format
+
+        VTKHDF defines no StructuredGrid or RectilinearGrid dataset type, so
+        meshes with non-uniform or curvilinear elements are written as an
+        unstructured grid of linear hexahedra. :class:`RegularMesh` overrides
+        this with the more compact ImageData format.
+
+        Parameters
+        ----------
+        filename : str or PathLike
+            Name of the VTKHDF file to write.
+        datasets : dict or None
+            Dictionary whose keys are the data labels and values are the data
+            sets.
+        volume_normalization : bool
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
+
+        """
+        n_i, n_j, n_k = self.dimension
+        vertex_shape = (n_i + 1, n_j + 1, n_k + 1)
+        points = np.asarray(self.vertices).reshape(-1, 3)
+
+        # Index of the (i, j, k) corner of each element, ordered with i varying
+        # fastest to match the cell ordering used elsewhere for VTK output
+        i, j, k = np.meshgrid(np.arange(n_i), np.arange(n_j), np.arange(n_k),
+                              indexing='ij')
+        corner = np.ravel_multi_index((i, j, k), vertex_shape)
+        corner = corner.transpose(2, 1, 0).ravel()
+
+        # Offset from the (i, j, k) corner to each vertex of a VTK hexahedron
+        stride_i = (n_j + 1) * (n_k + 1)
+        stride_j = n_k + 1
+        offsets = np.array([
+            0,
+            stride_i,
+            stride_i + stride_j,
+            stride_j,
+            1,
+            stride_i + 1,
+            stride_i + stride_j + 1,
+            stride_j + 1,
+        ])
+        connectivity = (corner[:, None] + offsets[None, :]).ravel()
+
+        n_cells = corner.size
+        cell_data = list(self._vtk_hdf5_datasets(datasets, volume_normalization))
+        with h5py.File(filename, "w") as f:
+            root = f.create_group("VTKHDF")
+            root.attrs["Version"] = _VTKHDF_VERSION
+            _write_vtkhdf_type(root, "UnstructuredGrid")
+            root.create_dataset("NumberOfPoints", data=[len(points)], dtype="i8")
+            root.create_dataset("Points", data=points, dtype="f8")
+            root.create_dataset("NumberOfCells", data=[n_cells], dtype="i8")
+            root.create_dataset("NumberOfConnectivityIds",
+                                data=[connectivity.size], dtype="i8")
+            root.create_dataset("Connectivity", data=connectivity, dtype="i8")
+            root.create_dataset(
+                "Offsets",
+                data=np.arange(0, connectivity.size + 1, _N_HEX_VERTICES),
+                dtype="i8",
+            )
+            # 12 is the VTK cell type for a linear hexahedron
+            root.create_dataset("Types", data=np.full(n_cells, 12), dtype="uint8")
+
+            cell_data_group = root.create_group("CellData")
+            for label, dataset in cell_data:
+                cell_data_group.create_dataset(label, data=dataset,
+                                               dtype="float64", chunks=True)
+
+    def _vtk_hdf5_datasets(self, datasets: dict | None,
+                           volume_normalization: bool):
+        """Validate and flatten datasets for VTKHDF output
+
+        Yields
+        ------
+        tuple of (str, numpy.ndarray)
+            Data label and the corresponding flat array of element values,
+            ordered with the first mesh index varying fastest.
+
+        """
+        if not datasets:
             return
 
-        if dataset.shape != self.dimension:
-            raise ValueError(
-                f'Cannot apply multidimensional dataset "{label}" with '
-                f"shape {dataset.shape} to mesh {self.id} "
-                f"with dimensions {self.dimension}"
-            )
+        for label, dataset in datasets.items():
+            dataset = self._reshape_vtk_dataset(dataset)
+            self._check_vtk_dataset(label, dataset)
+            # restore any trailing axes of size one so that the dataset
+            # aligns with the volumes instead of broadcasting against them
+            if dataset.ndim > 1:
+                dataset = dataset.reshape(self.dimension)
+
+            if volume_normalization:
+                # a flat dataset is already ordered with the first index
+                # varying fastest, so the volumes have to match that ordering
+                if dataset.ndim > 1:
+                    dataset = dataset / self.volumes
+                else:
+                    dataset = dataset / self.volumes.T.ravel()
+
+            if dataset.ndim > 1:
+                dataset = dataset.T.ravel()
+            else:
+                dataset = dataset.ravel()
+
+            yield label, dataset
 
     @classmethod
     def from_domain(
@@ -1043,6 +1206,9 @@ class RegularMesh(StructuredMesh):
         The number of mesh cells in each direction (x, y, z).
     n_dimension : int
         Number of mesh dimensions.
+    axis_labels : tuple of str
+        Names of the mesh axes ('x', 'y', 'z'), truncated to the mesh
+        dimensionality.
     lower_left : Iterable of float
         The lower-left corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
@@ -1086,7 +1252,7 @@ class RegularMesh(StructuredMesh):
             return None
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('x', 'y', 'z')[:self.n_dimension]
 
     @property
@@ -1134,7 +1300,7 @@ class RegularMesh(StructuredMesh):
             if self._lower_left is not None and self._dimension is not None:
                 us = self._upper_right
                 ls = self._lower_left
-                dims =  self._dimension
+                dims = self._dimension
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @width.setter
@@ -1505,7 +1671,7 @@ class RegularMesh(StructuredMesh):
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
         """Finds the index of the mesh element at the specified coordinates.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
 
         Parameters
         ----------
@@ -1543,6 +1709,56 @@ class RegularMesh(StructuredMesh):
         indices = np.floor((coords_array - lower_left) / spacing).astype(int)
         return tuple(int(i) for i in indices[:ndim])
 
+    def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None,
+                        volume_normalization: bool) -> None:
+        """Write the mesh and data in the VTKHDF ImageData format
+
+        A regular mesh is a uniform grid, so it is fully described by an origin
+        and a spacing and no point coordinates need to be stored. Meshes with
+        fewer than three dimensions are padded to three, as required by the
+        VTKHDF ImageData specification.
+
+        Parameters
+        ----------
+        filename : str or PathLike
+            Name of the VTKHDF file to write.
+        datasets : dict or None
+            Dictionary whose keys are the data labels and values are the data
+            sets.
+        volume_normalization : bool
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
+
+        """
+        ndim = len(self.dimension)
+        shape = list(self.dimension) + [1] * (3 - ndim)
+        origin = list(self.lower_left) + [0.0] * (3 - ndim)
+        spacing = list(self.width) + [1.0] * (3 - ndim)
+
+        cell_data = list(self._vtk_hdf5_datasets(datasets, volume_normalization))
+        with h5py.File(filename, "w") as f:
+            root = f.create_group("VTKHDF")
+            root.attrs["Version"] = _VTKHDF_VERSION
+            _write_vtkhdf_type(root, "ImageData")
+            root.attrs.create(
+                "WholeExtent",
+                np.array([0, shape[0], 0, shape[1], 0, shape[2]], dtype="i8"),
+            )
+            root.attrs.create("Origin", np.array(origin, dtype="f8"))
+            root.attrs.create("Spacing", np.array(spacing, dtype="f8"))
+            root.attrs.create("Direction", np.eye(3).ravel())
+
+            cell_data_group = root.create_group("CellData")
+            for label, dataset in cell_data:
+                # ImageData element data is stored with the last index varying
+                # fastest, i.e. with shape (nz, ny, nx)
+                cell_data_group.create_dataset(
+                    label,
+                    data=dataset.reshape(shape[2], shape[1], shape[0]),
+                    dtype="float64",
+                    chunks=True,
+                )
+
 
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
@@ -1570,6 +1786,8 @@ class RectilinearMesh(StructuredMesh):
         The number of mesh cells in each direction (x, y, z).
     n_dimension : int
         Number of mesh dimensions (always 3 for a RectilinearMesh).
+    axis_labels : tuple of str
+        Names of the mesh axes ('x', 'y', 'z').
     x_grid : numpy.ndarray
         1-D array of mesh boundary points along the x-axis.
     y_grid : numpy.ndarray
@@ -1603,7 +1821,7 @@ class RectilinearMesh(StructuredMesh):
         return 3
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('x', 'y', 'z')
 
     @property
@@ -1757,7 +1975,7 @@ class RectilinearMesh(StructuredMesh):
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple[int, int, int]:
         """Find the mesh cell indices containing the specified coordinates.
 
-        .. versionadded:: 0.15.4
+        .. versionadded:: 0.16.0
 
         Parameters
         ----------
@@ -1871,6 +2089,8 @@ class CylindricalMesh(StructuredMesh):
         The number of mesh cells in each direction (r_grid, phi_grid, z_grid).
     n_dimension : int
         Number of mesh dimensions (always 3 for a CylindricalMesh).
+    axis_labels : tuple of str
+        Names of the mesh axes ('r', 'phi', 'z').
     r_grid : numpy.ndarray
         1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
@@ -1902,7 +2122,7 @@ class CylindricalMesh(StructuredMesh):
         self,
         r_grid: Sequence[float],
         z_grid: Sequence[float],
-        phi_grid: Sequence[float] = (0, 2*pi),
+        phi_grid: Sequence[float] = (0, 2*math.pi),
         origin: Sequence[float] = (0., 0., 0.),
         mesh_id: int | None = None,
         name: str = '',
@@ -1925,7 +2145,7 @@ class CylindricalMesh(StructuredMesh):
         return 3
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('r', 'phi', 'z')
 
     @property
@@ -1959,7 +2179,7 @@ class CylindricalMesh(StructuredMesh):
         cv.check_length('mesh phi_grid', grid, 2)
         cv.check_increasing('mesh phi_grid', grid)
         grid = np.asarray(grid, dtype=float)
-        if np.any((grid < 0.0) | (grid > 2*pi)):
+        if np.any((grid < 0.0) | (grid > 2*math.pi)):
             raise ValueError("phi_grid values must be in [0, 2π].")
         self._phi_grid = grid
 
@@ -2027,9 +2247,9 @@ class CylindricalMesh(StructuredMesh):
         return string
 
     def get_indices_at_coords(
-            self,
-            coords: Sequence[float]
-        ) -> tuple[int, int, int]:
+        self,
+        coords: Sequence[float]
+    ) -> tuple[int, int, int]:
         """Finds the index of the mesh element at the specified coordinates.
 
         .. versionadded:: 0.15.0
@@ -2045,7 +2265,7 @@ class CylindricalMesh(StructuredMesh):
             The r, phi, z indices
 
         """
-        r_value_from_origin = sqrt((coords[0]-self.origin[0])**2 + (coords[1]-self.origin[1])**2)
+        r_value_from_origin = math.hypot(coords[0]-self.origin[0], coords[1]-self.origin[1])
 
         if r_value_from_origin < self.r_grid[0] or r_value_from_origin > self.r_grid[-1]:
             raise ValueError(
@@ -2069,13 +2289,13 @@ class CylindricalMesh(StructuredMesh):
         delta_x = coords[0] - self.origin[0]
         delta_y = coords[1] - self.origin[1]
         # atan2 returns values in -pi to +pi range
-        phi_value = atan2(delta_y, delta_x)
+        phi_value = math.atan2(delta_y, delta_x)
         if delta_x < 0 and delta_y < 0:
             # returned phi_value anticlockwise and negative
-            phi_value += 2 * pi
+            phi_value += 2 * math.pi
         if delta_x > 0 and delta_y < 0:
             # returned phi_value anticlockwise and negative
-            phi_value += 2 * pi
+            phi_value += 2 * math.pi
 
         phi_grid_values = np.array(self.phi_grid)
 
@@ -2110,7 +2330,7 @@ class CylindricalMesh(StructuredMesh):
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         name: str = '',
-        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
+        phi_grid_bounds: Sequence[float] = (0.0, 2*math.pi),
         enclose_domain: bool = False,
     ) -> CylindricalMesh:
         """Create CylindricalMesh from a bounding box.
@@ -2308,6 +2528,8 @@ class SphericalMesh(StructuredMesh):
         theta_grid, phi_grid).
     n_dimension : int
         Number of mesh dimensions (always 3 for a SphericalMesh).
+    axis_labels : tuple of str
+        Names of the mesh axes ('r', 'theta', 'phi').
     r_grid : numpy.ndarray
         1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
@@ -2338,8 +2560,8 @@ class SphericalMesh(StructuredMesh):
     def __init__(
         self,
         r_grid: Sequence[float],
-        phi_grid: Sequence[float] = (0, 2*pi),
-        theta_grid: Sequence[float] = (0, pi),
+        phi_grid: Sequence[float] = (0, 2*math.pi),
+        theta_grid: Sequence[float] = (0, math.pi),
         origin: Sequence[float] = (0., 0., 0.),
         mesh_id: int | None = None,
         name: str = '',
@@ -2362,7 +2584,7 @@ class SphericalMesh(StructuredMesh):
         return 3
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('r', 'theta', 'phi')
 
     @property
@@ -2396,7 +2618,7 @@ class SphericalMesh(StructuredMesh):
         cv.check_length('mesh theta_grid', grid, 2)
         cv.check_increasing('mesh theta_grid', grid)
         grid = np.asarray(grid, dtype=float)
-        if np.any((grid < 0.0) | (grid > pi)):
+        if np.any((grid < 0.0) | (grid > math.pi)):
             raise ValueError("theta_grid values must be in [0, π].")
         self._theta_grid = grid
 
@@ -2410,7 +2632,7 @@ class SphericalMesh(StructuredMesh):
         cv.check_length('mesh phi_grid', grid, 2)
         cv.check_increasing('mesh phi_grid', grid)
         grid = np.asarray(grid, dtype=float)
-        if np.any((grid < 0.0) | (grid > 2*pi)):
+        if np.any((grid < 0.0) | (grid > 2*math.pi)):
             raise ValueError("phi_grid values must be in [0, 2π].")
         self._phi_grid = grid
 
@@ -2482,8 +2704,8 @@ class SphericalMesh(StructuredMesh):
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         name: str = '',
-        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
-        theta_grid_bounds: Sequence[float] = (0.0, pi),
+        phi_grid_bounds: Sequence[float] = (0.0, 2*math.pi),
+        theta_grid_bounds: Sequence[float] = (0.0, math.pi),
         enclose_domain: bool = False,
     ) -> SphericalMesh:
         """Create SphericalMesh from a bounding box.
@@ -2629,7 +2851,6 @@ class SphericalMesh(StructuredMesh):
         """
         return super().centroids
 
-
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
         """Converts an array with r, theta, phi values in the last dimension (shape (..., 3))
@@ -2644,10 +2865,82 @@ class SphericalMesh(StructuredMesh):
         arr[..., 2] = z + origin[2]
         return arr
 
-    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
-        raise NotImplementedError(
-            "get_indices_at_coords is not yet implemented for SphericalMesh"
-        )
+    def get_indices_at_coords(
+        self,
+        coords: Sequence[float]
+    ) -> tuple[int, int, int]:
+        """Find the mesh cell indices containing the specified coordinates.
+
+        .. versionadded:: 0.16.0
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            Cartesian coordinates of the point as (x, y, z).
+
+        Returns
+        -------
+        tuple[int, int, int]
+            The r, theta, phi indices.
+
+        Raises
+        ------
+        ValueError
+            If the coordinates fall outside the mesh grid boundaries.
+
+        """
+        dx = coords[0] - self.origin[0]
+        dy = coords[1] - self.origin[1]
+        dz = coords[2] - self.origin[2]
+
+        r_value = math.hypot(dx, dy, dz)
+
+        if r_value < self.r_grid[0] or r_value > self.r_grid[-1]:
+            raise ValueError(
+                f'The r value {r_value} computed from the specified '
+                f'coordinates is outside the r grid range '
+                f'[{self.r_grid[0]}, {self.r_grid[-1]}].'
+            )
+
+        r_index = int(min(
+            np.searchsorted(self.r_grid, r_value, side='right') - 1,
+            len(self.r_grid) - 2
+        ))
+
+        if r_value == 0.0:
+            theta_value = 0.0
+            phi_value = 0.0
+        else:
+            theta_value = math.acos(dz / r_value)
+            phi_value = math.atan2(dy, dx)
+            if phi_value < 0:
+                phi_value += 2 * math.pi
+
+        if theta_value < self.theta_grid[0] or theta_value > self.theta_grid[-1]:
+            raise ValueError(
+                f'The theta value {theta_value} computed from the specified '
+                f'coordinates is outside the theta grid range '
+                f'[{self.theta_grid[0]}, {self.theta_grid[-1]}].'
+            )
+
+        theta_index = int(min(
+            np.searchsorted(self.theta_grid, theta_value, side='right') - 1,
+            len(self.theta_grid) - 2
+        ))
+
+        if phi_value < self.phi_grid[0] or phi_value > self.phi_grid[-1]:
+            raise ValueError(
+                f'The phi value {phi_value} computed from the specified '
+                f'coordinates is outside the phi grid range '
+                f'[{self.phi_grid[0]}, {self.phi_grid[-1]}].'
+            )
+
+        phi_index = int(min(
+            np.searchsorted(self.phi_grid, phi_value, side='right') - 1,
+            len(self.phi_grid) - 2
+        ))
+
+        return (r_index, theta_index, phi_index)
 
 
 def require_statepoint_data(func):
@@ -2673,10 +2966,15 @@ class UnstructuredMesh(MeshBase):
     ----------
     filename : path-like
         Location of the unstructured mesh file. Supported files for 'moab'
-        library are .h5 and .vtk. Supported files for 'libmesh' library are
-        exodus mesh files .exo.
-    library : {'moab', 'libmesh'}
-        Mesh library used for the unstructured mesh tally
+        library include .h5m, .h5, .vtk, and Exodus files. Supported files for
+        'libmesh' include Exodus files (.e, .exo, and .ex2).
+    library : {'moab', 'libmesh'}, optional
+        Mesh library used for the unstructured mesh tally. If omitted, inferred
+        from the filename extension (case-insensitive): .h5m, .h5, and .vtk
+        select 'moab'; .e, .exo, and .ex2 select 'libmesh'. Other extensions
+        require an explicit library. An explicit value overrides inference,
+        including for Exodus files that can be read by either backend. Inference
+        occurs only at construction, independently of the mesh interface.
     mesh_id : int
         Unique identifier for the mesh
     name : str
@@ -2701,6 +2999,13 @@ class UnstructuredMesh(MeshBase):
         Multiplicative factor to apply to mesh coordinates
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
+    interface : {'native', 'xdg'}
+        Interface type for the unstructured mesh. The value 'native' indicates
+        that the C++ implementation interfaces directly with the indicated mesh
+        library. The value 'xdg' indicates that the C++ implementation
+        interfaces with the mesh library through the XDG interface, enabling
+        consistent behavior across different mesh libraries. The default value
+        is 'native'.
     options : str
         Special options that control spatial search data structures used. This
         is currently only used to set `parameters
@@ -2737,18 +3042,31 @@ class UnstructuredMesh(MeshBase):
     _UNSUPPORTED_ELEM = -1
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
-    _VTK_TETRA = 10
+    _VTK_TET = 10
+    _VTK_HEX = 12
 
-    def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
+    def __init__(self, filename: PathLike, library: str | None = None,
+                 mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
                  options: str | None = None):
         super().__init__(mesh_id, name)
         self.filename = filename
+        if library is None:
+            extension = Path(self.filename).suffix.lower()
+            if extension in {'.h5m', '.h5', '.vtk'}:
+                library = 'moab'
+            elif extension in {'.e', '.exo', '.ex2'}:
+                library = 'libmesh'
+            else:
+                raise ValueError(
+                    f"Cannot infer mesh library from filename {str(filename)!r}; "
+                    "specify library='moab' or library='libmesh'.")
         self._volumes = None
         self._n_elements = None
         self._conectivity = None
         self._vertices = None
         self.library = library
+        self.interface = 'native'
         self._output = False
         self.length_multiplier = length_multiplier
         self.options = options
@@ -2771,6 +3089,15 @@ class UnstructuredMesh(MeshBase):
     def library(self, lib: str):
         cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
         self._library = lib
+
+    @property
+    def interface(self):
+        return self._interface
+
+    @interface.setter
+    def interface(self, interface: str):
+        cv.check_value('Unstructured mesh interface', interface, ('native', 'xdg'))
+        self._interface = interface
 
     @property
     def options(self) -> str | None:
@@ -2877,7 +3204,7 @@ class UnstructuredMesh(MeshBase):
         return 3
 
     @property
-    def _axis_labels(self):
+    def axis_labels(self):
         return ('element_index',)
 
     @property
@@ -2893,6 +3220,7 @@ class UnstructuredMesh(MeshBase):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
         string += '{: <16}=\t{}\n'.format('\tMesh Library', self.library)
+        string += '{: <16}=\t{}\n'.format('\tInterface', self.interface)
         if self.length_multiplier != 1.0:
             string += '{: <16}=\t{}\n'.format('\tLength multiplier',
                                               self.length_multiplier)
@@ -3048,7 +3376,9 @@ class UnstructuredMesh(MeshBase):
                 n_skipped += 1
                 continue
             else:
-                raise RuntimeError(f"Invalid element type {elem_type} found")
+                raise RuntimeError(
+                    f"Invalid element type {elem_type} found in mesh {self.id}"
+                )
 
             for i, c in enumerate(conn):
                 if c == -1:
@@ -3075,14 +3405,18 @@ class UnstructuredMesh(MeshBase):
                     )
 
             if volume_normalization:
+                # normalize copies so that the caller's arrays are unchanged
+                normalized = {}
                 for name, data in datasets.items():
                     if np.issubdtype(data.dtype, np.integer):
                         warnings.warn(
                             f'Integer data set "{name}" will '
                             "not be volume-normalized."
                         )
-                        continue
-                    data /= self.volumes
+                        normalized[name] = data
+                    else:
+                        normalized[name] = data / self.volumes
+                datasets = normalized
 
             # add data to the mesh
             for name, data in datasets.items():
@@ -3105,35 +3439,48 @@ class UnstructuredMesh(MeshBase):
         datasets: dict | None = None,
         volume_normalization: bool = True,
     ):
-        def append_dataset(dset, array):
-            """Convenience function to append data to an HDF5 dataset"""
-            origLen = dset.shape[0]
-            dset.resize(origLen + array.shape[0], axis=0)
-            dset[origLen:] = array
+        """Write UnstructuredMesh as VTK-HDF5 UnstructuredGrid format.
 
-        if self.library != "moab":
-            raise NotImplementedError("VTKHDF output is only supported for MOAB meshes")
+        Supports linear tetrahedra and linear hexahedra elements.
+        """
+        datasets = {} if datasets is None else datasets
 
-        # the self.connectivity contains arrays of length 8 to support hex
-        # elements as well, in the case of tetrahedra mesh elements, the
-        # last 4 values are -1 and are removed
-        trimmed_connectivity = []
-        for cell in self.connectivity:
-            # Find the index of the first -1 value, if any
-            first_negative_index = np.where(cell == -1)[0]
-            if first_negative_index.size > 0:
-                # Slice the array up to the first -1 value
-                trimmed_connectivity.append(cell[: first_negative_index[0]])
+        # This writer supports linear tetrahedra and linear hexahedra elements
+        conn_list = []           # flattened connectivity ids
+        cell_sizes = []          # number of points per cell
+        vtk_types = []           # VTK cell types per cell (uint8)
+        n_skipped = 0
+
+        for conn, etype in zip(self.connectivity, self.element_types):
+            if etype == self._LINEAR_TET:
+                ids = conn[:4]
+                vtk_types.append(self._VTK_TET)
+            elif etype == self._LINEAR_HEX:
+                ids = conn[:8]
+                vtk_types.append(self._VTK_HEX)
+            elif etype == self._UNSUPPORTED_ELEM:
+                n_skipped += 1
+                continue
             else:
-                # No -1 values, append the whole cell
-                trimmed_connectivity.append(cell)
-        trimmed_connectivity = np.array(trimmed_connectivity, dtype="int32").flatten()
+                raise RuntimeError(
+                    f"Invalid element type {etype} found in mesh {self.id}"
+                )
+            conn_list.extend(ids.tolist())
+            cell_sizes.append(len(ids))
 
-        # MOAB meshes supports tet elements only so we know it has 4 points per cell
-        points_per_cell = 4
+        if n_skipped > 0:
+            warnings.warn(
+                f"{n_skipped} elements were not written because "
+                "they are not of type linear tet/hex"
+            )
 
-        # offsets are the indices of the first point of each cell in the array of points
-        offsets = np.arange(0, self.n_elements * points_per_cell + 1, points_per_cell)
+        connectivity = np.asarray(conn_list, dtype=np.int64)
+
+        # Offsets must be length (numCells + 1) with a leading 0 and
+        # cumulative end-indices thereafter, per VTK's layout
+        cell_sizes_arr = np.asarray(cell_sizes, dtype=np.int64)
+        offsets = np.zeros(cell_sizes_arr.size + 1, dtype=np.int64)
+        np.cumsum(cell_sizes_arr, out=offsets[1:])
 
         for name, data in datasets.items():
             if data.shape != self.dimension:
@@ -3146,68 +3493,52 @@ class UnstructuredMesh(MeshBase):
         with h5py.File(filename, "w") as f:
 
             root = f.create_group("VTKHDF")
-            vtk_file_format_version = (2, 1)
-            root.attrs["Version"] = vtk_file_format_version
-            ascii_type = "UnstructuredGrid".encode("ascii")
-            root.attrs.create(
-                "Type",
-                ascii_type,
-                dtype=h5py.string_dtype("ascii", len(ascii_type)),
-            )
+            root.attrs["Version"] = _VTKHDF_VERSION
+            _write_vtkhdf_type(root, "UnstructuredGrid")
 
-            # create hdf5 file structure
-            root.create_dataset("NumberOfPoints", (0,), maxshape=(None,), dtype="i8")
-            root.create_dataset("Types", (0,), maxshape=(None,), dtype="uint8")
-            root.create_dataset("Points", (0, 3), maxshape=(None, 3), dtype="f")
-            root.create_dataset(
-                "NumberOfConnectivityIds", (0,), maxshape=(None,), dtype="i8"
-            )
-            root.create_dataset("NumberOfCells", (0,), maxshape=(None,), dtype="i8")
-            root.create_dataset("Offsets", (0,), maxshape=(None,), dtype="i8")
-            root.create_dataset("Connectivity", (0,), maxshape=(None,), dtype="i8")
+            # Create HDF5 file structure compliant with VTKHDF UnstructuredGrid
+            n_points = int(len(self.vertices))
+            n_cells = int(len(cell_sizes))
+            n_conn_ids = int(len(connectivity))
 
-            append_dataset(root["NumberOfPoints"], np.array([len(self.vertices)]))
-            append_dataset(root["Points"], self.vertices)
-            append_dataset(
-                root["NumberOfConnectivityIds"],
-                np.array([len(trimmed_connectivity)]),
-            )
-            append_dataset(root["Connectivity"], trimmed_connectivity)
-            append_dataset(root["NumberOfCells"], np.array([self.n_elements]))
-            append_dataset(root["Offsets"], offsets)
-
-            append_dataset(
-                root["Types"], np.full(self.n_elements, self._VTK_TETRA, dtype="uint8")
-            )
+            root.create_dataset("NumberOfPoints", data=(n_points,), dtype="i8")
+            root.create_dataset("NumberOfCells", data=(n_cells,), dtype="i8")
+            root.create_dataset("NumberOfConnectivityIds", data=(n_conn_ids,), dtype="i8")
+            root.create_dataset("Points", data=self.vertices.astype(np.float64, copy=False), dtype="f8")
+            root.create_dataset("Types", data=np.asarray(vtk_types, dtype=np.uint8), dtype="uint8")
+            root.create_dataset("Offsets", data=offsets.astype("i8"), dtype="i8")
+            root.create_dataset("Connectivity", data=connectivity.astype("i8"), dtype="i8")
 
             cell_data_group = root.create_group("CellData")
 
             for name, data in datasets.items():
-
-                cell_data_group.create_dataset(
-                    name, (0,), maxshape=(None,), dtype="float64", chunks=True
-                )
-
+                data = np.asarray(data, dtype="float64")
                 if volume_normalization:
-                    data /= self.volumes
-                append_dataset(cell_data_group[name], data)
+                    # divide out of place so that the caller's array is
+                    # unchanged
+                    data = data / self.volumes
+                cell_data_group.create_dataset(
+                    name, data=data, dtype="float64", chunks=True
+                )
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
-        filename = group["filename"][()].decode()
+        filename = group["filename"][()].decode() if "filename" in group else ""
         library = group["library"][()].decode()
-        if "options" in group.attrs:
-            options = group.attrs['options'].decode()
-        else:
-            options = None
 
-        mesh = cls(
-            filename=filename,
-            library=library,
-            mesh_id=mesh_id,
-            name=name,
-            options=options,
-        )
+        kwargs = {'filename': filename,
+                  'library': library,
+                  'mesh_id': mesh_id,
+                  'name': name}
+
+        if "options" in group.attrs:
+            kwargs['options'] = group.attrs['options'].decode()
+
+        mesh = cls(**kwargs)
+
+        if "interface" in group:
+            mesh.interface = group["interface"][()].decode()
+
         mesh._has_statepoint_data = True
         vol_data = group["volumes"][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -3243,6 +3574,9 @@ class UnstructuredMesh(MeshBase):
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
 
+        if self.interface != 'native':
+            element.set("interface", self.interface)
+
         if self._length_multiplier != 1.0:
             element.set("length_multiplier", str(self.length_multiplier))
 
@@ -3267,8 +3601,11 @@ class UnstructuredMesh(MeshBase):
         library = get_text(elem, 'library')
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
         options = get_text(elem, "options")
-
-        return cls(filename, library, mesh_id, '', length_multiplier, options)
+        out = cls(filename, library, mesh_id, '', length_multiplier, options)
+        interface = get_text(elem, "interface")
+        if interface is not None:
+            out.interface = interface
+        return out
 
 
 def _read_meshes(elem):

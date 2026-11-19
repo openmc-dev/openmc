@@ -35,13 +35,5 @@ recursive-include tests *.h5
 recursive-include tests *.h5m
 recursive-include tests *.py
 recursive-include tests *.xml
-recursive-include vendor CMakeLists.txt
-recursive-include vendor *.cc
-recursive-include vendor *.cpp
-recursive-include vendor *.h
-recursive-include vendor *.hh
-recursive-include vendor *.hpp
-recursive-include vendor *.pc.in
-recursive-include vendor *.natvis
 prune docs/build
 prune docs/source/pythonapi/generated/

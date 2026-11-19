@@ -20,6 +20,7 @@ Functions
     :template: myfunction.rst
 
     openmc.mgxs.convert_flux_groups
+    openmc.mgxs.build_fine_group_structure
 
 Classes
 +++++++
@@ -51,6 +52,7 @@ Multi-group Cross Sections
     openmc.mgxs.KappaFissionXS
     openmc.mgxs.MultiplicityMatrixXS
     openmc.mgxs.NuFissionMatrixXS
+    openmc.mgxs.PhotonTransferMatrixXS
     openmc.mgxs.ReducedAbsorptionXS
     openmc.mgxs.ScatterXS
     openmc.mgxs.ScatterMatrixXS

@@ -5,7 +5,8 @@ from io import StringIO
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from .data import EV_PER_MEV
-from .endf import get_cont_record, get_list_record, get_tab1_record, Evaluation
+from .endf import (
+    as_evaluation, get_cont_record, get_list_record, get_tab1_record)
 from .function import Function1D, Tabulated1D, Polynomial, sum_functions
 
 
@@ -195,7 +196,7 @@ class FissionEnergyRelease(EqualityMixin):
 
         Parameters
         ----------
-        ev : openmc.data.endf.Evaluation
+        ev : openmc.data.endf.Evaluation or endf.Material
             ENDF evaluation
         incident_neutron : openmc.data.IncidentNeutron
             Corresponding incident neutron dataset
@@ -206,7 +207,7 @@ class FissionEnergyRelease(EqualityMixin):
             Fission energy release data
 
         """
-        cv.check_type('evaluation', ev, Evaluation)
+        ev = as_evaluation(ev)
 
         # Check to make sure this ENDF file matches the expected isomer.
         if ev.target['atomic_number'] != incident_neutron.atomic_number:

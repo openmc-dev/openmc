@@ -4,6 +4,8 @@
 //! \file event.h
 //! \brief Event-based data structures and methods
 
+#include <tuple> // for tie
+
 #include "openmc/particle.h"
 #include "openmc/shared_array.h"
 
@@ -111,6 +113,19 @@ void process_collision_events();
 //
 //! \param n_particles The number of particles in the particle buffer
 void process_death_events(int64_t n_particles);
+
+//! Process event queues until all are empty. Each iteration processes the
+//! longest queue first to maximize vectorization efficiency.
+void process_transport_events();
+
+//! Initialize secondary particles from a shared secondary bank for
+//! event-based transport
+//
+//! \param n_particles The number of particles to initialize
+//! \param offset The offset index in the shared secondary bank
+//! \param shared_secondary_bank The shared secondary bank to read from
+void process_init_secondary_events(int64_t n_particles, int64_t offset,
+  const SharedArray<SourceSite>& shared_secondary_bank);
 
 } // namespace openmc
 

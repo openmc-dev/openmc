@@ -98,6 +98,8 @@ vector<unique_ptr<ChainNuclide>> chain_nuclides;
 
 void read_chain_file_xml()
 {
+  free_memory_chain();
+
   char* chain_file_path = std::getenv("OPENMC_CHAIN_FILE");
   if (!chain_file_path) {
     return;
@@ -118,6 +120,12 @@ void read_chain_file_xml()
   for (auto node : root.children("nuclide")) {
     data::chain_nuclides.push_back(std::make_unique<ChainNuclide>(node));
   }
+}
+
+void free_memory_chain()
+{
+  data::chain_nuclides.clear();
+  data::chain_nuclide_map.clear();
 }
 
 } // namespace openmc

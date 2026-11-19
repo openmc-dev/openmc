@@ -16,7 +16,7 @@ from tests.regression_tests import config
 from tests.testing_harness import PyAPITestHarness
 
 pytestmark = pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(),
+    not openmc.lib.feature_enabled('dagmc'),
     reason="DAGMC is not enabled.")
 
 TETS_PER_VOXEL = 12
@@ -129,8 +129,8 @@ class ExternalMoabTest(PyAPITestHarness):
     def get_mesh_tally_data(tally):
         data = tally.get_reshaped_data(value='mean')
         std_dev = tally.get_reshaped_data(value='std_dev')
-        data.shape = (data.size, 1)
-        std_dev.shape = (std_dev.size, 1)
+        data = data.reshape(-1, 1)
+        std_dev = std_dev.reshape(-1, 1)
         return np.sum(data, axis=1), np.sum(std_dev, axis=1)
 
     def _cleanup(self):

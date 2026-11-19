@@ -1075,7 +1075,7 @@ def model_dagmc_2():
 
 
 @pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled."
+    not openmc.lib.feature_enabled('dagmc'), reason="DAGMC CAD geometry is not enabled."
 )
 @pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
 @pytest.mark.parametrize(

@@ -667,6 +667,8 @@ found in the :ref:`random ray user guide <random_ray>`.
 
   :source_region_meshes:
     Relates meshes to spatial domains for subdividing source regions with each domain.
+    Any mesh type can be used; an unstructured mesh must use the "xdg"
+    interface.
 
     :mesh:
       Contains an ``id`` attribute and one or more ``<domain>`` sub-elements.

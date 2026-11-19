@@ -239,7 +239,8 @@ class Settings:
             domains. Each domain is an instance of openmc.Material, openmc.Cell,
             or openmc.Universe. The mesh will be applied to the listed domains
             to subdivide source regions so as to improve accuracy and/or conform
-            with tally meshes.
+            with tally meshes. Any mesh type can be used; an
+            openmc.UnstructuredMesh must have its interface set to 'xdg'.
         :diagonal_stabilization_rho:
             The rho factor for use with diagonal stabilization. This technique is
             applied when negative diagonal (in-group) elements are detected in

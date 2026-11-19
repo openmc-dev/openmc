@@ -154,6 +154,12 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
     assigning to ``model.settings.random_ray['source_region_meshes']``) and for
     weight window generation.
 
+.. note::
+    The mesh can be of any type. An :class:`openmc.UnstructuredMesh` works for
+    both source region subdivision and weight window generation when its
+    ``interface`` attribute is set to ``'xdg'``, as described in the
+    :ref:`random ray user guide <subdivision_fsr>`.
+
 3. (Optional) If local variance reduction is desired in a fixed-source problem,  
    populate the :attr:`targets` attribute with an :class:`openmc.Tallies` 
    instance or an iterable of tally IDs indicating the tallies of interest for 

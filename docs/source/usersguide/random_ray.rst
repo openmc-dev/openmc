@@ -537,6 +537,9 @@ Supported Filters:
     - mesh
     - universe
 
+Mesh filters can use any mesh type, including :class:`openmc.UnstructuredMesh`
+with either of its interfaces.
+
 Note that there is no difference between the analog, tracklength, and collision
 estimators in random ray mode as individual particles are not being simulated.
 Tracklength-style tally estimation is inherent to the random ray method.

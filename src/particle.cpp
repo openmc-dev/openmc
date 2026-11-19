@@ -271,7 +271,7 @@ void Particle::from_source(const SourceSite* src)
       surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
     }
   }
-  
+
   if (type().pdg_number() == PDG_NEUTRON && settings::photon_transport) {    
     initialize_pprod_sens();    
   }
@@ -317,7 +317,6 @@ void Particle::from_source(const SourceSite* src)
   //   }      
   // }
   
-
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
@@ -730,6 +729,8 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
       for (int j = 0; j < n_coord(); ++j) {
         cell_last(j) = coord(j).cell();
       }
+      pht_secondary_particles();
+    }
       n_coord_last() = n_coord();
     }
     pht_secondary_particles();
@@ -750,52 +751,6 @@ void Particle::event_check_limit_and_revive()
     wgt() = 0.0;
   }
 
-  // Check for secondary particles if this particle is dead
-  if (!alive()) {
-    // Write final position for this particle
-    if (write_track()) {
-      write_particle_track(*this);
-    }
-
-  from_source(&site);
-
-  n_event() = 0;
-  if (!settings::use_shared_secondary_bank) {
-    n_tracks()++;
-  }
-  bank_second_E() = 0.0;
-
-  // Subtract secondary particle energy from interim pulse-height results.
-  // In shared secondary mode, this subtraction was already done on the parent
-  // particle during create_secondary(), so skip it here.
-  if (!settings::use_shared_secondary_bank &&
-      !model::active_pulse_height_tallies.empty() && this->type().is_photon()) {
-    // Since the birth cell of the particle has not been set we
-    // have to determine it before the energy of the secondary particle can be
-    // removed from the pulse-height of this cell.
-    if (lowest_coord().cell() == C_NONE) {
-      bool verbose = settings::verbosity >= 10 || trace();
-      if (!exhaustive_find_cell(*this, verbose)) {
-        mark_as_lost("Could not find the cell containing particle " +
-                     std::to_string(id()));
-        return;
-      }
-      // Set birth cell attribute
-      if (cell_born() == C_NONE)
-        cell_born() = lowest_coord().cell();
-
-        // Initialize last cells from current cell
-        for (int j = 0; j < n_coord(); ++j) {
-          cell_last(j) = coord(j).cell();
-        }
-        n_coord_last() = n_coord();
-      }
-      pht_secondary_particles();
-    }    
-
-    // Enter new particle in particle track file
-    if (write_track())
-      add_particle_track(*this);
   // In non-shared-secondary mode, revive from local secondary bank
   if (!alive() && !settings::use_shared_secondary_bank &&
       !local_secondary_bank().empty()) {

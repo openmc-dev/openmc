@@ -184,6 +184,19 @@ void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   }
 }
 
+//! Split the track from r0 to r1 into the mesh elements it crosses and the
+//! stretches outside of the mesh (bin C_NONE), in order along the track, with
+//! lengths as fractions of the track's length. The track is walked from its
+//! start, repeating two steps until its end is reached:
+//!  - If the current point is in no element, fire a ray against the mesh's
+//!    implicit complement to find where the track next enters the mesh. The
+//!    stretch up to there is outside of the mesh, as is the rest of the track
+//!    if it never enters.
+//!  - From the element there, walk the elements along the track until it
+//!    leaves the mesh or ends, recording each element crossed.
+//! The element that the last walk ended in is not taken again at the next
+//! lookup, so a point on its exit face, or a walk that got nowhere, does not
+//! repeat forever.
 void XDGMesh::bins_crossed_with_outside(Position r0, Position r1,
   const Direction& u, vector<int>& bins, vector<double>& lengths) const
 {

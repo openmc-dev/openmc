@@ -2,12 +2,14 @@
 
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
+#include "openmc/memory.h"
 #include "openmc/particle_data.h"
 #include "openmc/surface.h"
 #include "openmc/universe.h"
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <pugixml.hpp>
 
@@ -104,6 +106,22 @@ private:
 };
 
 } // namespace
+
+TEST_CASE("Deleting a universe through its base releases derived resources")
+{
+  class ResourceUniverse : public openmc::Universe {
+  public:
+    std::shared_ptr<int> resource_ {std::make_shared<int>(0)};
+  };
+
+  auto derived = openmc::make_unique<ResourceUniverse>();
+  std::weak_ptr<int> resource = derived->resource_;
+  openmc::unique_ptr<openmc::Universe> universe = std::move(derived);
+
+  REQUIRE_FALSE(resource.expired());
+  universe.reset();
+  REQUIRE(resource.expired());
+}
 
 TEST_CASE("Reconcile a particle after a collision near a surface")
 {

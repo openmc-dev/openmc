@@ -9,7 +9,6 @@
 #include "openmc/error.h"
 #include "openmc/lattice.h"
 #include "openmc/settings.h"
-#include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
 

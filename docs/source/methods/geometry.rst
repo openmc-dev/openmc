@@ -537,6 +537,25 @@ lattice is determined, and then whatever universe fills that lattice position is
 recursively searched. The search ends once a cell containing a normal material
 is found that contains the specified point.
 
+Checking whether a point is inside a cell requires evaluating the senses of the
+point with respect to the surfaces of the cell. To avoid this for cells that
+cannot contain the point, a bounding box is computed for each cell at
+initialization, enlarged slightly to allow for roundoff in positions on the
+boundary of the cell. During a search, a cell is only checked if its bounding
+box contains the point. Since cells are still checked in the same order, the
+same cell is found as without the bounding boxes.
+
+In a universe with many cells whose bounding boxes rarely overlap, such as the
+layers of many TRISO particles placed directly in a matrix, checking the
+bounding box of every cell is itself costly. For such a universe, a bounding
+volume hierarchy over the bounding boxes of its cells is built at
+initialization, and only the cells whose boxes contain the point are found from
+it. A hierarchy is built when the universe has at least 32 cells with finite
+bounding boxes and a point is, on average, in at most an eighth of these boxes,
+as estimated from their volumes. Of the cells whose boxes contain the point,
+the first in the universe that contains the point is found, as in a search of
+all of the cells.
+
 .. _cell-contains:
 
 ----------------------
@@ -728,7 +747,12 @@ cell-based neighbor lists in OpenMC grow dynamically as particles are
 transported through the geometry and cross surfaces. Special care must be taken
 to ensure that these dynamic neighbor lists are populated in a threadsafe
 manner. Full details of the implementation in OpenMC can be found in a paper by
-`Harper et al <https://doi.org/10.1080/00295639.2020.1719765>`_.
+`Harper et al <https://doi.org/10.1080/00295639.2020.1719765>`_. When a neighbor
+list is searched, cells whose bounding boxes do not contain the particle's
+position are skipped, as described in :ref:`find-cell`. In a universe whose
+cells are searched with a bounding volume hierarchy, neighbor lists hold at
+most eight cells, since a cell with many neighbors, such as a matrix around
+many particles, is found faster with the hierarchy.
 
 .. _reflection:
 

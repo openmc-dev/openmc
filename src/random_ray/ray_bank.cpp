@@ -64,7 +64,7 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain)
   rd.position = rbc.position;
   rd.direction = rbc.direction;
   rd.distance_travelled = rbc.distance_travelled;
-  rd.advance_distance = rbc.advance_distance;
+  rd.n_segments_done = rbc.n_segments_done;
   rd.n_transfers = rbc.n_transfers;
   rd.surface = rbc.surface;
   rd.is_active = rbc.is_active;
@@ -232,7 +232,8 @@ void RayBank::communicate_rays()
     bool has_transported_rays = false;
     for (int i = 0; i < num_rays; i++) {
       if (buffers.ray_data[i].distance_travelled > 0.0 ||
-          buffers.ray_data[i].is_active) {
+          buffers.ray_data[i].is_active ||
+          buffers.ray_data[i].n_segments_done > 0) {
         has_transported_rays = true;
         break;
       }

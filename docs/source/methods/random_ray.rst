@@ -1303,6 +1303,13 @@ owner ranks. After communicating the ray data, each MPI rank reinitializes the
 received rays with the transmitted data, and the rays continue traveling. This
 communication pattern continues until all rays of a given batch have terminated.
 
+A ray can leave a subdomain part way through a cell, between two bins of a
+source region mesh. The ray is then buffered in the state it had when it entered
+that cell, together with the number of segments it has been attenuated over
+since. The receiving rank traces the cell again from the same state and skips
+those segments, so the ray is cut into exactly the same segments as it would be
+without domain decomposition.
+
 ~~~~~~~~~~~~~~
 Load Balancing
 ~~~~~~~~~~~~~~

@@ -318,6 +318,17 @@ void RandomRay::event_advance_ray()
     return;
   }
 
+  // Record the state of the ray on entry to this cell. If the ray leaves this
+  // MPI rank's subdomain part way through the cell (between two bins of a
+  // source region mesh), it is handed over in this state, and the next rank
+  // traces the cell again and skips the segments attenuated here. Every
+  // segment is then the same as without domain decomposition, which would not
+  // be the case if the next rank started a new ray trace from a point inside
+  // the cell.
+  entry_distance_travelled_ = distance_travelled_;
+  entry_is_active_ = is_active_;
+  n_segments_done_ = 0;
+
   if (is_active_) {
     // If the ray is in the active length, need to check if it has
     // reached its maximum termination distance. If so, reduce
@@ -362,6 +373,10 @@ void RandomRay::event_advance_ray()
     }
   }
 
+  // The ray has crossed the whole cell, so there is nothing to skip in the
+  // next one
+  n_segments_to_skip_ = 0;
+
   // Advance particle
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r() += distance * coord(j).u();
@@ -373,10 +388,6 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
   // Lookup base source region index
   int64_t sr = domain_->lookup_base_source_region_idx(*this);
 
-  // Initialize values needed to buffer ray for domain decomposition
-  double mesh_partial_length = 0.0;
-  double tiny_multiplier = 0.0;
-
   // Perform ray tracing across mesh
   // Determine the mesh index for the base source region, if any
   int mesh_idx = domain_->lookup_mesh_idx(sr);
@@ -384,8 +395,13 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
   if (mesh_idx == C_NONE) {
     // If there's no mesh being applied to this cell, then
     // we just attenuate the flux as normal, and set
-    // the mesh bin to 0
-    attenuate_flux_inner(distance, is_active, sr, 0, r());
+    // the mesh bin to 0 (unless the rank this ray came from already did so)
+    if (n_segments_done_ >= n_segments_to_skip_) {
+      attenuate_flux_inner(distance, is_active, sr, 0, r());
+    }
+    if (!has_left_subdomain()) {
+      n_segments_done_++;
+    }
   } else {
     // If there is a mesh being applied to this cell, then
     // we loop over all the bin crossings and attenuate
@@ -409,6 +425,14 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
     for (int b = 0; b < mesh_bins_.size(); b++) {
       double physical_length = reduced_distance * mesh_fractional_lengths_[b];
 
+      // Skip the segments that the rank this ray came from already attenuated
+      // the ray over
+      if (n_segments_done_ < n_segments_to_skip_) {
+        start += physical_length * u();
+        n_segments_done_++;
+        continue;
+      }
+
 #ifdef OPENMC_MPI
       if (mpi::n_procs > 1 && simulation::current_batch <= ITER_LOAD_BALANCE) {
         // Shared across threads; see the note in event_advance_ray()
@@ -417,55 +441,26 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       }
 #endif
 
-      // Very flat angles can result in very small physical lengths,
-      // despite the TINY_BIT adjustment for Position start. If this happens at
-      // an MPI boundary, this can cause rays to bounce back and forth
-      // indefinitely. Very small lengths are therefore skipped. This is a
-      // domain decomposition workaround, so it is gated on being decomposed:
-      // applying it unconditionally would silently drop these segments (and
-      // their volume contribution) for every existing serial user.
-      if (mpi::n_procs > 1 && physical_length <= TINY_BIT) {
-        start += physical_length * u();
-        continue;
-      }
-
       attenuate_flux_inner(
         physical_length, is_active, sr, mesh_bins_[b], start);
 
-      start += physical_length * u();
-
-      // If ray has left MPI subdomain, stop transport
-      // and calculate position
+      // If the ray has left the MPI subdomain, stop transport here
       if (has_left_subdomain()) {
-        for (int i = 0; i <= b - 1; i++) {
-          mesh_partial_length += mesh_fractional_lengths_[i];
-        }
-
-        if (b > 0) {
-          // If ray is stopped within mesh of base source region,
-          // need to add TINY_BIT to account for deleted length
-          tiny_multiplier = 1.0;
-          // Reset last surface crossed to none if ray is stopped
-          // within mesh of base source region
-          surface() = 0;
-        }
-
-        mesh_partial_length =
-          tiny_multiplier * TINY_BIT + reduced_distance * mesh_partial_length;
         break;
       }
+
+      start += physical_length * u();
+      n_segments_done_++;
     }
   }
 
-  // If ray has left my subdomain, buffer ray state
+  // If the ray has left my subdomain, buffer it in the state it had on entry
+  // to this cell. The receiving rank skips the first n_segments_done_ segments.
   if (has_left_subdomain()) {
-    double advance_distance = offset + mesh_partial_length;
-    double distance_buffer = distance_travelled_ + mesh_partial_length;
-
 #ifdef OPENMC_DAGMC_ENABLED
     history().rollback_last_intersection();
 #endif
-    pack_ray_for_buffer(distance_buffer, advance_distance);
+    pack_ray_for_buffer(entry_distance_travelled_, entry_is_active_);
     wgt() = 0.0;
   }
 }
@@ -915,6 +910,7 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
   n_event() = data.n_event;
 
   is_active_ = data.is_active;
+  n_segments_to_skip_ = data.n_segments_done;
 
   wgt() = 1.0;
 
@@ -943,13 +939,10 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
 
   u() = data.direction;
 
-  // The buffered coordinate levels hold the ray's state at the last geometry
-  // update, so the ray still has to be advanced to the point at which it left
-  // the previous subdomain. Use move_distance() rather than adding a single
-  // top-level displacement to every level: a rotated universe or lattice fill
-  // gives each level its own direction, and translating a lower level by the
-  // top-level displacement would put it somewhere else entirely.
-  move_distance(data.advance_distance);
+  // The ray is now back at the point where it entered the cell it was in when
+  // it left the previous subdomain. It is not moved to the point where it left:
+  // event_advance_ray() traces that cell again and skips the segments that the
+  // previous rank attenuated the ray over.
 
 #ifdef OPENMC_DAGMC_ENABLED
   // Restore DAGMC fields
@@ -977,7 +970,7 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
     cell_born() = lowest_coord().cell();
 
   // Set ray's angular flux to value before subdomain change
-  if (distance_travelled_ > 0.0 || is_active_) {
+  if (distance_travelled_ > 0.0 || is_active_ || n_segments_to_skip_ > 0) {
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] = angular_flux[g];
     }
@@ -1057,7 +1050,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       for (int g = 0; g < negroups_; g++) {
         angular_flux_[g] = 0.0;
       }
-      pack_ray_for_buffer(0.0, 0.0);
+      pack_ray_for_buffer(0.0, is_active_);
       is_local_ = false;
       return;
     }
@@ -1129,19 +1122,18 @@ bool RandomRay::has_left_subdomain()
   return !is_local_;
 }
 
-void RandomRay::pack_ray_for_buffer(
-  double distance_buffer, double advance_distance)
+void RandomRay::pack_ray_for_buffer(double distance_travelled, bool is_active)
 {
-  // Recorded for diagnostics only; the receiving rank reconstructs the
-  // position by advancing the buffered geometry state (see restart_ray)
-  exchange_data_.position = r() + advance_distance * u();
-  exchange_data_.advance_distance = advance_distance;
+  // Recorded for diagnostics only; the receiving rank takes the position from
+  // the buffered geometry state (see restart_ray)
+  exchange_data_.position = r();
   exchange_data_.n_transfers = ++n_transfers_;
   exchange_data_.direction = u();
   exchange_data_.angular_flux = angular_flux_;
-  exchange_data_.distance_travelled = distance_buffer;
+  exchange_data_.distance_travelled = distance_travelled;
+  exchange_data_.n_segments_done = n_segments_done_;
   exchange_data_.surface = surface();
-  exchange_data_.is_active = is_active_;
+  exchange_data_.is_active = is_active;
   exchange_data_.ray_id = id();
   exchange_data_.n_event = n_event();
 

@@ -927,13 +927,20 @@ class UnstructuredMesh(Mesh):
             options, mesh_id, index)
         return cls(index=index.value)
 
+class UnitSpherePointset(Mesh):
+    pass
+
+class UnitSphereTriangularMesh(Mesh):
+    pass
 
 _MESH_TYPE_MAP = {
     'regular': RegularMesh,
     'rectilinear': RectilinearMesh,
     'cylindrical': CylindricalMesh,
     'spherical': SphericalMesh,
-    'unstructured': UnstructuredMesh
+    'unstructured': UnstructuredMesh,
+    'angular_pointset': UnitSpherePointset,
+    'angular_triangular': UnitSphereTriangularMesh
 }
 
 

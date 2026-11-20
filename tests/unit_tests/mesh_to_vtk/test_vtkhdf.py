@@ -358,3 +358,54 @@ def test_write_vtkhdf_curvilinear_warning(run_in_tmpdir, recwarn, kind):
     expect_warning = kind in ("cylindrical", "spherical")
     assert len(curvilinear_warnings) == int(expect_warning)
     assert Path(filename).exists()
+
+
+@pytest.mark.parametrize(
+    "suffix,curvilinear",
+    [(".vtkhdf", False), (".vtk", False), (".vtk", True)],
+    ids=["vtkhdf", "vtk", "vtk-curvilinear"],
+)
+@pytest.mark.parametrize("kind", list(MESHES))
+def test_write_vtk_coordinate_scale(run_in_tmpdir, kind, suffix, curvilinear):
+    """The coordinate_scale argument only multiplies the coordinates."""
+    # The legacy writer and reading back either format both need VTK
+    pytest.importorskip("vtk")
+    mesh = MESHES[kind]()
+    data = np.arange(mesh.n_elements, dtype=float).reshape(mesh.dimension)
+    vertices = np.array(mesh.vertices)
+    scale = 0.01
+
+    grids = []
+    for name, kwargs in (("unscaled", {}),
+                         ("scaled", {"coordinate_scale": scale})):
+        filename = f"{name}_{kind}{suffix}"
+        mesh.write_data_to_vtk(filename, {"data": data},
+                               curvilinear=curvilinear, **kwargs)
+        grids.append(_read_vtk(filename))
+    unscaled, scaled = grids
+
+    # Every point of every element, including the edge midpoints of
+    # curvilinear elements, is scaled about the origin. The points are
+    # compared element by element as the order they are stored in may differ.
+    assert scaled.GetNumberOfPoints() == unscaled.GetNumberOfPoints()
+    assert scaled.GetNumberOfCells() == mesh.n_elements
+    points = []
+    for grid in grids:
+        cells = (grid.GetCell(i).GetPoints() for i in range(mesh.n_elements))
+        points.append(np.array([cell.GetPoint(n) for cell in cells
+                                for n in range(cell.GetNumberOfPoints())]))
+    np.testing.assert_allclose(points[1], points[0] * scale, atol=1e-12)
+    # The edge midpoints of curvilinear elements lie outside the vertices
+    if not curvilinear:
+        np.testing.assert_allclose(
+            np.array(scaled.GetBounds()).reshape(3, 2).T,
+            scale * np.array([vertices.reshape(-1, 3).min(axis=0),
+                              vertices.reshape(-1, 3).max(axis=0)]),
+            atol=1e-7,
+        )
+
+    # The data are still normalized by the element volumes in cm³ and the
+    # mesh is left as it was
+    np.testing.assert_array_equal(_cell_data(scaled, "data"),
+                                  _cell_data(unscaled, "data"))
+    np.testing.assert_array_equal(mesh.vertices, vertices)

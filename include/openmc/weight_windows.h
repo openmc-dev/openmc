@@ -1,6 +1,7 @@
 #ifndef OPENMC_WEIGHT_WINDOWS_H
 #define OPENMC_WEIGHT_WINDOWS_H
 
+#include <array>
 #include <cstdint>
 #include <unordered_map>
 
@@ -13,6 +14,7 @@
 #include "openmc/particle_type.h"
 #include "openmc/span.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tensor.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -31,12 +33,14 @@ constexpr double DEFAULT_WEIGHT_CUTOFF {1.0e-38}; // default low weight cutoff
 
 class WeightWindows;
 class WeightWindowsGenerator;
+class SourceBias;
 
 namespace variance_reduction {
 
 extern std::unordered_map<int32_t, int32_t> ww_map;
 extern vector<unique_ptr<WeightWindows>> weight_windows;
 extern vector<unique_ptr<WeightWindowsGenerator>> weight_windows_generators;
+extern vector<unique_ptr<SourceBias>> source_biases;
 
 } // namespace variance_reduction
 
@@ -201,6 +205,98 @@ private:
   int32_t mesh_idx_ {-1}; //!< Index in meshes vector
 };
 
+class SourceBias {
+public:
+  //----------------------------------------------------------------------------
+  // Constructors
+
+  //! \param[in] spatial_mesh_idx Index into model::meshes for the spatial
+  //!   mesh over which the source is biased
+  //! \param[in] angle_mesh_idx Index into model::meshes for the angular mesh
+  //!   used to bias emission direction, or C_NONE for isotropic emission
+  //! \param[in] energy_bounds Energy group boundaries [eV]
+  //! \param[in] ww_id ID of the WeightWindows object this source bias is
+  //!   generated alongside (used to name this object's HDF5 group)
+  //! \param[in] forward_source_mesh Path to unbiased source strength mesh file
+  SourceBias(int32_t spatial_mesh_idx, int32_t angle_mesh_idx,
+    vector<double> energy_bounds, int32_t ww_id,
+    std::string forward_source_mesh);
+
+  //----------------------------------------------------------------------------
+  // Methods
+
+  //! \param[in] tally Tally with a "flux" score, a mesh filter matching
+  //!   spatial_mesh_idx_, an energy filter matching energy_bounds_ (if
+  //!   energy_bounds_ is non-empty), and a mesh-angular filter matching
+  //!   angle_mesh_idx_ (if angle_mesh_idx_ != C_NONE)
+  void update(const Tally* tally);
+
+  //! Write SourceBias data to an HDF5 group
+  void to_hdf5(hid_t group) const;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  int32_t spatial_mesh_idx() const { return spatial_mesh_idx_; }
+  int32_t angle_mesh_idx() const { return angle_mesh_idx_; }
+  std::string forward_source_mesh() const { return forward_source_mesh_; }
+  //! Estimate the unbiased external source's strength as a function of
+  //! spatial mesh element, angular mesh element, and energy group, assuming
+  //! isotropic emission when no angular mesh is present.
+  //!
+  //! If the source strengths are already written to a file
+  //! such as "forward_source_mesh.h5", that data is used directly in place of
+  //! sampling model::external_sources. Its spatial mesh, angular mesh, and
+  //! energy group structure are checked against spatial_mesh_, angle_mesh_,
+  //! and energy_bounds_ before use.
+  //!
+  //! Otherwise, group probabilities are read exactly from each source's
+  //! Discrete energy spectrum, while the spatial and angular dimensions are
+  //! estimated by binning samples into (spatial_mesh_, angle_mesh_).
+  //!
+  //! \param[in] n_samples_per_source Number of trial (position, direction)
+  //!   pairs to draw per external source. Unused if forward source mesh file
+  //!   is present.
+  void compute_unbiased_strength(int64_t n_samples_per_source = 1000000);
+
+  const tensor::Tensor<double>& unbiased_strength() const
+  {
+    return unbiased_strength_;
+  }
+
+private:
+  //! Read a precomputed unbiased source strength distribution from a
+  //! forward source mesh file
+  void load_forward_source_mesh(const std::string& path);
+
+  //----------------------------------------------------------------------------
+  // Data members
+
+  int32_t spatial_mesh_idx_;         //!< Index into model::meshes
+  int32_t angle_mesh_idx_;           //!< Index into model::meshes, or C_NONE
+  vector<double> energy_bounds_;     //!< Energy group boundaries [eV]
+  vector<double> discrete_energies_; //!< Energies of a Discrete-type unbiased
+                                     //!< source spectrum
+  int32_t ww_id_;                    //!< ID of the associated WeightWindows
+  std::string forward_source_mesh_;  //!< Path to unbiased source strengths file
+
+  std::string energy_distribution_type_ {"continuous"}; //!< Source dist type
+
+  //! Un-normalized mean flux. Shape: (spatial_bins, angle_bins,
+  //! energy_bins). angle_bins == 1 when angle_mesh_idx_ == C_NONE.
+  tensor::Tensor<double> flux_;
+
+  //! Estimated relative strength of the unbiased external source as a function
+  //! of (spatial mesh element, angular mesh element, energy group), assuming
+  //! isotropic emission when angle_mesh_idx_ == C_NONE.
+  tensor::Tensor<double> unbiased_strength_;
+
+  //! Estimated relative strength of the unbiased external source as a function
+  //! of (spatial mesh element, angular mesh element, emission energy), given
+  //! a source with discrete energies rather than a continuous spectrum.
+  tensor::Tensor<double> unbiased_strength_discrete_;
+};
+
 class WeightWindowsGenerator {
 public:
   // Constructors
@@ -214,7 +310,9 @@ public:
 
   // Data members
   int32_t tally_idx_; //!< Index of the tally used to update the weight windows
-  int32_t ww_idx_;    //!< Index of the weight windows object being generated
+  int32_t sb_tally_idx_ {C_NONE}; //!< Index of tally used to update source bias
+  int32_t sb_idx_ {C_NONE}; //!< Index into variance_reduction::source_biases
+  int32_t ww_idx_; //!< Index of the weight windows object being generated
   WeightWindowUpdateMethod method_; //!< Method used to update weight window.
   int32_t max_realizations_;        //!< Maximum number of tally realizations
   int32_t update_interval_;         //!< Determines how often updates occur
@@ -230,6 +328,12 @@ public:
 
   // Local FW-CADIS target tallies
   std::vector<size_t> targets_;
+  // FW-CADIS source biasing
+  bool source_biasing_;
+  int32_t angle_mesh_idx_ {C_NONE}; //<! Index in mesh map of optional angular
+                                    // quadrature for source biasing
+  std::string forward_source_mesh_ {
+    "forward_source_mesh.h5"}; //<! Path to unbiased source strengths mesh file
 };
 
 //==============================================================================

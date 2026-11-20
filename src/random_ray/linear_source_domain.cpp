@@ -170,7 +170,7 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   }
 }
 
-void LinearSourceDomain::normalize_scalar_flux_and_volumes(
+void LinearSourceDomain::normalize_flux_and_volumes(
   double total_active_distance_per_iteration)
 {
   double normalization_factor = 1.0 / total_active_distance_per_iteration;
@@ -182,6 +182,13 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
   for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.scalar_flux_new(se) *= normalization_factor;
     source_regions_.flux_moments_new(se) *= normalization_factor;
+  }
+
+// Normalize angular flux in the same way
+#pragma omp parallel for
+  for (int64_t sea = 0; sea < source_regions_.n_source_angular_elements();
+       sea++) {
+    source_regions_.angular_flux_new(sea) *= normalization_factor;
   }
 
 // Accumulate cell-wise ray length tallies collected this iteration, then
@@ -268,6 +275,13 @@ void LinearSourceDomain::set_flux_to_flux_plus_source(
     source_regions_.scalar_flux_new(sr, g) /= volume;
     source_regions_.scalar_flux_new(sr, g) +=
       flux_additive_term(sr, g, batch_volume);
+    if (source_regions_.needs_angular_flux(sr)) {
+      double flux_addition = angular_flux_additive_term(sr, g, batch_volume);
+      for (int a = 0; a < source_regions_.nangles(); a++) {
+        source_regions_.angular_flux_new(sr, g, a) /= volume;
+        source_regions_.angular_flux_new(sr, g, a) += flux_addition;
+      }
+    }
   }
   // If a source region is small, then the moments are likely noisy, so we zero
   // them. This is reasonable, given that small regions can get by with a flat
@@ -285,6 +299,19 @@ void LinearSourceDomain::set_flux_to_old_flux(int64_t sr, int g)
     source_regions_.scalar_flux_old(sr, g);
   source_regions_.flux_moments_new(sr, g) =
     source_regions_.flux_moments_old(sr, g);
+
+  if (source_regions_.needs_angular_flux(sr)) {
+    // To minimize memory use, we don't store the previous iteration's
+    // angular fluxes. Recognizing that this case only occurs in the few
+    // percent or less of source regions missed during an iteration, we
+    // approximate the angular flux by dividing the scalar flux estimate
+    // evenly across all angles.
+    double isotropic_flux =
+      source_regions_.scalar_flux_new(sr, g) / source_regions_.nangles();
+    for (int a = 0; a < source_regions_.nangles(); a++) {
+      source_regions_.angular_flux_new(sr, g, a) = isotropic_flux;
+    }
+  }
 }
 
 void LinearSourceDomain::accumulate_iteration_flux()

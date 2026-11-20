@@ -117,12 +117,7 @@ void process_advance_particle_events()
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     if (p.alive()) {
-      TransportEvent event = p.event_advance();
-      // A particle lost while advancing goes to the revive step below, as in
-      // history-based transport, instead of colliding or crossing a surface
-      if (!p.alive())
-        event = TransportEvent::NONE;
-      switch (event) {
+      switch (p.event_advance()) {
       case TransportEvent::SURFACE_CROSSING:
         simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
         continue;

@@ -283,8 +283,11 @@ void Particle::event_calculate_xs()
 
 TransportEvent Particle::event_advance()
 {
-  // Find the distance to the nearest geometry boundary
+  // Find the distance to the nearest geometry boundary. A particle lost in the
+  // search (its boundary distance may be infinite) must not move or score
   boundary() = distance_to_boundary(*this);
+  if (!alive())
+    return TransportEvent::NONE;
 
   // Sample a distance to collision
   if (type() == ParticleType::electron() ||

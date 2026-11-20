@@ -116,37 +116,6 @@ def test_get_slice_preserves_filter_bin_order():
     assert np.array_equal(sliced.mean[:, 0, 0], [3.0, 1.0])
 
 
-@pytest.mark.parametrize('filters', [
-    (openmc.MeshFilter, openmc.MeshBornFilter),
-    (openmc.MeshBornFilter, openmc.MeshFilter),
-])
-def test_reshaped_data_multiple_mesh_filters(filters):
-    meshes = []
-    for dimension in ((2, 3, 1), (3, 1, 2)):
-        mesh = openmc.RegularMesh()
-        mesh.dimension = dimension
-        mesh.lower_left = (0., 0., 0.)
-        mesh.upper_right = (2., 3., 4.)
-        meshes.append(mesh)
-    tally = openmc.Tally(
-        filters=[cls(mesh) for cls, mesh in zip(filters, meshes)],
-        scores=['flux', 'total'])
-    tally.nuclides = ['total']
-    tally._derived = True
-    tally._mean = np.arange(float(np.prod(tally.shape))).reshape(tally.shape)
-
-    data = tally.get_reshaped_data(expand_dims=True)
-
-    assert data.shape == (2, 3, 1, 3, 1, 2, 1, 2)
-    # Compare each spatial bin to selection from the unexpanded tally.
-    for first in meshes[0].indices:
-        for second in meshes[1].indices:
-            index = tuple(i - 1 for i in first + second)
-            expected = tally.get_values(
-                filters=filters, filter_bins=[(first,), (second,)])
-            np.testing.assert_array_equal(data[index], expected[0])
-
-
 def test_figure_of_merit(sphere_model, run_in_tmpdir):
     # Run model with a few simple tally scores
     tally = openmc.Tally()

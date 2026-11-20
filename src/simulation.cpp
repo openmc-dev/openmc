@@ -337,6 +337,7 @@ double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
 double log_spacing;
+bool migration_present {false};
 int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;

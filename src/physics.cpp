@@ -76,9 +76,13 @@ void collision(Particle& p)
     }
   }
 
-  // Kill particle if energy falls below cutoff
+  // Kill particle if energy falls below cutoff; for photons, deposit the
+  // remaining energy locally
   int type = p.type().transport_index();
   if (type != C_NONE && p.E() < settings::energy_cutoff[type]) {
+    if (p.type().is_photon()) {
+      p.E() = 0.0;
+    }
     p.wgt() = 0.0;
   }
 

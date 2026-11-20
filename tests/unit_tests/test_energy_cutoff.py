@@ -93,3 +93,22 @@ def test_positron_cutoff_annihilation(run_in_tmpdir):
     # Annihilation photons contribute to the bin containing 511 keV
     assert flux_ref[1] > 0.0
     assert flux_cutoff == pytest.approx(flux_ref)
+
+
+@pytest.mark.parametrize('electron_treatment', ['led', 'ttb'])
+@pytest.mark.parametrize('shared_secondary', [False, True])
+def test_photon_cutoff_heating(run_in_tmpdir, electron_treatment, shared_secondary):
+    """Scattered photons below the cutoff deposit their energy locally."""
+    source_energy = 1.0e6
+    # Stay below the pair-production threshold to isolate the photon cutoff.
+    model = inf_medium_model(0.25e6, source_energy)
+    model.settings.electron_treatment = electron_treatment
+    model.settings.shared_secondary_bank = shared_secondary
+
+    heating = model.tallies[1]
+    heating.nuclides = ['total', 'Zr90']
+    model.run(apply_tally_results=True)
+
+    # A reflective medium absorbs all source energy. Both total and
+    # nuclide-specific heating must include cutoff deposition.
+    assert heating.mean.ravel() == pytest.approx([source_energy, source_energy])

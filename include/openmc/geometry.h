@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -121,6 +122,16 @@ void cross_lattice(
 //==============================================================================
 
 BoundaryInfo distance_to_boundary(GeometryState& p);
+
+//==============================================================================
+//! Describe a boundary search that did not terminate, for a warning or a lost
+//! particle message.
+//!
+//! \param p The particle or ray whose search failed, at its current position
+//! \param i_cell Index of the cell whose boundary search failed
+//==============================================================================
+
+std::string boundary_search_failure(const GeometryState& p, int i_cell);
 
 } // namespace openmc
 

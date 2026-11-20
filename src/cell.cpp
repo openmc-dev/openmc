@@ -21,7 +21,6 @@
 #include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
-#include "openmc/particle.h"
 #include "openmc/settings.h"
 #include "openmc/xml_interface.h"
 
@@ -531,36 +530,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     auto rot {get_node_array<double>(cell_node, "rotation")};
     set_rotation(rot);
   }
-}
-
-//==============================================================================
-
-std::pair<double, int32_t> CSGCell::distance(
-  Position r, Direction u, int32_t on_surface, GeometryState* p) const
-{
-  auto result = region_.distance(r, u, on_surface);
-  if (result.second == Region::SEARCH_FAILED) {
-    auto message = fmt::format(
-      "The search for the boundary of cell {} did not terminate at ({}, {}, "
-      "{}) in direction ({}, {}, {}). Identical surfaces in the cell's region "
-      "can cause this; Geometry.merge_surfaces removes them.",
-      id_, r.x, r.y, r.z, u.x, u.y, u.z);
-    // A transport particle is lost. Geometry-only ray tracing (plots and mesh
-    // material volumes) treats an infinite distance as the end of the ray, so
-    // it only gets a warning instead of the fatal error of
-    // GeometryState::mark_as_lost
-    if (auto particle = dynamic_cast<Particle*>(p)) {
-      // Count the particle once, even if the search fails at more than one
-      // coordinate level in the same step
-      if (particle->alive())
-        particle->mark_as_lost(
-          fmt::format("Particle {} was lost. {}", particle->id(), message));
-    } else {
-      warning(message);
-    }
-    return {INFTY, std::numeric_limits<int32_t>::max()};
-  }
-  return result;
 }
 
 //==============================================================================

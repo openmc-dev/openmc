@@ -640,6 +640,13 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               Position r0 = p.r();
               p.advance_to_boundary_from_void();
 
+              // A failed boundary search leaves the rest of the ray unknown,
+              // so stop without scoring it
+              if (p.boundary().search_failed()) {
+                warning(boundary_search_failure(p, p.boundary().failed_cell()));
+                break;
+              }
+
               // If no model surface lies before the mesh edge, score the
               // remaining exterior interval as void and finish the ray.
               double distance_to_mesh_end = r_mesh_end[axis] - r0[axis];
@@ -670,6 +677,13 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
             // Find the distance to the nearest boundary
             BoundaryInfo boundary = distance_to_boundary(p);
+
+            // A failed boundary search leaves the rest of the ray unknown, so
+            // stop without scoring it
+            if (boundary.search_failed()) {
+              warning(boundary_search_failure(p, boundary.failed_cell()));
+              break;
+            }
 
             // Convert the material index to a user-facing ID
             int i_material = p.material();

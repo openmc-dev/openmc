@@ -442,6 +442,17 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p.surface(), &p);
+
+    // If the search failed, the boundary at this level is unknown, so a
+    // boundary found at another level cannot be trusted either. Report the
+    // failure and let the caller decide what it means.
+    if (surface_distance.second == Region::SEARCH_FAILED) {
+      info.reset();
+      info.distance() = INFTY;
+      info.failed_cell() = coord.cell();
+      return info;
+    }
+
     d_surf = surface_distance.first;
     level_surf_cross = surface_distance.second;
 
@@ -517,6 +528,17 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
     }
   }
   return info;
+}
+
+//==============================================================================
+
+std::string boundary_search_failure(const GeometryState& p, int i_cell)
+{
+  return fmt::format(
+    "The search for the boundary of cell {} did not terminate at {} in "
+    "direction {}. Identical surfaces in the cell's region can cause this; "
+    "Geometry.merge_surfaces removes them.",
+    model::cells[i_cell]->id_, p.r(), p.u());
 }
 
 //==============================================================================

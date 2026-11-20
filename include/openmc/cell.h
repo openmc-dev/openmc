@@ -447,7 +447,10 @@ public:
   int n_surfaces() const override { return region_.n_surfaces(); }
 
   std::pair<double, int32_t> distance(Position r, Direction u,
-    int32_t on_surface, GeometryState* p) const override;
+    int32_t on_surface, GeometryState* p) const override
+  {
+    return region_.distance(r, u, on_surface);
+  }
 
   bool contains(Position r, Direction u, int32_t on_surface) const override
   {

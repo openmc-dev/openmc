@@ -1,5 +1,7 @@
 #include "openmc/random_ray/random_ray.h"
 
+#include <fmt/core.h>
+
 #include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/geometry.h"
@@ -290,9 +292,13 @@ void RandomRay::event_advance_ray()
   if (settings::check_overlaps)
     check_cell_overlap(*this);
 
-  // Find the distance to the nearest boundary. A failed search marks the ray
-  // lost, and its remaining length must not be attenuated
+  // Find the distance to the nearest boundary. A failed search loses the ray,
+  // and its remaining length must not be attenuated
   boundary() = distance_to_boundary(*this);
+  if (boundary().search_failed()) {
+    mark_as_lost(fmt::format("Ray {} was lost. {}", id(),
+      boundary_search_failure(*this, boundary().failed_cell())));
+  }
   if (!alive())
     return;
   double distance = boundary().distance();

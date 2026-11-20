@@ -550,8 +550,11 @@ std::pair<double, int32_t> CSGCell::distance(
     // it only gets a warning instead of the fatal error of
     // GeometryState::mark_as_lost
     if (auto particle = dynamic_cast<Particle*>(p)) {
-      particle->mark_as_lost(
-        fmt::format("Particle {} was lost. {}", particle->id(), message));
+      // Count the particle once, even if the search fails at more than one
+      // coordinate level in the same step
+      if (particle->alive())
+        particle->mark_as_lost(
+          fmt::format("Particle {} was lost. {}", particle->id(), message));
     } else {
       warning(message);
     }

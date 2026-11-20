@@ -980,6 +980,7 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
   }
 
   u() = data.direction;
+  angular_bin_ = data.angular_bin;
 
   // The buffered coordinate levels hold the ray's state at the last geometry
   // update, so the ray still has to be advanced to the point at which it left
@@ -1176,6 +1177,7 @@ void RandomRay::pack_ray_for_buffer(
   exchange_data_.advance_distance = advance_distance;
   exchange_data_.n_transfers = ++n_transfers_;
   exchange_data_.direction = u();
+  exchange_data_.angular_bin = angular_bin_;
   exchange_data_.angular_flux = angular_flux_;
   exchange_data_.distance_travelled = distance_buffer;
   exchange_data_.surface = surface();

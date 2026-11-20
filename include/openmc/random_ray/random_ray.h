@@ -26,6 +26,7 @@ struct RayBufferContainer {
   // early-return in attenuate_flux_inner() happens before n_event() is
   // incremented, so max_particle_events cannot bound a forwarding loop.
   int n_transfers;
+  int angular_bin;
   vector<float> angular_flux;
   int surface;
   bool is_active;
@@ -61,6 +62,7 @@ struct RayBufferContainer {
 struct RayExchangeData {
   Position position;
   Direction direction;
+  int angular_bin;
   double distance_travelled;
   double advance_distance;
   int n_transfers;

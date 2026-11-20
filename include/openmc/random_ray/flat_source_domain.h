@@ -139,6 +139,8 @@ public:
   static double
     diagonal_stabilization_rho_; // Adjusts strength of diagonal stabilization
                                  // for transport corrected MGXS data
+  // Number of bins for any angular tallies
+  static int nangles_;
 
   // Static variables to store source region meshes and domains
   static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
@@ -255,8 +257,7 @@ protected:
   void set_flux_to_source(int64_t sr, int g);
   virtual void set_flux_to_old_flux(int64_t sr, int g);
   virtual double flux_additive_term(int64_t sr, int g, bool batch_volume) const;
-  virtual double angular_flux_additive_term(
-    int64_t sr, int g, bool batch_volume) const;
+  double angular_flux_additive_term(int64_t sr, int g, bool batch_volume) const;
   double stabilized_flux(int64_t sr, int g, double phi_new) const;
 
   //! Adaptive-estimator "strong source" test. Returns true if, in any group,
@@ -273,8 +274,7 @@ protected:
 
   //----------------------------------------------------------------------------
   // Private data members
-  int negroups_;    // Number of energy groups in simulation
-  int nangles_ {1}; // Number of bins for any angular flux tallies
+  int negroups_; // Number of energy groups in simulation
   const UnitSpherePointset* angular_mesh_ {nullptr};
 
   vector<bool> tally_is_angular_;

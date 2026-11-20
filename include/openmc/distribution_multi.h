@@ -7,8 +7,8 @@
 
 #include "openmc/distribution.h"
 #include "openmc/error.h"
-#include "openmc/position.h"
 #include "openmc/mesh.h"
+#include "openmc/position.h"
 
 namespace openmc {
 
@@ -171,8 +171,8 @@ public:
 
 private:
   int32_t mesh_idx_ {C_NONE};
-  DiscreteIndex elem_idx_dist_; //!< Distribution of mesh element indices
-  vector<double> weight_;       //!< Importance weights (empty if unbiased)
+  DiscreteIndex elem_idx_dist_;     //!< Distribution of mesh element indices
+  vector<double> weight_;           //!< Importance weights (empty if unbiased)
   Direction v_ref_ {1.0, 0.0, 0.0}; //!< reference direction
 };
 

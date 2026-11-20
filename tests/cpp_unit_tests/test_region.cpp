@@ -100,6 +100,48 @@ public:
   }
 };
 
+// Helper class for testing two identical surfaces far from the origin
+class DuplicatePlaneFixture {
+public:
+  DuplicatePlaneFixture()
+  {
+    pugi::xml_document doc;
+
+    // Surfaces 1 and 2 are the same plane, x + y = 10.1
+    for (int i = 1; i <= 2; ++i) {
+      auto plane = doc.append_child("surface");
+      plane.append_attribute("id") = i;
+      plane.append_attribute("type") = "plane";
+      plane.append_attribute("coeffs") = "1 1 0 10.1";
+      openmc::model::surfaces.push_back(
+        std::make_unique<openmc::SurfacePlane>(plane));
+      openmc::model::surface_map[i] = i - 1;
+    }
+
+    auto x_plane = doc.append_child("surface");
+    x_plane.append_attribute("id") = 3;
+    x_plane.append_attribute("type") = "x-plane";
+    x_plane.append_attribute("coeffs") = "1000";
+    openmc::model::surfaces.push_back(
+      std::make_unique<openmc::SurfaceXPlane>(x_plane));
+    openmc::model::surface_map[3] = 2;
+
+    auto x_plane_2 = doc.append_child("surface");
+    x_plane_2.append_attribute("id") = 4;
+    x_plane_2.append_attribute("type") = "x-plane";
+    x_plane_2.append_attribute("coeffs") = "500";
+    openmc::model::surfaces.push_back(
+      std::make_unique<openmc::SurfaceXPlane>(x_plane_2));
+    openmc::model::surface_map[4] = 3;
+  }
+
+  ~DuplicatePlaneFixture()
+  {
+    openmc::model::surfaces.clear();
+    openmc::model::surface_map.clear();
+  }
+};
+
 } // anonymous namespace
 
 TEST_CASE("Test region simplification")
@@ -222,4 +264,24 @@ TEST_CASE("Ignore roundoff-scale virtual surface crossings")
 
   REQUIRE(distance == Catch::Approx(603.9161175466262));
   REQUIRE(surface == 1);
+}
+
+TEST_CASE("Stop the boundary search between duplicate surfaces")
+{
+  DuplicatePlaneFixture fixture;
+
+  // Surface 4 holds along the whole ray, so crossing either copy of the plane
+  // is virtual. About 1.8e5 cm from the origin, the roundoff in evaluating the
+  // plane exceeds FP_COINCIDENT, so after crossing one copy the other appears
+  // a few 1e-11 cm ahead, by a step too small to move the point off the plane.
+  // The search alternates between the copies and must stop with a failure
+  // instead of looping forever.
+  openmc::Region region("(1 | -2 | 4) 3", 0);
+  openmc::Position r {176852.5977, -176834.7286, 298.9092};
+  openmc::Direction u {
+    -0.5683596004583628, 0.552513425956641, -0.6096689910963701};
+  auto [distance, surface] = region.distance(r, u, 0);
+
+  REQUIRE(distance == openmc::INFTY);
+  REQUIRE(surface == openmc::Region::SEARCH_FAILED);
 }

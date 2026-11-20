@@ -65,6 +65,15 @@ void GeometryState::advance_to_boundary_from_void()
   for (auto c_i : root_universe->cells_) {
     auto dist =
       model::cells.at(c_i)->distance(root_coord.r(), root_coord.u(), 0, this);
+
+    // A failed search leaves the nearest boundary unknown; report it
+    if (dist.second == Region::SEARCH_FAILED) {
+      boundary().distance() = INFTY;
+      boundary().surface() = SURFACE_NONE;
+      boundary().failed_cell() = c_i;
+      return;
+    }
+
     if (dist.first < boundary().distance()) {
       boundary().distance() = dist.first;
       boundary().surface() = dist.second;

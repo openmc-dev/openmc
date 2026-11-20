@@ -283,8 +283,15 @@ void Particle::event_calculate_xs()
 
 TransportEvent Particle::event_advance()
 {
-  // Find the distance to the nearest geometry boundary
+  // Find the distance to the nearest geometry boundary. A particle lost in the
+  // search (its boundary distance may be infinite) must not move or score
   boundary() = distance_to_boundary(*this);
+  if (boundary().search_failed()) {
+    mark_as_lost(fmt::format("Particle {} was lost. {}", id(),
+      boundary_search_failure(*this, boundary().failed_cell())));
+  }
+  if (!alive())
+    return TransportEvent::NONE;
 
   // Sample a distance to collision
   if (type() == ParticleType::electron() ||
@@ -971,6 +978,11 @@ void Particle::write_restart() const
 {
   // Dont write another restart file if in particle restart mode
   if (settings::run_mode == RunMode::PARTICLE)
+    return;
+
+  // Random rays have no source site to restart from (the source bank is not
+  // allocated for them), and particle restart mode does not run them
+  if (settings::solver_type == SolverType::RANDOM_RAY)
     return;
 
   // Set up file name

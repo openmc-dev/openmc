@@ -47,6 +47,13 @@ void Ray::trace()
   // Advance to the boundary of the model
   while (!inside_cell) {
     advance_to_boundary_from_void();
+
+    // A failed boundary search leaves the next intersection unknown
+    if (boundary().search_failed()) {
+      warning(boundary_search_failure(*this, boundary().failed_cell()));
+      return;
+    }
+
     inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
 
     // If true this means no surface was intersected. See cell.cpp and search
@@ -97,6 +104,12 @@ void Ray::trace()
   while (true) {
 
     compute_distance();
+
+    // A failed boundary search leaves the next intersection unknown
+    if (boundary().search_failed()) {
+      warning(boundary_search_failure(*this, boundary().failed_cell()));
+      return;
+    }
 
     // There are no more intersections to process
     // if we hit the edge of the model, so stop

@@ -250,9 +250,9 @@ def test_integrator(run_in_tmpdir, scheme):
     integrator = bundle.solver(operator, [0.75], 1, solver="cram16")
     assert integrator.solver is cram.CRAM16
 
-    integrator = bundle.solver(operator, [0.75], 1, solver=cram.Cram48Solver,
+    integrator = bundle.solver(operator, [0.75], 1, solver=cram.CRAM48,
                                substeps=2)
-    assert integrator.solver is cram.Cram48Solver
+    assert integrator.solver is cram.CRAM48
     assert integrator.substeps == 2
 
     integrator.solver = mock_good_solver

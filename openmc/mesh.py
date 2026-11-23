@@ -426,9 +426,13 @@ class MeshBase(IDManagerMixin, ABC):
             vols = material_volumes
         mat_volume_by_element = [vols.by_element(i) for i in range(vols.num_elements)]
 
-        # An element with no entries was not reached by any ray that completed
-        # (see material_volumes), so its makeup is unknown
-        unresolved = [i for i, v in enumerate(mat_volume_by_element) if not v]
+        # An element with no positive volume was not reached by any ray that
+        # completed (see material_volumes), so its makeup is unknown. A slot can
+        # hold zero volume, for example from a zero-length track segment.
+        unresolved = [
+            i for i, v in enumerate(mat_volume_by_element)
+            if not any(vol > 0.0 for _, vol in v)
+        ]
         if unresolved:
             shown = ', '.join(str(i) for i in unresolved[:10])
             if len(unresolved) > 10:

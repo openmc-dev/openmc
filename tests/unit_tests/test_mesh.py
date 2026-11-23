@@ -838,6 +838,13 @@ def test_mesh_get_homogenized_materials_unresolved_element():
     with pytest.raises(ValueError, match=r'1 mesh element\(s\).*indices 1\b'):
         mesh.get_homogenized_materials(model, material_volumes=vols)
 
+    # A slot that holds zero volume does not resolve an element either
+    materials = np.array([[h.id, -2], [h.id, -2]])
+    volumes = np.array([[4.0, 0.0], [0.0, 0.0]])
+    vols = openmc.MeshMaterialVolumes(materials, volumes)
+    with pytest.raises(ValueError, match=r'1 mesh element\(s\).*indices 1\b'):
+        mesh.get_homogenized_materials(model, material_volumes=vols)
+
     # With every element resolved, homogenization works as before
     materials = np.array([[h.id, -2], [h.id, -2]])
     volumes = np.array([[4.0, 0.0], [4.0, 0.0]])

@@ -650,8 +650,8 @@ model to use these multigroup cross sections. An example is given below::
   )
 
 The most important parameter to set is the ``method`` parameter, which can be
-either "stochastic_slab", "material_wise", or "infinite_medium". An overview
-of these methods is given below:
+one of "material_wise", "cell_wise", "stochastic_slab", or
+"infinite_medium". An overview of these methods is given below:
 
 .. list-table:: Comparison of Automatic MGXS Generation Methods
    :header-rows: 1
@@ -665,7 +665,8 @@ of these methods is given below:
      - * Higher Fidelity
        * Runs a CE simulation with the original geometry and source, tallying
          cross sections with a material filter.
-     - * Typically the most accurate of the three methods
+     - * Typically more accurate than the surrogate-geometry methods
+         (``stochastic_slab`` and ``infinite_medium``)
        * Accurately captures (averaged over the full problem domain)
          both spatial and resonance self shielding effects
      - * Potentially slower as the full geometry must be run
@@ -673,6 +674,22 @@ of these methods is given below:
          to in the CE simulation, the MGXS will be zero for that material. This
          can be mitigated by supplying weight windows via ``weight_windows_file``
          (see :ref:`mgxs_bootstrap`).
+   * - ``cell_wise``
+     - * Highest Fidelity
+       * Like ``material_wise``, but clones the material in each cell so every
+         cell gets its own cross sections (each material-filled cell is assigned a
+         distinct macroscopic).
+     - * Resolves spatial variation between distinct cells that share a material,
+         which ``material_wise`` averages away (e.g. a shield wall modelled as
+         several cells of one material, each covering a different depth)
+       * Captures spatial self shielding between cells filled with the same material
+     - * Most expensive (one cross section set per cell) and a larger library
+       * Fidelity is limited by the cell definitions, not the source region mesh:
+         a single large cell uses one cross section set throughout, so a steep
+         gradient is only resolved if the geometry is split into several cells
+       * Same far-from-source limitation as ``material_wise``: a cell that is not
+         tallied to yields zero cross sections for that cell (the same weight
+         window mitigation applies)
    * - ``stochastic_slab``
      - * Medium Fidelity
        * Runs a CE simulation with a greatly simplified geometry, where materials
@@ -690,6 +707,13 @@ of these methods is given below:
      - * Poor accuracy (no spatial information, no lattice physics, no resonance effects
          between materials)
        * May hang if a material has a k-infinity greater than 1.0
+
+.. note::
+    The ``cell_wise`` method generates one cross section set per cell definition,
+    not per cell instance. A cell that appears in several locations of a lattice
+    therefore shares a single cross section set across all of those locations. If
+    you need distinct cross sections per instance, subdivide the geometry into
+    separate cells.
 
 When selecting a non-default energy group structure, you can manually define
 group boundaries or specify the name of a known group structure (a list of which
@@ -769,12 +793,12 @@ the fidelity of the generated MGXS data.
 Bootstrapping Material-Wise MGXS with Weight Windows
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``"material_wise"`` method runs a continuous energy simulation of the
-original geometry, so it produces the highest fidelity cross sections of the
-three methods. However, it has a notable weakness: if a material only appears
-far from the source (for example, a detector or structural material located
-outside a thick shield), an analog continuous energy simulation may be unable to
-transport any particles to that material. No tallies are scored there, and the
+The ``"material_wise"`` and ``"cell_wise"`` methods run a continuous energy
+simulation of the original geometry, so they produce the highest fidelity cross
+sections of the available methods. However, they have a notable weakness: if a
+material only appears far from the source (for example, a detector or
+structural material located outside a thick shield), an analog continuous
+energy simulation may be unable to transport any particles to that material. No tallies are scored there, and the
 resulting cross sections for that material are zero. This situation is common in
 shielding problems.
 
@@ -800,8 +824,8 @@ described in the :ref:`FW-CADIS user guide <usersguide_fw_cadis>`. The resulting
     model.convert_to_multigroup(
         weight_windows_file="weight_windows.h5", overwrite_mgxs_library=True)
 
-The ``weight_windows_file`` setting is only used with the
-``"material_wise"`` method, as the ``"stochastic_slab"`` and
+The ``weight_windows_file`` setting is only used with the ``"material_wise"``
+and ``"cell_wise"`` methods, as the ``"stochastic_slab"`` and
 ``"infinite_medium"`` methods use simplified surrogate geometries that are
 incompatible with a weight window mesh defined over the original geometry (and
 do not need weight windows, since they already tally all materials). A warning

@@ -220,6 +220,62 @@ private:
 typedef unique_ptr<Source> create_compiled_source_t(std::string parameters);
 
 //==============================================================================
+//! Source that samples a phase-space voxel (spatial mesh element, angular mesh
+//! element, energy group) -- from a Discrete distribution, then draws uniform
+//! samples from within each phase-space subelement. Allows spatial, angular,
+//! and energy distributions to be correlated.
+//!
+//! Used primarily for source biasing.
+//==============================================================================
+
+class CorrelatedSource : public Source {
+public:
+  // Constructors
+  explicit CorrelatedSource(pugi::xml_node node);
+
+  //! Sample a phase-space voxel from the biased distribution, then a
+  //! position within its spatial mesh element, a direction within its
+  //! angular mesh element (or isotropic, if this source has no angular
+  //! mesh), and a representative energy within its energy group
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
+  // Accessors
+  int32_t spatial_mesh_idx() const { return spatial_mesh_idx_; }
+  int32_t angle_mesh_idx() const { return angle_mesh_idx_; }
+  const vector<double>& group_bounds() const { return group_bounds_; }
+
+private:
+  // Data members
+  int32_t spatial_mesh_idx_ {C_NONE}; //!< Index into model::meshes
+  int32_t angle_mesh_idx_ {C_NONE};   //!< Index into model::meshes, or C_NONE
+  vector<double> group_bounds_;       //!< Continuum energy group bounds [eV]
+
+  int64_t spatial_bins_ {0};
+  int64_t angle_bins_ {1};
+  int64_t energy_bins_ {0};
+
+  int64_t n_discrete_ {0};           //!< Number of discrete source energies
+  vector<double> discrete_energies_; //!< Discrete source energies E_k [eV]
+  int64_t n_continuum_voxels_ {0};   //!< Phase space voxels not associated
+                                     //!< with a discrete emission energy
+  std::string energy_distribution_type_ {
+    "continuous"}; //!< One of {"continuous", "discrete", "mixed"}
+
+  ParticleType particle_ {ParticleType::neutron()}; //!< Particle type emitted
+
+  //! Selects a flat index into (spatial, angle, energy) space, in row-major
+  //! (spatial, angle, energy) order, weighted by the "strengths" array.
+  //! The distribution spans continuum voxels first, followed by any voxels
+  //! with discrete (deterministic) emission energy.
+  DiscreteIndex voxel_dist_;
+
+  //! Per-voxel weight (1 / flux), indexed the same way as voxel_dist_.
+  vector<double> weights_;
+};
+
+//==============================================================================
 //! Mesh-based source with different distributions for each element
 //==============================================================================
 

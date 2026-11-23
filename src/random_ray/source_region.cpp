@@ -11,7 +11,11 @@ namespace openmc {
 // SourceRegionHandle implementation
 //==============================================================================
 SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
-  : negroups_(sr.scalar_flux_old_.size()), material_(&sr.scalars_.material_),
+  : negroups_(sr.scalar_flux_old_.size()),
+    nangles_(sr.angular_flux_new_.empty()
+               ? 1
+               : sr.angular_flux_new_.size() / sr.scalar_flux_old_.size()),
+    material_(&sr.scalars_.material_),
     temperature_idx_(&sr.scalars_.temperature_idx_),
     density_mult_(&sr.scalars_.density_mult_),
     is_small_(&sr.scalars_.is_small_),
@@ -24,6 +28,7 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     volume_naive_(&sr.scalars_.volume_naive_),
     position_recorded_(&sr.scalars_.position_recorded_),
     external_source_present_(&sr.scalars_.external_source_present_),
+    needs_angular_flux_(&sr.scalars_.needs_angular_flux_),
     position_(&sr.scalars_.position_), centroid_(&sr.scalars_.centroid_),
     centroid_iteration_(&sr.scalars_.centroid_iteration_),
     centroid_t_(&sr.scalars_.centroid_t_),
@@ -46,12 +51,15 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
   // and this pointer is null-tested to mean "field absent"
   scalar_flux_t_ =
     sr.scalar_flux_t_.empty() ? nullptr : sr.scalar_flux_t_.data();
+  angular_flux_new_ =
+    sr.angular_flux_new_.empty() ? nullptr : sr.angular_flux_new_.data();
 }
 
 //==============================================================================
 // SourceRegion implementation
 //==============================================================================
-SourceRegion::SourceRegion(int negroups, bool is_linear)
+SourceRegion::SourceRegion(
+  int negroups, bool is_linear, int nangles, bool needs_angular_flux)
 {
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // If in eigenvalue mode, set starting flux to guess of 1
@@ -66,6 +74,11 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   scalar_flux_new_.assign(negroups, 0.0);
   source_.assign(negroups, 0.0);
   scalar_flux_final_.assign(negroups, 0.0);
+  // Only allocate angular flux storage for regions that need it
+  scalars_.needs_angular_flux_ = needs_angular_flux;
+  if (needs_angular_flux) {
+    angular_flux_new_.assign(negroups * nangles, 0.0f);
+  }
   // Only the adaptive estimator family reads this, and this constructor runs
   // on the transport path for every newly discovered region, so do not pay
   // the allocation when the estimator will never look at it.
@@ -83,7 +96,8 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
 }
 
 SourceRegion::SourceRegion(const SourceRegionHandle& handle)
-  : SourceRegion(handle.negroups_, handle.is_linear_)
+  : SourceRegion(handle.negroups_, handle.is_linear_, handle.nangles_,
+      handle.needs_angular_flux())
 {
   scalars_.material_ = handle.material();
   scalars_.is_small_ = handle.is_small();
@@ -141,6 +155,11 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
     }
     tally_task_[g] = handle.tally_task(g);
   }
+  if (handle.angular_flux_new_) {
+    for (int ga = 0; ga < handle.negroups_ * handle.nangles_; ++ga) {
+      angular_flux_new_[ga] = handle.angular_flux_new_[ga];
+    }
+  }
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     scalars_.external_source_present_ = handle.external_source_present();
     for (int g = 0; g < scalar_flux_new_.size(); g++) {
@@ -190,6 +209,19 @@ void SourceRegion::merge(SourceRegion& sr_add, bool is_linear)
       flux_moments_new_[g] += sr_add.flux_moments_new_[g];
     }
   }
+
+  scalars_.needs_angular_flux_ =
+    std::max(scalars_.needs_angular_flux_, sr_add.scalars_.needs_angular_flux_);
+
+  if (!sr_add.angular_flux_new_.empty()) {
+    if (angular_flux_new_.empty()) {
+      angular_flux_new_.assign(sr_add.angular_flux_new_.size(), 0.0);
+    }
+#pragma omp simd
+    for (size_t i = 0; i < angular_flux_new_.size(); ++i) {
+      angular_flux_new_[i] += sr_add.angular_flux_new_[i];
+    }
+  }
 }
 
 //==============================================================================
@@ -220,6 +252,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   volume_naive_.push_back(sr.scalars_.volume_naive_);
   position_recorded_.push_back(sr.scalars_.position_recorded_);
   external_source_present_.push_back(sr.scalars_.external_source_present_);
+  needs_angular_flux_.push_back(sr.scalars_.needs_angular_flux_);
   position_.push_back(sr.scalars_.position_);
   volume_task_.push_back(sr.volume_task_);
   mesh_.push_back(sr.scalars_.mesh_);
@@ -265,6 +298,16 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
     // Tally tasks
     tally_task_.emplace_back(sr.tally_task_[g]);
   }
+
+  // Angle- and energy-dependent flux
+  if (!sr.angular_flux_new_.empty()) {
+    angular_flux_offset_.push_back(angular_flux_new_.size());
+    for (int ga = 0; ga < negroups_ * nangles_; ++ga) {
+      angular_flux_new_.push_back(sr.angular_flux_new_[ga]);
+    }
+  } else {
+    angular_flux_offset_.push_back(C_NONE);
+  }
 }
 
 void SourceRegionContainer::assign(
@@ -287,6 +330,7 @@ void SourceRegionContainer::assign(
   volume_naive_.clear();
   position_recorded_.clear();
   external_source_present_.clear();
+  needs_angular_flux_.clear();
   position_.clear();
   mesh_.clear();
   parent_sr_.clear();
@@ -306,6 +350,8 @@ void SourceRegionContainer::assign(
   scalar_flux_new_.clear();
   scalar_flux_final_.clear();
   scalar_flux_t_.clear();
+  angular_flux_new_.clear();
+  angular_flux_offset_.clear();
   source_.clear();
   external_source_.clear();
 
@@ -337,6 +383,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
 {
   SourceRegionHandle handle;
   handle.negroups_ = negroups();
+  handle.nangles_ = nangles();
   handle.material_ = &material(sr);
   handle.temperature_idx_ = &temperature_idx(sr);
   handle.density_mult_ = &density_mult(sr);
@@ -354,6 +401,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.volume_naive_ = &volume_naive(sr);
   handle.position_recorded_ = &position_recorded(sr);
   handle.external_source_present_ = &external_source_present(sr);
+  handle.needs_angular_flux_ = &needs_angular_flux(sr);
   handle.position_ = &position(sr);
   handle.volume_task_ = &volume_task(sr);
   handle.mesh_ = &mesh(sr);
@@ -367,6 +415,11 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
     handle.external_source_ = nullptr;
   }
   handle.scalar_flux_final_ = &scalar_flux_final(sr, 0);
+  if (angular_flux_offset_[sr] != C_NONE) {
+    handle.angular_flux_new_ = &angular_flux_new(sr, 0, 0);
+  } else {
+    handle.angular_flux_new_ = nullptr;
+  }
   handle.tally_task_ = &tally_task(sr, 0);
   handle.centroid_ = &centroid(sr);
   handle.centroid_iteration_ = &centroid_iteration(sr);
@@ -424,6 +477,7 @@ void SourceRegionContainer::adjoint_reset()
   }
   std::fill(scalar_flux_new_.begin(), scalar_flux_new_.end(), 0.0);
   std::fill(scalar_flux_t_.begin(), scalar_flux_t_.end(), 0.0);
+  std::fill(angular_flux_new_.begin(), angular_flux_new_.end(), 0.0);
   std::fill(source_.begin(), source_.end(), 0.0f);
   std::fill(external_source_.begin(), external_source_.end(), 0.0f);
   std::fill(source_gradients_.begin(), source_gradients_.end(),

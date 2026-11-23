@@ -413,12 +413,37 @@ class MeshBase(IDManagerMixin, ABC):
         list of openmc.Material
             Homogenized material in each mesh element
 
+        Raises
+        ------
+        ValueError
+            If the material volumes of any mesh element are unknown because
+            no ray through it completed (see :meth:`material_volumes`)
+
         """
         if material_volumes is None:
             vols = self.material_volumes(model, n_samples, **kwargs)
         else:
             vols = material_volumes
         mat_volume_by_element = [vols.by_element(i) for i in range(vols.num_elements)]
+
+        # An element with no positive volume was not reached by any ray that
+        # completed (see material_volumes), so its makeup is unknown. A slot can
+        # hold zero volume, for example from a zero-length track segment.
+        unresolved = [
+            i for i, v in enumerate(mat_volume_by_element)
+            if not any(vol > 0.0 for _, vol in v)
+        ]
+        if unresolved:
+            shown = ', '.join(str(i) for i in unresolved[:10])
+            if len(unresolved) > 10:
+                shown += ', ...'
+            raise ValueError(
+                f'The material volumes of {len(unresolved)} mesh element(s) '
+                f'are unknown (element indices {shown}) because no ray '
+                'through them completed. This happens when the search for a '
+                'cell boundary fails, for example because of identical '
+                'surfaces in a cell region; Geometry.merge_surfaces removes '
+                'them.')
 
         # Get dictionary of all materials
         materials = model._get_all_materials()

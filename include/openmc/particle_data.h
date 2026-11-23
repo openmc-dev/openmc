@@ -240,6 +240,7 @@ public:
     surface_ = SURFACE_NONE;
     coord_level_ = 0;
     lattice_translation_ = {0, 0, 0};
+    failed_cell_ = C_NONE;
   }
   double& distance() { return distance_; }
   const double& distance() const { return distance_; }
@@ -259,6 +260,13 @@ public:
   // TODO: off-by-one
   int surface_index() const { return std::abs(surface()) - 1; }
 
+  //! Index of the cell whose boundary search failed, or C_NONE
+  int& failed_cell() { return failed_cell_; }
+  int failed_cell() const { return failed_cell_; }
+
+  //! Whether the search for the boundary failed (see Region::SEARCH_FAILED)
+  bool search_failed() const { return failed_cell_ != C_NONE; }
+
 private:
   // Data members
   double distance_ {INFINITY}; //!< distance to nearest boundary
@@ -266,7 +274,8 @@ private:
     SURFACE_NONE};      //!< surface token, non-zero if boundary is surface
   int coord_level_ {0}; //!< coordinate level after crossing boundary
   array<int, 3> lattice_translation_ {
-    0, 0, 0}; //!< which way lattice indices will change
+    0, 0, 0};                //!< which way lattice indices will change
+  int failed_cell_ {C_NONE}; //!< cell whose boundary search failed
 };
 
 /*

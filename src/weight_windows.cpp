@@ -990,7 +990,7 @@ void SourceBias::compute_unbiased_strength(int64_t n_samples_per_source)
     load_forward_source_mesh(forward_source_mesh_);
   } else {
     fatal_error(fmt::format(
-      "Could not locate forward source mesh file '{}'.", forward_source_mesh_))
+      "Could not locate forward source mesh file '{}'.", forward_source_mesh_));
   }
   return;
 }

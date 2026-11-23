@@ -817,17 +817,32 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 #endif
 
   // Normalize based on known volumes of elements
+  int n_unresolved = 0;
   for (int i = 0; i < this->n_bins(); ++i) {
     // Estimated total volume in element i
     double volume = 0.0;
     for (int j = 0; j < table_size; ++j) {
       volume += result.volumes(i, j);
     }
+
+    // An element can score nothing if every ray through it stopped at a failed
+    // boundary search. Leave its volumes at zero instead of dividing by zero.
+    if (volume == 0.0) {
+      ++n_unresolved;
+      continue;
+    }
+
     // Renormalize volumes based on known volume of element i
     double norm = this->volume(i) / volume;
     for (int j = 0; j < table_size; ++j) {
       result.volumes(i, j) *= norm;
     }
+  }
+  // Only process 0 holds the combined results
+  if (mpi::master && n_unresolved > 0) {
+    warning(fmt::format("{} mesh element(s) were not reached by any ray that "
+                        "completed, so their material volumes are zero.",
+      n_unresolved));
   }
 
   // Get total time and normalization time

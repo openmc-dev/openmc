@@ -2702,7 +2702,7 @@ const std::string UnitSphereTriangularMesh::mesh_type = "angular_triangular";
 UnitSphereTriangularMesh::UnitSphereTriangularMesh(vector<double> vertices)
   : vertices_(std::move(vertices))
 {
-  if (vertices.size() % 9 != 0) {
+  if (vertices_.size() % 9 != 0) {
     fatal_error(fmt::format("Vertex array for triangular unit sphere mesh {} "
                             "does not describe a whole number of triangles.",
       id_));

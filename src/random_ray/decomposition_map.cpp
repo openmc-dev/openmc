@@ -64,7 +64,7 @@ void DecompositionMap::initialize()
   // It depends only on the settings above and on the run mode, so it is
   // measured once per solve on a freshly constructed region.
   SourceRegion sr(negroups_, is_linear_);
-  sr_record_bytes_ = transfer_sr_fields(sr, nullptr, SRTransfer::SIZE);
+  sr_record_bytes_ = process_sr_fields(sr, nullptr, SRProcessMode::SIZE);
 
   // Count the number of source regions in the model
   n_base_sr_ = 0;
@@ -548,15 +548,15 @@ void DecompositionMap::exchange_sr_info(
 // gradient limiter, adaptive volume estimator, fixed source mode), so sender
 // and receiver agree on it without any metadata. When adding a per-region
 // field, add it to ScalarSourceRegionFields (carried automatically) or to
-// transfer_sr_fields() (and allocate it in the SourceRegion constructors).
+// process_sr_fields() (and allocate it in the SourceRegion constructors).
 //==============================================================================
 
 // Start receiving `bytes` bytes from rank `sender` into `buf`, as messages of
 // at most MAX_MPI_MESSAGE_BYTES. The sender splits its buffer the same way
 // (start_chunked_send), and MPI delivers the pieces in the order they were
 // sent.
-void start_chunked_receive(
-  char* buf, size_t bytes, int sender, vector<MPI_Request>& requests)
+void DecompositionMap::start_chunked_receive(
+  char* buf, size_t bytes, int sender, vector<MPI_Request>& requests) const
 {
   for (size_t off = 0; off < bytes; off += MAX_MPI_MESSAGE_BYTES) {
     int n = static_cast<int>(std::min(MAX_MPI_MESSAGE_BYTES, bytes - off));
@@ -568,8 +568,8 @@ void start_chunked_receive(
 
 // Start sending `bytes` bytes of `buf` to rank `receiver`, as messages of at
 // most MAX_MPI_MESSAGE_BYTES
-void start_chunked_send(
-  char* buf, size_t bytes, int receiver, vector<MPI_Request>& requests)
+void DecompositionMap::start_chunked_send(
+  char* buf, size_t bytes, int receiver, vector<MPI_Request>& requests) const
 {
   for (size_t off = 0; off < bytes; off += MAX_MPI_MESSAGE_BYTES) {
     int n = static_cast<int>(std::min(MAX_MPI_MESSAGE_BYTES, bytes - off));
@@ -581,12 +581,12 @@ void start_chunked_send(
 
 // Copy the `n` bytes of one field into the record at `offset` (PACK) or out of
 // it (UNPACK), or only count them (SIZE), and advance the offset
-void transfer_bytes(
-  void* field, size_t n, char* buf, size_t& offset, SRTransfer mode)
+void DecompositionMap::process_bytes(
+  void* field, size_t n, char* buf, size_t& offset, SRProcessMode mode) const
 {
-  if (mode == SRTransfer::PACK) {
+  if (mode == SRProcessMode::PACK) {
     std::memcpy(buf + offset, field, n);
-  } else if (mode == SRTransfer::UNPACK) {
+  } else if (mode == SRProcessMode::UNPACK) {
     std::memcpy(field, buf + offset, n);
   }
   offset += n;
@@ -596,44 +596,44 @@ void transfer_bytes(
 // number of entries (a field that is transferred but not allocated by the
 // SourceRegion constructors would otherwise be read or written out of bounds)
 template<typename T>
-void transfer_array(
-  vector<T>& v, size_t n, char* buf, size_t& offset, SRTransfer mode)
+void DecompositionMap::process_array(
+  vector<T>& v, size_t n, char* buf, size_t& offset, SRProcessMode mode) const
 {
   if (v.size() != n) {
     fatal_error(fmt::format(
       "A transferred source region array has {} entries instead of {}. Check "
       "that the SourceRegion constructors allocate every field listed in "
-      "DecompositionMap::transfer_sr_fields().",
+      "DecompositionMap::process_sr_fields().",
       v.size(), n));
   }
-  transfer_bytes(v.data(), n * sizeof(T), buf, offset, mode);
+  process_bytes(v.data(), n * sizeof(T), buf, offset, mode);
 }
 
-size_t DecompositionMap::transfer_sr_fields(
-  SourceRegion& sr, char* buf, SRTransfer mode) const
+size_t DecompositionMap::process_sr_fields(
+  SourceRegion& sr, char* buf, SRProcessMode mode) const
 {
   // The one list of what moves with a source region between ranks, in record
   // order. Scalars ride along in ScalarSourceRegionFields.
   size_t offset = 0;
   size_t ng = negroups_;
-  transfer_bytes(
+  process_bytes(
     &sr.scalars_, sizeof(ScalarSourceRegionFields), buf, offset, mode);
-  transfer_array(sr.scalar_flux_old_, ng, buf, offset, mode);
-  transfer_array(sr.scalar_flux_new_, ng, buf, offset, mode);
-  transfer_array(sr.source_, ng, buf, offset, mode);
+  process_array(sr.scalar_flux_old_, ng, buf, offset, mode);
+  process_array(sr.scalar_flux_new_, ng, buf, offset, mode);
+  process_array(sr.source_, ng, buf, offset, mode);
   if (settings::run_mode == RunMode::FIXED_SOURCE)
-    transfer_array(sr.external_source_, ng, buf, offset, mode);
-  transfer_array(sr.scalar_flux_final_, ng, buf, offset, mode);
+    process_array(sr.external_source_, ng, buf, offset, mode);
+  process_array(sr.scalar_flux_final_, ng, buf, offset, mode);
   if (is_linear_) {
-    transfer_array(sr.source_gradients_, ng, buf, offset, mode);
-    transfer_array(sr.flux_moments_old_, ng, buf, offset, mode);
-    transfer_array(sr.flux_moments_new_, ng, buf, offset, mode);
-    transfer_array(sr.flux_moments_t_, ng, buf, offset, mode);
+    process_array(sr.source_gradients_, ng, buf, offset, mode);
+    process_array(sr.flux_moments_old_, ng, buf, offset, mode);
+    process_array(sr.flux_moments_new_, ng, buf, offset, mode);
+    process_array(sr.flux_moments_t_, ng, buf, offset, mode);
   }
   if (is_linear_ && FlatSourceDomain::source_gradient_limiter_)
-    transfer_bytes(&sr.extent_, sizeof(BoundingBox), buf, offset, mode);
+    process_bytes(&sr.extent_, sizeof(BoundingBox), buf, offset, mode);
   if (is_adaptive_)
-    transfer_array(sr.scalar_flux_t_, ng, buf, offset, mode);
+    process_array(sr.scalar_flux_t_, ng, buf, offset, mode);
 
   // The size of the record in bytes
   return offset;
@@ -642,7 +642,7 @@ size_t DecompositionMap::transfer_sr_fields(
 void DecompositionMap::send_sr_data(int receiver, SourceRegion& sr_send)
 {
   vector<char> buf(sr_record_bytes_);
-  transfer_sr_fields(sr_send, buf.data(), SRTransfer::PACK);
+  process_sr_fields(sr_send, buf.data(), SRProcessMode::PACK);
   MPI_Send(buf.data(), static_cast<int>(buf.size()), MPI_BYTE, receiver, 1,
     mpi::intracomm);
 }
@@ -652,7 +652,7 @@ void DecompositionMap::receive_sr_data(int sender, SourceRegion& sr_recv)
   vector<char> buf(sr_record_bytes_);
   MPI_Recv(buf.data(), static_cast<int>(buf.size()), MPI_BYTE, sender, 1,
     mpi::intracomm, MPI_STATUS_IGNORE);
-  transfer_sr_fields(sr_recv, buf.data(), SRTransfer::UNPACK);
+  process_sr_fields(sr_recv, buf.data(), SRProcessMode::UNPACK);
 }
 
 int DecompositionMap::find_owner(SourceRegionKey sr_key, Position r,
@@ -1120,7 +1120,7 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
   domain->source_region_map_.clear();
 
   // Move the source region data to the new owners: one packed buffer per
-  // pair of ranks (fixed-size records, see transfer_sr_fields()), sent in
+  // pair of ranks (fixed-size records, see process_sr_fields()), sent in
   // messages of at most MAX_MPI_MESSAGE_BYTES, instead of one message per
   // field and region. Every rank already knows how many regions it receives
   // from each sender (num_sr_receiving, from the broadcasts above), so all
@@ -1155,7 +1155,7 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
     char* p = send_buffers.back().data();
     for (int sr_idx : sr_indices) {
       SourceRegion sr(domain->source_regions_.get_source_region_handle(sr_idx));
-      transfer_sr_fields(sr, p, SRTransfer::PACK);
+      process_sr_fields(sr, p, SRProcessMode::PACK);
       p += record;
     }
     start_chunked_send(send_buffers.back().data(), send_buffers.back().size(),
@@ -1176,7 +1176,7 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
     char* p = recv_buffers[sender].data();
     for (int i = 0; i < num_sr_receiving[sender]; ++i) {
       SourceRegion sr_recv(negroups_, is_linear_);
-      transfer_sr_fields(sr_recv, p, SRTransfer::UNPACK);
+      process_sr_fields(sr_recv, p, SRProcessMode::UNPACK);
       p += record;
       source_regions_new.push_back(sr_recv);
     }

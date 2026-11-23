@@ -1314,7 +1314,7 @@ class XSdata:
 
         Parameters
         ----------
-        kappa_fission: openmc.mgxs.KappaFissionXS
+        k_fission : openmc.mgxs.KappaFissionXS
             MGXS Object containing the kappa-fission cross section
             for the domain of interest.
         temperature : float

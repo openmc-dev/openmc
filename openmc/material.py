@@ -1504,7 +1504,7 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
-        nuclides : str, optional
+        nuclide : str, optional
             Nuclide for which atom density is desired. If not specified, the
             atom density for each nuclide in the material is given.
 
@@ -1788,7 +1788,7 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
-        nuclides : str, optional
+        nuclide : str, optional
             Nuclide for which density is desired. If not specified, the density
             for the entire material is given.
 
@@ -1813,7 +1813,7 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
-        nuclides : str, optional
+        nuclide : str, optional
             Nuclide for which mass is desired. If not specified, the density
             for the entire material is given.
         volume : float, optional
@@ -2415,7 +2415,7 @@ class Materials(cv.CheckedList):
             Indentation level of materials element
         spaces_per_level : int
             Number of spaces per indentation
-        trailing_indentation : bool
+        trailing_indent : bool
             Whether or not to write a trailing indentation for the materials element
         nuclides_to_ignore : list of str
             Nuclides to ignore when exporting to XML.

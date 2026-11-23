@@ -21,7 +21,7 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
     ----------
     guess : Real
         Current guess for the parameter to be searched in `model_builder`.
-    target_keff : Real
+    target : Real
         Value to search for
     model_builder : collections.Callable
         Callable function which builds a model according to a passed

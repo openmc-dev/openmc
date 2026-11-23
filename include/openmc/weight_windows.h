@@ -329,7 +329,7 @@ public:
   // Local FW-CADIS target tallies
   std::vector<size_t> targets_;
   // FW-CADIS source biasing
-  bool source_biasing_;
+  bool source_biasing_ {false};
   int32_t angle_mesh_idx_ {C_NONE}; //<! Index in mesh map of optional angular
                                     // quadrature for source biasing
   std::string forward_source_mesh_ {

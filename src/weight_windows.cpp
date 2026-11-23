@@ -1449,6 +1449,7 @@ void free_memory_weight_windows()
   variance_reduction::ww_map.clear();
   variance_reduction::weight_windows.clear();
   variance_reduction::weight_windows_generators.clear();
+  variance_reduction::source_biases.clear();
 }
 
 void finalize_variance_reduction()

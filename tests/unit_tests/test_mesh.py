@@ -816,6 +816,37 @@ def test_mesh_get_homogenized_materials():
     assert m5.get_mass_density('H1') == pytest.approx(1.0)
 
 
+def test_mesh_get_homogenized_materials_unresolved_element():
+    """An element with no material volumes, as left by rays whose boundary
+    search failed, raises a clear error instead of failing to unpack"""
+    h = openmc.Material()
+    h.add_nuclide('H1', 1.0)
+    h.set_density('g/cm3', 1.0)
+    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    model = openmc.Model(
+        geometry=openmc.Geometry([openmc.Cell(fill=h, region=-sphere)]))
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-1., -1., -1.)
+    mesh.upper_right = (1., 1., 1.)
+    mesh.dimension = (2, 1, 1)
+
+    # Element 0 is all H1; element 1 has only empty slots (material -2)
+    materials = np.array([[h.id, -2], [-2, -2]])
+    volumes = np.array([[4.0, 0.0], [0.0, 0.0]])
+    vols = openmc.MeshMaterialVolumes(materials, volumes)
+    with pytest.raises(ValueError, match=r'1 mesh element\(s\).*indices 1\b'):
+        mesh.get_homogenized_materials(model, material_volumes=vols)
+
+    # With every element resolved, homogenization works as before
+    materials = np.array([[h.id, -2], [h.id, -2]])
+    volumes = np.array([[4.0, 0.0], [4.0, 0.0]])
+    vols = openmc.MeshMaterialVolumes(materials, volumes)
+    m1, m2 = mesh.get_homogenized_materials(model, material_volumes=vols)
+    assert m1.get_mass_density('H1') == pytest.approx(1.0)
+    assert m2.get_mass_density('H1') == pytest.approx(1.0)
+
+
 @pytest.fixture
 def sphere_model():
     openmc.reset_auto_ids()

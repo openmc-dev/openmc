@@ -425,14 +425,6 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
     for (int b = 0; b < mesh_bins_.size(); b++) {
       double physical_length = reduced_distance * mesh_fractional_lengths_[b];
 
-      // Skip the segments that the rank this ray came from already attenuated
-      // the ray over
-      if (n_segments_done_ < n_segments_to_skip_) {
-        start += physical_length * u();
-        n_segments_done_++;
-        continue;
-      }
-
 #ifdef OPENMC_MPI
       if (mpi::n_procs > 1 && simulation::current_batch <= ITER_LOAD_BALANCE) {
         // Shared across threads; see the note in event_advance_ray()
@@ -440,6 +432,15 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
         mpi::decomp_map.num_mesh_bin_RT_[sr] += 1;
       }
 #endif
+
+      // Skip the segments that the rank this ray came from already attenuated
+      // the ray over. They are still counted above, because this rank has ray
+      // traced them again and that is part of its load.
+      if (n_segments_done_ < n_segments_to_skip_) {
+        start += physical_length * u();
+        n_segments_done_++;
+        continue;
+      }
 
       attenuate_flux_inner(
         physical_length, is_active, sr, mesh_bins_[b], start);

@@ -141,6 +141,22 @@ def test_mesh_from_python_requires_init():
         openmc.lib.Mesh.from_python(mesh)
 
 
+def test_properties_volume_mode(sphere_model, mpi_intracomm, monkeypatch):
+    monkeypatch.setattr(
+        sphere_model.settings, 'temperature',
+        {'method': 'interpolation', 'default': 600.0},
+    )
+    (cell_id,) = sphere_model.geometry.get_all_cells()
+
+    with openmc.lib.TemporarySession(
+        sphere_model, args=['-c'], intracomm=mpi_intracomm
+    ):
+        assert openmc.lib.settings.run_mode == 'volume'
+        openmc.lib.export_properties('properties.h5')
+        openmc.lib.import_properties('properties.h5')
+        assert openmc.lib.cells[cell_id].get_temperature() == pytest.approx(600.0)
+
+
 def test_cell_mapping(lib_init):
     cells = openmc.lib.cells
     assert isinstance(cells, Mapping)

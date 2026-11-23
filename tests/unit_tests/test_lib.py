@@ -1349,3 +1349,20 @@ def test_restart_internal_tally(run_in_tmpdir, mpi_intracomm):
         kwargs['mpi_args'] = [config['mpiexec'], '-n', config['mpi_np']]
     openmc.run(**kwargs)
     assert os.path.exists('statepoint.6.h5')
+
+
+def test_import_properties_volume_mode(
+    sphere_model, run_in_tmpdir, mpi_intracomm, monkeypatch
+):
+    monkeypatch.setattr(
+        sphere_model.settings, 'temperature',
+        {'method': 'interpolation', 'default': 600.0},
+    )
+    sphere_model.export_to_xml()
+
+    openmc.lib.finalize()
+    with openmc.lib.run_in_memory(args=['-c'], intracomm=mpi_intracomm):
+        openmc.lib.export_properties('properties.h5')
+        openmc.lib.import_properties('properties.h5')
+        cell = next(iter(openmc.lib.cells.values()))
+        assert cell.get_temperature() == pytest.approx(600.0)

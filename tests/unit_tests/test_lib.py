@@ -153,7 +153,10 @@ def test_properties_volume_mode(sphere_model, run_in_tmpdir, mpi_intracomm, monk
         assert openmc.lib.settings.run_mode == 'volume'
         openmc.lib.export_properties('properties.h5')
         openmc.lib.import_properties('properties.h5')
-        assert openmc.lib.cells[cell_id].get_temperature() == pytest.approx(600.0)
+        cell = openmc.lib.cells[cell_id]
+        assert cell.get_temperature() == pytest.approx(600.0)
+        with pytest.raises(exc.OpenMCError, match='finite, non-negative'):
+            cell.set_temperature(-1.0)
 
 
 def test_cell_mapping(lib_init):

@@ -127,9 +127,14 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
     for (size_t a = 0; a < n_ang; a++) {
       for (size_t g = 0; g < energy_groups; g++) {
         double nu_scatter = scatter[a]->scattxs[g];
-        if (nu_scatter <= 0.0)
-          continue;
         double scatter_xs = total(a, g) - absorption(a, g);
+        if (nu_scatter <= 0.0) {
+          if (scatter_xs > 0.0)
+            fatal_error(fmt::format("Photon group {} has positive scattering "
+                                    "but no photon production.",
+              g + 1));
+          continue;
+        }
         if (scatter_xs <= 0.0)
           fatal_error(fmt::format("Photon group {} produces photons but has "
                                   "no scattering to carry them.",

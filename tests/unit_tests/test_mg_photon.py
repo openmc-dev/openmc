@@ -74,6 +74,18 @@ def test_mg_photon_production_without_scattering(run_in_tmpdir):
         model.run(openmc_exec=config['exe'])
 
 
+def test_mg_photon_scattering_without_production(run_in_tmpdir):
+    model = make_model('derived')
+    library = openmc.MGXSLibrary.from_hdf5('mgxs.h5')
+    xsdata = library.xsdatas[0]
+    scatter_matrix = xsdata.scatter_matrix[0].copy()
+    scatter_matrix[0] = 0.0
+    xsdata.set_scatter_matrix(scatter_matrix)
+    library.export_to_hdf5('mgxs.h5')
+    with pytest.raises(RuntimeError, match='but no photon production'):
+        model.run(openmc_exec=config['exe'])
+
+
 def test_mg_photon_random_ray(run_in_tmpdir):
     model = make_model()
     model.settings.source[0].space = openmc.stats.Point()

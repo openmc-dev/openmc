@@ -615,7 +615,10 @@ class MeshSource(SourceBase):
         """
         current_strength = self.strength if self.strength != 0.0 else 1.0
 
-        for s in self.sources:
+        # A source can be shared by several mesh elements. Scale each source
+        # once so that all element strengths keep the same proportions.
+        unique_sources = {id(s): s for s in self.sources}
+        for s in unique_sources.values():
             s.strength *= strength / current_strength
 
     def normalize_source_strengths(self):
@@ -775,9 +778,6 @@ class CompiledSource(SourceBase):
         ----------
         elem : lxml.etree._Element
             XML element
-        meshes : dict
-            Dictionary with mesh IDs as keys and openmc.MeshBase instances as
-            values
 
         Returns
         -------
@@ -883,9 +883,6 @@ class FileSource(SourceBase):
         ----------
         elem : lxml.etree._Element
             XML element
-        meshes : dict
-            Dictionary with mesh IDs as keys and openmc.MeshBase instances as
-            values
 
         Returns
         -------

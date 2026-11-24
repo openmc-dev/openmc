@@ -24,7 +24,7 @@ def dagmc_universe_cell_ids(universe_id: int) -> np.ndarray:
 
     Parameters
     ----------
-    dagmc_id : int
+    universe_id : int
         ID of the DAGMC universe to get cell IDs from.
 
     Returns

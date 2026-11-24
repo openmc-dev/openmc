@@ -143,7 +143,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         ----------
         key : openmc.DAGMCCell or int
             Cell object or ID of the Cell to override
-        value : openmc.Material or Iterable of openmc.Material
+        overrides : openmc.Material or Iterable of openmc.Material
             Material(s) to be applied to the Cell passed as the key
 
         """

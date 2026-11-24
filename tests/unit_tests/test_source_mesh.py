@@ -221,6 +221,27 @@ def test_roundtrip(run_in_tmpdir, model, request):
 ###################
 # MeshSource tests
 ###################
+@pytest.mark.parametrize('strength', [1.0, 8.0, 0.0])
+def test_mesh_source_shared_strengths(strength):
+    mesh = openmc.RegularMesh()
+    mesh.dimension = (3, 1, 1)
+    mesh.lower_left = (0., 0., 0.)
+    mesh.upper_right = (3., 1., 1.)
+    shared = openmc.IndependentSource(strength=1.0)
+    other = openmc.IndependentSource(strength=2.0)
+    source = openmc.MeshSource(mesh, [shared, shared, other])
+
+    source.strength = strength
+
+    assert source.strength == pytest.approx(strength)
+    assert [s.strength for s in source.sources] == pytest.approx(
+        np.array([1., 1., 2.]) * strength / 4.)
+    # The same per-element strengths must be passed to transport.
+    elem = source.to_xml_element()
+    assert [float(s.get('strength')) for s in elem.findall('source')] == \
+        pytest.approx(np.array([1., 1., 2.]) * strength / 4.)
+
+
 @pytest.fixture
 def void_model():
     """

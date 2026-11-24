@@ -126,15 +126,15 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
       !object_exists(xsdata_grp, "scatter_data/multiplicity_matrix")) {
     for (size_t a = 0; a < n_ang; a++) {
       for (size_t g = 0; g < energy_groups; g++) {
-        double production = scatter[a]->scattxs[g];
-        if (production <= 0.0)
+        double nu_scatter = scatter[a]->scattxs[g];
+        if (nu_scatter <= 0.0)
           continue;
         double scatter_xs = total(a, g) - absorption(a, g);
         if (scatter_xs <= 0.0)
           fatal_error(fmt::format("Photon group {} produces photons but has "
                                   "no scattering to carry them.",
             g + 1));
-        scatter[a]->set_multiplicity(g, production / scatter_xs);
+        scatter[a]->set_multiplicity(g, nu_scatter / scatter_xs);
       }
     }
   }

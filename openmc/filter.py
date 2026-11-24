@@ -865,6 +865,16 @@ class MeshFilter(Filter):
         self._translation = None
         self._rotation = None
 
+    def _same_mesh(self, other):
+        return (type(self) is type(other)
+                and type(self.mesh) is type(other.mesh)
+                and self.mesh.id == other.mesh.id
+                and np.array_equal(self.translation, other.translation)
+                and np.array_equal(self.rotation, other.rotation))
+
+    def __eq__(self, other):
+        return self._same_mesh(other) and super().__eq__(other)
+
     def __hash__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
@@ -947,6 +957,9 @@ class MeshFilter(Filter):
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
         return False
+
+    def is_subset(self, other):
+        return self._same_mesh(other) and super().is_subset(other)
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1088,6 +1101,7 @@ class MeshMaterialFilter(MeshFilter):
         self.bins = bins
         self.id = filter_id
         self._translation = None
+        self._rotation = None
 
     @classmethod
     def from_volumes(cls, mesh: openmc.MeshBase, volumes: openmc.MeshMaterialVolumes):
@@ -2735,7 +2749,7 @@ class EnergyFunctionFilter(Filter):
                 'Quadratic interpolation requires 3 or more values.')
 
         if val == 'cubic' and len(self.energy) < 4:
-            raise ValueError('Cubic interpolation requires 3 or more values.')
+            raise ValueError('Cubic interpolation requires 4 or more values.')
 
         self._interpolation = val
 

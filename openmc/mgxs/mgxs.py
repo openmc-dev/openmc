@@ -87,6 +87,14 @@ _DOMAINS = (
     openmc.RegularMesh
 )
 
+
+def _replace_filter(tally, filter_type, new_filter):
+    """Replace the filter of an exact type on a tally."""
+    old_filter = tally.find_filter(filter_type)
+    index = tally.filters.index(old_filter)
+    tally.filters[index] = new_filter
+
+
 # Supported ScatterMatrixXS angular distribution types. Note that 'histogram' is
 # defined here and used in mgxs_library.py, but it is not used for the current
 # module
@@ -1398,9 +1406,13 @@ class MGXS:
                 elif not np.allclose(tally_filter.bins[:, 0], fine_edges[:-1]):
                     continue
                 else:
+                    # Other tallies may share this filter. Replace it before
+                    # changing its bins so their fine-group data stay valid.
+                    tally_filter = copy.deepcopy(tally_filter)
                     cedge = coarse_groups.group_edges
                     tally_filter.values = cedge
                     tally_filter.bins = np.vstack((cedge[:-1], cedge[1:])).T
+                    tally.filters[i] = tally_filter
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
                     std_dev = np.add.reduceat(std_dev**2, energy_indices,
                                               axis=i)
@@ -1609,10 +1621,9 @@ class MGXS:
         filter_bins = []
 
         if len(groups) != 0:
-            energy_bins = []
-            for group in groups:
-                group_bounds = self.energy_groups.get_group_bounds(group)
-                energy_bins.append(group_bounds)
+            energy_bins = [self.energy_groups.get_group_bounds(group)
+                           for group in groups]
+            energy_bins.sort()
             filter_bins.append(tuple(energy_bins))
             filters.append(openmc.EnergyFilter)
 
@@ -2207,6 +2218,11 @@ class MatrixMGXS(MGXS):
     and are therefore represented by matrices. Examples of this include the
     scattering and nu-fission matrices.
 
+    On a sliced matrix, incoming and outgoing group indices are numbered
+    independently over the bins remaining on each axis, starting at one for
+    the highest-energy bin. This numbering applies to subsequent calls to
+    :meth:`get_xs` and :meth:`get_slice`.
+
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations.
@@ -2214,6 +2230,44 @@ class MatrixMGXS(MGXS):
     .. note:: Users should instantiate the subclasses of this abstract class.
 
     """
+    def _get_group_bins(self, groups, filter_type):
+        """Map groups to the bins remaining on one matrix axis."""
+        cv.check_iterable_type('groups', groups, Integral)
+        energy_filter = next(
+            (tally.find_filter(filter_type) for tally in self.tallies.values()
+             if tally.contains_filter(filter_type)), None)
+        if energy_filter is None:
+            energy_filter = self.xs_tally.find_filter(filter_type)
+        bins = energy_filter.bins
+        for group in groups:
+            cv.check_greater_than('group', group, 0)
+            cv.check_less_than('group', group, len(bins), equality=True)
+        # Matrix tallies store bins from low to high energy, while group 1
+        # denotes the highest-energy bin remaining on the selected axis.
+        return tuple(tuple(bins[-group])
+                     for group in sorted(groups, reverse=True))
+
+    def _check_slice_groups(self, in_groups, out_groups,
+                            legendre_order='same'):
+        """Reject selections that discard correction or normalization data."""
+        scatter = isinstance(self, ScatterMatrixXS)
+        normalize = (isinstance(self, ScatterProbabilityMatrix) or
+                     (scatter and self.formulation == 'consistent'))
+        if scatter and legendre_order == 'same':
+            legendre_order = self.legendre_order
+        p0 = (scatter and self.scatter_format == SCATTER_LEGENDRE and
+              self.correction == 'P0' and legendre_order == 0)
+        for groups, filter_type, needs_all in (
+                (in_groups, openmc.EnergyFilter, p0),
+                (out_groups, openmc.EnergyoutFilter, p0 or normalize)):
+            if needs_all and len(groups):
+                count = self.xs_tally.find_filter(filter_type).num_bins
+                if sorted(groups) != list(range(1, count + 1)):
+                    raise ValueError(
+                        'Energy-group slicing requires full-group correction '
+                        'or normalization data for this matrix. Use get_xs() '
+                        'with in_groups/out_groups to select values instead.')
+
     @property
     def _dont_squeeze(self):
         """Create a tuple of axes which should not be removed during the get_xs
@@ -2314,20 +2368,15 @@ class MatrixMGXS(MGXS):
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(in_groups, str):
-            cv.check_iterable_type('groups', in_groups, Integral)
             filters.append(openmc.EnergyFilter)
-            energy_bins = []
-            for group in in_groups:
-                energy_bins.append((self.energy_groups.get_group_bounds(group),))
-            filter_bins.append(tuple(energy_bins))
+            filter_bins.append(self._get_group_bins(
+                in_groups, openmc.EnergyFilter))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(out_groups, str):
-            cv.check_iterable_type('groups', out_groups, Integral)
-            for group in out_groups:
-                filters.append(openmc.EnergyoutFilter)
-                filter_bins.append((
-                    self.energy_groups.get_group_bounds(group),))
+            filters.append(openmc.EnergyoutFilter)
+            filter_bins.append(self._get_group_bins(
+                out_groups, openmc.EnergyoutFilter))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
@@ -2338,15 +2387,17 @@ class MatrixMGXS(MGXS):
         else:
             query_nuclides = ['total']
 
+        xs_tally = self.xs_tally
+
         # Use tally summation if user requested the sum for all nuclides
         if nuclides == 'sum' or nuclides == ['sum']:
-            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            xs_tally = xs_tally.summation(nuclides=query_nuclides)
             xs = xs_tally.get_values(filters=filters, filter_bins=filter_bins,
                                      value=value)
         else:
-            xs = self.xs_tally.get_values(filters=filters,
-                                          filter_bins=filter_bins,
-                                          nuclides=query_nuclides, value=value)
+            xs = xs_tally.get_values(filters=filters,
+                                     filter_bins=filter_bins,
+                                     nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
         if xs_type == 'micro' and self._divide_by_density:
@@ -2362,12 +2413,14 @@ class MatrixMGXS(MGXS):
         xs = np.nan_to_num(xs)
 
         if in_groups == 'all':
-            num_in_groups = self.num_groups
+            energy_filter = xs_tally.find_filter(openmc.EnergyFilter)
+            num_in_groups = energy_filter.num_bins
         else:
             num_in_groups = len(in_groups)
 
         if out_groups == 'all':
-            num_out_groups = self.num_groups
+            energyout_filter = xs_tally.find_filter(openmc.EnergyoutFilter)
+            num_out_groups = energyout_filter.num_bins
         else:
             num_out_groups = len(out_groups)
 
@@ -2434,28 +2487,31 @@ class MatrixMGXS(MGXS):
             requested for the nuclide(s) and/or energy group(s) requested in
             the parameters.
 
+        Raises
+        ------
+        ValueError
+            If selected groups omit data needed for correction or
+            normalization. Use :meth:`get_xs` to select
+            values from the full matrix.
+
         """
 
-        # Call super class method and null out derived tallies
-        slice_xs = super().get_slice(nuclides, in_groups)
-        slice_xs._rxn_rate_tally = None
-        slice_xs._xs_tally = None
+        self._check_slice_groups(in_groups, out_groups)
 
-        # Slice outgoing energy groups if needed
-        if len(out_groups) != 0:
-            filter_bins = []
-            for group in out_groups:
-                group_bounds = self.energy_groups.get_group_bounds(group)
-                filter_bins.append(group_bounds)
-            filter_bins = [tuple(filter_bins)]
-
-            # Slice each of the tallies across energyout groups
+        # Slice nuclides first, then select each energy axis independently.
+        slice_xs = super().get_slice(nuclides)
+        for groups, filter_type in ((in_groups, openmc.EnergyFilter),
+                                    (out_groups, openmc.EnergyoutFilter)):
+            if len(groups) == 0:
+                continue
+            bins = self._get_group_bins(groups, filter_type)
             for tally_type, tally in slice_xs.tallies.items():
-                if tally.contains_filter(openmc.EnergyoutFilter):
-                    tally_slice = tally.get_slice(
-                        filters=[openmc.EnergyoutFilter],
-                        filter_bins=filter_bins)
-                    slice_xs.tallies[tally_type] = tally_slice
+                if tally.contains_filter(filter_type):
+                    slice_xs.tallies[tally_type] = tally.get_slice(
+                        filters=[filter_type], filter_bins=[bins])
+
+            if filter_type is openmc.EnergyFilter:
+                slice_xs.energy_groups = EnergyGroups(np.unique(bins))
 
         slice_xs.sparse = self.sparse
         return slice_xs
@@ -2679,7 +2735,7 @@ class TransportXS(MGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     nu : bool
         If True, the cross section data will include neutron multiplication;
@@ -2809,15 +2865,15 @@ class TransportXS(MGXS):
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
             # Switch EnergyoutFilter to EnergyFilter.
-            p1_tally = self.tallies['scatter-1']
-            old_filt = p1_tally.filters[-2]
+            p1_tally = self.tallies['scatter-1'].get_slice(
+                filters=[openmc.LegendreFilter], filter_bins=[('P1',)],
+                squeeze=True)
+            old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
-            p1_tally.filters[-2] = new_filt
+            _replace_filter(
+                p1_tally, openmc.EnergyoutFilter, new_filt)
 
-            # Slice Legendre expansion filter and change name of score
-            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                                          filter_bins=[('P1',)],
-                                          squeeze=True)
+            # Rename the score for the transport correction.
             p1_tally._scores = ['scatter-1']
 
             self._rxn_rate_tally = self.tallies['total'] - p1_tally
@@ -2834,15 +2890,15 @@ class TransportXS(MGXS):
                 raise ValueError(msg)
 
             # Switch EnergyoutFilter to EnergyFilter.
-            p1_tally = self.tallies['scatter-1']
-            old_filt = p1_tally.filters[-2]
+            p1_tally = self.tallies['scatter-1'].get_slice(
+                filters=[openmc.LegendreFilter], filter_bins=[('P1',)],
+                squeeze=True)
+            old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
-            p1_tally.filters[-2] = new_filt
+            _replace_filter(
+                p1_tally, openmc.EnergyoutFilter, new_filt)
 
-            # Slice Legendre expansion filter and change name of score
-            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                                          filter_bins=[('P1',)],
-                                          squeeze=True)
+            # Rename the score for the transport correction.
             p1_tally._scores = ['scatter-1']
 
             # Compute total cross section
@@ -2920,7 +2976,7 @@ class DiffusionCoefficient(TransportXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     nu : bool
         If True, the cross section data will include neutron multiplication;
@@ -3023,15 +3079,15 @@ class DiffusionCoefficient(TransportXS):
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
             # Switch EnergyoutFilter to EnergyFilter.
-            p1_tally = self.tallies['scatter-1']
-            old_filt = p1_tally.filters[-2]
+            p1_tally = self.tallies['scatter-1'].get_slice(
+                filters=[openmc.LegendreFilter], filter_bins=[('P1',)],
+                squeeze=True)
+            old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
-            p1_tally.filters[-2] = new_filt
+            _replace_filter(
+                p1_tally, openmc.EnergyoutFilter, new_filt)
 
-            # Slice Legendre expansion filter and change name of score
-            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                                          filter_bins=[('P1',)],
-                                          squeeze=True)
+            # Rename the score for the transport correction.
             p1_tally._scores = ['scatter-1']
 
             transport = self.tallies['total'] - p1_tally
@@ -3052,13 +3108,14 @@ class DiffusionCoefficient(TransportXS):
             # If 'scatter-1' is not in tallies, it is because the transport correction has
             # already occurred on this MGXS in another function or in a previous call to this function.
             if 'scatter-1' in self.tallies:
-                p1_tally = self.tallies['scatter-1']
-                old_filt = p1_tally.filters[-2]
+                p1_tally = self.tallies['scatter-1'].get_slice(
+                    filters=[openmc.LegendreFilter], filter_bins=[('P1',)],
+                    squeeze=True)
+                old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
                 new_filt = openmc.EnergyFilter(old_filt.values)
-                p1_tally.filters[-2] = new_filt
+                _replace_filter(
+                    p1_tally, openmc.EnergyoutFilter, new_filt)
 
-                p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                    filter_bins=[('P1',)],squeeze=True)
                 p1_tally._scores = ['scatter-1']
                 total_xs = self.tallies['total'] / self.tallies['flux (tracklength)']
                 trans_corr = p1_tally / self.tallies['flux (analog)']
@@ -3102,13 +3159,13 @@ class DiffusionCoefficient(TransportXS):
         # If 'scatter-1' is not in tallies, it is because the transport correction has
         # already occurred on this MGXS in another function or in a previous call to this function.
         if 'scatter-1' in self.tallies:
-            p1_tally = self.tallies['scatter-1']
-            old_filt = p1_tally.filters[-2]
+            p1_tally = self.tallies['scatter-1'].get_slice(
+                filters=[openmc.LegendreFilter], filter_bins=[('P1',)],
+                squeeze=True)
+            old_filt = p1_tally.find_filter(openmc.EnergyoutFilter)
             new_filt = openmc.EnergyFilter(old_filt.values)
-            p1_tally.filters[-2] = new_filt
-            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                                          filter_bins=[('P1',)],
-                                          squeeze=True)
+            _replace_filter(
+                p1_tally, openmc.EnergyoutFilter, new_filt)
             p1_tally._scores = ['scatter-1']
             total_xs = self.tallies['total'] / self.tallies['flux (tracklength)']
             trans_corr = p1_tally / self.tallies['flux (analog)']
@@ -3161,9 +3218,13 @@ class DiffusionCoefficient(TransportXS):
                 elif not np.allclose(tally_filter.bins[:, 0], fine_edges[:-1]):
                     continue
                 else:
+                    # Other tallies may share this filter. Replace it before
+                    # changing its bins so their fine-group data stay valid.
+                    tally_filter = copy.deepcopy(tally_filter)
                     cedge = coarse_groups.group_edges
                     tally_filter.values = cedge
                     tally_filter.bins = np.vstack((cedge[:-1], cedge[1:])).T
+                    tally.filters[i] = tally_filter
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
                     std_dev = np.add.reduceat(std_dev**2, energy_indices,
                                               axis=i)
@@ -3377,7 +3438,7 @@ class FissionXS(MGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     nu : bool
         If True, the cross section data will include neutron multiplication;
@@ -3602,7 +3663,7 @@ class ScatterXS(MGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
@@ -3889,7 +3950,7 @@ class ScatterMatrixXS(MatrixMGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
@@ -4287,8 +4348,10 @@ class ScatterMatrixXS(MatrixMGXS):
                         # Set the Legendre order of these tallies to be 0
                         # so they can be subtracted
                         legendre = openmc.LegendreFilter(order=0)
-                        scatter_p0.filters[-1] = legendre
-                        scatter_p1.filters[-1] = legendre
+                        _replace_filter(
+                            scatter_p0, openmc.LegendreFilter, legendre)
+                        _replace_filter(scatter_p1, openmc.LegendreFilter,
+                                        copy.deepcopy(legendre))
 
                         scatter_p1 = scatter_p1.summation(
                             filter_type=openmc.EnergyFilter,
@@ -4391,7 +4454,8 @@ class ScatterMatrixXS(MatrixMGXS):
                     # Set the Legendre order of the P1 tally to be P0
                     # so it can be subtracted
                     legendre = openmc.LegendreFilter(order=0)
-                    scatter_p1.filters[-1] = legendre
+                    _replace_filter(
+                        scatter_p1, openmc.LegendreFilter, legendre)
 
                     # Transform scatter-p1 tally into an energyin/out matrix
                     # to match scattering matrix shape for tally arithmetic
@@ -4503,7 +4567,7 @@ class ScatterMatrixXS(MatrixMGXS):
         """
 
         # Call super class method and null out derived tallies
-        slice_xs = super().get_slice(nuclides, in_groups)
+        slice_xs = super().get_slice(nuclides, in_groups, out_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
@@ -4512,6 +4576,7 @@ class ScatterMatrixXS(MatrixMGXS):
             cv.check_type('legendre_order', legendre_order, Integral)
             cv.check_less_than('legendre_order', legendre_order,
                                self.legendre_order, equality=True)
+            self._check_slice_groups(in_groups, out_groups, legendre_order)
             slice_xs.legendre_order = legendre_order
 
             # Slice the scattering tally
@@ -4520,22 +4585,6 @@ class ScatterMatrixXS(MatrixMGXS):
             slice_xs.tallies[self.rxn_type] = \
                 slice_xs.tallies[self.rxn_type].get_slice(
                     filters=[openmc.LegendreFilter], filter_bins=filter_bins)
-
-        # Slice outgoing energy groups if needed
-        if len(out_groups) != 0:
-            filter_bins = []
-            for group in out_groups:
-                group_bounds = self.energy_groups.get_group_bounds(group)
-                filter_bins.append(group_bounds)
-            filter_bins = [tuple(filter_bins)]
-
-            # Slice each of the tallies across energyout groups
-            for tally_type, tally in slice_xs.tallies.items():
-                if tally.contains_filter(openmc.EnergyoutFilter):
-                    tally_slice = tally.get_slice(
-                        filters=[openmc.EnergyoutFilter],
-                        filter_bins=filter_bins)
-                    slice_xs.tallies[tally_type] = tally_slice
 
         slice_xs.sparse = self.sparse
         return slice_xs
@@ -4629,20 +4678,15 @@ class ScatterMatrixXS(MatrixMGXS):
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(in_groups, str):
-            cv.check_iterable_type('groups', in_groups, Integral)
             filters.append(openmc.EnergyFilter)
-            energy_bins = []
-            for group in in_groups:
-                energy_bins.append(
-                    (self.energy_groups.get_group_bounds(group),))
-            filter_bins.append(tuple(energy_bins))
+            filter_bins.append(self._get_group_bins(
+                in_groups, openmc.EnergyFilter))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(out_groups, str):
-            cv.check_iterable_type('groups', out_groups, Integral)
-            for group in out_groups:
-                filters.append(openmc.EnergyoutFilter)
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+            filters.append(openmc.EnergyoutFilter)
+            filter_bins.append(self._get_group_bins(
+                out_groups, openmc.EnergyoutFilter))
 
         # Construct CrossScore for requested scattering moment
         if self.scatter_format == SCATTER_LEGENDRE:
@@ -4669,15 +4713,16 @@ class ScatterMatrixXS(MatrixMGXS):
             query_nuclides = ['total']
 
         # Use tally summation if user requested the sum for all nuclides
-        scores = self.xs_tally.scores
+        xs_tally = self.xs_tally
+        scores = xs_tally.scores
         if nuclides == 'sum' or nuclides == ['sum']:
-            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            xs_tally = xs_tally.summation(nuclides=query_nuclides)
             xs = xs_tally.get_values(scores=scores, filters=filters,
                                      filter_bins=filter_bins, value=value)
         else:
-            xs = self.xs_tally.get_values(scores=scores, filters=filters,
-                                          filter_bins=filter_bins,
-                                          nuclides=query_nuclides, value=value)
+            xs = xs_tally.get_values(scores=scores, filters=filters,
+                                     filter_bins=filter_bins,
+                                     nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
         if xs_type == 'micro' and self._divide_by_density:
@@ -4692,12 +4737,14 @@ class ScatterMatrixXS(MatrixMGXS):
         xs = np.nan_to_num(xs)
 
         if in_groups == 'all':
-            num_in_groups = self.num_groups
+            energy_filter = xs_tally.find_filter(openmc.EnergyFilter)
+            num_in_groups = energy_filter.num_bins
         else:
             num_in_groups = len(in_groups)
 
         if out_groups == 'all':
-            num_out_groups = self.num_groups
+            energyout_filter = xs_tally.find_filter(openmc.EnergyoutFilter)
+            num_out_groups = energyout_filter.num_bins
         else:
             num_out_groups = len(out_groups)
 
@@ -4971,9 +5018,17 @@ class PhotonTransferMatrixXS(MatrixMGXS):
     scored with its statistical weight, photon multiplicity is included directly
     in the production matrix.
 
+<<<<<<< HEAD
     Photon production is only available as a macroscopic, isotropic cross
     section. Per-nuclide production cannot be determined because secondary
     photons are tallied from the collision bank rather than a reaction score.
+=======
+    Photon production is currently available only as a macroscopic, isotropic,
+    P0 cross section. Although collision-bank events retain the nuclide that
+    produced them, per-nuclide production is excluded from this initial API to
+    keep all three component tallies on the same macroscopic basis. The P0
+    matrix also cannot preserve higher-order angular scattering information.
+>>>>>>> upstream/develop
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
@@ -4987,7 +5042,10 @@ class PhotonTransferMatrixXS(MatrixMGXS):
         self._rxn_type = 'nu-scatter'
         self._mgxs_type = 'nu-scatter matrix'
         self._particle_type = openmc.ParticleType.PHOTON
+<<<<<<< HEAD
         self._valid_estimators = ['analog']
+=======
+>>>>>>> upstream/develop
 
     @property
     def by_nuclide(self):
@@ -5031,6 +5089,11 @@ class PhotonTransferMatrixXS(MatrixMGXS):
     @property
     def estimator(self):
         return ['tracklength', 'analog', 'analog']
+
+    @estimator.setter
+    def estimator(self, estimator):
+        raise ValueError(
+            'Photon production uses fixed tracklength and analog estimators')
 
     @property
     def scatter_format(self):
@@ -5343,7 +5406,7 @@ class NuFissionMatrixXS(MatrixMGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
@@ -5504,7 +5567,7 @@ class Chi(MGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     prompt : bool
         If true, computes cross sections which only includes prompt neutrons;
@@ -5747,6 +5810,7 @@ class Chi(MGXS):
             for group in groups:
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 filter_bins.append(group_bounds)
+            filter_bins.sort()
             filter_bins = [tuple(filter_bins)]
 
             # Slice nu-fission-out tally along energyout filter
@@ -5756,8 +5820,8 @@ class Chi(MGXS):
             slice_xs._tallies['nu-fission-out'] = tally_slice
 
         # Add energy filter back to nu-fission-in tallies
-        self.tallies['nu-fission-in'].add_filter(energy_filter)
-        slice_xs._tallies['nu-fission-in'].add_filter(energy_filter)
+        self.tallies['nu-fission-in'].filters.append(energy_filter)
+        slice_xs._tallies['nu-fission-in'].filters.append(energy_filter)
 
         slice_xs.sparse = self.sparse
         return slice_xs
@@ -6474,7 +6538,7 @@ class Current(MeshSurfaceMGXS):
         The domain for spatial homogenization
     domain_type : ('mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
         Unused in MeshSurfaceMGXS

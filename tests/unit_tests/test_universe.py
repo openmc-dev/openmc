@@ -145,6 +145,12 @@ def test_mg_plot(run_in_tmpdir):
     with pytest.raises(RuntimeError):
         univ.plot(width=(200, 200), basis='yz', color_by='cell')
 
+    # Plot using the model's cross sections without global configuration.
+    model = openmc.Model(openmc.Geometry(univ), materials=[water])
+    model.materials.cross_sections = mgxs_path
+    axes = model.plot(color_by='material', outline='only', pixels=(20, 20))
+    assert len(axes.collections) == 1
+
     # Close plots to avoid warning
     import matplotlib.pyplot as plt
     plt.close('all')

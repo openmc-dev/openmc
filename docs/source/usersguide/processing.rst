@@ -97,13 +97,16 @@ VTK Mesh File Generation
 ------------------------
 
 VTK files of OpenMC meshes can be created using the
-:meth:`openmc.Mesh.write_data_to_vtk` method. This method supports several VTK
-formats depending on the mesh type. Structured meshes
-(:class:`~openmc.RegularMesh`, :class:`~openmc.RectilinearMesh`,
-:class:`~openmc.CylindricalMesh`, and :class:`~openmc.SphericalMesh`) can be
-exported to legacy VTK format (``.vtk``). The :class:`~openmc.UnstructuredMesh`
-class supports VTK unstructured grid formats (``.vtu``) as well as an HDF5-based
-format (``.vtkhdf``) that does not require the ``vtk`` module to write.
+:meth:`openmc.Mesh.write_data_to_vtk` method, which selects the file format
+from the filename extension. All mesh types can be written to the HDF5-based
+VTKHDF format (``.vtkhdf``), which does not require the ``vtk`` module to write.
+A :class:`~openmc.RegularMesh` is written as VTK image data, and the other
+structured meshes (:class:`~openmc.RectilinearMesh`,
+:class:`~openmc.CylindricalMesh`, and :class:`~openmc.SphericalMesh`) are
+written as unstructured grids of linear hexahedra. Structured meshes can also be
+exported to the legacy VTK format (``.vtk``), and the
+:class:`~openmc.UnstructuredMesh` class supports the legacy and VTK unstructured
+grid (``.vtu``) formats. Writing these formats requires the ``vtk`` module.
 
 Data can be applied to the
 elements of the resulting mesh from mesh filter objects. This data can be

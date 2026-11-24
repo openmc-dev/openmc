@@ -55,7 +55,6 @@ def test_tally_equivalence():
     assert tally_a != tally_b
     tally_b.name = tally_a.name
     assert tally_a == tally_b
-
     assert tally_a == tally_b
     ef_a = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])
     ef_b = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])
@@ -96,6 +95,25 @@ def test_tally_equivalence():
     assert tally_a != tally_b
     tally_b.triggers = [trigger_b]
     assert tally_a == tally_b
+
+
+def test_get_slice_preserves_filter_bin_order():
+    energy_filter = openmc.EnergyFilter([1.0, 10.0, 100.0, 1000.0])
+    tally = openmc.Tally()
+    tally.filters = [energy_filter]
+    tally.nuclides = ['total']
+    tally.scores = ['flux']
+    tally._derived = True
+    tally._mean = np.arange(1.0, 4.0).reshape(tally.shape)
+    tally._std_dev = np.zeros(tally.shape)
+
+    requested_bins = ((100.0, 1000.0), (1.0, 10.0))
+    sliced = tally.get_slice(
+        filters=[openmc.EnergyFilter], filter_bins=[requested_bins])
+
+    assert np.array_equal(
+        sliced.find_filter(openmc.EnergyFilter).bins, requested_bins)
+    assert np.array_equal(sliced.mean[:, 0, 0], [3.0, 1.0])
 
 
 def test_figure_of_merit(sphere_model, run_in_tmpdir):

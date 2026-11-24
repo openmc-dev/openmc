@@ -684,12 +684,19 @@ def test_regular_mesh(lib_init):
         assert isinstance(mesh, openmc.lib.RegularMesh)
         assert mesh_id == mesh.id
 
-    rotation = (180.0, 0.0, 0.0)
-
     mf = openmc.lib.MeshFilter(mesh)
     assert mf.mesh == mesh
-    mf.rotation = rotation
-    assert np.allclose(mf.rotation, rotation)
+    np.testing.assert_array_equal(mf.rotation, np.zeros(3))
+
+    # confirm rotations can be set and retrieved correctly
+    test_rotations = (
+        (180.0, 0.0, 0.0),
+        np.eye(3),
+        np.array([[0., -1., 0.], [1., 0., 0.], [0., 0., 1.]]),
+    )
+    for rotation in test_rotations:
+        mf.rotation = rotation
+        np.testing.assert_array_equal(mf.rotation, rotation)
 
     translation = (1.0, 2.0, 3.0)
 

@@ -356,6 +356,8 @@ enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
 
 // Miscellaneous
 constexpr int C_NONE {-1};
+constexpr int FIELD_BIN_UNKNOWN {-2};
+
 //! Unset floating-point value; test with std::isnan(), not equality.
 constexpr double FP_UNSET {std::numeric_limits<double>::quiet_NaN()};
 

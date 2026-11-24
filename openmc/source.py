@@ -615,7 +615,10 @@ class MeshSource(SourceBase):
         """
         current_strength = self.strength if self.strength != 0.0 else 1.0
 
-        for s in self.sources:
+        # A source can be shared by several mesh elements. Scale each source
+        # once so that all element strengths keep the same proportions.
+        unique_sources = {id(s): s for s in self.sources}
+        for s in unique_sources.values():
             s.strength *= strength / current_strength
 
     def normalize_source_strengths(self):
@@ -775,9 +778,6 @@ class CompiledSource(SourceBase):
         ----------
         elem : lxml.etree._Element
             XML element
-        meshes : dict
-            Dictionary with mesh IDs as keys and openmc.MeshBase instances as
-            values
 
         Returns
         -------
@@ -883,9 +883,6 @@ class FileSource(SourceBase):
         ----------
         elem : lxml.etree._Element
             XML element
-        meshes : dict
-            Dictionary with mesh IDs as keys and openmc.MeshBase instances as
-            values
 
         Returns
         -------
@@ -1367,8 +1364,13 @@ class StellaratorSource(SourceBase):
     volume for the interpolated geometry) by integrating a cubic PDF in each
     radial interval and using rejection sampling within the selected interval.
     The two angles are then sampled from the conditional
-    :math:`p(\theta,\zeta|\rho) \propto R|\tau|` by rejection against a
-    precomputed per-radial-bin majorant.
+    :math:`p(\theta,\zeta|\rho) \propto R|\tau|` using a 32 by 32 angular
+    cell partition of one field period. Within each radial interval, a
+    quadratic Bernstein mixture selects cells in proportion to their
+    radius-dependent bounds. Angles are proposed uniformly within the selected
+    cell and accepted by rejection sampling against its bound. The bounds are
+    precomputed using Taylor bounds on the Fourier series of the three
+    Bernstein control functions. A field period is then chosen uniformly.
 
     .. versionadded:: 0.16.1
 

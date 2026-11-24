@@ -553,10 +553,11 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     reader.SetFileName(str(filename))
     reader.Update()
 
-    # Get mean from file and make sure it matches original data
+    # Get mean from file and make sure it matches the original data divided
+    # by the element volumes (volume normalization is on by default)
     arr = reader.GetOutput().GetCellData().GetArray("mean")
     mean = np.array([arr.GetTuple1(i) for i in range(ref_data.size)])
-    np.testing.assert_almost_equal(mean, ref_data)
+    np.testing.assert_almost_equal(mean, ref_data / simple_umesh.volumes)
 
     # attempt to apply a dataset with an improper size to a VTK write
     with pytest.raises(ValueError, match='Cannot apply dataset "mean"'):
@@ -665,6 +666,101 @@ def test_write_vtkhdf(mesh_file, mesh_library, request, run_in_tmpdir):
     arr = reader.GetOutput().GetCellData().GetArray("std_dev")
     std_dev = np.array([arr.GetTuple1(i) for i in range(my_tally.std_dev.size)])
     np.testing.assert_almost_equal(std_dev, my_tally.std_dev.flatten()/umesh_from_sp.volumes)
+
+
+def _umesh_from_statepoint_group(vertices, connectivity, element_types,
+                                 volumes):
+    """Load an unstructured mesh from a synthetic statepoint mesh group.
+
+    The group provides the vertices and connectivity needed for VTK output,
+    so tests using it do not require DAGMC or libMesh.
+    """
+    with h5py.File("statepoint_mesh.h5", "w") as f:
+        group = f.create_group("mesh")
+        group["library"] = b"moab"
+        group["filename"] = b"mesh.h5m"
+        group["volumes"] = volumes
+        group["vertices"] = vertices
+        group["connectivity"] = connectivity
+        group["element_types"] = element_types
+        return openmc.UnstructuredMesh.from_hdf5(group, mesh_id=None, name="")
+
+
+def test_umesh_write_vtkhdf_points_precision(run_in_tmpdir):
+    """Unstructured mesh VTKHDF output stores points in double precision."""
+    # Two hexahedra and one tetrahedron far from the origin, where single
+    # precision would round the coordinates
+    cube = np.array([
+        [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+        [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1],
+        [2, 0, 0], [2, 1, 0], [2, 0, 1], [2, 1, 1],
+    ], dtype=float)
+    vertices = 1.0e3 + 1.234567e-4 + 1.0e-3 * cube
+    connectivity = np.array([
+        [0, 1, 2, 3, 4, 5, 6, 7],
+        [1, 8, 9, 2, 5, 10, 11, 6],
+        [0, 1, 3, 4, -1, -1, -1, -1],
+    ])
+    umesh = _umesh_from_statepoint_group(
+        vertices, connectivity, element_types=[1, 1, 0],
+        volumes=[1.0e-9, 1.0e-9, 1.0e-9 / 6],
+    )
+
+    data = np.array([1.0, 2.0, 3.0])
+    umesh.write_data_to_vtk("umesh.vtkhdf", {"data": data},
+                            volume_normalization=False)
+    umesh.write_data_to_vtk("umesh_no_data.vtkhdf")
+
+    with h5py.File("umesh.vtkhdf", "r") as f:
+        root = f["VTKHDF"]
+        assert root.attrs["Type"] == b"UnstructuredGrid"
+        assert tuple(root.attrs["Version"]) == (2, 1)
+        assert root["Points"].dtype == np.float64
+        np.testing.assert_array_equal(root["Points"][()], vertices)
+        np.testing.assert_array_equal(root["Offsets"][()], [0, 8, 16, 20])
+        np.testing.assert_array_equal(root["Types"][()], [12, 12, 10])
+        np.testing.assert_array_equal(root["CellData"]["data"][()], data)
+
+    vtk = pytest.importorskip("vtk")
+    reader = vtk.vtkHDFReader()
+    reader.SetFileName("umesh.vtkhdf")
+    reader.Update()
+    assert reader.GetOutput().GetNumberOfCells() == 3
+
+
+@pytest.mark.parametrize("suffix", [".vtk", ".vtkhdf"])
+def test_umesh_write_vtk_keeps_caller_data(run_in_tmpdir, suffix):
+    """Volume normalization leaves the caller's datasets unchanged.
+
+    Writing the same datasets twice must normalize each file once.
+    """
+    vtk = pytest.importorskip("vtk") if suffix == ".vtk" else None
+    cube = np.array([
+        [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+        [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1],
+        [2, 0, 0], [2, 1, 0], [2, 0, 1], [2, 1, 1],
+    ], dtype=float)
+    connectivity = [[0, 1, 2, 3, 4, 5, 6, 7], [1, 8, 9, 2, 5, 10, 11, 6]]
+    # volumes differ so that each element has its own normalized value
+    umesh = _umesh_from_statepoint_group(
+        cube, connectivity, element_types=[1, 1], volumes=[2.0, 4.0])
+
+    data = np.array([8.0, 8.0])
+    for i in range(2):
+        filename = f"umesh_{i}{suffix}"
+        umesh.write_data_to_vtk(filename, {"data": data})
+        np.testing.assert_array_equal(data, [8.0, 8.0])
+
+        if suffix == ".vtkhdf":
+            with h5py.File(filename, "r") as f:
+                written = f["VTKHDF"]["CellData"]["data"][()]
+        else:
+            reader = vtk.vtkGenericDataObjectReader()
+            reader.SetFileName(filename)
+            reader.Update()
+            array = reader.GetOutput().GetCellData().GetArray("data")
+            written = [array.GetTuple1(n) for n in range(2)]
+        np.testing.assert_allclose(written, [4.0, 2.0])
 
 
 def test_mesh_get_homogenized_materials():

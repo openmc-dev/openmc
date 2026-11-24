@@ -737,10 +737,16 @@ transport::
 
   settings.photon_transport = True
 
-Atomic relaxation (the cascade of fluorescence photons and Auger electrons
-emitted when an inner-shell vacancy is filled) is enabled by default whenever
-photon transport is on. It can be disabled using the
-:attr:`Settings.atomic_relaxation` attribute::
+For fixed-source photon transport in multigroup Monte Carlo, set
+:attr:`Settings.energy_mode` to ``"multi-group"`` and provide a photon source
+and a :ref:`photon MGXS library <io_mgxs_library>`. Each multigroup library
+represents one particle type. Coupled neutron–photon transport requires
+continuous-energy mode.
+
+In continuous-energy mode, atomic relaxation (the cascade of fluorescence
+photons and Auger electrons emitted when an inner-shell vacancy is filled)
+is enabled by default whenever photon transport is on. To disable it, set
+:attr:`Settings.atomic_relaxation` to ``False``::
 
   settings.atomic_relaxation = False
 

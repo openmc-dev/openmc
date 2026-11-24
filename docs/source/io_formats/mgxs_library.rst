@@ -35,6 +35,9 @@ MGXS Library Specification
                for this library it will be 'mgxs'.
              - **version** (*int[2]*) -- Major and minor version of the
                multi-group library file format.
+             - **particle_type** (*char[]*) -- Particle type for the whole
+               library, either ``neutron`` or ``photon``. The default is
+               ``neutron`` when this attribute is omitted.
              - **energy_groups** (*int*) -- Number of energy groups
              - **delayed_groups** (*int*) -- Number of delayed groups (optional)
              - **group structure** (*double[]*) -- Monotonically increasing
@@ -133,14 +136,14 @@ Temperature-dependent data, provided for temperature <TTT>K.
              This dataset is optional. This is a 1-D vector if `representation`
              is "isotropic", or a 3-D vector if `representation` is "angle"
              with dimensions of [polar][azimuthal][groups].
-	     When this data is not available, an approximation using the
-	     group energy boundaries is used. For more information see
-	     the particle speed subsection in the multigroup-data section
-	     of the theory manual.
+             When this data is absent, OpenMC approximates neutron inverse
+             velocity using the group boundaries and uses :math:`1/c` for
+             photons. See the particle speed subsection in the multigroup-data
+             section of the theory manual.
 
 **/<library name>/<TTT>K/scatter_data/**
 
-Data specific to neutron scattering for the temperature <TTT>K
+Scattering data for the temperature <TTT>K.
 
 :Datasets: - **g_min** (*int[]* or *int[][][]*) --
              Minimum (most energetic) groups with non-zero values of
@@ -148,9 +151,7 @@ Data specific to neutron scattering for the temperature <TTT>K
              "[Order][G][G']" then `g_min` will describe the minimum values
              of "G'" for each "G"; if `scatter_shape` is "[Order][G'][G]"
              then `g_min` will describe the minimum values of "G" for each "G'".
-             These group numbers use the standard
-             ordering where the fastest neutron energy group is group 1 while
-             the slowest neutron energy group is group G.
+             The highest energy group is group 1 and the lowest is group G.
              The dimensionality of `g_min` is:
              `g_min[g]`, or `g_min[num_polar][num_azimuthal][g]`.
              The former is used when `representation` is "isotropic", and the
@@ -166,14 +167,19 @@ Data specific to neutron scattering for the temperature <TTT>K
              "[num_polar][num_azimuthal]" dimensions. The right-most energy
              group dimension will only include the entries between `g_min` and
              `g_max`.
-             dimension has a dimensionality of `g_min` to `g_max`.
-           - **multiplicity_matrix** (*double[]*) -- Flattened representation of
-             the scattering moment matrices. This dataset provides the code with
-             a scaling factor to account for neutrons being produced in (n,xn)
-             reactions. This is assumed isotropic and therefore is not repeated
-             for every Legendre moment or histogram/tabular bin. This dataset is
-             optional, if it is not provided no multiplication (i.e., values of
-             1.0) will be assumed.
-             The pre-flattened array is shapes consistent with `scatter_matrix`
-             except the "[Order]" dimension in `scatter_shape` is ignored since
-             this data is assumed isotropic.
+             In photon libraries the matrix includes secondary photon
+             production.
+           - **multiplicity_matrix** (*double[]*) -- Optional multiplicity for
+             each energy group transfer. It accounts for particle production in
+             scattering, including neutrons from (n,xn) and secondary photons.
+             The unflattened array has the shape of `scatter_matrix` without
+             the "[Order]" dimension because multiplicity is independent of the
+             scattering cosine.
+
+             If the dataset is absent, OpenMC uses a multiplicity of 1 for
+             neutrons. For photon Monte Carlo, OpenMC derives one value per
+             incoming group by summing the production cross sections over all
+             outgoing groups and dividing by the total cross section minus
+             absorption. A group with zero production and zero scattering uses
+             a multiplicity of 1. The reader rejects groups where only one of
+             production and scattering is positive.

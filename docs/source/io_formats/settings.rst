@@ -570,7 +570,7 @@ generator during generation of colors in plots.
 
   The ``properties_file`` element has no attributes and contains the path to a
   properties HDF5 file to load cell temperatures/densities and material
-  densities.
+  densities. This element is available in continuous-energy mode.
 
   *Default*: None
 

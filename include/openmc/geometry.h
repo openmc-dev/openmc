@@ -91,10 +91,13 @@ int cell_instance_at_level(const GeometryState& p, int level);
 //!
 //! \param p A particle to be located.  This function will populate the
 //!   geometry-dependent data fields of the particle.
+//! \param allow_missing_outer Treat points outside a lattice with no outer
+//!   universe as a failed search.
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
-bool exhaustive_find_cell(GeometryState& p, bool verbose = false);
+bool exhaustive_find_cell(
+  GeometryState& p, bool verbose = false, bool allow_missing_outer = false);
 
 //==============================================================================
 //! Locate a particle starting from its current coordinate level.

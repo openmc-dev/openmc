@@ -433,3 +433,24 @@ def test_plot(run_in_tmpdir):
     # ensure that calling the plot method doesn't
     # affect the universe ID space
     assert u_before.id + 1 == u_after.id
+
+
+def test_plot_lattice_without_outer(run_in_tmpdir):
+    from matplotlib import pyplot as plt
+
+    tile = openmc.Cell()
+    universe = openmc.Universe(cells=[tile])
+    lattice = openmc.RectLattice()
+    lattice.lower_left = (-1.0, -1.0)
+    lattice.pitch = (1.0, 1.0)
+    lattice.universes = [[universe, universe], [universe, universe]]
+
+    box = openmc.model.RectangularPrism(3.0, 3.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=lattice, region=-box)
+    axes = cell.plot(pixels=(6, 6), colors={tile: 'blue'}, show_overlaps=True)
+    try:
+        expected = np.ones((6, 6, 3))
+        expected[1:-1, 1:-1] = (0.0, 0.0, 1.0)
+        np.testing.assert_array_equal(axes.images[0].get_array(), expected)
+    finally:
+        plt.close(axes.figure)

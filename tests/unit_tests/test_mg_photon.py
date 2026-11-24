@@ -1,7 +1,9 @@
 import numpy as np
 import openmc
+import openmc.lib
 import pytest
 
+from openmc.exceptions import OpenMCError
 from tests.mg_photon import (
     ABSORPTION, GROUP_EDGES, TOTAL, check_exact_solution, make_model,
 )
@@ -98,3 +100,17 @@ def test_mg_photon_random_ray(run_in_tmpdir):
     model.tallies = []
     with pytest.raises(RuntimeError, match='not supported by the random ray'):
         model.run(openmc_exec=config['exe'])
+
+
+def test_mg_photon_material_updates(run_in_tmpdir, mpi_intracomm):
+    model = make_model()
+    model.export_to_model_xml()
+    with openmc.lib.run_in_memory(intracomm=mpi_intracomm):
+        material = openmc.lib.materials[model.materials[0].id]
+        with pytest.raises(OpenMCError, match='not supported in multigroup'):
+            material.add_nuclide('photon', 1.0)
+        with pytest.raises(OpenMCError, match='not supported in multigroup'):
+            material.set_density(2.0)
+        openmc.lib.export_properties('properties.h5')
+        with pytest.raises(OpenMCError, match='not supported in multigroup'):
+            openmc.lib.import_properties('properties.h5')

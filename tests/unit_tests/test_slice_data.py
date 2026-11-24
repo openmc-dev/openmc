@@ -24,6 +24,31 @@ def test_slice_data_basic(run_in_tmpdir):
     assert np.any(prop_data[:, :, 0] > 0)   # Valid temperatures
 
 
+def test_slice_data_lattice_without_outer(run_in_tmpdir):
+    """Points outside a lattice with no outer universe have undefined IDs."""
+    tile = openmc.Cell()
+    universe = openmc.Universe(cells=[tile])
+    lattice = openmc.RectLattice()
+    lattice.lower_left = (-1.0, -1.0)
+    lattice.pitch = (1.0, 1.0)
+    lattice.universes = [[universe, universe], [universe, universe]]
+
+    box = openmc.model.RectangularPrism(3.0, 3.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=lattice, region=-box)
+    model = openmc.Model(geometry=openmc.Geometry([cell]))
+    geom_data, _ = model.slice_data(
+        origin=(0.0, 0.0, 0.0),
+        width=(3.0, 3.0),
+        pixels=(6, 6),
+        show_overlaps=True,
+        include_properties=False,
+    )
+
+    expected_cell_ids = np.full((6, 6), -2)
+    expected_cell_ids[1:-1, 1:-1] = tile.id
+    np.testing.assert_array_equal(geom_data[:, :, 0], expected_cell_ids)
+
+
 def test_slice_data_temperature_field(run_in_tmpdir):
     """Temperature-field values should be reflected in property plots."""
     model = pwr_pin_cell()

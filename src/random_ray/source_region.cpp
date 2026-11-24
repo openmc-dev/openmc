@@ -40,7 +40,6 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     scalar_flux_new_(sr.scalar_flux_new_.data()), source_(sr.source_.data()),
     external_source_(sr.external_source_.data()),
     scalar_flux_final_(sr.scalar_flux_final_.data()),
-    angular_flux_new_(sr.angular_flux_new_.data()),
     source_gradients_(sr.source_gradients_.data()),
     flux_moments_old_(sr.flux_moments_old_.data()),
     flux_moments_new_(sr.flux_moments_new_.data()),
@@ -52,6 +51,8 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
   // and this pointer is null-tested to mean "field absent"
   scalar_flux_t_ =
     sr.scalar_flux_t_.empty() ? nullptr : sr.scalar_flux_t_.data();
+  angular_flux_new_ =
+    sr.angular_flux_new_.empty() ? nullptr : sr.angular_flux_new_.data();
 }
 
 //==============================================================================
@@ -74,8 +75,8 @@ SourceRegion::SourceRegion(
   source_.assign(negroups, 0.0);
   scalar_flux_final_.assign(negroups, 0.0);
   // Only allocate angular flux storage for regions that need it
-  needs_angular_flux_ = needs_angular_flux;
-  if (needs_angular_flux_) {
+  scalars_.needs_angular_flux_ = needs_angular_flux;
+  if (needs_angular_flux) {
     angular_flux_new_.assign(negroups * nangles, 0.0f);
   }
   // Only the adaptive estimator family reads this, and this constructor runs
@@ -96,7 +97,7 @@ SourceRegion::SourceRegion(
 
 SourceRegion::SourceRegion(const SourceRegionHandle& handle)
   : SourceRegion(handle.negroups_, handle.is_linear_, handle.nangles_,
-      handle.needs_angular_flux_)
+      handle.needs_angular_flux())
 {
   scalars_.material_ = handle.material();
   scalars_.is_small_ = handle.is_small();
@@ -154,6 +155,11 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
     }
     tally_task_[g] = handle.tally_task(g);
   }
+  if (handle.angular_flux_new_) {
+    for (int ga = 0; ga < handle.negroups_ * handle.nangles_; ++ga) {
+      angular_flux_new_[ga] = handle.angular_flux_new_[ga];
+    }
+  }
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     scalars_.external_source_present_ = handle.external_source_present();
     for (int g = 0; g < scalar_flux_new_.size(); g++) {
@@ -201,6 +207,19 @@ void SourceRegion::merge(SourceRegion& sr_add, bool is_linear)
 
     if (is_linear) {
       flux_moments_new_[g] += sr_add.flux_moments_new_[g];
+    }
+  }
+
+  scalars_.needs_angular_flux_ =
+    std::max(scalars_.needs_angular_flux_, sr_add.scalars_.needs_angular_flux_);
+
+  if (!sr_add.angular_flux_new_.empty()) {
+    if (angular_flux_new_.empty()) {
+      angular_flux_new_.assign(sr_add.angular_flux_new_.size(), 0.0);
+    }
+#pragma omp simd
+    for (size_t i = 0; i < angular_flux_new_.size(); ++i) {
+      angular_flux_new_[i] += sr_add.angular_flux_new_[i];
     }
   }
 }

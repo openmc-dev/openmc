@@ -46,6 +46,7 @@ double FlatSourceDomain::diagonal_stabilization_rho_ {1.0};
 std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
   FlatSourceDomain::mesh_domain_map_;
 std::vector<size_t> FlatSourceDomain::fw_cadis_local_targets_;
+int FlatSourceDomain::nangles_ {1};
 
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {
@@ -73,8 +74,8 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   bool is_strict_adaptive =
     resolved_volume_estimator_ == RandomRayVolumeEstimator::STRICT_ADAPTIVE;
   // The sampled bounding boxes exist only for the source gradient limiter
-  source_regions_ = SourceRegionContainer(negroups_, is_linear, nangles_,
-    is_adaptive, is_strict_adaptive, is_linear && source_gradient_limiter_);
+  source_regions_ = SourceRegionContainer(negroups_, is_linear, is_adaptive,
+    is_strict_adaptive, is_linear && source_gradient_limiter_, nangles_);
 
   // Initialize tally volumes
   if (volume_normalized_flux_tallies_) {
@@ -399,14 +400,7 @@ double FlatSourceDomain::flux_additive_term(
 double FlatSourceDomain::angular_flux_additive_term(
   int64_t sr, int g, bool batch_volume) const
 {
-  if (source_regions_.material(sr) == MATERIAL_VOID) {
-    if (settings::run_mode == RunMode::FIXED_SOURCE) {
-      return 0.5f * source_regions_.external_source(sr, g) *
-             source_regions_.volume_sq(sr) / source_regions_.nangles();
-    }
-    return 0.0;
-  }
-  return source_regions_.source(sr, g) / source_regions_.nangles();
+  return flux_additive_term(sr, g, batch_volume) / source_regions_.nangles();
 }
 
 void FlatSourceDomain::set_flux_to_flux_plus_source(

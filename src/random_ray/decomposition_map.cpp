@@ -27,6 +27,7 @@ DecompositionMap::DecompositionMap() {}
 void DecompositionMap::initialize()
 {
   negroups_ = data::mg.num_energy_groups_;
+  nangles_ = FlatSourceDomain::nangles_;
   estimated_rank_load_fractions_.resize(mpi::n_procs, 0.0);
   measured_rank_load_fractions_.resize(mpi::n_procs, 0.0);
   estimated_rank_load_totals_.resize(mpi::n_procs, 0.0);
@@ -542,6 +543,10 @@ void DecompositionMap::send_sr_data(
   if (is_linear_) {
     num_vector_messages += 4;
   }
+  bool send_angular = sr_send.scalars_.needs_angular_flux_;
+  if (send_angular) {
+    num_vector_messages += 1;
+  }
   // The sampled bounding box lives outside ScalarSourceRegionFields, so it
   // needs a message of its own when the source gradient limiter is enabled
   bool send_extent = is_linear_ && FlatSourceDomain::source_gradient_limiter_;
@@ -589,6 +594,16 @@ void DecompositionMap::send_sr_data(
   MPI_Isend(sr_send.scalar_flux_final_.data(), negroups_, MPI_DOUBLE, receiver,
     6, mpi::intracomm, &requests[req_idx]);
   req_idx++;
+
+  if (send_angular) {
+    if (sr_send.angular_flux_new_.size() != negroups_ * nangles_) {
+      fatal_error("Angular flux storage missing for source region flagged "
+                  "for angular flux tallying.");
+    }
+    MPI_Isend(sr_send.angular_flux_new_.data(), negroups_ * nangles_,
+      MPI_DOUBLE, receiver, 13, mpi::intracomm, &requests[req_idx]);
+    req_idx++;
+  }
 
   if (is_linear_) {
     MPI_Isend(sr_send.source_gradients_.data(), 3 * negroups_, MPI_DOUBLE,
@@ -659,6 +674,12 @@ void DecompositionMap::receive_sr_data(int sender, SourceRegion& sr_recv)
 
   MPI_Recv(sr_recv.scalar_flux_final_.data(), negroups_, MPI_DOUBLE, sender, 6,
     mpi::intracomm, MPI_STATUS_IGNORE);
+
+  if (sr_recv.scalars_.needs_angular_flux_) {
+    sr_recv.angular_flux_new_.assign(negroups_ * nangles_, 0.0);
+    MPI_Recv(sr_recv.angular_flux_new_.data(), negroups_ * nangles_, MPI_DOUBLE,
+      sender, 13, mpi::intracomm, MPI_STATUS_IGNORE);
+  }
 
   if (is_linear_) {
     MPI_Recv(sr_recv.source_gradients_.data(), 3 * negroups_, MPI_DOUBLE,

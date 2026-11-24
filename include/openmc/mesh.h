@@ -922,6 +922,13 @@ public:
     fatal_error("Angular meshes do not support spatial tracklength tallies.");
   }
 
+  MeshCrossing next_mesh_crossing(
+    int current_bin, Position r, Direction u) const override
+  {
+    fatal_error("Angular meshes do not support spatial mesh crossings.");
+    return {INFTY, C_NONE};
+  }
+
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override
   {

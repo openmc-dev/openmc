@@ -45,7 +45,7 @@ def test_mg_photon_invalid_source(run_in_tmpdir, particle, energy, error):
     model = make_model()
     source = model.settings.source[0]
     source.particle = particle
-    source.energy = openmc.stats.Discrete([energy], [1.0])
+    source.energy = openmc.stats.delta_function(energy)
     with pytest.raises(RuntimeError, match=error):
         model.run(openmc_exec=config['exe'])
 

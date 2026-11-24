@@ -348,7 +348,7 @@ void reconcile_cell_after_collision(GeometryState& p)
   }
 }
 
-bool exhaustive_find_cell(
+static bool exhaustive_find_cell_impl(
   GeometryState& p, bool verbose, bool allow_missing_outer)
 {
   int i_universe = p.lowest_coord().universe();
@@ -362,6 +362,17 @@ bool exhaustive_find_cell(
     p.coord(i).reset();
   }
   return find_cell_inner(p, nullptr, verbose, allow_missing_outer);
+}
+
+bool exhaustive_find_cell(GeometryState& p, bool verbose)
+{
+  return exhaustive_find_cell_impl(p, verbose, /*allow_missing_outer=*/false);
+}
+
+bool find_cell_for_plot(GeometryState& p)
+{
+  return exhaustive_find_cell_impl(
+    p, /*verbose=*/false, /*allow_missing_outer=*/true);
 }
 
 //==============================================================================

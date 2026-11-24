@@ -1779,11 +1779,10 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         // times the multiplicity as the estimate for the number of particles
         // exiting a reaction with particles in the exit channel
         score = (p.wgt_last() - wgt_absorb) * flux;
-        /// Apply the factor scatter() applied to the weight. The outgoing group
-        // is sampled from the nu-scatter matrix, so this is the row multiplier
-        // nu-scatter / scatter of g_last (not the multiplicity of the sampled
-        // g_last -> g transfer). Use the same temperature and angle indices
-        // that scatter() used.
+        // Match the weight multiplier used by scatter(). For the incoming
+        // group, divide nu-scatter by scatter after summing each cross
+        // section over all outgoing groups. Use the same temperature and
+        // angle indices as scatter().
         int t = p.mg_xs_cache().t;
         int a = p.mg_xs_cache().a;
         double scatt = macro_xs.get_xs(

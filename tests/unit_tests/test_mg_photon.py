@@ -72,3 +72,17 @@ def test_mg_photon_production_without_scattering(run_in_tmpdir):
         RuntimeError, match='produces photons but has no scattering'
     ):
         model.run(openmc_exec=config['exe'])
+
+
+def test_mg_photon_random_ray(run_in_tmpdir):
+    model = make_model()
+    model.settings.source[0].space = openmc.stats.Point()
+    model.settings.random_ray = {
+        'distance_inactive': 20.0,
+        'distance_active': 100.0,
+        'ray_source': openmc.IndependentSource(
+            space=openmc.stats.Box((-5.0,) * 3, (5.0,) * 3)),
+    }
+    model.tallies = []
+    with pytest.raises(RuntimeError, match='not supported by the random ray'):
+        model.run(openmc_exec=config['exe'])

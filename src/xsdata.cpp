@@ -129,12 +129,12 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
         double production = scatter[a]->scattxs[g];
         if (production <= 0.0)
           continue;
-        double removal = total(a, g) - absorption(a, g);
-        if (removal <= 0.0)
+        double scatter_xs = total(a, g) - absorption(a, g);
+        if (scatter_xs <= 0.0)
           fatal_error(fmt::format("Photon group {} produces photons but has "
                                   "no scattering to carry them.",
             g + 1));
-        scatter[a]->set_multiplicity(g, production / removal);
+        scatter[a]->set_multiplicity(g, production / scatter_xs);
       }
     }
   }

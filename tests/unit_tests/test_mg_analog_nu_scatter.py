@@ -102,7 +102,7 @@ def test_analog_nu_scatter_multiplicity(run_in_tmpdir, survival_biasing):
         deviation = np.abs(mean - reference)[possible] / std_dev[possible]
         assert np.all(deviation < 5.0), \
             f'{score}: {mean} vs. {reference} ({deviation} std. dev.)'
-        
+
 def test_analog_nu_scatter_outgoing_group_multiplicity(run_in_tmpdir):
     """Analog nu-scatter when the multiplicity depends on the outgoing group.
 

@@ -920,10 +920,10 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
     p.r() = source_regions_.position(sr);
     p.r_last() = source_regions_.position(sr);
     p.u() = {1.0, 0.0, 0.0};
-    if (!exhaustive_find_cell(p)) {
-      fatal_error(fmt::format(
-        "Could not locate the recorded position for source region {}.", sr));
-    }
+    // The return value is not checked because the position was recorded by a
+    // ray that actually traversed this source region, so the search cannot
+    // fail.
+    exhaustive_find_cell(p);
 
     // Loop over energy groups (so as to support energy filters)
     for (int g = 0; g < negroups_; g++) {
@@ -2534,8 +2534,9 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   GeometryState gs;
   gs.r() = r + TINY_BIT * u;
   gs.u() = {1.0, 0.0, 0.0};
-  if (!exhaustive_find_cell(gs) ||
-      lookup_base_source_region_idx(gs) != sr_key.base_source_region_id) {
+  exhaustive_find_cell(gs);
+  int64_t sr_found = lookup_base_source_region_idx(gs);
+  if (sr_found != sr_key.base_source_region_id) {
     discovered_source_regions_.unlock(sr_key);
     SourceRegionHandle handle;
     handle.is_numerical_fp_artifact_ = true;

@@ -437,12 +437,13 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Check for monoenergetic source above maximum particle energy
     auto p = particle_.transport_index();
+    double E_max = data::energy_max[p];
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
     auto decay_spectrum = dynamic_cast<DecaySpectrum*>(energy_.get());
     if (energy_ptr) {
       auto energies =
         tensor::Tensor<double>(energy_ptr->x().data(), energy_ptr->x().size());
-      if ((energies > data::energy_max[p]).any()) {
+      if ((energies > E_max).any()) {
         fatal_error("Source energy above range of energies of at least "
                     "one cross section table");
       }
@@ -462,9 +463,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
         E_wgt = E_wgt_temp;
       }
 
-      // Resample if energy falls above maximum particle energy
-      if (site.E < data::energy_max[p] &&
-          (satisfies_energy_constraints(site.E)))
+      // The highest energy group includes its upper edge.
+      bool in_range = settings::run_CE ? site.E < E_max : site.E <= E_max;
+      if (in_range && satisfies_energy_constraints(site.E))
         break;
 
       ++n_local_reject;

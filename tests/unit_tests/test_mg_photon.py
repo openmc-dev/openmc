@@ -52,6 +52,14 @@ def test_mg_photon_invalid_source(run_in_tmpdir, particle, energy, error):
         model.run(openmc_exec=config['exe'])
 
 
+def test_mg_photon_source_at_upper_edge(run_in_tmpdir):
+    model = make_model()
+    model.settings.source[0].energy = openmc.stats.delta_function(GROUP_EDGES[-1])
+    statepoint = model.run(
+        openmc_exec=config['exe'], event_based=config['event'])
+    check_exact_solution(statepoint)
+
+
 def test_mg_photon_pulse_height(run_in_tmpdir):
     model = make_model()
     cells = list(model.geometry.get_all_cells().values())

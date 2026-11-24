@@ -120,8 +120,8 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
     if (total.data()[i] == 0.0)
       total.data()[i] = 1.e-10;
 
-  // Older photon libraries may omit multiplicity while folding secondary
-  // photons into the scatter matrix. Derive the yield for those libraries.
+  // Older photon libraries may include secondary photon production in the
+  // scatter matrix and omit multiplicity. Derive multiplicity when absent.
   if (data::mg.particle_type_.is_photon() &&
       !object_exists(xsdata_grp, "scatter_data/multiplicity_matrix")) {
     for (size_t a = 0; a < n_ang; a++) {

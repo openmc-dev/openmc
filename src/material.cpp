@@ -1013,6 +1013,11 @@ void Material::set_density(double density, const std::string& units)
 void Material::set_densities(
   const vector<std::string>& name, const vector<double>& density)
 {
+  if (!settings::run_CE) {
+    throw std::runtime_error {
+      "Setting nuclide densities is not supported in multigroup mode."};
+  }
+
   auto n = name.size();
   assert(n > 0);
   assert(n == density.size());
@@ -1020,7 +1025,7 @@ void Material::set_densities(
   if (n != nuclide_.size()) {
     nuclide_.resize(n);
     atom_density_ = tensor::zeros<double>({n});
-    if (settings::run_CE && settings::photon_transport)
+    if (settings::photon_transport)
       element_.resize(n);
   }
 
@@ -1038,7 +1043,7 @@ void Material::set_densities(
     atom_density_(i) = density[i];
     sum_density += density[i];
 
-    if (settings::run_CE && settings::photon_transport) {
+    if (settings::photon_transport) {
       auto element_name = to_element(nuc);
       element_[i] = data::element_map.at(element_name);
     }
@@ -1048,7 +1053,7 @@ void Material::set_densities(
   this->set_density(sum_density, "atom/b-cm");
 
   // Generate material bremsstrahlung data for electrons and positrons
-  if (settings::run_CE && settings::photon_transport &&
+  if (settings::photon_transport &&
       settings::electron_treatment == ElectronTreatment::TTB) {
     this->init_bremsstrahlung();
   }

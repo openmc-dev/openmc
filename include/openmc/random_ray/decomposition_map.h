@@ -122,6 +122,7 @@ private:
   // Miscellaneous
   uint64_t n_base_sr_;
   int negroups_;
+  int nangles_ {1};
   double max_domain_length_;
   bool is_linear_;
   bool is_adaptive_;

@@ -1,5 +1,7 @@
 from collections.abc import Iterable
 from math import sqrt
+from itertools import product
+import numpy as np
 from operator import attrgetter
 from warnings import warn
 
@@ -290,3 +292,336 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
     regions = subdivide(surfaces)
     cells = [Cell(fill=f, region=r) for r, f in zip(regions, items)]
     return Universe(cells=cells, **kwargs)
+
+# Pointset generators for discrete-ordinate angular meshes
+
+def levelsymmetric_sn(N: int, mu1_sq: float = None):
+    """
+    Generates the direction vectors of an order-N level-symmetric 
+    quadrature set. Does not provide the corresponding weights.
+
+    Parameters
+    ----------
+    N : int
+        Even quadrature order (e.g. 2, 4, 6, ..., 20).
+    mu1_sq : float
+        Square of the first direction cosine mu_1, used to generate other 
+        levels. Must lie in the open interval (0, 1/3). For the special case 
+        N == 2, mu1_sq must be equal to 1/3.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (N*(N+2), 3) giving the [x, y, z] unit-vector
+        directions of every point in the quadrature set.
+    """
+    if N < 2 or N % 2 != 0:
+        raise ValueError(f"N must be a positive even integer, got {N}")
+    M = N // 2
+
+    # lookup mu1_sq if not provided
+    if mu1_sq is not None:
+        if N == 2:
+            if not np.isclose(mu1_sq, 1 / 3):
+                raise ValueError("For N=2, mu1_sq must equal 1/3 (got {mu1_sq}).")
+            mu = np.array([np.sqrt(1 / 3)])
+        elif N > 20:
+            raise ValueError(
+                f"Level-symmetric quadrature generation only supported for 2<=N<=20; got {N}")
+        else:
+            if not (0 < mu1_sq < 1 / 3):
+                raise ValueError(
+                    f"mu1_sq={mu1_sq} is out of the valid range (0, 1/3) for N={N}."
+                )
+            
+            Delta = (1 - 3 * mu1_sq) / (M - 1)
+            mu_sq = np.array([mu1_sq + i * Delta for i in range(M)])
+            mu = np.sqrt(mu_sq)
+
+    else:
+        match N:
+            case 2:
+                pass
+            case 4:
+                mu1_sq = 0.1225148226554413
+            case 6:
+                mu1_sq = 0.0710944373419735
+            case 8:
+                mu1_sq = 0.0476190476190470
+            case 10:
+                mu1_sq = 0.0358425646593916
+            case 12:
+                mu1_sq = 0.0279600712640057
+            case 14:
+                mu1_sq = 0.0230997020840970
+            case 16:
+                mu1_sq = 0.0193090131285642
+            case 18:
+                mu1_sq = 0.0167300008552435
+            case 20:
+                mu1_sq = 0.0145451663522475
+            case _:
+                raise ValueError(
+                    f"Level-symmetric quadrature generation only supported for 2<=N<=20; got {N}")
+
+        if M == 1:
+            mu = np.array([np.sqrt(1 / 3)])
+        else:
+            Delta = (1 - 3 * mu1_sq) / (M - 1)
+            mu_sq = np.array([mu1_sq + i * Delta for i in range(M)])
+            mu = np.sqrt(mu_sq)
+
+    # generate the angles for 1 octant of unit sphere
+    octant_points = []
+    for l in range(0, M):
+        for m in range(0, M):
+            for n in range(0, M):
+                if l + m + n == (M + 1):
+                    octant_points.append((mu[l], mu[m], mu[n]))
+    octant_points = np.array(octant_points)
+
+    # reflect into other octants
+    signs = list(product([1, -1], repeat=3))
+    all_points = np.array(
+        [pt * np.array(s) for pt in octant_points for s in signs]
+    )
+
+    return all_points
+
+def tcl_sn(N: int):
+    """
+    Generate the direction vectors of an order-N triangular 
+    Chebyshev-Legendre (TCL) quadrature set. Supports even N >= 4.
+
+    Parameters
+    ----------
+    N : int
+        Even quadrature order (e.g. 4, 6, 8, ...).
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (N*(N+2), 3) giving the [x, y, z] unit-vector
+        directions of every point in the quadrature set.
+    """
+    if N < 4 or N % 2 != 0:
+        raise ValueError(f"N must be an even integer >= 4, got {N}")
+
+    M = N // 2
+
+    # get polar levels
+    nodes, _ = np.polynomial.legendre.leggauss(N)
+    mu = np.sort(nodes[nodes > 0])
+
+    # generate the angles for 1 octant using Chebyshev quadrature for 
+    # azimuthal angles
+    octant_points = []
+    for i in range(M):
+        count = M - i # rings get smaller towards pole
+        m = mu[i]
+        sin_theta = np.sqrt(1 - m**2)
+        for k in range(1, count + 1):
+            phi = (2 * k - 1) * (np.pi / 2) / (2 * count)
+            x = sin_theta * np.cos(phi)
+            y = sin_theta * np.sin(phi)
+            z = m
+            octant_points.append((x, y, z))
+    octant_points = np.array(octant_points)
+
+    # reflect into other octants
+    signs = list(product([1, -1], repeat=3))
+    all_points = np.array(
+        [pt * np.array(s) for pt in octant_points for s in signs]
+    )
+
+    assert np.allclose(np.linalg.norm(all_points, axis=1), 1.0), (
+        "Not all generated points lie on the unit sphere"
+    )
+
+    return all_points
+
+def _subdivide_icosahedron_faces(vertices, faces, nu):
+    """
+    Given a list of the coordinates of the vertices of a unit icosahedron, 
+    and a list linking sets of these vertices to individual faces of the unit 
+    icosahedron, this function will subdivides each edge of the icosahedron 
+    into nu equal segments, adding vertices on the edges and faces to produce 
+    triangular subfaces of equal size.
+
+    Parameters
+    ----------
+    vertices : numpy array of shape (n_verts, 3)
+        Coordinates of each vertex of the unit icosahedron
+    faces : numpy array of shape (n_faces, 3)
+        List of vertex indices corresponding to each face of the base 
+        icosahedron
+    nu : int
+        Subdivision frequency, integer > 1
+
+    Returns
+    -------
+    subvertices : numpy array of shape (n_verts + n_faces*(nu+1)*(nu-1)/2, 3)
+        List of vertices on subdivided icosahedron
+    subfaces : numpy array of shape (n_faces*nu**2, 3)
+        List of vertex indices corresponding to each face of the subdivided 
+        icosahedron
+    """
+    edges = np.vstack([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [0, 2]]])
+    edges = np.unique(np.sort(edges, axis=1), axis=0)
+
+    n_faces = faces.shape[0]
+    n_vertices = vertices.shape[0]
+    n_edges = edges.shape[0]
+    n_int_verts = (nu - 1) * (nu - 2) // 2
+
+    n_subverts  = n_vertices + n_edges * (nu - 1) + n_faces * n_int_verts
+    subvertices = np.empty((n_subverts, 3))
+    subvertices[:n_vertices] = vertices
+
+    # populate edge vertices:
+    # position of the k-th vertex along edge AB is given by 
+    # (1 − w_k)·a  +  w_k·b,   w_k = (k+1)/nu
+    w  = np.arange(1, nu) / nu
+    vA = vertices[edges[:, 0]]
+    vB = vertices[edges[:, 1]]
+    edge_verts = (1 - w)[:, None, None] * vA[None] + w[:, None, None] * vB[None]
+    subvertices[n_vertices : n_vertices + n_edges * (nu - 1)] = (
+        edge_verts.transpose(1, 0, 2).reshape(-1, 3)
+    )
+
+    f_A, f_B, f_C = faces[:, 0], faces[:, 1], faces[:, 2]
+
+    edge_dict = {(int(a), int(b)):  i for i, (a, b) in enumerate(edges)}
+    edge_dict.update({(int(b), int(a)): ~i for i, (a, b) in enumerate(edges)})
+
+    def directed_edge_indices(u_arr, v_arr):
+        # Return (n_faces, nu-1) global vertex indices along the u->v edge
+        ei   = np.array([edge_dict[(int(u), int(v))] for u, v in zip(u_arr, v_arr)])
+        base = n_vertices + np.where(ei >= 0, ei, ~ei) * (nu - 1)
+        idx  = base[:, None] + np.arange(nu - 1)
+        idx[ei < 0] = idx[ei < 0, ::-1]
+        return idx
+
+    AB = directed_edge_indices(f_A, f_B)
+    AC = directed_edge_indices(f_A, f_C)
+    BC = directed_edge_indices(f_B, f_C)
+
+    # global indices of subvertices:
+    # (0,0) = corner "A," (nu, 0) = corner B, (nu, nu) = corner C
+    # and along the edges above
+    local_idx = np.empty((n_faces, nu + 1, nu + 1), dtype=int)
+    local_idx[:, 0,    0   ] = f_A
+    local_idx[:, nu,   0   ] = f_B
+    local_idx[:, nu,   nu  ] = f_C
+    local_idx[:, 1:nu, 0   ] = AB 
+    r_e = np.arange(1, nu)
+    local_idx[:, r_e,  r_e ] = AC
+    local_idx[:, nu,   1:nu] = BC
+
+    # row, column indices of interior points
+    r_int = np.array([r for r in range(2, nu) for _ in range(r - 1)])  # (n_int,)
+    c_int = np.array([c for r in range(2, nu) for c in range(1, r)])
+    T_base = n_vertices + n_edges * (nu - 1)
+
+    if n_int_verts > 0:
+        T_start = T_base + np.arange(n_faces) * n_int_verts
+        local_idx[:, r_int, c_int] = (
+            T_start[:, None] + np.arange(n_int_verts)[None, :]
+        )
+
+    # populate subfaces with vertex coordination info:
+    # local vertex (r, c) with 0 ≤ c ≤ r ≤ nu has barycentric weights
+    #   A'=(nu-r)/nu,  B'=(r-c)/nu,  C'=c/nu
+    # interior vertices have 0 < col < row < nu
+    tri_list = []
+    for i in range(nu):
+        for j in range(i):
+            tri_list.append([(i,j), (i+1,j), (i+1,j+1)])
+            tri_list.append([(i,j), (i+1,j+1), (i,j+1)])
+        tri_list.append([(i,i), (i+1,i), (i+1,i+1)])
+    tri_arr = np.array(tri_list)
+    tr, tc  = tri_arr[:, :, 0], tri_arr[:, :, 1]
+    subfaces = local_idx[:, tr, tc].reshape(n_faces * nu ** 2, 3)
+
+    if n_int_verts > 0:
+        alpha = (nu - r_int) / nu
+        beta  = (r_int - c_int) / nu
+        gamma = c_int / nu
+        int_verts = (  alpha[None, :, None] * vertices[f_A][:, None, :] 
+                     + beta [None, :, None] * vertices[f_B][:, None, :]
+                     + gamma[None, :, None] * vertices[f_C][:, None, :])
+        subvertices[T_base:] = int_verts.reshape(-1, 3)
+
+    return subvertices, subfaces
+
+def icosphere_sn(nu: int = 1, point_type: str = "centroids"):
+    """
+    Generates direction vectors from the vertices or centroids of a 
+    unit spherical icosahedron with principal faces subdivided at the nu-th 
+    frequency. 
+    
+    That is, beginning from a "parent" icosahedron inscribed in the unit 
+    sphere, the edges are first divided into nu equal segments, and then the 
+    endpoints of these segments are connected to subdivide each "parent" face
+    into nu^2 triangular subfaces. Lastly, the vectors describing the 
+    locations of either the vertices or centroids of these faces are 
+    projected back onto the surface of the unit sphere.
+
+    Parameters
+    ----------
+    nu : int
+        Subdivision frequency
+    point_type: str
+        Keyword specifying whether to return the vertices ("vertices", 
+        "vertex", "vert" or "verts") or centroids ("centroids", "centroid", 
+        "cent" or "cents") of the subtriangles on the icosphere
+
+    Returns
+    -------
+    pointset : numpy array of shape (12 + 10 * (nu+1) * (nu-1), 3) if
+        specifying "vertices" or of shape (20 * nu**2, 3) if specifying 
+        "centroids"
+
+    """
+    # check pointset type
+    match point_type:
+        case "vertices" | "vertex" | "vert" | "verts":
+            return_type = "vert"
+        case "centroids" | "centroid" | "cent" | "cents":
+            return_type = "cent"
+        case _:
+            return ValueError(f"Unknown pointset type specified (got {point_type})")
+
+    # vertices of base icosahedron
+    phi = (1 + np.sqrt(5)) / 2
+    vertices = np.array([
+        [0, 1, phi], [0, -1, phi], [1, phi, 0],
+        [-1, phi, 0], [phi, 0, 1], [-phi, 0, 1],
+        [0, -1, -phi], [0, 1, -phi], [-1, -phi, 0],
+        [1, -phi, 0], [-phi, 0, -1], [phi, 0, -1]])
+    vertices /= np.sqrt(1 + phi ** 2)
+    
+    # coordination of vertices to faces:
+    # each entry in the array is a row vector, corresponding to one 
+    # individual face of the icosahedron, giving the indices into the 
+    # "vertices" array of its own particular vertices
+    faces = np.array([
+        [0, 5, 1], [0, 3, 5], [0, 2, 3], [0, 4, 2], [0, 1, 4],
+        [1, 5, 8], [5, 3, 10], [3, 2, 7], [2, 4, 11], [4, 1, 9],
+        [7, 11, 6], [11, 9, 6], [9, 8, 6], [8, 10, 6], [10, 7, 6],
+        [2, 11, 7], [4, 9, 11], [1, 8, 9], [5, 10, 8], [3, 7, 10]])
+
+    # subdividing
+    if nu > 1:
+        vertices, faces = _subdivide_icosahedron_faces(vertices, faces, nu)
+        # project back to unit length
+        vertices = vertices / np.sqrt(np.sum(vertices ** 2, axis=1, keepdims=True))
+    
+    if return_type == "vert":
+        pointset = vertices
+    else:
+        # return centroids
+        pointset = vertices[faces].mean(axis=1)
+        pointset = pointset / np.sqrt(np.sum(pointset ** 2, axis=1, keepdims=True))
+
+    return pointset

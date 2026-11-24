@@ -622,8 +622,13 @@ def test_quadric():
     for coeff in ('d', 'e', 'f', 'g', 'h', 'j'):
         assert getattr(s, coeff) == 0.0
 
-    # Check bounding box
-    assert_infinite_bb(s)
+    # Check bounding box: that of the sphere inside, none outside
+    ll, ur = (-s).bounding_box
+    assert ll == pytest.approx((-r, -r, -r))
+    assert ur == pytest.approx((r, r, r))
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
 
     # evaluate method
     assert s.evaluate((0., 0., 0.)) == pytest.approx(coeffs['k'])
@@ -876,3 +881,118 @@ def test_normalize():
 
     p2 = openmc.YPlane(1.0)
     assert p1.normalize() == p2.normalize()
+
+
+@pytest.mark.parametrize("surface, lower, upper", [
+    # ellipsoid (x/2)^2 + (y/3)^2 + z^2 = 1, centred at (1, -2, 5)
+    (openmc.Quadric(a=1/4, b=1/9, c=1., g=-1/2, h=4/9, j=-10.,
+                    k=1/4 + 4/9 + 25. - 1.),
+     (-1., -5., 4.), (3., 1., 6.)),
+    # cylinder perpendicular to z, as a beam tube: bounded in z only
+    (openmc.Cylinder(x0=1., y0=2., z0=23., r=7.6, dx=np.cos(0.7),
+                     dy=np.sin(0.7), dz=0.),
+     (-np.inf, -np.inf, 15.4), (np.inf, np.inf, 30.6)),
+    # cylinder parallel to z, as a quadric
+    (openmc.Quadric(*openmc.Cylinder(x0=3., y0=4., r=2.)._get_base_coeffs()),
+     (1., 2., -np.inf), (5., 6., np.inf)),
+    # cylinder along x with an unnormalized axis
+    (openmc.Cylinder(y0=-7., z0=1., r=3., dx=5., dy=0., dz=0.),
+     (-np.inf, -10., -2.), (np.inf, -4., 4.)),
+])
+def test_quadric_bounding_box(surface, lower, upper):
+    ll, ur = (-surface).bounding_box
+    assert ll == pytest.approx(lower)
+    assert ur == pytest.approx(upper)
+    ll, ur = (+surface).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+
+    # The same quadric with the opposite sign is bounded on its positive side
+    neg = openmc.Quadric(*(-x for x in surface._get_base_coeffs()))
+    ll, ur = (+neg).bounding_box
+    assert ll == pytest.approx(lower)
+    assert ur == pytest.approx(upper)
+    ll, ur = (-neg).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+
+
+@pytest.mark.parametrize("surface", [
+    openmc.Quadric(a=1., b=1., j=-1.),             # paraboloid
+    openmc.Quadric(a=1., b=1., c=-0.5),            # cone
+    openmc.Quadric(a=1., b=1., c=-1., k=-1.),      # hyperboloid
+    openmc.Quadric(g=1., k=-2.),                   # plane
+    openmc.Quadric(a=1., b=1., k=1.),              # empty
+    openmc.Cylinder(r=1., dx=1., dy=-1., dz=1.),   # oblique cylinder
+])
+def test_quadric_bounding_box_infinite(surface):
+    assert_infinite_bb(surface)
+
+
+def test_tilted_cylinder_bounding_box():
+    # A cylinder tilted away from x within the xy-plane is unbounded in x and
+    # y however small the tilt, and bounded in z
+    s = openmc.Cylinder(z0=2., r=1., dx=1., dy=1e-5, dz=0.)
+    ll, ur = (-s).bounding_box
+    assert ll == pytest.approx((-np.inf, -np.inf, 1.))
+    assert ur == pytest.approx((np.inf, np.inf, 3.))
+
+
+def test_cylinder_bounding_box_matches_quadric():
+    """A general cylinder has the box of the quadric it is written as in the
+    model XML, so Python and C++ agree."""
+    rng = np.random.default_rng(1)
+    for _ in range(50):
+        axis = rng.normal(size=3)
+        axis[rng.integers(3)] = 0.
+        if rng.random() < 0.3:
+            axis[rng.integers(3)] = 0.
+        if not np.any(axis):
+            continue
+        cyl = openmc.Cylinder(*rng.uniform(-10., 10., 3), r=rng.uniform(0.1, 5.),
+                              dx=axis[0], dy=axis[1], dz=axis[2])
+        quad = openmc.Quadric(*cyl._get_base_coeffs())
+        for side in '+-':
+            bc = cyl.bounding_box(side)
+            bq = quad.bounding_box(side)
+            np.testing.assert_array_equal(bc.lower_left, bq.lower_left)
+            np.testing.assert_array_equal(bc.upper_right, bq.upper_right)
+
+
+def test_quadric_bounding_box_lib(mpi_intracomm):
+    """Python and C++ give the same boxes for quadric surfaces."""
+    openmc.reset_auto_ids()
+    rng = np.random.default_rng(2)
+    surfaces = [
+        openmc.Cylinder(x0=1., y0=2., z0=23., r=7.6, dx=np.cos(0.7),
+                        dy=np.sin(0.7), dz=0.),
+        openmc.Cylinder(y0=-7., z0=1., r=3., dx=5., dy=0., dz=0.),
+        openmc.Quadric(a=1/4, b=1/9, c=1., g=-1/2, h=4/9, j=-10.,
+                       k=1/4 + 4/9 + 25. - 1.),
+        openmc.Quadric(a=1., b=1., c=1., k=-100.),
+        openmc.Quadric(a=1., b=1., j=-1.),
+        openmc.Cylinder(r=1., dx=1., dy=-1., dz=1.),
+    ]
+    for _ in range(20):
+        axis = rng.normal(size=3)
+        axis[rng.integers(3)] = 0.
+        surfaces.append(openmc.Cylinder(
+            *rng.uniform(-10., 10., 3), r=rng.uniform(0.1, 5.),
+            dx=axis[0], dy=axis[1], dz=axis[2]))
+    cells = []
+    for s in surfaces:
+        cells.append(openmc.Cell(region=-s))
+        cells.append(openmc.Cell(region=+s))
+    model = openmc.Model(geometry=openmc.Geometry(
+        [openmc.Cell(region=-openmc.Sphere(r=1e3, boundary_type='vacuum'),
+                     fill=openmc.Universe(cells=cells))]))
+    model.settings.batches = 1
+    model.settings.particles = 100
+
+    python_boxes = {c.id: c.bounding_box for c in cells}
+    with openmc.lib.TemporarySession(model, intracomm=mpi_intracomm):
+        lib_boxes = {c.id: openmc.lib.cells[c.id].bounding_box for c in cells}
+
+    for cid, box in python_boxes.items():
+        np.testing.assert_array_equal(box.lower_left, lib_boxes[cid].lower_left)
+        np.testing.assert_array_equal(box.upper_right, lib_boxes[cid].upper_right)

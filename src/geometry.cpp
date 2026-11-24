@@ -123,8 +123,8 @@ int cell_instance_at_level(const GeometryState& p, int level)
 
 //==============================================================================
 
-bool find_cell_inner(GeometryState& p, const NeighborList* neighbor_list,
-  bool verbose, bool allow_missing_outer = false)
+bool find_cell_inner(
+  GeometryState& p, const NeighborList* neighbor_list, bool verbose)
 {
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
@@ -260,12 +260,8 @@ bool find_cell_inner(GeometryState& p, const NeighborList* neighbor_list,
         coord.universe() = lat[i_xyz];
       } else if (lat.outer_ != NO_OUTER_UNIVERSE) {
         coord.universe() = lat.outer_;
-      } else if (allow_missing_outer) {
-        return false;
       } else {
-        p.mark_as_lost(fmt::format(
-          "Particle {} left lattice {}, but it has no outer definition.",
-          p.id(), lat.id_));
+        return false;
       }
     }
     i_cell = C_NONE; // trip non-neighbor cell search at next iteration
@@ -348,8 +344,7 @@ void reconcile_cell_after_collision(GeometryState& p)
   }
 }
 
-static bool exhaustive_find_cell_impl(
-  GeometryState& p, bool verbose, bool allow_missing_outer)
+bool exhaustive_find_cell(GeometryState& p, bool verbose)
 {
   int i_universe = p.lowest_coord().universe();
   if (i_universe == C_NONE) {
@@ -361,18 +356,7 @@ static bool exhaustive_find_cell_impl(
   for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
     p.coord(i).reset();
   }
-  return find_cell_inner(p, nullptr, verbose, allow_missing_outer);
-}
-
-bool exhaustive_find_cell(GeometryState& p, bool verbose)
-{
-  return exhaustive_find_cell_impl(p, verbose, /*allow_missing_outer=*/false);
-}
-
-bool find_cell_for_plot(GeometryState& p)
-{
-  return exhaustive_find_cell_impl(
-    p, /*verbose=*/false, /*allow_missing_outer=*/true);
+  return find_cell_inner(p, nullptr, verbose);
 }
 
 //==============================================================================

@@ -97,12 +97,6 @@ int cell_instance_at_level(const GeometryState& p, int level);
 bool exhaustive_find_cell(GeometryState& p, bool verbose = false);
 
 //==============================================================================
-//! Locate a plot sample, treating space outside a lattice with no outer
-//! universe as undefined.
-//==============================================================================
-bool find_cell_for_plot(GeometryState& p);
-
-//==============================================================================
 //! Locate a particle starting from its current coordinate level.
 //==============================================================================
 bool neighbor_list_find_cell(GeometryState& p, bool verbose = false);

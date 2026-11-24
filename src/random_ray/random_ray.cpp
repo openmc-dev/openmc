@@ -1038,6 +1038,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
+      return;
     }
 
     // Set birth cell attribute

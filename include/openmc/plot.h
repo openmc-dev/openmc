@@ -271,7 +271,7 @@ T SlicePlotBase::get_map(int32_t filter_index) const
         p.r() = row + u_step * static_cast<double>(x);
         p.n_coord() = 1;
         // local variables
-        bool found_cell = find_cell_for_plot(p);
+        bool found_cell = exhaustive_find_cell(p);
         j = p.n_coord() - 1;
         if (level >= 0) {
           j = level;

@@ -90,9 +90,10 @@ TEST_CASE("MCPL stat:sum field")
   {
     std::string filename = "test_empty.mcpl";
 
-    // Create empty particle bank
+    // Create empty particle bank. bank_index holds n_procs + 1 cumulative
+    // offsets, so a single rank with no particles is {0, 0}.
     std::vector<openmc::SourceSite> source_bank;
-    std::vector<int64_t> bank_index = {0};
+    std::vector<int64_t> bank_index = {0, 0};
 
     // This should still create a valid MCPL file with stat:sum = 0
     openmc::write_mcpl_source_point(filename.c_str(), source_bank, bank_index);

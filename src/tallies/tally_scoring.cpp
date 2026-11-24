@@ -1788,9 +1788,10 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         double scatt = macro_xs.get_xs(
           MgxsType::SCATTER, p.g_last(), nullptr, nullptr, nullptr, t, a);
         if (scatt > 0.0) {
-          score *= macro_xs.get_xs(MgxsType::NU_SCATTER, p.g_last(), nullptr,
-                     nullptr, nullptr, t, a) /
-                   scatt;
+          double nu_scatt = macro_xs.get_xs(
+            MgxsType::NU_SCATTER, p.g_last(), nullptr, nullptr, nullptr, t, a);
+          double nu = nu_scatt / scatt;
+          score *= nu;
         }
         // Since we transport based on material data, the angle selected
         // was not selected from the f(mu) for the nuclide.  Therefore

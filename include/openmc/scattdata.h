@@ -56,7 +56,7 @@ public:
   //! @param gin Incoming energy group.
   //! @param value Multiplicity (nu-scatter / scatter) of group gin.
   void set_multiplicity(int gin, double value);
-  
+
   //! \brief Calculates the value of normalized f(mu).
   //!
   //! The value of f(mu) is normalized as in the integral of f(mu)dmu across

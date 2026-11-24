@@ -595,7 +595,7 @@ class Results(list):
 
         Parameters
         ----------
-        burn_index : int
+        burnup_index : int
             Index of burnup step to evaluate. See also: get_step_where for
             obtaining burnup step indices from other data such as the time.
         nuc_with_data : Iterable of str, optional

@@ -2735,7 +2735,7 @@ class TransportXS(MGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     nu : bool
         If True, the cross section data will include neutron multiplication;
@@ -2976,7 +2976,7 @@ class DiffusionCoefficient(TransportXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     nu : bool
         If True, the cross section data will include neutron multiplication;
@@ -3438,7 +3438,7 @@ class FissionXS(MGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     nu : bool
         If True, the cross section data will include neutron multiplication;
@@ -3663,7 +3663,7 @@ class ScatterXS(MGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
@@ -3950,7 +3950,7 @@ class ScatterMatrixXS(MatrixMGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
@@ -5396,7 +5396,7 @@ class NuFissionMatrixXS(MatrixMGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
@@ -5557,7 +5557,7 @@ class Chi(MGXS):
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     prompt : bool
         If true, computes cross sections which only includes prompt neutrons;
@@ -6528,7 +6528,7 @@ class Current(MeshSurfaceMGXS):
         The domain for spatial homogenization
     domain_type : ('mesh'}
         The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
         Unused in MeshSurfaceMGXS

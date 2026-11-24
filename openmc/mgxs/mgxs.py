@@ -5018,17 +5018,11 @@ class PhotonTransferMatrixXS(MatrixMGXS):
     scored with its statistical weight, photon multiplicity is included directly
     in the production matrix.
 
-<<<<<<< HEAD
-    Photon production is only available as a macroscopic, isotropic cross
-    section. Per-nuclide production cannot be determined because secondary
-    photons are tallied from the collision bank rather than a reaction score.
-=======
     Photon production is currently available only as a macroscopic, isotropic,
     P0 cross section. Although collision-bank events retain the nuclide that
     produced them, per-nuclide production is excluded from this initial API to
     keep all three component tallies on the same macroscopic basis. The P0
     matrix also cannot preserve higher-order angular scattering information.
->>>>>>> upstream/develop
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
@@ -5042,10 +5036,6 @@ class PhotonTransferMatrixXS(MatrixMGXS):
         self._rxn_type = 'nu-scatter'
         self._mgxs_type = 'nu-scatter matrix'
         self._particle_type = openmc.ParticleType.PHOTON
-<<<<<<< HEAD
-        self._valid_estimators = ['analog']
-=======
->>>>>>> upstream/develop
 
     @property
     def by_nuclide(self):

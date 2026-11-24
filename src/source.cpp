@@ -1855,19 +1855,7 @@ SourceSite sample_external_source(uint64_t* seed)
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {
-    if (site.particle != data::mg.particle_type_) {
-      fatal_error(fmt::format(
-        "Source particle type '{}' does not match the '{}' MGXS library.",
-        site.particle.str(), data::mg.particle_type_.str()));
-    }
-    const auto& bins = data::mg.rev_energy_bins_;
-    if (site.E < bins.front() || site.E > bins.back()) {
-      fatal_error(fmt::format(
-        "Source energy {} eV is outside the MGXS group structure ({}-{} eV).",
-        site.E, bins.front(), bins.back()));
-    }
-    site.E = lower_bound_index(bins.begin(), bins.end(), site.E);
-    site.E = data::mg.num_energy_groups_ - site.E - 1.;
+    site.E = data::mg.get_source_group_index(site.particle, site.E);
   }
 
   return site;

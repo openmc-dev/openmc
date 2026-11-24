@@ -47,7 +47,10 @@ public:
   vector<vector<double>> get_mat_kTs();
 
   // Get the group index corresponding to a continuous energy
-  int get_group_index(double E);
+  int get_group_index(double E) const;
+
+  // Validate the source particle type and energy before finding its group
+  int get_source_group_index(ParticleType particle, double E) const;
 
   int num_energy_groups_;
   int num_delayed_groups_;

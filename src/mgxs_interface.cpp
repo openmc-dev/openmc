@@ -185,11 +185,29 @@ vector<vector<double>> MgxsInterface::get_mat_kTs()
 
 //==============================================================================
 
-int MgxsInterface::get_group_index(double E)
+int MgxsInterface::get_group_index(double E) const
 {
   int g =
     lower_bound_index(rev_energy_bins_.begin(), rev_energy_bins_.end(), E);
   return num_energy_groups_ - g - 1.;
+}
+
+int MgxsInterface::get_source_group_index(ParticleType particle, double E) const
+{
+  if (particle != particle_type_) {
+    fatal_error(fmt::format(
+      "Source particle type '{}' does not match the '{}' MGXS library.",
+      particle.str(), particle_type_.str()));
+  }
+
+  double E_min = rev_energy_bins_.front();
+  double E_max = rev_energy_bins_.back();
+  if (E < E_min || E > E_max) {
+    fatal_error(fmt::format(
+      "Source energy {} eV is outside the MGXS group structure ({}-{} eV).", E,
+      E_min, E_max));
+  }
+  return get_group_index(E);
 }
 
 //==============================================================================

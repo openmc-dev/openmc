@@ -1580,7 +1580,9 @@ vector<ParentCell> Cell::find_parent_cells(
   int32_t instance, GeometryState& p) const
 {
   // look up the particle's location
-  exhaustive_find_cell(p);
+  if (!exhaustive_find_cell(p)) {
+    return exhaustive_find_parent_cells(instance);
+  }
   const auto& coords = p.coord();
 
   // build a parent cell stack from the particle coordinates

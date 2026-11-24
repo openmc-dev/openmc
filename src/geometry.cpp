@@ -258,14 +258,10 @@ bool find_cell_inner(
       // Set the lower coordinate level universe.
       if (lat.are_valid_indices(i_xyz)) {
         coord.universe() = lat[i_xyz];
+      } else if (lat.outer_ != NO_OUTER_UNIVERSE) {
+        coord.universe() = lat.outer_;
       } else {
-        if (lat.outer_ != NO_OUTER_UNIVERSE) {
-          coord.universe() = lat.outer_;
-        } else {
-          p.mark_as_lost(fmt::format(
-            "Particle {} left lattice {}, but it has no outer definition.",
-            p.id(), lat.id_));
-        }
+        return false;
       }
     }
     i_cell = C_NONE; // trip non-neighbor cell search at next iteration

@@ -1781,8 +1781,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         score = (p.wgt_last() - wgt_absorb) * flux;
         // Match the weight multiplier used by scatter(). For the incoming
         // group, divide nu-scatter by scatter after summing each cross
-        // section over all outgoing groups. Use the same temperature and
-        // angle indices as scatter().
+        // section over all outgoing groups.
         int t = p.mg_xs_cache().t;
         int a = p.mg_xs_cache().a;
         double scatt = macro_xs.get_xs(
@@ -1790,8 +1789,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         if (scatt > 0.0) {
           double nu_scatt = macro_xs.get_xs(
             MgxsType::NU_SCATTER, p.g_last(), nullptr, nullptr, nullptr, t, a);
-          double nu = nu_scatt / scatt;
-          score *= nu;
+          score *= nu_scatt / scatt;
         }
         // Since we transport based on material data, the angle selected
         // was not selected from the f(mu) for the nuclide.  Therefore

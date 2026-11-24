@@ -53,8 +53,8 @@ public:
   //! Keeps the per-event weight multiplier used by sample() and get_xs()
   //! consistent with the new multiplicity.
   //!
-  //! @param gin Incoming energy group.
-  //! @param value Multiplicity (nu-scatter / scatter) of group gin.
+  //! \param gin Incoming energy group.
+  //! \param value Multiplicity (nu-scatter / scatter) of group gin.
   void set_multiplicity(int gin, double value);
 
   //! \brief Calculates the value of normalized f(mu).

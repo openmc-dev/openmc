@@ -1,5 +1,6 @@
 #include "openmc/mgxs_interface.h"
 
+#include <stdexcept>
 #include <string>
 #include <unordered_set>
 
@@ -209,12 +210,20 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
   // Open file for reading
   hid_t file_id = file_open(cross_sections_path_, 'r', true);
 
-  std::string p_type_str;
+  std::string particle_name {"neutron"};
   if (attribute_exists(file_id, "particle_type")) {
-    read_attribute(file_id, "particle_type", p_type_str);
-    if (p_type_str == "photon") {
-      particle_type_ = ParticleType::photon();
-    }
+    read_attribute(file_id, "particle_type", particle_name);
+  }
+  try {
+    particle_type_ = ParticleType(particle_name);
+  } catch (const std::logic_error&) {
+    fatal_error(fmt::format(
+      "Invalid particle_type '{}' in MGXS library.", particle_name));
+  }
+  if (!particle_type_.is_neutron() && !particle_type_.is_photon()) {
+    fatal_error(fmt::format("Unsupported particle_type '{}' in MGXS library. "
+                            "Expected a neutron or photon.",
+      particle_name));
   }
 
   ensure_exists(file_id, "energy_groups", true);

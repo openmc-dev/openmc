@@ -1,16 +1,8 @@
-"""Multigroup photon transport with the Monte Carlo solver.
+"""Shared model and exact solutions for multigroup photon transport tests.
 
-A reflective cube with a spatially uniform, isotropic source behaves as an
-infinite medium, so the group track lengths (volume-integrated fluxes) per
-source photon follow from a group balance and can be checked exactly.
-The library uses P1 scattering and a top group that produces more photons
-than it scatters, represented by a weight multiplicity that is either given
-explicitly or derived by OpenMC when left out of the library. Besides the
-tracklength reaction rates, an analog tally checks the group-to-group scatter
-and nu-scatter matrices and their P1 moments: the scalar flux in an infinite
-medium does not depend on the scattering anisotropy, so it cannot detect
-errors in the angular sampling on its own.
-
+A reflective cube with a uniform, isotropic source represents an infinite
+medium. The group balance gives the exact scalar flux. The P1 transfer tallies
+also check the angular sampling, which has no effect on the scalar flux here.
 """
 import numpy as np
 import openmc
@@ -20,39 +12,21 @@ GROUP_EDGES = [1.0e3, 1.0e5, 5.0e5, 2.0e6]
 # Macroscopic cross sections in 1/cm; index 0 is the highest-energy group
 TOTAL = np.array([0.25, 0.40, 1.20])
 ABSORPTION = np.array([0.05, 0.15, 1.00])
+SCATTER_XS = TOTAL - ABSORPTION
 
-# P0 production (nu-scatter) matrix indexed [g_in, g_out]. The top group
-# produces 0.25/cm but only scatters TOTAL - ABSORPTION = 0.20/cm; the extra
-# photons stand in for fluorescence and annihilation photons.
-PRODUCTION = np.array([
+# P0 nu-scatter matrix indexed [g_in, g_out]. Secondary photons raise the
+# production cross section of the top group from 0.20/cm to 0.25/cm.
+NU_SCATTER = np.array([
     [0.10, 0.08, 0.07],
     [0.00, 0.15, 0.10],
     [0.00, 0.00, 0.20],
 ])
 MU_BAR = 0.2  # average scattering cosine, P1/P0
-
+YIELD = NU_SCATTER.sum(axis=1) / SCATTER_XS
 SPEED_OF_LIGHT = 2.99792458e10  # cm/s
 
 
-def _multiplicity():
-    """Row-constant multiplicity so each collision yields PRODUCTION/TOTAL"""
-    ratio = PRODUCTION.sum(axis=1) / (TOTAL - ABSORPTION)
-    return np.repeat(ratio[:, np.newaxis], len(TOTAL), axis=1)
-
-
-def _exact_track_lengths():
-    """Group track length per source photon in an infinite medium.
-
-    Each group balances collisions against source and in-production:
-    TOTAL[g] * L[g] = S[g] + sum_g' PRODUCTION[g', g] * L[g']
-
-    """
-    source = np.array([1.0, 0.0, 0.0])  # 1 MeV photons are born in group 1
-    return np.linalg.solve(np.diag(TOTAL) - PRODUCTION.T, source)
-
-
-def make_model(multiplicity='explicit', survival_biasing=False,
-               absorption=ABSORPTION):
+def make_model(multiplicity='explicit', absorption=ABSORPTION):
     """Build the photon model and write its multigroup library."""
     groups = openmc.mgxs.EnergyGroups(group_edges=GROUP_EDGES)
     photon = openmc.XSdata('photon', groups)
@@ -60,11 +34,10 @@ def make_model(multiplicity='explicit', survival_biasing=False,
     photon.set_total(TOTAL)
     photon.set_absorption(absorption)
     photon.set_scatter_matrix(
-        np.stack([PRODUCTION, MU_BAR * PRODUCTION], axis=-1))
+        np.stack([NU_SCATTER, MU_BAR * NU_SCATTER], axis=-1))
     if multiplicity == 'explicit':
-        photon.set_multiplicity_matrix(_multiplicity())
-    # Otherwise the multiplicity is derived when OpenMC reads the library.
-    # No inverse velocity is given, so photons must default to 1/c
+        photon.set_multiplicity_matrix(
+            np.repeat(YIELD[:, None], len(TOTAL), axis=1))
 
     library = openmc.MGXSLibrary(groups, particle_type='photon')
     library.add_xsdata(photon)
@@ -111,44 +84,25 @@ def make_model(multiplicity='explicit', survival_biasing=False,
         particle='photon',
         space=openmc.stats.Box((-5.0, -5.0, -5.0), (5.0, 5.0, 5.0)),
         energy=openmc.stats.Discrete([1.0e6], [1.0]))
-    if survival_biasing:
-        model.settings.survival_biasing = True
-
     return model
 
 
 def _assert_matches(name, mean, std_dev, reference):
-    """Compare tally means to exact values within 5 standard deviations.
-
-    Bins where the exact value is zero (upscatter) can never receive a
-    score, so they must be exactly zero. Every other bin must be scored with
-    a nonzero spread, so the deviation below is always finite.
-
-    """
-    if not (np.all(np.isfinite(mean)) and np.all(np.isfinite(std_dev))):
-        raise AssertionError(
-            f"Multigroup photon '{name}' has non-finite results: {mean} "
-            f"+/- {std_dev}")
+    """Check scored bins within five sigma and empty bins exactly."""
+    assert np.isfinite(mean).all() and np.isfinite(std_dev).all(), (
+        f'{name} has nonfinite tally results')
     zero = reference == 0.0
-    if np.any(mean[zero] != 0.0):
-        raise AssertionError(
-            f"Multigroup photon '{name}' scored bins that must be empty: "
-            f"{mean}")
-    if np.any(std_dev[~zero] == 0.0):
-        raise AssertionError(
-            f"Multigroup photon '{name}' has no spread in bins that must be "
-            f"scored: {mean} +/- {std_dev}")
+    np.testing.assert_array_equal(mean[zero], 0.0, err_msg=name)
+    assert np.all(std_dev[~zero] > 0.0), f'{name} needs positive uncertainty'
     deviation = np.abs(mean[~zero] - reference[~zero]) / std_dev[~zero]
-    if np.any(deviation > 5.0):
-        raise AssertionError(
-            f"Multigroup photon '{name}' disagrees with the infinite-medium "
-            f"solution: {mean} vs. {reference} ({deviation} standard "
-            "deviations)")
+    assert np.all(deviation <= 5.0), f'{name} deviations in sigma: {deviation}'
 
 
 def check_exact_solution(statepoint_path):
     """Check every tally in the statepoint against the exact solution"""
-    exact = _exact_track_lengths()
+    # Collisions balance the source in the top group and production from
+    # scattering in all groups.
+    exact = np.linalg.solve(np.diag(TOTAL) - NU_SCATTER.T, [1.0, 0.0, 0.0])
 
     with openmc.StatePoint(statepoint_path) as statepoint:
         tally = statepoint.get_tally(name='photon')
@@ -156,8 +110,8 @@ def check_exact_solution(statepoint_path):
             'flux': exact,
             'total': TOTAL * exact,
             'absorption': ABSORPTION * exact,
-            'scatter': (TOTAL - ABSORPTION) * exact,
-            'nu-scatter': PRODUCTION.sum(axis=1) * exact,
+            'scatter': SCATTER_XS * exact,
+            'nu-scatter': NU_SCATTER.sum(axis=1) * exact,
         }
 
         # Energy filter bins run from low to high energy, so reverse them
@@ -173,18 +127,14 @@ def check_exact_solution(statepoint_path):
         flux = tally.get_values(scores=['flux']).ravel()
         inverse_velocity = tally.get_values(
             scores=['inverse-velocity']).ravel()
-        if not np.allclose(SPEED_OF_LIGHT * inverse_velocity, flux,
-                           rtol=1e-10):
-            raise AssertionError(
-                'Multigroup photons are not moving at the speed of light: '
-                f'flux / inverse-velocity = {flux / inverse_velocity}')
+        np.testing.assert_allclose(
+            SPEED_OF_LIGHT * inverse_velocity, flux, rtol=1e-10, atol=1e-8,
+            equal_nan=False, err_msg='Photon inverse velocity must be 1/c')
 
-        # Group-to-group transfer. Each analog nu-scatter event scores the
-        # multiplicity of the sampled transfer, and every transfer has the
-        # mean cosine MU_BAR, so the P1 moments are MU_BAR times the P0 ones.
-        nu_scatter = exact[:, np.newaxis] * PRODUCTION
+        # Every transfer has mean cosine MU_BAR, so P1 is MU_BAR times P0.
+        nu_scatter = exact[:, None] * NU_SCATTER
         transfer_expected = {
-            'scatter': nu_scatter / _multiplicity(),
+            'scatter': nu_scatter / YIELD[:, None],
             'nu-scatter': nu_scatter,
         }
         transfer = statepoint.get_tally(name='photon transfer')

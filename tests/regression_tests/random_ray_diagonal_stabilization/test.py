@@ -93,7 +93,7 @@ def _build_homogeneous_model():
 
     mat = openmc.Material(name='mat')
     mat.set_density('macro', 1.0)
-    mat.add_macroscopic(openmc.Macroscopic('mat'))
+    mat.add_macroscopic('mat')
     model = openmc.Model()
     model.materials = openmc.Materials([mat])
     model.materials.cross_sections = 'mgxs.h5'

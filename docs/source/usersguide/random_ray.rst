@@ -945,18 +945,14 @@ Once the ``mgxs.h5`` library file has been generated, we can then manually make
 the necessary edits to the material definitions so that they load from the
 multigroup library instead of defining their isotopic contents, as::
 
-    # Instantiate some Macroscopic Data
-    fuel_data = openmc.Macroscopic('UO2 (2.4%)')
-    water_data = openmc.Macroscopic('Hot borated water')
-
-    # Instantiate some Materials and register the appropriate Macroscopic objects
+    # Instantiate some Materials and register the appropriate macroscopic data
     fuel = openmc.Material(name='UO2 (2.4%)')
     fuel.set_density('macro', 1.0)
-    fuel.add_macroscopic(fuel_data)
+    fuel.add_macroscopic('UO2 (2.4%)')
 
     water = openmc.Material(name='Hot borated water')
     water.set_density('macro', 1.0)
-    water.add_macroscopic(water_data)
+    water.add_macroscopic('Hot borated water')
 
     # Instantiate a Materials collection and export to XML
     materials = openmc.Materials([fuel, water])

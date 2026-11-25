@@ -243,7 +243,6 @@ class Material(IDManagerMixin):
         if components is not None:
             self.add_components(components, percent_type=percent_type)
 
-
     def __repr__(self) -> str:
         string = 'Material\n'
         string += '{: <16}=\t{}\n'.format('\tID', self._id)
@@ -259,7 +258,8 @@ class Material(IDManagerMixin):
         string += '{: <16}\n'.format('\tS(a,b) Tables')
 
         if self._ncrystal_cfg:
-            string += '{: <16}=\t{}\n'.format('\tNCrystal conf', self._ncrystal_cfg)
+            string += '{: <16}=\t{}\n'.format('\tNCrystal conf',
+                                              self._ncrystal_cfg)
 
         for sab in self._sab:
             string += '{: <16}=\t{}\n'.format('\tS(a,b)', sab)
@@ -362,7 +362,8 @@ class Material(IDManagerMixin):
 
         # Compute and return the molar mass
         if moles == 0.0:
-            raise ValueError("Material has no nuclides; cannot compute molar mass")
+            raise ValueError(
+                "Material has no nuclides; cannot compute molar mass")
         return mass / moles
 
     @property
@@ -388,7 +389,7 @@ class Material(IDManagerMixin):
             Z = openmc.data.zam(nuc)[0]
             if Z >= 90:
                 density += 1e24 * atoms_per_bcm * openmc.data.atomic_mass(nuc) \
-                           / openmc.data.AVOGADRO
+                    / openmc.data.AVOGADRO
         return density*self.volume
 
     @property
@@ -434,10 +435,12 @@ class Material(IDManagerMixin):
             the total intensity of the photon source in the requested units.
 
         """
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3'})
+        cv.check_value('units', units, {
+                       'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3'})
 
         if exclude_nuclides is not None and include_nuclides is not None:
-            raise ValueError("Cannot specify both exclude_nuclides and include_nuclides")
+            raise ValueError(
+                "Cannot specify both exclude_nuclides and include_nuclides")
 
         if units == 'Bq':
             multiplier = volume if volume is not None else self.volume
@@ -549,13 +552,15 @@ class Material(IDManagerMixin):
 
         cv.check_type("by_nuclide", by_nuclide, bool)
         cv.check_type("dose_quantity", dose_quantity, str)
-        cv.check_value("dose_quantity", dose_quantity, {'absorbed-air', 'effective'})
+        cv.check_value("dose_quantity", dose_quantity,
+                       {'absorbed-air', 'effective'})
         cv.check_type("build_up", build_up, Real)
         cv.check_greater_than("build_up", build_up, 0.0)
 
         nuc_densities = self.get_nuclide_atom_densities()
         if not nuc_densities:
-            raise ValueError("Material has no nuclides; cannot compute mass attenuation")
+            raise ValueError(
+                "Material has no nuclides; cannot compute mass attenuation")
 
         # Collect partial mass densities ρ_i [g/cm³] and elemental mass
         # attenuation coefficients µ_i/ρ_i [cm²/g] per nuclide. Attenuation
@@ -623,7 +628,8 @@ class Material(IDManagerMixin):
 
         if dose_quantity == 'absorbed-air':
             # mu_en/rho for air [cm²/g] as a function of energy [eV]
-            response_f = mass_energy_absorption_coefficient("air", data_source="nist126")
+            response_f = mass_energy_absorption_coefficient(
+                "air", data_source="nist126")
 
             # Factor to convert [eV cm²/(b g s)] to [Gy/h]
             multiplier = (build_up * geometry_factor_slab * seconds_per_hour
@@ -672,13 +678,16 @@ class Material(IDManagerMixin):
             if isinstance(photon_source_per_atom, Tabular):
                 # limit the computation to the tabulated mu_en_air range
                 e_union = reduce(np.union1d, e_lists)
-                e_union = e_union[(e_union >= left_bound) & (e_union <= right_bound)]
+                e_union = e_union[(e_union >= left_bound) &
+                                  (e_union <= right_bound)]
                 if len(e_union) < 2:
-                    raise ValueError("Not enough overlapping energy points to compute CDR")
+                    raise ValueError(
+                        "Not enough overlapping energy points to compute CDR")
 
                 # Histogram interpolation: each new point inherits the value of
                 # the nearest original point to its left
-                p_vals = p_vals[np.searchsorted(e_vals, e_union, side='right') - 1]
+                p_vals = p_vals[np.searchsorted(
+                    e_vals, e_union, side='right') - 1]
                 e_vals = e_union
 
             mu_vals = mu_material(e_vals)
@@ -923,12 +932,12 @@ class Material(IDManagerMixin):
         nc_mat = NCrystal.createInfo(cfg)
 
         def openmc_natabund(Z):
-            #nc_mat.getFlattenedComposition might need natural abundancies.
-            #This call-back function is used so NCrystal can flatten composition
-            #using OpenMC's natural abundancies. In practice this function will
-            #only get invoked in the unlikely case where a material is specified
-            #by referring both to natural elements and specific isotopes of the
-            #same element.
+            # nc_mat.getFlattenedComposition might need natural abundancies.
+            # This call-back function is used so NCrystal can flatten composition
+            # using OpenMC's natural abundancies. In practice this function will
+            # only get invoked in the unlikely case where a material is specified
+            # by referring both to natural elements and specific isotopes of the
+            # same element.
             elem_name = openmc.data.ATOMIC_SYMBOL[Z]
             return [
                 (int(iso_name[len(elem_name):]), abund)
@@ -971,7 +980,8 @@ class Material(IDManagerMixin):
                 raise ValueError('No volume information found for material ID={}.'
                                  .format(self.id))
         else:
-            raise ValueError(f'No volume information found for material ID={self.id}.')
+            raise ValueError(
+                f'No volume information found for material ID={self.id}.')
 
     def set_density(self, units: str, density: float | None = None):
         """Set the density of the material
@@ -1025,7 +1035,8 @@ class Material(IDManagerMixin):
 
         if self._macroscopic is not None:
             msg = 'Unable to add a Nuclide to Material ID="{}" as a ' \
-                  'macroscopic data-set has already been added'.format(self._id)
+                  'macroscopic data-set has already been added'.format(
+                      self._id)
             raise ValueError(msg)
 
         if self._ncrystal_cfg is not None:
@@ -1133,29 +1144,29 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         macroscopic : str
-            Macroscopic to add
+            Macroscopic data to add
 
         """
 
         # Ensure no nuclides, elements, or sab are added since these would be
         # incompatible with macroscopics
         if self._nuclides or self._sab:
-            msg = 'Unable to add a Macroscopic data set to Material ID="{}" ' \
+            msg = 'Unable to add a macroscopic data set to Material ID="{}" ' \
                   'with a macroscopic value "{}" as an incompatible data ' \
                   'member (i.e., nuclide or S(a,b) table) ' \
                   'has already been added'.format(self._id, macroscopic)
             raise ValueError(msg)
 
         if not isinstance(macroscopic, str):
-            msg = 'Unable to add a Macroscopic to Material ID="{}" with a ' \
+            msg = 'Unable to add a macroscopic data set to Material ID="{}" with a ' \
                   'non-string value "{}"'.format(self._id, macroscopic)
             raise ValueError(msg)
 
         if self._macroscopic is None:
             self._macroscopic = macroscopic
         else:
-            msg = 'Unable to add a Macroscopic to Material ID="{}". ' \
-                  'Only one Macroscopic allowed per ' \
+            msg = 'Unable to add a macroscopic data set to Material ID="{}". ' \
+                  'Only one macroscopic data set allowed per ' \
                   'Material.'.format(self._id)
             raise ValueError(msg)
 
@@ -1178,7 +1189,7 @@ class Material(IDManagerMixin):
         """
 
         if not isinstance(macroscopic, str):
-            msg = 'Unable to remove a Macroscopic "{}" in Material ID="{}" ' \
+            msg = 'Unable to remove a macroscopic "{}" in Material ID="{}" ' \
                   'since it is not a string'.format(self._id, macroscopic)
             raise ValueError(msg)
 
@@ -1262,7 +1273,8 @@ class Material(IDManagerMixin):
 
         if self._macroscopic is not None:
             msg = 'Unable to add an Element to Material ID="{}" as a ' \
-                  'macroscopic data-set has already been added'.format(self._id)
+                  'macroscopic data-set has already been added'.format(
+                      self._id)
             raise ValueError(msg)
 
         if enrichment is not None and enrichment_target is None:
@@ -1351,10 +1363,10 @@ class Material(IDManagerMixin):
                         msg = f'Formula entry {token} not an element symbol.'
                         raise ValueError(msg)
                 elif token not in ['(', ')', ''] and not token.isdigit():
-                        msg = 'Formula must be made from a sequence of ' \
-                              'element symbols, integers, and brackets. ' \
-                              '{} is not an allowable entry.'.format(token)
-                        raise ValueError(msg)
+                    msg = 'Formula must be made from a sequence of ' \
+                          'element symbols, integers, and brackets. ' \
+                          '{} is not an allowable entry.'.format(token)
+                    raise ValueError(msg)
 
         # Checks that the number of opening and closing brackets are equal
         if formula.count('(') != formula.count(')'):
@@ -1416,12 +1428,13 @@ class Material(IDManagerMixin):
 
         if self._macroscopic is not None:
             msg = 'Unable to add an S(a,b) table to Material ID="{}" as a ' \
-                  'macroscopic data-set has already been added'.format(self._id)
+                  'macroscopic data-set has already been added'.format(
+                      self._id)
             raise ValueError(msg)
 
         if not isinstance(name, str):
             msg = 'Unable to add an S(a,b) table to Material ID="{}" with a ' \
-                        'non-string table name "{}"'.format(self._id, name)
+                'non-string table name "{}"'.format(self._id, name)
             raise ValueError(msg)
 
         cv.check_type('S(a,b) fraction', fraction, Real)
@@ -1558,7 +1571,7 @@ class Material(IDManagerMixin):
         if not percent_in_atom:
             for n, nuc in enumerate(nucs):
                 nuc_densities[n] *= self.average_molar_mass / \
-                                    openmc.data.atomic_mass(nuc)
+                    openmc.data.atomic_mass(nuc)
 
         # Now that we have the atomic amounts, lets finish calculating densities
         sum_percent = np.sum(nuc_densities)
@@ -1567,7 +1580,7 @@ class Material(IDManagerMixin):
         # Convert the mass density to an atom density
         if not density_in_atom:
             density = -density / self.average_molar_mass * 1.e-24 \
-                      * openmc.data.AVOGADRO
+                * openmc.data.AVOGADRO
 
         nuc_densities = density * nuc_densities
 
@@ -1607,7 +1620,8 @@ class Material(IDManagerMixin):
 
         # Accumulate densities for each nuclide
         for nuclide, density in nuc_densities.items():
-            nuc_element = openmc.data.ATOMIC_SYMBOL[openmc.data.zam(nuclide)[0]]
+            nuc_element = openmc.data.ATOMIC_SYMBOL[openmc.data.zam(nuclide)[
+                0]]
             if element is None or element == nuc_element:
                 if nuc_element not in densities:
                     densities[nuc_element] = 0.0
@@ -1615,10 +1629,9 @@ class Material(IDManagerMixin):
 
         # If specific element was requested, make sure it is present
         if element is not None and element not in densities:
-                raise ValueError(f'Element {element} not found in material.')
+            raise ValueError(f'Element {element} not found in material.')
 
         return densities
-
 
     def get_activity(
         self,
@@ -1663,14 +1676,16 @@ class Material(IDManagerMixin):
             material is returned as a float.
         """
 
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3', 'Ci', 'Ci/m3'})
+        cv.check_value('units', units, {
+                       'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3', 'Ci', 'Ci/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if volume is None:
             volume = self.volume
 
         if units in {'Bq', 'Ci'} and volume is None:
-            raise ValueError(f"Volume must be set in order to compute activity in '{units}'.")
+            raise ValueError(
+                f"Volume must be set in order to compute activity in '{units}'.")
 
         if units == 'Bq':
             multiplier = volume
@@ -1695,7 +1710,8 @@ class Material(IDManagerMixin):
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            inv_seconds = openmc.data.decay_constant(nuclide, chain_file=chain_file)
+            inv_seconds = openmc.data.decay_constant(
+                nuclide, chain_file=chain_file)
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())
@@ -1735,7 +1751,8 @@ class Material(IDManagerMixin):
         if units == 'W':
             multiplier = volume if volume is not None else self.volume
             if multiplier is None:
-                raise ValueError("Volume must be set in order to compute total decay heat.")
+                raise ValueError(
+                    "Volume must be set in order to compute total decay heat.")
         elif units == 'W/cm3':
             multiplier = 1
         elif units == 'W/m3':
@@ -1750,7 +1767,8 @@ class Material(IDManagerMixin):
             decay_erg = openmc.data.decay_energy(nuclide)
             inv_seconds = openmc.data.decay_constant(nuclide)
             decay_erg *= openmc.data.JOULE_PER_EV
-            decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
+            decayheat[nuclide] = inv_seconds * decay_erg * \
+                1e24 * atoms_per_bcm * multiplier
 
         return decayheat if by_nuclide else sum(decayheat.values())
 
@@ -1801,7 +1819,7 @@ class Material(IDManagerMixin):
         mass_density = 0.0
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities(nuclide=nuclide).items():
             density_i = 1e24 * atoms_per_bcm * openmc.data.atomic_mass(nuc) \
-                        / openmc.data.AVOGADRO
+                / openmc.data.AVOGADRO
             mass_density += density_i
         return mass_density
 
@@ -1984,12 +2002,13 @@ class Material(IDManagerMixin):
 
     def _get_nuclides_xml(
             self, nuclides: Iterable[NuclideTuple],
-            nuclides_to_ignore: Iterable[str] | None = None)-> list[ET.Element]:
+            nuclides_to_ignore: Iterable[str] | None = None) -> list[ET.Element]:
         xml_elements = []
 
         # Remove any nuclides to ignore from the XML export
         if nuclides_to_ignore:
-            nuclides = [nuclide for nuclide in nuclides if nuclide.name not in nuclides_to_ignore]
+            nuclides = [
+                nuclide for nuclide in nuclides if nuclide.name not in nuclides_to_ignore]
 
         xml_elements = [self._get_nuclide_xml(nuclide) for nuclide in nuclides]
 
@@ -2026,9 +2045,11 @@ class Material(IDManagerMixin):
 
         if self._ncrystal_cfg:
             if self._sab:
-                raise ValueError("NCrystal materials are not compatible with S(a,b).")
+                raise ValueError(
+                    "NCrystal materials are not compatible with S(a,b).")
             if self._macroscopic is not None:
-                raise ValueError("NCrystal materials are not compatible with macroscopic cross sections.")
+                raise ValueError(
+                    "NCrystal materials are not compatible with macroscopic cross sections.")
 
             element.set("cfg", str(self._ncrystal_cfg))
 
@@ -2043,7 +2064,8 @@ class Material(IDManagerMixin):
                 subelement.set("value", str(self._density))
             subelement.set("units", self._density_units)
         else:
-            raise ValueError(f'Density has not been set for material {self.id}!')
+            raise ValueError(
+                f'Density has not been set for material {self.id}!')
 
         if self._macroscopic is None:
             # Create nuclide XML subelements
@@ -2143,17 +2165,18 @@ class Material(IDManagerMixin):
                 nuc_per_cc = wgt*1.e24*atoms_per_bcm
                 nuclides_per_cc[nuc] += nuc_per_cc
                 mass_per_cc[nuc] += nuc_per_cc*openmc.data.atomic_mass(nuc) / \
-                                    openmc.data.AVOGADRO
+                    openmc.data.AVOGADRO
 
         # Create the new material with the desired name
         if "name" not in kwargs:
             kwargs["name"] = '-'.join([f'{m.name}({f})' for m, f in
-                             zip(materials, fracs)])
+                                       zip(materials, fracs)])
 
         new_mat = cls(**kwargs)
 
         # Compute atom fractions of nuclides and add them to the new material
-        tot_nuclides_per_cc = np.sum([dens for dens in nuclides_per_cc.values()])
+        tot_nuclides_per_cc = np.sum(
+            [dens for dens in nuclides_per_cc.values()])
         for nuc, atom_dens in nuclides_per_cc.items():
             new_mat.add_nuclide(nuc, atom_dens/tot_nuclides_per_cc, 'ao')
 
@@ -2294,7 +2317,6 @@ class Material(IDManagerMixin):
         )
 
         return depleted_materials_dict[self.id]
-
 
     def mean_free_path(self, energy: float) -> float:
         """Calculate the mean free path of neutrons in the material at a given
@@ -2438,7 +2460,8 @@ class Materials(cv.CheckedList):
 
         # Write the <material> elements.
         for material in sorted(set(self), key=lambda x: x.id):
-            element = material.to_xml_element(nuclides_to_ignore=nuclides_to_ignore)
+            element = material.to_xml_element(
+                nuclides_to_ignore=nuclides_to_ignore)
             clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')
             file.write((level+1)*spaces_per_level*' ')
@@ -2525,7 +2548,6 @@ class Materials(cv.CheckedList):
 
             return cls.from_xml_element(root)
 
-
     def deplete(
         self,
         multigroup_fluxes: Sequence[Sequence[float]],
@@ -2581,9 +2603,11 @@ class Materials(cv.CheckedList):
             mat.depletable = True
 
         if len(multigroup_fluxes) != len(self):
-            raise ValueError("multigroup_fluxes length must match number of materials")
+            raise ValueError(
+                "multigroup_fluxes length must match number of materials")
         if len(energy_group_structures) != len(self):
-            raise ValueError("energy_group_structures length must match number of materials")
+            raise ValueError(
+                "energy_group_structures length must match number of materials")
 
         chain = _get_chain(chain_file)
 

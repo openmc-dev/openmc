@@ -1667,6 +1667,11 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
                                   : data::mg.macro_xs_[p.material()];
   auto& macro_xs = data::mg.macro_xs_[p.material()];
 
+  // Macroscopic cross sections returned by get_xs are at the nominal material
+  // density, so reaction rates computed directly from them must include the
+  // cell density multiplier (as p.macro_xs() and atom_density already do)
+  double density_mult = p.density_mult();
+
   // Find the temperature and angle indices of interest
   int macro_t = p.mg_xs_cache().t;
   int macro_a = macro_xs.get_angle_index(p_u);
@@ -1764,8 +1769,9 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
                   nuc_xs.get_xs(MgxsType::SCATTER, p_g, nullptr, &p.mu(),
                     nullptr, nuc_t, nuc_a);
         } else {
-          score = flux * macro_xs.get_xs(MgxsType::SCATTER, p_g, nullptr,
-                           &p.mu(), nullptr, macro_t, macro_a);
+          score = density_mult * flux *
+                  macro_xs.get_xs(MgxsType::SCATTER, p_g, nullptr, &p.mu(),
+                    nullptr, macro_t, macro_a);
         }
       }
       break;
@@ -1794,8 +1800,8 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           score = atom_density * flux *
                   nuc_xs.get_xs(MgxsType::NU_SCATTER, p_g, nuc_t, nuc_a);
         } else {
-          score =
-            flux * macro_xs.get_xs(MgxsType::NU_SCATTER, p_g, macro_t, macro_a);
+          score = density_mult * flux *
+                  macro_xs.get_xs(MgxsType::NU_SCATTER, p_g, macro_t, macro_a);
         }
       }
       break;
@@ -1858,8 +1864,8 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           score = atom_density * flux *
                   nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a);
         } else {
-          score =
-            flux * macro_xs.get_xs(MgxsType::FISSION, p_g, macro_t, macro_a);
+          score = density_mult * flux *
+                  macro_xs.get_xs(MgxsType::FISSION, p_g, macro_t, macro_a);
         }
       }
       break;
@@ -1910,8 +1916,8 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           score = atom_density * flux *
                   nuc_xs.get_xs(MgxsType::NU_FISSION, p_g, nuc_t, nuc_a);
         } else {
-          score =
-            flux * macro_xs.get_xs(MgxsType::NU_FISSION, p_g, macro_t, macro_a);
+          score = density_mult * flux *
+                  macro_xs.get_xs(MgxsType::NU_FISSION, p_g, macro_t, macro_a);
         }
       }
       break;
@@ -1966,8 +1972,9 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           score = atom_density * flux *
                   nuc_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g, nuc_t, nuc_a);
         } else {
-          score = flux * macro_xs.get_xs(
-                           MgxsType::PROMPT_NU_FISSION, p_g, macro_t, macro_a);
+          score =
+            density_mult * flux *
+            macro_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g, macro_t, macro_a);
         }
       }
       break;
@@ -2084,8 +2091,9 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
                       nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr,
                         nullptr, &d, nuc_t, nuc_a);
             } else {
-              score = flux * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                               nullptr, nullptr, &d, macro_t, macro_a);
+              score = density_mult * flux *
+                      macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
+                        nullptr, nullptr, &d, macro_t, macro_a);
             }
             score_fission_delayed_dg(
               i_tally, d_bin, score, score_index, p.filter_matches());
@@ -2097,8 +2105,9 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
               flux * atom_density *
               nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nuc_t, nuc_a);
           } else {
-            score = flux * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                             macro_t, macro_a);
+            score = density_mult * flux *
+                    macro_xs.get_xs(
+                      MgxsType::DELAYED_NU_FISSION, p_g, macro_t, macro_a);
           }
         }
       }
@@ -2226,7 +2235,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
                       nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr,
                         nullptr, &d, nuc_t, nuc_a);
             } else {
-              score = flux *
+              score = density_mult * flux *
                       macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
                         nullptr, &d, macro_t, macro_a) *
                       macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
@@ -2246,7 +2255,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
                        nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr,
                          nullptr, &d, nuc_t, nuc_a);
             } else {
-              score += flux *
+              score += density_mult * flux *
                        macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
                          nullptr, &d, macro_t, macro_a) *
                        macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
@@ -2287,8 +2296,9 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           score = atom_density * flux *
                   nuc_xs.get_xs(MgxsType::KAPPA_FISSION, p_g, nuc_t, nuc_a);
         } else {
-          score = flux * macro_xs.get_xs(
-                           MgxsType::KAPPA_FISSION, p_g, macro_t, macro_a);
+          score =
+            density_mult * flux *
+            macro_xs.get_xs(MgxsType::KAPPA_FISSION, p_g, macro_t, macro_a);
         }
       }
       break;

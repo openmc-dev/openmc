@@ -12,6 +12,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/bounding_box.h"
+#include "openmc/box_tree.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/neighbor_list.h"
@@ -40,6 +41,7 @@ constexpr int32_t OP_UNION {std::numeric_limits<int32_t>::max() - 4};
 
 class Cell;
 class GeometryState;
+struct SurfaceState;
 class ParentCell;
 class CellInstance;
 class Universe;
@@ -66,12 +68,12 @@ public:
   //! \brief Determine if a cell contains the particle at a given location.
   //!
   //! The bounds of the cell are determined by a logical expression involving
-  //! surface half-spaces. The expression used is given in infix notation
+  //! surface half-spaces, stored as an expression tree of intersections and
+  //! unions with half-spaces as leaves.
   //!
   //! The function is split into two cases, one for simple cells (those
   //! involving only the intersection of half-spaces) and one for complex cells.
-  //! Both cases use short circuiting; however, in the case fo complex cells,
-  //! the complexity increases with the binary operators involved.
+  //! Both cases use short circuiting.
   //! \param r The 3D Cartesian coordinate to check.
   //! \param u A direction used to "break ties" the coordinates are very
   //!   close to a surface.
@@ -81,33 +83,47 @@ public:
   bool contains(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
-  std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface) const;
+  //! \param p Particle whose working space is used for complex regions, or
+  //!   nullptr outside of transport
+  std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, GeometryState* p = nullptr) const;
 
   //! Get the BoundingBox for this cell.
-  BoundingBox bounding_box(int32_t cell_id) const;
+  BoundingBox bounding_box() const;
 
   //! Get the CSG expression as a string
   std::string str() const;
 
-  //! Get a vector containing all the surfaces in the region expression
+  //! Get a vector containing all the half-spaces in the region expression
   vector<int32_t> surfaces() const;
 
-  //! Get size of surfaces
-  int n_surfaces() const { return expression_.size(); }
+  //! Get the number of half-spaces in the region expression
+  int n_surfaces() const;
 
   //----------------------------------------------------------------------------
   // Accessors
 
   //! Get Boolean of if the cell is simple or not
-  bool is_simple() const { return simple_; }
+  bool is_simple() const { return !complex_; }
 
 private:
   //----------------------------------------------------------------------------
-  // Private Methods
+  // Types
 
-  //! Get a vector of the region expression in postfix notation
-  vector<int32_t> generate_postfix(int32_t cell_id) const;
+  //! Node of the region expression tree. Nodes are stored in pre-order, so
+  //! the children of an operator node follow it, and the subtree of a node
+  //! ends just before index end. Children of an operator node are never
+  //! operator nodes of the same type.
+  struct Node {
+    enum class Type : int8_t { HALFSPACE, INTERSECTION, UNION };
+    Type type;
+    int32_t halfspace; //!< Signed position + 1 in surfaces (HALFSPACE nodes)
+    int32_t end;       //!< Index one past the last node of the subtree
+    int32_t parent;    //!< Index of the parent node (-1 for the root)
+  };
+
+  //----------------------------------------------------------------------------
+  // Private Methods
 
   //! Determine if a particle is inside the cell for a simple cell (only
   //! intersection operators)
@@ -115,45 +131,126 @@ private:
 
   //! Determine if a particle is inside the cell for a complex cell.
   //!
-  //! Uses the combination of half-spaces and binary operators to determine
-  //! if short circuiting can be used. Short circuiting uses the relative and
-  //! absolute depth of parentheses in the expression.
+  //! Evaluates the expression tree, skipping the remaining children of an
+  //! operator node as soon as its value is known.
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+
+  //! Evaluate the expression tree of a complex region
+  //!
+  //! Operator nodes are evaluated with short circuiting, skipping their
+  //! remaining children as soon as one of them determines their value.
+  //! \param in_halfspace Callable returning whether the point is in the
+  //!   half-space of a HALFSPACE node given its halfspace value
+  template<typename F>
+  bool evaluate(F&& in_halfspace) const;
+
+  //! Evaluate a subtree of the expression tree of a complex region
+  //! \param root Index of the node at the root of the subtree
+  //! \param in_halfspace As for evaluate
+  template<typename F>
+  bool evaluate_subtree(int32_t root, F&& in_halfspace) const;
+
+  //! Bounding box of the points where a node of the expression tree has the
+  //! given value
+  BoundingBox node_box(int32_t i, bool value) const;
+
+  //! Set up the boxes of the children of a root intersection, if it has
+  //! enough children that are false only within bounded boxes
+  //! \param simple Whether the region is an intersection of half-spaces
+  void set_child_boxes(bool simple);
+
+  //! Signed surface index + 1 of a half-space of the expression tree
+  int32_t surface_token(int32_t halfspace) const
+  {
+    int32_t i_surf = complex_->surfaces[std::abs(halfspace) - 1];
+    return halfspace > 0 ? i_surf : -i_surf;
+  }
 
   //! Find the nearest intersection with any surface in the region expression.
   std::pair<double, int32_t> distance_to_nearest_surface(Position r,
     Direction u, int32_t on_surface, bool ignore_coincident_surfaces) const;
 
   //! Find the oncoming boundary of this cell for a complex cell.
+  //! \param state Working space for the surfaces of the region
   std::pair<double, int32_t> distance_complex(
+    Position r, Direction u, int32_t on_surface, SurfaceState* state) const;
+
+  //! Find the oncoming boundary of this cell for a complex cell without
+  //! working space, evaluating every surface after each crossing.
+  std::pair<double, int32_t> distance_complex_uncached(
     Position r, Direction u, int32_t on_surface) const;
+  //! Find the first point along a ray where the value of a subtree changes.
+  //!
+  //! \tparam ALL Whether the subtree is the whole region
+  //! \param root Index of the node at the root of the subtree
+  //! \param first Position in the list of surfaces of the first surface of
+  //!   the subtree, whose surfaces are consecutive
+  //! \param n_slots Number of surfaces of the subtree
+  //! \param max_distance Distance beyond which the search stops
+  //! \param state Working space for the surfaces of the subtree
+  //! \param value Set to the value of the subtree at the start of the ray
+  //! \return Distance and signed surface index + 1 of the crossing, or INFTY
+  //!   if there is none within max_distance
+  template<bool ALL>
+  std::pair<double, int32_t> distance_subtree(int32_t root, int32_t first,
+    int32_t n_slots, Position r, Direction u, int32_t on_surface,
+    double max_distance, SurfaceState* state, bool& value) const;
 
-  //! BoundingBox if the particle is in a simple cell.
-  BoundingBox bounding_box_simple() const;
+  //! Determine if a point is inside a region with child boxes
+  bool contains_children(Position r, Direction u, int32_t on_surface) const;
 
-  //! BoundingBox if the particle is in a complex cell.
-  BoundingBox bounding_box_complex(vector<int32_t> postfix) const;
-
-  //! Enforce precedence between intersections and unions
-  void enforce_precedence();
-
-  //! Add parenthesis to enforce precedence
-  void add_parentheses(int64_t start);
-
-  //! Remove complement operators from the expression
-  void remove_complement_ops();
-
-  //! Remove complement operators by using DeMorgan's laws
-  void apply_demorgan(
-    vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
+  //! Find the oncoming boundary of a region with child boxes
+  //! \param state Working space for the surfaces of the largest child
+  //! \param result Distance and signed surface index + 1 of the boundary
+  //! \return Whether the ray starts in the region. If not, result is not set.
+  bool distance_children(Position r, Direction u, int32_t on_surface,
+    SurfaceState* state, std::pair<double, int32_t>& result) const;
 
   //----------------------------------------------------------------------------
   // Private Data
 
-  //! Definition of spatial region as Boolean expression of half-spaces
-  // TODO: Should this be a vector of some other type
-  vector<int32_t> expression_;
-  bool simple_; //!< Does the region contain only intersections?
+  //! Signed surface indices + 1 of the half-spaces in the region expression,
+  //! in order. A simple region is the intersection of these half-spaces.
+  vector<int32_t> halfspaces_;
+
+  //! Data needed only by complex regions, kept out of line so that regions,
+  //! and the cells holding them, stay small for simple cells
+  struct Complex {
+    vector<Node> nodes; //!< Expression tree in pre-order
+    //! Distinct surface indices + 1 of the half-spaces, in order of first
+    //! appearance (for a region with child boxes, distinct within each child)
+    vector<int32_t> surfaces;
+
+    // A region that is the intersection of many children, such as the space
+    // outside of many objects, is accelerated using the boxes outside of
+    // which each child is known to be true. Only the children whose boxes
+    // contain a point or are crossed by a ray need to be evaluated. These
+    // vectors are empty for other regions.
+
+    //! Node indices of the children of the root intersection. Children that
+    //! are always evaluated come first, starting with those that are single
+    //! half-spaces, followed by children with boxes.
+    vector<int32_t> children;
+    //! Number of children that are always evaluated
+    int32_t n_unboxed {0};
+    //! Signed surface indices + 1 of the children that are always evaluated
+    //! and are half-spaces, which are the first children
+    vector<int32_t> unboxed_halfspaces;
+    //! Whether the region is an intersection of half-spaces, in which case,
+    //! as for a simple region, a ray is taken to start in the region
+    bool simple {false};
+    //! Tree over the boxes outside of which the children with boxes are true.
+    //! Item i of the tree is child n_unboxed + i.
+    BoxTree child_tree;
+    //! The surfaces of child k are surfaces[slot_offsets[k]] to
+    //! surfaces[slot_offsets[k + 1] - 1]
+    vector<int32_t> slot_offsets;
+    //! Most surfaces of a child
+    int32_t max_child_surfaces {0};
+  };
+
+  //! Data of a complex region (null for a simple region)
+  unique_ptr<Complex> complex_;
 };
 
 //==============================================================================
@@ -439,7 +536,7 @@ public:
   std::pair<double, int32_t> distance(Position r, Direction u,
     int32_t on_surface, GeometryState* p) const override
   {
-    return region_.distance(r, u, on_surface);
+    return region_.distance(r, u, on_surface, p);
   }
 
   bool contains(Position r, Direction u, int32_t on_surface) const override
@@ -447,25 +544,13 @@ public:
     return region_.contains(r, u, on_surface);
   }
 
-  BoundingBox bounding_box() const override
-  {
-    return region_.bounding_box(id_);
-  }
+  BoundingBox bounding_box() const override { return region_.bounding_box(); }
 
   void to_hdf5_inner(hid_t group_id) const override;
 
   bool is_simple() const override { return region_.is_simple(); }
 
   virtual GeometryType geom_type() const override { return GeometryType::CSG; }
-
-protected:
-  //! Returns the beginning position of a parenthesis block (immediately before
-  //! two surface tokens) in the RPN given a starting position at the end of
-  //! that block (immediately after two surface tokens)
-  //! \param start Starting position of the search
-  //! \param rpn The rpn being searched
-  static vector<int32_t>::iterator find_left_parenthesis(
-    vector<int32_t>::iterator start, const vector<int32_t>& rpn);
 
 private:
   Region region_;

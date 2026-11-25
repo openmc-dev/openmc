@@ -4,6 +4,7 @@ import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from .filter import Filter
+from .polynomial import legendre_from_expcoef, Zernike, ZernikeRadial
 from ._xml import get_text
 
 
@@ -53,6 +54,26 @@ class ExpansionFilter(Filter):
         filter_id = int(get_text(elem, "id"))
         order = int(get_text(elem, "order"))
         return cls(order, filter_id=filter_id)
+
+    def functional_expansion(self, coefficients):
+        """Construct a callable function from expansion coefficients.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coefficients : Iterable of float
+            Expansion coefficients, typically obtained from tally mean values
+
+        Returns
+        -------
+        callable
+            A function that evaluates the expansion at given coordinates
+
+        """
+        raise NotImplementedError(
+            f"functional_expansion is not implemented for {type(self).__name__}"
+        )
 
     def merge(self, other):
         """Merge this filter with another.
@@ -122,6 +143,32 @@ class LegendreFilter(ExpansionFilter):
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
         self.bins = [f'P{i}' for i in range(order + 1)]
+
+    def functional_expansion(self, coefficients):
+        r"""Construct a callable Legendre series from expansion coefficients.
+
+        The resulting function evaluates
+
+        .. math::
+            f(\mu) = \sum_{n=0}^{N} a_n P_n(\mu)
+
+        where :math:`a_n` are the normalized coefficients and :math:`P_n` are
+        the Legendre polynomials over :math:`[-1, 1]`.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coefficients : Iterable of float
+            Expansion coefficients, typically obtained from tally mean values
+
+        Returns
+        -------
+        numpy.polynomial.Legendre
+            A callable Legendre series on :math:`[-1, 1]`
+
+        """
+        return legendre_from_expcoef(coefficients)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -270,6 +317,35 @@ class SpatialLegendreFilter(ExpansionFilter):
         minimum = float(get_text(elem, "min"))
         maximum = float(get_text(elem, "max"))
         return cls(order, axis, minimum, maximum, filter_id=filter_id)
+
+    def functional_expansion(self, coefficients):
+        r"""Construct a callable Legendre series from expansion coefficients.
+
+        The resulting function evaluates
+
+        .. math::
+            f(x) = \sum_{n=0}^{N} a_n P_n(x)
+
+        where :math:`a_n` are the normalized coefficients, :math:`P_n` are the
+        Legendre polynomials, and :math:`x` is mapped from the filter's
+        ``[minimum, maximum]`` range to :math:`[-1, 1]`.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coefficients : Iterable of float
+            Expansion coefficients, typically obtained from tally mean values
+
+        Returns
+        -------
+        numpy.polynomial.Legendre
+            A callable Legendre series on ``[minimum, maximum]``
+
+        """
+        return legendre_from_expcoef(
+            coefficients, domain=(self.minimum, self.maximum)
+        )
 
 
 class SphericalHarmonicsFilter(ExpansionFilter):
@@ -526,6 +602,34 @@ class ZernikeFilter(ExpansionFilter):
         r = float(get_text(elem, "r"))
         return cls(order, x, y, r, filter_id=filter_id)
 
+    def functional_expansion(self, coefficients):
+        r"""Construct a callable Zernike polynomial from expansion coefficients.
+
+        The resulting function evaluates
+
+        .. math::
+            f(\rho, \theta) = \sum_{j} a_j Z_n^m(\rho, \theta)
+
+        where :math:`a_j` are the normalized coefficients and :math:`Z_n^m` are
+        the Zernike polynomials over the unit disk scaled to the filter's
+        radius.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coefficients : Iterable of float
+            Expansion coefficients, typically obtained from tally mean values
+
+        Returns
+        -------
+        openmc.Zernike
+            A callable that accepts ``(r, theta)`` in the filter's coordinate
+            system (centered at ``(self.x, self.y)``)
+
+        """
+        return Zernike(coefficients, radius=self.r)
+
 
 class ZernikeRadialFilter(ZernikeFilter):
     r"""Score the :math:`m = 0` (radial variation only) Zernike moments up to
@@ -585,3 +689,32 @@ class ZernikeRadialFilter(ZernikeFilter):
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
         self.bins = [f'Z{n},0' for n in range(0, order+1, 2)]
+
+    def functional_expansion(self, coefficients):
+        r"""Construct a callable radial Zernike polynomial from expansion
+        coefficients.
+
+        The resulting function evaluates
+
+        .. math::
+            f(\rho) = \sum_{k} a_k R_{2k}^0(\rho)
+
+        where :math:`a_k` are the normalized coefficients and
+        :math:`R_{2k}^0` are the even-order radial Zernike polynomials over
+        the unit disk scaled to the filter's radius.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coefficients : Iterable of float
+            Expansion coefficients, typically obtained from tally mean values
+
+        Returns
+        -------
+        openmc.ZernikeRadial
+            A callable that accepts ``r`` in the filter's coordinate system
+            (centered at ``(self.x, self.y)``)
+
+        """
+        return ZernikeRadial(coefficients, radius=self.r)

@@ -204,3 +204,103 @@ def test_surface_filter_do_not_tally_virtual_surface_crossing(run_in_tmpdir):
 
     # Every particle crosses exit the cube with weight 1, so current = 1.0
     assert current_mean.sum() == pytest.approx(1.0, rel=1e-8)
+
+
+def test_surface_flux_rotated_universe(run_in_tmpdir):
+    """Surface flux uses the surface normal in the root coordinate frame.
+
+    The plane is defined inside a universe that is filled into a cell rotated
+    by 45 degrees about z, so the normal the surface reports in its own frame
+    is (1, 0, 0) while its normal in the root frame is 45 degrees away from
+    the particle direction. The surface-crossing estimator must use the
+    latter, giving w/|mu| = 1/cos(45 deg).
+    """
+    openmc.reset_auto_ids()
+
+    # Universe split by a plane whose local normal is +x
+    xplane = openmc.XPlane(0.0)
+    inner1 = openmc.Cell(region=-xplane)
+    inner2 = openmc.Cell(region=+xplane)
+    inner_univ = openmc.Universe(cells=[inner1, inner2])
+
+    sph = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    root_cell = openmc.Cell(region=-sph, fill=inner_univ)
+    root_cell.rotation = (0.0, 0.0, 45.0)
+
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([root_cell])
+
+    src = openmc.IndependentSource()
+    src.space = openmc.stats.Point((-5.0, 0.0, 0.0))
+    src.angle = openmc.stats.Monodirectional((1.0, 0.0, 0.0))
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 1
+    model.settings.particles = 100
+    model.settings.source = src
+
+    flux_tally = openmc.Tally()
+    flux_tally.filters = [openmc.SurfaceFilter([xplane])]
+    flux_tally.scores = ['flux']
+
+    current_tally = openmc.Tally()
+    current_tally.filters = [openmc.SurfaceFilter([xplane])]
+    current_tally.scores = ['current']
+
+    model.tallies = [flux_tally, current_tally]
+    model.run(apply_tally_results=True)
+
+    mu = math.cos(math.radians(45.0))
+    assert flux_tally.mean.flat[0] == pytest.approx(1.0 / mu)
+    # The net current is direction-signed, so it is unaffected by the rotation
+    assert current_tally.mean.flat[0] == pytest.approx(1.0)
+
+
+def test_lattice_surface_flux_rotated(run_in_tmpdir):
+    """Lattice boundary normals are also taken in the root coordinate frame.
+
+    Same setup as test_surface_flux_rotated_universe, except the crossing is a
+    lattice tile boundary rather than a CSG surface. RectLattice reports its
+    boundary normal in the lattice's own frame, which here is rotated by 45
+    degrees relative to the particle direction.
+    """
+    openmc.reset_auto_ids()
+
+    cell1 = openmc.Cell()
+    cell2 = openmc.Cell()
+    cell_outer = openmc.Cell()
+    univ1 = openmc.Universe(cells=[cell1])
+    univ2 = openmc.Universe(cells=[cell2])
+    univ_outer = openmc.Universe(cells=[cell_outer])
+
+    lattice = openmc.RectLattice()
+    lattice.lower_left = (-2.0, -10.0, -10.0)
+    lattice.pitch = (2.0, 20.0, 20.0)
+    lattice.universes = [[[univ1, univ2]]]
+    lattice.outer = univ_outer
+
+    sph = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    root_cell = openmc.Cell(region=-sph, fill=lattice)
+    root_cell.rotation = (0.0, 0.0, 45.0)
+
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([root_cell])
+
+    src = openmc.IndependentSource()
+    src.space = openmc.stats.Point((-5.0, 0.0, 0.0))
+    src.angle = openmc.stats.Monodirectional((1.0, 0.0, 0.0))
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 1
+    model.settings.particles = 100
+    model.settings.source = src
+
+    tally = openmc.Tally()
+    tally.filters = [openmc.CellFromFilter([cell1]), openmc.CellFilter([cell2])]
+    tally.scores = ['flux']
+    model.tallies = [tally]
+
+    model.run(apply_tally_results=True)
+
+    mu = math.cos(math.radians(45.0))
+    assert tally.mean.flat[0] == pytest.approx(1.0 / mu)

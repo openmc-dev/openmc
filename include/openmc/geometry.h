@@ -8,6 +8,7 @@
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
+#include "openmc/position.h"
 #include "openmc/random_ray/source_region.h" // For hash_combine
 #include "openmc/vector.h"
 
@@ -85,6 +86,23 @@ int check_cell_overlap(GeometryState& p, bool error = true);
 //==============================================================================
 
 int cell_instance_at_level(const GeometryState& p, int level);
+
+//==============================================================================
+//! Rotate a direction from a local coordinate frame into the root frame
+//!
+//! Surface and lattice normals are expressed in the local coordinate frame of
+//! the universe that contains them. Comparing such a normal against the
+//! particle's direction of travel (which is stored in the root frame at
+//! coordinate level zero) requires undoing the rotations that were applied
+//! while descending to \c level.
+//!
+//! \param p A particle whose coordinate levels give the chain of rotations
+//! \param level The level (zero indexed) that \c u is expressed in
+//! \param u A direction in the local frame of \c level
+//! \return The same direction expressed in the root coordinate frame
+//==============================================================================
+
+Direction rotate_to_root(const GeometryState& p, int level, Direction u);
 
 //==============================================================================
 //! Locate a particle in the geometry tree and set its geometry data fields.

@@ -58,6 +58,9 @@ class MGXSTestHarness(PyAPITestHarness):
                 df = mgxs.get_pandas_dataframe()
                 outstr += mgxs_type + '\n' + df.to_string() + '\n'
 
+                # Printing must work for every type, delayed ones included
+                mgxs.print_xs()
+
         # Hash the results if necessary
         if hash_output:
             sha512 = hashlib.sha512()

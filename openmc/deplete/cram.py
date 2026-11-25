@@ -97,7 +97,7 @@ class IPFCramSolver(DepSystemSolver):
             # Pre-compute LU factorizations and reuse them across substeps.
             solvers = [splu(A - theta * ident).solve for theta in self.theta]
 
-        y = n0.copy()
+        y = np.array(n0, dtype=np.float64)
         for _ in range(substeps):
             for alpha, solve in zip(self.alpha, solvers):
                 y += 2 * np.real(alpha * solve(y))

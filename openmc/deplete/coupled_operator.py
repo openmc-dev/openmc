@@ -26,7 +26,9 @@ from .pool import _distribute
 from .results import Results
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
-    FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper,
+    FissionYieldCutoffHelper, AveragedFissionYieldHelper,
+    LogLinInterpolateFissionYieldHelper, LinLinInterpolateFissionYieldHelper,
+    EnergyScoreHelper,
     SourceRateHelper, FluxCollapseHelper)
 
 
@@ -123,13 +125,15 @@ class CoupledOperator(OpenMCOperator):
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable
         if ``"normalization_mode" == "fission-q"``
-    fission_yield_mode : {"constant", "cutoff", "average"}
+    fission_yield_mode : {"constant", "cutoff", "average", "loglin", "linlin"}
         Key indicating what fission product yield scheme to use. The
         key determines what fission energy helper is used:
 
         * "constant": :class:`~openmc.deplete.helpers.ConstantFissionYieldHelper`
         * "cutoff": :class:`~openmc.deplete.helpers.FissionYieldCutoffHelper`
         * "average": :class:`~openmc.deplete.helpers.AveragedFissionYieldHelper`
+        * "loglin": :class:`~openmc.deplete.helpers.LogLinInterpolateFissionYieldHelper`
+        * "linlin": :class:`~openmc.deplete.helpers.LinLinInterpolateFissionYieldHelper`
 
         The documentation on these classes describe their methodology
         and differences. Default: ``"constant"``
@@ -201,6 +205,8 @@ class CoupledOperator(OpenMCOperator):
         "average": AveragedFissionYieldHelper,
         "constant": ConstantFissionYieldHelper,
         "cutoff": FissionYieldCutoffHelper,
+        "loglin": LogLinInterpolateFissionYieldHelper,
+        "linlin": LinLinInterpolateFissionYieldHelper,
     }
 
     def __init__(self, model, chain_file=None, prev_results=None,
@@ -468,6 +474,12 @@ class CoupledOperator(OpenMCOperator):
                 for nuc in number_i.nuclides:
                     if nuc in self.nuclides_with_data:
                         val = 1.0e-24 * number_i.get_atom_density(mat, nuc)
+
+                        # Guard against non-finite values that can arise when
+                        # depletion solver linear systems become ill-conditioned.
+                        if not np.isfinite(val):
+                            number_i[mat, nuc] = 0.0
+                            continue
 
                         # If nuclide is zero, do not add to the problem.
                         if val > 0.0:

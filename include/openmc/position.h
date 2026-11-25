@@ -204,6 +204,17 @@ inline Position operator/(double a, Position b)
   return b /= a;
 }
 
+inline bool operator<(Position a, Position b)
+{
+  if (a[0] != b[0])
+    return (a[0] < b[0]);
+  if (a[1] != b[1])
+    return (a[1] < b[1]);
+  if (a[2] != b[2])
+    return (a[2] < b[2]);
+  return false;
+}
+
 inline Position Position::reflect(Position n) const
 {
   const double projection = n.dot(*this);

@@ -5,6 +5,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/mesh.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
@@ -25,6 +26,8 @@ unique_ptr<UnitSphereDistribution> UnitSphereDistribution::create(
     return UPtrAngle {new Monodirectional(node)};
   } else if (type == "mu-phi") {
     return UPtrAngle {new PolarAzimuthal(node)};
+  } else if (type == "mesh-angular") {
+    return UPtrAngle {new MeshAngular(node)};
   } else {
     fatal_error(fmt::format(
       "Invalid angular distribution for external source: {}", type));
@@ -187,6 +190,96 @@ double Isotropic::evaluate(Direction u) const
 std::pair<Direction, double> Monodirectional::sample(uint64_t* seed) const
 {
   return {u_ref_, 1.0};
+}
+
+//==============================================================================
+// MeshAngular implementation
+//==============================================================================
+
+MeshAngular::MeshAngular(pugi::xml_node node) : UnitSphereDistribution {node}
+{
+  auto spatial_type = get_node_value(node, "type", true, true);
+  if (spatial_type != "mesh_angular") {
+    fatal_error(
+      fmt::format("Incorrect angular type '{}' for a MeshAngular distribution",
+        spatial_type));
+  }
+
+  int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
+  // Get pointer to spatial distribution
+  mesh_idx_ = model::mesh_map.at(mesh_id);
+
+  check_element_types();
+
+  size_t n_bins = this->n_sources();
+  std::vector<double> strengths(n_bins, 1.0);
+
+  // Create cdfs for sampling for an element over a mesh
+  if (check_for_node(node, "strengths")) {
+    strengths = get_node_array<double>(node, "strengths");
+    if (strengths.size() != n_bins) {
+      fatal_error(
+        fmt::format("Number of entries in the source strengths array {} does "
+                    "not match the number of entities in mesh {} ({}).",
+          strengths.size(), mesh_id, n_bins));
+    }
+  }
+
+  elem_idx_dist_.assign(strengths);
+
+  if (check_for_node(node, "bias")) {
+    pugi::xml_node bias_node = node.child("bias");
+
+    if (check_for_node(bias_node, "strengths")) {
+      std::vector<double> bias_strengths(n_bins, 1.0);
+      bias_strengths = get_node_array<double>(node, "strengths");
+
+      if (bias_strengths.size() != n_bins) {
+        fatal_error(
+          fmt::format("Number of entries in the bias strengths array {} does "
+                      "not match the number of entities in mesh {} ({}).",
+            bias_strengths.size(), mesh_id, n_bins));
+      }
+
+      // Compute importance weights
+      weight_ = compute_importance_weights(strengths, bias_strengths);
+
+      // Re-initialize DiscreteIndex with bias strengths for sampling
+      elem_idx_dist_.assign(bias_strengths);
+    } else {
+      fatal_error(fmt::format(
+        "Bias node for mesh {} found without strengths array.", mesh_id));
+    }
+  }
+}
+
+void MeshAngular::check_element_types() const
+{
+  const auto trimesh_ptr =
+    dynamic_cast<const UnitSphereTriangularMesh*>(this->mesh());
+  if (!trimesh_ptr) {
+    fatal_error("MeshAngular distribution must use a mesh of type "
+                "UnitSphereTriangularMesh.");
+  }
+}
+
+int32_t MeshAngular::sample_element_index(uint64_t* seed) const
+{
+  return elem_idx_dist_.sample(seed);
+}
+
+std::pair<int32_t, Direction> MeshAngular::sample_mesh(uint64_t* seed) const
+{
+  // Sample the CDF defined in initialization above
+  int32_t elem_idx = this->sample_element_index(seed);
+  return {elem_idx, mesh()->sample_element(elem_idx, seed)};
+}
+
+std::pair<Direction, double> MeshAngular::sample(uint64_t* seed) const
+{
+  auto [elem_idx, u] = this->sample_mesh(seed);
+  double wgt = weight_.empty() ? 1.0 : weight_[elem_idx];
+  return {u, wgt};
 }
 
 } // namespace openmc

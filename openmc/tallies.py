@@ -2175,14 +2175,15 @@ class Tally(IDManagerMixin):
         # Build a new array shape with one dimension per filter or expand
         # multidimensional filters if desired
         new_shape = tuple()
-        idx0 = None
-        for i, f in enumerate(self.filters):
+        mesh_axes = []
+        for f in self.filters:
             if expand_dims:
                 # Mesh filter indices are backwards so we need to flip them
                 if type(f) in {MeshFilter, MeshBornFilter}:
                     fshape = f.shape[::-1]
+                    idx0 = len(new_shape)
+                    mesh_axes.append((idx0, idx0 + len(fshape) - 1))
                     new_shape += fshape
-                    idx0, idx1 = i, i + len(fshape) - 1
                 else:
                     new_shape += f.shape
             else:
@@ -2193,9 +2194,9 @@ class Tally(IDManagerMixin):
         # Reshape the data with one dimension for each filter
         data = np.reshape(data, new_shape)
 
-        # If we had a MeshFilter we should swap the axes to have the same shape
-        # for the data and the filter
-        if idx0 is not None:
+        # Restore the spatial axis order for every mesh filter. Earlier
+        # expanded filters may contribute more than one array dimension.
+        for idx0, idx1 in mesh_axes:
             data = np.swapaxes(data, idx0, idx1)
 
         return data

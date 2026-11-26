@@ -8,9 +8,11 @@ from os import remove
 from pathlib import Path
 from unittest.mock import patch
 
+from lxml import etree as ET
 import pytest
 import openmc
 from openmc.deplete import MicroXS, get_microxs_and_flux
+from openmc.mixin import IDManagerMixin, IDWarning
 import numpy as np
 
 ONE_GROUP_XS = Path(__file__).parents[1] / "micro_xs_simple.csv"
@@ -188,6 +190,344 @@ def test_hybrid_tally_setup(include_model_tallies):
     assert len(ef.values) == 2
     assert ef.values[0] == pytest.approx(energies[0])
     assert ef.values[-1] == pytest.approx(energies[-1])
+
+
+@pytest.mark.parametrize('split_xml', [False, True])
+@pytest.mark.parametrize('mode', [
+    'explicit', 'settings-xml-reset', 'model-xml-reset', 'auto', 'shared',
+])
+def test_microxs_weight_window_mesh(tmp_path, monkeypatch, mode, split_xml):
+    monkeypatch.setattr(openmc.MeshBase, 'used_ids', set())
+    monkeypatch.setattr(openmc.MeshBase, 'next_id', 1)
+    model = openmc.Model(openmc.Geometry([openmc.Cell()]))
+    ww_mesh = openmc.RegularMesh()
+    ww_mesh.dimension = (1, 1, 1)
+    ww_mesh.lower_left = (-1., -1., -1.)
+    ww_mesh.upper_right = (1., 1., 1.)
+    model.settings.weight_windows = openmc.WeightWindows(
+        ww_mesh, [0.5], upper_bound_ratio=2., energy_bounds=[0., 2.e7])
+
+    if mode.endswith('-reset'):
+        original = tmp_path / 'original'
+        model.export_to_xml(original)
+        openmc.MeshBase.reset_ids()
+        if mode == 'settings-xml-reset':
+            model.settings = openmc.Settings.from_xml(original / 'settings.xml')
+        else:
+            model = openmc.Model.from_xml(
+                geometry=original / 'geometry.xml',
+                materials=original / 'materials.xml',
+                settings=original / 'settings.xml',
+                tallies=original / 'tallies.xml')
+        ww_mesh = model.settings.weight_windows[0].mesh
+        assert openmc.RegularMesh().id != ww_mesh.id
+        openmc.MeshBase.reset_ids()
+
+    assert ww_mesh.id == 1
+    if mode == 'shared':
+        domain = ww_mesh
+    else:
+        if mode == 'explicit':
+            with pytest.warns(IDWarning, match=r'MeshBase.*id=1'):
+                domain = openmc.RegularMesh(mesh_id=1)
+        else:
+            domain = openmc.RegularMesh()
+        assert (domain.id == ww_mesh.id) is (mode != 'auto')
+        domain.dimension = (2, 1, 1)
+        domain.lower_left = ww_mesh.lower_left
+        domain.upper_right = ww_mesh.upper_right
+
+    def export(**kwargs):
+        if split_xml:
+            model.export_to_xml(tmp_path)
+        else:
+            model.export_to_model_xml(tmp_path)
+        raise StopIteration
+
+    monkeypatch.setattr(model, 'run', export)
+    with pytest.raises(StopIteration):
+        get_microxs_and_flux(
+            model, domain, nuclides=['H1'], reactions=['(n,gamma)'],
+            chain_file=CHAIN_FILE)
+
+    if split_xml:
+        settings = ET.parse(tmp_path / 'settings.xml').getroot()
+        tallies = ET.parse(tmp_path / 'tallies.xml').getroot()
+    else:
+        root = ET.parse(tmp_path / 'model.xml').getroot()
+        settings, tallies = root.find('settings'), root.find('tallies')
+    ww_id = settings.findtext('weight_windows/mesh')
+    flux_id = tallies.findtext("filter[@type='mesh']/bins")
+    meshes = {m.get('id'): m for m in settings.findall('mesh')}
+    for mesh in tallies.findall('mesh'):
+        meshes.setdefault(mesh.get('id'), mesh)
+
+    assert meshes[ww_id].findtext('dimension') == '1 1 1'
+    assert meshes[flux_id].findtext('dimension') == (
+        '1 1 1' if mode == 'shared' else '2 1 1')
+    assert (flux_id == ww_id) is (mode == 'shared')
+    if not split_xml:
+        assert len(settings.findall('mesh') + tallies.findall('mesh')) == (
+            1 if mode == 'shared' else 2)
+    assert model.settings.weight_windows[0].mesh is ww_mesh
+    assert ww_mesh.id == 1
+    assert domain.id == (2 if mode == 'auto' else 1)
+
+
+@pytest.mark.parametrize('kind', [
+    'rectilinear', 'cylindrical', 'spherical', 'unstructured',
+])
+@pytest.mark.parametrize('with_weight_windows', [False, True])
+def test_microxs_mesh_collision_with_model_tally(
+    tmp_path, monkeypatch, kind, with_weight_windows
+):
+    model = openmc.Model(openmc.Geometry([openmc.Cell()]))
+    existing_mesh = openmc.RegularMesh()
+    existing_mesh.dimension = (1, 1, 1)
+    existing_mesh.lower_left = (-1., -1., -1.)
+    existing_mesh.upper_right = (1., 1., 1.)
+    existing_filter = openmc.MeshFilter(existing_mesh)
+    model.tallies = [openmc.Tally()]
+    model.tallies[0].filters = [existing_filter]
+    model.tallies[0].scores = ['flux']
+    original_tallies = model.tallies
+    original_tally = model.tallies[0]
+
+    if with_weight_windows:
+        other_mesh = openmc.RegularMesh()
+        other_mesh.dimension = (1, 2, 1)
+        other_mesh.lower_left = existing_mesh.lower_left
+        other_mesh.upper_right = existing_mesh.upper_right
+        model.settings.weight_windows = [
+            openmc.WeightWindows(
+                mesh, [0.5] * mesh.n_elements, upper_bound_ratio=2.,
+                energy_bounds=[0., 2.e7])
+            for mesh in (other_mesh, existing_mesh)
+        ]
+    original_windows = model.settings.weight_windows
+
+    mesh_id = existing_mesh.id
+    constructors = {
+        'rectilinear': (openmc.RectilinearMesh, ()),
+        'cylindrical': (openmc.CylindricalMesh, ([0., 1.], [0., 1.5])),
+        'spherical': (openmc.SphericalMesh, ([0., 1.],)),
+        'unstructured': (openmc.UnstructuredMesh, ('mesh.e',)),
+    }
+    mesh_type, args = constructors[kind]
+    with pytest.warns(IDWarning, match=rf'MeshBase.*id={mesh_id}'):
+        domain = mesh_type(*args, mesh_id=mesh_id)
+    if kind == 'rectilinear':
+        domain.x_grid = domain.y_grid = domain.z_grid = [0., 1.]
+    domain_filter = openmc.MeshFilter(domain)
+    domain_filter.translation = (1., 2., 3.)
+    domain_filter_id = domain_filter.id
+
+    def export(**kwargs):
+        model.export_to_model_xml(tmp_path)
+        raise StopIteration
+
+    monkeypatch.setattr(model, 'run', export)
+    with pytest.raises(StopIteration):
+        get_microxs_and_flux(
+            model, domain_filter, nuclides=['H1'], reactions=['(n,gamma)'],
+            chain_file=CHAIN_FILE, include_model_tallies=True)
+
+    root = ET.parse(tmp_path / 'model.xml').getroot()
+    tallies = root.find('tallies')
+    flux_tally = tallies.find("tally[@name='MicroXS flux 0']")
+    flux_filter = tallies.find(f"filter[@id='{flux_tally.findtext('filters')}']")
+    flux_mesh_id = flux_filter.findtext('bins')
+    assert flux_mesh_id != str(mesh_id)
+    assert tallies.find(f"mesh[@id='{flux_mesh_id}']").get('type') == kind
+    assert flux_filter.get('translation') == '1.0 2.0 3.0'
+    if with_weight_windows:
+        settings = root.find('settings')
+        assert [w.findtext('mesh') for w in settings.findall('weight_windows')] == [
+            str(other_mesh.id), str(mesh_id)]
+        assert settings.find(f"mesh[@id='{mesh_id}']").findtext('dimension') == '1 1 1'
+    assert model.settings.weight_windows is original_windows
+    assert model.tallies is original_tallies
+    assert len(model.tallies) == 1
+    assert model.tallies[0] is original_tally
+    assert original_tally.filters[0] is existing_filter
+    assert domain_filter.id == domain_filter_id
+    assert domain_filter.mesh is domain
+    assert domain.id == mesh_id
+
+
+@pytest.mark.parametrize('split_xml', [False, True])
+@pytest.mark.parametrize('energies', [None, [0., 1., 2.e7]],
+                         ids=['no-energy', 'energy'])
+@pytest.mark.parametrize('include_model_tallies', [True, False],
+                         ids=['retained-tally', 'domain-sequence'])
+def test_microxs_filter_ids_after_reset(
+    tmp_path, monkeypatch, include_model_tallies, energies, split_xml
+):
+    # Isolate the ID pools so exercising the public reset is local to this test.
+    for cls in IDManagerMixin.__subclasses__():
+        monkeypatch.setattr(cls, 'used_ids', set())
+        monkeypatch.setattr(cls, 'next_id', 1)
+
+    cell = openmc.Cell()
+    model = openmc.Model(openmc.Geometry([cell]))
+    ww_mesh = openmc.RegularMesh(mesh_id=1)
+    ww_mesh.dimension = (1, 1, 1)
+    ww_mesh.lower_left = (-1., -1., -1.)
+    ww_mesh.upper_right = (1., 1., 1.)
+    windows = openmc.WeightWindows(
+        ww_mesh, [0.5], upper_bound_ratio=2., energy_bounds=[0., 2.e7])
+    model.settings.weight_windows = windows
+
+    if include_model_tallies:
+        existing_filter = openmc.MeshFilter(ww_mesh, filter_id=2)
+        tally = openmc.Tally(tally_id=10)
+        tally.filters = [existing_filter]
+        tally.scores = ['flux']
+        model.tallies = [tally]
+    else:
+        existing_filter = openmc.CellFilter(cell, filter_id=1)
+
+    original_tallies = model.tallies
+    existing_filter_id = existing_filter.id
+    openmc.reset_auto_ids()
+    assert existing_filter_id not in openmc.Filter.used_ids
+    domain = openmc.RegularMesh()
+    domain.dimension = (2, 1, 1)
+    domain.lower_left = ww_mesh.lower_left
+    domain.upper_right = ww_mesh.upper_right
+    assert domain.id == ww_mesh.id == 1
+    domains = domain
+    if not include_model_tallies:
+        domain_filter = openmc.MeshFilter(domain, filter_id=50)
+        domains = [domain_filter, existing_filter]
+
+    def export(**kwargs):
+        if split_xml:
+            model.export_to_xml(tmp_path)
+        else:
+            model.export_to_model_xml(tmp_path)
+        raise StopIteration
+
+    monkeypatch.setattr(model, 'run', export)
+    with pytest.raises(StopIteration):
+        get_microxs_and_flux(
+            model, domains, nuclides=['H1'], reactions=['(n,gamma)'],
+            energies=energies, chain_file=CHAIN_FILE,
+            include_model_tallies=include_model_tallies)
+
+    if split_xml:
+        settings = ET.parse(tmp_path / 'settings.xml').getroot()
+        tallies = ET.parse(tmp_path / 'tallies.xml').getroot()
+    else:
+        root = ET.parse(tmp_path / 'model.xml').getroot()
+        settings, tallies = root.find('settings'), root.find('tallies')
+
+    filter_elements = tallies.findall('filter')
+    filters = {f.get('id'): f for f in filter_elements}
+    assert len(filters) == len(filter_elements) == (2 if energies is None else 3)
+    for tally_xml in tallies.findall('tally'):
+        ids = tally_xml.findtext('filters').split()
+        assert len(set(ids)) == len(ids)
+        assert all(i in filters for i in ids)
+    flux_ids = tallies.findtext("tally[@name='MicroXS flux 0']/filters").split()
+    assert filters[flux_ids[0]].get('type') == 'mesh'
+    if energies is not None:
+        energy_xml = filters[flux_ids[1]]
+        assert energy_xml.get('type') == 'energy'
+        assert [float(x) for x in energy_xml.findtext('bins').split()] == energies
+    assert existing_filter_id != int(flux_ids[0])
+    assert int(flux_ids[0]) in openmc.Filter.used_ids
+    assert existing_filter_id not in openmc.Filter.used_ids
+
+    ww_id = settings.findtext('weight_windows/mesh')
+    assert ww_id == '1'
+    assert settings.find(f"mesh[@id='{ww_id}']").findtext('dimension') == '1 1 1'
+    mesh_id = filters[flux_ids[0]].findtext('bins')
+    assert mesh_id != ww_id
+    assert tallies.find(f"mesh[@id='{mesh_id}']").findtext('dimension') == '2 1 1'
+    assert model.settings.weight_windows[0] is windows
+    assert windows.mesh is ww_mesh
+    assert ww_mesh.id == domain.id == 1
+    assert model.tallies is original_tallies
+    assert existing_filter.id == existing_filter_id
+    if include_model_tallies:
+        assert model.tallies[0].filters[0] is existing_filter
+        assert existing_filter.mesh is ww_mesh
+        assert tallies.findtext("tally[@id='10']/filters") == str(existing_filter_id)
+        assert filters[str(existing_filter_id)].findtext('bins') == ww_id
+    else:
+        assert not model.tallies
+        assert domain_filter.id == 50
+        assert domain_filter.id in openmc.Filter.used_ids
+        assert domain_filter.mesh is domain
+        cell_flux_ids = tallies.findtext("tally[@name='MicroXS flux 1']/filters")
+        assert cell_flux_ids.split()[0] == str(existing_filter_id)
+        assert filters[str(existing_filter_id)].findtext('bins') == str(cell.id)
+
+
+@pytest.mark.parametrize('split_xml', [False, True], ids=['combined', 'split'])
+@pytest.mark.parametrize('energies', [None, [0., 1.e5, 2.e7]],
+                         ids=['no-energy', 'energy'])
+@pytest.mark.parametrize('retained_id', [1, 2], ids=['flux-id', 'rr-id'])
+def test_microxs_tally_ids_after_reset(
+    tmp_path, monkeypatch, retained_id, energies, split_xml
+):
+    for cls in IDManagerMixin.__subclasses__():
+        monkeypatch.setattr(cls, 'used_ids', set())
+        monkeypatch.setattr(cls, 'next_id', 1)
+
+    cell = openmc.Cell()
+    model = openmc.Model(openmc.Geometry([cell]))
+    if retained_id == 2:
+        openmc.Tally()  # Consume the ID normally assigned to the flux tally.
+    retained_tally = openmc.Tally(name='retained')
+    retained_filter = openmc.CellFilter(cell)
+    retained_tally.filters = [retained_filter]
+    retained_tally.scores = ['flux']
+    model.tallies = [retained_tally]
+    original_tallies = model.tallies
+    assert retained_tally.id == retained_id
+    openmc.reset_auto_ids()
+    assert retained_id not in openmc.Tally.used_ids
+
+    def export(**kwargs):
+        if split_xml:
+            model.export_to_xml(tmp_path)
+        else:
+            model.export_to_model_xml(tmp_path)
+        raise StopIteration
+
+    monkeypatch.setattr(model, 'run', export)
+    with pytest.raises(StopIteration):
+        get_microxs_and_flux(
+            model, [cell], nuclides=['H1'], reactions=['(n,gamma)'],
+            energies=energies, chain_file=CHAIN_FILE, include_model_tallies=True)
+
+    assert model.tallies is original_tallies
+    assert len(model.tallies) == 1
+    assert model.tallies[0] is retained_tally
+    assert retained_tally.id == retained_id
+    assert retained_tally.filters[0] is retained_filter
+    assert retained_tally.scores == ['flux']
+    if split_xml:
+        tallies = ET.parse(tmp_path / 'tallies.xml').getroot()
+    else:
+        tallies = ET.parse(tmp_path / 'model.xml').getroot().find('tallies')
+
+    entries = tallies.findall('tally')
+    ids = [int(entry.get('id')) for entry in entries]
+    assert len(set(ids)) == len(entries) == 3, f'Duplicate tally IDs: {ids}'
+    retained_xml, flux_xml, rr_xml = entries
+    assert int(retained_xml.get('id')) == retained_id
+    assert retained_xml.findtext('filters') == str(retained_filter.id)
+    assert flux_xml.findtext('scores') == 'flux'
+    assert rr_xml.findtext('scores') == '(n,gamma)'
+    filter_ids = flux_xml.findtext('filters').split()
+    assert filter_ids == rr_xml.findtext('filters').split()
+    assert len(filter_ids) == (1 if energies is None else 2)
+    assert set(filter_ids) <= {f.get('id') for f in tallies.findall('filter')}
+    assert {int(flux_xml.get('id')), int(rr_xml.get('id'))} <= openmc.Tally.used_ids
+    assert retained_id not in openmc.Tally.used_ids
 
 
 def _simple_model():

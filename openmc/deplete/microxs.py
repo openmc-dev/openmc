@@ -6,6 +6,7 @@ IndependentOperator class for depletion.
 
 from __future__ import annotations
 from collections.abc import Sequence
+from copy import copy
 import shutil
 from tempfile import TemporaryDirectory
 from typing import Union, TypeAlias, Self
@@ -39,6 +40,53 @@ DomainTypes: TypeAlias = Union[
     openmc.Filter,
     Sequence[openmc.Filter]
 ]
+
+
+def _next_id(cls, occupied_ids):
+    """Find an ID absent from the current run and the ID registry."""
+    item_id = cls.next_id
+    while item_id in occupied_ids or item_id in cls.used_ids:
+        item_id += 1
+    occupied_ids.add(item_id)
+    return item_id
+
+
+def _disambiguate_mesh_filters(
+    settings, tallies, domain_filters, occupied_filter_ids
+):
+    """Assign distinct run-local IDs to domain meshes that would alias."""
+    mesh_filters = [f for f in domain_filters if isinstance(f, openmc.MeshFilter)]
+    if not mesh_filters:
+        return domain_filters
+
+    # Settings meshes are exported before meshes on retained model tallies.
+    meshes = {}
+    for mesh in settings._iter_meshes():
+        meshes.setdefault(mesh.id, mesh)
+    for tally in tallies:
+        for filt in tally.filters:
+            if isinstance(filt, openmc.MeshFilter):
+                meshes.setdefault(filt.mesh.id, filt.mesh)
+
+    # The ID registry may have been reset while these meshes were still live.
+    occupied_mesh_ids = meshes.keys() | {f.mesh.id for f in mesh_filters}
+    replacements = {}
+    filters = list(domain_filters)
+    for index, filt in enumerate(filters):
+        if not isinstance(filt, openmc.MeshFilter):
+            continue
+        mesh = filt.mesh
+        if meshes.setdefault(mesh.id, mesh) is mesh:
+            continue
+        if id(mesh) not in replacements:
+            replacement = copy(mesh)
+            replacement.id = _next_id(openmc.MeshBase, occupied_mesh_ids)
+            replacements[id(mesh)] = replacement
+        filt = copy(filt)
+        filt.mesh = replacements[id(mesh)]
+        filt.id = _next_id(openmc.Filter, occupied_filter_ids)
+        filters[index] = filt
+    return filters
 
 
 def get_microxs_and_flux(
@@ -142,7 +190,8 @@ def get_microxs_and_flux(
     check_value('reaction_rate_mode', reaction_rate_mode, {'direct', 'flux'})
 
     # Save any original tallies on the model
-    original_tallies = list(model.tallies)
+    original_tallies = model.tallies
+    run_tallies = openmc.Tallies(original_tallies if include_model_tallies else ())
 
     # Determine what reactions and nuclides are available in chain
     chain = _get_chain(chain_file)
@@ -154,6 +203,18 @@ def get_microxs_and_flux(
         nuclides = [nuc.name for nuc in chain.nuclides
                     if nuc.name in nuclides_with_data]
 
+    # Live filters may have survived an ID reset. Reserve their IDs before
+    # creating energy filters or wrapping raw domains in spatial filters.
+    occupied_filter_ids = {f.id for tally in run_tallies for f in tally.filters}
+    if isinstance(domains, openmc.Filter):
+        domain_filters = [domains]
+    elif isinstance(domains, Sequence) and len(domains) > 0 and \
+            isinstance(domains[0], openmc.Filter):
+        domain_filters = list(domains)
+    else:
+        domain_filters = []
+    occupied_filter_ids.update(f.id for f in domain_filters)
+
     # Set up the reaction rate and flux tallies. When energies are omitted, no
     # energy filter is needed for the transport calculation. A one-group energy
     # range is still needed later if flux collapse is requested.
@@ -161,27 +222,28 @@ def get_microxs_and_flux(
     if energies is None:
         energy_filter = None
         collapse_energies = [0.0, 100.0e6]
-    elif isinstance(energies, str):
-        energy_filter = openmc.EnergyFilter.from_group_structure(energies)
     else:
-        energy_filter = openmc.EnergyFilter(energies)
+        if isinstance(energies, str):
+            check_value('group_structure', energies, GROUP_STRUCTURES.keys())
+            energy_bins = GROUP_STRUCTURES[energies.upper()]
+        else:
+            energy_bins = energies
+        energy_filter = openmc.EnergyFilter(
+            energy_bins, filter_id=_next_id(openmc.Filter, occupied_filter_ids))
 
-    # Build list of domain filters
-    if isinstance(domains, openmc.Filter):
-        domain_filters = [domains]
-    elif isinstance(domains, openmc.MeshBase):
-        domain_filters = [openmc.MeshFilter(domains)]
-    elif isinstance(domains, Sequence) and len(domains) > 0 and \
-            isinstance(domains[0], openmc.Filter):
-        domain_filters = list(domains)
-    elif isinstance(domains[0], openmc.Material):
-        domain_filters = [openmc.MaterialFilter(domains)]
-    elif isinstance(domains[0], openmc.Cell):
-        domain_filters = [openmc.CellFilter(domains)]
-    elif isinstance(domains[0], openmc.Universe):
-        domain_filters = [openmc.UniverseFilter(domains)]
-    else:
-        raise ValueError(f"Unsupported domain type: {type(domains[0])}")
+    if not domain_filters:
+        if isinstance(domains, openmc.MeshBase):
+            filter_type = openmc.MeshFilter
+        elif isinstance(domains[0], openmc.Material):
+            filter_type = openmc.MaterialFilter
+        elif isinstance(domains[0], openmc.Cell):
+            filter_type = openmc.CellFilter
+        elif isinstance(domains[0], openmc.Universe):
+            filter_type = openmc.UniverseFilter
+        else:
+            raise ValueError(f"Unsupported domain type: {type(domains[0])}")
+        domain_filters = [filter_type(
+            domains, filter_id=_next_id(openmc.Filter, occupied_filter_ids))]
 
     # Prepare reaction-rate nuclides/reactions
     rr_nuclides: list[str] = []
@@ -206,76 +268,87 @@ def get_microxs_and_flux(
     has_rr = bool(rr_nuclides and rr_reactions)
     if has_rr and reaction_rate_mode == 'flux' and energy_filter is not None:
         rr_energy_filter = openmc.EnergyFilter(
-            [energy_filter.values[0], energy_filter.values[-1]])
+            [energy_filter.values[0], energy_filter.values[-1]],
+            filter_id=_next_id(openmc.Filter, occupied_filter_ids))
     else:
         rr_energy_filter = energy_filter
 
     # Create one flux tally (and optionally one RR tally) per domain filter.
     flux_tallies = []
     rr_tallies = []
-    model.tallies = original_tallies if include_model_tallies else []
+    domain_filters = _disambiguate_mesh_filters(
+        model.settings, run_tallies, domain_filters, occupied_filter_ids)
+    occupied_tally_ids = {t.id for t in run_tallies}
     for i, domain_filter in enumerate(domain_filters):
-        flux_tally = openmc.Tally(name=f'MicroXS flux {i}')
+        flux_tally = openmc.Tally(
+            tally_id=_next_id(openmc.Tally, occupied_tally_ids),
+            name=f'MicroXS flux {i}')
         flux_tally.filters = [domain_filter]
         if energy_filter is not None:
             flux_tally.filters.append(energy_filter)
         flux_tally.scores = ['flux']
-        model.tallies.append(flux_tally)
+        run_tallies.append(flux_tally)
         flux_tallies.append(flux_tally)
 
         if has_rr:
-            rr_tally = openmc.Tally(name=f'MicroXS RR {i}')
+            rr_tally = openmc.Tally(
+                tally_id=_next_id(openmc.Tally, occupied_tally_ids),
+                name=f'MicroXS RR {i}')
             rr_tally.filters = [domain_filter]
             if rr_energy_filter is not None:
                 rr_tally.filters.append(rr_energy_filter)
             rr_tally.nuclides = rr_nuclides
             rr_tally.multiply_density = False
             rr_tally.scores = rr_reactions
-            model.tallies.append(rr_tally)
+            run_tallies.append(rr_tally)
             rr_tallies.append(rr_tally)
 
-    if openmc.lib.is_initialized:
-        openmc.lib.finalize()
+    try:
+        model.tallies = run_tallies
+        if openmc.lib.is_initialized:
+            openmc.lib.finalize()
 
-        if comm.rank == 0:
-            model.export_to_model_xml()
-        comm.barrier()
-        # Reinitialize with tallies
-        output = run_kwargs.get('output', True) if run_kwargs else True
-        openmc.lib.init(intracomm=comm, output=output)
+            if comm.rank == 0:
+                model.export_to_model_xml()
+            comm.barrier()
+            # Reinitialize with tallies
+            output = run_kwargs.get('output', True) if run_kwargs else True
+            openmc.lib.init(intracomm=comm, output=output)
 
-    with TemporaryDirectory() as temp_dir:
-        # Indicate to run in temporary directory unless being executed through
-        # openmc.lib, in which case we don't need to specify the cwd
-        run_kwargs = dict(run_kwargs) if run_kwargs else {}
-        if not openmc.lib.is_initialized:
-            run_kwargs.setdefault('cwd', temp_dir)
+        with TemporaryDirectory() as temp_dir:
+            # Indicate to run in temporary directory unless being executed through
+            # openmc.lib, in which case we don't need to specify the cwd
+            run_kwargs = dict(run_kwargs) if run_kwargs else {}
+            if not openmc.lib.is_initialized:
+                run_kwargs.setdefault('cwd', temp_dir)
 
-        # Run transport simulation and synchronize
-        statepoint_path = model.run(**run_kwargs)
-        comm.barrier()
+            # Run transport simulation and synchronize
+            statepoint_path = model.run(**run_kwargs)
+            comm.barrier()
 
-        if comm.rank == 0:
-            # Move the statepoint file if it is being saved to a specific path
-            if path_statepoint is not None:
-                shutil.move(statepoint_path, path_statepoint)
-                statepoint_path = path_statepoint
+            if comm.rank == 0:
+                # Move the statepoint file if it is being saved to a specific path
+                if path_statepoint is not None:
+                    shutil.move(statepoint_path, path_statepoint)
+                    statepoint_path = path_statepoint
 
-            # Export the model to path_input if provided
-            if path_input is not None:
-                model.export_to_model_xml(path_input)
+                # Export the model to path_input if provided
+                if path_input is not None:
+                    model.export_to_model_xml(path_input)
 
-        # Broadcast updated statepoint path to all ranks
-        statepoint_path = comm.bcast(statepoint_path)
+            # Broadcast updated statepoint path to all ranks
+            statepoint_path = comm.bcast(statepoint_path)
 
-        # Read in tally results (on all ranks)
-        with StatePoint(statepoint_path) as sp:
-            for i in range(len(flux_tallies)):
-                flux_tallies[i] = sp.tallies[flux_tallies[i].id]
-                flux_tallies[i]._read_results()
-                if rr_tallies:
-                    rr_tallies[i] = sp.tallies[rr_tallies[i].id]
-                    rr_tallies[i]._read_results()
+            # Read in tally results (on all ranks)
+            with StatePoint(statepoint_path) as sp:
+                for i in range(len(flux_tallies)):
+                    flux_tallies[i] = sp.tallies[flux_tallies[i].id]
+                    flux_tallies[i]._read_results()
+                    if rr_tallies:
+                        rr_tallies[i] = sp.tallies[rr_tallies[i].id]
+                        rr_tallies[i]._read_results()
+    finally:
+        model.tallies = original_tallies
 
     # Concatenate results across all domain filters
     fluxes = []
@@ -338,9 +411,6 @@ def get_microxs_and_flux(
         micros = direct_micros
     else:
         micros = flux_micros
-
-    # Reset tallies
-    model.tallies = original_tallies
 
     return fluxes, micros
 

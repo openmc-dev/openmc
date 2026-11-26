@@ -1587,6 +1587,23 @@ class Settings:
             element = ET.SubElement(root, "max_order")
             element.text = str(self._max_order)
 
+    def _iter_meshes(self) -> Iterable[MeshBase]:
+        """Yield the mesh objects referenced by the settings XML."""
+        for source in self.source:
+            if isinstance(source, IndependentSource) and isinstance(source.space, MeshSpatial):
+                yield source.space.mesh
+            elif isinstance(source, MeshSource):
+                yield source.mesh
+        if self.entropy_mesh is not None:
+            yield self.entropy_mesh
+        if self.temperature_field is not None:
+            yield self.temperature_field.mesh
+        if self.ufs_mesh is not None:
+            yield self.ufs_mesh
+        yield from (ww.mesh for ww in self.weight_windows)
+        yield from (wwg.mesh for wwg in self.weight_window_generators)
+        yield from (mesh for mesh, _ in self.random_ray.get('source_region_meshes', ()))
+
     def _create_source_subelement(self, root, mesh_memo=None):
         for source in self.source:
             root.append(source.to_xml_element())

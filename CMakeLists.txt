@@ -217,6 +217,13 @@ endif()
 
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 
+# HDF5 2.x config packages set HDF5_PROVIDES_PARALLEL rather than
+# HDF5_ENABLE_PARALLEL, which FindHDF5 only maps to HDF5_IS_PARALLEL
+# starting with CMake 4.3
+if(NOT HDF5_IS_PARALLEL AND HDF5_PROVIDES_PARALLEL)
+  set(HDF5_IS_PARALLEL TRUE)
+endif()
+
 # Remove HDF5 transitive dependencies that are system libraries
 list(FILTER HDF5_LIBRARIES EXCLUDE REGEX ".*lib(pthread|dl|m).*")
 message(STATUS "HDF5 Libraries: ${HDF5_LIBRARIES}")

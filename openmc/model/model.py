@@ -1982,8 +1982,7 @@ class Model:
         """
 
         # Initialize MGXS library with a finished OpenMC geometry object
-        mgxs_lib = openmc.mgxs.Library(
-            model.geometry, particle_type=particle_type)
+        mgxs_lib = openmc.mgxs.Library(model.geometry)
 
         # Pick energy group structure
         mgxs_lib.energy_groups = groups
@@ -1993,6 +1992,7 @@ class Model:
 
         # Specify needed cross sections for random ray
         if particle_type == openmc.ParticleType.PHOTON:
+            mgxs_lib.particle_type = particle_type
             mgxs_lib.mgxs_types = [
                 'total', 'absorption', 'nu-scatter matrix']
         elif correction == 'P0':

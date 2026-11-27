@@ -196,7 +196,7 @@ Discrete::Discrete(pugi::xml_node node)
 
   // First half is x values, second half is probabilities
   x_.assign(params.begin(), params.begin() + n);
-  const double* p = params.data() + n;
+  probabilities_.assign(params.begin() + n, params.begin() + 2 * n);
 
   // Check for bias
   if (check_for_node(node, "bias")) {
@@ -211,21 +211,19 @@ Discrete::Discrete(pugi::xml_node node)
     }
 
     // Compute importance weights
-    vector<double> p_vec(p, p + n);
-    weight_ = compute_importance_weights(p_vec, bias_params);
+    weight_ = compute_importance_weights(probabilities_, bias_params);
 
     // Initialize DiscreteIndex with bias probabilities for sampling
     di_.assign(bias_params);
   } else {
     // Unbiased case: weight_ stays empty
-    di_.assign({p, n});
+    di_.assign(probabilities_);
   }
 }
 
-Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
-{
-  x_.assign(x, x + n);
-}
+Discrete::Discrete(const double* x, const double* p, size_t n)
+  : x_(x, x + n), probabilities_(p, p + n), di_({p, n})
+{}
 
 std::pair<double, double> Discrete::sample(uint64_t* seed) const
 {

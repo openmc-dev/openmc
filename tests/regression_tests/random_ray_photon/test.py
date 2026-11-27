@@ -99,6 +99,18 @@ def test_random_ray_photon(model):
     harness.main()
 
 
+def test_random_ray_photon_source_bias(run_in_tmpdir):
+    model = _make_model()
+    energy = openmc.stats.Discrete([50e3, 1e6], [8.0, 2.0])
+    model.settings.source[0].energy = energy
+    model.run(openmc_exec=config['exe'], apply_tally_results=True)
+    unbiased = model.tallies[0].mean.copy()
+
+    energy.bias = [2.0, 8.0]
+    model.run(openmc_exec=config['exe'], apply_tally_results=True)
+    np.testing.assert_allclose(model.tallies[0].mean, unbiased)
+
+
 @pytest.mark.parametrize(
     ('invalid_input', 'error'),
     [

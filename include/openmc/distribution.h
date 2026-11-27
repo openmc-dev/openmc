@@ -133,6 +133,7 @@ public:
 
   // Properties
   const vector<double>& x() const { return x_; }
+  const vector<double>& probabilities() const { return probabilities_; }
   const vector<double>& prob() const { return di_.prob(); }
   const vector<size_t>& alias() const { return di_.alias(); }
   const vector<double>& weight() const { return weight_; }
@@ -144,8 +145,9 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
-  vector<double> x_;      //!< Possible outcomes
-  vector<double> weight_; //!< Importance weights (empty if unbiased)
+  vector<double> x_;             //!< Possible outcomes
+  vector<double> probabilities_; //!< Input probabilities before normalization
+  vector<double> weight_;        //!< Importance weights (empty if unbiased)
   DiscreteIndex di_; //!< Discrete probability distribution of outcome indices
 };
 

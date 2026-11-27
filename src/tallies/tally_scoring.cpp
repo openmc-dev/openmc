@@ -1744,73 +1744,52 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_SCATTER:
+    case SCORE_NU_SCATTER: {
+      bool production = score_bin == SCORE_NU_SCATTER;
+      auto xs_type = production ? MgxsType::NU_SCATTER : MgxsType::SCATTER;
       if (tally.estimator_ == TallyEstimator::ANALOG) {
-        // Skip any event where the particle didn't scatter
         if (p.event() != TallyEvent::SCATTER)
           continue;
-        // Since only scattering events make it here, again we can use the
-        // weight entering the collision as the estimator for the reaction rate
-        score = (p.wgt_last() - wgt_absorb) * flux;
-        if (i_nuclide >= 0) {
-          score *= atom_density *
-                   nuc_xs.get_xs(MgxsType::SCATTER_FMU, p.g_last(), &p.g(),
-                     &p.mu(), nullptr, nuc_t, nuc_a) /
-                   macro_xs.get_xs(MgxsType::SCATTER_FMU, p.g_last(), &p.g(),
-                     &p.mu(), nullptr, macro_t, macro_a);
-        }
-      } else {
-        if (i_nuclide >= 0) {
-          score = atom_density * flux *
-                  nuc_xs.get_xs(MgxsType::SCATTER, p_g, nullptr, &p.mu(),
-                    nullptr, nuc_t, nuc_a);
-        } else {
-          score = flux * macro_xs.get_xs(MgxsType::SCATTER, p_g, nullptr,
-                           &p.mu(), nullptr, macro_t, macro_a);
-        }
-      }
-      break;
 
-    case SCORE_NU_SCATTER:
-      if (tally.estimator_ == TallyEstimator::ANALOG) {
-        // Skip any event where the particle didn't scatter
-        if (p.event() != TallyEvent::SCATTER)
-          continue;
-        // For scattering production, we need to use the pre-collision weight
-        // times the multiplicity as the estimate for the number of particles
-        // exiting a reaction with particles in the exit channel
-        score = (p.wgt_last() - wgt_absorb) * flux;
-        // Apply the multiplicity of the sampled g_last -> g transfer in the
-        // material data, which is the factor scatter() applied to the weight.
-        // Use the same temperature and angle indices that scatter() used.
-        int t = p.mg_xs_cache().t;
+        int gin = p.g_last();
         int a = p.mg_xs_cache().a;
-        double scatt = macro_xs.get_xs(
-          MgxsType::SCATTER, p.g_last(), &p.g(), nullptr, nullptr, t, a);
-        if (scatt > 0.0) {
-          score *= macro_xs.get_xs(MgxsType::NU_SCATTER, p.g_last(), &p.g(),
-                     nullptr, nullptr, t, a) /
-                   scatt;
-        }
-        // Since we transport based on material data, the angle selected
-        // was not selected from the f(mu) for the nuclide.  Therefore
-        // adjust the score by the actual probability for that nuclide.
+        double scatt = macro_xs.get_xs(MgxsType::SCATTER, gin, macro_t, a);
+        if (scatt <= 0.0)
+          continue;
+
+        // Scattering samples the outgoing group from the production matrix.
+        // Apply the same incoming-group weight multiplier as scatter().
+        double nu_scatt =
+          macro_xs.get_xs(MgxsType::NU_SCATTER, gin, macro_t, a);
+        score = (p.wgt_last() - wgt_absorb) * flux * (nu_scatt / scatt);
         if (i_nuclide >= 0) {
-          score *= atom_density *
-                   nuc_xs.get_xs(MgxsType::NU_SCATTER_FMU, p.g_last(), &p.g(),
-                     &p.mu(), nullptr, nuc_t, nuc_a) /
-                   macro_xs.get_xs(MgxsType::NU_SCATTER_FMU, p.g_last(), &p.g(),
-                     &p.mu(), nullptr, macro_t, macro_a);
+          // Reweight the sampled group and angle to the nuclide cross section.
+          auto xs_fmu =
+            production ? MgxsType::NU_SCATTER_FMU : MgxsType::SCATTER_FMU;
+          double sampled_xs = macro_xs.get_xs(MgxsType::NU_SCATTER_FMU, gin,
+            &p.g(), &p.mu(), nullptr, macro_t, a);
+          if (sampled_xs <= 0.0)
+            continue;
+          double nuclide_xs = nuc_xs.get_xs(xs_fmu, gin, &p.g(), &p.mu(),
+            nullptr, nuc_t, nuc_xs.get_angle_index(p.u_last()));
+          score *= atom_density * nuclide_xs / sampled_xs;
+        } else if (!production) {
+          // Undo the multiplicity of the sampled transfer for scatter scores.
+          double sampled_xs = macro_xs.get_xs(
+            MgxsType::NU_SCATTER, gin, &p.g(), nullptr, nullptr, macro_t, a);
+          if (sampled_xs <= 0.0)
+            continue;
+          double transfer_xs = macro_xs.get_xs(
+            MgxsType::SCATTER, gin, &p.g(), nullptr, nullptr, macro_t, a);
+          score *= transfer_xs / sampled_xs;
         }
+      } else if (i_nuclide >= 0) {
+        score = atom_density * flux * nuc_xs.get_xs(xs_type, p_g, nuc_t, nuc_a);
       } else {
-        if (i_nuclide >= 0) {
-          score = atom_density * flux *
-                  nuc_xs.get_xs(MgxsType::NU_SCATTER, p_g, nuc_t, nuc_a);
-        } else {
-          score =
-            flux * macro_xs.get_xs(MgxsType::NU_SCATTER, p_g, macro_t, macro_a);
-        }
+        score = flux * macro_xs.get_xs(xs_type, p_g, macro_t, macro_a);
       }
       break;
+    }
 
     case SCORE_ABSORPTION:
       if (tally.estimator_ == TallyEstimator::ANALOG) {

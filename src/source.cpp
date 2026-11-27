@@ -437,12 +437,13 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Check for monoenergetic source above maximum particle energy
     auto p = particle_.transport_index();
+    double E_max = data::energy_max[p];
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
     auto decay_spectrum = dynamic_cast<DecaySpectrum*>(energy_.get());
     if (energy_ptr) {
       auto energies =
         tensor::Tensor<double>(energy_ptr->x().data(), energy_ptr->x().size());
-      if ((energies > data::energy_max[p]).any()) {
+      if ((energies > E_max).any()) {
         fatal_error("Source energy above range of energies of at least "
                     "one cross section table");
       }
@@ -462,9 +463,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
         E_wgt = E_wgt_temp;
       }
 
-      // Resample if energy falls above maximum particle energy
-      if (site.E < data::energy_max[p] &&
-          (satisfies_energy_constraints(site.E)))
+      // The highest energy group includes its upper edge.
+      bool in_range = settings::run_CE ? site.E < E_max : site.E <= E_max;
+      if (in_range && satisfies_energy_constraints(site.E))
         break;
 
       ++n_local_reject;
@@ -1855,19 +1856,7 @@ SourceSite sample_external_source(uint64_t* seed)
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {
-    if (site.particle != data::mg.particle_type_) {
-      fatal_error(fmt::format(
-        "Source particle type '{}' does not match the '{}' MGXS library.",
-        site.particle.str(), data::mg.particle_type_.str()));
-    }
-    const auto& bins = data::mg.rev_energy_bins_;
-    if (site.E < bins.front() || site.E > bins.back()) {
-      fatal_error(fmt::format(
-        "Source energy {} eV is outside the MGXS group structure ({}-{} eV).",
-        site.E, bins.front(), bins.back()));
-    }
-    site.E = lower_bound_index(bins.begin(), bins.end(), site.E);
-    site.E = data::mg.num_energy_groups_ - site.E - 1.;
+    site.E = data::mg.get_source_group_index(site.particle, site.E);
   }
 
   return site;

@@ -173,13 +173,6 @@ void validate_random_ray_inputs()
           "random ray mode");
       }
 
-      if (is->particle_type() != particle_type) {
-        fatal_error(fmt::format(
-          "External source particle type '{}' does not match the '{}' MGXS "
-          "library used for random ray transport.",
-          is->particle_type().str(), particle_type.str()));
-      }
-
       // Check for isotropic source
       UnitSphereDistribution* angle_dist = is->angle();
       Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
@@ -211,6 +204,9 @@ void validate_random_ray_inputs()
         fatal_error(
           "Only discrete (multigroup) energy distributions are allowed for "
           "external sources in random ray mode.");
+      }
+      for (double energy : dd->x()) {
+        data::mg.get_source_group_index(is->particle_type(), energy);
       }
     }
   }

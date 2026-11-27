@@ -46,6 +46,12 @@ constexpr double ZERO_FLUX_CUTOFF {1e-22};
 // value will be converted to pure void.
 constexpr double MINIMUM_MACRO_XS {1e-6};
 
+// Largest MPI message, in bytes, posted when source regions are moved between
+// random ray MPI ranks; larger transfers are split into several messages.
+// 32 MiB makes the per-message overhead negligible and stays far below the
+// limits of MPI (int counts) and of networks that cap message sizes.
+constexpr size_t MAX_MPI_MESSAGE_BYTES {32 * 1024 * 1024};
+
 // True for the members of the adaptive volume estimator family: the
 // adaptive estimator, and the strict adaptive estimator, which runs the
 // same machinery plus a per-batch non-negativity enforcement on the flux

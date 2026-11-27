@@ -219,20 +219,8 @@ def test_spherical_mesh_coincident(scale, run_in_tmpdir):
     assert mean1 == pytest.approx(mean2)
 
 
-def test_get_reshaped_data(run_in_tmpdir):
+def test_get_reshaped_data():
     """Test that expanding MeshFilter dimensions works as expected"""
-
-    mat = openmc.Material()
-    mat.add_nuclide('U235', 1.0)
-    mat.set_density('g/cm3', 10.0)
-
-    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
-    cell = openmc.Cell(fill=mat, region=-sphere)
-    model = openmc.Model()
-    model.geometry = openmc.Geometry([cell])
-    model.settings.particles = 1_000
-    model.settings.inactive = 10
-    model.settings.batches = 20
 
     sph_mesh = openmc.SphericalMesh(
         r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3),
@@ -246,19 +234,65 @@ def test_get_reshaped_data(run_in_tmpdir):
     tally1.filters = [efilter, meshfilter]
     tally1.scores = ['flux']
 
-    model.tallies = openmc.Tallies([tally1])
+    reg_mesh = openmc.RegularMesh()
+    reg_mesh.dimension = (2, 2, 1)
+    reg_mesh.lower_left = (-1.0, -1.0, -0.5)
+    reg_mesh.upper_right = (1.0, 1.0, 0.5)
+    meshbornfilter = openmc.MeshBornFilter(reg_mesh)
 
-    # Run OpenMC
-    sp_filename = model.run()
+    mesh_tallies = []
+    for filters in ((meshfilter, meshbornfilter), (meshbornfilter, meshfilter)):
+        tally = openmc.Tally()
+        tally.filters = [efilter, *filters]
+        tally.scores = ['flux', 'total']
+        mesh_tallies.append(tally)
 
-    # Get flux tally as reshaped data
-    with openmc.StatePoint(sp_filename) as sp:
-        t1 = sp.tallies[tally1.id]
-        data1 = t1.get_reshaped_data()
-        data2 = t1.get_reshaped_data(expand_dims=True)
+    # Give every bin and score a distinct value to expose ordering errors.
+    for tally in (tally1, *mesh_tallies):
+        tally.nuclides = ['total']
+        tally._derived = True
+        tally._mean = np.arange(float(np.prod(tally.shape))).reshape(tally.shape)
 
-    assert data1.shape == (2, 19*3*2, 1, 1)
+    # Get single mesh filter tally result as reshaped data
+    data1 = tally1.get_reshaped_data()
+    data2 = tally1.get_reshaped_data(expand_dims=True)
+
+    assert data1.shape == (2, 114, 1, 1)
     assert data2.shape == (2, 19, 3, 2, 1, 1)
+
+    for energy_index, energy_bin in enumerate(efilter.bins):
+        for spatial_bin in sph_mesh.indices:
+            mesh_indices = tuple(i - 1 for i in spatial_bin)
+            index = (energy_index, *mesh_indices)
+            expected = tally1.get_values(
+                filters=[openmc.EnergyFilter, openmc.MeshFilter],
+                filter_bins=[(tuple(energy_bin),), (spatial_bin,)])
+            np.testing.assert_array_equal(data2[index], expected[0])
+
+    # Get multi-mesh filter tally result as reshaped data
+    expected_shapes = (
+        ((2, 114, 4, 1, 2), (2, 19, 3, 2, 2, 2, 1, 1, 2)),
+        ((2, 4, 114, 1, 2), (2, 2, 2, 1, 19, 3, 2, 1, 2)),
+    )
+    for tally, (shape, expanded_shape) in zip(mesh_tallies, expected_shapes):
+        first_filter, second_filter = tally.filters[1:]
+        data3 = tally.get_reshaped_data()
+        data4 = tally.get_reshaped_data(expand_dims=True)
+
+        assert data3.shape == shape
+        assert data4.shape == expanded_shape
+
+        for energy_index, energy_bin in enumerate(efilter.bins):
+            for first in first_filter.mesh.indices:
+                for second in second_filter.mesh.indices:
+                    first_indices = tuple(i - 1 for i in first)
+                    second_indices = tuple(i - 1 for i in second)
+                    index = (energy_index, *first_indices, *second_indices)
+                    expected = tally.get_values(
+                        filters=[type(f) for f in tally.filters],
+                        filter_bins=[(tuple(energy_bin),), (first,), (second,)])
+                    np.testing.assert_array_equal(data4[index], expected[0])
+
 
 def test_mesh_filter_identity():
     mesh = openmc.RegularMesh()

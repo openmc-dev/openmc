@@ -103,6 +103,7 @@ def test_random_ray_photon(model):
     ('invalid_input', 'error'),
     [
         ('source mismatch', 'does not match'),
+        ('source energy', 'outside the MGXS group structure'),
         ('eigenvalue', 'only supported in fixed-source mode'),
         ('adjoint', 'Adjoint photon'),
     ],
@@ -115,6 +116,8 @@ def test_random_ray_photon_validation(tmp_path, invalid_input, error):
                 particle='neutron',
                 space=openmc.stats.Point((-2.5, 0.0, 0.0)),
                 energy=openmc.stats.Discrete([1.0e6], [1.0]))
+        elif invalid_input == 'source energy':
+            model.settings.source[0].energy = openmc.stats.delta_function(2.1e6)
         elif invalid_input == 'eigenvalue':
             model.settings.run_mode = 'eigenvalue'
         else:

@@ -967,6 +967,11 @@ void Material::set_id(int32_t id)
 
 void Material::set_density(double density, const std::string& units)
 {
+  if (!settings::run_CE) {
+    throw std::runtime_error {
+      "Setting material density is not supported in multigroup mode."};
+  }
+
   assert(density >= 0.0);
 
   if (nuclide_.empty()) {
@@ -990,7 +995,7 @@ void Material::set_density(double density, const std::string& units)
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       double awr = data::nuclides[i_nuc]->awr_;
-      int z = settings::run_CE ? data::nuclides[i_nuc]->Z_ : 0.0;
+      int z = data::nuclides[i_nuc]->Z_;
       density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
       charge_density_ += atom_density_(i) * z;
     }
@@ -1013,6 +1018,11 @@ void Material::set_density(double density, const std::string& units)
 void Material::set_densities(
   const vector<std::string>& name, const vector<double>& density)
 {
+  if (!settings::run_CE) {
+    throw std::runtime_error {
+      "Setting nuclide densities is not supported in multigroup mode."};
+  }
+
   auto n = name.size();
   assert(n > 0);
   assert(n == density.size());
@@ -1149,6 +1159,11 @@ void Material::import_properties_hdf5(hid_t group)
 
 void Material::add_nuclide(const std::string& name, double density)
 {
+  if (!settings::run_CE) {
+    throw std::runtime_error {
+      "Adding nuclides is not supported in multigroup mode."};
+  }
+
   // Check if nuclide is already in material
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
@@ -1376,6 +1391,7 @@ extern "C" int openmc_material_add_nuclide(
     try {
       model::materials[index]->add_nuclide(name, density);
     } catch (const std::runtime_error& e) {
+      set_errmsg(e.what());
       return OPENMC_E_DATA;
     }
   } else {

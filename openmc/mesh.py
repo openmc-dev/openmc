@@ -2962,6 +2962,25 @@ class UnstructuredMesh(MeshBase):
     .. versionchanged:: 0.12.2
         Support for libMesh unstructured meshes was added.
 
+    .. note::
+        Following tracks through a mesh in order to subdivide source regions in
+        random ray mode requires setting :attr:`interface` to ``'xdg'``, for
+        either library. So do track-length tallies and material volumes on a
+        libMesh mesh, whose native interface only looks up points (for collision
+        estimators, and for mesh tallies and weight windows in random ray mode).
+        XDG handles linear tetrahedra and hexahedra, and refuses other elements
+        when it loads the mesh. Their faces must be shared between neighboring
+        elements, and their node order must not be mirrored. This is not
+        checked: at such a place, a track loses length, which random ray mode
+        counts as outside of the mesh, while tallies in Monte Carlo mode are
+        low; a mirrored element can also make a run print warnings without end
+        or run out of memory.
+        The native libMesh interface takes a point within libMesh's tolerance of
+        an element to be in it. In random ray mode, where one point decides the
+        bin of a whole source region, that can occasionally put its flux in a
+        neighboring element of a tally or weight window mesh (about 3e-5 of the
+        elements per run on a 12000 element mesh). XDG does not do this.
+
     Parameters
     ----------
     filename : path-like

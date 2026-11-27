@@ -348,9 +348,11 @@ Prerequisites
       This optional dependency enables support for unstructured mesh tally
       filters using libMesh meshes. Any 3D element type supported by libMesh can
       be used, but the implementation is currently restricted to collision
-      estimators. In addition to turning this option on, the path to the libMesh
-      installation should be specified as part of the ``CMAKE_PREFIX_PATH``
-      variable::
+      estimators, other than in random ray mode, where mesh tallies only look
+      up points (track-length estimators on libMesh meshes need the XDG_
+      interface below, which handles linear tetrahedra and hexahedra). In
+      addition to turning this option on, the path to the libMesh installation
+      should be specified as part of the ``CMAKE_PREFIX_PATH`` variable::
 
           cmake -DOPENMC_USE_LIBMESH=on -DOPENMC_USE_MPI=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation ..
 
@@ -454,7 +456,8 @@ OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
 OPENMC_USE_XDG
-  Enables the XDG_ interface for unstructured mesh tallies. (Default: off)
+  Enables the XDG_ interface for unstructured mesh tallies and for random ray
+  source region meshes. (Default: off)
 
 OPENMC_USE_MPI
   Turns on compiling with MPI (Default: off). For further information on MPI

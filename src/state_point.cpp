@@ -841,9 +841,14 @@ void write_unstructured_mesh_results()
           // construct result vectors
           vector<double> mean_vec(umesh->n_bins()),
             std_dev_vec(umesh->n_bins());
+          // (random ray flux tallies can be divided by volume already)
+          const bool per_volume =
+            settings::solver_type == SolverType::RANDOM_RAY &&
+            FlatSourceDomain::volume_normalized_flux_tallies_ &&
+            tally->scores_[score_idx] == SCORE_FLUX;
           for (int j = 0; j < tally->results_.shape(0); j++) {
             // get the volume for this bin
-            double volume = umesh->volume(j);
+            double volume = per_volume ? 1.0 : umesh->volume(j);
             // compute the mean
             double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) /
                           n_realizations;
@@ -871,10 +876,15 @@ void write_unstructured_mesh_results()
       }
 
       // Generate a file name based on the tally id
-      // and the current batch number
+      // and the current batch number, tagged like the statepoint during the
+      // forward solve of an adjoint run
       size_t batch_width {std::to_string(settings::n_max_batches).size()};
-      std::string filename = fmt::format("tally_{0}.{1:0{2}}", tally->id_,
-        simulation::current_batch, batch_width);
+      const char* forward =
+        (FlatSourceDomain::solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT)
+          ? "forward."
+          : "";
+      std::string filename = fmt::format("tally_{0}.{3}{1:0{2}}", tally->id_,
+        simulation::current_batch, batch_width, forward);
 
       // Write the unstructured mesh and data to file
       umesh->write(filename);

@@ -107,8 +107,8 @@ public:
   // Methods
   void event_advance_ray();
   void attenuate_flux(double distance, bool is_active, double offset = 0.0);
-  void attenuate_flux_inner(
-    double distance, bool is_active, int64_t sr, int mesh_bin, Position r);
+  void attenuate_flux_inner(double distance, bool is_active, int64_t sr,
+    int mesh_bin, Position r, double segment_length);
   void attenuate_flux_flat_source(
     SourceRegionHandle& srh, double distance, bool is_active, Position r);
   void attenuate_flux_flat_source_void(

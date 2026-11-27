@@ -534,6 +534,12 @@ void RandomRaySimulation::simulate()
     finalize_batch();
   } // End random ray power iteration loop
 
+  // (An adjoint solve that follows a forward solve has the same source regions)
+  if (FlatSourceDomain::solve_ != RandomRaySolve::ADJOINT ||
+      !model::adjoint_sources.empty()) {
+    domain_->warn_about_missed_meshes();
+  }
+
   domain_->count_external_source_regions();
 
   // End main simulation timer

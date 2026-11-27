@@ -1320,14 +1320,14 @@ void StructuredMesh::raytrace_mesh(
   Position r0, Position r1, const Direction& u, T tally) const
 {
   // TODO: when c++-17 is available, use "if constexpr ()" to compile-time
-  // enable/disable tally calls for now, T template type needs to provide both
-  // surface and track methods, which might be empty. modern optimizing
+  // enable/disable tally calls for now, T template type needs to provide
+  // surface, track and outside methods, which might be empty. modern optimizing
   // compilers will (hopefully) eliminate the complete code (including
   // calculation of parameters) but for the future: be explicit
 
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
-  if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
+  if (total_distance == 0.0)
     return;
 
   // keep a copy of the original global position to pass to get_indices,
@@ -1352,6 +1352,8 @@ void StructuredMesh::raytrace_mesh(
   if (total_distance < 2 * TINY_BIT) {
     if (in_mesh) {
       tally.track(ijk, 1.0);
+    } else {
+      tally.outside(1.0);
     }
     return;
   }
@@ -1404,6 +1406,7 @@ void StructuredMesh::raytrace_mesh(
       // For all directions outside the mesh, find the distance that we need
       // to travel to reach the next surface. Use the largest distance, as
       // only this will cross all outer surfaces.
+      const double outside_from = traveled_distance;
       int k_max {-1};
       for (int k = 0; k < n; ++k) {
         if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
@@ -1416,6 +1419,11 @@ void StructuredMesh::raytrace_mesh(
       if (k_max == -1) {
         traveled_distance += TINY_BIT;
       }
+
+      // Tally the track length outside of the mesh
+      tally.outside(
+        (std::min(traveled_distance, total_distance) - outside_from) /
+        total_distance);
 
       // If r1 is not inside the mesh, exit here
       if (traveled_distance >= total_distance)
@@ -1454,6 +1462,7 @@ void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
       bins.push_back(mesh->get_bin_from_indices(ijk));
       lengths.push_back(l);
     }
+    void outside(double l) const {}
 
     const StructuredMesh* mesh;
     vector<int>& bins;
@@ -1461,6 +1470,53 @@ void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   };
 
   // Perform the mesh raytrace with the helper class.
+  raytrace_mesh(r0, r1, u, TrackAggregator(this, bins, lengths));
+}
+
+void Mesh::bins_crossed_with_outside(Position r0, Position r1,
+  const Direction& u, vector<int>& bins, vector<double>& lengths) const
+{
+  fatal_error(fmt::format(
+    "Mesh {} does not report what is outside of it along a track.", id_));
+}
+
+//! Split the track from r0 to r1 into the mesh bins it crosses and the
+//! stretches outside of the mesh (bin C_NONE), in order along the track, with
+//! lengths as fractions of the track's length. This is bins_crossed with one
+//! addition: raytrace_mesh, which walks the track from one mesh surface to the
+//! next, calls the aggregator's outside() for each stretch it travels outside
+//! of the mesh (a no-op for its other callers). Here outside() records that
+//! stretch as C_NONE, merged with the one before when they are consecutive, and
+//! track() records each bin crossed inside the mesh, as in bins_crossed.
+void StructuredMesh::bins_crossed_with_outside(Position r0, Position r1,
+  const Direction& u, vector<int>& bins, vector<double>& lengths) const
+{
+  struct TrackAggregator {
+    TrackAggregator(
+      const StructuredMesh* _mesh, vector<int>& _bins, vector<double>& _lengths)
+      : mesh(_mesh), bins(_bins), lengths(_lengths)
+    {}
+    void surface(const MeshIndex& ijk, int k, bool max, bool inward) const {}
+    void track(const MeshIndex& ijk, double l) const
+    {
+      bins.push_back(mesh->get_bin_from_indices(ijk));
+      lengths.push_back(l);
+    }
+    void outside(double l) const
+    {
+      if (!bins.empty() && bins.back() == C_NONE) {
+        lengths.back() += l;
+      } else {
+        bins.push_back(C_NONE);
+        lengths.push_back(l);
+      }
+    }
+
+    const StructuredMesh* mesh;
+    vector<int>& bins;
+    vector<double>& lengths;
+  };
+
   raytrace_mesh(r0, r1, u, TrackAggregator(this, bins, lengths));
 }
 
@@ -1486,6 +1542,7 @@ void StructuredMesh::surface_bins_crossed(
       bins.push_back(i_bin);
     }
     void track(const MeshIndex& idx, double l) const {}
+    void outside(double l) const {}
 
     const StructuredMesh* mesh;
     vector<int>& bins;
@@ -3500,7 +3557,9 @@ double MOABMesh::tet_volume(moab::EntityHandle tet) const
     fatal_error("Failed to get tet coords");
   }
 
-  return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
+  // A mirrored mesh keeps its node order, which makes this negative
+  return std::abs(
+    1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0])));
 }
 
 int MOABMesh::get_bin(Position r) const
@@ -4149,8 +4208,11 @@ void LibMesh::write(const std::string& filename) const
 void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   vector<int>& bins, vector<double>& lengths) const
 {
-  // TODO: Implement triangle crossings here
-  fatal_error("Tracklength tallies on libMesh instances are not implemented.");
+  fatal_error(fmt::format(
+    "Tracks cannot be followed through libMesh mesh {} with the native "
+    "interface. Use the XDG interface (set the interface attribute of the "
+    "openmc.UnstructuredMesh to 'xdg').",
+    id_));
 }
 
 int LibMesh::get_bin(Position r) const
@@ -4196,8 +4258,13 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 
 double LibMesh::volume(int bin) const
 {
-  return this->get_element_from_bin(bin).volume() * length_multiplier_ *
-         length_multiplier_ * length_multiplier_;
+  // Positive whatever the element's node order, and the length multiplier is
+  // negative when it is not set
+  double volume = std::abs(this->get_element_from_bin(bin).volume());
+  if (length_multiplier_ > 0.0) {
+    volume *= length_multiplier_ * length_multiplier_ * length_multiplier_;
+  }
+  return volume;
 }
 
 AdaptiveLibMesh::AdaptiveLibMesh(libMesh::MeshBase& input_mesh,

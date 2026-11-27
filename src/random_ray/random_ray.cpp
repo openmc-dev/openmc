@@ -385,7 +385,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
     // If there's no mesh being applied to this cell, then
     // we just attenuate the flux as normal, and set
     // the mesh bin to 0
-    attenuate_flux_inner(distance, is_active, sr, 0, r());
+    attenuate_flux_inner(distance, is_active, sr, 0, r(), distance);
   } else {
     // If there is a mesh being applied to this cell, then
     // we loop over all the bin crossings and attenuate
@@ -400,10 +400,13 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
     Position end = start + (distance - 2.0 * TINY_BIT) * u();
     double reduced_distance = (end - start).norm();
 
-    // Ray trace through the mesh and record bins and lengths
+    // Ray trace through the mesh and record bins and lengths. Portions of the
+    // segment outside of the mesh go, in order and at the right places on the
+    // ray, to a source region of their own.
     mesh_bins_.resize(0);
     mesh_fractional_lengths_.resize(0);
-    mesh->bins_crossed(start, end, u(), mesh_bins_, mesh_fractional_lengths_);
+    mesh->bins_crossed_with_outside(
+      start, end, u(), mesh_bins_, mesh_fractional_lengths_);
 
     // Loop over all mesh bins and attenuate flux
     for (int b = 0; b < mesh_bins_.size(); b++) {
@@ -429,8 +432,8 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
         continue;
       }
 
-      attenuate_flux_inner(
-        physical_length, is_active, sr, mesh_bins_[b], start);
+      attenuate_flux_inner(physical_length, is_active, sr, mesh_bins_[b], start,
+        offset + distance);
 
       start += physical_length * u();
 
@@ -470,20 +473,35 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
   }
 }
 
-void RandomRay::attenuate_flux_inner(
-  double distance, bool is_active, int64_t sr, int mesh_bin, Position r)
+void RandomRay::attenuate_flux_inner(double distance, bool is_active,
+  int64_t sr, int mesh_bin, Position r, double segment_length)
 {
   SourceRegionKey sr_key {sr, mesh_bin};
+  Position midpoint = r + u() * (distance / 2.0);
 
 #ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     // Check which rank owns the source region at the current position
-    Position midpoint = r + u() * (distance / 2.0);
     int owner = mpi::decomp_map.find_owner(SourceRegionKey(sr, mesh_bin),
       midpoint, domain_->discovered_source_regions_);
 
     // If current rank is not the owner return and mark as not local.
     if (owner != mpi::rank) {
+      // A segment can run slightly past a lattice plane, as the distance to a
+      // boundary keeps a higher-level one within a relative tolerance. A piece
+      // short enough to have its midpoint past the plane is not in this source
+      // region, and a ray restarted there can be lost, so it is skipped, as a
+      // new source region there would be in
+      // get_subdivided_source_region_handle.
+      if (distance <= 2.0 * FP_REL_PRECISION * segment_length) {
+        GeometryState gs;
+        gs.r() = midpoint;
+        gs.u() = {1.0, 0.0, 0.0};
+        if (!exhaustive_find_cell(gs) ||
+            domain_->lookup_base_source_region_idx(gs) != sr) {
+          return;
+        }
+      }
       is_local_ = false;
       owner_rank_ = owner;
       return;
@@ -492,7 +510,8 @@ void RandomRay::attenuate_flux_inner(
 #endif
 
   SourceRegionHandle srh;
-  srh = domain_->get_subdivided_source_region_handle(sr_key, r, u());
+  srh = domain_->get_subdivided_source_region_handle(
+    sr_key, midpoint - TINY_BIT * u(), u());
   if (srh.is_numerical_fp_artifact_) {
     return;
   }
@@ -575,13 +594,6 @@ void RandomRay::attenuate_flux_flat_source(
     srh.n_hits() += 1;
   }
 
-  // Tally valid position inside the source region (e.g., midpoint of
-  // the ray) if not done already
-  if (!srh.position_recorded()) {
-    srh.position() = midpoint;
-    srh.position_recorded() = 1;
-  }
-
   // Release lock
   srh.unlock();
 }
@@ -614,13 +626,6 @@ void RandomRay::attenuate_flux_flat_source_void(
     srh.centroid_iteration() += midpoint * distance;
     srh.volume_sq() += distance * distance;
     srh.n_hits() += 1;
-
-    // Tally valid position inside the source region (e.g., midpoint of
-    // the ray) if not done already
-    if (!srh.position_recorded()) {
-      srh.position() = midpoint;
-      srh.position_recorded() = 1;
-    }
 
     // Release lock
     srh.unlock();
@@ -759,13 +764,6 @@ void RandomRay::attenuate_flux_linear_source(
     srh.n_hits() += 1;
   }
 
-  // Tally valid position inside the source region (e.g., midpoint of
-  // the ray) if not done already
-  if (!srh.position_recorded()) {
-    srh.position() = midpoint;
-    srh.position_recorded() = 1;
-  }
-
   // Release lock
   srh.unlock();
 }
@@ -860,13 +858,6 @@ void RandomRay::attenuate_flux_linear_source_void(
     srh.centroid_iteration() += midpoint * distance;
     moment_matrix_estimate *= distance;
     srh.mom_matrix() += moment_matrix_estimate;
-
-    // Tally valid position inside the source region (e.g., midpoint of
-    // the ray) if not done already
-    if (!srh.position_recorded()) {
-      srh.position() = midpoint;
-      srh.position_recorded() = 1;
-    }
 
     srh.n_hits() += 1;
 

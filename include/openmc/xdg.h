@@ -71,6 +71,9 @@ public:
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
+  void bins_crossed_with_outside(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const override;
+
   int get_bin(Position r) const override;
 
   int n_bins() const override;
@@ -117,6 +120,7 @@ private:
   std::shared_ptr<xdg::XDG> xdg_; //!< XDG instance
   xdg::MeshLibrary mesh_library_ {
     xdg::MeshLibrary::LIBMESH}; //!< Mesh library type
+  bool prepared_ {false};       //!< Whether the ray tracer has been prepared
 };
 
 } // namespace openmc

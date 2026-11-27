@@ -181,10 +181,22 @@ public:
   //! \param[in] r0 Previous position of the particle
   //! \param[in] r1 Current position of the particle
   //! \param[in] u Particle direction
-  //! \param[out] bins Bins that were crossed
+  //! \param[out] bins Bins that were crossed, in order along the track
   //! \param[out] lengths Fraction of tracklength in each bin
   virtual void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const = 0;
+
+  //! Determine which bins were crossed by a particle, in order along the
+  //! track, with each stretch of the track outside of the mesh as bin C_NONE.
+  //! This takes a mesh that knows where tracks enter and leave it.
+  //
+  //! \param[in] r0 Previous position of the particle
+  //! \param[in] r1 Current position of the particle
+  //! \param[in] u Particle direction
+  //! \param[out] bins Bins crossed, and C_NONE for each stretch outside
+  //! \param[out] lengths Fraction of the track's length in each
+  virtual void bins_crossed_with_outside(Position r0, Position r1,
+    const Direction& u, vector<int>& bins, vector<double>& lengths) const;
 
   //! Determine which surface bins were crossed by a particle
   //
@@ -366,6 +378,9 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
+  void bins_crossed_with_outside(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const override;
+
   MeshCrossing next_mesh_crossing(
     int current_bin, Position r, Direction u) const override;
 
@@ -374,7 +389,8 @@ public:
   //! \param[in] r0 Previous position of the particle
   //! \param[in] r1 Current position of the particle
   //! \param[in] u Particle direction
-  //! \param[in] tally Functor that eventually stores the tally data
+  //! \param[in] tally Functor that eventually stores the tally data, and
+  //!   is told the length of each stretch outside of the mesh
   template<class T>
   void raytrace_mesh(
     Position r0, Position r1, const Direction& u, T tally) const;
@@ -676,7 +692,9 @@ private:
     } else if (full) {
       return (idx + N - 1) % N + 1;
     } else {
-      return 0;
+      // Outside of the mesh is index 0: one way round, the way in is the first
+      // surface, and the other way round, the last
+      return idx < 0 ? N : 0;
     }
   }
 
@@ -741,7 +759,9 @@ private:
     } else if (full) {
       return (idx + N - 1) % N + 1;
     } else {
-      return 0;
+      // Outside of the mesh is index 0: one way round, the way in is the first
+      // surface, and the other way round, the last
+      return idx < 0 ? N : 0;
     }
   }
 

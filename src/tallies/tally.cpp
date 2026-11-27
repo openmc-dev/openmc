@@ -379,14 +379,17 @@ Tally::Tally(pugi::xml_node node)
   }
 
 #ifdef OPENMC_LIBMESH_ENABLED
-  // ensure a tracklength tally isn't used with a libMesh filter
+  // ensure a tracklength tally isn't used with a libMesh filter (in random ray
+  // mode, the mesh filter only looks up points)
   for (auto i : this->filters_) {
     auto df = dynamic_cast<MeshFilter*>(model::tally_filters[i].get());
-    if (df) {
+    if (df && settings::solver_type != SolverType::RANDOM_RAY) {
       auto lm = dynamic_cast<LibMesh*>(model::meshes[df->mesh()].get());
       if (lm && estimator_ == TallyEstimator::TRACKLENGTH) {
-        fatal_error("A tracklength estimator cannot be used with "
-                    "an unstructured LibMesh tally.");
+        fatal_error("A tracklength estimator cannot be used with a libMesh "
+                    "mesh tally through the native interface. Use a collision "
+                    "estimator or the XDG interface (set the interface "
+                    "attribute of the openmc.UnstructuredMesh to 'xdg').");
       }
     }
   }

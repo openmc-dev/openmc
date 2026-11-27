@@ -425,8 +425,17 @@ mesh to a list of domains, with each domain being of type
 :class:`openmc.Material`, :class:`openmc.Cell`, or :class:`openmc.Universe`. The
 idea of defining a source region as a combination of a base geometry cell and a
 mesh element is known as "cell-under-voxel" style geometry, although in OpenMC
-the mesh can be any kind and is not restricted to 3D regular voxels. An example
-of overlaying a simple 2D mesh over a geometry is given as::
+the mesh can be any kind and is not restricted to 3D regular voxels. This
+includes :class:`openmc.UnstructuredMesh`, with MOAB or libMesh, through the XDG
+interface (by setting its ``interface`` attribute to ``'xdg'``), although ray
+tracing through an unstructured mesh is considerably slower than through a
+structured one. A mesh does not have to cover the cells it is applied to:
+whatever is outside of the mesh counts as one more mesh bin, so that each cell
+instance has one source region for its part outside of the mesh, which is not
+subdivided any further. As with any source region, a mesh tally on another mesh
+does not resolve it: all of its flux goes to the one bin holding the point where
+a ray first found it, which can differ from run to run. An example of overlaying
+a simple 2D mesh over a geometry is given as::
 
   sr_mesh = openmc.RegularMesh()
   sr_mesh.dimension = (n, n)
@@ -527,6 +536,9 @@ Supported Filters:
     - material
     - mesh
     - universe
+
+Mesh filters can use any mesh type, including :class:`openmc.UnstructuredMesh`
+with either of its interfaces.
 
 Note that there is no difference between the analog, tracklength, and collision
 estimators in random ray mode as individual particles are not being simulated.
@@ -1224,12 +1236,13 @@ derived from the adjoint flux rather than the forward flux but are not labeled
 any differently. When an initial forward solve is performed (i.e., when no
 user-specified adjoint source is present), its output files are also written to
 disk with a ``forward`` infix, so they are not overwritten by the subsequent
-adjoint solve. This applies to the statepoint, ``tallies.out``, and any voxel
-plots, e.g., ``statepoint.forward.N.h5`` and ``tallies.forward.out``; the
-adjoint solve keeps the usual file names. This allows analyses requiring both
-the forward and adjoint solutions to be performed from a single run. When
-generating FW-CADIS weight windows, no weight window file is written for the
-forward solve, as only the final adjoint-derived weight windows are meaningful.
+adjoint solve. This applies to the statepoint, ``tallies.out``, any voxel plots,
+and any libMesh mesh tally files, e.g., ``statepoint.forward.N.h5``,
+``tallies.forward.out`` and ``tally_ID.forward.N.e``; the adjoint solve keeps
+the usual file names. This allows analyses requiring both the forward and
+adjoint solutions to be performed from a single run. When generating FW-CADIS
+weight windows, no weight window file is written for the forward solve, as only
+the final adjoint-derived weight windows are meaningful.
 
 .. note::
     Use of the automated

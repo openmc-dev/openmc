@@ -98,6 +98,10 @@ public:
   void transpose_scattering_matrix();
   void serialize_final_fluxes(vector<double>& flux);
   void apply_meshes();
+
+  //! Warn about source region meshes that no ray found any part of their cells
+  //! in, which a wrong position or length multiplier makes likely
+  void warn_about_missed_meshes() const;
   void apply_mesh_to_cell_instances(int32_t i_cell, int32_t mesh_idx,
     int target_material_id, const vector<int32_t>& instances,
     bool is_target_void);
@@ -153,8 +157,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Public Data members
-  double k_eff_ {1.0};              // Eigenvalue
-  bool mapped_all_tallies_ {false}; // If all source regions have been visited
+  double k_eff_ {1.0}; // Eigenvalue
 
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
                                           // non-zero external source terms

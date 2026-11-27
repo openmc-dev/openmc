@@ -166,7 +166,6 @@ public:
   double* volume_sq_ = nullptr;
   double* volume_sq_t_ = nullptr;
   double* volume_naive_ = nullptr;
-  int* position_recorded_ = nullptr;
   int* external_source_present_ = nullptr;
   Position* position_ = nullptr;
   Position* centroid_ = nullptr;
@@ -246,9 +245,6 @@ public:
 
   double& volume_naive() { return *volume_naive_; }
   const double volume_naive() const { return *volume_naive_; }
-
-  int& position_recorded() { return *position_recorded_; }
-  const int position_recorded() const { return *position_recorded_; }
 
   int& external_source_present() { return *external_source_present_; }
   const int external_source_present() const
@@ -362,7 +358,6 @@ public:
   double volume_sq_ {0.0};    //!< Volume squared
   double volume_sq_t_ {0.0};  //!< Volume squared totaled over all iterations
   double volume_naive_ {0.0}; //!< Volume as integrated from this iteration only
-  int position_recorded_ {0}; //!< Has the position been recorded yet?
   int external_source_present_ {
     0};              //!< Is an external source present in this region?
   int is_small_ {0}; //!< Is it "small", receiving < 1.5 hits per iteration?
@@ -526,12 +521,6 @@ public:
 
   double& volume_naive(int64_t sr) { return volume_naive_[sr]; }
   const double volume_naive(int64_t sr) const { return volume_naive_[sr]; }
-
-  int& position_recorded(int64_t sr) { return position_recorded_[sr]; }
-  const int position_recorded(int64_t sr) const
-  {
-    return position_recorded_[sr];
-  }
 
   int& external_source_present(int64_t sr)
   {
@@ -775,7 +764,6 @@ private:
   vector<double> volume_sq_;
   vector<double> volume_sq_t_;
   vector<double> volume_naive_;
-  vector<int> position_recorded_;
   vector<int> external_source_present_;
   vector<Position> position_;
   vector<Position> centroid_;

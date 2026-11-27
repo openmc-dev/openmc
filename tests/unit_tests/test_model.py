@@ -1107,7 +1107,7 @@ def _steel_water_model():
 
 
 def _capture_generation_settings(
-        monkeypatch, model, return_particle_type=False, **kwargs):
+        monkeypatch, model, *args, return_particle_type=False, **kwargs):
     """Return the Settings of the MGXS generation run by capturing the
     generation model just before transport would start."""
     captured = {}
@@ -1121,7 +1121,7 @@ def _capture_generation_settings(
     monkeypatch.setattr(openmc.Model, '_auto_generate_mgxs_lib',
                         fake_auto_generate)
     with pytest.raises(_GenerationCaptured):
-        model.convert_to_multigroup(**kwargs)
+        model.convert_to_multigroup(*args, **kwargs)
     if return_particle_type:
         return captured['settings'], captured['particle_type']
     return captured['settings']
@@ -1292,12 +1292,12 @@ def test_convert_to_random_ray_photon():
 
 
 def test_convert_to_multigroup_deprecated_args(run_in_tmpdir, monkeypatch):
-    # The deprecated arguments still work, with a FutureWarning
+    # Preserve the positional arguments, including the deprecated ones.
     model = _steel_water_model()
     with pytest.warns(FutureWarning, match='deprecated'):
         gen = _capture_generation_settings(
-            monkeypatch, model, method='stochastic_slab', nparticles=1234,
-            temperature_settings={'method': 'interpolation'})
+            monkeypatch, model, 'stochastic_slab', 'CASMO-2', 1234, False,
+            'mgxs.h5', None, None, [294.0], {'method': 'interpolation'})
     assert gen.particles == 1234
     assert gen.temperature == {'method': 'interpolation'}
     assert gen.batches == 200  # generation default unchanged

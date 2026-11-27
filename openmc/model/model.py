@@ -2738,9 +2738,10 @@ class Model:
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
         source_energy: openmc.stats.Univariate | None = None,
-        particle_type: str | openmc.ParticleType | None = None,
         temperatures: Sequence[float] | None = None,
         temperature_settings: dict | None = None,
+        *,
+        particle_type: str | openmc.ParticleType | None = None,
         **kwargs,
     ):
         """Convert all materials from continuous energy to multigroup.
@@ -2790,11 +2791,6 @@ class Model:
             'eigenvalue', then a default Watt spectrum source (strength = 0.99)
             is added. Note that this argument is only used when using the
             "stochastic_slab" or "infinite_medium" MGXS generation methods.
-        particle_type : {'neutron', 'photon'}, optional
-            Particle type for which to generate multigroup cross sections. If
-            omitted, the particle type is inferred when all model sources are
-            independent sources with the same particle type; otherwise it
-            defaults to neutron.
         temperatures : Sequence[float], optional
             A list of temperatures to generate MGXS at. Each infinite material region
             is isothermal at a given temperature data point for cross
@@ -2806,6 +2802,11 @@ class Model:
 
             .. deprecated:: 0.16.0
                 Pass ``temperature`` as a keyword argument instead.
+        particle_type : {'neutron', 'photon'}, optional
+            Particle type for which to generate multigroup cross sections. If
+            omitted, the particle type is inferred when all model sources are
+            independent sources with the same particle type. When the type
+            cannot be inferred, the default is neutron.
         **kwargs
             :class:`openmc.Settings` attributes used to customize the continuous
             energy simulation(s) that generate the MGXS library. Only the

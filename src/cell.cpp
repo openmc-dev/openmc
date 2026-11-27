@@ -122,7 +122,14 @@ double Cell::density(int32_t instance) const
 
 void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
-  if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
+  if (!std::isfinite(T) || T < 0.0) {
+    throw std::runtime_error {fmt::format(
+      "Temperature of {} K is not a finite, non-negative value.", T)};
+  }
+
+  // The bounds are inverted until cross section temperatures are loaded.
+  if (settings::temperature_method == TemperatureMethod::INTERPOLATION &&
+      data::temperature_min <= data::temperature_max) {
     if (T < (data::temperature_min - settings::temperature_tolerance)) {
       throw std::runtime_error {
         fmt::format("Temperature of {} K is below minimum temperature at "

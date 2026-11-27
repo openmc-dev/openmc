@@ -208,7 +208,9 @@ time.
     *Default*: 0.0
 
   :time_neutron
-    The time above which neutrons will be killed.
+    The time above which neutrons will be killed. Delayed fission neutrons that
+    would be emitted after this time are not banked, but analog fission tallies
+    count them as produced, as the track-length and collision estimators do.
 
     *Default*: Infinity
 

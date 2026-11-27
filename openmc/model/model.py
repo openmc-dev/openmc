@@ -2740,7 +2740,6 @@ class Model:
         source_energy: openmc.stats.Univariate | None = None,
         temperatures: Sequence[float] | None = None,
         temperature_settings: dict | None = None,
-        *,
         particle_type: str | openmc.ParticleType | None = None,
         **kwargs,
     ):

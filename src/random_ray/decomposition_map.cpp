@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstring>
 #include <numeric>
+#include <utility>
 
 #ifdef OPENMC_MPI
 
@@ -1183,8 +1184,7 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain)
     vector<char>().swap(recv_buffers[sender]);
   }
 
-  // Update source regions in domain to new container
-  domain->source_regions_ = source_regions_new;
+  domain->source_regions_ = std::move(source_regions_new);
 
   // Update source region map
   for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {

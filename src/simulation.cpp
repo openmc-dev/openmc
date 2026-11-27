@@ -107,8 +107,11 @@ int openmc_simulation_init()
     init_event_queues(event_buffer_length);
   }
 
-  // Allocate tally results arrays if they're not allocated yet
+  // Allocate tally results arrays if they're not allocated yet, after making
+  // the estimators of tallies created at run time consistent with their
+  // filters
   for (auto& t : model::tallies) {
+    t->check_estimator();
     t->set_strides();
     t->init_results();
   }

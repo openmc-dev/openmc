@@ -64,10 +64,11 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain)
   rd.position = rbc.position;
   rd.direction = rbc.direction;
   rd.distance_travelled = rbc.distance_travelled;
-  rd.advance_distance = rbc.advance_distance;
+  rd.n_segments_done = rbc.n_segments_done;
   rd.n_transfers = rbc.n_transfers;
   rd.surface = rbc.surface;
   rd.is_active = rbc.is_active;
+  rd.needs_initial_flux = rbc.needs_initial_flux;
   rd.ray_id = rbc.ray_id;
   rd.n_event = rbc.n_event;
   rd.n_coord = rbc.n_coord;
@@ -227,12 +228,11 @@ void RayBank::communicate_rays()
   for (auto& [receiving_rank, buffers] : ray_send_buffer_) {
     int num_rays = buffers.count;
 
-    // Check neighbor list and add if not already known
-    // Filter out rays that are sampled elsewhere
+    // Record neighbors reached during transport. A sampling site can belong
+    // to any rank.
     bool has_transported_rays = false;
     for (int i = 0; i < num_rays; i++) {
-      if (buffers.ray_data[i].distance_travelled > 0.0 ||
-          buffers.ray_data[i].is_active) {
+      if (!buffers.ray_data[i].needs_initial_flux) {
         has_transported_rays = true;
         break;
       }

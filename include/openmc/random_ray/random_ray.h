@@ -15,13 +15,15 @@ namespace openmc {
 
 // Container for MPI exchange
 struct RayBufferContainer {
+  // A ray is always buffered in the state it had when it entered its current
+  // cell (position, geometry state, distance_travelled, is_active), together
+  // with the number of segments of that cell it has been attenuated over since.
+  // The receiving rank traces the cell again from this state and skips those
+  // segments (see RandomRay::event_advance_ray).
   Position position;
   Direction direction;
   double distance_travelled;
-  // Distance the ray still has to advance from the buffered geometry state to
-  // reach `position`. Applied on the receiving rank via move_distance(), which
-  // uses each coordinate level's own direction.
-  double advance_distance;
+  int n_segments_done;
   // Number of times this ray has been handed to another rank. The ownership
   // early-return in attenuate_flux_inner() happens before n_event() is
   // incremented, so max_particle_events cannot bound a forwarding loop.
@@ -29,6 +31,8 @@ struct RayBufferContainer {
   vector<float> angular_flux;
   int surface;
   bool is_active;
+  // A ray sent from its sampling site needs the owner's starting flux.
+  bool needs_initial_flux;
   uint64_t ray_id;
   int n_event; // Number of events (surface crossings) the ray has undergone
 
@@ -62,10 +66,11 @@ struct RayExchangeData {
   Position position;
   Direction direction;
   double distance_travelled;
-  double advance_distance;
+  int n_segments_done;
   int n_transfers;
   int surface;
   bool is_active;
+  bool needs_initial_flux;
   uint64_t ray_id;
   int n_event; // Number of events (surface crossings) the ray has undergone
 
@@ -127,7 +132,8 @@ public:
   SourceSite sample_s2();
 
   bool has_left_subdomain();
-  void pack_ray_for_buffer(double distance_buffer, double advance_distance);
+  void pack_ray_for_buffer(
+    double distance_travelled, bool is_active, bool needs_initial_flux = false);
 
   //----------------------------------------------------------------------------
   // Static data members
@@ -163,6 +169,15 @@ private:
   bool is_active_ {false};
   bool is_alive_ {true};
   bool is_local_ {true};
+
+  // Used to hand a ray to another MPI rank part way through a cell (see
+  // event_advance_ray): the state of the ray when it entered its current cell,
+  // the number of segments of that cell it has been attenuated over, and the
+  // number of those that the rank the ray came from already took care of
+  double entry_distance_travelled_ {0};
+  bool entry_is_active_ {false};
+  int n_segments_done_ {0};
+  int n_segments_to_skip_ {0};
 }; // class RandomRay
 
 } // namespace openmc

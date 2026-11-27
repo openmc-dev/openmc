@@ -970,8 +970,8 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data,
   if (cell_born() == C_NONE)
     cell_born() = lowest_coord().cell();
 
-  // Set ray's angular flux to value before subdomain change
-  if (distance_travelled_ > 0.0 || is_active_ || n_segments_to_skip_ > 0) {
+  // Restore the angular flux carried by a ray already in transport.
+  if (!data.needs_initial_flux) {
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] = angular_flux[g];
     }
@@ -1051,7 +1051,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       for (int g = 0; g < negroups_; g++) {
         angular_flux_[g] = 0.0;
       }
-      pack_ray_for_buffer(0.0, is_active_);
+      pack_ray_for_buffer(0.0, is_active_, true);
       is_local_ = false;
       return;
     }
@@ -1123,7 +1123,8 @@ bool RandomRay::has_left_subdomain()
   return !is_local_;
 }
 
-void RandomRay::pack_ray_for_buffer(double distance_travelled, bool is_active)
+void RandomRay::pack_ray_for_buffer(
+  double distance_travelled, bool is_active, bool needs_initial_flux)
 {
   // Recorded for diagnostics only; the receiving rank takes the position from
   // the buffered geometry state (see restart_ray)
@@ -1135,6 +1136,7 @@ void RandomRay::pack_ray_for_buffer(double distance_travelled, bool is_active)
   exchange_data_.n_segments_done = n_segments_done_;
   exchange_data_.surface = surface();
   exchange_data_.is_active = is_active;
+  exchange_data_.needs_initial_flux = needs_initial_flux;
   exchange_data_.ray_id = id();
   exchange_data_.n_event = n_event();
 

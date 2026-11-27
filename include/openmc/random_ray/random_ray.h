@@ -31,6 +31,8 @@ struct RayBufferContainer {
   vector<float> angular_flux;
   int surface;
   bool is_active;
+  // A ray sent from its sampling site needs the owner's starting flux.
+  bool needs_initial_flux;
   uint64_t ray_id;
   int n_event; // Number of events (surface crossings) the ray has undergone
 
@@ -68,6 +70,7 @@ struct RayExchangeData {
   int n_transfers;
   int surface;
   bool is_active;
+  bool needs_initial_flux;
   uint64_t ray_id;
   int n_event; // Number of events (surface crossings) the ray has undergone
 
@@ -129,7 +132,8 @@ public:
   SourceSite sample_s2();
 
   bool has_left_subdomain();
-  void pack_ray_for_buffer(double distance_travelled, bool is_active);
+  void pack_ray_for_buffer(
+    double distance_travelled, bool is_active, bool needs_initial_flux = false);
 
   //----------------------------------------------------------------------------
   // Static data members

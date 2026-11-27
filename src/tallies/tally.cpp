@@ -718,6 +718,30 @@ void Tally::set_scores(const vector<std::string>& scores)
         fatal_error("Cannot tally scores other than 'current' or 'flux' "
                     "when using surface filters.");
   }
+
+  // Heating is not scored for a nuclide at energies where its cross sections
+  // are evaluated from windowed multipole data, so warn about heating scores
+  // when any nuclide has multipole data loaded.
+  if (settings::temperature_multipole && mpi::master) {
+    bool mp_found = false;
+    for (const auto& nuc : data::nuclides) {
+      if (nuc->multipole_) {
+        mp_found = true;
+        break;
+      }
+    }
+    if (mp_found) {
+      for (auto sc : scores_) {
+        if (sc == HEATING || sc == HEATING_LOCAL) {
+          warning(fmt::format(
+            "Tally {} has a '{}' score, but heating is not scored for "
+            "nuclides with windowed multipole data at energies within their "
+            "multipole range. The tally will miss those contributions.",
+            id_, reaction_name(sc)));
+        }
+      }
+    }
+  }
 }
 
 void Tally::set_nuclides(pugi::xml_node node)

@@ -1264,6 +1264,9 @@ def test_convert_to_multigroup_photon_validation(run_in_tmpdir):
     with pytest.raises(ValueError, match='transport corrections'):
         model.convert_to_multigroup(correction='P0')
 
+    with pytest.raises(ValueError, match='requires independent photon sources'):
+        model.convert_to_multigroup(source=openmc.IndependentSource())
+
     neutron_library = openmc.MGXSLibrary(
         openmc.mgxs.EnergyGroups([1.0, 10.0]), particle_type='neutron')
     neutron_library.export_to_hdf5('mgxs.h5')

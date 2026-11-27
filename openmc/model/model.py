@@ -2806,7 +2806,9 @@ class Model:
             Particle type for which to generate multigroup cross sections. If
             omitted, the particle type is inferred when all model sources are
             independent sources with the same particle type. When the type
-            cannot be inferred, the default is neutron.
+            cannot be inferred, the default is neutron. Material-wise photon
+            generation requires independent photon sources in the generation
+            settings.
         **kwargs
             :class:`openmc.Settings` attributes used to customize the continuous
             energy simulation(s) that generate the MGXS library. Only the
@@ -2951,8 +2953,16 @@ class Model:
             settings.run_mode = 'fixed source'
             settings.create_fission_neutrons = False
 
+        generate_library = overwrite_mgxs_library or not Path(mgxs_path).is_file()
         if particle_type == openmc.ParticleType.PHOTON:
             settings.photon_transport = True
+            if generate_library and method == 'material_wise' and (
+                not settings.source or any(
+                    not isinstance(src, openmc.IndependentSource)
+                    or src.particle != particle_type for src in settings.source)
+            ):
+                raise ValueError('Material-wise photon MGXS generation '
+                                 'requires independent photon sources.')
 
         # A weight windows file on the generation settings is loaded and
         # applied (specifying a file turns weight windows on) during the
@@ -2972,7 +2982,7 @@ class Model:
             )
             settings.weight_windows_file = None
 
-        if Path(mgxs_path).is_file() and not overwrite_mgxs_library:
+        if not generate_library:
             mgxs_particle = None
             if h5py.is_hdf5(mgxs_path):
                 with h5py.File(mgxs_path, 'r') as mgxs_file:
@@ -3022,7 +3032,7 @@ class Model:
                 material.name = re.sub(r'[^a-zA-Z0-9]', '_', base) + f"_{material.id}"
 
             # If needed, generate the needed MGXS data library file
-            if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
+            if generate_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
                         groups, settings, mgxs_path, correction, tmpdir,

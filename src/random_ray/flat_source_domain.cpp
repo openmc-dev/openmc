@@ -1578,6 +1578,7 @@ void FlatSourceDomain::output_to_vtk_decomp() const
           sample.y = ll.y + y_delta / 2.0 + y * y_delta;
           sample.x = ll.x + x_delta / 2.0 + x * x_delta;
           Particle p;
+          p.type() = data::mg.particle_type_;
           p.r() = sample;
           p.r_last() = sample;
           p.E() = 1.0;

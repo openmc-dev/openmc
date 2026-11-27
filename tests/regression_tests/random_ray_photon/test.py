@@ -106,7 +106,8 @@ def test_random_ray_photon_source_bias(run_in_tmpdir):
     model.run(openmc_exec=config['exe'], apply_tally_results=True)
     unbiased = model.tallies[0].mean.copy()
 
-    energy.bias = [2.0, 8.0]
+    # The first line still contributes to the physical spectrum.
+    energy.bias = [0.0, 1.0]
     model.run(openmc_exec=config['exe'], apply_tally_results=True)
     np.testing.assert_allclose(model.tallies[0].mean, unbiased)
 

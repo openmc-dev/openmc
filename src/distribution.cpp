@@ -189,14 +189,14 @@ void DiscreteIndex::normalize()
 // Discrete implementation
 //==============================================================================
 
-Discrete::Discrete(pugi::xml_node node)
+Discrete::Discrete(pugi::xml_node node, bool use_bias)
 {
   auto params = get_node_array<double>(node, "parameters");
   std::size_t n = params.size() / 2;
 
   // First half is x values, second half is probabilities
   x_.assign(params.begin(), params.begin() + n);
-  probabilities_.assign(params.begin() + n, params.begin() + 2 * n);
+  const double* p = params.data() + n;
 
   // Check for bias
   if (check_for_node(node, "bias")) {
@@ -210,19 +210,18 @@ Discrete::Discrete(pugi::xml_node node)
         " entries. Please ensure distributions have the same size.");
     }
 
-    // Compute importance weights
-    weight_ = compute_importance_weights(probabilities_, bias_params);
-
-    // Initialize DiscreteIndex with bias probabilities for sampling
-    di_.assign(bias_params);
-  } else {
-    // Unbiased case: weight_ stays empty
-    di_.assign(probabilities_);
+    if (use_bias) {
+      vector<double> p_vec(p, p + n);
+      weight_ = compute_importance_weights(p_vec, bias_params);
+      di_.assign(bias_params);
+      return;
+    }
   }
+  di_.assign({p, n});
 }
 
 Discrete::Discrete(const double* x, const double* p, size_t n)
-  : x_(x, x + n), probabilities_(p, p + n), di_({p, n})
+  : x_(x, x + n), di_({p, n})
 {}
 
 std::pair<double, double> Discrete::sample(uint64_t* seed) const
@@ -731,7 +730,7 @@ double Mixture::sample_unbiased(uint64_t* seed) const
 // Helper function
 //==============================================================================
 
-UPtrDist distribution_from_xml(pugi::xml_node node)
+UPtrDist distribution_from_xml(pugi::xml_node node, bool use_discrete_bias)
 {
   if (!check_for_node(node, "type"))
     openmc::fatal_error("Distribution type must be specified.");
@@ -752,7 +751,7 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   } else if (type == "normal") {
     dist = UPtrDist {new Normal(node)};
   } else if (type == "discrete") {
-    dist = UPtrDist {new Discrete(node)};
+    dist = UPtrDist {new Discrete(node, use_discrete_bias)};
   } else if (type == "tabular") {
     dist = UPtrDist {new Tabular(node)};
   } else if (type == "mixture") {

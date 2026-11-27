@@ -18,6 +18,7 @@
 #include "openmc/timer.h"
 #include "openmc/weight_windows.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <numeric>
 
@@ -1947,17 +1948,23 @@ void FlatSourceDomain::apply_external_source_to_source_region(
       : model::external_sources[src_idx].get();
   auto is = dynamic_cast<IndependentSource*>(s);
   auto discrete = dynamic_cast<Discrete*>(is->energy());
-  double strength_factor = is->strength();
   const auto& discrete_energies = discrete->x();
-  // The deterministic source uses the input spectrum before sampling bias.
-  const auto& probabilities = discrete->probabilities();
-  double sum = std::accumulate(probabilities.begin(), probabilities.end(), 0.0);
+  const auto& acceptance = discrete->prob();
+  const auto& aliases = discrete->alias();
+  double strength_per_line = is->strength() / discrete_energies.size();
 
   srh.external_source_present() = 1;
 
+  // Each alias-table column represents an equal share of the source strength.
+  // Split that share between the column's energy and its alias energy.
   for (size_t i = 0; i < discrete_energies.size(); i++) {
+    double accepted = std::min(acceptance[i], 1.0);
     int g = data::mg.get_group_index(discrete_energies[i]);
-    srh.external_source(g) += (probabilities[i] / sum) * strength_factor;
+    srh.external_source(g) += accepted * strength_per_line;
+    if (accepted < 1.0) {
+      int alias_group = data::mg.get_group_index(discrete_energies[aliases[i]]);
+      srh.external_source(alias_group) += (1.0 - accepted) * strength_per_line;
+    }
   }
 }
 

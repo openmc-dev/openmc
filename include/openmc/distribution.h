@@ -74,8 +74,11 @@ using UPtrDist = unique_ptr<Distribution>;
 
 //! Return univariate probability distribution specified in XML file
 //! \param[in] node XML node representing distribution
+//! \param[in] use_discrete_bias Whether to apply sampling bias to a discrete
+//! distribution
 //! \return Unique pointer to distribution
-UPtrDist distribution_from_xml(pugi::xml_node node);
+UPtrDist distribution_from_xml(
+  pugi::xml_node node, bool use_discrete_bias = true);
 
 //==============================================================================
 //! A discrete distribution index (probability mass function)
@@ -118,7 +121,7 @@ private:
 
 class Discrete : public Distribution {
 public:
-  explicit Discrete(pugi::xml_node node);
+  explicit Discrete(pugi::xml_node node, bool use_bias = true);
   Discrete(const double* x, const double* p, size_t n);
 
   //! Sample a value from the distribution
@@ -133,7 +136,6 @@ public:
 
   // Properties
   const vector<double>& x() const { return x_; }
-  const vector<double>& probabilities() const { return probabilities_; }
   const vector<double>& prob() const { return di_.prob(); }
   const vector<size_t>& alias() const { return di_.alias(); }
   const vector<double>& weight() const { return weight_; }
@@ -145,9 +147,8 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
-  vector<double> x_;             //!< Possible outcomes
-  vector<double> probabilities_; //!< Input probabilities before normalization
-  vector<double> weight_;        //!< Importance weights (empty if unbiased)
+  vector<double> x_;      //!< Possible outcomes
+  vector<double> weight_; //!< Importance weights (empty if unbiased)
   DiscreteIndex di_; //!< Discrete probability distribution of outcome indices
 };
 

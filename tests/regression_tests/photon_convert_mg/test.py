@@ -39,5 +39,9 @@ def test_photon_convert_mg(tmp_path):
     xsdata = library.xsdatas[0]
     assert np.all(xsdata.total[0] > 0.0)
     assert np.all(xsdata.absorption[0] >= 0.0)
-    assert np.any(xsdata.scatter_matrix[0][:, :, 0] > 0.0)
-    assert xsdata.multiplicity_matrix[0] is None
+    production = xsdata.scatter_matrix[0][:, :, 0]
+    assert np.any(production > 0.0)
+    scatter = np.divide(production, xsdata.multiplicity_matrix[0],
+                        out=np.zeros_like(production), where=production > 0.0)
+    np.testing.assert_allclose(
+        scatter.sum(axis=1), xsdata.total[0] - xsdata.absorption[0])

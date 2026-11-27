@@ -42,14 +42,20 @@ struct SourceSite {
   Position r;
   Direction u;
   double E;
+  double E_parent;
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
+  int fission_nuclide;
   int surf_id {SURFACE_NONE};
   ParticleType particle;
 
   // Extra attributes that don't show up in source written to file
   int parent_nuclide {-1};
+  int64_t parent_id;
+  int64_t progeny_id;
+  int64_t penalty_id {-1};
+  int64_t direct_id {-1};
   int64_t parent_id {0};
   int64_t progeny_id {0};
   double wgt_born {1.0};
@@ -509,8 +515,14 @@ private:
 
   double E_;
   double E_last_;
+  double E_parent_; //!< energy of parent neutron in eV
   int g_ {0};
   int g_last_;
+  
+  // Other birth data
+  int fission_nuclide_;  //!< this particle was born as a result of this nuclide fissioning
+
+  // a double for fission cross section at birth? if so, I need to also add it to the bank...
 
   double wgt_ {1.0};
   double wgt_born_ {1.0};
@@ -554,6 +566,17 @@ private:
   int64_t current_work_ {0};
 
   vector<double> flux_derivs_;
+  
+  std::vector<std::vector<double>> cumulative_sensitivities_;  // for sensitivities for this particle  
+  std::vector<std::vector<double>> pprod_sens_;
+  std::vector<std::vector<double>> inherit_sens_;
+  std::vector<std::vector<double>> direct_sens_;
+  std::vector<std::vector<double>> reaction_sens_;   
+  
+  int last_penalty_id_ = -1;
+  int last_direct_id_ = -1;
+  std::vector<int> produced_photon_ids_;
+  std::vector<int> produced_neutron_ids_;
 
   vector<FilterMatch> filter_matches_;
 
@@ -616,6 +639,8 @@ public:
   const double& E() const { return E_; }
   double& E_last() { return E_last_; }
   const double& E_last() const { return E_last_; }
+  double& E_parent() { return E_parent_; }              // for sensitivity analysis
+  const double& E_parent() const { return E_parent_; }  // for SA
   int& g() { return g_; }
   const int& g() const { return g_; }
   int& g_last() { return g_last_; }
@@ -729,6 +754,39 @@ public:
   // Used in tally derivatives
   double& flux_derivs(int i) { return flux_derivs_[i]; }
   const double& flux_derivs(int i) const { return flux_derivs_[i]; }
+  
+  // Used in sensitivity analysis
+  std::vector<double>& cumulative_sensitivities(int i) { return cumulative_sensitivities_[i]; }
+  const std::vector<double>& cumulative_sensitivities(int i) const { return cumulative_sensitivities_[i]; }  
+  std::vector<std::vector<double>>& cumulative_sensitivities() { return cumulative_sensitivities_; }
+  const std::vector<std::vector<double>>& cumulative_sensitivities() const { return cumulative_sensitivities_; }  
+  std::vector<double>& pprod_sens(int i) { return pprod_sens_[i]; }
+  const std::vector<double>& pprod_sens(int i) const { return pprod_sens_[i]; }
+  std::vector<std::vector<double>>& pprod_sens() { return pprod_sens_; }
+  const std::vector<std::vector<double>>& pprod_sens() const { return pprod_sens_; }  
+  std::vector<double>& inherit_sens(int i) { return inherit_sens_[i]; }
+  const std::vector<double>& inherit_sens(int i) const { return inherit_sens_[i]; }
+  std::vector<std::vector<double>>& inherit_sens() { return inherit_sens_; }
+  const std::vector<std::vector<double>>& inherit_sens() const { return inherit_sens_; }
+  std::vector<double>& direct_sens(int i) { return direct_sens_[i]; }
+  const std::vector<double>& direct_sens(int i) const { return direct_sens_[i]; }
+  std::vector<std::vector<double>>& direct_sens() { return direct_sens_; }
+  const std::vector<std::vector<double>>& direct_sens() const { return direct_sens_; }
+  std::vector<double>& reaction_sens(int i) { return reaction_sens_[i]; }
+  const std::vector<double>& reaction_sens(int i) const { return reaction_sens_[i]; }
+  std::vector<std::vector<double>>& reaction_sens() { return reaction_sens_; }
+  const std::vector<std::vector<double>>& reaction_sens() const { return reaction_sens_; }
+  
+  inline static thread_local std::vector<std::vector<std::vector<double>>> thread_penalty_bank;
+  inline static thread_local std::vector<std::vector<std::vector<double>>> thread_direct_bank;
+  
+  int last_penalty_id() const { return last_penalty_id_; }
+  int last_direct_id() const { return last_direct_id_; }
+  const std::vector<int>& produced_photon_ids() const { return produced_photon_ids_; }
+  const std::vector<int>& produced_neutron_ids() const { return produced_neutron_ids_; }
+
+  int& fission_nuclide() { return fission_nuclide_; }
+  const int& fission_nuclide() const { return fission_nuclide_; }
 
   // Matches of tallies
   decltype(filter_matches_)& filter_matches() { return filter_matches_; }
@@ -798,6 +856,121 @@ public:
   {
     for (double& d : flux_derivs_) {
       d = 0;
+    }
+  }
+  
+  void resize_flux_derivs(int newSize)
+  {
+    flux_derivs_.resize(newSize, 0.0);
+  }
+    
+  // Resize and initialize sensitivity vectors
+  void resize_init_cumulative_sensitivities(int newSize)
+  {
+    cumulative_sensitivities_.resize(newSize, {0.0});
+    // reaction_sens_.resize(newSize, {0.0});
+  }
+  
+  void resize_init_cumulative_sensitivities_vec(int indx, int newSize)
+  {
+    cumulative_sensitivities_[indx].resize(newSize, 0.0);
+    // reaction_sens_[indx].resize(newSize, 0.0);
+  }
+  
+  void resize_init_pprod_sens(int newSize)
+  {
+    pprod_sens_.resize(newSize, {0.0});
+  }
+  
+  void resize_init_pprod_sens_vec(int indx, int newSize)
+  {
+    pprod_sens_[indx].resize(newSize, 0.0);
+  }
+  
+  void resize_init_inherit_sens(int newSize)
+  {
+    inherit_sens_.resize(newSize, {0.0});
+  }
+  
+  void resize_init_inherit_sens_vec(int indx, int newSize)
+  {
+    inherit_sens_[indx].resize(newSize, 0.0);
+  }
+  
+  void resize_init_direct_sens(int newSize)
+  {
+    direct_sens_.resize(newSize, {0.0});
+  }
+  
+  void resize_init_direct_sens_vec(int indx, int newSize)
+  {
+    direct_sens_[indx].resize(newSize, 0.0);
+  }
+  
+  void resize_init_reaction_sens(int newSize)
+  {
+    reaction_sens_.resize(newSize, {0.0});
+  }
+  
+  void resize_init_reaction_sens_vec(int indx, int newSize)
+  {
+    reaction_sens_[indx].resize(newSize, 0.0);
+  }
+  
+  void resize_alloc_filter_matches(int newSize)
+  {
+    filter_matches_.resize(newSize);
+    for (auto &match: filter_matches_){
+      match.bins_.resize(1, 0.0);
+      match.weights_.resize(1, 0.0);
+      match.i_bin_ = 0;
+      // bins_present_ default is false from header
+    }
+  }
+  
+  void initialize_cumulative_sensitivities()
+  {
+    for (auto& it : cumulative_sensitivities_){
+      std::fill(it.begin(), it.end(), 0.0);
+    }
+    
+    // for (auto& it : reaction_sens_){
+    //   std::fill(it.begin(), it.end(), 0.0);
+    // }
+  }
+  
+  void initialize_pprod_sens()
+  {
+    for (auto& it : pprod_sens_){
+      std::fill(it.begin(), it.end(), 0.0);
+    }
+  }
+  
+  void initialize_inherit_sens()
+  {
+    for (auto& it : inherit_sens_){
+      std::fill(it.begin(), it.end(), 0.0);
+    }
+  }
+  
+  void initialize_direct_sens()
+  {
+    for (auto& it : direct_sens_){
+      std::fill(it.begin(), it.end(), 0.0);
+    }
+  }
+  
+  void set_last_penalty_id(int id) { last_penalty_id_ = id; }
+  void set_last_direct_id(int id) { last_direct_id_ = id; }
+  void add_produced_photon_id(int id) { produced_photon_ids_.push_back(id); }    
+  void clear_produced_photon_ids() { produced_photon_ids_.clear(); }
+  void add_produced_neutron_id(int id) { produced_neutron_ids_.push_back(id); }    
+  void clear_produced_neutron_ids() { produced_neutron_ids_.clear(); }
+  
+  void initialize_reaction_sens()
+  {
+    for (auto& it : reaction_sens_){
+      std::fill(it.begin(), it.end(), 0.0);
     }
   }
 };

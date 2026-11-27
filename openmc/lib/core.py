@@ -23,10 +23,10 @@ import openmc
 class _SourceSite(Structure):
     _fields_ = [('r', c_double*3),
                 ('u', c_double*3),
-                ('E', c_double),
+                ('E', c_double),                
                 ('time', c_double),
                 ('wgt', c_double),
-                ('delayed_group', c_int),
+                ('delayed_group', c_int),                
                 ('surf_id', c_int),
                 ('particle', c_int32),
                 ('parent_nuclide', c_int),
@@ -35,7 +35,11 @@ class _SourceSite(Structure):
                 ('wgt_born', c_double),
                 ('wgt_ww_born', c_double),
                 ('n_split', c_int64),
-                ('n_collision', c_int)]
+                ('n_collision', c_int),
+                ('E_parent', c_double),
+                ('fission_nuclide', c_int),
+                ('penalty_id', c_int64),
+                ('direct_id', c_int64)]
 
 # Define input type for numpy arrays that will be passed into C++ functions
 # Must be an int or double array, with single dimension that is contiguous

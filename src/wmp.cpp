@@ -218,6 +218,349 @@ std::tuple<double, double, double> WindowedMultipole::evaluate_deriv(
 }
 
 //========================================================================
+// WindowedMultipole parameter derivatives
+//========================================================================
+
+std::pair<int, std::vector<double>>
+WindowedMultipole::evaluate_pole_deriv_total(double E, double sqrtkT)
+{
+  using namespace std::complex_literals;
+
+  // ==========================================================================
+  // Bookkeeping
+
+  // Define some frequently used variables.
+  double sqrtE = std::sqrt(E);
+  double invE = 1.0 / E;
+
+  // Locate window containing energy
+  int i_window = std::min(window_info_.size() - 1,
+    static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
+  const auto& window {window_info_[i_window]};
+
+  // Calculate size of vector and initialize
+  int size = 2*(window.index_end - window.index_start + 1)*data_.shape()[1];
+  std::vector<double> derivative(size, 0.0);
+  int vector_start = window.index_start * 2 * data_.shape()[1];
+
+  // ==========================================================================
+  // Add the contribution from the poles in this window.
+
+  if (sqrtkT == 0.0) {
+    // If at 0K, use asymptotic form.
+    for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
+      int start_idx = (i_pole - window.index_start) * 2 * data_.shape()[1];
+      std::complex<double> psi_chi = 1.0 / (data_(i_pole, MP_EA) - sqrtE);
+      std::complex<double> c_temp = psi_chi / E;
+
+      derivative[start_idx]   = (-1.0 * (data_(i_pole, MP_RS) + data_(i_pole, MP_RA)) * psi_chi * c_temp).imag();
+      derivative[start_idx+1] = (-1.0 * (data_(i_pole, MP_RS) + data_(i_pole, MP_RA)) * psi_chi * c_temp).real();
+      derivative[start_idx+2] = (c_temp).imag();
+      derivative[start_idx+3] = (c_temp).real();
+      derivative[start_idx+4] = (c_temp).imag();
+      derivative[start_idx+5] = (c_temp).real();
+      // Total = Scatter + Absorption, therefore changing r_f does not affect Total Cross Section
+      //if (fissionable_){
+      //  derivative[start_idx]   += (-1.0 * data_(i_pole, MP_RF) * psi_chi * c_temp).imag();
+      //  derivative[start_idx+1] += (-1.0 * data_(i_pole, MP_RF) * psi_chi * c_temp).real();
+      //  derivative[start_idx+6] = (c_temp).imag();
+      //  derivative[start_idx+7] = (c_temp).real();
+      //}
+    }
+  } else {
+    // At temperature, use Faddeeva function-based form.
+    double dopp = sqrt_awr_ / sqrtkT;
+    if (window.index_end >= window.index_start) {
+      for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
+        int start_idx = (i_pole - window.index_start) * 2 * data_.shape()[1];
+        std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
+        std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
+        std::complex<double> dw_val = w_derivative(z,1) * dopp * invE * SQRT_PI;
+
+        derivative[start_idx]   = (-1.0 * dopp * (data_(i_pole, MP_RS) + data_(i_pole, MP_RA)) * dw_val).real();
+        derivative[start_idx+1] = (-1.0i * dopp * (data_(i_pole, MP_RS) + data_(i_pole, MP_RA)) * dw_val).real();
+        derivative[start_idx+2] = (w_val).real();
+        derivative[start_idx+3] = (1.0i * w_val).real();
+        derivative[start_idx+4] = (w_val).real();
+        derivative[start_idx+5] = (1.0i * w_val).real();
+        // Total = Scatter + Absorption, therefore changing r_f does not affect Total Cross Section
+        //if (fissionable_){
+        //  derivative[start_idx]   += (-1.0 * data_(i_pole, MP_RF) * dopp * dw_val).real();
+        //  derivative[start_idx+1] += (-1.0i * data_(i_pole, MP_RF) * dopp * dw_val).real();
+        //  derivative[start_idx+6] = (w_val).real();
+        //  derivative[start_idx+7] = (1.0i * w_val).real();
+        //}
+      }
+    }
+  }
+
+  return std::make_pair(vector_start, derivative);
+}
+
+std::pair<int, std::vector<double>>
+WindowedMultipole::evaluate_pole_deriv_scatter(double E, double sqrtkT)
+{
+  using namespace std::complex_literals;
+
+  // ==========================================================================
+  // Bookkeeping
+
+  // Define some frequently used variables.
+  double sqrtE = std::sqrt(E);
+  double invE = 1.0 / E;
+
+  // Locate window containing energy
+  int i_window = std::min(window_info_.size() - 1,
+    static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
+  const auto& window {window_info_[i_window]};
+
+  // Calculate size of vector and initialize
+  int size = 2*(window.index_end - window.index_start + 1)*data_.shape()[1];
+  std::vector<double> derivative(size, 0.0);
+  int vector_start = window.index_start * 2 * data_.shape()[1];
+
+  // ==========================================================================
+  // Add the contribution from the poles in this window.
+
+  if (sqrtkT == 0.0) {
+    // If at 0K, use asymptotic form.
+    for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
+      int start_idx = (i_pole - window.index_start) * 2 * data_.shape()[1];
+      std::complex<double> psi_chi = 1.0 / (data_(i_pole, MP_EA) - sqrtE);
+      std::complex<double> c_temp = psi_chi / E;
+
+      derivative[start_idx]   = (-1.0 * data_(i_pole, MP_RS) * psi_chi * c_temp).imag();
+      derivative[start_idx+1] = (-1.0 * data_(i_pole, MP_RS) * psi_chi * c_temp).real();
+      derivative[start_idx+2] = (c_temp).imag();
+      derivative[start_idx+3] = (c_temp).real();
+    }
+  } else {
+    // At temperature, use Faddeeva function-based form.
+    double dopp = sqrt_awr_ / sqrtkT;
+    if (window.index_end >= window.index_start) {
+      for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
+        int start_idx = (i_pole - window.index_start) * 2 * data_.shape()[1];
+        std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
+        std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
+        std::complex<double> dw_val = w_derivative(z,1) * dopp * invE * SQRT_PI;
+
+        derivative[start_idx]   = (-1.0 * dopp * data_(i_pole, MP_RS) * dw_val).real();
+        derivative[start_idx+1] = (-1.0i * dopp * data_(i_pole, MP_RS) * dw_val).real();
+        derivative[start_idx+2] = (w_val).real();
+        derivative[start_idx+3] = (1.0i * w_val).real();
+      }
+    }
+  }
+
+  return std::make_pair(vector_start, derivative);
+}
+
+std::pair<int, std::vector<double>>
+WindowedMultipole::evaluate_pole_deriv_fission(double E, double sqrtkT)
+{
+  using namespace std::complex_literals;
+
+  // ==========================================================================
+  // Bookkeeping
+
+  // Define some frequently used variables.
+  double sqrtE = std::sqrt(E);
+  double invE = 1.0 / E;
+
+  // Locate window containing energy
+  int i_window = std::min(window_info_.size() - 1,
+    static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
+  const auto& window {window_info_[i_window]};
+
+  // Calculate size of vector and initialize
+  int size = 2*(window.index_end - window.index_start + 1)*data_.shape()[1];
+  std::vector<double> derivative(size, 0.0);
+  int vector_start = window.index_start * 2 * data_.shape()[1];
+
+  // ==========================================================================
+  // Add the contribution from the poles in this window.
+
+  if (sqrtkT == 0.0) {
+    // If at 0K, use asymptotic form.
+    for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
+      int start_idx = (i_pole - window.index_start) * 2 * data_.shape()[1];
+      std::complex<double> psi_chi = 1.0 / (data_(i_pole, MP_EA) - sqrtE);
+      std::complex<double> c_temp = psi_chi / E;
+      
+      derivative[start_idx]   = (-1.0 * data_(i_pole, MP_RF) * psi_chi * c_temp).imag();
+      derivative[start_idx+1] = (-1.0 * data_(i_pole, MP_RF) * psi_chi * c_temp).real();
+      derivative[start_idx+6] = (c_temp).imag();
+      derivative[start_idx+7] = (c_temp).real();
+    }
+  } else {
+    // At temperature, use Faddeeva function-based form.
+    double dopp = sqrt_awr_ / sqrtkT;
+    if (window.index_end >= window.index_start) {
+      for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
+        int start_idx = (i_pole - window.index_start) * 2 * data_.shape()[1];
+        std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
+        std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
+        std::complex<double> dw_val = w_derivative(z,1) * dopp * invE * SQRT_PI;
+        
+        derivative[start_idx]   = (-1.0 * data_(i_pole, MP_RF) * dopp * dw_val).real();
+        derivative[start_idx+1] = (-1.0i * data_(i_pole, MP_RF) * dopp * dw_val).real();
+        derivative[start_idx+6] = (w_val).real();
+        derivative[start_idx+7] = (1.0i * w_val).real();
+      }
+    }
+  }
+
+  return std::make_pair(vector_start, derivative);
+}
+
+std::pair<int, std::vector<double>>
+WindowedMultipole::evaluate_fit_deriv_total(double E, double sqrtkT)
+{
+  using namespace std::complex_literals;
+
+  // ==========================================================================
+  // Bookkeeping
+
+  // Define some frequently used variables.
+  double sqrtE = std::sqrt(E);
+  double invE = 1.0 / E;
+
+  // Locate window containing energy 
+  int i_window = std::min(window_info_.size() - 1,
+    static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
+  const auto& window {window_info_[i_window]};
+
+  // Calculate size of vector and initialize
+  int size = curvefit_.shape()[1]*curvefit_.shape()[2];
+  std::vector<double> derivative(size, 0.0);
+  int vector_start = i_window*curvefit_.shape()[1]*curvefit_.shape()[2];
+
+  // ==========================================================================
+  // Add the contribution from the curvefit polynomial.
+
+  if (sqrtkT > 0.0 && window.broaden_poly) {
+    // Broaden the curvefit.
+    double dopp = sqrt_awr_ / sqrtkT;
+    std::vector<double> broadened_polynomials(fit_order_ + 1);
+    broaden_wmp_polynomials(E, dopp, fit_order_ + 1, broadened_polynomials.data());
+    for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
+      derivative[i_poly] = broadened_polynomials[i_poly];
+      derivative[i_poly + FIT_A*curvefit_.shape()[1]] = broadened_polynomials[i_poly];
+      // Total = Scatter + Absorption, therefore changing r_f does not affect Total Cross Section
+      //if (fissionable_) {
+      //  derivative[i_poly + FIT_F*curvefit_.shape()[1]] = broadened_polynomials[i_poly];
+      //}
+    }
+  } else {
+    // Evaluate as if it were a polynomial
+    double temp = invE;
+    for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
+      derivative[i_poly] = temp;
+      derivative[i_poly + FIT_A*curvefit_.shape()[1]] = temp;
+      // Total = Scatter + Absorption, therefore changing r_f does not affect Total Cross Section
+      //if (fissionable_) {
+      //  derivative[i_poly + FIT_F*curvefit_.shape()[1]] = temp;
+      //}
+      temp *= sqrtE;
+    }
+  }
+  
+  return std::make_pair(vector_start, derivative);
+}
+
+std::pair<int, std::vector<double>>
+WindowedMultipole::evaluate_fit_deriv_scatter(double E, double sqrtkT)
+{
+  using namespace std::complex_literals;
+
+  // ==========================================================================
+  // Bookkeeping
+
+  // Define some frequently used variables.
+  double sqrtE = std::sqrt(E);
+  double invE = 1.0 / E;
+
+  // Locate window containing energy
+  int i_window = std::min(window_info_.size() - 1,
+    static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
+  const auto& window {window_info_[i_window]};
+
+  // Calculate size of vector and initialize
+  int size = curvefit_.shape()[1];
+  std::vector<double> derivative(size, 0.0);
+  int vector_start = i_window*curvefit_.shape()[1]*curvefit_.shape()[2] + FIT_S*curvefit_.shape()[1];
+
+  // ==========================================================================
+  // Add the contribution from the curvefit polynomial.
+
+  if (sqrtkT > 0.0 && window.broaden_poly) {
+    // Broaden the curvefit.
+    double dopp = sqrt_awr_ / sqrtkT;
+    std::vector<double> broadened_polynomials(fit_order_ + 1);
+    broaden_wmp_polynomials(E, dopp, fit_order_ + 1, broadened_polynomials.data());
+    for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
+      derivative[i_poly] = broadened_polynomials[i_poly];
+    }
+  } else {
+    // Evaluate as if it were a polynomial
+    double temp = invE;
+    for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
+      derivative[i_poly] = temp;
+      temp *= sqrtE;
+    }
+  }
+  
+  return std::make_pair(vector_start, derivative);
+}
+
+std::pair<int, std::vector<double>>
+WindowedMultipole::evaluate_fit_deriv_fission(double E, double sqrtkT)
+{
+  using namespace std::complex_literals;
+
+  // ==========================================================================
+  // Bookkeeping
+
+  // Define some frequently used variables.
+  double sqrtE = std::sqrt(E);
+  double invE = 1.0 / E;
+
+  // Locate window containing energy
+  // int i_window = (sqrtE - std::sqrt(E_min_)) * inv_spacing_;
+  
+  int i_window = std::min(window_info_.size() - 1,
+    static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
+  const auto& window {window_info_[i_window]};
+
+  // Calculate size of vector and initialize
+  int size = curvefit_.shape()[1];
+  std::vector<double> derivative(size, 0.0);
+  int vector_start = i_window*curvefit_.shape()[1]*curvefit_.shape()[2] + FIT_F*curvefit_.shape()[1];
+
+  // ==========================================================================
+  // Add the contribution from the curvefit polynomial.
+
+  if (sqrtkT > 0.0 && window.broaden_poly) {
+    // Broaden the curvefit.
+    double dopp = sqrt_awr_ / sqrtkT;
+    std::vector<double> broadened_polynomials(fit_order_ + 1);
+    broaden_wmp_polynomials(E, dopp, fit_order_ + 1, broadened_polynomials.data());
+    for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
+      derivative[i_poly] = broadened_polynomials[i_poly];
+    }
+  } else {
+    // Evaluate as if it were a polynomial
+    double temp = invE;
+    for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
+      derivative[i_poly] = temp;
+      temp *= sqrtE;
+    }
+  }
+
+  return std::make_pair(vector_start, derivative);
+}
+
+//========================================================================
 // Non-member functions
 //========================================================================
 

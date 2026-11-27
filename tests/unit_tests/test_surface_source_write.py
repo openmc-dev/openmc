@@ -228,9 +228,8 @@ def test_surface_source_id(run_in_tmpdir):
 
 
 @pytest.fixture
-def model_dagmc(request):
-    """Model based on the mesh file 'dagmc.h5m' available from
-    tests/regression_tests/dagmc/legacy.
+def model_dagmc(dagmc_pincell_path):
+    """Model based on a pincell DAGMC mesh file
 
     """
     openmc.reset_auto_ids()
@@ -257,8 +256,7 @@ def model_dagmc(request):
     # =============================================================================
     # Geometry
     # =============================================================================
-    dagmc_path = Path(request.fspath).parent / "../regression_tests/dagmc/legacy/dagmc.h5m"
-    dagmc_univ = openmc.DAGMCUniverse(dagmc_path)
+    dagmc_univ = openmc.DAGMCUniverse(dagmc_pincell_path.resolve())
     model.geometry = openmc.Geometry(dagmc_univ)
 
     # =============================================================================

@@ -27,21 +27,24 @@
   </materials>
   <geometry>
     <cell id="1" fill="4" region="1 -2 3 -4 5 -6" universe="5"/>
-    <dagmc_universe id="1" auto_geom_ids="true" filename="dagmc.h5m"/>
     <lattice id="4">
       <pitch>24.0 24.0</pitch>
       <dimension>2 2</dimension>
       <lower_left>-24.0 -24.0</lower_left>
       <universes>
-1 1 
-1 1 </universes>
+3 3 
+3 3 </universes>
     </lattice>
+    <mesh id="1" type="unstructured" library="moab" interface="xdg">
+      <filename>dagmc.h5m</filename>
+    </mesh>
     <surface id="1" name="left" type="x-plane" boundary="reflective" coeffs="-24.0"/>
     <surface id="2" name="right" type="x-plane" boundary="reflective" coeffs="24.0"/>
     <surface id="3" name="front" type="y-plane" boundary="reflective" coeffs="-24.0"/>
     <surface id="4" name="back" type="y-plane" boundary="reflective" coeffs="24.0"/>
     <surface id="5" name="bottom" type="z-plane" boundary="reflective" coeffs="-10.0"/>
     <surface id="6" name="top" type="z-plane" boundary="reflective" coeffs="10.0"/>
+    <xdg_universe id="3" auto_geom_ids="true" mesh="1" type="surface_mesh"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

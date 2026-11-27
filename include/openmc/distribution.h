@@ -74,11 +74,8 @@ using UPtrDist = unique_ptr<Distribution>;
 
 //! Return univariate probability distribution specified in XML file
 //! \param[in] node XML node representing distribution
-//! \param[in] use_discrete_bias Whether to apply sampling bias to a discrete
-//! distribution
 //! \return Unique pointer to distribution
-UPtrDist distribution_from_xml(
-  pugi::xml_node node, bool use_discrete_bias = true);
+UPtrDist distribution_from_xml(pugi::xml_node node);
 
 //==============================================================================
 //! A discrete distribution index (probability mass function)
@@ -121,7 +118,7 @@ private:
 
 class Discrete : public Distribution {
 public:
-  explicit Discrete(pugi::xml_node node, bool use_bias = true);
+  explicit Discrete(pugi::xml_node node);
   Discrete(const double* x, const double* p, size_t n);
 
   //! Sample a value from the distribution

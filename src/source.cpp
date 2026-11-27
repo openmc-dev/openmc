@@ -364,9 +364,21 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
     // Determine external source energy distribution
     if (check_for_node(node, "energy")) {
       pugi::xml_node node_dist = node.child("energy");
-      // Random ray bins the physical energy probabilities directly.
-      bool use_discrete_bias = settings::solver_type != SolverType::RANDOM_RAY;
-      energy_ = distribution_from_xml(node_dist, use_discrete_bias);
+      if (settings::solver_type == SolverType::RANDOM_RAY &&
+          check_for_node(node_dist, "bias") &&
+          check_for_node(node_dist, "type") &&
+          get_node_value(node_dist, "type", true, true) == "discrete") {
+        // Random ray bins the physical energy probabilities directly.
+        auto params = get_node_array<double>(node_dist, "parameters");
+        size_t n = params.size() / 2;
+        if (get_node_array<double>(node_dist, "bias").size() != n) {
+          fatal_error("A discrete source energy distribution needs one bias "
+                      "probability per energy line.");
+        }
+        energy_ = make_unique<Discrete>(params.data(), params.data() + n, n);
+      } else {
+        energy_ = distribution_from_xml(node_dist);
+      }
 
       // For decay photon sources, use the absolute photon emission rate in
       // [photons/s] as the source strength

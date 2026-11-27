@@ -189,7 +189,7 @@ void DiscreteIndex::normalize()
 // Discrete implementation
 //==============================================================================
 
-Discrete::Discrete(pugi::xml_node node, bool use_bias)
+Discrete::Discrete(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
   std::size_t n = params.size() / 2;
@@ -210,19 +210,22 @@ Discrete::Discrete(pugi::xml_node node, bool use_bias)
         " entries. Please ensure distributions have the same size.");
     }
 
-    if (use_bias) {
-      vector<double> p_vec(p, p + n);
-      weight_ = compute_importance_weights(p_vec, bias_params);
-      di_.assign(bias_params);
-      return;
-    }
+    // Compute importance weights
+    vector<double> p_vec(p, p + n);
+    weight_ = compute_importance_weights(p_vec, bias_params);
+
+    // Initialize DiscreteIndex with bias probabilities for sampling
+    di_.assign(bias_params);
+  } else {
+    // Unbiased case: weight_ stays empty
+    di_.assign({p, n});
   }
-  di_.assign({p, n});
 }
 
-Discrete::Discrete(const double* x, const double* p, size_t n)
-  : x_(x, x + n), di_({p, n})
-{}
+Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
+{
+  x_.assign(x, x + n);
+}
 
 std::pair<double, double> Discrete::sample(uint64_t* seed) const
 {
@@ -730,7 +733,7 @@ double Mixture::sample_unbiased(uint64_t* seed) const
 // Helper function
 //==============================================================================
 
-UPtrDist distribution_from_xml(pugi::xml_node node, bool use_discrete_bias)
+UPtrDist distribution_from_xml(pugi::xml_node node)
 {
   if (!check_for_node(node, "type"))
     openmc::fatal_error("Distribution type must be specified.");
@@ -751,7 +754,7 @@ UPtrDist distribution_from_xml(pugi::xml_node node, bool use_discrete_bias)
   } else if (type == "normal") {
     dist = UPtrDist {new Normal(node)};
   } else if (type == "discrete") {
-    dist = UPtrDist {new Discrete(node, use_discrete_bias)};
+    dist = UPtrDist {new Discrete(node)};
   } else if (type == "tabular") {
     dist = UPtrDist {new Tabular(node)};
   } else if (type == "mixture") {

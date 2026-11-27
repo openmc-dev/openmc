@@ -6,3 +6,7 @@ production matrix:
  [ 0.          0.         19.78591557]]
 absorption:
 [ 0.23533572  3.6284784  77.18523469]
+continuous-energy flux spectrum:
+[0.01732344 0.07190759 0.91076897]
+multigroup flux spectrum:
+[0.0170731  0.07704932 0.90587757]

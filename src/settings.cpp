@@ -633,11 +633,6 @@ void read_settings_xml(pugi::xml_node root)
   // Check for photon transport
   if (check_for_node(root, "photon_transport")) {
     photon_transport = get_node_value_bool(root, "photon_transport");
-
-    if (!run_CE && photon_transport) {
-      fatal_error("Photon transport is not currently supported in "
-                  "multigroup mode");
-    }
   }
 
   // Check for atomic relaxation
@@ -790,6 +785,10 @@ void read_settings_xml(pugi::xml_node root)
 
   // read properties from file
   if (check_for_node(root, "properties_file")) {
+    if (!run_CE) {
+      fatal_error("The properties_file setting is not supported in multigroup "
+                  "mode.");
+    }
     properties_file = get_node_value(root, "properties_file");
     if (!file_exists(properties_file)) {
       fatal_error(fmt::format("File '{}' does not exist.", properties_file));

@@ -1,5 +1,6 @@
 #include "openmc/mgxs_interface.h"
 
+#include <stdexcept>
 #include <string>
 #include <unordered_set>
 
@@ -184,11 +185,29 @@ vector<vector<double>> MgxsInterface::get_mat_kTs()
 
 //==============================================================================
 
-int MgxsInterface::get_group_index(double E)
+int MgxsInterface::get_group_index(double E) const
 {
   int g =
     lower_bound_index(rev_energy_bins_.begin(), rev_energy_bins_.end(), E);
   return num_energy_groups_ - g - 1.;
+}
+
+int MgxsInterface::get_source_group_index(ParticleType particle, double E) const
+{
+  if (particle != particle_type_) {
+    fatal_error(fmt::format(
+      "Source particle type '{}' does not match the '{}' MGXS library.",
+      particle.str(), particle_type_.str()));
+  }
+
+  double E_min = rev_energy_bins_.front();
+  double E_max = rev_energy_bins_.back();
+  if (E < E_min || E > E_max) {
+    fatal_error(fmt::format(
+      "Source energy {} eV is outside the MGXS group structure ({}-{} eV).", E,
+      E_min, E_max));
+  }
+  return get_group_index(E);
 }
 
 //==============================================================================
@@ -208,6 +227,22 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
 
   // Open file for reading
   hid_t file_id = file_open(cross_sections_path_, 'r', true);
+
+  std::string particle_name {"neutron"};
+  if (attribute_exists(file_id, "particle_type")) {
+    read_attribute(file_id, "particle_type", particle_name);
+  }
+  try {
+    particle_type_ = ParticleType(particle_name);
+  } catch (const std::logic_error&) {
+    fatal_error(fmt::format(
+      "Invalid particle_type '{}' in MGXS library.", particle_name));
+  }
+  if (!particle_type_.is_neutron() && !particle_type_.is_photon()) {
+    fatal_error(fmt::format("Unsupported particle_type '{}' in MGXS library. "
+                            "Expected a neutron or photon.",
+      particle_name));
+  }
 
   ensure_exists(file_id, "energy_groups", true);
   read_attribute(file_id, "energy_groups", num_energy_groups_);
@@ -239,6 +274,10 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
 
   // Calculate approximate default inverse velocity data
   for (int i = 0; i < energy_bins_.size() - 1; ++i) {
+    if (particle_type_.is_photon()) {
+      default_inverse_velocity_.push_back(1.0 / C_LIGHT);
+      continue;
+    }
     double e_min = std::max(energy_bins_[i + 1], 1e-5);
     double e_max = energy_bins_[i];
     double alpha = 1.0 / (C_LIGHT * std::log(e_max / e_min));
@@ -257,9 +296,9 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
 void put_mgxs_header_data_to_globals()
 {
   // Get the minimum and maximum energies
-  int neutron = ParticleType::neutron().transport_index();
-  data::energy_min[neutron] = data::mg.energy_bins_.back();
-  data::energy_max[neutron] = data::mg.energy_bins_.front();
+  int particle = data::mg.particle_type_.transport_index();
+  data::energy_min[particle] = data::mg.energy_bins_.back();
+  data::energy_max[particle] = data::mg.energy_bins_.front();
 
   // Save available XS names to library list, so that when
   // materials are read, the specified mgxs can be confirmed

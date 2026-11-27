@@ -192,6 +192,11 @@ extern "C" int openmc_properties_export(const char* filename)
 
 extern "C" int openmc_properties_import(const char* filename)
 {
+  if (!settings::run_CE) {
+    set_errmsg("Importing properties is not supported in multigroup mode.");
+    return OPENMC_E_UNASSIGNED;
+  }
+
   // Display output message
   auto msg = fmt::format("Importing properties from {}...", filename);
   write_message(msg, 5);

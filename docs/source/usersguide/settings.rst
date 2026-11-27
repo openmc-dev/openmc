@@ -737,10 +737,10 @@ transport::
 
   settings.photon_transport = True
 
-Atomic relaxation (the cascade of fluorescence photons and Auger electrons
-emitted when an inner-shell vacancy is filled) is enabled by default whenever
-photon transport is on. It can be disabled using the
-:attr:`Settings.atomic_relaxation` attribute::
+In continuous-energy mode, atomic relaxation (the cascade of fluorescence
+photons and Auger electrons emitted when an inner-shell vacancy is filled)
+is enabled by default whenever photon transport is on. To disable it, set
+:attr:`Settings.atomic_relaxation` to ``False``::
 
   settings.atomic_relaxation = False
 

@@ -1093,32 +1093,12 @@ used for neutron models::
   model.convert_to_random_ray()
   model.run()
 
-The photon group structure should span the source spectrum and the secondary
-photon energies of interest, with its lower boundary consistent with the photon
-energy cutoff. Photon MGXS generation preserves atomic relaxation and the
-selected electron treatment. Thick-target bremsstrahlung should be selected
-when bremsstrahlung photons need to be represented in the collapsed production
-operator.
-
-For photon libraries, the ``nu-scatter matrix`` is the complete expected
-outgoing-photon production operator. It includes the surviving primary photon
-from coherent or incoherent scattering and secondary photons from atomic
-relaxation, thick-target bremsstrahlung, and positron annihilation. Random ray
-uses the zeroth angular moment (P0) of this matrix for its production source and
-treats outgoing photons as isotropic. This approximation can affect spatial
-flux profiles when Compton scattering is strongly forward peaked.
-
-The photon ``absorption`` cross section describes removal of the incident
-photon. It is independently tallied and must not be inferred by subtracting the
-production matrix from the total cross section because an interaction can both
-remove its incident photon and produce secondary photons.
-
-Photon random ray transport requires angle-independent multigroup data and an
-:class:`openmc.IndependentSource` that emits photons at discrete energies within
-the library group bounds. Photon eigenvalue and adjoint calculations, coupled
-neutron--photon random ray solves, and higher-order photon production are not
-supported. As with neutron fixed-source random ray calculations, inactive
-batches are needed to converge the scattering and production source.
+The source and the multigroup library must both specify photons. The group
+structure should span the source spectrum and the secondary photon energies of
+interest, with its lower boundary consistent with the photon energy cutoff. Note
+that photon adjoint and coupled neutron--photon solves are not yet supported.
+See :ref:`methods_random_ray_photon` for the cross-section representation and
+angular approximation.
 
 .. _usersguide_vol_estimators:
 

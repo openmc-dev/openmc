@@ -1009,19 +1009,19 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
 {
   // Eigenvalue mode normalization
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    // Normalize fluxes by total number of fission particles produced. This
+    // Normalize fluxes by total number of fission neutrons produced. This
     // ensures consistent scaling of the eigenvector such that its magnitude is
     // comparable to the eigenvector produced by the Monte Carlo solver.
     // Multiplying by the eigenvalue is unintuitive, but it is necessary.
-    // If the eigenvalue is 1.2, per starting source particle, you will
-    // generate 1.2 particles. Thus if we normalize to generating only ONE
+    // If the eigenvalue is 1.2, per starting source neutron, you will
+    // generate 1.2 neutrons. Thus if we normalize to generating only ONE
     // neutron in total for the whole domain, then we don't actually have enough
-    // flux to generate the required 1.2 particles. We only know the flux
-    // required to generate 1 particle (which would have required less than one
-    // starting particle). Thus, you have to scale the flux up by the eigenvalue
-    // such that 1.2 particles are generated, so as to be consistent with the
-    // bookkeeping in MC which is all done per starting source particle (not per
-    // particle produced).
+    // flux to generate the required 1.2 neutrons. We only know the flux
+    // required to generate 1 neutron (which would have required less than one
+    // starting neutron). Thus, you have to scale the flux up by the eigenvalue
+    // such that 1.2 neutrons are generated, so as to be consistent with the
+    // bookkeeping in MC which is all done per starting source neutron (not per
+    // neutron produced).
     return k_eff_ / (fission_rate_ * simulation_volume_);
   }
 

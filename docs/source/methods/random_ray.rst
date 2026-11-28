@@ -1185,6 +1185,27 @@ random ray and Monte Carlo, however.
   develop the scattering source by way of inactive batches before beginning
   active batches.
 
+.. _methods_random_ray_photon:
+
+~~~~~~~~~~~~~~~~~~~~~
+Photon Cross Sections
+~~~~~~~~~~~~~~~~~~~~~
+
+For multigroup photon cross section libraries, the ``nu-scatter matrix`` gives
+the expected production of outgoing photons in each energy group. It includes
+the surviving primary photon from coherent or incoherent scattering and
+secondary photons from atomic relaxation, thick-target bremsstrahlung, and
+positron annihilation. By default, multigroup cross-section generation uses the
+continuous-energy model's atomic relaxation and electron treatment settings.
+
+Random ray uses the angle-integrated production matrix (the zeroth angular
+moment, P0) and treats outgoing photons as isotropic. This approximation can
+affect spatial flux profiles when Compton scattering is strongly forward-peaked.
+
+The photon ``absorption`` cross section describes removal of the incident
+photon. Absorption is tallied independently of production because an interaction
+can remove the incident photon and produce secondary photons.
+
 .. _adjoint:
 
 ------------------------
@@ -1207,24 +1228,24 @@ lifetimes.
 
 In OpenMC, the random ray adjoint solver is implemented simply by transposing
 the scattering matrix, swapping :math:`\nu\Sigma_f` and :math:`\chi`, and then
-running a normal transport solve. When no external fixed forward source is 
-present, or if an adjoint fixed source is specifically provided, no additional 
-changes are needed in the transport process. This adjoint source can 
-correspond, for example, to a detector response function in a particular 
-region. However, if an external fixed forward source is present in the 
-simulation problem without an adjoint fixed source, an additional step is taken 
+running a normal transport solve. When no external fixed forward source is
+present, or if an adjoint fixed source is specifically provided, no additional
+changes are needed in the transport process. This adjoint source can
+correspond, for example, to a detector response function in a particular
+region. However, if an external fixed forward source is present in the
+simulation problem without an adjoint fixed source, an additional step is taken
 to compute the accompanying forward-weighted adjoint source. In this case, the
-adjoint flux does *not* represent the importance of locations in phase space to 
-detector response; rather, the "response" in question is a uniform distribution 
-of Monte Carlo particle density, making the importance provided by the adjoint 
-flux appropriate for use with weight window generation schemes for global 
-variance reduction. Thus, if using a fixed source, the forward-weighted 
-external source for adjoint mode is simply computed as being :math:`1 / \phi`, 
-where :math:`\phi` is the forward scalar flux that results from a normal 
-forward solve (which OpenMC will run first automatically when in adjoint mode). 
-The adjoint external source will be computed for each source region in the 
-simulation mesh, independent of any tallies. The adjoint external source is 
-always flat, even when a linear scattering and fission source shape is used. 
+adjoint flux does *not* represent the importance of locations in phase space to
+detector response; rather, the "response" in question is a uniform distribution
+of Monte Carlo particle density, making the importance provided by the adjoint
+flux appropriate for use with weight window generation schemes for global
+variance reduction. Thus, if using a fixed source, the forward-weighted
+external source for adjoint mode is simply computed as being :math:`1 / \phi`,
+where :math:`\phi` is the forward scalar flux that results from a normal
+forward solve (which OpenMC will run first automatically when in adjoint mode).
+The adjoint external source will be computed for each source region in the
+simulation mesh, independent of any tallies. The adjoint external source is
+always flat, even when a linear scattering and fission source shape is used.
 
 When in adjoint mode, all reported results (e.g., tallies, eigenvalues, etc.)
 are derived from the adjoint flux, even when the physical meaning is not
@@ -1254,17 +1275,17 @@ assigned to MPI ranks (and thus Voronoi regions) using a formula that evaluates
 the distance between the first intersection point :math:`\mathbf{x}` of a ray
 with that source region and the Voronoi region centroid
 :math:`\mathbf{c}_{\mathrm{rank}}`, combined with an additive weight
-:math:`\omega_{\mathrm{rank}}`: 
+:math:`\omega_{\mathrm{rank}}`:
 
-.. math:: 
+.. math::
     :label: mpi_ownership
-    
-    \mathrm{rank}(\mathbf{x}) = \arg\min_{\text{rank}} 
-    \left(\|\mathbf{c}_{\mathrm{rank}} - \mathbf{x}\|^2 - 
+
+    \mathrm{rank}(\mathbf{x}) = \arg\min_{\text{rank}}
+    \left(\|\mathbf{c}_{\mathrm{rank}} - \mathbf{x}\|^2 -
     \omega_{\mathrm{rank}} \right)\;\mathrm{.}
 
 The initial weight is zero and subsequently changed for load balancing. This
-approach yields compact MPI rank subdomains. 
+approach yields compact MPI rank subdomains.
 
 In the OpenMC random ray implementation, the algorithm is not aware of the
 source regions in the geometry a priori. Instead, source regions are discovered
@@ -1285,7 +1306,7 @@ information is shared across all MPI ranks and saved in a decomposition map.
 This decomposition map is used to look up the responsible MPI rank every time a
 ray enters a source region that has already been recorded, thereby avoiding the
 need to evaluate Equation :eq:`mpi_ownership` again, which can be time-intensive
-if many MPI ranks are present. 
+if many MPI ranks are present.
 
 ~~~~~~~~~~~~~~~~~
 Ray Communication
@@ -1315,7 +1336,7 @@ are still performing their calculations. In many computational fields, the
 amount of work that is performed is fixed per source region. In such cases, the
 overall load is simply a function of how many source regions are contained
 within a given subdomain, with each source region requiring the same set of
-operations to be performed. 
+operations to be performed.
 
 However, in random ray, the load for a given source region is much
 more complex to determine. When a ray crosses a cell, the angular flux increment
@@ -1332,7 +1353,7 @@ in a source region :math:`i`, and 2) the number of surface ray trace operations
 region:
 
 .. math::
-    \mathrm{load}_{\mathrm{estimate}, i} = F_{r} \cdot \left(C_1 \cdot 
+    \mathrm{load}_{\mathrm{estimate}, i} = F_{r} \cdot \left(C_1 \cdot
     n_{\mathrm{hits}, i} \cdot N_{G} + C_2 \cdot n_{\mathrm{RT}, i} \right)\;
     \mathrm{.}
 
@@ -1350,19 +1371,19 @@ diagnostics.
 Based on these load estimates, a load balancing routine tries to equalize the
 work per MPI rank. To do so, the weights
 :math:`\omega_{\mathrm{rank}}` in Equation :eq:`mpi_ownership` are
-adjusted according to the deviation of the estimated rank load 
+adjusted according to the deviation of the estimated rank load
 
 .. math::
-    \mathrm{load}_{\mathrm{estimate}, \mathrm{rank}} = \frac{\sum\limits_{i \, 
+    \mathrm{load}_{\mathrm{estimate}, \mathrm{rank}} = \frac{\sum\limits_{i \,
     \in \, \mathrm{rank}} \mathrm{load}_{\mathrm{estimate},i}}{\sum\limits_{i=1}
     ^{M} \mathrm{load}_{\mathrm{estimate}, i}}
-    
-from the target load 
+
+from the target load
 
 .. math::
     \mathrm{load}_{\mathrm{target}} = \frac{1}{N_{\mathrm{rank}}}\;\mathrm{,}
 
-where :math:`N_{\mathrm{rank}}` is the total number of MPI ranks. 
+where :math:`N_{\mathrm{rank}}` is the total number of MPI ranks.
 
 Changes to the weights :math:`\mathbf{\omega_{\mathrm{rank}}}` increase or
 decrease the reach of a specific MPI rank, and thus the number of source regions
@@ -1370,7 +1391,7 @@ that belong to it. After each weight change, the rank load estimates are updated
 according to the anticipated changes in the ownership of source regions, and the
 new load estimates are then used again to calculate new weights. These load
 optimization iterations continue until the estimated load imbalance is smaller
-than 1% or until a maximum of 200 iterations is reached. 
+than 1% or until a maximum of 200 iterations is reached.
 
 After the load balancing, numerous source regions will belong to new MPI ranks.
 The corresponding cell data is transferred to the new owner ranks and erased
@@ -1380,7 +1401,7 @@ restricted to the first 5 simulation batches. Because random ray simulations
 should use an appropriately large ray population, it is expected that sufficient
 load estimate data has been recorded for the vast majority of cells after 5
 batches, and the load per MPI rank will not change significantly beyond
-stochastic fluctuations associated with the changing quadrature. 
+stochastic fluctuations associated with the changing quadrature.
 
 ---------------------------
 Fundamental Sources of Bias

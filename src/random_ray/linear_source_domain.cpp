@@ -35,7 +35,7 @@ void LinearSourceDomain::batch_reset()
   }
 }
 
-void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
+void LinearSourceDomain::update_single_particle_source(SourceRegionHandle& srh)
 {
   // Reset all source regions to zero (important for void regions)
   for (int g = 0; g < negroups_; g++) {
@@ -80,7 +80,8 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
         // Compute source terms for flat and linear components of the flux
         scatter_flat += sigma_s * flux_flat;
         scatter_linear += sigma_s * flux_linear;
-        if (settings::create_fission_neutrons) {
+        if (data::mg.particle_type_.is_neutron() &&
+            settings::create_fission_neutrons) {
           fission_flat += nu_sigma_f * flux_flat * chi;
           fission_linear += nu_sigma_f * flux_linear * chi;
         }

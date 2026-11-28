@@ -1074,6 +1074,32 @@ points of 1.0e-2 and 1.0e1.
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]
 
+~~~~~~~~~~~~~~~~
+Photon Transport
+~~~~~~~~~~~~~~~~
+
+The random ray solver supports forward fixed-source photon calculations. A
+continuous-energy photon model can be converted and run with the same workflow
+used for neutron models::
+
+  model.settings.run_mode = 'fixed source'
+  model.settings.source = openmc.IndependentSource(..., particle='photon')
+
+  model.convert_to_multigroup(
+      groups=[1.0e3, 1.0e5, 5.0e5, 1.1e6],
+      particle_type='photon',
+      ...
+  )
+  model.convert_to_random_ray()
+  model.run()
+
+The source and the multigroup library must both specify photons. The group
+structure should span the source spectrum and the secondary photon energies of
+interest, with its lower boundary consistent with the photon energy cutoff. Note
+that photon adjoint and coupled neutron--photon solves are not yet supported.
+See :ref:`methods_random_ray_photon` for the cross-section representation and
+angular approximation.
+
 .. _usersguide_vol_estimators:
 
 -----------------------------

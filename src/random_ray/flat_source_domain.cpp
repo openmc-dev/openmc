@@ -18,6 +18,7 @@
 #include "openmc/timer.h"
 #include "openmc/weight_windows.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <numeric>
 
@@ -255,7 +256,7 @@ void FlatSourceDomain::demotion_step()
   // reports the settled decisions exactly.
 }
 
-void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
+void FlatSourceDomain::update_single_particle_source(SourceRegionHandle& srh)
 {
   // Reset all source regions to zero (important for void regions)
   for (int g = 0; g < negroups_; g++) {
@@ -284,7 +285,8 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
         double chi = chi_[material_offset + g_out];
 
         scatter_source += sigma_s * scalar_flux;
-        if (settings::create_fission_neutrons) {
+        if (data::mg.particle_type_.is_neutron() &&
+            settings::create_fission_neutrons) {
           fission_source += nu_sigma_f * scalar_flux * chi;
         }
       }
@@ -303,14 +305,14 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
 
 // Compute new estimate of scattering + fission sources in each source region
 // based on the flux estimate from the previous iteration.
-void FlatSourceDomain::update_all_neutron_sources()
+void FlatSourceDomain::update_all_particle_sources()
 {
   simulation::time_update_src.start();
 
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
-    update_single_neutron_source(srh);
+    update_single_particle_source(srh);
   }
 
   simulation::time_update_src.stop();
@@ -917,6 +919,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
     // crossing through this source region is used to estabilish
     // the spatial location of the source region
     Particle p;
+    p.type() = data::mg.particle_type_;
     p.r() = source_regions_.position(sr);
     p.r_last() = source_regions_.position(sr);
     p.u() = {1.0, 0.0, 0.0};
@@ -997,7 +1000,7 @@ void FlatSourceDomain::reset_tally_volumes()
 // In fixed source mode, due to the way that volumetric fixed sources are
 // converted and applied as volumetric sources in one or more source regions,
 // we need to perform an additional normalization step to ensure that the
-// reported scalar fluxes are in units per source neutron. This allows for
+// reported scalar fluxes are in units per source particle. This allows for
 // direct comparison of reported tallies to Monte Carlo flux results.
 // This factor needs to be computed at each iteration, as it is based on the
 // volume estimate of each FSR, which improves over the course of the
@@ -1313,6 +1316,7 @@ void FlatSourceDomain::output_to_vtk() const
           sample.y = ll.y + y_delta / 2.0 + y * y_delta;
           sample.x = ll.x + x_delta / 2.0 + x * x_delta;
           Particle p;
+          p.type() = data::mg.particle_type_;
           p.r() = sample;
           p.r_last() = sample;
           p.E() = 1.0;
@@ -1575,6 +1579,7 @@ void FlatSourceDomain::output_to_vtk_decomp() const
           sample.y = ll.y + y_delta / 2.0 + y * y_delta;
           sample.x = ll.x + x_delta / 2.0 + x * x_delta;
           Particle p;
+          p.type() = data::mg.particle_type_;
           p.r() = sample;
           p.r_last() = sample;
           p.E() = 1.0;
@@ -1943,15 +1948,23 @@ void FlatSourceDomain::apply_external_source_to_source_region(
       : model::external_sources[src_idx].get();
   auto is = dynamic_cast<IndependentSource*>(s);
   auto discrete = dynamic_cast<Discrete*>(is->energy());
-  double strength_factor = is->strength();
   const auto& discrete_energies = discrete->x();
-  const auto& discrete_probs = discrete->prob();
+  const auto& acceptance = discrete->prob();
+  const auto& aliases = discrete->alias();
+  double strength_per_line = is->strength() / discrete_energies.size();
 
   srh.external_source_present() = 1;
 
-  for (int i = 0; i < discrete_energies.size(); i++) {
+  // Each alias-table column represents an equal share of the source strength.
+  // Split that share between the column's energy and its alias energy.
+  for (size_t i = 0; i < discrete_energies.size(); i++) {
+    double accepted = std::min(acceptance[i], 1.0);
     int g = data::mg.get_group_index(discrete_energies[i]);
-    srh.external_source(g) += discrete_probs[i] * strength_factor;
+    srh.external_source(g) += accepted * strength_per_line;
+    if (accepted < 1.0) {
+      int alias_group = data::mg.get_group_index(discrete_energies[aliases[i]]);
+      srh.external_source(alias_group) += (1.0 - accepted) * strength_per_line;
+    }
   }
 }
 
@@ -2641,7 +2654,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   }
 
   // Compute the combined source term
-  update_single_neutron_source(handle);
+  update_single_particle_source(handle);
 
   // Unlock the parallel map. Note: we may be tempted to release
   // this lock earlier, and then just use the source region's lock to protect

@@ -156,11 +156,6 @@ void read_cross_sections_xml(pugi::xml_node root)
     read_ce_cross_sections_xml();
   } else {
     data::mg.read_header(settings::path_cross_sections);
-    if (settings::solver_type == SolverType::RANDOM_RAY &&
-        data::mg.particle_type_.is_photon()) {
-      fatal_error("Photon MGXS libraries are not supported by the random ray "
-                  "solver.");
-    }
     put_mgxs_header_data_to_globals();
   }
 

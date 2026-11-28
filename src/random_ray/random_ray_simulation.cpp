@@ -33,6 +33,17 @@ namespace openmc {
 // that may cause erroneous/misleading output or crashes from the solver.
 void validate_random_ray_inputs()
 {
+  const ParticleType particle_type = data::mg.particle_type_;
+  if (particle_type.is_photon()) {
+    if (settings::run_mode != RunMode::FIXED_SOURCE) {
+      fatal_error(
+        "Photon random ray transport is only supported in fixed-source mode.");
+    }
+    if (FlatSourceDomain::adjoint_requested_) {
+      fatal_error("Adjoint photon random ray transport is not supported.");
+    }
+  }
+
   // Validate tallies
   ///////////////////////////////////////////////////////////////////
   for (auto& tally : model::tallies) {
@@ -42,10 +53,15 @@ void validate_random_ray_inputs()
       switch (score_bin) {
       case SCORE_FLUX:
       case SCORE_TOTAL:
+      case SCORE_EVENTS:
+        break;
       case SCORE_FISSION:
       case SCORE_NU_FISSION:
-      case SCORE_EVENTS:
       case SCORE_KAPPA_FISSION:
+        if (particle_type.is_photon()) {
+          fatal_error("Fission tally scores are not supported for photon "
+                      "random ray transport.");
+        }
         break;
       default:
         fatal_error(
@@ -187,6 +203,9 @@ void validate_random_ray_inputs()
         fatal_error(
           "Only discrete (multigroup) energy distributions are allowed for "
           "external sources in random ray mode.");
+      }
+      for (double energy : dd->x()) {
+        data::mg.get_source_group_index(is->particle_type(), energy);
       }
     }
   }
@@ -422,7 +441,7 @@ void RandomRaySimulation::simulate()
     simulation::total_weight = 1.0;
 
     // Update source term (scattering + fission)
-    domain_->update_all_neutron_sources();
+    domain_->update_all_particle_sources();
 
     // Reset scalar fluxes, iteration volume tallies, and region hit flags
     // to zero

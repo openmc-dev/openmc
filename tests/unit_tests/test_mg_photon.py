@@ -5,7 +5,7 @@ import pytest
 
 from openmc.exceptions import OpenMCError
 from tests.mg_photon import (
-    ABSORPTION, GROUP_EDGES, TOTAL, check_exact_solution, make_model,
+    ABSORPTION, GROUP_EDGES, NU_SCATTER, TOTAL, check_exact_solution, make_model,
 )
 from tests.regression_tests import config
 
@@ -96,8 +96,10 @@ def test_mg_photon_scattering_without_production(run_in_tmpdir):
         model.run(openmc_exec=config['exe'])
 
 
-def test_mg_photon_random_ray(run_in_tmpdir):
-    model = make_model()
+def test_mg_photon_random_ray_production_without_scattering(run_in_tmpdir):
+    absorption = ABSORPTION.copy()
+    absorption[0] = TOTAL[0]
+    model = make_model('derived', absorption=absorption)
     model.settings.source[0].space = openmc.stats.Point()
     model.settings.random_ray = {
         'distance_inactive': 20.0,
@@ -105,9 +107,18 @@ def test_mg_photon_random_ray(run_in_tmpdir):
         'ray_source': openmc.IndependentSource(
             space=openmc.stats.Box((-5.0,) * 3, (5.0,) * 3)),
     }
-    model.tallies = []
-    with pytest.raises(RuntimeError, match='not supported by the random ray'):
-        model.run(openmc_exec=config['exe'])
+    model.settings.inactive = 20
+    model.settings.batches = 25
+    model.settings.particles = 100
+    tally = model.tallies[0]
+    tally.scores = ['flux']
+    model.tallies = [tally]
+
+    model.run(openmc_exec=config['exe'], apply_tally_results=True)
+
+    # The reflective cube has no leakage. Compare with the exact group balance.
+    exact = np.linalg.solve(np.diag(TOTAL) - NU_SCATTER.T, [1.0, 0.0, 0.0])
+    np.testing.assert_allclose(tally.mean.ravel()[::-1], exact, rtol=1e-5)
 
 
 def test_mg_photon_material_updates(run_in_tmpdir, mpi_intracomm):

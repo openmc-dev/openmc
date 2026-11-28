@@ -371,10 +371,6 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
         // Random ray bins the physical energy probabilities directly.
         auto params = get_node_array<double>(node_dist, "parameters");
         size_t n = params.size() / 2;
-        if (get_node_array<double>(node_dist, "bias").size() != n) {
-          fatal_error("A discrete source energy distribution needs one bias "
-                      "probability per energy line.");
-        }
         energy_ = make_unique<Discrete>(params.data(), params.data() + n, n);
       } else {
         energy_ = distribution_from_xml(node_dist);

@@ -596,7 +596,7 @@ hid_t h5banktype(bool memory)
 }
 
 void write_source_point(std::string filename, span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index, bool use_mcpl)
+  const vector<int64_t>& bank_index, bool use_mcpl, bool group_indices)
 {
   std::string ext = use_mcpl ? "mcpl" : "h5";
 
@@ -616,12 +616,13 @@ void write_source_point(std::string filename, span<SourceSite> source_bank,
     write_mcpl_source_point(filename.c_str(), source_bank, bank_index);
   } else {
     filename.append(".h5");
-    write_h5_source_point(filename.c_str(), source_bank, bank_index);
+    write_h5_source_point(
+      filename.c_str(), source_bank, bank_index, group_indices);
   }
 }
 
 void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index)
+  const vector<int64_t>& bank_index, bool group_indices)
 {
   // When using parallel HDF5, the file is written to collectively by all
   // processes. With MPI-only, the file is opened and written by the master
@@ -648,6 +649,8 @@ void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
     file_id = file_open(filename_.c_str(), 'w', true);
     write_attribute(file_id, "filetype", "source");
     write_attribute(file_id, "version", VERSION_STATEPOINT);
+    if (group_indices)
+      write_attribute(file_id, "energy_mode", "multi-group");
   }
 
   // Get pointer to source bank and write to file

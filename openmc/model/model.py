@@ -2911,11 +2911,10 @@ class Model:
             settings = openmc.Settings()
             settings.temperature = copy.deepcopy(self.settings.temperature)
             if particle_type == openmc.ParticleType.PHOTON:
-                settings.atomic_relaxation = \
-                    self.settings.atomic_relaxation
-                settings.electron_treatment = \
-                    self.settings.electron_treatment
-                settings.cutoff = copy.deepcopy(self.settings.cutoff)
+                for name in ('atomic_relaxation', 'electron_treatment', 'cutoff'):
+                    value = getattr(self.settings, name)
+                    if value is not None:
+                        setattr(settings, name, copy.deepcopy(value))
 
         settings.batches = 100 if method == 'infinite_medium' else 200
         if method != 'infinite_medium':

@@ -2955,13 +2955,21 @@ class Model:
         generate_library = overwrite_mgxs_library or not Path(mgxs_path).is_file()
         if particle_type == openmc.ParticleType.PHOTON:
             settings.photon_transport = True
-            if generate_library and method == 'material_wise' and (
-                not settings.source or any(
+
+        if generate_library and method == 'material_wise':
+            generation_sources = settings.source
+            if particle_type == openmc.ParticleType.PHOTON and (
+                not generation_sources or any(
                     not isinstance(src, openmc.IndependentSource)
-                    or src.particle != particle_type for src in settings.source)
+                    for src in generation_sources)
             ):
                 raise ValueError('Material-wise photon MGXS generation '
                                  'requires independent photon sources.')
+            if any(isinstance(src, openmc.IndependentSource)
+                   and src.particle != particle_type
+                   for src in generation_sources):
+                raise ValueError('The requested particle type does not match '
+                                 'the MGXS generation source particle type.')
 
         # A weight windows file on the generation settings is loaded and
         # applied (specifying a file turns weight windows on) during the

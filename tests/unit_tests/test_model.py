@@ -1212,6 +1212,10 @@ def test_convert_to_multigroup_validation(run_in_tmpdir):
     with pytest.raises(ValueError):
         model.convert_to_multigroup(method='not_a_method')
 
+    with pytest.raises(ValueError, match='generation source particle type'):
+        model.convert_to_multigroup(
+            source=openmc.IndependentSource(particle='photon'))
+
     # The deprecated arguments cannot be combined with keyword overrides
     with pytest.raises(ValueError, match='deprecated'), \
             pytest.warns(FutureWarning):
@@ -1264,7 +1268,7 @@ def test_convert_to_multigroup_photon_validation(run_in_tmpdir):
     with pytest.raises(ValueError, match='transport corrections'):
         model.convert_to_multigroup(correction='P0')
 
-    with pytest.raises(ValueError, match='requires independent photon sources'):
+    with pytest.raises(ValueError, match='generation source particle type'):
         model.convert_to_multigroup(source=openmc.IndependentSource())
 
     neutron_library = openmc.MGXSLibrary(

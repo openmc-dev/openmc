@@ -97,6 +97,15 @@ void adjust_indices()
       int32_t id = c->fill_;
       auto search_univ = model::universe_map.find(id);
       auto search_lat = model::lattice_map.find(id);
+      if (search_univ != model::universe_map.end() &&
+          search_lat != model::lattice_map.end()) {
+        fatal_error(fmt::format(
+          "ID {} is assigned to both a universe and a lattice. The fill on "
+          "cell {} silently resolves to the universe, which would leave the "
+          "lattice with the same ID unreachable. Rename the lattice (e.g. "
+          "offset its ID) so that universe and lattice IDs do not collide.",
+          id, c->id_));
+      }
       if (search_univ != model::universe_map.end()) {
         c->type_ = Fill::UNIVERSE;
         c->fill_ = search_univ->second;

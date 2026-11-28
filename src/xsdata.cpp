@@ -120,8 +120,9 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
     if (total.data()[i] == 0.0)
       total.data()[i] = 1.e-10;
 
-  // Monte Carlo needs multiplicity to recover physical scattering. Random ray
-  // uses the photon production matrix directly.
+  // Older photon libraries may omit multiplicity. Monte Carlo derives it from
+  // the production matrix to recover physical scattering. Random ray uses the
+  // production matrix directly.
   if (settings::solver_type == SolverType::MONTE_CARLO &&
       data::mg.particle_type_.is_photon() &&
       !object_exists(xsdata_grp, "scatter_data/multiplicity_matrix")) {

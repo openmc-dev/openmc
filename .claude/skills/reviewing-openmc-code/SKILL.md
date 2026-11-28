@@ -24,7 +24,7 @@ Apply repository-wide guidance from `AGENTS.md` (architecture, build/test workfl
 
 ## Review Criteria
 
-Assess each of the following areas, noting any issues found. If an area looks good, briefly confirm it passes.
+Assess each of the following areas and report what you checked.
 
 ### Purpose and Scope
 - Do the changes have a clear, well-defined purpose?
@@ -68,18 +68,18 @@ Assess each of the following areas, noting any issues found. If an area looks go
 
 ## Output Format
 
-Produce your review as a structured report with the following sections:
+Use these sections in order:
 
-**Context**: State what is being compared (e.g., "current branch vs. `develop`", or the specific commit range/PR).
+- **Context** identifies the PR, branch, or patch and the revisions compared. For a PR, include its URL, base branch, and compared commit SHAs when available.
+- **Summary** describes the change and gives an overall assessment.
+- **Outstanding issues** lists open findings and questions. For each finding, give the code location, the observation or test result that supports it, its impact, and the next action. For each question, say who can answer and what depends on the answer. List verification gaps that require action as follow-up tasks. Use `None.` if no items remain.
+- **Detailed findings** gives a brief assessment for each review criterion and refers to outstanding entries where relevant. Name the tests run, their results, and the revisions they exercised. Distinguish tests from code inspection and identify checks that were skipped or inapplicable.
 
-**Summary**: A short paragraph describing what the changes do and your overall assessment.
+Use these labels for outstanding findings and questions:
 
-**Detailed Findings**: For each criterion above, provide a brief assessment. Use `✓` for items that pass and flag issues with severity:
-- `[Minor]` — Style nits, small improvements, non-blocking suggestions
-- `[Moderate]` — Issues worth addressing but not strictly blocking
-- `[Major]` — Problems that should be resolved before merging
+- **[Major]** for material problems such as incorrect results, unsound physics, substantial performance regressions, or unintended compatibility changes.
+- **[Minor]** for substantive issues with limited impact, such as a focused test coverage or documentation gap.
+- **[Nitpick]** for small wording, style, or consistency suggestions with negligible impact.
+- **[Question]** for clarification or a decision that remains open after investigation. If the investigation establishes a concrete issue, label it by severity and state any decision still needed in the same entry.
 
-Group findings into:
-1. **Blocking issues** — Would justify requesting changes before merge
-2. **Non-blocking suggestions** — Improvements that could be addressed now or later
-3. **Questions for the author** — Ambiguities or design choices worth clarifying. Do not include questions that you are capable of answering yourself
+Leave decisions to request changes or merge to the human reviewer.

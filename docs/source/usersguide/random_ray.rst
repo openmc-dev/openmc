@@ -611,54 +611,6 @@ example of using OpenMC's Python interface to generate a correctly formatted
     separate materials can be defined each with a separate multigroup dataset
     corresponding to a given temperature.
 
-----------------
-Photon Transport
-----------------
-
-The random ray solver supports forward fixed-source photon calculations. A
-continuous-energy photon model can be converted and run with the same workflow
-used for neutron models::
-
-  model.settings.run_mode = 'fixed source'
-  model.settings.source = openmc.IndependentSource(
-      particle='photon',
-      space=openmc.stats.Point((0.0, 0.0, 0.0)),
-      energy=openmc.stats.Discrete([1.0e6], [1.0]))
-
-  model.convert_to_multigroup(
-      particle_type='photon',
-      groups=[1.0e3, 1.0e5, 5.0e5, 1.1e6],
-      correction=None)
-  model.convert_to_random_ray()
-  model.run()
-
-The photon group structure should span the source spectrum and the secondary
-photon energies of interest, with its lower boundary consistent with the photon
-energy cutoff. Photon MGXS generation preserves atomic relaxation and the
-selected electron treatment. Thick-target bremsstrahlung should be selected
-when bremsstrahlung photons need to be represented in the collapsed production
-operator.
-
-For photon libraries, the ``nu-scatter matrix`` is the complete expected
-outgoing-photon production operator. It includes the surviving primary photon
-from coherent or incoherent scattering and secondary photons from atomic
-relaxation, thick-target bremsstrahlung, and positron annihilation. Random ray
-uses the zeroth angular moment (P0) of this matrix for its production source and
-treats outgoing photons as isotropic. This approximation can affect spatial
-flux profiles when Compton scattering is strongly forward peaked.
-
-The photon ``absorption`` cross section describes removal of the incident
-photon. It is independently tallied and must not be inferred by subtracting the
-production matrix from the total cross section because an interaction can both
-remove its incident photon and produce secondary photons.
-
-Photon random ray transport requires angle-independent multigroup data and an
-:class:`openmc.IndependentSource` that emits photons at discrete energies within
-the library group bounds. Photon eigenvalue and adjoint calculations, coupled
-neutron--photon random ray solves, and higher-order photon production are not
-supported. As with neutron fixed-source random ray calculations, inactive
-batches are needed to converge the scattering and production source.
-
 .. _mgxs_gen:
 
 -------------------------------------------
@@ -1121,6 +1073,52 @@ points of 1.0e-2 and 1.0e1.
 
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]
+
+~~~~~~~~~~~~~~~~
+Photon Transport
+~~~~~~~~~~~~~~~~
+
+The random ray solver supports forward fixed-source photon calculations. A
+continuous-energy photon model can be converted and run with the same workflow
+used for neutron models::
+
+  model.settings.run_mode = 'fixed source'
+  model.settings.source = openmc.IndependentSource(..., particle='photon')
+
+  model.convert_to_multigroup(
+      groups=[1.0e3, 1.0e5, 5.0e5, 1.1e6],
+      particle_type='photon',
+      ...
+  )
+  model.convert_to_random_ray()
+  model.run()
+
+The photon group structure should span the source spectrum and the secondary
+photon energies of interest, with its lower boundary consistent with the photon
+energy cutoff. Photon MGXS generation preserves atomic relaxation and the
+selected electron treatment. Thick-target bremsstrahlung should be selected
+when bremsstrahlung photons need to be represented in the collapsed production
+operator.
+
+For photon libraries, the ``nu-scatter matrix`` is the complete expected
+outgoing-photon production operator. It includes the surviving primary photon
+from coherent or incoherent scattering and secondary photons from atomic
+relaxation, thick-target bremsstrahlung, and positron annihilation. Random ray
+uses the zeroth angular moment (P0) of this matrix for its production source and
+treats outgoing photons as isotropic. This approximation can affect spatial
+flux profiles when Compton scattering is strongly forward peaked.
+
+The photon ``absorption`` cross section describes removal of the incident
+photon. It is independently tallied and must not be inferred by subtracting the
+production matrix from the total cross section because an interaction can both
+remove its incident photon and produce secondary photons.
+
+Photon random ray transport requires angle-independent multigroup data and an
+:class:`openmc.IndependentSource` that emits photons at discrete energies within
+the library group bounds. Photon eigenvalue and adjoint calculations, coupled
+neutron--photon random ray solves, and higher-order photon production are not
+supported. As with neutron fixed-source random ray calculations, inactive
+batches are needed to converge the scattering and production source.
 
 .. _usersguide_vol_estimators:
 

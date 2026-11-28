@@ -50,19 +50,18 @@ void validate_random_ray_inputs()
 
     // Validate score types
     for (auto score_bin : tally->scores_) {
-      if (particle_type.is_photon() &&
-          (score_bin == SCORE_FISSION || score_bin == SCORE_NU_FISSION ||
-            score_bin == SCORE_KAPPA_FISSION)) {
-        fatal_error("Fission tally scores are not supported for photon random "
-                    "ray transport.");
-      }
       switch (score_bin) {
       case SCORE_FLUX:
       case SCORE_TOTAL:
+      case SCORE_EVENTS:
+        break;
       case SCORE_FISSION:
       case SCORE_NU_FISSION:
-      case SCORE_EVENTS:
       case SCORE_KAPPA_FISSION:
+        if (particle_type.is_photon()) {
+          fatal_error("Fission tally scores are not supported for photon "
+                      "random ray transport.");
+        }
         break;
       default:
         fatal_error(
